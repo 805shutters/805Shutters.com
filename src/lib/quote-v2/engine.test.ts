@@ -131,6 +131,60 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
   });
 
+  it("prices Miguel's three-blind FTX opening from three independent Lotus cells at 2.5x", () => {
+    const widths = [31.5, 31.5, 31.5];
+    const context = selection(
+      "lotus_faux_wood_blinds",
+      "lotus_ftx_2in_snow_white_custom",
+      {
+        mount_type: "Inside Mount",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FTX",
+        product_line: "FTX",
+        slat_size: '2"',
+        color: "Snow White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 3,
+        lotus_blind_widths_inches: widths,
+      },
+      {
+        manufacturerId: "lotus",
+        widthInches: 94.5,
+        heightInches: 34.25,
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        componentWidthsInches: widths,
+        quantity: 1,
+      },
+      includeInternalCost: true,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      productId: "lotus_faux_wood_blinds",
+      programId: "lotus_ftx_2in_snow_white_custom",
+      componentMatchedWidths: [35, 35, 35],
+      matchedHeight: 36,
+      base: 202.35,
+      unitPrice: 202.35,
+      wholesaleBase: 80.94,
+      wholesaleUnitPrice: 80.94,
+      total: 202.35,
+      internalCost: {
+        basis: "dealer_net",
+        productCostUnit: 80.94,
+        productCostTotal: 80.94,
+      },
+    });
+  });
+
   it("prices Norman SmartPrivacy from manufacturer wholesale plus $125 per original line", () => {
     const context = selection(
       "smartprivacy_faux",

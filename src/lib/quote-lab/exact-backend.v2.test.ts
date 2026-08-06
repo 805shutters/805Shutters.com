@@ -131,6 +131,39 @@ function lotusDesign(
   } as unknown as SalesQuoteDesign;
 }
 
+function lotusFtxDesign(
+  lineItemId: string,
+  options: Record<string, unknown> = {},
+): SalesQuoteDesign {
+  return {
+    id: `${lineItemId}-design-A`,
+    line_item_id: lineItemId,
+    variant: "A",
+    product_type: "Faux Wood Blinds",
+    supplier: "Lotus",
+    material: "2-inch Faux Wood, Snow White - Custom Cut",
+    mount_type: "Inside Mount",
+    unit_price: 0,
+    options_json: {
+      quote_v2_backend: true,
+      catalog_product_id: "lotus_faux_wood_blinds",
+      quote_lab_product_id: "lotus_faux_wood_blinds",
+      catalog_program_id: "lotus_ftx_2in_snow_white_custom",
+      quote_lab_program_id: "lotus_ftx_2in_snow_white_custom",
+      catalog_manufacturer: "Lotus",
+      catalog_product_type: "Faux Wood Blinds",
+      lotus_configuration_version: "lotus-faux-v2",
+      lotus_program_code: "FTX",
+      product_line: "FTX",
+      slat_size: '2"',
+      color: "Snow White",
+      lotus_finish: "Smooth",
+      lotus_blind_count: 1,
+      ...options,
+    },
+  } as unknown as SalesQuoteDesign;
+}
+
 type RepricedQuote = ReturnType<typeof repriceExactQuoteBuilder>;
 type V2Quote = Extract<RepricedQuote, { backend: "v2" }>;
 
@@ -537,6 +570,75 @@ describe("exact-interface V2 integration", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.surchargeLines).toEqual([]);
+  });
+
+  it("prices Miguel's complete FTX draft through the exact V4 interface without a Norman fallback", () => {
+    const bedroom1 = line("miguel-ftx-bedroom-1", {
+      room_name: "Bedroom 1",
+      product_type: "Faux Wood Blinds",
+      width_whole: 94,
+      width_fraction: "1/2",
+      height_whole: 34,
+      height_fraction: "1/4",
+    });
+    const bedroom2 = line("miguel-ftx-bedroom-2", {
+      room_name: "Bedroom 2",
+      product_type: "Faux Wood Blinds",
+      width_whole: 70,
+      width_fraction: "1/2",
+      height_whole: 46,
+      height_fraction: "1/4",
+    });
+    const bedroom3 = { ...bedroom2, id: "miguel-ftx-bedroom-3", room_name: "Bedroom 3" };
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [bedroom1, bedroom2, bedroom3],
+        designs: [
+          lotusFtxDesign(bedroom1.id, {
+            lotus_blind_count: 3,
+            lotus_blind_1_width_inches: 31.5,
+            lotus_blind_2_width_inches: 31.5,
+            lotus_blind_3_width_inches: 31.5,
+          }),
+          lotusFtxDesign(bedroom2.id),
+          lotusFtxDesign(bedroom3.id),
+        ],
+        selectedVariantByLine: {
+          [bedroom1.id]: "A",
+          [bedroom2.id]: "A",
+          [bedroom3.id]: "A",
+        },
+      }),
+    );
+
+    expect(quote.designs.map((entry) => entry.result)).toEqual([
+      expect.objectContaining({
+        ok: true,
+        productId: "lotus_faux_wood_blinds",
+        programId: "lotus_ftx_2in_snow_white_custom",
+        componentMatchedWidths: [35, 35, 35],
+        wholesaleTotal: 80.94,
+        total: 202.35,
+      }),
+      expect.objectContaining({
+        ok: true,
+        productId: "lotus_faux_wood_blinds",
+        programId: "lotus_ftx_2in_snow_white_custom",
+        matchedWidth: 72,
+        matchedHeight: 48,
+        wholesaleTotal: 53.36,
+        total: 133.4,
+      }),
+      expect.objectContaining({
+        ok: true,
+        productId: "lotus_faux_wood_blinds",
+        programId: "lotus_ftx_2in_snow_white_custom",
+        wholesaleTotal: 53.36,
+        total: 133.4,
+      }),
+    ]);
+    expect(quote.total).toBe(469.15);
+    expect(quote.sendability.sendable).toBe(false);
   });
 
   it("rejects a fabric price-group mismatch and ignores a browser-supplied catalog identity", () => {

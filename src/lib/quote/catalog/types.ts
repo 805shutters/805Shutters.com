@@ -59,6 +59,13 @@ export type CatalogProgram = {
   priceAxis: CatalogPriceAxis;
   /** Optional program-level override for a product with mixed priceability. */
   priceBasis?: CatalogPriceBasis;
+  /** Owner-approved retail override when one program differs from its product family. */
+  retailPolicy?: {
+    kind: "cost_multiplier";
+    value: number;
+    confirmedBy: string;
+    confirmedDate: string;
+  };
   /** Immutable source-manifest identity for this program's price evidence. */
   sourceId?: string;
   grid: CatalogGrid;

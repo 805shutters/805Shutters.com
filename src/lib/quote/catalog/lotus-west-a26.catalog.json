@@ -106,6 +106,12 @@
           "name": "1-inch Vinyl Mini Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -826,6 +832,12 @@
           "name": "1-inch Vinyl Plus Mini Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -1639,6 +1651,12 @@
           "name": "2-inch Vinyl Plus Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               23.0,
@@ -11572,6 +11590,12 @@
           "name": "1-inch Aluminum Mini Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -16278,6 +16302,12 @@
           "name": "2-inch Faux Wood, Smooth Bright White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -17091,6 +17121,12 @@
           "name": "2-inch Faux Wood, Embossed Bright White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -17880,6 +17916,12 @@
           "name": "2-inch Faux Wood, Snow White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 2.5,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-08-05"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -17907,107 +17949,107 @@
             ],
             "prices": [
               [
-                66.84,
-                76.11,
-                85.74,
-                92.91,
-                80.94,
-                87.78,
-                94.65,
-                103.17,
-                113.46,
-                122.04,
-                128.85,
-                139.11,
-                144.27
+                55.7,
+                63.43,
+                71.45,
+                77.42,
+                67.45,
+                73.15,
+                78.88,
+                85.97,
+                94.55,
+                101.7,
+                107.38,
+                115.92,
+                120.23
               ],
               [
-                75.33,
-                73.53,
-                82.65,
-                116.88,
-                88.62,
-                96.36,
-                104.04,
-                113.73,
-                125.34,
-                134.97,
-                142.71,
-                154.29,
-                160.08
+                62.77,
+                61.28,
+                68.88,
+                97.4,
+                73.85,
+                80.3,
+                86.7,
+                94.77,
+                104.45,
+                112.48,
+                118.92,
+                128.57,
+                133.4
               ],
               [
-                69.51,
-                86.64,
-                78.42,
-                84.84,
-                95.46,
-                103.98,
-                112.5,
-                123.12,
-                135.9,
-                146.52,
-                155.04,
-                167.79,
-                174.18
+                57.93,
+                72.2,
+                65.35,
+                70.7,
+                79.55,
+                86.65,
+                93.75,
+                102.6,
+                113.25,
+                122.1,
+                129.2,
+                139.82,
+                145.15
               ],
               [
-                72.75,
-                73.2,
-                82.26,
-                89.07,
-                100.44,
-                109.5,
-                118.56,
-                129.9,
-                143.55,
-                154.86,
-                163.98,
-                177.6,
-                184.35
+                60.62,
+                61.0,
+                68.55,
+                74.23,
+                83.7,
+                91.25,
+                98.8,
+                108.25,
+                119.62,
+                129.05,
+                136.65,
+                148.0,
+                153.62
               ],
               [
-                79.23,
-                79.71,
-                89.91,
-                97.62,
-                110.34,
-                120.57,
-                130.77,
-                143.55,
-                158.85,
-                171.63,
-                181.83,
-                197.13,
-                204.78
+                66.03,
+                66.42,
+                74.92,
+                81.35,
+                91.95,
+                100.47,
+                108.98,
+                119.62,
+                132.38,
+                143.03,
+                151.53,
+                164.27,
+                170.65
               ],
               [
-                88.92,
-                89.52,
-                101.43,
-                110.34,
-                125.22,
-                137.13,
-                149.04,
-                163.98,
-                181.83,
-                196.74,
-                208.62,
-                226.5,
-                235.41
+                74.1,
+                74.6,
+                84.53,
+                91.95,
+                104.35,
+                114.28,
+                124.2,
+                136.65,
+                151.53,
+                163.95,
+                173.85,
+                188.75,
+                196.18
               ],
               [
-                86.67,
-                99.3,
-                112.92,
-                123.12,
-                140.13,
-                153.75,
-                167.37,
-                184.35,
-                204.78,
-                221.79,
-                235.41,
+                72.22,
+                82.75,
+                94.1,
+                102.6,
+                116.78,
+                128.12,
+                139.47,
+                153.62,
+                170.65,
+                184.83,
+                196.18,
                 null,
                 null
               ]
@@ -18595,7 +18637,7 @@
           "fabricCollections": [],
           "notes": [
             "Dealer-net custom-cut matrix, PDF p101.",
-            "Customer retail is the dealer-net cell multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27.",
+            "Customer retail is the dealer-net cell multiplied by 2.5, confirmed by the 805 Shutters owner on 2026-08-05.",
             "Measured dimensions round independently to the next matrix cell.",
             "Blank and source-directed substitution cells remain unpriced and block; no automatic substitution is allowed."
           ],
@@ -18608,6 +18650,12 @@
           "name": "2-inch Faux Wood, Light Gray - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -19336,6 +19384,12 @@
           "name": "2-inch Faux Wood, Soft White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -20149,6 +20203,12 @@
           "name": "2-inch Privacy Faux Wood, Bright White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -20923,6 +20983,12 @@
           "name": "2.5-inch Faux Wood, Bright White - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               17.0,
@@ -43032,6 +43098,12 @@
           "name": "1% Roller Shade - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               23.0,
@@ -43631,6 +43703,12 @@
           "name": "Blackout Roller Shade - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               23.0,
@@ -46291,6 +46369,12 @@
           "name": "3.5-inch Steel Vertical Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               35.0,
@@ -46861,6 +46945,12 @@
           "name": "3.5-inch Steel Headrail - Custom Cut",
           "priceGroup": null,
           "priceAxis": "width",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               35.0,
@@ -46977,6 +47067,12 @@
           "name": "3.5-inch Aluminum One-Way Vertical Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               35.0,
@@ -47658,6 +47754,12 @@
           "name": "3.5-inch Aluminum One-Way Headrail - Custom Cut",
           "priceGroup": null,
           "priceAxis": "width",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               35.0,
@@ -47792,6 +47894,12 @@
           "name": "3.5-inch Aluminum Center-Draw Vertical Blind - Custom Cut",
           "priceGroup": null,
           "priceAxis": "wh",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               110.0,
@@ -48103,6 +48211,12 @@
           "name": "3.5-inch Aluminum Center-Draw Headrail - Custom Cut",
           "priceGroup": null,
           "priceAxis": "width",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [
               110.0,
@@ -48177,6 +48291,12 @@
           "name": "3.5-inch Vertical Vanes - Custom Cut",
           "priceGroup": null,
           "priceAxis": "height",
+          "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": 3,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27"
+          },
           "grid": {
             "widths": [],
             "heights": [

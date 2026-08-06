@@ -22,6 +22,30 @@ describe("Lotus West A26.v1 cost catalog with owner-approved retail", () => {
     expect(lotus.reduce((count, product) => count + (product.stockItems?.length ?? 0), 0)).toBe(3206);
   });
 
+  it("keeps the later owner-authorized FTX 2.5x rule isolated to Snow White", () => {
+    const product = getProduct("lotus_faux_wood_blinds");
+    const ftx = product?.programs.find(
+      (program) => program.id === "lotus_ftx_2in_snow_white_custom",
+    );
+    const lightGray = product?.programs.find(
+      (program) => program.id === "lotus_ftxlg_2in_light_gray_custom",
+    );
+
+    expect(ftx?.retailPolicy).toEqual({
+      kind: "cost_multiplier",
+      value: 2.5,
+      confirmedBy: "805 Shutters owner",
+      confirmedDate: "2026-08-05",
+    });
+    expect(ftx?.grid.costs?.[0]?.[4]).toBe(26.98);
+    expect(ftx?.grid.prices[0]?.[4]).toBe(67.45);
+    expect(ftx?.grid.costs?.[1]?.[12]).toBe(53.36);
+    expect(ftx?.grid.prices[1]?.[12]).toBe(133.4);
+
+    expect(lightGray?.retailPolicy?.value).toBe(3);
+    expect(lightGray?.grid.prices[0]?.[4]).toBe(80.94);
+  });
+
   it.each([
     ["lotus_mlx_1in_vinyl_custom", 17, 36, 17, 36, 14.47, "PDF p95"],
     ["lotus_amx_1in_aluminum_custom", 30, 48, 30, 48, 24.3, "PDF p97"],
@@ -101,6 +125,50 @@ describe("Lotus West A26.v1 cost catalog with owner-approved retail", () => {
     } finally {
       program.maxAreaSqft = originalMaxAreaSqft;
     }
+  });
+
+  it("prices the FTX minimum, Miguel representative cells, and maximum without crossing grids", () => {
+    const input = {
+      productId: "lotus_faux_wood_blinds",
+      programId: "lotus_ftx_2in_snow_white_custom",
+    } as const;
+
+    expect(priceDesign({ ...input, widthInches: 17, heightInches: 36 })).toMatchObject({
+      ok: true,
+      matchedWidth: 17,
+      matchedHeight: 36,
+      base: 55.7,
+      wholesaleBase: 22.28,
+    });
+    expect(priceDesign({ ...input, widthInches: 31.5, heightInches: 34.25 })).toMatchObject({
+      ok: true,
+      matchedWidth: 35,
+      matchedHeight: 36,
+      base: 67.45,
+      wholesaleBase: 26.98,
+    });
+    expect(priceDesign({ ...input, widthInches: 70.5, heightInches: 46.25 })).toMatchObject({
+      ok: true,
+      matchedWidth: 72,
+      matchedHeight: 48,
+      base: 133.4,
+      wholesaleBase: 53.36,
+    });
+    expect(priceDesign({ ...input, widthInches: 63, heightInches: 96 })).toMatchObject({
+      ok: true,
+      matchedWidth: 63,
+      matchedHeight: 96,
+      base: 196.18,
+      wholesaleBase: 78.47,
+    });
+    expect(priceDesign({ ...input, widthInches: 72, heightInches: 96 })).toMatchObject({
+      ok: false,
+      code: "NA_CELL",
+    });
+    expect(priceDesign({ ...input, widthInches: 72.01, heightInches: 36 })).toMatchObject({
+      ok: false,
+      code: "WIDTH_EXCEEDS_MAX",
+    });
   });
 
   it("blocks source-directed substitutions and prices Blackout from the owner-approved identical 1% grid", () => {

@@ -4886,7 +4886,9 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      catalogProgramId:
+        stringOption(opts, "catalog_program_id") ||
+        (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       frameType: opts?.frame_type as string | undefined,
@@ -4980,7 +4982,9 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      catalogProgramId:
+        stringOption(opts, "catalog_program_id") ||
+        (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       frameType: opts?.frame_type as string | undefined,
@@ -5129,7 +5133,9 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      catalogProgramId:
+        stringOption(opts, "catalog_program_id") ||
+        (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       frameType: opts?.frame_type as string | undefined,

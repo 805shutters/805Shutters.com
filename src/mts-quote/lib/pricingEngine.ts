@@ -351,6 +351,15 @@ export function getVerticalPrice(options: PriceLookupOptions): number | null {
 export function getFauxWoodPrice(options: PriceLookupOptions): number | null {
   const { productLine = "SmartPrivacy", width, height } = options;
 
+  if (options.supplier?.trim().toLowerCase() === "lotus") {
+    if (!options.catalogProgramId) return null;
+    return catalogGridBreakdown(
+      { ...options, productType: "Faux Wood Blinds" },
+      "lotus_faux_wood_blinds",
+      options.catalogProgramId,
+    ).price;
+  }
+
   const gridKey =
     getCatalogGridKey("Faux Wood Blinds", options) ??
     (productLine.toLowerCase() === "smartprivacy" ? "smartPrivacy" : "ultimate");
@@ -572,6 +581,20 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
       );
     }
     case "Faux Wood Blinds": {
+      if (options.supplier?.trim().toLowerCase() === "lotus") {
+        return options.catalogProgramId
+          ? catalogGridBreakdown(
+              options,
+              "lotus_faux_wood_blinds",
+              options.catalogProgramId,
+            )
+          : {
+              productType,
+              price: null,
+              gridKey: "PROGRAM_UNKNOWN",
+              pricingMethod: "none",
+            };
+      }
       const gridKey =
         getCatalogGridKey(productType, options) ??
         (options.productLine?.toLowerCase() === "ultimate" ? "ultimate" : "smartPrivacy");

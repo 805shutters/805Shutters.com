@@ -744,7 +744,8 @@ export function priceDesign(input: PriceInput): PriceResult {
     const supportedMultiComponentProduct =
       product.id === "roller" ||
       product.id === "faux_wood" ||
-      product.id === "smartprivacy_faux";
+      product.id === "smartprivacy_faux" ||
+      product.id === "lotus_faux_wood_blinds";
     if (
       !supportedMultiComponentProduct ||
       !Array.isArray(componentWidths) ||

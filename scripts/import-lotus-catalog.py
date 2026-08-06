@@ -17,6 +17,7 @@ import pdfplumber
 EXPECTED_SHA256 = "4e9aba91a601e1212a3e8a1531c361caf033c28ef6ca1fdac3ad6247502a982f"
 EXPECTED_PAGES = 113
 CUSTOMER_RETAIL_MULTIPLIER = 3
+FTX_CUSTOMER_RETAIL_MULTIPLIER = 2.5
 MONEY_RE = re.compile(r"(?<!\d)(\d+)[�.](\d{2})(?!\d)")
 SKU_RE = re.compile(r"\b[A-Z][A-Za-z0-9�]*\d[A-Za-z0-9�]*\b")
 
@@ -174,15 +175,21 @@ def normalize_sku(value: str) -> str:
     return value.replace("�", ".")
 
 
-def customer_retail(cost: float | None) -> float | None:
+def customer_retail(
+    cost: float | None,
+    multiplier: float = CUSTOMER_RETAIL_MULTIPLIER,
+) -> float | None:
     if cost is None:
         return None
-    return round(cost * CUSTOMER_RETAIL_MULTIPLIER, 2)
+    return round(cost * multiplier, 2)
 
 
-def add_customer_retail_prices(grid: dict[str, Any]) -> dict[str, Any]:
+def add_customer_retail_prices(
+    grid: dict[str, Any],
+    multiplier: float = CUSTOMER_RETAIL_MULTIPLIER,
+) -> dict[str, Any]:
     grid["prices"] = [
-        [customer_retail(value) for value in row]
+        [customer_retail(value, multiplier) for value in row]
         for row in grid.get("costs", [])
     ]
     return grid
@@ -268,12 +275,31 @@ def parse_vane_matrix(page: pdfplumber.page.Page) -> dict[str, Any]:
     })
 
 
-def program(program_id: str, name: str, page: int, grid: dict[str, Any], axis: str = "wh") -> dict[str, Any]:
+def program(
+    program_id: str,
+    name: str,
+    page: int,
+    grid: dict[str, Any],
+    axis: str = "wh",
+    retail_multiplier: float = CUSTOMER_RETAIL_MULTIPLIER,
+) -> dict[str, Any]:
+    multiplier_note = (
+        "Customer retail is the dealer-net cell multiplied by 2.5, "
+        "confirmed by the 805 Shutters owner on 2026-08-05."
+        if retail_multiplier == FTX_CUSTOMER_RETAIL_MULTIPLIER
+        else "Customer retail is the dealer-net cell multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27."
+    )
     return {
         "id": program_id,
         "name": name,
         "priceGroup": None,
         "priceAxis": axis,
+        "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": retail_multiplier,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-08-05" if retail_multiplier == FTX_CUSTOMER_RETAIL_MULTIPLIER else "2026-07-27",
+        },
         "grid": grid,
         "minWidth": None,
         "minHeight": None,
@@ -283,7 +309,7 @@ def program(program_id: str, name: str, page: int, grid: dict[str, Any], axis: s
         "fabricCollections": [],
         "notes": [
             f"Dealer-net custom-cut matrix, PDF p{page}.",
-            "Customer retail is the dealer-net cell multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27.",
+            multiplier_note,
             "Measured dimensions round independently to the next matrix cell.",
             "Blank and source-directed substitution cells remain unpriced and block; no automatic substitution is allowed.",
         ],
@@ -371,11 +397,38 @@ def build_catalog(pdf_path: Path) -> dict[str, Any]:
         }
         for page_number, (product_id, program_id, name, heights) in MATRIX_DEFINITIONS.items():
             matrix = parse_wh_matrix(pdf.pages[page_number - 1], page_number, heights)
-            products[product_id]["programs"].append(program(program_id, name, page_number, matrix))
+            retail_multiplier = (
+                FTX_CUSTOMER_RETAIL_MULTIPLIER
+                if program_id == "lotus_ftx_2in_snow_white_custom"
+                else CUSTOMER_RETAIL_MULTIPLIER
+            )
+            add_customer_retail_prices(matrix, retail_multiplier)
+            products[product_id]["programs"].append(
+                program(
+                    program_id,
+                    name,
+                    page_number,
+                    matrix,
+                    retail_multiplier=retail_multiplier,
+                )
+            )
             if page_number == 101:
                 light_gray = deepcopy(products[product_id]["programs"][-1])
                 light_gray["id"] = "lotus_ftxlg_2in_light_gray_custom"
                 light_gray["name"] = "2-inch Faux Wood, Light Gray - Custom Cut"
+                light_gray["grid"] = add_customer_retail_prices(
+                    light_gray["grid"], CUSTOMER_RETAIL_MULTIPLIER
+                )
+                light_gray["retailPolicy"] = {
+                    "kind": "cost_multiplier",
+                    "value": CUSTOMER_RETAIL_MULTIPLIER,
+                    "confirmedBy": "805 Shutters owner",
+                    "confirmedDate": "2026-07-27",
+                }
+                light_gray["notes"][1] = (
+                    "Customer retail is the dealer-net cell multiplied by 3, "
+                    "confirmed by the 805 Shutters owner on 2026-07-27."
+                )
                 products[product_id]["programs"].append(light_gray)
             if page_number in (106, 107, 108):
                 headrail_ids = {
