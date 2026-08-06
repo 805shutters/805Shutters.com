@@ -35,6 +35,30 @@ test("validates and summarizes a successful processor result", () => {
   });
 });
 
+test("validates the order COGS result inside the combined cron response", () => {
+  assert.deepEqual(
+    validateOrderCogsResult({
+      orderCogs: successfulPayload,
+      squarePayments: { checked: 0, recorded: 0, duplicates: 0, review: 0, results: [] },
+      peerPayments: { checked: 0, recorded: 0, duplicates: 0, review: 0, ignored: 0, errors: 0 },
+    }),
+    {
+      mailbox: "805shutters@gmail.com",
+      scanned: 3,
+      processed: 3,
+      applied: 1,
+      matched: 1,
+      review: 1,
+      unmatched: 1,
+      skipped: 0,
+      errors: 0,
+      recordErrors: 0,
+      archiveErrors: 0,
+      telegramErrors: 0,
+    },
+  );
+});
+
 test("rejects a processor error count", () => {
   assert.throws(
     () => validateOrderCogsResult({ ...successfulPayload, errors: 1, lastError: "Gmail failed" }),
