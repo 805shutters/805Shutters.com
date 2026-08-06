@@ -968,18 +968,18 @@ export function QuoteBuilder() {
       });
       if (error) throw error;
       const designId = crypto.randomUUID();
-      const { error: designError } = await (supabase as any)
+      const designPayload = {
+        id: designId,
+        line_item_id: lineItemId,
+        variant: "A",
+        product_type: item.product_type,
+        ...catalogSelectionPatch,
+      };
+      const { data: createdDesign, error: designError } = await (supabase as any)
         .from("sales_quote_designs")
-        .upsert(
-          {
-            id: designId,
-            line_item_id: lineItemId,
-            variant: "A",
-            product_type: item.product_type,
-            ...catalogSelectionPatch,
-          },
-          { onConflict: "line_item_id,variant" },
-        );
+        .upsert(designPayload, { onConflict: "line_item_id,variant" })
+        .select("*")
+        .single();
       if (designError) {
         await (supabase as any)
           .from("sales_quote_line_items")
@@ -998,17 +998,21 @@ export function QuoteBuilder() {
           .eq("id", lineItemId);
         throw selectionError;
       }
+      return createdDesign as SalesQuoteDesign;
     },
-    onSuccess: async () => {
+    onSuccess: async (createdDesign) => {
       if (!serverOwnedV2) {
         await syncQuoteTotal({ allowZero: true });
       }
-      queryClient.invalidateQueries({
+      await queryClient.invalidateQueries({
         queryKey: lineItemsQueryKey,
       });
-      queryClient.invalidateQueries({
-        queryKey: designsQueryKey,
-      });
+      if (createdDesign) {
+        queryClient.setQueryData<SalesQuoteDesign[]>(designsQueryKey, (current = []) => [
+          ...current.filter((design) => design.id !== createdDesign.id),
+          createdDesign,
+        ]);
+      }
       queryClient.invalidateQueries({
         queryKey: quoteQueryKey,
       });

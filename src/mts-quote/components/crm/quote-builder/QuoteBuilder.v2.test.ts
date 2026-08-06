@@ -51,7 +51,7 @@ describe("V2 quote builder load integrity", () => {
       /sales_quote_designs[\s\S]*product_type:\s*item\.product_type,[\s\S]*\.\.\.catalogSelectionPatch/,
     );
     expect(quoteBuilderSource).toMatch(
-      /onSuccess:\s*async\s*\(\)\s*=>\s*\{[\s\S]*queryKey:\s*lineItemsQueryKey[\s\S]*queryKey:\s*designsQueryKey[\s\S]*queryKey:\s*quoteQueryKey/,
+      /onSuccess:\s*async\s*\(createdDesign\)\s*=>\s*\{[\s\S]*await queryClient\.invalidateQueries\(\{[\s\S]*queryKey:\s*lineItemsQueryKey[\s\S]*queryClient\.setQueryData<SalesQuoteDesign\[]>\(designsQueryKey[\s\S]*queryKey:\s*quoteQueryKey/,
     );
   });
 });
