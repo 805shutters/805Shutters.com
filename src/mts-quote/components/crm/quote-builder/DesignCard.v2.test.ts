@@ -1373,6 +1373,15 @@ describe("V2 exact-interface contract", () => {
     expect(fields("W - Window Size", false)).toContain("json:frame_sides");
   });
 
+  it("clears stale manual shutter pricing when configuration changes", () => {
+    const source = readFileSync(fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)), "utf8");
+    expect(source).toContain("const pricingSafeWorkingDesign = {");
+    expect(source).toContain("options_json: stripPriceFreezeMetadata(");
+    expect(source).toContain(
+      "setFieldValue(field, value, pricingSafeWorkingDesign, onUpdate);",
+    );
+  });
+
   it("distinguishes an explicitly entered zero from a cleared numeric field", () => {
     expect(parseDeferredNumberDraft("0")).toBe(0);
     expect(parseDeferredNumberDraft("0.0")).toBe(0);

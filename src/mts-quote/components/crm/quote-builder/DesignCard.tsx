@@ -6465,7 +6465,13 @@ function ShutterDesignOptions({
         return;
       }
     }
-    setFieldValue(field, value, workingDesign, onUpdate);
+    const pricingSafeWorkingDesign = {
+      ...workingDesign,
+      options_json: stripPriceFreezeMetadata(
+        (workingDesign.options_json as Record<string, unknown> | undefined) || {},
+      ),
+    };
+    setFieldValue(field, value, pricingSafeWorkingDesign, onUpdate);
   };
 
   const handleDefiningStepSelect = (step: DefiningStep, value: string) => {
