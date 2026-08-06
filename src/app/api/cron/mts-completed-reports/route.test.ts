@@ -15,7 +15,13 @@ function dependencies(secret: string | null = "cron-secret") {
   const getAccessToken = vi.fn(async () => "gmail-access-token");
   const verifyModifyAccess = vi.fn(async () => undefined);
   const createClient = vi.fn(() => gmail);
-  const fileReports = vi.fn(async () => ({ scanned: 3, qualified: 2, filed: 2, skipped: 1 }));
+  const fileReports = vi.fn(async () => ({
+    scanned: 5,
+    qualified: 4,
+    filed: 4,
+    skipped: 1,
+    filedByType: { completed: 1, scheduled: 2, incomplete: 1 },
+  }));
   const deps: MtsCompletedReportsCronDependencies = {
     env: { MTS_COMPLETED_REPORT_CRON_SECRET: secret || undefined },
     getAccessToken,
@@ -55,11 +61,16 @@ describe("MTS completed-reports cron route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       mailbox: "805shutters@gmail.com",
-      label: "805/MTS Completed Reports",
-      scanned: 3,
-      qualified: 2,
-      filed: 2,
+      labels: {
+        completed: "805/MTS Completed Reports",
+        scheduled: "805/MTS Scheduled Reports",
+        incomplete: "805/MTS Incomplete Reports",
+      },
+      scanned: 5,
+      qualified: 4,
+      filed: 4,
       skipped: 1,
+      filedByType: { completed: 1, scheduled: 2, incomplete: 1 },
     });
     expect(setup.verifyModifyAccess).toHaveBeenCalledWith("gmail-access-token");
     expect(setup.createClient).toHaveBeenCalledWith("gmail-access-token");

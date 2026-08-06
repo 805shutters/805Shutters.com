@@ -3,7 +3,9 @@ import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { get805GmailAccessToken } from "@/lib/crm/installation-invoices";
 import {
   MTS_COMPLETED_REPORT_LABEL,
+  MTS_INCOMPLETE_REPORT_LABEL,
   MTS_COMPLETED_REPORT_RECIPIENT,
+  MTS_SCHEDULED_REPORT_LABEL,
   createMtsCompletedReportGmailClient,
   fileCompletedMtsReports,
   verifyGmailModifyAccessToken,
@@ -62,7 +64,11 @@ export async function runMtsCompletedReportsCron(
     const result = await dependencies.fileReports(dependencies.createClient(accessToken));
     return NextResponse.json({
       mailbox: MTS_COMPLETED_REPORT_RECIPIENT,
-      label: MTS_COMPLETED_REPORT_LABEL,
+      labels: {
+        completed: MTS_COMPLETED_REPORT_LABEL,
+        scheduled: MTS_SCHEDULED_REPORT_LABEL,
+        incomplete: MTS_INCOMPLETE_REPORT_LABEL,
+      },
       ...result,
     });
   } catch (error) {

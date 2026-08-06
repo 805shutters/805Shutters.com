@@ -4,6 +4,9 @@ import { resolve } from "node:path";
 import {
   MTS_COMPLETED_REPORT_LABEL,
   MTS_COMPLETED_REPORT_GMAIL_QUERY,
+  MTS_INCOMPLETE_REPORT_LABEL,
+  MTS_SCHEDULED_REPORT_LABEL,
+  classifyMtsReport,
   fileCompletedMtsReports,
   gmailScopeAllowsModify,
   gmailMessageToCompletedReport,
@@ -23,6 +26,43 @@ function completedReport(overrides: Partial<MtsReportMessage> = {}): MtsReportMe
     attachments: [{ filename: "Victoria_Norman_complete_service_report.pdf", mimeType: "application/pdf" }],
     ...overrides,
   };
+}
+
+function scheduledReport(overrides: Partial<MtsReportMessage> = {}): MtsReportMessage {
+  return completedReport({
+    subject: "Donna Taylor - Scheduled",
+    body: [
+      "Scheduled",
+      "Reason for update: Scheduled date/time: Friday, August 7, 2026 at 4:00 PM Pacific.",
+      "Customer: Donna Taylor",
+      "Job #: 4624-3414",
+      "Address: 1410 Drown Ave, Ojai, CA 93023",
+      "Scheduled: Friday, August 7, 2026 at 4:00 PM Pacific",
+    ].join("\n"),
+    attachments: [],
+    ...overrides,
+  });
+}
+
+function incompleteReport(overrides: Partial<MtsReportMessage> = {}): MtsReportMessage {
+  return completedReport({
+    subject: "Denise Derenthal - Incomplete Report",
+    body: [
+      "805 Shutters",
+      "Service Report",
+      "Denise Derenthal",
+      "Incomplete",
+      "Job incomplete",
+      "Customer",
+      "Denise Derenthal",
+      "Job #",
+      "4624-8913",
+      "Incomplete Work (1)",
+      "Follow-up required before this job can be closed.",
+    ].join("\n"),
+    attachments: [{ filename: "Denise_Derenthal_incomplete_service_report.pdf", mimeType: "application/pdf" }],
+    ...overrides,
+  });
 }
 
 describe("isCompletedMtsReport", () => {
@@ -100,6 +140,55 @@ describe("isCompletedMtsReport", () => {
   });
 });
 
+describe("classifyMtsReport", () => {
+  it("classifies the observed attachmentless scheduled notice", () => {
+    expect(classifyMtsReport(scheduledReport())).toBe("scheduled");
+  });
+
+  it("accepts a scheduled notice whose date is TBD", () => {
+    expect(classifyMtsReport(scheduledReport({
+      body: [
+        "Scheduled",
+        "Reason for update: Scheduled date/time: TBD.",
+        "Customer: Lisanne Bzoskie",
+        "Job #: 4624-4100",
+        "Scheduled: TBD",
+      ].join("\n"),
+    }))).toBe("scheduled");
+  });
+
+  it.each([
+    ["missing reason", { body: "Scheduled\nCustomer: Donna Taylor\nJob #: 4624-3414\nScheduled: Friday" }],
+    ["missing customer", { body: "Scheduled\nReason for update: Changed\nJob #: 4624-3414\nScheduled: Friday" }],
+    ["malformed job number", { body: "Scheduled\nReason for update: Changed\nCustomer: Donna Taylor\nJob #: pending\nScheduled: Friday" }],
+    ["prose-only status", { body: "The customer is scheduled.\nReason for update: Changed\nCustomer: Donna Taylor\nJob #: 4624-3414\nScheduled: Friday" }],
+    ["conflicting incomplete status", { body: "Scheduled\nReason for update: Job incomplete\nCustomer: Donna Taylor\nJob #: 4624-3414\nScheduled: Friday" }],
+  ])("rejects a scheduled candidate with %s", (_name, overrides) => {
+    expect(classifyMtsReport(scheduledReport(overrides))).toBeNull();
+  });
+
+  it("classifies the observed incomplete service report", () => {
+    expect(classifyMtsReport(incompleteReport())).toBe("incomplete");
+  });
+
+  it.each([
+    ["no standalone incomplete status", { body: "Job incomplete\nCustomer: Denise Derenthal\nJob #: 4624-8913\nIncomplete Work (1)" }],
+    ["missing customer value", { body: "Incomplete\nJob incomplete\nCustomer\nJob #\n4624-8913\nIncomplete Work (1)" }],
+    ["malformed job number", { body: "Incomplete\nJob incomplete\nCustomer\nDenise Derenthal\nJob #\npending\nIncomplete Work (1)" }],
+    ["zero incomplete items", { body: "Incomplete\nJob incomplete\nCustomer: Denise Derenthal\nJob #: 4624-8913\nIncomplete Work (0)" }],
+    ["missing PDF", { attachments: [] }],
+    ["completed filename", { attachments: [{ filename: "Denise_complete_service_report.pdf", mimeType: "application/pdf" }] }],
+    ["conflicting scheduled status", { body: "Incomplete\nJob incomplete\nCustomer: Denise Derenthal\nJob #: 4624-8913\nIncomplete Work (1)\nScheduled: Friday" }],
+  ])("rejects an incomplete candidate with %s", (_name, overrides) => {
+    expect(classifyMtsReport(incompleteReport(overrides))).toBeNull();
+  });
+
+  it("keeps exact sender and recipient validation for scheduled and incomplete types", () => {
+    expect(classifyMtsReport(scheduledReport({ from: "dispatch@example.com" }))).toBeNull();
+    expect(classifyMtsReport(incompleteReport({ to: "office@example.com" }))).toBeNull();
+  });
+});
+
 function gmailMessage(overrides: Partial<MtsCompletedReportGmailMessage> = {}): MtsCompletedReportGmailMessage {
   return {
     id: "gmail-complete-1",
@@ -128,6 +217,8 @@ function fakeGmail(initialMessages: MtsCompletedReportGmailMessage[]) {
     },
     async ensureLabel(labelName) {
       operations.push(`ensure:${labelName}`);
+      if (labelName === MTS_SCHEDULED_REPORT_LABEL) return "Label_805_MTS_Scheduled";
+      if (labelName === MTS_INCOMPLETE_REPORT_LABEL) return "Label_805_MTS_Incomplete";
       return "Label_805_MTS_Completed";
     },
     async addLabel(messageId, labelId) {
@@ -163,7 +254,13 @@ describe("fileCompletedMtsReports", () => {
 
     const result = await fileCompletedMtsReports(gmail.client);
 
-    expect(result).toEqual({ scanned: 1, qualified: 1, filed: 1, skipped: 0 });
+    expect(result).toEqual({
+      scanned: 1,
+      qualified: 1,
+      filed: 1,
+      skipped: 0,
+      filedByType: { completed: 1, scheduled: 0, incomplete: 0 },
+    });
     expect(gmail.operations).toEqual([
       "list",
       "get:gmail-complete-1",
@@ -176,12 +273,33 @@ describe("fileCompletedMtsReports", () => {
     expect(gmail.messages.get("gmail-complete-1")?.labelIds).toEqual(["Label_805_MTS_Completed"]);
   });
 
+  it("uses dedicated labels for scheduled and incomplete reports", async () => {
+    const gmail = fakeGmail([
+      gmailMessage({ id: "gmail-scheduled-1", ...scheduledReport() }),
+      gmailMessage({ id: "gmail-incomplete-1", ...incompleteReport() }),
+    ]);
+
+    const result = await fileCompletedMtsReports(gmail.client);
+
+    expect(result.filedByType).toEqual({ completed: 0, scheduled: 1, incomplete: 1 });
+    expect(gmail.operations).toContain(`ensure:${MTS_SCHEDULED_REPORT_LABEL}`);
+    expect(gmail.operations).toContain(`ensure:${MTS_INCOMPLETE_REPORT_LABEL}`);
+    expect(gmail.messages.get("gmail-scheduled-1")?.labelIds).toEqual(["Label_805_MTS_Scheduled"]);
+    expect(gmail.messages.get("gmail-incomplete-1")?.labelIds).toEqual(["Label_805_MTS_Incomplete"]);
+  });
+
   it("does not mutate a shortlisted message that fails closed", async () => {
     const gmail = fakeGmail([gmailMessage({ subject: "Victoria Norman - Incomplete Report" })]);
 
     const result = await fileCompletedMtsReports(gmail.client);
 
-    expect(result).toEqual({ scanned: 1, qualified: 0, filed: 0, skipped: 1 });
+    expect(result).toEqual({
+      scanned: 1,
+      qualified: 0,
+      filed: 0,
+      skipped: 1,
+      filedByType: { completed: 0, scheduled: 0, incomplete: 0 },
+    });
     expect(gmail.operations).toEqual(["list", "get:gmail-complete-1"]);
   });
 
@@ -235,8 +353,9 @@ describe("Gmail completed-report adapter", () => {
     expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain("in:inbox");
     expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain("to:805shutters@gmail.com");
     expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain("from:noreply@mtsinstallationsandrepairs.com");
-    expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain("has:attachment");
     expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain('subject:"Complete Report"');
+    expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain('subject:"Scheduled"');
+    expect(MTS_COMPLETED_REPORT_GMAIL_QUERY).toContain('subject:"Incomplete Report"');
   });
 
   it("maps Gmail headers, nested text, labels, and attachment names into the fail-closed matcher", () => {

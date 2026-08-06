@@ -1,4 +1,4 @@
-name: File completed MTS service reports
+name: File verified MTS reports
 
 on:
   schedule:
@@ -10,11 +10,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  file-completed-reports:
+  file-verified-reports:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Label and archive verified completed reports
+      - name: Label and archive verified MTS reports
         env:
           MTS_COMPLETED_REPORT_CRON_SECRET: ${{ secrets.MTS_COMPLETED_REPORT_CRON_SECRET || secrets.INSTALLATION_INVOICE_CRON_SECRET || secrets.CRON_SECRET }}
         run: |

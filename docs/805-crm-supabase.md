@@ -208,19 +208,30 @@ Use this Gmail OAuth scope for `GMAIL_805_REFRESH_TOKEN`:
 https://www.googleapis.com/auth/gmail.modify
 ```
 
-The completed-report filing job runs independently every ten minutes through
+The MTS report filing job runs independently every ten minutes through
 `.github/workflows/mts-completed-report-filing.yml`. It accepts only mail from
-`noreply@mtsinstallationsandrepairs.com` to `805shutters@gmail.com` with an
-approved completion subject, a positive completion signal, and a completed
-service-report PDF. Scheduled, incomplete, malformed, and ambiguous messages
-remain in the inbox.
+`noreply@mtsinstallationsandrepairs.com` to `805shutters@gmail.com` that passes
+one complete type-specific contract:
 
-Qualified messages are first labeled `805/MTS Completed Reports`. The job
-verifies that label before removing `INBOX`, then verifies that the label
-remains and `INBOX` is absent. A failed label operation never archives. A
-failed archive leaves a labeled inbox message for the next run to retry. The
-first run uses the same inbox query, so it safely files the existing matching
-backlog as well as later arrivals.
+- completed reports require the approved completion subject, a positive
+  completion signal, and a completed-service-report PDF;
+- scheduled notices require the exact `Customer - Scheduled` subject plus
+  structured scheduled status, reason, customer, `####-####` job number, and
+  schedule fields; the verified scheduled format has no attachment;
+- incomplete reports require the exact `Customer - Incomplete Report` subject,
+  standalone incomplete status, `Job incomplete`, structured customer and
+  `####-####` job number fields, a positive `Incomplete Work (N)` count, and an
+  incomplete-service-report PDF.
+
+Malformed, conflicting, and ambiguous messages remain in the inbox.
+
+Qualified messages are first labeled `805/MTS Completed Reports`,
+`805/MTS Scheduled Reports`, or `805/MTS Incomplete Reports` according to the
+verified type. The job verifies that label before removing `INBOX`, then
+verifies that the label remains and `INBOX` is absent. A failed label operation
+never archives. A failed archive leaves a labeled inbox message for the next
+run to retry. The first run uses the same inbox query, so it safely files the
+existing matching backlog as well as later arrivals.
 
 Until `GMAIL_805_CLIENT_ID`, `GMAIL_805_CLIENT_SECRET`,
 `GMAIL_805_REFRESH_TOKEN`, and `SUPABASE_SERVICE_ROLE_KEY` are populated

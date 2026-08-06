@@ -1,9 +1,19 @@
 export const MTS_COMPLETED_REPORT_RECIPIENT = "805shutters@gmail.com";
 export const MTS_COMPLETED_REPORT_SENDER = "noreply@mtsinstallationsandrepairs.com";
 export const MTS_COMPLETED_REPORT_LABEL = "805/MTS Completed Reports";
+export const MTS_SCHEDULED_REPORT_LABEL = "805/MTS Scheduled Reports";
+export const MTS_INCOMPLETE_REPORT_LABEL = "805/MTS Incomplete Reports";
 export const MTS_COMPLETED_REPORT_GMAIL_QUERY =
   `in:inbox to:${MTS_COMPLETED_REPORT_RECIPIENT} from:${MTS_COMPLETED_REPORT_SENDER} ` +
-  'has:attachment (subject:"Complete Report" OR subject:"Service Report")';
+  '(subject:"Complete Report" OR subject:"Service Report" OR subject:"Scheduled" OR subject:"Incomplete Report")';
+
+export type MtsReportKind = "completed" | "scheduled" | "incomplete";
+
+export const MTS_REPORT_LABELS: Record<MtsReportKind, string> = {
+  completed: MTS_COMPLETED_REPORT_LABEL,
+  scheduled: MTS_SCHEDULED_REPORT_LABEL,
+  incomplete: MTS_INCOMPLETE_REPORT_LABEL,
+};
 
 export type MtsReportMessage = {
   from: string;
@@ -31,6 +41,7 @@ export type MtsCompletedReportFilingResult = {
   qualified: number;
   filed: number;
   skipped: number;
+  filedByType: Record<MtsReportKind, number>;
 };
 
 export type GmailCompletedReportPart = {
@@ -55,6 +66,20 @@ const REJECTED_SUBJECT_SIGNAL = /\b(?:incomplete|scheduled)\b/i;
 const REJECTED_BODY_STATUS = /(?:^|\n)\s*(?:job\s+)?(?:incomplete|scheduled)\b/im;
 const CURRENT_COMPLETED_REPORT_PDF = /(?:^|[\s_-])complete(?:d)?[\s_-]+service[\s_-]+report(?:[^/]*)\.pdf$/i;
 const LEGACY_SERVICE_REPORT_PDF = /(?:^|[\s_-])service[\s_-]+report(?:[^/]*)\.pdf$/i;
+const SCHEDULED_REPORT_SUBJECT = /^\S(?:.*\S)?\s+-\s+Scheduled$/i;
+const INCOMPLETE_REPORT_SUBJECT = /^\S(?:.*\S)?\s+-\s+Incomplete Report$/i;
+const STANDALONE_SCHEDULED_STATUS = /(?:^|\n)\s*Scheduled\s*(?=\n|$)/i;
+const STANDALONE_INCOMPLETE_STATUS = /(?:^|\n)\s*Incomplete\s*(?=\n|$)/i;
+const SCHEDULED_REASON_FIELD = /(?:^|\n)\s*Reason for update:\s*\S[^\n]*/i;
+const CUSTOMER_FIELD = /(?:^|\n)\s*Customer:\s*\S[^\n]*/i;
+const JOB_NUMBER_FIELD = /(?:^|\n)\s*Job\s*#:\s*\d{4}-\d{4}\s*(?=\n|$)/i;
+const SCHEDULED_VALUE_FIELD = /(?:^|\n)\s*Scheduled:\s*\S[^\n]*/i;
+const INCOMPLETE_WORK_FIELD = /(?:^|\n)\s*Incomplete Work\s*\(\s*[1-9]\d*\s*\)\s*(?=\n|$)/i;
+const INCOMPLETE_REPORT_PDF = /(?:^|[\s_-])incomplete[\s_-]+service[\s_-]+report(?:[^/]*)\.pdf$/i;
+const INCOMPLETE_CUSTOMER_FIELD = /(?:^|\n)[ \t]*Customer[ \t]*(?::[ \t]*\S[^\n]*|\n[ \t]*(?!Job[ \t]*#[ \t]*(?:\n|$)|(?:Incomplete Work|Address|Phone|Installer|Report Date)\b)\S[^\n]*)/i;
+const INCOMPLETE_JOB_NUMBER_FIELD = /(?:^|\n)[ \t]*Job[ \t]*#[ \t]*(?::[ \t]*|\n[ \t]*)\d{4}-\d{4}[ \t]*(?=\n|$)/i;
+const SCHEDULED_CONFLICT = /\bjob\s+(?:incomplete|complete)\b|(?:^|\n)\s*Incomplete\s*(?=\n|$)|\b(?:cancelled|canceled|not scheduled)\b/im;
+const INCOMPLETE_CONFLICT = /\bjob\s+complete\b|(?:^|\n)\s*Scheduled(?:\s*:|\s*(?=\n|$))/im;
 
 function normalizedAddress(header: string): string | null {
   const value = header.trim();
@@ -103,9 +128,13 @@ export function gmailMessageToCompletedReport(message: GmailCompletedReportApiMe
   };
 }
 
-export function isCompletedMtsReport(message: MtsReportMessage): boolean {
+function hasExactMtsParties(message: MtsReportMessage) {
   if (normalizedAddress(message.from) !== MTS_COMPLETED_REPORT_SENDER) return false;
   if (normalizedAddress(message.to) !== MTS_COMPLETED_REPORT_RECIPIENT) return false;
+  return true;
+}
+
+function isCompletedFormat(message: MtsReportMessage) {
 
   const currentSubject = CURRENT_COMPLETED_REPORT_SUBJECT.test(message.subject);
   const legacySubject = LEGACY_COMPLETED_REPORT_SUBJECT.test(message.subject);
@@ -121,6 +150,42 @@ export function isCompletedMtsReport(message: MtsReportMessage): boolean {
   });
 }
 
+function isScheduledFormat(message: MtsReportMessage) {
+  if (!SCHEDULED_REPORT_SUBJECT.test(message.subject) || SCHEDULED_CONFLICT.test(message.body)) return false;
+
+  return STANDALONE_SCHEDULED_STATUS.test(message.body) &&
+    SCHEDULED_REASON_FIELD.test(message.body) &&
+    CUSTOMER_FIELD.test(message.body) &&
+    JOB_NUMBER_FIELD.test(message.body) &&
+    SCHEDULED_VALUE_FIELD.test(message.body);
+}
+
+function isIncompleteFormat(message: MtsReportMessage) {
+  if (!INCOMPLETE_REPORT_SUBJECT.test(message.subject) || INCOMPLETE_CONFLICT.test(message.body)) return false;
+  if (!STANDALONE_INCOMPLETE_STATUS.test(message.body) || !/\bjob\s+incomplete\b/i.test(message.body)) return false;
+  if (!INCOMPLETE_CUSTOMER_FIELD.test(message.body) ||
+      !INCOMPLETE_JOB_NUMBER_FIELD.test(message.body) ||
+      !INCOMPLETE_WORK_FIELD.test(message.body)) {
+    return false;
+  }
+
+  return message.attachments.some(({ filename, mimeType }) =>
+    mimeType.toLowerCase() === "application/pdf" && INCOMPLETE_REPORT_PDF.test(filename)
+  );
+}
+
+export function classifyMtsReport(message: MtsReportMessage): MtsReportKind | null {
+  if (!hasExactMtsParties(message)) return null;
+  if (isCompletedFormat(message)) return "completed";
+  if (isScheduledFormat(message)) return "scheduled";
+  if (isIncompleteFormat(message)) return "incomplete";
+  return null;
+}
+
+export function isCompletedMtsReport(message: MtsReportMessage): boolean {
+  return classifyMtsReport(message) === "completed";
+}
+
 export async function fileCompletedMtsReports(
   gmail: MtsCompletedReportGmailClient
 ): Promise<MtsCompletedReportFilingResult> {
@@ -130,33 +195,36 @@ export async function fileCompletedMtsReports(
     qualified: 0,
     filed: 0,
     skipped: 0,
+    filedByType: { completed: 0, scheduled: 0, incomplete: 0 },
   };
-  let labelId: string | null = null;
+  const labelIds: Partial<Record<MtsReportKind, string>> = {};
 
   for (const messageId of messageIds) {
     const message = await gmail.getMessage(messageId);
-    if (!isCompletedMtsReport(message)) {
+    const kind = classifyMtsReport(message);
+    if (!kind) {
       result.skipped += 1;
       continue;
     }
 
     result.qualified += 1;
-    labelId ||= await gmail.ensureLabel(MTS_COMPLETED_REPORT_LABEL);
+    const labelId = labelIds[kind] ||= await gmail.ensureLabel(MTS_REPORT_LABELS[kind]);
     await gmail.addLabel(messageId, labelId);
 
     const labeled = await gmail.getMessage(messageId);
     if (!labeled.labelIds.includes(labelId)) {
-      throw new Error(`MTS completed report ${messageId} filing label was not verified.`);
+      throw new Error(`MTS ${kind} report ${messageId} filing label was not verified.`);
     }
 
     await gmail.removeInbox(messageId);
 
     const filed = await gmail.getMessage(messageId);
     if (!filed.labelIds.includes(labelId) || filed.labelIds.includes("INBOX")) {
-      throw new Error(`MTS completed report ${messageId} archive state was not verified.`);
+      throw new Error(`MTS ${kind} report ${messageId} archive state was not verified.`);
     }
 
     result.filed += 1;
+    result.filedByType[kind] += 1;
   }
 
   return result;
