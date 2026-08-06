@@ -25,4 +25,4 @@ jobs:
             --max-time 120 \
             --request POST \
             --header "Authorization: Bearer ${MTS_COMPLETED_REPORT_CRON_SECRET}" \
-            https://www.805shutters.com/api/cron/mts-completed-reports
+            https://www.805shutters.com/api/cron/mts-completed-reports/

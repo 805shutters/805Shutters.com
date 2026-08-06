@@ -291,6 +291,6 @@ describe("MTS completed-report production schedule", () => {
     expect(workflow).toContain("--connect-timeout 15");
     expect(workflow).toContain("--max-time 120");
     expect(workflow).toContain("MTS_COMPLETED_REPORT_CRON_SECRET");
-    expect(workflow).toContain("https://www.805shutters.com/api/cron/mts-completed-reports");
+    expect(workflow).toContain("https://www.805shutters.com/api/cron/mts-completed-reports/");
   });
 });
