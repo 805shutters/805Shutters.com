@@ -66,6 +66,14 @@ export function validateOrderCogsResult(payload, expectedMailbox = DEFAULT_MAILB
     ...errorCounts
   };
 
+  const processorStates = payload.processorStates;
+  if (processorStates && typeof processorStates === "object" && !Array.isArray(processorStates)) {
+    const processorWarnings = Object.entries(processorStates)
+      .filter(([, state]) => state && typeof state === "object" && state.status === "failed")
+      .map(([name, state]) => `${name}: ${String(state.message || "Processor is temporarily unavailable.")}`);
+    if (processorWarnings.length) summary.processorWarnings = processorWarnings;
+  }
+
   if (errorTotal > 0) {
     const diagnostic = result.lastError || result.lastInsertError || "See processor response.";
     throw new Error(`Processor reported ${errorTotal} error(s): ${diagnostic}`);
@@ -131,6 +139,9 @@ if (runningAsMain()) {
         `errors=${summary.errors}`
       ].join(" ")
     );
+    for (const warning of summary.processorWarnings || []) {
+      console.warn(`Auxiliary processor warning: ${warning}`);
+    }
   } catch (error) {
     console.error(`Order COGS processor failed: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
