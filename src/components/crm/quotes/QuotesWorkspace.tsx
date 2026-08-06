@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { OriginalV1QuotesWorkspace } from "@/components/crm/quotes/OriginalV1QuotesWorkspace";
 import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
-type QuoteVersion = "v1" | "v4";
+type QuoteVersion = "v4";
 
 type Props = {
   session: Session;
@@ -32,6 +31,8 @@ export function QuotesWorkspace({
 }: Props) {
   const [version, setVersion] = useState<QuoteVersion | null>(openRequest?.quoteId ? "v4" : null);
 
+  const defaultOriginalV1QuoteId = quotes[0]?.id ?? null;
+
   useEffect(() => {
     if (openRequest?.quoteId) setVersion("v4");
   }, [openRequest?.quoteId, openRequest?.requestId]);
@@ -43,7 +44,14 @@ export function QuotesWorkspace({
         <h2 id="quote-version-heading">Choose a quote builder</h2>
         <p>Open the unchanged original builder for V1 quotes, or use the separate V4 system.</p>
         <div className="crm-form-actions">
-          <button type="button" className="button primary" onClick={() => setVersion("v1")}>
+          <button
+            type="button"
+            className="button primary"
+            disabled={!defaultOriginalV1QuoteId}
+            onClick={() => {
+              if (defaultOriginalV1QuoteId) onOpenOriginalV1Quote(defaultOriginalV1QuoteId);
+            }}
+          >
             Open original V1
           </button>
           <button type="button" className="button secondary" onClick={() => setVersion("v4")}>
@@ -57,23 +65,19 @@ export function QuotesWorkspace({
   return (
     <div>
       <div className="crm-form-actions" aria-label="Quote builder version">
-          <strong>{version === "v1" ? "Original V1 quote builder" : "V4 quote builder"}</strong>
+        <strong>V4 quote builder</strong>
         <button type="button" className="button secondary" onClick={() => setVersion(null)}>
           Switch quote builder
         </button>
       </div>
-      {version === "v1" ? (
-        <OriginalV1QuotesWorkspace quotes={quotes} onOpenQuote={onOpenOriginalV1Quote} />
-      ) : (
-        <QuoteWorkspace
-          crmJobs={jobs}
-          crmQuotes={quotes}
-          crmCalendarEvents={events}
-          openRequest={openRequest}
-          onOpenCrmCalendarDate={onOpenCalendarDate}
-          onOpenCrmQuote={onOpenCrmQuote}
-        />
-      )}
+      <QuoteWorkspace
+        crmJobs={jobs}
+        crmQuotes={quotes}
+        crmCalendarEvents={events}
+        openRequest={openRequest}
+        onOpenCrmCalendarDate={onOpenCalendarDate}
+        onOpenCrmQuote={onOpenCrmQuote}
+      />
     </div>
   );
 }

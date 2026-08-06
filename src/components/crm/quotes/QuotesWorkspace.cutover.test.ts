@@ -5,9 +5,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/components/crm/quotes/OriginalV1QuotesWorkspace", () => ({
-  OriginalV1QuotesWorkspace: () => createElement("div", { "data-testid": "v1-quote-workspace" }, "Original V1 quote workspace"),
-}));
 vi.mock("@mts/QuoteWorkspace", () => ({
   QuoteWorkspace: () => createElement("div", { "data-testid": "v4-quote-workspace" }, "V4 quote workspace"),
 }));
@@ -25,7 +22,9 @@ describe("quote-system routing", () => {
     expect(source).toContain("Open original V1");
     expect(source).toContain("Open V4 — In progress");
     expect(source).toContain("Switch quote builder");
-    expect(source).toContain("<OriginalV1QuotesWorkspace");
+    expect(source).not.toContain("OriginalV1QuotesWorkspace");
+    expect(source).toContain("quotes[0]?.id ?? null");
+    expect(source).toContain("onOpenOriginalV1Quote(defaultOriginalV1QuoteId)");
     expect(source).toContain("<QuoteWorkspace");
     expect(mobileSource).toContain('from "@/components/crm/quotes/QuotesWorkspace"');
 
