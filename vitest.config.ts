@@ -5,7 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "@mts": fileURLToPath(new URL("./src/mts-quote", import.meta.url))
+      "@mts": fileURLToPath(new URL("./src/mts-quote", import.meta.url)),
+      "@mts-v1": fileURLToPath(new URL("./src/mts-quote-v1", import.meta.url))
     }
   },
   test: {
