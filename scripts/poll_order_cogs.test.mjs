@@ -59,6 +59,27 @@ test("validates the order COGS result inside the combined cron response", () => 
   );
 });
 
+test("reports an auxiliary processor failure without failing order ingestion", () => {
+  const summary = validateOrderCogsResult({
+    orderCogs: successfulPayload,
+    squarePayments: null,
+    peerPayments: { checked: 0, recorded: 0, duplicates: 0, review: 0, ignored: 0, errors: 0 },
+    processorStates: {
+      orderCogs: { status: "completed" },
+      squarePayments: {
+        status: "failed",
+        message: "Square payment reconciliation is temporarily unavailable.",
+      },
+      peerPayments: { status: "completed" },
+    },
+  });
+
+  assert.deepEqual(summary.processorWarnings, [
+    "squarePayments: Square payment reconciliation is temporarily unavailable.",
+  ]);
+  assert.equal(summary.errors, 0);
+});
+
 test("rejects a processor error count", () => {
   assert.throws(
     () => validateOrderCogsResult({ ...successfulPayload, errors: 1, lastError: "Gmail failed" }),
