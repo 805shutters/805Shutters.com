@@ -5113,6 +5113,21 @@ body.qb-fullscreen .crm-app-shell {
   line-height: 1;
 }
 
+.crm-metric--performance {
+  background: #66645f;
+  border-color: #55534f;
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.crm-metric--performance span {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.crm-metric--performance strong {
+  color: #ffffff;
+}
+
 .crm-metric--warning {
   background: #fde8e8;
   border-color: #dc2626;

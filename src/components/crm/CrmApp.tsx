@@ -57,6 +57,7 @@ import {
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
+import { buildCommandPerformanceMetrics } from "@/lib/crm/command-performance";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
@@ -897,6 +898,7 @@ export function CrmApp({
   const events = useMemo(() => data?.events || [], [data]);
   const customers = useMemo(() => data?.customers || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
+  const commandPerformance = useMemo(() => buildCommandPerformanceMetrics(jobs, rows), [jobs, rows]);
   const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
   const orderCogsEmails = useMemo(() => data?.orderCogsEmails || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
@@ -2925,6 +2927,12 @@ export function CrmApp({
           <span aria-hidden="true">CRM</span>
         </div>
         <section className="crm-metrics" aria-label="CRM summary">
+          <Metric label="30-Day Close Rate" value={`${commandPerformance.closeRate30Days}%`} variant="performance" />
+          <Metric label="60-Day Close Rate" value={`${commandPerformance.closeRate60Days}%`} variant="performance" />
+          <Metric label="All-Time Close Rate" value={`${commandPerformance.closeRateAllTime}%`} variant="performance" />
+          <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
+          <Metric label="60-Day Revenue" value={toCurrency(commandPerformance.revenue60Days)} variant="performance" />
+          <Metric label={`${new Date().getFullYear()} Sales Forecast`} value={toCurrency(commandPerformance.currentYearForecast)} variant="performance" />
           <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
           <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
           <Metric label="Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
@@ -3579,14 +3587,16 @@ function Metric({
   label,
   value,
   tone,
+  variant,
   onClick
 }: {
   label: string;
   value: number | string;
   tone?: "warning" | "danger";
+  variant?: "performance";
   onClick?: () => void;
 }) {
-  const className = ["crm-metric", tone ? `crm-metric--${tone}` : "", onClick ? "crm-metric-button" : ""].filter(Boolean).join(" ");
+  const className = ["crm-metric", variant ? `crm-metric--${variant}` : "", tone ? `crm-metric--${tone}` : "", onClick ? "crm-metric-button" : ""].filter(Boolean).join(" ");
 
   if (onClick) {
     return (
