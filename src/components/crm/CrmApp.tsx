@@ -898,10 +898,13 @@ export function CrmApp({
   const events = useMemo(() => data?.events || [], [data]);
   const customers = useMemo(() => data?.customers || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
-  const commandPerformance = useMemo(() => buildCommandPerformanceMetrics(jobs, rows), [jobs, rows]);
+  const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
+  const commandPerformance = useMemo(
+    () => buildCommandPerformanceMetrics(jobs, rows, new Date(), customerFiles),
+    [jobs, rows, customerFiles]
+  );
   const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
   const orderCogsEmails = useMemo(() => data?.orderCogsEmails || [], [data]);
-  const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const vendorOrderTasks = useMemo(() => data?.vendorOrderTasks || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);

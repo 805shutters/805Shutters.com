@@ -1,4 +1,4 @@
-import type { CrmBookkeepingRow, CrmJob } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCustomerFile, CrmJob } from "@/lib/crm/types";
 
 const wonStatuses = new Set<CrmJob["status"]>(["sold", "ordered", "installed", "invoiced", "closed"]);
 
@@ -28,14 +28,55 @@ function validDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function closeRate(jobs: CrmJob[], since?: Date) {
-  const decided = jobs.filter((job) => {
+function normalizedText(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function normalizedPhone(value: string | null | undefined) {
+  const digits = (value || "").replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : "";
+}
+
+function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
+  const canonicalByJobId = new Map<string, string>();
+  for (const file of files) {
+    if (!file.customer?.id) continue;
+    for (const job of file.jobs) canonicalByJobId.set(job.id, `customer:${file.customer.id}`);
+  }
+
+  return new Map(jobs.map((job) => {
+    const canonical = canonicalByJobId.get(job.id);
+    if (canonical) return [job.id, canonical];
+
+    const email = normalizedText(job.email);
+    if (email) return [job.id, `email:${email}`];
+
+    const name = normalizedText(job.customer_name);
+    const phone = normalizedPhone(job.phone);
+    const address = normalizedText(job.address);
+    if (name && phone) return [job.id, `name-phone:${name}:${phone}`];
+    if (name && address) return [job.id, `name-address:${name}:${address}`];
+
+    // A name-only match is intentionally exact after normalization. Never merge
+    // on phone alone: shared household and business numbers are common in CRM data.
+    return [job.id, name ? `name:${name}` : `job:${job.id}`];
+  }));
+}
+
+export function customerCloseRate(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
+  const relevant = jobs.filter((job) => {
     const createdAt = validDate(job.created_at);
-    if (!createdAt || (since && createdAt < since)) return false;
+    if (!createdAt || (since && createdAt < since) || (through && createdAt > through)) return false;
     return wonStatuses.has(job.status) || job.status === "lost";
   });
-  if (decided.length === 0) return 0;
-  return Math.round((decided.filter((job) => wonStatuses.has(job.status)).length / decided.length) * 100);
+  const identityKeys = customerIdentityKeys(relevant, files);
+  const outcomes = new Map<string, boolean>();
+  for (const job of relevant) {
+    const key = identityKeys.get(job.id) || `job:${job.id}`;
+    outcomes.set(key, Boolean(outcomes.get(key)) || wonStatuses.has(job.status));
+  }
+  if (outcomes.size === 0) return 0;
+  return Math.round(([...outcomes.values()].filter(Boolean).length / outcomes.size) * 100);
 }
 
 function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
@@ -50,7 +91,8 @@ function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
 export function buildCommandPerformanceMetrics(
   jobs: CrmJob[],
   rows: CrmBookkeepingRow[],
-  now = new Date()
+  now = new Date(),
+  customerFiles: CrmCustomerFile[] = []
 ): CommandPerformanceMetrics {
   const through = new Date(now);
   through.setHours(23, 59, 59, 999);
@@ -63,9 +105,9 @@ export function buildCommandPerformanceMetrics(
   const yearToDateRevenue = soldRevenue(rows, yearStart, through);
 
   return {
-    closeRate30Days: closeRate(jobs, start30),
-    closeRate60Days: closeRate(jobs, start60),
-    closeRateAllTime: closeRate(jobs),
+    closeRate30Days: customerCloseRate(jobs, customerFiles, start30, through),
+    closeRate60Days: customerCloseRate(jobs, customerFiles, start60, through),
+    closeRateAllTime: customerCloseRate(jobs, customerFiles, undefined, through),
     revenue30Days: soldRevenue(rows, start30, through),
     revenue60Days: soldRevenue(rows, start60, through),
     yearToDateRevenue,
