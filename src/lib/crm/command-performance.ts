@@ -64,14 +64,17 @@ function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
 }
 
 export function customerCloseRate(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
-  const relevant = jobs.filter((job) => {
-    const createdAt = validDate(job.created_at);
-    if (!createdAt || (since && createdAt < since) || (through && createdAt > through)) return false;
-    return wonStatuses.has(job.status) || job.status === "lost";
-  });
-  const identityKeys = customerIdentityKeys(relevant, files);
+  const identityKeys = customerIdentityKeys(jobs, files);
   const outcomes = new Map<string, boolean>();
-  for (const job of relevant) {
+  for (const job of jobs) {
+    // Close rate is based on completed customer opportunities, not the day an
+    // imported CRM row happened to be created. Appointment time is the closest
+    // durable lead-cohort date; decided rows without one fall back to created_at.
+    const appointmentAt = validDate(job.appointment_start);
+    const isDecided = wonStatuses.has(job.status) || job.status === "lost";
+    const opportunityAt = appointmentAt || (isDecided ? validDate(job.created_at) : null);
+    if (!opportunityAt || (since && opportunityAt < since) || (through && opportunityAt > through)) continue;
+
     const key = identityKeys.get(job.id) || `job:${job.id}`;
     outcomes.set(key, Boolean(outcomes.get(key)) || wonStatuses.has(job.status));
   }

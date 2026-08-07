@@ -6,6 +6,10 @@ function job(id: string, created_at: string, status: CrmJob["status"]): CrmJob {
   return { id, created_at, updated_at: created_at, source: "test", lead_id: null, status, priority: "normal", customer_name: id, phone: "", email: null, address: null, city: null, product_interest: "", sales_owner: "", next_action: null, next_action_due: null, appointment_start: null, appointment_end: null, estimated_total: 0, deposit_paid: 0, notes: null };
 }
 
+function appointmentJob(id: string, appointment_start: string, status: CrmJob["status"]): CrmJob {
+  return { ...job(id, "2026-08-07T09:00:00-07:00", status), appointment_start };
+}
+
 function row(id: string, soldDate: string | null, total: number): CrmBookkeepingRow {
   return { id, source: "manual", quoteId: null, jobId: id, customerName: id, customerPhone: null, quoteNumber: null, soldDate, total } as CrmBookkeepingRow;
 }
@@ -13,13 +17,13 @@ function row(id: string, soldDate: string | null, total: number): CrmBookkeeping
 describe("buildCommandPerformanceMetrics", () => {
   const now = new Date(2026, 7, 7, 12);
 
-  it("calculates close rates from decided lead-created cohorts", () => {
+  it("calculates close rates from completed customer-opportunity cohorts", () => {
     const metrics = buildCommandPerformanceMetrics([
-      job("won-recent", "2026-08-06T10:00:00-07:00", "sold"),
-      job("lost-recent", "2026-08-01T10:00:00-07:00", "lost"),
-      job("open-recent", "2026-08-01T10:00:00-07:00", "quoted"),
-      job("won-45", "2026-06-25T10:00:00-07:00", "closed"),
-      job("lost-old", "2025-12-01T10:00:00-08:00", "lost")
+      appointmentJob("won-recent", "2026-08-06T10:00:00-07:00", "sold"),
+      appointmentJob("not-sold-recent", "2026-08-01T10:00:00-07:00", "quoted"),
+      appointmentJob("future-open", "2026-08-08T10:00:00-07:00", "quoted"),
+      appointmentJob("won-45", "2026-06-25T10:00:00-07:00", "closed"),
+      appointmentJob("not-sold-old", "2025-12-01T10:00:00-08:00", "follow_up")
     ], [], now);
 
     expect(metrics.closeRate30Days).toBe(50);
@@ -56,14 +60,34 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.closeRateAllTime).toBe(50);
   });
 
-  it("uses only records created inside each rolling cohort", () => {
-    const recentLost = { ...job("recent", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Same Customer", email: "same@example.com" };
-    const oldSold = { ...job("old", "2026-01-01T10:00:00-08:00", "sold"), customer_name: "Same Customer", email: "same@example.com" };
+  it("uses only customer opportunities inside each window and any sold outcome within that window", () => {
+    const recentLost = { ...appointmentJob("recent", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Same Customer", email: "same@example.com" };
+    const oldSold = { ...appointmentJob("old", "2026-01-01T10:00:00-08:00", "sold"), customer_name: "Same Customer", email: "same@example.com" };
 
     const metrics = buildCommandPerformanceMetrics([recentLost, oldSold], [], now);
 
     expect(metrics.closeRate30Days).toBe(0);
     expect(metrics.closeRateAllTime).toBe(100);
+  });
+
+  it("uses appointment dates instead of migration-time created dates", () => {
+    const metrics = buildCommandPerformanceMetrics([
+      appointmentJob("old-won", "2026-01-15T10:00:00-08:00", "sold"),
+      appointmentJob("recent-not-sold", "2026-08-01T10:00:00-07:00", "quoted")
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBe(0);
+    expect(metrics.closeRate60Days).toBe(0);
+    expect(metrics.closeRateAllTime).toBe(50);
+  });
+
+  it("falls back to created time only for decided records without appointments", () => {
+    const metrics = buildCommandPerformanceMetrics([
+      job("decided-without-appointment", "2026-08-01T10:00:00-07:00", "sold"),
+      job("open-without-appointment", "2026-08-01T10:00:00-07:00", "quoted")
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBe(100);
   });
 
   it("excludes future-dated records from current windows", () => {
