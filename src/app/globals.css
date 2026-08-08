@@ -5179,7 +5179,7 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-measure-metric {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px 12px;
+  gap: 3px 6px;
 }
 
 .crm-measure-metric .crm-measure-metric-title {
@@ -5193,7 +5193,7 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-measure-metric-value + .crm-measure-metric-value {
-  padding-left: 12px;
+  padding-left: 6px;
   border-left: 1px solid currentColor;
 }
 
