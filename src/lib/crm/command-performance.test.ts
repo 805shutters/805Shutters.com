@@ -26,9 +26,12 @@ describe("buildCommandPerformanceMetrics", () => {
       appointmentJob("not-sold-old", "2025-12-01T10:00:00-08:00", "follow_up")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBe(50);
-    expect(metrics.closeRate60Days).toBe(67);
-    expect(metrics.closeRateAllTime).toBe(50);
+    expect(metrics.closeRate30Days).toBe(100);
+    expect(metrics.closeRate60Days).toBe(100);
+    expect(metrics.currentDecidedOutcomeRate).toBe(100);
+    expect(metrics.currentDecidedWon).toBe(2);
+    expect(metrics.currentDecidedLost).toBe(0);
+    expect(metrics.currentDecidedTotal).toBe(2);
   });
 
   it("counts a customer once and treats any sold outcome as the customer outcome", () => {
@@ -46,7 +49,7 @@ describe("buildCommandPerformanceMetrics", () => {
 
     expect(metrics.closeRate30Days).toBe(50);
     expect(metrics.closeRate60Days).toBe(50);
-    expect(metrics.closeRateAllTime).toBe(50);
+    expect(metrics.currentDecidedOutcomeRate).toBe(50);
   });
 
   it("deduplicates unlinked quote-version jobs with validated identity fields", () => {
@@ -57,7 +60,7 @@ describe("buildCommandPerformanceMetrics", () => {
     const metrics = buildCommandPerformanceMetrics([soldVersion, lostVersion, otherLost], [], now);
 
     expect(metrics.closeRate30Days).toBe(50);
-    expect(metrics.closeRateAllTime).toBe(50);
+    expect(metrics.currentDecidedOutcomeRate).toBe(50);
   });
 
   it("uses only customer opportunities inside each window and any sold outcome within that window", () => {
@@ -67,7 +70,7 @@ describe("buildCommandPerformanceMetrics", () => {
     const metrics = buildCommandPerformanceMetrics([recentLost, oldSold], [], now);
 
     expect(metrics.closeRate30Days).toBe(0);
-    expect(metrics.closeRateAllTime).toBe(100);
+    expect(metrics.currentDecidedOutcomeRate).toBe(100);
   });
 
   it("uses appointment dates instead of migration-time created dates", () => {
@@ -78,7 +81,7 @@ describe("buildCommandPerformanceMetrics", () => {
 
     expect(metrics.closeRate30Days).toBe(0);
     expect(metrics.closeRate60Days).toBe(0);
-    expect(metrics.closeRateAllTime).toBe(50);
+    expect(metrics.currentDecidedOutcomeRate).toBe(100);
   });
 
   it("falls back to created time only for decided records without appointments", () => {
@@ -97,7 +100,7 @@ describe("buildCommandPerformanceMetrics", () => {
     ], [], now);
 
     expect(metrics.closeRate30Days).toBe(0);
-    expect(metrics.closeRateAllTime).toBe(0);
+    expect(metrics.currentDecidedOutcomeRate).toBe(0);
   });
 
   it("uses sold-date ledger revenue and annualizes current-year actuals", () => {

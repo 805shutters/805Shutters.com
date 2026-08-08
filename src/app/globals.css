@@ -5081,16 +5081,20 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
 }
 
 .crm-metric {
   display: grid;
+  flex: 1 1 max-content;
   align-content: center;
   gap: 5px;
+  width: max-content;
+  min-width: 92px;
+  max-width: 260px;
   min-height: 52px;
   padding: 8px 9px;
   background: var(--white);
@@ -5116,6 +5120,13 @@ body.qb-fullscreen .crm-app-shell {
   overflow-wrap: anywhere;
 }
 
+.crm-metric small {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
 .crm-metric--performance {
   background: #66645f;
   border-color: #55534f;
@@ -5125,6 +5136,10 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-metric--performance span {
   color: rgba(255, 255, 255, 0.74);
+}
+
+.crm-metric--performance small {
+  color: rgba(255, 255, 255, 0.78);
 }
 
 .crm-metric--performance strong {
@@ -5768,7 +5783,7 @@ body.qb-fullscreen .crm-app-shell {
   }
 
   .crm-metrics {
-    grid-template-columns: repeat(9, minmax(0, 1fr));
+    display: flex;
   }
 
   .crm-metric,
@@ -11581,7 +11596,7 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .crm-metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
   }
 
   .crm-kanban {
@@ -12090,7 +12105,15 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .crm-metrics {
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+  }
+
+  .crm-metric,
+  .crm-metric--performance {
+    flex: 1 1 calc(50% - 4px);
+    width: auto;
+    min-width: 0;
+    max-width: none;
   }
 
   .crm-field-row,

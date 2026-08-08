@@ -2932,7 +2932,12 @@ export function CrmApp({
         <section className="crm-metrics" aria-label="CRM summary">
           <Metric label="30-Day Close Rate" value={`${commandPerformance.closeRate30Days}%`} variant="performance" />
           <Metric label="60-Day Close Rate" value={`${commandPerformance.closeRate60Days}%`} variant="performance" />
-          <Metric label="All-Time Close Rate" value={`${commandPerformance.closeRateAllTime}%`} variant="performance" />
+          <Metric
+            label="Current CRM Decided-Outcome Rate"
+            value={`${commandPerformance.currentDecidedOutcomeRate}%`}
+            detail={`${commandPerformance.currentDecidedWon} won ÷ ${commandPerformance.currentDecidedTotal} decided customer outcomes · open excluded`}
+            variant="performance"
+          />
           <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
           <Metric label="60-Day Revenue" value={toCurrency(commandPerformance.revenue60Days)} variant="performance" />
           <Metric label={`${new Date().getFullYear()} Sales Forecast`} value={toCurrency(commandPerformance.currentYearForecast)} variant="performance" />
@@ -3589,12 +3594,14 @@ function KenPortalView({
 function Metric({
   label,
   value,
+  detail,
   tone,
   variant,
   onClick
 }: {
   label: string;
   value: number | string;
+  detail?: string;
   tone?: "warning" | "danger";
   variant?: "performance";
   onClick?: () => void;
@@ -3606,6 +3613,7 @@ function Metric({
       <button type="button" className={className} onClick={onClick}>
         <span>{label}</span>
         <strong>{value}</strong>
+        {detail ? <small>{detail}</small> : null}
       </button>
     );
   }
@@ -3613,6 +3621,7 @@ function Metric({
     <div className={className}>
       <span>{label}</span>
       <strong>{value}</strong>
+      {detail ? <small>{detail}</small> : null}
     </div>
   );
 }
