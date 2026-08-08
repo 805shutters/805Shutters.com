@@ -4,11 +4,14 @@ const wonStatuses = new Set<CrmJob["status"]>(["sold", "ordered", "installed", "
 
 export type CommandPerformanceMetrics = {
   closeRate30Days: number;
+  closeRate30DaysWon: number;
+  closeRate30DaysTotal: number;
   closeRate60Days: number;
-  currentDecidedOutcomeRate: number;
-  currentDecidedWon: number;
-  currentDecidedLost: number;
-  currentDecidedTotal: number;
+  closeRate60DaysWon: number;
+  closeRate60DaysTotal: number;
+  currentCrmSalesRate: number;
+  currentCrmSalesWon: number;
+  currentCrmSalesTotal: number;
   revenue30Days: number;
   revenue60Days: number;
   yearToDateRevenue: number;
@@ -66,16 +69,14 @@ function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
   }));
 }
 
-export function customerOutcomeSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
+export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
   const identityKeys = customerIdentityKeys(jobs, files);
   const outcomes = new Map<string, boolean>();
   for (const job of jobs) {
-    // Close rate is based on completed customer opportunities, not the day an
-    // imported CRM row happened to be created. Appointment time is the closest
-    // durable lead-cohort date; decided rows without one fall back to created_at.
+    // Sales conversion is based on all customer opportunities in the cohort.
+    // Appointment time is the durable lead date; imported rows without one
+    // fall back to created_at. Future appointments never count yet.
     const appointmentAt = validDate(job.appointment_start);
-    const isDecided = wonStatuses.has(job.status) || job.status === "lost";
-    if (!isDecided) continue;
     const opportunityAt = appointmentAt || validDate(job.created_at);
     if (!opportunityAt || (since && opportunityAt < since) || (through && opportunityAt > through)) continue;
 
@@ -83,17 +84,15 @@ export function customerOutcomeSummary(jobs: CrmJob[], files: CrmCustomerFile[],
     outcomes.set(key, Boolean(outcomes.get(key)) || wonStatuses.has(job.status));
   }
   const won = [...outcomes.values()].filter(Boolean).length;
-  const lost = outcomes.size - won;
   return {
     won,
-    lost,
     total: outcomes.size,
     rate: outcomes.size ? Math.round((won / outcomes.size) * 100) : 0
   };
 }
 
 export function customerCloseRate(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
-  return customerOutcomeSummary(jobs, files, since, through).rate;
+  return customerSalesSummary(jobs, files, since, through).rate;
 }
 
 function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
@@ -120,15 +119,20 @@ export function buildCommandPerformanceMetrics(
   const daysInYear = Math.round((nextYearStart.getTime() - yearStart.getTime()) / 86_400_000);
   const elapsedDays = Math.max(1, Math.floor((through.getTime() - yearStart.getTime()) / 86_400_000) + 1);
   const yearToDateRevenue = soldRevenue(rows, yearStart, through);
-  const currentDecidedOutcomes = customerOutcomeSummary(jobs, customerFiles, undefined, through);
+  const sales30Days = customerSalesSummary(jobs, customerFiles, start30, through);
+  const sales60Days = customerSalesSummary(jobs, customerFiles, start60, through);
+  const currentCrmSales = customerSalesSummary(jobs, customerFiles, undefined, through);
 
   return {
-    closeRate30Days: customerCloseRate(jobs, customerFiles, start30, through),
-    closeRate60Days: customerCloseRate(jobs, customerFiles, start60, through),
-    currentDecidedOutcomeRate: currentDecidedOutcomes.rate,
-    currentDecidedWon: currentDecidedOutcomes.won,
-    currentDecidedLost: currentDecidedOutcomes.lost,
-    currentDecidedTotal: currentDecidedOutcomes.total,
+    closeRate30Days: sales30Days.rate,
+    closeRate30DaysWon: sales30Days.won,
+    closeRate30DaysTotal: sales30Days.total,
+    closeRate60Days: sales60Days.rate,
+    closeRate60DaysWon: sales60Days.won,
+    closeRate60DaysTotal: sales60Days.total,
+    currentCrmSalesRate: currentCrmSales.rate,
+    currentCrmSalesWon: currentCrmSales.won,
+    currentCrmSalesTotal: currentCrmSales.total,
     revenue30Days: soldRevenue(rows, start30, through),
     revenue60Days: soldRevenue(rows, start60, through),
     yearToDateRevenue,

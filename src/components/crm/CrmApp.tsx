@@ -2930,12 +2930,22 @@ export function CrmApp({
           <span aria-hidden="true">CRM</span>
         </div>
         <section className="crm-metrics" aria-label="CRM summary">
-          <Metric label="30-Day Close Rate" value={`${commandPerformance.closeRate30Days}%`} variant="performance" />
-          <Metric label="60-Day Close Rate" value={`${commandPerformance.closeRate60Days}%`} variant="performance" />
           <Metric
-            label="Current CRM Decided-Outcome Rate"
-            value={`${commandPerformance.currentDecidedOutcomeRate}%`}
-            detail={`${commandPerformance.currentDecidedWon} won ÷ ${commandPerformance.currentDecidedTotal} decided customer outcomes · open excluded`}
+            label="30-Day Close Rate"
+            value={`${commandPerformance.closeRate30Days}%`}
+            detail={`${commandPerformance.closeRate30DaysWon} sold ÷ ${commandPerformance.closeRate30DaysTotal} customer opportunities · open follow-ups included`}
+            variant="performance"
+          />
+          <Metric
+            label="60-Day Close Rate"
+            value={`${commandPerformance.closeRate60Days}%`}
+            detail={`${commandPerformance.closeRate60DaysWon} sold ÷ ${commandPerformance.closeRate60DaysTotal} customer opportunities · open follow-ups included`}
+            variant="performance"
+          />
+          <Metric
+            label="Current CRM Close Rate"
+            value={`${commandPerformance.currentCrmSalesRate}%`}
+            detail={`${commandPerformance.currentCrmSalesWon} sold ÷ ${commandPerformance.currentCrmSalesTotal} customer opportunities · open follow-ups included`}
             variant="performance"
           />
           <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
