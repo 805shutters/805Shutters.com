@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
 
 describe("CRM sales-rate header metrics", () => {
-  it("shows customer-opportunity denominators and includes open follow-ups", () => {
+  it("shows the three close-rate values without explanatory detail text", () => {
+    expect(source).toContain('label="30-Day Close Rate"');
+    expect(source).toContain('value={`${commandPerformance.closeRate30Days}%`}');
+    expect(source).toContain('label="60-Day Close Rate"');
+    expect(source).toContain('value={`${commandPerformance.closeRate60Days}%`}');
     expect(source).toContain('label="Current CRM Close Rate"');
-    expect(source).toContain("customer opportunities");
-    expect(source).toContain("open follow-ups included");
-    expect(source).toContain("closeRate30DaysTotal");
-    expect(source).toContain("closeRate60DaysTotal");
+    expect(source).toContain('value={`${commandPerformance.currentCrmSalesRate}%`}');
+    expect(source).not.toContain("customer opportunities");
+    expect(source).not.toContain("open follow-ups included");
     expect(source).not.toContain('label="All-Time Close Rate"');
     expect(source).not.toContain('label="Current CRM Decided-Outcome Rate"');
   });
