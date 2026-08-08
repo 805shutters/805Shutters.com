@@ -13,4 +13,15 @@ describe("CRM sales-rate header metrics", () => {
     expect(source).not.toContain('label="All-Time Close Rate"');
     expect(source).not.toContain('label="Current CRM Decided-Outcome Rate"');
   });
+
+  it("uses a deduplicated sold-order allocation rather than all-row Mike net", () => {
+    expect(source).toContain('label="Sold-Order Profit Allocation"');
+    expect(source).toContain("Mike 100% / Jessica sales 50%");
+    expect(source).toContain("This is projected profit allocation, not cash earnings.");
+    expect(source).toContain("buildMikeSoldProfitAllocationSummary(rows)");
+    expect(source).toContain("missing COGS");
+    expect(source).toContain("incomplete installer costs");
+    expect(source).not.toContain('label="Profit"');
+    expect(source).not.toContain('sub="Mike net"');
+  });
 });

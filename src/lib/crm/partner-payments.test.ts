@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPartnerPaymentLedger,
+  buildMikeSoldProfitAllocationSummary,
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
@@ -212,6 +213,76 @@ describe("partner payment row helpers", () => {
 });
 
 describe("buildPartnerPaymentLedger", () => {
+  it("summarizes Mike's sold-order allocation once per identity and preserves the Mike/Jessica split", () => {
+    const mikeSold = row({
+      id: "mike-sold",
+      jobId: "job-mike-sold",
+      status: "sold",
+      jobStatus: "sold",
+      salesOwner: "mike",
+      isPaidInFull: false,
+      balance: 1000,
+      paidTotal: 0,
+      payments: [],
+      // Mike keeps 100% of the post-cost profit on his own sale.
+      mikeProfit: 600,
+      jessicaCommission: 0
+    });
+    const jessicaSold = row({
+      id: "jessica-sold",
+      jobId: "job-jessica-sold",
+      status: "approved",
+      jobStatus: "sold",
+      salesOwner: "jessica",
+      isPaidInFull: false,
+      balance: 1000,
+      paidTotal: 0,
+      payments: [],
+      // A Jessica sale splits the same post-cost pool 50/50.
+      mikeProfit: 300,
+      jessicaCommission: 300
+    });
+    const closedMissingCosts = row({
+      id: "closed-missing-costs",
+      jobId: "job-closed-missing-costs",
+      status: "closed",
+      jobStatus: "closed",
+      salesOwner: "mike",
+      cogs: 0,
+      isMissingInstallerInvoice: true,
+      mikeProfit: 400
+    });
+
+    const summary = buildMikeSoldProfitAllocationSummary([
+      mikeSold,
+      { ...mikeSold, id: "duplicate-mike-import", mikeProfit: 500 },
+      jessicaSold,
+      closedMissingCosts,
+      row({
+        id: "open-follow-up",
+        jobId: "job-open",
+        status: "sent",
+        jobStatus: "quoted",
+        isPaidInFull: false,
+        balance: 1000,
+        paidTotal: 0,
+        payments: [],
+        mikeProfit: 900
+      })
+    ]);
+
+    expect(summary.sold).toEqual({ count: 3, total: 1300 });
+    expect(summary.active).toEqual({ count: 2, total: 900 });
+    expect(summary.closed).toEqual({ count: 1, total: 400 });
+    expect(summary.missingCogsCount).toBe(1);
+    expect(summary.missingInstallerInvoiceCount).toBe(1);
+    expect(summary.rows.map((item) => item.jobId)).toEqual([
+      "job-mike-sold",
+      "job-jessica-sold",
+      "job-closed-missing-costs"
+    ]);
+  });
+
   it("carries an overpaid Jessica advance forward as a negative amount due", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [row({ salesOwner: "jessica", mikeProfit: 0, jessicaCommission: 2020.86 })],

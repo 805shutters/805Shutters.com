@@ -228,6 +228,56 @@ function soldJobIdentity(row: CrmBookkeepingRow) {
   return `${row.source}:${row.id}`;
 }
 
+/**
+ * A deduplicated view of the profit allocation on sold orders. This is a
+ * projection from the bookkeeping inputs, not a cash-earnings figure: it can
+ * include active orders and rows whose costs are still incomplete.
+ */
+export function buildMikeSoldProfitAllocationSummary(rows: CrmBookkeepingRow[]) {
+  const byIdentity = new Map<
+    string,
+    {
+      row: CrmBookkeepingRow;
+      amount: number;
+      closed: boolean;
+      missingCogs: boolean;
+      missingInstallerInvoice: boolean;
+    }
+  >();
+
+  for (const row of rows) {
+    if (!isSoldEarningRow(row)) continue;
+    const amount = partnerPaymentAmountForRow("mike", row);
+    if (amount <= 0) continue;
+
+    const identity = soldJobIdentity(row);
+    const existing = byIdentity.get(identity);
+    byIdentity.set(identity, {
+      row: !existing || amount >= existing.amount ? row : existing.row,
+      amount: Math.max(existing?.amount || 0, amount),
+      closed: Boolean(existing?.closed || isCompletedPartnerJobStatus(row.jobStatus) || isPaidInFullBookkeepingRow(row)),
+      // A duplicate source row must never hide a cost-completeness warning.
+      missingCogs: Boolean(existing?.missingCogs || row.cogs <= 0),
+      missingInstallerInvoice: Boolean(existing?.missingInstallerInvoice || row.isMissingInstallerInvoice)
+    });
+  }
+
+  const items = [...byIdentity.values()];
+  const summarize = (entries: typeof items) => ({
+    count: entries.length,
+    total: roundCents(entries.reduce((sum, item) => sum + item.amount, 0))
+  });
+
+  return {
+    sold: summarize(items),
+    active: summarize(items.filter((item) => !item.closed)),
+    closed: summarize(items.filter((item) => item.closed)),
+    missingCogsCount: items.filter((item) => item.missingCogs).length,
+    missingInstallerInvoiceCount: items.filter((item) => item.missingInstallerInvoice).length,
+    rows: items.map((item) => item.row)
+  };
+}
+
 function buildAllTimeJobSummary(person: CrmPaymentPerson, rows: CrmBookkeepingRow[]) {
   const byIdentity = new Map<string, { amount: number; closed: boolean }>();
   for (const row of rows) {

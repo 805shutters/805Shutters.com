@@ -18,6 +18,7 @@ import {
 } from "@/lib/crm/calendar-duration";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isCrmOwnerAdminEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
+  buildMikeSoldProfitAllocationSummary,
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
@@ -5843,13 +5844,13 @@ function CommandDashboard({
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 }) {
   const canViewMikeFinancials = rows.some((row) => Object.hasOwn(row, "mikeProfit"));
+  const mikeSoldProfitAllocation = useMemo(() => buildMikeSoldProfitAllocationSummary(rows), [rows]);
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
     const collected = rows.reduce((sum, row) => sum + (row.paidTotal || 0), 0);
     const collectedRows = rows.filter((row) => (row.paidTotal || 0) > 0);
     const outstandingRows = rows.filter((row) => row.balance > 0);
     const outstanding = outstandingRows.reduce((sum, row) => sum + row.balance, 0);
-    const mikeNet = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
     const jessicaNetRows = rows.filter(hasJessicaNet);
     const jessicaFinalRows = jessicaNetRows.filter(isFinalJessicaNetRow);
     const jessicaReviewRows = jessicaNetRows.filter((row) => !isFinalJessicaNetRow(row));
@@ -5862,7 +5863,6 @@ function CommandDashboard({
       collectedRows,
       outstanding,
       outstandingRows,
-      mikeNet,
       jessicaNetRows,
       jessicaFinalRows,
       jessicaReviewRows,
@@ -6047,15 +6047,15 @@ function CommandDashboard({
         />
         {canViewMikeFinancials ? (
           <StatTile
-            label="Profit"
-            value={toCurrency(numbers.mikeNet)}
-            sub="Mike net"
+            label="Sold-Order Profit Allocation"
+            value={toCurrency(mikeSoldProfitAllocation.sold.total)}
+            sub={`${mikeSoldProfitAllocation.sold.count} sold · all-time · Mike 100% / Jessica sales 50%`}
             onClick={() =>
               onDrill({
-                title: "Profit By Job",
-                subtitle: "Mike net per job",
+                title: "Sold-Order Profit Allocation",
+                subtitle: "Deduplicated sold orders · Mike 100% / Jessica sales 50% · projected, not cash earnings",
                 placement: "numbers",
-                entries: rowsToEntries(rows, (row) => row.mikeProfit, { jobs, files })
+                entries: rowsToEntries(mikeSoldProfitAllocation.rows, (row) => row.mikeProfit, { jobs, files })
               })
             }
           />
@@ -6082,6 +6082,20 @@ function CommandDashboard({
           }
         />
       </div>
+
+      {canViewMikeFinancials ? (
+        <p className="crm-payables-summary-definition">
+          All-time sold-order allocation: {toCurrency(mikeSoldProfitAllocation.active.total)} across {mikeSoldProfitAllocation.active.count} active sold orders + {toCurrency(mikeSoldProfitAllocation.closed.total)} across {mikeSoldProfitAllocation.closed.count} closed sold orders. This is projected profit allocation, not cash earnings.
+        </p>
+      ) : null}
+
+      {canViewMikeFinancials &&
+      (mikeSoldProfitAllocation.missingCogsCount || mikeSoldProfitAllocation.missingInstallerInvoiceCount) ? (
+        <p className="crm-bookkeeping-alert">
+          Sold-order allocation is projected, not cash earnings: {mikeSoldProfitAllocation.missingCogsCount} sold order
+          {mikeSoldProfitAllocation.missingCogsCount === 1 ? " is" : "s are"} missing COGS and {mikeSoldProfitAllocation.missingInstallerInvoiceCount} have incomplete installer costs.
+        </p>
+      ) : null}
 
       {drillPanel(["summary", "numbers"])}
 
