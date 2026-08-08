@@ -586,8 +586,8 @@ export function QuoteDashboard({
     },
   });
 
-  // CRM quotes are service-role managed, while quote-builder rows can be
-  // removed directly through the signed-in Supabase client.
+  // Both quote stores are service-role managed so RLS cannot silently turn a
+  // browser-side delete into a successful zero-row response.
   const deleteQuote = useMutation({
     mutationFn: async (quote: QuoteTableRow) => {
       if (quote.source === "crm") {
@@ -606,12 +606,28 @@ export function QuoteDashboard({
       }
 
       const quoteId = quote.sourceQuoteId || quote.id;
-      const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
-      if (error) throw error;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+      const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quoteId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = (await response.json().catch(() => null)) as {
+        deleted?: boolean;
+        quoteId?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !body?.deleted || body.quoteId !== quoteId) {
+        throw new Error(body?.message || "Quote could not be deleted.");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
       toast.success("Quote deleted");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Quote could not be deleted.");
     },
   });
 
