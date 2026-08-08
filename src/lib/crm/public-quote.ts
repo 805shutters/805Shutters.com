@@ -710,6 +710,40 @@ export function labelDuplicatePublicQuoteRooms(lines: PublicQuoteLine[]): Public
   });
 }
 
+/**
+ * Historical "Purchase some" acceptances predate the atomic current/future
+ * partition. Their source quote intentionally still owns every original line,
+ * while meta.signed_selection is the durable record of what was signed.
+ *
+ * Never project those signed contracts from all current builder rows: doing so
+ * restores the unaccepted windows on the public contract and lets a retry
+ * restamp bookkeeping/contract artifacts with the original full total.
+ * Atomically partitioned acceptances already moved the unselected rows to their
+ * future quote, so their current quote remains authoritative as-is.
+ */
+export function applyStoredSignedSelection(
+  quote: Pick<CrmQuote, "signed_at" | "meta">,
+  lines: PublicQuoteLine[],
+): PublicQuoteLine[] {
+  if (!quote.signed_at) return lines;
+  const meta = record(quote.meta);
+  const partialAcceptance = record(meta.partial_acceptance);
+  if (partialAcceptance.role === "current") return lines;
+
+  const rawIds = record(meta.signed_selection).lineItemIds;
+  if (!Array.isArray(rawIds)) return lines;
+  if (!rawIds.length || rawIds.some((id) => typeof id !== "string")) {
+    throw new CrmAuthError(409, "The stored signed-item selection is invalid. This contract needs staff review.");
+  }
+
+  const selectedIds = new Set(rawIds as string[]);
+  const selectedLines = lines.filter((line) => selectedIds.has(line.id));
+  if (selectedLines.length !== selectedIds.size) {
+    throw new CrmAuthError(409, "The stored signed-item selection no longer matches this quote. This contract needs staff review.");
+  }
+  return selectedLines;
+}
+
 async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise<CrmQuote | null> {
   if (!token) return null;
   const { data } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
@@ -748,9 +782,10 @@ async function projectPublicQuote(
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
   const legacyMts = isLegacyMtsQuote(quote);
-  const lines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
+  const projectedLines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
     expandPublicQuoteLine(projectLine(lineItem, legacyMts))
   ));
+  const lines = applyStoredSignedSelection(quote, projectedLines);
   const hasOnyxShutters =
     quoteHasOnyxManufacturer(quote) ||
     lineItems.some((lineItem) => lineItemHasOnyxShutters(lineItem, legacyMts));

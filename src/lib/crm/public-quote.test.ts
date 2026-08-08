@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  applyStoredSignedSelection,
   buildSignedContractSnapshot,
   buildFutureContractSnapshot,
   buildPartialAcceptancePlan,
@@ -457,6 +458,66 @@ describe("computeSelectionMoney (Purchase some)", () => {
     const m = computeSelectionMoney([{ id: "c", lineTotal: 0, priceReady: false }], DEFAULT_ADJUSTMENTS);
     expect(m.selectedLineIds).toEqual([]);
     expect(m.total).toBe(0);
+  });
+});
+
+describe("applyStoredSignedSelection", () => {
+  const publicLine = (id: string, room: string, lineTotal: number) => ({
+    id,
+    lineItemId: id,
+    room,
+    dimensions: "",
+    productName: "Honeycomb Shades",
+    styleName: "",
+    options: [],
+    designOptions: [],
+    showDesignOptions: false,
+    unitPrice: lineTotal,
+    quantity: 1,
+    lineTotal,
+    discountPercent: 0,
+    priceReady: true,
+  });
+  const allLines = [
+    publicLine("sunroom-1", "Sunroom 1", 858.6),
+    publicLine("primary-bedroom", "Primary Bedroom", 685.8),
+    publicLine("bed-2", "Bed 2", 450),
+  ];
+
+  it("keeps only the persisted selection for a historical signed partial acceptance", () => {
+    const lines = applyStoredSignedSelection(
+      {
+        signed_at: "2026-08-06T19:06:00.000Z",
+        meta: { signed_selection: { lineItemIds: ["primary-bedroom"] } },
+      },
+      allLines,
+    );
+    expect(lines.map((line) => line.id)).toEqual(["primary-bedroom"]);
+    expect(lines.reduce((sum, line) => sum + line.lineTotal, 0)).toBe(685.8);
+  });
+
+  it("does not refilter an atomically partitioned current quote", () => {
+    const lines = applyStoredSignedSelection(
+      {
+        signed_at: "2026-08-06T19:06:00.000Z",
+        meta: {
+          signed_selection: { lineItemIds: ["legacy-expanded-id"] },
+          partial_acceptance: { role: "current", future_quote_id: "future-quote" },
+        },
+      },
+      [allLines[1]],
+    );
+    expect(lines).toEqual([allLines[1]]);
+  });
+
+  it("fails closed instead of restoring every original item when the stored selection is stale", () => {
+    expect(() => applyStoredSignedSelection(
+      {
+        signed_at: "2026-08-06T19:06:00.000Z",
+        meta: { signed_selection: { lineItemIds: ["missing-line"] } },
+      },
+      allLines,
+    )).toThrow(/no longer matches/i);
   });
 });
 
