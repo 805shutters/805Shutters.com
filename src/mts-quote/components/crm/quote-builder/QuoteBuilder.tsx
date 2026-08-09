@@ -96,6 +96,7 @@ import {
 } from "@mts/types/quote";
 import {
   historicalUnitPrice,
+  shouldUseHistoricalQuotePriceLock,
   type HistoricalQuotePriceLock,
 } from "@/lib/crm/historical-quote-price-lock";
 
@@ -694,10 +695,11 @@ export function QuoteBuilder({
   // runtime provider flag.
   const serverOwnedV2 = runtimeServerOwnedV2 || quote?.quote_v2_backend === true;
   const authoritativeV2 = runtimeAuthoritativeV2 || quote?.quote_v2_backend === true;
-  const useHistoricalPriceLock =
-    authoritativeV2 &&
-    quote?.quote_v2_status === "stale" &&
-    Boolean(historicalPriceLock && historicalPriceLock.total > 0);
+  const useHistoricalPriceLock = shouldUseHistoricalQuotePriceLock({
+    quoteV2Backend: authoritativeV2,
+    quoteV2Status: quote?.quote_v2_status,
+    priceLock: historicalPriceLock,
+  });
 
   useEffect(() => {
     if (!quote) return;

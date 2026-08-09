@@ -49,3 +49,17 @@ export function historicalUnitPrice(
     fromHistoricalLock: false,
   };
 }
+
+export function shouldUseHistoricalQuotePriceLock(input: {
+  quoteV2Backend: boolean;
+  quoteV2Status: string | null | undefined;
+  priceLock: HistoricalQuotePriceLock | null | undefined;
+}): boolean {
+  return Boolean(
+    input.quoteV2Backend &&
+      input.priceLock &&
+      input.priceLock.total > 0 &&
+      input.quoteV2Status !== "priced" &&
+      input.quoteV2Status !== "sent",
+  );
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildHistoricalQuotePriceLock,
   historicalUnitPrice,
+  shouldUseHistoricalQuotePriceLock,
 } from "./historical-quote-price-lock";
 
 describe("historical quote price locks", () => {
@@ -39,5 +40,27 @@ describe("historical quote price locks", () => {
       amount: 0,
       fromHistoricalLock: false,
     });
+  });
+
+  it("keeps a converted draft or stale quote on its historical lock until V4 pricing completes", () => {
+    const priceLock = { total: 3499.1, designUnitPrices: {} };
+    for (const quoteV2Status of ["draft", "stale", "blocked"]) {
+      expect(
+        shouldUseHistoricalQuotePriceLock({
+          quoteV2Backend: true,
+          quoteV2Status,
+          priceLock,
+        }),
+      ).toBe(true);
+    }
+    for (const quoteV2Status of ["priced", "sent"]) {
+      expect(
+        shouldUseHistoricalQuotePriceLock({
+          quoteV2Backend: true,
+          quoteV2Status,
+          priceLock,
+        }),
+      ).toBe(false);
+    }
   });
 });
