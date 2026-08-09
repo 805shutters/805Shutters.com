@@ -87,7 +87,8 @@ function dateOnly(value: string | null | undefined): string | null {
 
 function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
   const meta = quote.meta || {};
-  const value = meta.mts_quote_id || meta.sales_quote_id;
+  const value =
+    meta.target_sales_quote_id || meta.mts_quote_id || meta.sales_quote_id;
   return typeof value === "string" && value.trim() ? value : null;
 }
 

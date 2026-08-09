@@ -27,4 +27,16 @@ describe("quote dashboard routing", () => {
       expect(tableSource).toMatch(/<ExternalLink[\s\S]*?>\s*Edit\s*<\/Button>/);
     });
   }
+
+  it("deduplicates the server-owned sales quote created for an imported CRM row", () => {
+    const currentDashboardSource = quoteWorkspaceVersions.find(
+      ({ version }) => version === "mts-quote",
+    )!.dashboardSource;
+    expect(currentDashboardSource).toContain(
+      "meta.target_sales_quote_id || meta.mts_quote_id || meta.sales_quote_id",
+    );
+    expect(currentDashboardSource).toContain(
+      ".filter((quote) => !sourceSalesQuoteIds.has(quote.id))",
+    );
+  });
 });
