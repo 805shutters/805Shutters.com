@@ -25,6 +25,8 @@ describe("product-line order controls", () => {
 
   it("mounts the line-level order queue in the live quote dashboard", () => {
     expect(dashboard).toContain("<QuoteOrderStatusPanel");
+    expect(dashboard).toContain("quotes={filteredOrderPanelQuotes}");
+    expect(dashboard).toContain('activeFilter === "all" || filteredOrderPanelQuotes.length > 0');
     expect(dashboard).toContain("onMarkLineOrdered");
     expect(dashboard).toContain("sales-quote-order-lines");
   });

@@ -152,3 +152,12 @@ export function filterCalendarAppointmentsForStatsTile<T extends CalendarAppoint
       (!appointment.quote_id || !visibleQuoteIds.has(appointment.quote_id))
   );
 }
+
+export function filterOrderPanelQuotesForStatsTile<T extends { id: string }>(
+  quotes: T[],
+  filter: StatsFilter,
+  visibleQuoteIds: Set<string>
+): T[] {
+  if (filter === "all") return quotes;
+  return quotes.filter((quote) => visibleQuoteIds.has(quote.id));
+}

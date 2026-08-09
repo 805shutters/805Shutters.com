@@ -20,6 +20,7 @@ import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
+  filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
@@ -381,6 +382,10 @@ export function QuoteDashboard({
       ),
     [filteredQuotes]
   );
+  const filteredOrderPanelQuotes = useMemo(
+    () => filterOrderPanelQuotesForStatsTile(orderPanelQuotes, activeFilter, filteredQuoteIds),
+    [activeFilter, filteredQuoteIds, orderPanelQuotes]
+  );
   const filteredDashboardCalendarAppointments = useMemo(
     () =>
       activeAccountId === ACCOUNT_IDS.SHUTTERS_805
@@ -726,9 +731,10 @@ export function QuoteDashboard({
         theme={activeAccount.prefix === "805" ? "bw" : "blue"}
       />
 
-      {activeAccountId === ACCOUNT_IDS.SHUTTERS_805 && (
+      {activeAccountId === ACCOUNT_IDS.SHUTTERS_805 &&
+        (activeFilter === "all" || filteredOrderPanelQuotes.length > 0) && (
         <QuoteOrderStatusPanel
-          quotes={orderPanelQuotes}
+          quotes={filteredOrderPanelQuotes}
           onOpenQuote={(quote) => {
             setActiveQuote(quote.id);
             setActiveTab("builder");

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dashboardTodayDate,
   filterCalendarAppointmentsForStatsTile,
+  filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
   getQuoteStatsStatus,
   type QuoteStatsSource,
@@ -204,5 +205,23 @@ describe("quote dashboard stats filters", () => {
         (item) => item.id
       )
     ).toEqual(["calendar-only"]);
+  });
+
+  it("applies the selected stats tile to the order-status panel", () => {
+    const orderRows = [
+      { id: "sold-visible", status: "sold" },
+      { id: "ordered-hidden", status: "ordered" },
+    ];
+
+    expect(
+      filterOrderPanelQuotesForStatsTile(orderRows, "sold", new Set(["sold-visible"]))
+        .map((item) => item.id)
+    ).toEqual(["sold-visible"]);
+    expect(
+      filterOrderPanelQuotesForStatsTile(orderRows, "draft", new Set())
+    ).toEqual([]);
+    expect(
+      filterOrderPanelQuotesForStatsTile(orderRows, "all", new Set())
+    ).toEqual(orderRows);
   });
 });
