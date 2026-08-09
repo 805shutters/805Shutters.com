@@ -58,6 +58,7 @@ describe("signed partial quote rendering", () => {
       sourceTotalAdjustment: 0,
       depositDue: 342.9,
       balanceDue: 342.9,
+      payment: { available: true, dueType: "balance", amountDue: 342.9, outstanding: 342.9, depositPaid: 342.9, paidTotal: 342.9 },
       total: 685.8,
       allPriced: true,
       hasOnyxShutters: false,

@@ -216,6 +216,214 @@
   background: #ffffff;
 }
 
+.contractLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 760px) minmax(290px, 330px);
+  gap: 28px;
+  align-items: start;
+}
+
+.contractLayoutSingle {
+  grid-template-columns: minmax(0, 760px);
+}
+
+.contractContent {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.actionPanel {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 10px;
+  overflow: hidden;
+  border: 1px solid #c8c6bd;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(11, 11, 11, 0.12);
+}
+
+.actionPanelHeader {
+  padding: 16px 18px 15px;
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.actionPanelHeader > span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.actionPanelHeader > strong {
+  display: block;
+  font-size: 21px;
+  line-height: 1.15;
+}
+
+.actionPanelHeader > p {
+  margin: 7px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.78;
+}
+
+.actionSection {
+  padding: 14px 18px 16px;
+  border-top: 1px solid #e5e4de;
+}
+
+.actionStep {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+  font-size: 15px;
+}
+
+.actionStep > span {
+  display: inline-flex;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #0b0b0b;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.actionNotice,
+.paidMessage {
+  margin: 0;
+  padding: 11px 12px;
+  border: 1px solid #d8d8d2;
+  border-radius: 9px;
+  background: #f7f7f4;
+  color: #4d4d49;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.paidMessage {
+  color: #285b3b;
+  background: #f1f8f3;
+  border-color: #a7c7af;
+}
+
+.amountDue {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding: 10px 12px;
+  border: 1px solid #c8c6bd;
+  border-radius: 10px;
+  background: #f7f7f4;
+}
+
+.amountDue > span {
+  color: #4d4d49;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.amountDue > strong {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.cardPaymentButton {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 14px;
+  background: #0b0b0b;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cardPaymentButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.paymentError {
+  margin: 8px 0 0;
+  color: #991b1b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.peerPayments {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e4de;
+}
+
+.peerPaymentDetails {
+  display: grid;
+  gap: 11px;
+}
+
+.peerPaymentDetails > div {
+  display: grid;
+  gap: 1px;
+}
+
+.peerPaymentDetails span,
+.peerPaymentDetails small {
+  color: #5b5b58;
+  font-size: 11px;
+}
+
+.peerPaymentDetails strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.venmoQr,
+.venmoQr svg {
+  display: block;
+  width: 64px;
+  height: 64px;
+}
+
+@media (max-width: 980px) {
+  .contractLayout,
+  .contractLayoutSingle {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .actionPanel,
+  .contractContent {
+    width: 100%;
+  }
+
+  .actionPanel {
+    position: static;
+    box-sizing: border-box;
+  }
+}
+
 @media (max-width: 520px) {
   .purchaseSelector {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -279,5 +487,16 @@
 
   .productDetail {
     grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
+  }
+
+  .actionPanel {
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(11, 11, 11, 0.1);
+  }
+
+  .actionPanelHeader,
+  .actionSection {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }

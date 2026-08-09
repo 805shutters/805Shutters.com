@@ -57,6 +57,14 @@ function quoteWithLegacyDetails(signed = true): PublicQuote {
     sourceTotalAdjustment: 0,
     depositDue: 254.7,
     balanceDue: 254.7,
+    payment: {
+      available: true,
+      dueType: "deposit",
+      amountDue: 254.7,
+      outstanding: 509.4,
+      depositPaid: 0,
+      paidTotal: 0,
+    },
     total: 509.4,
     allPriced: true,
     hasOnyxShutters: false,
@@ -72,6 +80,12 @@ function quoteWithLegacyDetails(signed = true): PublicQuote {
 }
 
 describe("QuoteSelection", () => {
+  const paymentOptions = {
+    venmoHandle: "approved-venmo",
+    venmoQrSvg: "<svg></svg>",
+    zelleDestination: "805-806-9344",
+  };
+
   it("renders saved legacy product specifications on the customer contract", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails() }));
 
@@ -92,20 +106,53 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain('48&quot; W');
   });
 
-  it("puts review and sign actions at both ends with pricing before full details", () => {
-    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails(false) }));
-    expect(html.match(/Review &amp; sign this contract/g)).toHaveLength(2);
-    expect(html.match(/Sign &amp; approve/g)).toHaveLength(2);
-    expect(html.indexOf("Start here")).toBeLessThan(html.indexOf("Contract pricing"));
+  it("puts one sign path in the side action panel before contract pricing", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, {
+      quote: quoteWithLegacyDetails(false),
+      paymentOptions,
+    }));
+    expect(html.match(/Sign the contract/g)).toHaveLength(1);
+    expect(html.match(/Sign &amp; approve/g)).toHaveLength(1);
+    expect(html.indexOf("Finish your order")).toBeLessThan(html.indexOf("Contract pricing"));
     expect(html.indexOf("Contract pricing")).toBeLessThan(html.indexOf("Complete contract"));
-    expect(html.indexOf("Complete contract")).toBeLessThan(html.indexOf("Ready to proceed?"));
+  });
+
+  it("shows the ledger-derived deposit due with card, Zelle, and Venmo paths", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, {
+      quote: quoteWithLegacyDetails(false),
+      paymentOptions,
+    }));
+
+    expect(html).toContain("Deposit due");
+    expect(html).toContain("$254.70");
+    expect(html).toContain("Pay deposit with card");
+    expect(html).toContain("@approved-venmo");
+    expect(html).toContain("805-806-9344");
+  });
+
+  it("switches the side panel to the authoritative balance after the deposit is paid", () => {
+    const quote = quoteWithLegacyDetails(true);
+    quote.payment = {
+      available: true,
+      dueType: "balance",
+      amountDue: 254.7,
+      outstanding: 254.7,
+      depositPaid: 254.7,
+      paidTotal: 254.7,
+    };
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote, paymentOptions }));
+
+    expect(html).toContain("Balance due");
+    expect(html).toContain("Deposit paid");
+    expect(html).toContain("Pay balance with card");
+    expect(html).not.toContain("Pay deposit with card");
   });
 
   it("renders the complete customer document without action controls in an internal preview", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       previewOnly: true,
-      paymentOptions: { venmoHandle: "805Shutters", venmoQrSvg: "<svg></svg>", zelleDestination: "805-806-9344" },
+      paymentOptions,
     }));
 
     expect(html).toContain("Contract pricing");
@@ -114,6 +161,6 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain("Purchase:");
     expect(html).not.toContain("Sign &amp; approve");
     expect(html).not.toContain("Pay deposit with card");
-    expect(html).not.toContain("Ways to pay");
+    expect(html).not.toContain("Make a payment");
   });
 });

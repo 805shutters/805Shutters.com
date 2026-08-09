@@ -101,7 +101,7 @@ export function CustomerContractDocument({
   );
 }
 
-const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const wrap = { maxWidth: 1120, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
 const quoteTabsSection = { marginBottom: 22, padding: 14, border: "2px solid #0b0b0b", borderRadius: 12, background: "#f4f4f2" } as const;
 const quoteTabsHeading = { display: "block", marginBottom: 10, fontSize: 15 } as const;
 const quoteTabsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 } as const;

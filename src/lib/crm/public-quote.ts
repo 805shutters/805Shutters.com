@@ -73,6 +73,7 @@ import {
   SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
   SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
 } from "@mts/lib/quoteSoldNotification";
+import { loadQuotePaymentState, type QuotePaymentState } from "@/lib/crm/quote-payment-state";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -137,6 +138,8 @@ export type PublicQuote = {
   sourceTotalAdjustment: number;
   depositDue: number;
   balanceDue: number;
+  /** Ledger-derived amount due now. Contract deposit/balance calculations above remain unchanged. */
+  payment: QuotePaymentState;
   total: number;
   allPriced: boolean;
   hasOnyxShutters: boolean;
@@ -799,6 +802,7 @@ async function projectPublicQuote(
   const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
   const depositPercent = adj.depositPercent || 0;
   const depositDue = depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;
+  const payment = await loadQuotePaymentState(supabase, quote.id, { total, depositRequired: depositDue });
 
   let customerName = quote.customer_name || "";
   let customerAddress = quote.customer_address || null;
@@ -844,6 +848,7 @@ async function projectPublicQuote(
     sourceTotalAdjustment,
     depositDue,
     balanceDue: round2(Math.max(total - depositDue, 0)),
+    payment,
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     hasOnyxShutters,
@@ -902,6 +907,7 @@ export async function computeSelectionTotal(
   total: number;
   depositDue: number;
   balanceDue: number;
+  payment: QuotePaymentState;
 }> {
   const pub = await loadPublicQuoteByToken(supabase, token);
   if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
@@ -915,7 +921,12 @@ export async function computeSelectionTotal(
     priceReady: l.priceReady,
   }));
   const selectedPublicLines = pub.lines.filter((line) => lines.some((item) => item.id === line.id));
-  return computePublicSelectionMoney(pub, selectedPublicLines);
+  const money = computePublicSelectionMoney(pub, selectedPublicLines);
+  const payment = await loadQuotePaymentState(supabase, pub.id, {
+    total: money.total,
+    depositRequired: money.depositDue,
+  });
+  return { ...money, payment };
 }
 
 function money(value: number): string {

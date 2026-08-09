@@ -6,6 +6,11 @@ import { ensureShareToken, loadPublicQuoteByToken } from "@/lib/crm/public-quote
 import { createSquarePaymentLink, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms, toE164 } from "@/lib/notify/twilio";
+import {
+  quotePaymentState,
+  type QuoteLedgerCredit,
+  type QuoteLedgerPayment,
+} from "@/lib/crm/quote-payment-state";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -30,21 +35,6 @@ export class SquarePaymentDeliveryError extends CrmAuthError {
   }
 }
 
-type LedgerPayment = { amount?: number | string | null; payment_label?: string | null };
-type LedgerCredit = { amount?: number | string | null };
-
-function roundMoney(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function sumAmounts(rows: Array<{ amount?: number | string | null }>) {
-  return roundMoney(rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0));
-}
-
-function isDepositPayment(payment: LedgerPayment) {
-  return String(payment.payment_label || "").toLowerCase().includes("deposit");
-}
-
 export function squarePaymentRecipient(savedEmail: string | null | undefined, alternateEmail?: string | null) {
   const recipient = String(alternateEmail || "").trim() || String(savedEmail || "").trim();
   if (!recipient) throw new CrmAuthError(400, "Add a customer email or enter a different email before sending a Square payment link.");
@@ -57,18 +47,14 @@ export function squarePaymentRecipient(savedEmail: string | null | undefined, al
 export function squareOrderPaymentAmounts(input: {
   total: number;
   depositRequired: number;
-  payments?: LedgerPayment[];
-  creditsIn?: LedgerCredit[];
-  creditsOut?: LedgerCredit[];
+  payments?: QuoteLedgerPayment[];
+  creditsIn?: QuoteLedgerCredit[];
+  creditsOut?: QuoteLedgerCredit[];
 }) {
-  const payments = input.payments || [];
-  const paidTotal = sumAmounts(payments);
-  const depositPaid = sumAmounts(payments.filter(isDepositPayment));
-  const creditIn = sumAmounts(input.creditsIn || []);
-  const creditOut = sumAmounts(input.creditsOut || []);
-  const outstanding = roundMoney(Math.max(input.total - paidTotal - creditIn + creditOut, 0));
-  const deposit = roundMoney(Math.min(Math.max(input.depositRequired - depositPaid, 0), outstanding));
-  const balance = roundMoney(Math.max(outstanding - deposit, 0));
+  const state = quotePaymentState(input);
+  const deposit = state.dueType === "deposit" ? state.amountDue : 0;
+  const balance = state.dueType === "balance" ? state.amountDue : Math.max(state.outstanding - deposit, 0);
+  const { outstanding } = state;
   return { deposit, balance, outstanding };
 }
 
@@ -98,9 +84,9 @@ export async function sendSquareOrderPaymentLink(
   const amounts = squareOrderPaymentAmounts({
     total: publicQuote.total,
     depositRequired: publicQuote.depositDue,
-    payments: (paymentsResult.data || []) as LedgerPayment[],
-    creditsIn: (creditsInResult.data || []) as LedgerCredit[],
-    creditsOut: (creditsOutResult.data || []) as LedgerCredit[],
+    payments: (paymentsResult.data || []) as QuoteLedgerPayment[],
+    creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
+    creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
   });
   const amount = amounts[paymentType];
   if (!(amount > 0)) {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
+import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-payment-state";
 import { SignQuote } from "./SignQuote";
 import styles from "./QuoteSelection.module.css";
 import { quoteProductDetails } from "./quoteLinePresentation";
@@ -19,6 +20,7 @@ type LiveMoney = {
   total: number;
   depositDue: number;
   balanceDue: number;
+  payment: QuotePaymentState;
 };
 
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
@@ -34,13 +36,14 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
     total: quote.total,
     depositDue: quote.depositDue,
     balanceDue: quote.balanceDue,
+    payment: quote.payment,
   };
   const allowSelection = !previewOnly && !quote.signed && quote.lines.length > 1;
   const [mode, setMode] = useState<"all" | "some">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
   const [live, setLive] = useState<LiveMoney>(fullMoney);
   const [computing, setComputing] = useState(false);
-  const [squareBusy, setSquareBusy] = useState<"deposit" | null>(null);
+  const [squareBusy, setSquareBusy] = useState<QuotePaymentType | null>(null);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
   const [signedNow, setSignedNow] = useState(false);
   const reqId = useRef(0);
@@ -70,6 +73,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
             total: data.total,
             depositDue: data.depositDue,
             balanceDue: data.balanceDue,
+            payment: data.payment,
           });
         }
       } catch {
@@ -86,8 +90,12 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
+  const canSign = !quote.signed && quote.allPriced;
+  const showActionPanel = !previewOnly && (canSign || Boolean(paymentOptions));
+  const paymentType = live.payment.available ? live.payment.dueType : null;
+  const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
 
-  async function startSquare(type: "deposit") {
+  async function startSquare(type: QuotePaymentType) {
     setSquareMsg(null);
     setSquareBusy(type);
     try {
@@ -142,24 +150,97 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         </div>
       ) : null}
 
-      {!previewOnly && !quote.signed && quote.allPriced ? (
-        <div className="no-print">
-          {selectionEmpty ? <p style={selectionNotice}>Select at least one item below to review pricing and sign this contract.</p> : (
-            <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal}
-              selectedLineIds={selectedLineIds} done={signedNow} onSigned={() => setSignedNow(true)} placement="top" />
-          )}
-        </div>
-      ) : null}
-      {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
+      <div className={`${styles.contractLayout} ${showActionPanel ? "" : styles.contractLayoutSingle}`}>
+        {showActionPanel ? (
+          <aside className={`${styles.actionPanel} no-print`} aria-label="Sign contract and make a payment">
+            <div className={styles.actionPanelHeader}>
+              <span>Next steps</span>
+              <strong>Finish your order</strong>
+              <p>Sign your contract and use the payment method that works best for you.</p>
+            </div>
 
-      <section aria-labelledby="contract-pricing-heading" className={styles.pricingSection}>
+            {canSign ? (
+              <section className={styles.actionSection} aria-labelledby="sign-contract-heading">
+                <div className={styles.actionStep}><span>1</span><strong id="sign-contract-heading">Sign the contract</strong></div>
+                {selectionEmpty ? (
+                  <p className={styles.actionNotice}>Select at least one item below before signing.</p>
+                ) : (
+                  <SignQuote
+                    token={quote.token}
+                    customerName={quote.customerName}
+                    total={acknowledgedTotal}
+                    selectedLineIds={selectedLineIds}
+                    done={signedNow}
+                    onSigned={() => setSignedNow(true)}
+                    placement="top"
+                    compact
+                  />
+                )}
+              </section>
+            ) : null}
+
+            {paymentOptions ? (
+              <section id="payment" className={styles.actionSection} aria-labelledby="payment-heading">
+                <div className={styles.actionStep}>
+                  <span>{canSign ? "2" : "1"}</span>
+                  <strong id="payment-heading">Make a payment</strong>
+                </div>
+                {!live.payment.available ? (
+                  <p className={styles.actionNotice}>We couldn&apos;t verify the current amount due. Please refresh or call {quote.business.phone}.</p>
+                ) : paymentType && paymentLabel ? (
+                  <>
+                    <div className={styles.amountDue}>
+                      <span>{paymentLabel}</span>
+                      <strong>{money(live.payment.amountDue)}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.cardPaymentButton}
+                      disabled={squareBusy !== null || selectionEmpty}
+                      onClick={() => startSquare(paymentType)}
+                    >
+                      {squareBusy === paymentType ? "Opening secure checkout…" : `Pay ${paymentType} with card`}
+                    </button>
+                    {squareMsg ? <p className={styles.paymentError}>{squareMsg}</p> : null}
+                    <div className={styles.peerPayments}>
+                      <div className={styles.peerPaymentDetails}>
+                        <div>
+                          <span>Zelle</span>
+                          <strong>{paymentOptions.zelleDestination}</strong>
+                          <small>Send from your bank app</small>
+                        </div>
+                        <div>
+                          <span>Venmo</span>
+                          <strong>@{paymentOptions.venmoHandle}</strong>
+                          <small>Reference your name</small>
+                        </div>
+                      </div>
+                      <div
+                        className={styles.venmoQr}
+                        aria-label={`Venmo QR code for @${paymentOptions.venmoHandle}`}
+                        dangerouslySetInnerHTML={{ __html: paymentOptions.venmoQrSvg }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className={styles.paidMessage}>No payment is currently due.</p>
+                )}
+              </section>
+            ) : null}
+          </aside>
+        ) : null}
+
+        <div className={styles.contractContent}>
+          {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
+
+          <section aria-labelledby="contract-pricing-heading" className={styles.pricingSection}>
         <div>
           <p style={sectionEyebrow}>Contract pricing</p>
           <h2 id="contract-pricing-heading" style={sectionHeading}>Your price at a glance</h2>
           <p style={sectionIntro}>Review the total, deposit, and remaining balance before reading the complete product details.</p>
         </div>
         <PricingSummary quote={quote} live={live} computing={computing} />
-      </section>
+          </section>
 
       <section aria-labelledby="contract-details-heading" style={detailsSection}>
         <p style={sectionEyebrow}>Complete contract</p>
@@ -226,41 +307,14 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
 
       </section>
 
-      {!previewOnly && paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
-        <div id="payment" className="no-print" style={payBox}>
-          <strong>Ways to pay</strong>
-          {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit: {money(live.depositDue)}</div> : null}
-          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 14 }}>
-                Venmo: <strong>@{paymentOptions.venmoHandle}</strong>
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.6 }}>Scan with your phone to pay</div>
-              <div style={{ width: 150, height: 150, marginTop: 6 }} dangerouslySetInnerHTML={{ __html: paymentOptions.venmoQrSvg }} />
+          {!previewOnly && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
+            <div className="no-print" style={financingBox}>
+              <FinancingOptions
+                quoteNumber={quote.quoteNumber}
+                financeAmount={live.payment.outstanding}
+              />
             </div>
-            <div>
-              <div style={{ fontSize: 14 }}>
-                Zelle: <strong>{paymentOptions.zelleDestination}</strong>
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.6 }}>Send to this number from your bank app</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            {live.depositDue > 0 ? (
-              <button type="button" style={cardBtn} disabled={squareBusy !== null} onClick={() => startSquare("deposit")}>
-                {squareBusy === "deposit" ? "Opening…" : `Pay deposit with card`}
-              </button>
-            ) : null}
-          </div>
-          {squareMsg ? <p style={{ fontSize: 12, color: "#991b1b", margin: "8px 0 0" }}>{squareMsg}</p> : null}
-          <p style={{ fontSize: 12, opacity: 0.6, margin: "10px 0 0" }}>Or pay by Venmo/Zelle above. Please reference your name.</p>
-
-          <FinancingOptions
-            quoteNumber={quote.quoteNumber}
-            financeAmount={live.balanceDue > 0 ? live.balanceDue : live.total > 0 ? live.total / 2 : 0}
-          />
-        </div>
-      ) : null}
+          ) : null}
 
       {quote.hasOnyxShutters ? (
         <details open style={termsBox}>
@@ -327,21 +381,14 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         </p>
       </div>
 
-      {!previewOnly && !quote.signed && quote.allPriced ? (
-        <div className="no-print">
-          {selectionEmpty ? (
-            <p style={{ marginTop: 20, color: "#4d4d49" }}>Please select at least one item to purchase.</p>
-          ) : (
-            <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal}
-              selectedLineIds={selectedLineIds} done={signedNow} onSigned={() => setSignedNow(true)} placement="bottom" />
-          )}
         </div>
-      ) : null}
+      </div>
     </>
   );
 }
 
 function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: LiveMoney; computing: boolean }) {
+  const depositSatisfied = live.payment.available && live.depositDue > 0 && live.payment.depositPaid >= live.depositDue;
   return <div style={pricingSummary}>
     <Row label="Subtotal" value={money(live.subtotal)} />
     {quote.fees.map((fee, i) => <Row key={i} label={fee.name} value={money(fee.amount)} />)}
@@ -349,7 +396,7 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
     {live.tax > 0 ? <Row label="Tax" value={money(live.tax)} /> : null}
     {quote.sourceTotalAdjustment ? <Row label="Contract adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} /> : null}
     <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}><Row label="Total" value={money(live.total)} strong /></div>
-    {live.depositDue > 0 ? <Row label="Deposit" value={money(live.depositDue)} highlight /> : null}
+    {live.depositDue > 0 ? <Row label={depositSatisfied ? "Deposit paid" : "Deposit"} value={money(live.depositDue)} highlight={!depositSatisfied && live.payment.dueType === "deposit"} /> : null}
     {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
     {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
   </div>;
@@ -389,7 +436,7 @@ const detailsSection = { marginTop: 8 } as const;
 const sectionEyebrow = { margin: "0 0 4px", fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.7 } as const;
 const sectionHeading = { margin: 0, fontSize: 24, lineHeight: 1.2 } as const;
 const sectionIntro = { margin: "6px 0 16px", maxWidth: 470, color: "#4d4d49", fontSize: 14, lineHeight: 1.5 } as const;
-const payBox = {
+const financingBox = {
   border: "1px solid #d8d8d2",
   borderRadius: 10,
   padding: 16,
@@ -408,27 +455,6 @@ const depositDueRow = {
   color: "#991b1b",
   fontSize: 15,
   fontWeight: 700,
-} as const;
-const depositDueCallout = {
-  display: "inline-block",
-  marginTop: 8,
-  padding: "6px 10px",
-  border: "2px solid #dc2626",
-  borderRadius: 8,
-  background: "#fff1f2",
-  color: "#991b1b",
-  fontSize: 14,
-  fontWeight: 700,
-} as const;
-const cardBtn = {
-  border: "none",
-  background: "#0b0b0b",
-  color: "#ffffff",
-  borderRadius: 8,
-  padding: "10px 16px",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
 } as const;
 const termsBox = {
   marginTop: 20,
