@@ -125,6 +125,7 @@ function rowsForMaggie(options: FixtureOptions = {}) {
   };
   const salesQuote = options.salesQuote === null ? null : {
     id: SALES_QUOTE_ID,
+    share_token: TOKEN,
     total_amount: 0,
     quote_v2_backend: true,
     quote_v2_status: "sent",
@@ -157,7 +158,14 @@ function fakeSupabase(options: FixtureOptions = {}) {
         ? [{ entity_id: MIRROR_QUOTE_ID }]
         : [];
     }
-    if (table === "sales_quotes") return fixture.salesQuote ? [fixture.salesQuote] : [];
+    if (table === "sales_quotes") {
+      if (!fixture.salesQuote) return [];
+      const requestedToken = filters.find(([column]) => column === "share_token")?.[1];
+      if (requestedToken && fixture.salesQuote.share_token !== requestedToken) return [];
+      const requestedId = filters.find(([column]) => column === "id")?.[1];
+      if (requestedId && fixture.salesQuote.id !== requestedId) return [];
+      return [fixture.salesQuote];
+    }
     if (table === "crm_quote_line_items") {
       const quoteId = filters.find(([column]) => column === "quote_id")?.[1];
       return quoteId === SOURCE_QUOTE_ID ? fixture.sourceLines : fixture.mirrorLines;
@@ -243,6 +251,31 @@ describe("existing sent CRM mirror historical read projection", () => {
       table: "crm_activity_events",
       column: "metadata->>url",
       value: `https://www.805shutters.com/quote/${TOKEN}`,
+    });
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("resolves an emailed legacy sales-quote token when its send audit is unavailable", async () => {
+    const fake = fakeSupabase({
+      directTokenMiss: true,
+      mirror: { share_token: null },
+      salesQuote: { share_token: TOKEN },
+    });
+
+    const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
+
+    expect(quote?.id).toBe(MIRROR_QUOTE_ID);
+    expect(quote?.token).toBe(TOKEN);
+    expect(quote?.total).toBe(3499.1);
+    expect(fake.reads).toContainEqual({
+      table: "sales_quotes",
+      column: "share_token",
+      value: TOKEN,
+    });
+    expect(fake.reads).toContainEqual({
+      table: "crm_quotes",
+      column: "external_id",
+      value: `quote:${SALES_QUOTE_ID}`,
     });
     expect(fake.writes).toEqual([]);
   });

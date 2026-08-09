@@ -795,6 +795,28 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
     if (quoteError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
     if (aliasedQuote) return aliasedQuote as CrmQuote;
   }
+
+  // The original sales-quote sender stored the customer token on sales_quotes
+  // before mirroring that record into crm_quotes. If a later import cleared the
+  // mirror token and the send audit is unavailable, the source row still proves
+  // which exact mirror owns the already-delivered unguessable link.
+  const { data: salesQuote, error: salesQuoteError } = await supabase
+    .from("sales_quotes")
+    .select("id")
+    .eq("share_token", token)
+    .maybeSingle();
+  if (salesQuoteError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+  const salesQuoteId = (salesQuote as { id?: string | null } | null)?.id;
+  if (!salesQuoteId) return null;
+
+  const { data: legacyMirror, error: legacyMirrorError } = await supabase
+    .from("crm_quotes")
+    .select("*")
+    .eq("external_source", "mts_805_bookkeeping")
+    .eq("external_id", `quote:${salesQuoteId}`)
+    .maybeSingle();
+  if (legacyMirrorError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+  if (legacyMirror) return legacyMirror as CrmQuote;
   return null;
 }
 
