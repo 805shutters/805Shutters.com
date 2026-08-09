@@ -730,6 +730,14 @@ export async function loadHistoricalCrmMirrorPricing(
     });
   }
 
+  if (source.sourceLineItems.length !== targetLineItems.length) {
+    console.error("historical_crm_public_count_mismatch", {
+      protectedSourceLineCount: protectedSource.sourceLineItems.length,
+      normalizedSourceLineCount: source.sourceLineItems.length,
+      targetLineCount: targetLineItems.length,
+      delta: source.sourceLineItems.length - targetLineItems.length,
+    });
+  }
   const pricing = projectHistoricalSalesQuoteMirrorPricing({
     sourceQuote: source.sourceQuote,
     sourceLineItems: source.sourceLineItems,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadPublicQuoteByToken } from "./public-quote";
 import { loadHistoricalCrmMirrorPricing } from "./historical-sales-quote-pricing";
 
@@ -360,10 +360,24 @@ describe("existing sent CRM mirror historical read projection", () => {
     const complete = rowsForMaggie();
     const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 4);
     const fake = fakeSupabase({ mirrorLines });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
-      .rejects.toThrow(/historical price line count/i);
-    expect(fake.writes).toEqual([]);
+    try {
+      await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+        .rejects.toThrow(/historical price line count/i);
+      expect(errorSpy).toHaveBeenCalledOnce();
+      expect(errorSpy).toHaveBeenCalledWith("historical_crm_public_count_mismatch", {
+        protectedSourceLineCount: 8,
+        normalizedSourceLineCount: 7,
+        targetLineCount: 5,
+        delta: 2,
+      });
+      const diagnostic = errorSpy.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(Object.values(diagnostic).every((value) => typeof value === "number")).toBe(true);
+      expect(fake.writes).toEqual([]);
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it("fails closed when duplicate protected source rows have mixed prices", async () => {
