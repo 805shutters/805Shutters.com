@@ -54,6 +54,15 @@ const INTERNAL_OPTION_KEYS = new Set([
   PRODUCT_COLOR_SURCHARGE_DETAIL,
 ]);
 
+const INTERNAL_OPTION_KEY_PREFIXES = ["catalog_", "quote_lab_"];
+
+const INTERNAL_OPTION_KEY_SUFFIXES = [
+  "_blind_count",
+  "_configuration_version",
+  "_program_code",
+  "_source_page",
+];
+
 export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDetail[] {
   const details: QuoteDesignDetail[] = [];
 
@@ -76,7 +85,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   }
 
   Object.entries(options).forEach(([key, value]) => {
-    if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key)) return;
+    if (!hasValue(value) || isInternalOptionKey(key)) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
       const surchargeText = value
@@ -100,6 +109,14 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.notes) details.push({ label: "Notes", value: design.notes });
 
   return details;
+}
+
+function isInternalOptionKey(key: string): boolean {
+  return (
+    INTERNAL_OPTION_KEYS.has(key) ||
+    INTERNAL_OPTION_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+    INTERNAL_OPTION_KEY_SUFFIXES.some((suffix) => key.endsWith(suffix))
+  );
 }
 
 function formatFabricColorDetail(options: Record<string, unknown>): string | null {

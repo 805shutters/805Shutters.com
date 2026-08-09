@@ -42,4 +42,56 @@ describe("getQuoteDesignDetails", () => {
     expect(details).toContainEqual({ label: "Color", value: "7024 - Pure White" });
     expect(details).toContainEqual({ label: "Slat Size", value: '1"' });
   });
+
+  it("shows user-selected Lotus fields without generated catalog metadata", () => {
+    const design = miniBlindDesign();
+    design.product_type = "Faux Wood Blinds";
+    design.supplier = "Lotus";
+    design.material = null;
+    design.options_json = {
+      color: "Bright White",
+      lotus_finish: "Smooth",
+      lotus_blind_count: 1,
+      catalog_product_id: "lotus_faux_wood_blinds",
+      lotus_program_code: "FLX",
+      catalog_product_type: "Faux Wood Blinds",
+      quote_lab_program_id: "lotus_flx_2in_bright_white_custom",
+      slat_size: '2"',
+      product_line: "FLX",
+      lotus_source_page: 99,
+      catalog_program_id: "lotus_flx_2in_bright_white_custom",
+      catalog_manufacturer: "Lotus",
+      quote_lab_product_id: "lotus_faux_wood_blinds",
+      lotus_configuration_version: "lotus-faux-v2",
+    };
+
+    expect(getQuoteDesignDetails(design)).toEqual([
+      { label: "Supplier", value: "Lotus" },
+      { label: "Mount Type", value: "Inside Mount" },
+      { label: "Color", value: "Bright White" },
+      { label: "Lotus Finish", value: "Smooth" },
+      { label: "Slat Size", value: '2"' },
+      { label: "Product Line", value: "FLX" },
+    ]);
+  });
+
+  it("filters generated catalog metadata for every manufacturer", () => {
+    const design = miniBlindDesign();
+    design.material = null;
+    design.options_json = {
+      control_side: "Left",
+      catalog_product_id: "roller",
+      quote_lab_program_id: "program-1",
+      norman_source_page: 42,
+      onyx_program_code: "ONYX",
+      polar_configuration_version: "v2",
+      lotus_blind_count: 1,
+    };
+
+    expect(getQuoteDesignDetails(design)).toEqual([
+      { label: "Supplier", value: "Norman" },
+      { label: "Mount Type", value: "Inside Mount" },
+      { label: "Control Side", value: "Left" },
+    ]);
+  });
 });
