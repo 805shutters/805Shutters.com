@@ -106,7 +106,7 @@ describe("server-side historical quote V2 route resolver", () => {
       }),
     ).toMatchObject({
       status: "ready",
-      historicalPriceLock: { total: 3499.1, designUnitPrices: {} },
+      historicalPriceLock: { total: 3499.1, designUnitPrices: {}, lineUnitPrices: {} },
     });
   });
 

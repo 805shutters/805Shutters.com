@@ -823,6 +823,7 @@ describe("V2 exact-interface contract", () => {
     expect(source).not.toContain("{isolated && (");
     expect(source).toContain("allowManualPriceEditing={!authoritativeV2}");
     expect(source).toContain('aria-label="Authoritative price"');
+    expect(source).toContain('value={displayedUnitPrice || ""}');
     expect(source).toContain("if (authoritativeV2) return;");
     expect(source).toContain("Authoritative pricing blocked");
     expect(source).toContain("if (designs.some((design) => design.variant === variant))");

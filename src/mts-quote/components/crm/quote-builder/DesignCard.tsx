@@ -5626,6 +5626,7 @@ export function DesignCard({
           isShutters ? (
             <ShutterDesignOptions
               design={currentDesign}
+              displayedUnitPrice={displayedUnitPrice}
               activeVariant={activeVariant}
               productType={lineItem.product_type}
               onUpdate={updateField}
@@ -6333,6 +6334,7 @@ function ManufacturerComparisonPanel({
 
 function ShutterDesignOptions({
   design,
+  displayedUnitPrice,
   activeVariant,
   productType,
   onUpdate,
@@ -6342,6 +6344,7 @@ function ShutterDesignOptions({
   allowManualPriceEditing,
 }: {
   design: SalesQuoteDesign | undefined;
+  displayedUnitPrice: number;
   activeVariant: string;
   productType: string;
   onUpdate: (field: string, value: unknown) => void;
@@ -6759,7 +6762,7 @@ function ShutterDesignOptions({
                 <Input
                   aria-label="Authoritative price"
                   readOnly
-                  value={design?.unit_price || ""}
+                  value={displayedUnitPrice || ""}
                   className="pl-5 h-8 text-sm"
                   placeholder="0.00"
                 />

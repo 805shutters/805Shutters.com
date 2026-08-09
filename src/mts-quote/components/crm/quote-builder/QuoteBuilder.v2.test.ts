@@ -46,6 +46,15 @@ describe("V2 quote builder load integrity", () => {
     );
   });
 
+  it("keeps a historical line price after V2 copy operations replace the design ID", () => {
+    expect(quoteBuilderSource).toContain(
+      "const lineUnitPrice = priceLock.lineUnitPrices[lineItemId]",
+    );
+    expect(quoteBuilderSource).toContain(
+      "priceLock.designUnitPrices[design.id] ?? lineUnitPrice",
+    );
+  });
+
   it("keeps A/B/C quote alternatives visible when the actions drawer is collapsed", () => {
     expect(quoteBuilderSource).toMatch(
       /quote-alternative-bar[\s\S]*<QuoteGroupTabs \/>[\s\S]*quote-command-menu/,

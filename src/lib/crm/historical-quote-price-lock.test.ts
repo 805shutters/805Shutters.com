@@ -10,7 +10,7 @@ describe("historical quote price locks", () => {
     expect(
       buildHistoricalQuotePriceLock(3499.1, [
         { id: "design-a", unit_price: 452.08 },
-        { id: "design-b", unit_price: "671.67" },
+        { id: "design-b", line_item_id: "line-b", unit_price: "671.67" },
         { id: "unpriced", unit_price: 0 },
       ]),
     ).toEqual({
@@ -18,6 +18,9 @@ describe("historical quote price locks", () => {
       designUnitPrices: {
         "design-a": 452.08,
         "design-b": 671.67,
+      },
+      lineUnitPrices: {
+        "line-b": 671.67,
       },
     });
   });
@@ -43,7 +46,7 @@ describe("historical quote price locks", () => {
   });
 
   it("keeps a converted draft or stale quote on its historical lock until V4 pricing completes", () => {
-    const priceLock = { total: 3499.1, designUnitPrices: {} };
+    const priceLock = { total: 3499.1, designUnitPrices: {}, lineUnitPrices: {} };
     for (const quoteV2Status of ["draft", "stale", "blocked"]) {
       expect(
         shouldUseHistoricalQuotePriceLock({

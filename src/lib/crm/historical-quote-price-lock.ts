@@ -1,10 +1,12 @@
 export type HistoricalQuotePriceLock = {
   total: number;
   designUnitPrices: Record<string, number>;
+  lineUnitPrices: Record<string, number>;
 };
 
 type HistoricalPriceDesign = {
   id: string;
+  line_item_id?: string | null;
   unit_price?: number | string | null;
 };
 
@@ -27,7 +29,16 @@ export function buildHistoricalQuotePriceLock(
     }),
   );
 
-  return { total: lockedTotal, designUnitPrices };
+  const lineUnitPrices = Object.fromEntries(
+    designs.flatMap((design) => {
+      const unitPrice = positiveMoney(design.unit_price);
+      return design.line_item_id && unitPrice !== null
+        ? [[design.line_item_id, unitPrice]]
+        : [];
+    }),
+  );
+
+  return { total: lockedTotal, designUnitPrices, lineUnitPrices };
 }
 
 export function historicalUnitPrice(

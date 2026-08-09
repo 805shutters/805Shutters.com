@@ -34,6 +34,7 @@ type StoredSalesDesignRouteRow = {
 
 type StoredCrmDesignPriceRow = {
   id: string;
+  line_item_id: string;
   unit_price?: number | string | null;
 };
 
@@ -225,7 +226,7 @@ async function loadHistoricalPriceLock(
   if (sourceLineIds.length) {
     const { data, error } = await supabase
       .from("crm_quote_designs")
-      .select("id,unit_price")
+      .select("id,line_item_id,unit_price")
       .in("line_item_id", sourceLineIds);
     if (error) {
       throw new CrmAuthError(502, "The original quote design prices could not be loaded.");

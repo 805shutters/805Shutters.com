@@ -523,6 +523,25 @@ function StackedLineItemRow({
   );
 }
 
+function historicalPricesForCurrentLine(input: {
+  lineItemId: string;
+  designs: readonly SalesQuoteDesign[];
+  priceLock: HistoricalQuotePriceLock | null | undefined;
+}): Readonly<Record<string, number>> | undefined {
+  const { lineItemId, designs, priceLock } = input;
+  if (!priceLock) return undefined;
+
+  const lineUnitPrice = priceLock.lineUnitPrices[lineItemId];
+  if (!(lineUnitPrice > 0)) return priceLock.designUnitPrices;
+
+  return Object.fromEntries(
+    designs.map((design) => [
+      design.id,
+      priceLock.designUnitPrices[design.id] ?? lineUnitPrice,
+    ]),
+  );
+}
+
 export function QuoteBuilder({
   historicalPriceLock,
 }: {
@@ -2337,7 +2356,11 @@ export function QuoteBuilder({
                   authoritativeV2={authoritativeV2}
                   historicalDesignUnitPrices={
                     useHistoricalPriceLock
-                      ? historicalPriceLock?.designUnitPrices
+                      ? historicalPricesForCurrentLine({
+                          lineItemId: item.id,
+                          designs: designsByLineItemId.get(item.id) ?? [],
+                          priceLock: historicalPriceLock,
+                        })
                       : undefined
                   }
                   onUnstack={() => handleUnstackLineItem(item.id)}
@@ -2437,7 +2460,11 @@ export function QuoteBuilder({
                   authoritativeV2={authoritativeV2}
                   historicalDesignUnitPrices={
                     useHistoricalPriceLock
-                      ? historicalPriceLock?.designUnitPrices
+                      ? historicalPricesForCurrentLine({
+                          lineItemId: item.id,
+                          designs: designs.filter((design) => design.line_item_id === item.id),
+                          priceLock: historicalPriceLock,
+                        })
                       : undefined
                   }
                   sideBySideLineOptions={lineItems.flatMap((candidate) => {
