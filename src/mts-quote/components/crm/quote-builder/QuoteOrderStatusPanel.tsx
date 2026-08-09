@@ -218,7 +218,7 @@ export function QuoteOrderStatusPanel({
                 <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
                   <Button variant="outline" size="sm" onClick={() => onOpenQuote(quote)}>
                     <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                    Quote
+                    Edit Quote
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => onOpenContract(quote)}>
                     <FileSignature className="mr-1.5 h-3.5 w-3.5" />

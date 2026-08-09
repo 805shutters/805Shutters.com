@@ -931,17 +931,19 @@ export function CrmApp({
   }
 
   function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
+    if (tab === "contract") {
+      openQuoteContract(quoteId);
+      return;
+    }
+
     const quote = quotes.find((item) => item.id === quoteId);
 
     // Historical CRM quotes remain in the original quote system. V2 is only
     // used for quotes created in V2; opening an old quote must never import,
     // convert, reprice, or replace its saved configuration.
     if (quote) {
-      if (tab === "contract") void openQuoteContract(quoteId);
-      else {
-        setBuilderVersion("current");
-        setBuilderQuoteId(quoteId);
-      }
+      setBuilderVersion("current");
+      setBuilderQuoteId(quoteId);
       return;
     }
 
@@ -2089,22 +2091,8 @@ export function CrmApp({
     }
   }
 
-  async function openQuoteContract(quoteId: string) {
-    if (!session) return;
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      const result = await crmFetch<{ url: string }>(session, `/api/crm/quotes/${quoteId}/share`, {
-        method: "POST"
-      });
-      window.open(result.url, "_blank", "noopener,noreferrer");
-      await refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Contract link could not be opened.");
-    } finally {
-      setBusy(false);
-    }
+  function openQuoteContract(quoteId: string) {
+    window.open(`/crm/quote/${quoteId}/contract-preview`, "_blank", "noopener,noreferrer");
   }
 
   async function sendCustomerFilePaymentLink(quote: CrmQuote, channel: PaymentLinkChannel) {
@@ -4759,16 +4747,14 @@ function customerContractPageForEntry(entry: DrillEntry, quote?: CrmQuote): Cust
     entry.documents?.find(
       (document) => document.kind === "Contract copy" && Boolean(document.url) && !String(document.url).startsWith("/crm/quote/")
     ) || null;
-  const url = quote?.share_token ? `/quote/${quote.share_token}` : contractDocument?.url || null;
-
-  if (!url) return null;
+  if (!quote && !contractDocument?.url) return null;
 
   return {
     target: "contract",
-    label: "Customer Contract",
+    label: quote?.signed_at || quote?.share_token ? "Customer Contract" : "Quote Document",
     detail: contractDocument?.title || quote?.quote_number || quote?.quote_label || undefined,
     quoteId: quote?.id || null,
-    url
+    url: contractDocument?.url || null
   };
 }
 
@@ -4787,7 +4773,7 @@ function futureContractPagesForEntry(entry: DrillEntry, quotes: CrmQuote[]): Cus
   return quotes
     .filter((quote) => futureQuoteIds.has(quote.id))
     .map((quote) => ({
-      target: "quotes" as const,
+      target: "contract" as const,
       label: "Future Contract",
       quoteId: quote.id,
       detail: quote.quote_number || quote.quote_label || undefined
@@ -4806,7 +4792,7 @@ function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], even
     if (customerContractPage) pages.push(customerContractPage);
     pages.push({
       target: "quotes",
-      label: customerContractPage ? "Quote Workspace" : entry.file && entry.file.quotes.length > 1 ? `Contracts (${entry.file.quotes.length})` : "Contract",
+      label: "Edit Quote",
       quoteId: quote.id,
       detail: quote.quote_number || quote.quote_label || undefined
     });

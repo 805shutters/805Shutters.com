@@ -23,7 +23,7 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null }) {
+export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null; previewOnly?: boolean }) {
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
@@ -34,7 +34,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
     depositDue: quote.depositDue,
     balanceDue: quote.balanceDue,
   };
-  const allowSelection = !quote.signed && quote.lines.length > 1;
+  const allowSelection = !previewOnly && !quote.signed && quote.lines.length > 1;
   const [mode, setMode] = useState<"all" | "some">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
   const [live, setLive] = useState<LiveMoney>(fullMoney);
@@ -45,6 +45,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const reqId = useRef(0);
 
   useEffect(() => {
+    if (previewOnly) return;
     if (mode === "all") {
       setLive(fullMoney);
       return;
@@ -79,7 +80,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
     return () => clearTimeout(handle);
     // fullMoney is derived from `quote` (stable per render of this quote)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, selected, quote.token]);
+  }, [mode, previewOnly, selected, quote.token]);
 
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
@@ -140,7 +141,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </div>
       ) : null}
 
-      {!quote.signed && quote.allPriced ? (
+      {!previewOnly && !quote.signed && quote.allPriced ? (
         <div className="no-print">
           {selectionEmpty ? <p style={selectionNotice}>Select at least one item below to review pricing and sign this contract.</p> : (
             <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal}
@@ -148,7 +149,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
           )}
         </div>
       ) : null}
-      {!quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
+      {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
 
       <section aria-labelledby="contract-pricing-heading" className={styles.pricingSection}>
         <div>
@@ -252,7 +253,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
 
       </section>
 
-      {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
+      {!previewOnly && paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
         <div id="payment" className="no-print" style={payBox}>
           <strong>Ways to pay</strong>
           {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit: {money(live.depositDue)}</div> : null}
@@ -353,7 +354,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </p>
       </div>
 
-      {!quote.signed && quote.allPriced ? (
+      {!previewOnly && !quote.signed && quote.allPriced ? (
         <div className="no-print">
           {selectionEmpty ? (
             <p style={{ marginTop: 20, color: "#4d4d49" }}>Please select at least one item to purchase.</p>

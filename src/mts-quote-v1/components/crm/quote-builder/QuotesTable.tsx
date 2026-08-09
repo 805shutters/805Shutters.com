@@ -147,10 +147,10 @@ export function QuotesTable({
                           e.stopPropagation();
                           onOpen(quote);
                         }}
-                        title="Open quote"
+                        title="View customer document"
                       >
                         <ExternalLink className="mr-1.5 h-4 w-4" />
-                        Open
+                        View
                       </Button>
                     ) : (
                       <>

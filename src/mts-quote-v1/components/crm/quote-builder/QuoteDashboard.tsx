@@ -536,7 +536,7 @@ export function QuoteDashboard({
   };
 
   const handleOpenQuote = (quote: QuoteTableRow) => {
-    openQuoteRow(quote, "builder");
+    openQuoteRow(quote, "contract");
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {

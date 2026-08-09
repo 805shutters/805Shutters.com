@@ -92,4 +92,20 @@ describe("QuoteSelection", () => {
     expect(html.indexOf("Contract pricing")).toBeLessThan(html.indexOf("Complete contract"));
     expect(html.indexOf("Complete contract")).toBeLessThan(html.indexOf("Ready to proceed?"));
   });
+
+  it("renders the complete customer document without action controls in an internal preview", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, {
+      quote: quoteWithLegacyDetails(false),
+      previewOnly: true,
+      paymentOptions: { venmoHandle: "805Shutters", venmoQrSvg: "<svg></svg>", zelleDestination: "805-806-9344" },
+    }));
+
+    expect(html).toContain("Contract pricing");
+    expect(html).toContain("Complete contract");
+    expect(html).toContain("Roller Shades");
+    expect(html).not.toContain("Purchase:");
+    expect(html).not.toContain("Sign &amp; approve");
+    expect(html).not.toContain("Pay deposit with card");
+    expect(html).not.toContain("Ways to pay");
+  });
 });

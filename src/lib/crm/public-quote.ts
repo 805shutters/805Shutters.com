@@ -759,7 +759,7 @@ export async function loadPublicQuoteByToken(
   return projectPublicQuote(supabase, quote, token);
 }
 
-async function loadPublicQuoteById(
+export async function loadPublicQuoteById(
   supabase: CrmSupabaseClient,
   quoteId: string,
 ): Promise<PublicQuote | null> {
