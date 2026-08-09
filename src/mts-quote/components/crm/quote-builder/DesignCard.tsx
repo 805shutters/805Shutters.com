@@ -218,6 +218,7 @@ import {
 } from "@mts/lib/productColorCatalog";
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+import { historicalUnitPrice } from "@/lib/crm/historical-quote-price-lock";
 import {
   getRollerV2UiFacets,
   pruneRollerV2UiSelection,
@@ -474,6 +475,7 @@ interface DesignCardProps {
   onUpdateRoomName?: (roomName: string) => void;
   onUpdateQuantity?: (quantity: number) => void;
   sideBySideLineOptions?: readonly SideBySideLineOption[];
+  historicalDesignUnitPrices?: Readonly<Record<string, number>>;
 }
 
 // --- Types ---
@@ -4473,6 +4475,7 @@ export function DesignCard({
   onUpdateRoomName,
   onUpdateQuantity,
   sideBySideLineOptions = [],
+  historicalDesignUnitPrices,
 }: DesignCardProps) {
   const {
     authoritativeV2: runtimeAuthoritativeV2,
@@ -4497,7 +4500,11 @@ export function DesignCard({
   const [showLineNote, setShowLineNote] = useState(false);
   const [retailInput, setRetailInput] = useState("");
   const currentDesign = designs.find((d) => d.variant === activeVariant);
-  const displayedUnitPrice = Number(currentDesign?.unit_price || 0);
+  const displayedPrice = historicalUnitPrice(
+    currentDesign?.unit_price,
+    currentDesign ? historicalDesignUnitPrices?.[currentDesign.id] : null,
+  );
+  const displayedUnitPrice = displayedPrice.amount;
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
   const manufacturerOptionsRoute = authoritativeV2
     ? resolveManufacturerOptionsUiRoute(
@@ -4510,11 +4517,13 @@ export function DesignCard({
         productId: null,
         manufacturer: null,
       };
-  const displayedLineTotal = calculateLineItemDesignTotal(
-    lineItem,
-    currentDesign ? [currentDesign] : [],
-    { mode: authoritativeV2 ? "authoritative_v2" : "legacy" },
-  );
+  const displayedLineTotal = displayedPrice.fromHistoricalLock
+    ? displayedUnitPrice * quantity
+    : calculateLineItemDesignTotal(
+        lineItem,
+        currentDesign ? [currentDesign] : [],
+        { mode: authoritativeV2 ? "authoritative_v2" : "legacy" },
+      );
   const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const manufacturerStamp = resolveManufacturerStamp(currentDesign);
   const authoritativePriceError =
@@ -5499,7 +5508,7 @@ export function DesignCard({
                 </span>
                 <div className="text-[11px] text-muted-foreground">
                   {quantity > 1 ? `${formatMoney(displayedUnitPrice)} ea · ` : ""}
-                  excl. tax
+                  {displayedPrice.fromHistoricalLock ? "original quote · " : ""}excl. tax
                 </div>
               </div>
             </div>

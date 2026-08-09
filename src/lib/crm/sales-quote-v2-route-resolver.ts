@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
+import {
+  buildHistoricalQuotePriceLock,
+  type HistoricalQuotePriceLock,
+} from "@/lib/crm/historical-quote-price-lock";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -28,6 +32,11 @@ type StoredSalesDesignRouteRow = {
   line_item_id: string;
 };
 
+type StoredCrmDesignPriceRow = {
+  id: string;
+  unit_price?: number | string | null;
+};
+
 export type SalesQuoteV2RouteResolution =
   | {
       status: "ready";
@@ -38,6 +47,7 @@ export type SalesQuoteV2RouteResolution =
       quoteV2Backend: boolean;
       quoteV2Status: string | null;
       quoteStatus: string | null;
+      historicalPriceLock: HistoricalQuotePriceLock | null;
     }
   | {
       status: "legacy_import_required" | "crm_native_unsupported" | "malformed";
@@ -122,6 +132,7 @@ export function classifySalesQuoteV2Route(input: {
   salesQuote: StoredSalesQuoteRouteRow | null;
   lines: StoredSalesLineRouteRow[];
   designs: StoredSalesDesignRouteRow[];
+  historicalPriceLock?: HistoricalQuotePriceLock | null;
 }): SalesQuoteV2RouteResolution {
   const candidate = salesQuoteV2RouteCandidate(input.crmQuote);
   if (candidate.status !== "candidate") {
@@ -188,7 +199,41 @@ export function classifySalesQuoteV2Route(input: {
     quoteV2Backend: input.salesQuote.quote_v2_backend === true,
     quoteV2Status: text(input.salesQuote.quote_v2_status),
     quoteStatus: text(input.salesQuote.status),
+    historicalPriceLock:
+      input.historicalPriceLock ??
+      buildHistoricalQuotePriceLock(input.crmQuote.quote_total, []),
   };
+}
+
+async function loadHistoricalPriceLock(
+  supabase: SupabaseClient,
+  crmQuoteId: string,
+  total: unknown,
+): Promise<HistoricalQuotePriceLock | null> {
+  const { data: sourceLines, error: sourceLinesError } = await supabase
+    .from("crm_quote_line_items")
+    .select("id")
+    .eq("quote_id", crmQuoteId);
+  if (sourceLinesError) {
+    throw new CrmAuthError(502, "The original quote price lock could not be loaded.");
+  }
+
+  const sourceLineIds = (sourceLines ?? []).flatMap((line) =>
+    typeof line.id === "string" && line.id ? [line.id] : [],
+  );
+  let sourceDesigns: StoredCrmDesignPriceRow[] = [];
+  if (sourceLineIds.length) {
+    const { data, error } = await supabase
+      .from("crm_quote_designs")
+      .select("id,unit_price")
+      .in("line_item_id", sourceLineIds);
+    if (error) {
+      throw new CrmAuthError(502, "The original quote design prices could not be loaded.");
+    }
+    sourceDesigns = (data ?? []) as unknown as StoredCrmDesignPriceRow[];
+  }
+
+  return buildHistoricalQuotePriceLock(total, sourceDesigns);
 }
 
 export async function resolveSalesQuoteV2Route(
@@ -255,10 +300,17 @@ export async function resolveSalesQuoteV2Route(
     designs = (designRows ?? []) as unknown as StoredSalesDesignRouteRow[];
   }
 
+  const historicalPriceLock = await loadHistoricalPriceLock(
+    supabase,
+    crmQuoteId,
+    (crmQuote as unknown as StoredCrmQuoteRouteRow).quote_total,
+  );
+
   return classifySalesQuoteV2Route({
     crmQuote: crmQuote as unknown as StoredCrmQuoteRouteRow,
     salesQuote: salesQuote as unknown as StoredSalesQuoteRouteRow,
     lines: lineRows,
     designs,
+    historicalPriceLock,
   });
 }

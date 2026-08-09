@@ -94,6 +94,10 @@ import {
   type SalesQuoteLineItem,
   type SalesQuoteDesign,
 } from "@mts/types/quote";
+import {
+  historicalUnitPrice,
+  type HistoricalQuotePriceLock,
+} from "@/lib/crm/historical-quote-price-lock";
 
 const STACKED_LINE_ITEM_META_KEY = "__stackedLineItemIds";
 
@@ -443,21 +447,29 @@ function StackedLineItemRow({
   lineNumberLabel,
   designs,
   authoritativeV2,
+  historicalDesignUnitPrices,
   onUnstack,
 }: {
   item: SalesQuoteLineItem;
   lineNumberLabel: string;
   designs: SalesQuoteDesign[];
   authoritativeV2: boolean;
+  historicalDesignUnitPrices?: Readonly<Record<string, number>>;
   onUnstack: () => void;
 }) {
   const details = buildStackedDesignSummary(designs);
   const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
   const selectedDesign = resolveSelectedQuoteDesign(designs);
   const manufacturerStamp = resolveManufacturerStamp(selectedDesign);
-  const total = calculateLineItemDesignTotal(item, designs, {
-    mode: authoritativeV2 ? "authoritative_v2" : "legacy",
-  });
+  const selectedPrice = historicalUnitPrice(
+    selectedDesign?.unit_price,
+    selectedDesign ? historicalDesignUnitPrices?.[selectedDesign.id] : null,
+  );
+  const total = selectedPrice.fromHistoricalLock
+    ? selectedPrice.amount * item.quantity
+    : calculateLineItemDesignTotal(item, designs, {
+        mode: authoritativeV2 ? "authoritative_v2" : "legacy",
+      });
   const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
 
   return (
@@ -510,7 +522,11 @@ function StackedLineItemRow({
   );
 }
 
-export function QuoteBuilder() {
+export function QuoteBuilder({
+  historicalPriceLock,
+}: {
+  historicalPriceLock?: HistoricalQuotePriceLock | null;
+} = {}) {
   const {
     database: supabase,
     isolated,
@@ -678,6 +694,10 @@ export function QuoteBuilder() {
   // runtime provider flag.
   const serverOwnedV2 = runtimeServerOwnedV2 || quote?.quote_v2_backend === true;
   const authoritativeV2 = runtimeAuthoritativeV2 || quote?.quote_v2_backend === true;
+  const useHistoricalPriceLock =
+    authoritativeV2 &&
+    quote?.quote_v2_status === "stale" &&
+    Boolean(historicalPriceLock && historicalPriceLock.total > 0);
 
   useEffect(() => {
     if (!quote) return;
@@ -2313,6 +2333,11 @@ export function QuoteBuilder() {
                   lineNumberLabel={lineNumberRanges.get(item.id)?.label ?? "#0"}
                   designs={designsByLineItemId.get(item.id) ?? []}
                   authoritativeV2={authoritativeV2}
+                  historicalDesignUnitPrices={
+                    useHistoricalPriceLock
+                      ? historicalPriceLock?.designUnitPrices
+                      : undefined
+                  }
                   onUnstack={() => handleUnstackLineItem(item.id)}
                 />
               ))}
@@ -2408,6 +2433,11 @@ export function QuoteBuilder() {
                   lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
                   authoritativeV2={authoritativeV2}
+                  historicalDesignUnitPrices={
+                    useHistoricalPriceLock
+                      ? historicalPriceLock?.designUnitPrices
+                      : undefined
+                  }
                   sideBySideLineOptions={lineItems.flatMap((candidate) => {
                     if (
                       candidate.id === item.id ||
@@ -2515,6 +2545,8 @@ export function QuoteBuilder() {
           storedTotal={quote.total_amount}
           preferStoredTotal={preferStoredTotal}
           authoritativeV2={authoritativeV2}
+          historicalTotal={historicalPriceLock?.total}
+          useHistoricalTotal={useHistoricalPriceLock}
         />
       )}
     </div>

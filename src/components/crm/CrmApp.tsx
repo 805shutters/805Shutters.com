@@ -113,6 +113,7 @@ type QuoteWorkspaceOpenRequest = {
   quoteId: string;
   tab: QuoteWorkspaceOpenTab;
   requestId: number;
+  historicalPriceLock: Extract<SalesQuoteV2RouteResolution, { status: "ready" }>["historicalPriceLock"];
 };
 type PartnerPaymentRequest = {
   person: CrmPaymentPerson;
@@ -968,7 +969,8 @@ export function CrmApp({
       setQuoteWorkspaceOpenRequest((request) => ({
         quoteId: route.salesQuoteId,
         tab,
-        requestId: (request?.requestId || 0) + 1
+        requestId: (request?.requestId || 0) + 1,
+        historicalPriceLock: route.historicalPriceLock
       }));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The quote builder could not be opened.");

@@ -87,6 +87,26 @@ describe("server-side historical quote V2 route resolver", () => {
       quoteV2Backend: false,
       quoteV2Status: "legacy",
       quoteStatus: "draft",
+      historicalPriceLock: null,
+    });
+  });
+
+  it("carries the original total as a display-only lock for a converted quote", () => {
+    expect(
+      classifySalesQuoteV2Route({
+        crmQuote: { id: CRM_ID, meta: { sales_quote_id: SALES_ID }, quote_total: 3499.1 },
+        salesQuote: {
+          id: SALES_ID,
+          quote_v2_backend: true,
+          quote_v2_status: "stale",
+          status: "draft",
+        },
+        lines: [{ id: "line-a", quote_id: SALES_ID, selected_design_id: "design-a" }],
+        designs: [{ id: "design-a", line_item_id: "line-a" }],
+      }),
+    ).toMatchObject({
+      status: "ready",
+      historicalPriceLock: { total: 3499.1, designUnitPrices: {} },
     });
   });
 

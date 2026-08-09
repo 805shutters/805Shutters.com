@@ -24,6 +24,7 @@ import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
 import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { HistoricalQuotePriceLock } from "@/lib/crm/historical-quote-price-lock";
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
@@ -46,6 +47,7 @@ export type QuoteWorkspaceOpenRequest = {
   quoteId: string;
   tab: QuoteWorkspaceOpenTab;
   requestId: number;
+  historicalPriceLock: HistoricalQuotePriceLock | null;
 };
 
 export function QuoteWorkspace({
@@ -142,7 +144,15 @@ export function QuoteWorkspace({
                 onOpenCrmQuote={onOpenCrmQuote}
               />
             )}
-            {effectiveTab === "builder" && <QuoteBuilder />}
+            {effectiveTab === "builder" && (
+              <QuoteBuilder
+                historicalPriceLock={
+                  openRequest?.quoteId === activeQuoteId
+                    ? openRequest.historicalPriceLock
+                    : null
+                }
+              />
+            )}
             {effectiveTab === "pricing" && <PricingGrids />}
             {effectiveTab === "contract" && <QuoteContract />}
           </div>

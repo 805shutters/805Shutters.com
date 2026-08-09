@@ -32,7 +32,8 @@ describe("standard quote-system routing", () => {
   });
 
   it("uses the exact saved-state, empty-state, and contract-total UI from the supplied target", () => {
-    expect(quoteWorkspaceSource).toContain("<QuoteBuilder />");
+    expect(quoteWorkspaceSource).toContain("<QuoteBuilder");
+    expect(quoteWorkspaceSource).toContain("historicalPriceLock=");
     expect(builderSource).toContain('"Quote saved"');
     expect(builderSource).toContain("Select a manufacturer, exact product, and room to add a line item.");
     expect(builderSource).toContain("<FloatingQuoteTotalBadge");
