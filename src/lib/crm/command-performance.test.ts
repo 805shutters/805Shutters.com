@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCommandPerformanceMetrics } from "@/lib/crm/command-performance";
+import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/command-performance";
 import type { CrmBookkeepingRow, CrmCustomerFile, CrmJob } from "@/lib/crm/types";
 
 function job(id: string, created_at: string, status: CrmJob["status"]): CrmJob {
@@ -17,9 +17,10 @@ function row(id: string, soldDate: string | null, total: number): CrmBookkeeping
 describe("buildCommandPerformanceMetrics", () => {
   const now = new Date(2026, 7, 7, 12);
 
-  it("calculates close rates from every customer opportunity in each cohort", () => {
+  it("calculates close rates from explicit customer outcomes and excludes open work", () => {
     const metrics = buildCommandPerformanceMetrics([
       appointmentJob("won-recent", "2026-08-06T10:00:00-07:00", "sold"),
+      appointmentJob("lost-recent", "2026-08-05T10:00:00-07:00", "lost"),
       appointmentJob("not-sold-recent", "2026-08-01T10:00:00-07:00", "quoted"),
       appointmentJob("future-open", "2026-08-08T10:00:00-07:00", "quoted"),
       appointmentJob("won-45", "2026-06-25T10:00:00-07:00", "closed"),
@@ -32,9 +33,9 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.closeRate60Days).toBe(67);
     expect(metrics.closeRate60DaysWon).toBe(2);
     expect(metrics.closeRate60DaysTotal).toBe(3);
-    expect(metrics.currentCrmSalesRate).toBe(50);
+    expect(metrics.currentCrmSalesRate).toBe(67);
     expect(metrics.currentCrmSalesWon).toBe(2);
-    expect(metrics.currentCrmSalesTotal).toBe(4);
+    expect(metrics.currentCrmSalesTotal).toBe(3);
   });
 
   it("counts a customer once and treats any sold outcome as the customer outcome", () => {
@@ -66,14 +67,15 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.currentCrmSalesRate).toBe(50);
   });
 
-  it("uses only customer opportunities inside each window and any sold outcome within that window", () => {
+  it("uses all customer records for the outcome after cohorting the customer", () => {
     const recentLost = { ...appointmentJob("recent", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Same Customer", email: "same@example.com" };
     const oldSold = { ...appointmentJob("old", "2026-01-01T10:00:00-08:00", "sold"), customer_name: "Same Customer", email: "same@example.com" };
+    const otherLost = appointmentJob("other-lost", "2026-08-02T10:00:00-07:00", "lost");
 
-    const metrics = buildCommandPerformanceMetrics([recentLost, oldSold], [], now);
+    const metrics = buildCommandPerformanceMetrics([recentLost, oldSold, otherLost], [], now);
 
-    expect(metrics.closeRate30Days).toBe(0);
-    expect(metrics.currentCrmSalesRate).toBe(100);
+    expect(metrics.closeRate30Days).toBe(50);
+    expect(metrics.currentCrmSalesRate).toBe(50);
   });
 
   it("uses appointment dates instead of migration-time created dates", () => {
@@ -82,9 +84,9 @@ describe("buildCommandPerformanceMetrics", () => {
       appointmentJob("recent-not-sold", "2026-08-01T10:00:00-07:00", "quoted")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBe(0);
-    expect(metrics.closeRate60Days).toBe(0);
-    expect(metrics.currentCrmSalesRate).toBe(50);
+    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate60Days).toBeNull();
+    expect(metrics.currentCrmSalesRate).toBeNull();
   });
 
   it("falls back to created time for opportunities without appointments", () => {
@@ -93,7 +95,7 @@ describe("buildCommandPerformanceMetrics", () => {
       job("open-without-appointment", "2026-08-01T10:00:00-07:00", "quoted")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBe(50);
+    expect(metrics.closeRate30Days).toBeNull();
   });
 
   it("excludes future-dated records from current windows", () => {
@@ -104,6 +106,29 @@ describe("buildCommandPerformanceMetrics", () => {
 
     expect(metrics.closeRate30Days).toBe(0);
     expect(metrics.currentCrmSalesRate).toBe(0);
+  });
+
+  it("does not publish 100% when authoritative loss history is absent", () => {
+    const metrics = buildCommandPerformanceMetrics([
+      job("won", "2026-08-01T10:00:00-07:00", "sold"),
+      job("open", "2026-08-02T10:00:00-07:00", "quoted")
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate30DaysWon).toBe(1);
+    expect(metrics.closeRate30DaysTotal).toBe(1);
+    expect(formatCloseRate(metrics.closeRate30Days)).toBe("Unavailable");
+  });
+
+  it("excludes deleted opportunities from the cohort", () => {
+    const deletedLost = { ...job("deleted-lost", "2026-08-01T10:00:00-07:00", "lost"), meta: { deleted_at: "2026-08-02T10:00:00-07:00" } };
+    const metrics = buildCommandPerformanceMetrics([
+      job("won", "2026-08-01T10:00:00-07:00", "sold"),
+      deletedLost
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate30DaysTotal).toBe(1);
   });
 
   it("uses sold-date ledger revenue and annualizes current-year actuals", () => {

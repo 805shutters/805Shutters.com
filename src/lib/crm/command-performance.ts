@@ -3,13 +3,13 @@ import type { CrmBookkeepingRow, CrmCustomerFile, CrmJob } from "@/lib/crm/types
 const wonStatuses = new Set<CrmJob["status"]>(["sold", "ordered", "installed", "invoiced", "closed"]);
 
 export type CommandPerformanceMetrics = {
-  closeRate30Days: number;
+  closeRate30Days: number | null;
   closeRate30DaysWon: number;
   closeRate30DaysTotal: number;
-  closeRate60Days: number;
+  closeRate60Days: number | null;
   closeRate60DaysWon: number;
   closeRate60DaysTotal: number;
-  currentCrmSalesRate: number;
+  currentCrmSalesRate: number | null;
   currentCrmSalesWon: number;
   currentCrmSalesTotal: number;
   revenue30Days: number;
@@ -71,28 +71,55 @@ function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
 
 export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
   const identityKeys = customerIdentityKeys(jobs, files);
-  const outcomes = new Map<string, boolean>();
+  const outcomes = new Map<string, { inCohort: boolean; won: boolean; lost: boolean }>();
   for (const job of jobs) {
-    // Sales conversion is based on all customer opportunities in the cohort.
+    if (job.meta?.deleted_at) continue;
+
+    const key = identityKeys.get(job.id) || `job:${job.id}`;
+    const outcome = outcomes.get(key) || { inCohort: false, won: false, lost: false };
+
+    // Cohort membership is based on the customer's opportunity date.
     // Appointment time is the durable lead date; imported rows without one
     // fall back to created_at. Future appointments never count yet.
     const appointmentAt = validDate(job.appointment_start);
     const opportunityAt = appointmentAt || validDate(job.created_at);
-    if (!opportunityAt || (since && opportunityAt < since) || (through && opportunityAt > through)) continue;
+    if (opportunityAt && (!since || opportunityAt >= since) && (!through || opportunityAt <= through)) {
+      outcome.inCohort = true;
+    }
 
-    const key = identityKeys.get(job.id) || `job:${job.id}`;
-    outcomes.set(key, Boolean(outcomes.get(key)) || wonStatuses.has(job.status));
+    // Determine the customer's outcome from every non-future record, not only
+    // the row that put them in the cohort. This prevents a duplicate or an open
+    // quote version from turning a customer who later bought into a loss.
+    if (!opportunityAt || !through || opportunityAt <= through) {
+      if (wonStatuses.has(job.status)) outcome.won = true;
+      if (job.status === "lost") outcome.lost = true;
+    }
+
+    outcomes.set(key, outcome);
   }
-  const won = [...outcomes.values()].filter(Boolean).length;
+
+  const cohort = [...outcomes.values()].filter((outcome) => outcome.inCohort);
+  const won = cohort.filter((outcome) => outcome.won).length;
+  const lost = cohort.filter((outcome) => !outcome.won && outcome.lost).length;
+  const total = won + lost;
   return {
     won,
-    total: outcomes.size,
-    rate: outcomes.size ? Math.round((won / outcomes.size) * 100) : 0
+    lost,
+    open: cohort.length - total,
+    total,
+    // A 100% rate with no recorded losses is not evidence of a complete loss
+    // history. Keep the metric unavailable until the cohort contains an
+    // authoritative explicit loss instead of treating open work as lost.
+    rate: lost > 0 ? Math.round((won / total) * 100) : null
   };
 }
 
 export function customerCloseRate(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
   return customerSalesSummary(jobs, files, since, through).rate;
+}
+
+export function formatCloseRate(rate: number | null) {
+  return rate === null ? "Unavailable" : `${rate}%`;
 }
 
 function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {

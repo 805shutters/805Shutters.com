@@ -59,7 +59,7 @@ import {
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
-import { buildCommandPerformanceMetrics } from "@/lib/crm/command-performance";
+import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/command-performance";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
@@ -2942,17 +2942,17 @@ export function CrmApp({
         <section className="crm-metrics" aria-label="CRM summary">
           <Metric
             label="30-Day Close Rate"
-            value={`${commandPerformance.closeRate30Days}%`}
+            value={formatCloseRate(commandPerformance.closeRate30Days)}
             variant="performance"
           />
           <Metric
             label="60-Day Close Rate"
-            value={`${commandPerformance.closeRate60Days}%`}
+            value={formatCloseRate(commandPerformance.closeRate60Days)}
             variant="performance"
           />
           <Metric
             label="Current CRM Close Rate"
-            value={`${commandPerformance.currentCrmSalesRate}%`}
+            value={formatCloseRate(commandPerformance.currentCrmSalesRate)}
             variant="performance"
           />
           <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
