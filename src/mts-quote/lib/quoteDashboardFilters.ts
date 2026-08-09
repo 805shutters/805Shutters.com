@@ -25,6 +25,9 @@ export type QuoteStatsSource = {
   installed_at?: string | null;
   archived_at?: string | null;
   customer_signature?: string | null;
+  job_status?: string | null;
+  bookkeeping_status?: string | null;
+  bookkeeping_paid_total?: number | null;
 };
 
 export function excludeDeletedSalesQuotes<T extends { deleted_at?: string | null }>(
@@ -47,6 +50,9 @@ export function dashboardTodayDate(): string {
 
 export function getQuoteStatsStatus(quote: QuoteStatsSource): QuoteStatus {
   const rawStatus = `${quote.live_status || quote.status || ""}`.toLowerCase();
+  const jobStatus = `${quote.job_status || ""}`.toLowerCase();
+  const bookkeepingStatus = `${quote.bookkeeping_status || ""}`.toLowerCase();
+  const downstreamStatuses = new Set([jobStatus, bookkeepingStatus].filter(Boolean));
 
   if (rawStatus === "archived" || rawStatus === "lost" || quote.archived_at) return "archived";
   if (
@@ -54,15 +60,24 @@ export function getQuoteStatsStatus(quote: QuoteStatsSource): QuoteStatus {
     rawStatus === "invoiced" ||
     rawStatus === "paid" ||
     rawStatus === "closed" ||
+    downstreamStatuses.has("installed") ||
+    downstreamStatuses.has("invoiced") ||
+    downstreamStatuses.has("paid") ||
+    downstreamStatuses.has("closed") ||
     quote.installed_at
   ) {
     return "installed";
   }
-  if (rawStatus === "received" || quote.received_at) return "received";
-  if (rawStatus === "ordered" || quote.ordered_at) return "ordered";
+  if (rawStatus === "received" || downstreamStatuses.has("received") || quote.received_at) return "received";
+  if (rawStatus === "ordered" || downstreamStatuses.has("ordered") || quote.ordered_at) return "ordered";
   if (
     rawStatus === "sold" ||
     rawStatus === "approved" ||
+    downstreamStatuses.has("sold") ||
+    downstreamStatuses.has("approved") ||
+    downstreamStatuses.has("manual") ||
+    downstreamStatuses.has("legacy") ||
+    Number(quote.bookkeeping_paid_total || 0) > 0 ||
     quote.signed_at ||
     quote.sold_at ||
     quote.approved_at ||
@@ -70,6 +85,7 @@ export function getQuoteStatsStatus(quote: QuoteStatsSource): QuoteStatus {
   ) {
     return "sold";
   }
+  if (downstreamStatuses.has("lost") || downstreamStatuses.has("archived")) return "archived";
   if (rawStatus === "sent" || quote.sent_at) return "sent";
   return "draft";
 }

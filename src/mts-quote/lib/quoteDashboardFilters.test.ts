@@ -69,6 +69,55 @@ describe("quote dashboard stats filters", () => {
     ).toBe("archived");
   });
 
+  it("uses later quote-specific job and bookkeeping lifecycle truth", () => {
+    expect(
+      getQuoteStatsStatus({
+        ...quote({ id: "ordered-job", status: "sent" }),
+        job_status: "ordered",
+        bookkeeping_status: "ordered",
+      })
+    ).toBe("ordered");
+    expect(
+      getQuoteStatsStatus({
+        ...quote({ id: "paid-sent", status: "sent" }),
+        job_status: "quoted",
+        bookkeeping_status: "sent",
+        bookkeeping_paid_total: 611.07,
+      })
+    ).toBe("sold");
+  });
+
+  it("keeps an explicitly archived quote archived despite downstream lifecycle evidence", () => {
+    expect(
+      getQuoteStatsStatus({
+        ...quote({ id: "archived-option", status: "archived" }),
+        job_status: "ordered",
+        bookkeeping_status: "ordered",
+      })
+    ).toBe("archived");
+  });
+
+  it("removes stale sent quotes from Sent and places them in their effective buckets", () => {
+    const stalePaidSent: QuoteStatsSource = {
+      ...quote({ id: "stale-paid-sent", status: "sent" }),
+      bookkeeping_status: "sent",
+      bookkeeping_paid_total: 611.07,
+    };
+    const staleOrderedSent: QuoteStatsSource = {
+      ...quote({ id: "stale-ordered-sent", status: "sent" }),
+      job_status: "ordered",
+      bookkeeping_status: "ordered",
+    };
+
+    expect(filterQuotesForStatsTile([stalePaidSent, staleOrderedSent], "sent")).toEqual([]);
+    expect(filterQuotesForStatsTile([stalePaidSent, staleOrderedSent], "sold").map((item) => item.id)).toEqual([
+      "stale-paid-sent",
+    ]);
+    expect(filterQuotesForStatsTile([stalePaidSent, staleOrderedSent], "ordered").map((item) => item.id)).toEqual([
+      "stale-ordered-sent",
+    ]);
+  });
+
   it("uses lifecycle timestamps when the stored status is stale", () => {
     expect(
       getQuoteStatsStatus(

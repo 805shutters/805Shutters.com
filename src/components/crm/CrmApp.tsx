@@ -3037,6 +3037,7 @@ export function CrmApp({
           session={session}
           jobs={jobs}
           quotes={quotes}
+          bookkeepingRows={rows}
           events={events}
           onChanged={refresh}
           onOpenCalendarDate={(date) => {

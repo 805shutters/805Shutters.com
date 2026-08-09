@@ -25,6 +25,7 @@ import {
   filterQuotesForStatsTile,
   isMissingSalesQuoteDeletedAtColumn,
 } from "@mts/lib/quoteDashboardFilters";
+import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type {
   QuoteLineItemWithDesigns,
@@ -33,7 +34,7 @@ import type {
   SalesQuoteWithItems,
 } from "@mts/types/quote";
 import type { ProductLineOrderState } from "@/lib/crm/product-line-ordering";
-import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
@@ -41,6 +42,7 @@ interface QuoteDashboardProps {
   newQuoteRequest?: number;
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
+  crmBookkeepingRows?: CrmBookkeepingRow[];
   crmCalendarEvents?: CrmCalendarEvent[];
   onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
@@ -133,6 +135,7 @@ export function QuoteDashboard({
   newQuoteRequest = 0,
   crmJobs = [],
   crmQuotes = [],
+  crmBookkeepingRows = [],
   crmCalendarEvents = [],
   onChanged,
   onOpenCrmCalendarDate,
@@ -268,6 +271,20 @@ export function QuoteDashboard({
 
   const dashboardQuotes = useMemo<QuoteTableRow[]>(() => {
     const jobsById = new Map(crmJobs.map((job) => [job.id, job]));
+    const quoteCountByJobId = new Map<string, number>();
+    for (const quote of crmQuotes) {
+      quoteCountByJobId.set(quote.job_id, (quoteCountByJobId.get(quote.job_id) || 0) + 1);
+    }
+    const bookkeepingByQuoteId = new Map<string, CrmBookkeepingRow>();
+    const bookkeepingByJobId = new Map<string, CrmBookkeepingRow[]>();
+    for (const row of crmBookkeepingRows) {
+      for (const quoteId of [row.quoteId, ...(row.quoteIdAliases || [])]) {
+        if (quoteId) bookkeepingByQuoteId.set(quoteId, row);
+      }
+      if (row.jobId) {
+        bookkeepingByJobId.set(row.jobId, [...(bookkeepingByJobId.get(row.jobId) || []), row]);
+      }
+    }
     const sourceSalesQuoteIds = new Set(
       crmQuotes
         .map(crmQuoteSourceSalesQuoteId)
@@ -277,6 +294,12 @@ export function QuoteDashboard({
     const crmRows: QuoteTableRow[] = crmQuotes.map((quote) => {
       const job = jobsById.get(quote.job_id);
       const sourceQuoteId = crmQuoteSourceSalesQuoteId(quote);
+      const jobRows = bookkeepingByJobId.get(quote.job_id) || [];
+      const bookkeepingRow =
+        bookkeepingByQuoteId.get(quote.id) ||
+        (sourceQuoteId ? bookkeepingByQuoteId.get(sourceQuoteId) : undefined) ||
+        (quoteCountByJobId.get(quote.job_id) === 1 && jobRows.length === 1 ? jobRows[0] : undefined);
+      const canUseJobLifecycle = quoteCountByJobId.get(quote.job_id) === 1;
 
       return {
         id: quote.id,
@@ -296,6 +319,9 @@ export function QuoteDashboard({
         installed_at: quote.installed_at,
         archived_at: quote.archived_at,
         customer_signature: quote.customer_signature,
+        job_status: canUseJobLifecycle ? job?.status || null : null,
+        bookkeeping_status: bookkeepingRow ? effectiveBookkeepingStatus(bookkeepingRow) : null,
+        bookkeeping_paid_total: bookkeepingRow?.paidTotal || 0,
         created_at: quote.created_at,
         updated_at: quote.updated_at,
         source: "crm",
@@ -321,7 +347,7 @@ export function QuoteDashboard({
       ).getTime();
       return bTime - aTime;
     });
-  }, [crmJobs, crmQuotes, quotes]);
+  }, [crmBookkeepingRows, crmJobs, crmQuotes, quotes]);
 
   const dashboardCalendarAppointments = useMemo<DashboardCalendarAppointment[]>(() => {
     const crmQuoteIdsByJobId = new Map(

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenRequest, QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 import { QuoteWorkspace } from "@mts/QuoteWorkspace";
 
@@ -9,6 +9,7 @@ type Props = {
   session: Session;
   jobs: CrmJob[];
   quotes: CrmQuote[];
+  bookkeepingRows?: CrmBookkeepingRow[];
   events: CrmCalendarEvent[];
   customers?: CrmCustomer[];
   openRequest?: QuoteWorkspaceOpenRequest | null;
@@ -20,6 +21,7 @@ type Props = {
 export function QuotesWorkspace({
   jobs,
   quotes,
+  bookkeepingRows = [],
   events,
   openRequest,
   onOpenCalendarDate,
@@ -30,6 +32,7 @@ export function QuotesWorkspace({
     <QuoteWorkspace
       crmJobs={jobs}
       crmQuotes={quotes}
+      crmBookkeepingRows={bookkeepingRows}
       crmCalendarEvents={events}
       onChanged={onChanged}
       openRequest={openRequest}
