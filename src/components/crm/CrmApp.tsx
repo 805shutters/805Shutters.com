@@ -26,6 +26,7 @@ import { buildKenPaymentReview, kenPaymentDisabledReason, type KenPaymentReview 
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getLeadSourceFromRecord, leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { SalesQuoteV2RouteResolution } from "@/lib/crm/sales-quote-v2-route-resolver";
 import {
   bookingSlotDurationMinutes,
   bookingSlotTimes,
@@ -930,29 +931,50 @@ export function CrmApp({
     setDrill(null);
   }
 
-  function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
+  async function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
     if (tab === "contract") {
       openQuoteContract(quoteId);
       return;
     }
 
-    const quote = quotes.find((item) => item.id === quoteId);
+    if (!session) return;
 
-    // Historical CRM quotes remain in the original quote system. V2 is only
-    // used for quotes created in V2; opening an old quote must never import,
-    // convert, reprice, or replace its saved configuration.
-    if (quote) {
-      window.location.assign(`/crm/quote/${quoteId}`);
-      return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      let route = await crmFetch<SalesQuoteV2RouteResolution>(
+        session,
+        `/api/crm/quotes/${quoteId}/v2-route`
+      );
+
+      if (route.status === "legacy_import_required" || route.status === "crm_native_unsupported") {
+        const imported = await crmFetch<{ route: SalesQuoteV2RouteResolution }>(
+          session,
+          `/api/crm/quotes/${quoteId}/v2-route`,
+          {
+            method: "POST",
+            body: JSON.stringify({ idempotencyKey: `crm-quote-builder-open:${quoteId}` })
+          }
+        );
+        route = imported.route;
+      }
+
+      if (route.status !== "ready") {
+        throw new Error("This quote cannot be opened safely in the standard quote builder.");
+      }
+
+      setBuilderQuoteId(null);
+      setActiveTab("quotes");
+      setQuoteWorkspaceOpenRequest((request) => ({
+        quoteId: route.salesQuoteId,
+        tab,
+        requestId: (request?.requestId || 0) + 1
+      }));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The quote builder could not be opened.");
+    } finally {
+      setBusy(false);
     }
-
-    setBuilderQuoteId(null);
-    setActiveTab("quotes");
-    setQuoteWorkspaceOpenRequest((request) => ({
-      quoteId,
-      tab,
-      requestId: (request?.requestId || 0) + 1
-    }));
   }
 
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {

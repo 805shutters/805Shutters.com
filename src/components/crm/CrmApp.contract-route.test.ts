@@ -13,7 +13,11 @@ describe("CRM customer contract route", () => {
 
   it("reserves the builder route for an explicitly labeled edit action", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
-    expect(source).toContain('window.location.assign(`/crm/quote/${quoteId}`)');
+    expect(source).toContain('`/api/crm/quotes/${quoteId}/v2-route`');
+    expect(source).toContain('route.status === "legacy_import_required" || route.status === "crm_native_unsupported"');
+    expect(source).toContain('idempotencyKey: `crm-quote-builder-open:${quoteId}`');
+    expect(source).toContain("quoteId: route.salesQuoteId");
+    expect(source).not.toContain('window.location.assign(`/crm/quote/${quoteId}`)');
     expect(source).toContain('label: "Edit Quote"');
   });
 

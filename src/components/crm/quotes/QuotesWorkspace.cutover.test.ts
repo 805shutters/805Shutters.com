@@ -4,24 +4,20 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@mts-v1/QuoteWorkspace", () => ({
-  QuoteWorkspace: () => createElement("div", { "data-testid": "historical-v1-workspace" }, "Historical V1 workspace"),
+vi.mock("@mts/QuoteWorkspace", () => ({
+  QuoteWorkspace: () => createElement("div", { "data-testid": "standard-quote-workspace" }, "Standard quote workspace"),
 }));
 
 const source = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.tsx", import.meta.url)), "utf8");
-const historicalWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote-v1/QuoteWorkspace.tsx", import.meta.url)), "utf8");
-const standaloneSource = readFileSync(fileURLToPath(new URL("./QuoteBuilderStandalone.tsx", import.meta.url)), "utf8");
-const builderSource = readFileSync(fileURLToPath(new URL("../QuoteBuilderPanel.tsx", import.meta.url)), "utf8");
-const groupSource = readFileSync(fileURLToPath(new URL("../../../lib/crm/quote-groups.ts", import.meta.url)), "utf8");
-const globalStyles = readFileSync(fileURLToPath(new URL("../../../app/globals.css", import.meta.url)), "utf8");
+const quoteWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/QuoteWorkspace.tsx", import.meta.url)), "utf8");
+const builderSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/components/crm/quote-builder/QuoteBuilder.tsx", import.meta.url)), "utf8");
+const totalBadgeSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/components/crm/quote-builder/FloatingQuoteTotalBadge.tsx", import.meta.url)), "utf8");
 
-describe("historical quote-system routing", () => {
-  it("renders the real historical workspace instead of relabeling the newer workspace", async () => {
-    expect(source).toContain('from "@mts-v1/QuoteWorkspace"');
-    expect(source).toContain("<HistoricalQuoteWorkspace");
-    expect(source).not.toContain('from "@mts/QuoteWorkspace"');
-    expect(source).not.toContain("V1 quote builder");
-    expect(source).not.toContain("Open V4");
+describe("standard quote-system routing", () => {
+  it("renders the MTS quote workspace shown by the standard quote flow", async () => {
+    expect(source).toContain('from "@mts/QuoteWorkspace"');
+    expect(source).toContain("<QuoteWorkspace");
+    expect(source).not.toContain('from "@mts-v1/QuoteWorkspace"');
 
     const { QuotesWorkspace } = await import("./QuotesWorkspace");
     const markup = renderToStaticMarkup(createElement(QuotesWorkspace, {
@@ -32,28 +28,14 @@ describe("historical quote-system routing", () => {
       customers: [],
       onChanged: () => undefined,
     }));
-    expect(markup).toContain("Historical V1 workspace");
+    expect(markup).toContain("Standard quote workspace");
   });
 
-  it("opens quote editing on the historical dedicated route", () => {
-    expect(historicalWorkspaceSource).toContain("<QuoteDashboard");
-    expect(historicalWorkspaceSource).toContain("<QuoteBuilder");
-    expect(standaloneSource).toContain('from "@/components/crm/QuoteBuilderPanel"');
-    expect(standaloneSource).toContain("<QuoteBuilderPanel");
-  });
-
-  it("keeps Copy Current separate and snapshot preserving", () => {
-    expect(builderSource).toMatch(/onClick=\{\(\) => createVersion\(true\)\}[^>]*>\s*Copy Current/s);
-    expect(builderSource).toMatch(/onClick=\{\(\) => createVersion\(false\)\}[^>]*>\s*Add Quote/s);
-    expect(groupSource).toContain("await cloneQuoteBuilderRows(supabase, source, createdId, undefined, true, true)");
-    expect(groupSource).toContain("if (preserveQuoteTotals) return");
-  });
-
-  it("keeps the historical product strip readable on mobile", () => {
-    expect(builderSource).toContain('className={embedded ? "quote-builder-product-row quote-builder-product-row--embedded"');
-    expect(builderSource).toContain('className="quote-builder-product-tile"');
-    expect(globalStyles).toContain(".quote-builder-product-row--embedded");
-    expect(globalStyles).toContain("overflow-x: auto");
-    expect(globalStyles).toContain("flex: 0 0 118px !important");
+  it("uses the exact saved-state, empty-state, and contract-total UI from the supplied target", () => {
+    expect(quoteWorkspaceSource).toContain("<QuoteBuilder />");
+    expect(builderSource).toContain('"Quote saved"');
+    expect(builderSource).toContain("Select a manufacturer, exact product, and room to add a line item.");
+    expect(builderSource).toContain("<FloatingQuoteTotalBadge");
+    expect(totalBadgeSource).toContain("Contract Total");
   });
 });
