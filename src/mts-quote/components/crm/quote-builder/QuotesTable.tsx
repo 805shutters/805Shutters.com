@@ -134,10 +134,10 @@ export function QuotesTable({
                             e.stopPropagation();
                             onOpen(quote);
                           }}
-                          title="View customer document"
+                          title="Edit quote in builder"
                         >
                           <ExternalLink className="mr-1.5 h-4 w-4" />
-                          View
+                          Edit
                         </Button>
                         <DeleteQuoteButton quote={quote} onDelete={onDelete} />
                       </>

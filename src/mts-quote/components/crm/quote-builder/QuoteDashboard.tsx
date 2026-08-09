@@ -685,18 +685,21 @@ export function QuoteDashboard({
     onError: (error) => toast.error(error.message),
   });
 
-  const openQuoteRow = (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
+  // This dashboard is the quote-building entry point. Opening any quote from
+  // it must land in the editor; contract preview remains an explicit action
+  // inside the opened builder.
+  const openQuoteRowInBuilder = (quote: QuoteTableRow) => {
     const targetId = quoteBuilderTargetId(quote);
     if (!targetId) {
-      onOpenCrmQuote?.(quote.id, tab);
+      onOpenCrmQuote?.(quote.id, "builder");
       return;
     }
     setActiveQuote(targetId);
-    setActiveTab(tab);
+    setActiveTab("builder");
   };
 
   const handleOpenQuote = (quote: QuoteTableRow) => {
-    openQuoteRow(quote, "contract");
+    openQuoteRowInBuilder(quote);
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
@@ -779,9 +782,7 @@ export function QuoteDashboard({
       {/* Contracts Section */}
       <ContractsSection
         quotes={filteredQuotes}
-        onOpenContract={(quote) => {
-          openQuoteRow(quote, "contract");
-        }}
+        onOpenContract={openQuoteRowInBuilder}
       />
 
       {/* New Quote Dialog */}

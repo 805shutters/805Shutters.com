@@ -1,0 +1,25 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const dashboardSource = readFileSync(
+  "src/mts-quote/components/crm/quote-builder/QuoteDashboard.tsx",
+  "utf8"
+);
+const tableSource = readFileSync(
+  "src/mts-quote/components/crm/quote-builder/QuotesTable.tsx",
+  "utf8"
+);
+
+describe("quote dashboard routing", () => {
+  it("opens quote-table and contract-list rows in the editable builder", () => {
+    expect(dashboardSource).toMatch(
+      /const openQuoteRowInBuilder = \(quote: QuoteTableRow\) => \{[\s\S]*?onOpenCrmQuote\?\.\(quote\.id, "builder"\);[\s\S]*?setActiveTab\("builder"\);[\s\S]*?\};/
+    );
+    expect(dashboardSource).toMatch(
+      /const handleOpenQuote = \(quote: QuoteTableRow\) => \{\s*openQuoteRowInBuilder\(quote\);\s*\};/
+    );
+    expect(dashboardSource).toContain("onOpenContract={openQuoteRowInBuilder}");
+    expect(tableSource).toContain('title="Edit quote in builder"');
+    expect(tableSource).toMatch(/<ExternalLink[\s\S]*?>\s*Edit\s*<\/Button>/);
+  });
+});
