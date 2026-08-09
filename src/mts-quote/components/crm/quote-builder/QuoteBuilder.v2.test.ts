@@ -41,6 +41,9 @@ describe("V2 quote builder load integrity", () => {
     expect(quoteBuilderSource).toContain(
       "runtimeAuthoritativeV2 || quote?.quote_v2_backend === true",
     );
+    expect(quoteBuilderSource).toContain(
+      "authoritativeV2={authoritativeV2}",
+    );
   });
 
   it("keeps A/B/C quote alternatives visible when the actions drawer is collapsed", () => {

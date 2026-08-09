@@ -2407,6 +2407,7 @@ export function QuoteBuilder() {
                   lineNumber={lineRange?.start ?? 0}
                   lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
+                  authoritativeV2={authoritativeV2}
                   sideBySideLineOptions={lineItems.flatMap((candidate) => {
                     if (
                       candidate.id === item.id ||

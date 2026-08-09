@@ -452,6 +452,7 @@ interface DesignCardProps {
   lineNumber: number;
   lineNumberLabel?: string;
   designs: SalesQuoteDesign[];
+  authoritativeV2?: boolean;
   onUpdateDesign: (
     design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
   ) => void;
@@ -4452,6 +4453,7 @@ export function DesignCard({
   lineNumber,
   lineNumberLabel,
   designs,
+  authoritativeV2: authoritativeV2Override,
   onUpdateDesign,
   onCopyAll,
   onCopySome,
@@ -4472,7 +4474,11 @@ export function DesignCard({
   onUpdateQuantity,
   sideBySideLineOptions = [],
 }: DesignCardProps) {
-  const { authoritativeV2, showLabCatalogControls } = useQuoteBuilderDatabase();
+  const {
+    authoritativeV2: runtimeAuthoritativeV2,
+    showLabCatalogControls,
+  } = useQuoteBuilderDatabase();
+  const authoritativeV2 = authoritativeV2Override ?? runtimeAuthoritativeV2;
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
     () => (isShutters ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
