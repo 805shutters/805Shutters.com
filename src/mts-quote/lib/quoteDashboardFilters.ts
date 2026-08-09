@@ -33,6 +33,14 @@ export function excludeDeletedSalesQuotes<T extends { deleted_at?: string | null
   return quotes.filter((quote) => !quote.deleted_at);
 }
 
+export function isMissingSalesQuoteDeletedAtColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const row = error as { code?: unknown; message?: unknown };
+  return row.code === "42703" &&
+    typeof row.message === "string" &&
+    row.message.includes("sales_quotes.deleted_at");
+}
+
 export function dashboardTodayDate(): string {
   return losAngelesDateString();
 }

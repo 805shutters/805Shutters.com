@@ -265,6 +265,7 @@ export async function sendSalesQuoteToCustomer(
   });
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
+  await persistSalesQuotePublicLink(supabase, salesQuoteId, result.url);
   if (sendAsIs && preparedV2) {
     await recordCrmActivity(supabase, actor, {
       entityType: "quote",
@@ -279,6 +280,37 @@ export async function sendSalesQuoteToCustomer(
     });
   }
   return result;
+}
+
+export function publicQuoteTokenFromUrl(url: string): string | null {
+  try {
+    const match = new URL(url).pathname.match(/^\/quote\/([^/]+)\/?$/);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistSalesQuotePublicLink(
+  supabase: CrmSupabaseClient,
+  salesQuoteId: string,
+  url: string,
+) {
+  const token = publicQuoteTokenFromUrl(url);
+  if (!token) throw new CrmAuthError(502, "The quote was sent, but its customer link could not be saved.");
+  const { error } = await supabase
+    .from("sales_quotes")
+    .update({ share_token: token })
+    .eq("id", salesQuoteId);
+  if (error) throw new CrmAuthError(502, "The quote was sent, but its customer link could not be saved.");
+}
+
+export async function restoreSalesQuoteMirrorForPublicLink(
+  supabase: CrmSupabaseClient,
+  salesQuoteId: string,
+): Promise<string> {
+  const quote = await loadSalesQuote(supabase, salesQuoteId);
+  return mirrorSalesQuoteGroupForCustomerSend(supabase, quote);
 }
 
 async function mirrorSalesQuoteV2ForCustomerSend(

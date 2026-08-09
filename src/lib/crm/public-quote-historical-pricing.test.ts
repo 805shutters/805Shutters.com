@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadPublicQuoteByToken } from "./public-quote";
+import {
+  historicalSalesQuoteSentWindow,
+  loadPublicQuoteByToken,
+  uniqueHistoricalSalesQuoteId,
+} from "./public-quote";
 import { loadHistoricalCrmMirrorPricing } from "./historical-sales-quote-pricing";
 
 const SALES_QUOTE_ID = "22222222-2222-4222-8222-222222222222";
@@ -244,6 +248,17 @@ function groupedLineTotals(lines: Array<{ lineItemId: string; lineTotal: number 
 }
 
 describe("existing sent CRM mirror historical read projection", () => {
+  it("only accepts one source quote in the narrow post-send repair window", () => {
+    expect(historicalSalesQuoteSentWindow("2026-08-09T21:36:18.316564+00:00")).toEqual({
+      start: "2026-08-09T21:36:18.316Z",
+      end: "2026-08-09T21:36:48.316Z",
+    });
+    expect(historicalSalesQuoteSentWindow("not-a-date")).toBeNull();
+    expect(uniqueHistoricalSalesQuoteId([{ id: SALES_QUOTE_ID }])).toBe(SALES_QUOTE_ID);
+    expect(uniqueHistoricalSalesQuoteId([])).toBeNull();
+    expect(uniqueHistoricalSalesQuoteId([{ id: SALES_QUOTE_ID }, { id: "other" }])).toBeNull();
+  });
+
   it("keeps an already emailed customer token working after a legacy sync clears the mirror token", async () => {
     const fake = fakeSupabase({
       directTokenMiss: true,

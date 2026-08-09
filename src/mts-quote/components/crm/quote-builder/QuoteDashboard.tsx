@@ -23,6 +23,7 @@ import {
   filterCalendarAppointmentsForStatsTile,
   filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
+  isMissingSalesQuoteDeletedAtColumn,
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type {
@@ -158,14 +159,21 @@ export function QuoteDashboard({
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: queryKeys.salesQuotes.byAccount(activeAccountId),
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let result = await (supabase as any)
         .from("sales_quotes")
         .select("*")
         .eq("account_id", activeAccountId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      return excludeDeletedSalesQuotes((data || []) as SalesQuote[]);
+      if (isMissingSalesQuoteDeletedAtColumn(result.error)) {
+        result = await (supabase as any)
+          .from("sales_quotes")
+          .select("*")
+          .eq("account_id", activeAccountId)
+          .order("created_at", { ascending: false });
+      }
+      if (result.error) throw result.error;
+      return excludeDeletedSalesQuotes((result.data || []) as SalesQuote[]);
     },
   });
 

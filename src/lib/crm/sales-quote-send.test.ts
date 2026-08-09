@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateSalesQuoteMirrorPricing,
+  publicQuoteTokenFromUrl,
   resolveSalesQuoteCustomerWorkflow,
   salesQuotesToMirror,
   upsertSalesQuoteMirrorRow,
@@ -9,6 +10,14 @@ import {
   loadHistoricalSalesQuoteMirrorPricing,
   projectHistoricalSalesQuoteMirrorPricing,
 } from "./historical-sales-quote-pricing";
+
+describe("publicQuoteTokenFromUrl", () => {
+  it("extracts the exact customer token from a quote URL", () => {
+    expect(publicQuoteTokenFromUrl("https://www.805shutters.com/quote/customer-token/")).toBe("customer-token");
+    expect(publicQuoteTokenFromUrl("https://www.805shutters.com/not-a-quote/customer-token")).toBeNull();
+    expect(publicQuoteTokenFromUrl("not-a-url")).toBeNull();
+  });
+});
 
 describe("resolveSalesQuoteCustomerWorkflow", () => {
   it("routes ordinary sales quotes through V1", () => {

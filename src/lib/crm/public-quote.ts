@@ -776,7 +776,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
   for (const url of sentPublicQuoteUrlCandidates(token)) {
     const { data: activity, error: activityError } = await supabase
       .from("crm_activity_events")
-      .select("entity_id")
+      .select("entity_id, created_at")
       .eq("entity_type", "quote")
       .eq("action", "send_to_customer")
       .eq("metadata->>url", url)
@@ -784,7 +784,8 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
       .limit(1)
       .maybeSingle();
     if (activityError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
-    const quoteId = (activity as { entity_id?: string | null } | null)?.entity_id;
+    const historicalSend = activity as { entity_id?: string | null; created_at?: string | null } | null;
+    const quoteId = historicalSend?.entity_id;
     if (!quoteId) continue;
 
     const { data: aliasedQuote, error: quoteError } = await supabase
@@ -794,12 +795,50 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
       .maybeSingle();
     if (quoteError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
     if (aliasedQuote) return aliasedQuote as CrmQuote;
+
+    // A legacy quote delete could remove the CRM mirror after the customer had
+    // already received its link while leaving the source sales quote intact.
+    // The source row is stamped immediately after the send audit. Only repair
+    // when that narrow window contains exactly one quote; concurrent or
+    // ambiguous sends fail closed instead of attaching a link to the wrong job.
+    const sentWindow = historicalSalesQuoteSentWindow(historicalSend?.created_at);
+    if (!sentWindow) continue;
+    const { data: sourceCandidates, error: sourceError } = await supabase
+      .from("sales_quotes")
+      .select("id")
+      .gte("sent_at", sentWindow.start)
+      .lte("sent_at", sentWindow.end)
+      .order("sent_at", { ascending: true })
+      .limit(2);
+    if (sourceError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+    const salesQuoteId = uniqueHistoricalSalesQuoteId(sourceCandidates);
+    if (!salesQuoteId) continue;
+
+    const { restoreSalesQuoteMirrorForPublicLink } = await import("@/lib/crm/sales-quote-send");
+    const restoredQuoteId = await restoreSalesQuoteMirrorForPublicLink(supabase, salesQuoteId);
+    const { data: restoredQuote, error: restoreError } = await supabase
+      .from("crm_quotes")
+      .update({ share_token: token })
+      .eq("id", restoredQuoteId)
+      .is("share_token", null)
+      .select("*")
+      .maybeSingle();
+    if (restoreError) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
+    if (restoredQuote) return restoredQuote as CrmQuote;
+
+    const { data: currentQuote, error: currentError } = await supabase
+      .from("crm_quotes")
+      .select("*")
+      .eq("id", restoredQuoteId)
+      .eq("share_token", token)
+      .maybeSingle();
+    if (currentError) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
+    if (currentQuote) return currentQuote as CrmQuote;
   }
 
-  // The original sales-quote sender stored the customer token on sales_quotes
-  // before mirroring that record into crm_quotes. If a later import cleared the
-  // mirror token and the send audit is unavailable, the source row still proves
-  // which exact mirror owns the already-delivered unguessable link.
+  // Current sales-quote sends persist the generated customer token back to the
+  // source row. This also covers historical rows repaired after their original
+  // CRM mirror was removed.
   const { data: salesQuote, error: salesQuoteError } = await supabase
     .from("sales_quotes")
     .select("id")
@@ -818,6 +857,25 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
   if (legacyMirrorError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
   if (legacyMirror) return legacyMirror as CrmQuote;
   return null;
+}
+
+export function historicalSalesQuoteSentWindow(createdAt: string | null | undefined): {
+  start: string;
+  end: string;
+} | null {
+  if (!createdAt) return null;
+  const start = new Date(createdAt);
+  if (!Number.isFinite(start.getTime())) return null;
+  return {
+    start: start.toISOString(),
+    end: new Date(start.getTime() + 30_000).toISOString(),
+  };
+}
+
+export function uniqueHistoricalSalesQuoteId(candidates: unknown): string | null {
+  if (!Array.isArray(candidates) || candidates.length !== 1) return null;
+  const id = (candidates[0] as { id?: unknown } | null)?.id;
+  return typeof id === "string" && id.trim() ? id : null;
 }
 
 export function sentPublicQuoteUrlCandidates(token: string): string[] {

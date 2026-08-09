@@ -6,6 +6,7 @@ import {
   filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
   getQuoteStatsStatus,
+  isMissingSalesQuoteDeletedAtColumn,
   type QuoteStatsSource,
 } from "./quoteDashboardFilters";
 import type { SalesQuote } from "@mts/types/quote";
@@ -32,6 +33,14 @@ describe("quote dashboard stats filters", () => {
     expect(excludeDeletedSalesQuotes([active, deleted]).map((item) => item.id)).toEqual([
       "active",
     ]);
+  });
+
+  it("recognizes production schemas that have not received the soft-delete column yet", () => {
+    expect(isMissingSalesQuoteDeletedAtColumn({
+      code: "42703",
+      message: "column sales_quotes.deleted_at does not exist",
+    })).toBe(true);
+    expect(isMissingSalesQuoteDeletedAtColumn({ code: "42501", message: "permission denied" })).toBe(false);
   });
 
   it("treats signed draft or sent quotes as sold for stats", () => {

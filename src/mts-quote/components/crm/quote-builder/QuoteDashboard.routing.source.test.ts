@@ -52,7 +52,12 @@ describe("quote dashboard routing", () => {
     )!.dashboardSource;
 
     expect(currentDashboardSource).toContain('.is("deleted_at", null)');
-    expect(currentDashboardSource).toContain("excludeDeletedSalesQuotes((data || []) as SalesQuote[])");
+    expect(currentDashboardSource).toContain(
+      "excludeDeletedSalesQuotes((result.data || []) as SalesQuote[])",
+    );
+    expect(currentDashboardSource).toContain(
+      "isMissingSalesQuoteDeletedAtColumn(result.error)",
+    );
     expect(currentDashboardSource).toContain("onChanged?.();");
     expect(quoteWorkspaceSource).toContain("onChanged={onChanged}");
     expect(crmQuotesWorkspaceSource).toContain("onChanged={onChanged}");
