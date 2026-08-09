@@ -24,12 +24,14 @@ export function QuotesWorkspace({
   openRequest,
   onOpenCalendarDate,
   onOpenCrmQuote,
+  onChanged,
 }: Props) {
   return (
     <QuoteWorkspace
       crmJobs={jobs}
       crmQuotes={quotes}
       crmCalendarEvents={events}
+      onChanged={onChanged}
       openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}
       onOpenCrmQuote={onOpenCrmQuote}

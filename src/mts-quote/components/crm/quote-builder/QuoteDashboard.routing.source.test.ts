@@ -13,6 +13,12 @@ const quoteWorkspaceVersions = ["mts-quote", "mts-quote-v1"].map((version) => ({
   ),
 }));
 
+const quoteWorkspaceSource = readFileSync("src/mts-quote/QuoteWorkspace.tsx", "utf8");
+const crmQuotesWorkspaceSource = readFileSync(
+  "src/components/crm/quotes/QuotesWorkspace.tsx",
+  "utf8"
+);
+
 describe("quote dashboard routing", () => {
   for (const { version, dashboardSource, tableSource } of quoteWorkspaceVersions) {
     it(`opens ${version} CRM rows through the standard quote editor route`, () => {
@@ -38,5 +44,17 @@ describe("quote dashboard routing", () => {
     expect(currentDashboardSource).toContain(
       ".filter((quote) => !sourceSalesQuoteIds.has(quote.id))",
     );
+  });
+
+  it("hides soft-deleted sales quotes and refreshes CRM rows after deletion", () => {
+    const currentDashboardSource = quoteWorkspaceVersions.find(
+      ({ version }) => version === "mts-quote",
+    )!.dashboardSource;
+
+    expect(currentDashboardSource).toContain('.is("deleted_at", null)');
+    expect(currentDashboardSource).toContain("excludeDeletedSalesQuotes((data || []) as SalesQuote[])");
+    expect(currentDashboardSource).toContain("onChanged?.();");
+    expect(quoteWorkspaceSource).toContain("onChanged={onChanged}");
+    expect(crmQuotesWorkspaceSource).toContain("onChanged={onChanged}");
   });
 });

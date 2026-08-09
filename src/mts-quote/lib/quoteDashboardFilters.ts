@@ -27,6 +27,12 @@ export type QuoteStatsSource = {
   customer_signature?: string | null;
 };
 
+export function excludeDeletedSalesQuotes<T extends { deleted_at?: string | null }>(
+  quotes: T[]
+): T[] {
+  return quotes.filter((quote) => !quote.deleted_at);
+}
+
 export function dashboardTodayDate(): string {
   return losAngelesDateString();
 }

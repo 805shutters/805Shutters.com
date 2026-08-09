@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dashboardTodayDate,
+  excludeDeletedSalesQuotes,
   filterCalendarAppointmentsForStatsTile,
   filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
@@ -21,6 +22,18 @@ function quote(overrides: Partial<SalesQuote>): SalesQuote {
 }
 
 describe("quote dashboard stats filters", () => {
+  it("hides soft-deleted sales quotes from the dashboard", () => {
+    const active = quote({ id: "active", deleted_at: null });
+    const deleted = quote({
+      id: "deleted",
+      deleted_at: "2026-08-09T22:00:00.000Z",
+    });
+
+    expect(excludeDeletedSalesQuotes([active, deleted]).map((item) => item.id)).toEqual([
+      "active",
+    ]);
+  });
+
   it("treats signed draft or sent quotes as sold for stats", () => {
     expect(
       getQuoteStatsStatus(

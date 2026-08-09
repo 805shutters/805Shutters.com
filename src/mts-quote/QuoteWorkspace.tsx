@@ -40,6 +40,7 @@ type QuoteWorkspaceProps = {
   openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
+  onChanged?: () => void;
 };
 
 export type QuoteWorkspaceOpenTab = "builder" | "contract";
@@ -57,6 +58,7 @@ export function QuoteWorkspace({
   openRequest,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
+  onChanged,
 }: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
@@ -140,6 +142,7 @@ export function QuoteWorkspace({
                 crmJobs={crmJobs}
                 crmQuotes={crmQuotes}
                 crmCalendarEvents={crmCalendarEvents}
+                onChanged={onChanged}
                 onOpenCrmCalendarDate={onOpenCrmCalendarDate}
                 onOpenCrmQuote={onOpenCrmQuote}
               />

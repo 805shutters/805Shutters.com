@@ -19,6 +19,7 @@ import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
+  excludeDeletedSalesQuotes,
   filterCalendarAppointmentsForStatsTile,
   filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
@@ -40,6 +41,7 @@ interface QuoteDashboardProps {
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
+  onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
@@ -131,6 +133,7 @@ export function QuoteDashboard({
   crmJobs = [],
   crmQuotes = [],
   crmCalendarEvents = [],
+  onChanged,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
@@ -159,9 +162,10 @@ export function QuoteDashboard({
         .from("sales_quotes")
         .select("*")
         .eq("account_id", activeAccountId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as SalesQuote[];
+      return excludeDeletedSalesQuotes((data || []) as SalesQuote[]);
     },
   });
 
@@ -625,6 +629,7 @@ export function QuoteDashboard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      onChanged?.();
       toast.success("Quote deleted");
     },
     onError: (error) => {
