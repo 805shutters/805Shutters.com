@@ -514,8 +514,8 @@ export function QuoteBuilder() {
   const {
     database: supabase,
     isolated,
-    authoritativeV2,
-    serverOwnedV2,
+    authoritativeV2: runtimeAuthoritativeV2,
+    serverOwnedV2: runtimeServerOwnedV2,
     preferStoredTotal,
   } = useQuoteBuilderDatabase();
   const {
@@ -671,6 +671,13 @@ export function QuoteBuilder() {
     },
     enabled: !!activeQuoteId,
   });
+
+  // Production imports advertise their protected mutation contract on the
+  // quote row itself. Detect that contract here so a server-owned V2 quote can
+  // never fall back to legacy browser writes just because its host omitted a
+  // runtime provider flag.
+  const serverOwnedV2 = runtimeServerOwnedV2 || quote?.quote_v2_backend === true;
+  const authoritativeV2 = runtimeAuthoritativeV2 || quote?.quote_v2_backend === true;
 
   useEffect(() => {
     if (!quote) return;

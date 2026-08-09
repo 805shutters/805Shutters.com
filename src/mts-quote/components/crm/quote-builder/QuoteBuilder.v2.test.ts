@@ -34,6 +34,15 @@ describe("V2 quote builder load integrity", () => {
     );
   });
 
+  it("derives the protected V2 mutation runtime from the persisted quote row", () => {
+    expect(quoteBuilderSource).toContain(
+      "runtimeServerOwnedV2 || quote?.quote_v2_backend === true",
+    );
+    expect(quoteBuilderSource).toContain(
+      "runtimeAuthoritativeV2 || quote?.quote_v2_backend === true",
+    );
+  });
+
   it("keeps A/B/C quote alternatives visible when the actions drawer is collapsed", () => {
     expect(quoteBuilderSource).toMatch(
       /quote-alternative-bar[\s\S]*<QuoteGroupTabs \/>[\s\S]*quote-command-menu/,
