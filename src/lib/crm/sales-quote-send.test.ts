@@ -84,12 +84,16 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
   const prices = [406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5];
   const sourceLines = prices.map((_, index) => ({
     id: `line-${index + 1}`,
-    quantity: index === 3 ? 2 : 1,
+    quantity: 1,
   }));
   const sourceDesigns = prices.map((unitPrice, index) => ({
     id: `design-${index + 1}`,
     line_item_id: `line-${index + 1}`,
-    unit_price: unitPrice,
+    unit_price: index === 3 ? 813.74 : unitPrice,
+  }));
+  const targetLines = sourceLines.map((line, index) => ({
+    ...line,
+    quantity: index === 3 ? 2 : line.quantity,
   }));
   const targetDesigns = new Map(
     sourceDesigns.map((design) => [
@@ -110,7 +114,7 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
       sourceQuote: { id: "crm-source", quote_total: 3499.1 },
       sourceLineItems: sourceLines,
       sourceDesigns,
-      targetLineItems: sourceLines,
+      targetLineItems: targetLines,
       targetDesignsByLineItemId: targetDesigns,
     });
 
@@ -120,12 +124,43 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
     expect(projection.designsByLineItemId.get("line-4")?.[0].unit_price).toBe(406.87);
     expect(
       Number(projection.designsByLineItemId.get("line-4")?.[0].unit_price) *
-        sourceLines[3].quantity,
+        targetLines[3].quantity,
     ).toBe(813.74);
     expect(projection.designsByLineItemId.get("line-1")?.[0].hinge_color).toBe("101_White");
     expect(projection.designsByLineItemId.get("line-1")?.[0].options_json).toEqual({
       fabric_color_code: "101_White",
     });
+  });
+
+  it("preserves same-quantity protected unit prices", () => {
+    const projection = projectHistoricalSalesQuoteMirrorPricing({
+      sourceQuote: { id: "crm-source", quote_total: 813.74 },
+      sourceLineItems: [{ id: "line", quantity: 2 }],
+      sourceDesigns: [{ id: "design", line_item_id: "line", unit_price: 406.87 }],
+      targetLineItems: [{ id: "line", quantity: 2 }],
+      targetDesignsByLineItemId: new Map([[
+        "line",
+        [{ id: "design", line_item_id: "line", unit_price: 0 }],
+      ]]),
+    });
+
+    expect(projection.designsByLineItemId.get("line")?.[0].unit_price).toBe(406.87);
+    expect(projection.total).toBe(813.74);
+  });
+
+  it("fails closed when regrouping would require a fractional-cent unit price", () => {
+    expect(() =>
+      projectHistoricalSalesQuoteMirrorPricing({
+        sourceQuote: { id: "crm-source", quote_total: 10.01 },
+        sourceLineItems: [{ id: "line", quantity: 1 }],
+        sourceDesigns: [{ id: "design", line_item_id: "line", unit_price: 10.01 }],
+        targetLineItems: [{ id: "line", quantity: 2 }],
+        targetDesignsByLineItemId: new Map([[
+          "line",
+          [{ id: "design", line_item_id: "line", unit_price: 0 }],
+        ]]),
+      }),
+    ).toThrow(/fractional-cent/i);
   });
 
   it("fails closed when a protected source line is missing or inconsistent", () => {
@@ -137,7 +172,7 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
         targetLineItems: sourceLines,
         targetDesignsByLineItemId: targetDesigns,
       }),
-    ).toThrow(/historical price mapping/i);
+    ).toThrow(/historical price line identities/i);
 
     expect(() =>
       projectHistoricalSalesQuoteMirrorPricing({
@@ -165,7 +200,7 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
           { id: "unrelated", line_item_id: "line", unit_price: 0 },
         ]]]),
       }),
-    ).toThrow(/historical price mapping/i);
+    ).toThrow(/historical price design identities/i);
   });
 });
 

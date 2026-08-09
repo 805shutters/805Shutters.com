@@ -63,6 +63,11 @@ import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import type { TechnicalMeasureDecision } from "@/lib/crm/measure-needed-state";
+import {
+  historicalUnitPrice,
+  shouldUseHistoricalQuotePriceLock,
+  type HistoricalQuotePriceLock,
+} from "@/lib/crm/historical-quote-price-lock";
 
 const paymentIcons: Record<string, typeof FileText> = {
   check: FileText,
@@ -98,6 +103,44 @@ function effectiveContractDesigns(
   };
 }
 
+export function projectHistoricalContractDesigns(input: {
+  quote: Pick<SalesQuote, "id" | "quote_v2_backend" | "quote_v2_status"> | null | undefined;
+  activeQuoteId: string | null | undefined;
+  lineItems: SalesQuoteLineItem[];
+  designs: SalesQuoteDesign[];
+  historicalPriceLock?: HistoricalQuotePriceLock | null;
+}): SalesQuoteDesign[] {
+  const { quote, activeQuoteId, lineItems, designs, historicalPriceLock } = input;
+  if (
+    !quote ||
+    quote.id !== activeQuoteId ||
+    !shouldUseHistoricalQuotePriceLock({
+      quoteV2Backend: quote.quote_v2_backend === true,
+      quoteV2Status: quote.quote_v2_status,
+      priceLock: historicalPriceLock,
+    }) ||
+    !historicalPriceLock
+  ) {
+    return designs;
+  }
+
+  const activeLineIds = new Set(
+    lineItems
+      .filter((lineItem) => lineItem.quote_id === activeQuoteId)
+      .map((lineItem) => lineItem.id),
+  );
+  return designs.map((design) => {
+    if (!design.line_item_id || !activeLineIds.has(design.line_item_id)) return design;
+    const lockedUnitPrice =
+      historicalPriceLock.designUnitPrices[design.id] ??
+      historicalPriceLock.lineUnitPrices[design.line_item_id];
+    const projected = historicalUnitPrice(design.unit_price, lockedUnitPrice);
+    return projected.fromHistoricalLock
+      ? { ...design, unit_price: projected.amount }
+      : design;
+  });
+}
+
 // Account-specific contract header branding
 const CONTRACT_HEADERS: Record<
   string,
@@ -122,7 +165,11 @@ const CONTRACT_HEADERS: Record<
   },
 };
 
-export function QuoteContract() {
+export function QuoteContract({
+  historicalPriceLock,
+}: {
+  historicalPriceLock?: HistoricalQuotePriceLock | null;
+} = {}) {
   const { activeQuoteId, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
@@ -237,6 +284,20 @@ export function QuoteContract() {
   });
 
   const hasMultipleQuotes = groupQuotes.length > 1;
+  const displayDesigns = projectHistoricalContractDesigns({
+    quote,
+    activeQuoteId,
+    lineItems,
+    designs,
+    historicalPriceLock,
+  });
+  const displayGroupDesigns = projectHistoricalContractDesigns({
+    quote,
+    activeQuoteId,
+    lineItems: allGroupLineItems,
+    designs: allGroupDesigns,
+    historicalPriceLock,
+  });
 
   // Load admin controls from quote
   useEffect(() => {
@@ -491,7 +552,7 @@ export function QuoteContract() {
   });
 
   // Calculate totals with admin controls
-  const effectiveActiveDesigns = effectiveContractDesigns(lineItems, designs);
+  const effectiveActiveDesigns = effectiveContractDesigns(lineItems, displayDesigns);
   const subtotal = calculateQuoteDesignSubtotal(lineItems, effectiveActiveDesigns.designs, {
     mode: effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy",
   });
@@ -509,7 +570,7 @@ export function QuoteContract() {
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
   const contractLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
   const contractDesigns = hasMultipleQuotes
-    ? allGroupDesigns
+    ? displayGroupDesigns
     : effectiveActiveDesigns.designs;
   const includesOnyxShutters = hasOnyxShutterProducts(contractLineItems, contractDesigns);
   const workmanshipWarrantyNumber = includesOnyxShutters ? 3 : 2;
@@ -835,8 +896,8 @@ export function QuoteContract() {
           ? allGroupLineItems.filter((li) => li.quote_id === gq.id)
           : lineItems;
         const rawGqDesigns = hasMultipleQuotes
-          ? allGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
-          : designs;
+          ? displayGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
+          : displayDesigns;
         const effectiveGqDesigns = effectiveContractDesigns(gqLineItems, rawGqDesigns);
         const gqDesigns = effectiveGqDesigns.designs;
         const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {

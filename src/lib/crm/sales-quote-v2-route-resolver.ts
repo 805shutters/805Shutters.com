@@ -4,6 +4,7 @@ import {
   buildHistoricalQuotePriceLock,
   type HistoricalQuotePriceLock,
 } from "@/lib/crm/historical-quote-price-lock";
+import { loadHistoricalSalesQuoteMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -25,11 +26,13 @@ type StoredSalesLineRouteRow = {
   id: string;
   quote_id: string;
   selected_design_id?: string | null;
+  quantity?: number | string | null;
 };
 
 type StoredSalesDesignRouteRow = {
   id: string;
   line_item_id: string;
+  unit_price?: number | string | null;
 };
 
 type StoredCrmDesignPriceRow = {
@@ -237,6 +240,45 @@ async function loadHistoricalPriceLock(
   return buildHistoricalQuotePriceLock(total, sourceDesigns);
 }
 
+function hasExactMirrorIdentity(
+  quote: StoredCrmQuoteRouteRow,
+  salesQuoteId: string,
+): boolean {
+  const meta = quote.meta ?? {};
+  const mirrorCandidates = new Set(
+    [
+      text(meta.sales_quote_id),
+      text(meta.mts_quote_id),
+      externalQuoteId(quote.external_id),
+    ].filter((value): value is string => Boolean(value)),
+  );
+  return mirrorCandidates.size === 1 && [...mirrorCandidates][0].toLowerCase() === salesQuoteId;
+}
+
+async function loadUpstreamHistoricalPriceLock(
+  supabase: SupabaseClient,
+  salesQuote: StoredSalesQuoteRouteRow,
+  targetLineItems: StoredSalesLineRouteRow[],
+  targetDesignsByLineItemId: Map<string, StoredSalesDesignRouteRow[]>,
+): Promise<HistoricalQuotePriceLock> {
+  const projected = await loadHistoricalSalesQuoteMirrorPricing(
+    supabase,
+    salesQuote,
+    targetLineItems,
+    targetDesignsByLineItemId,
+  );
+  const lock = projected
+    ? buildHistoricalQuotePriceLock(
+        projected.total,
+        [...projected.designsByLineItemId.values()].flat() as StoredCrmDesignPriceRow[],
+      )
+    : null;
+  if (!lock) {
+    throw new CrmAuthError(409, "The upstream historical quote price lock is invalid.");
+  }
+  return lock;
+}
+
 export async function resolveSalesQuoteV2Route(
   supabase: SupabaseClient,
   crmQuoteId: string,
@@ -281,7 +323,7 @@ export async function resolveSalesQuoteV2Route(
 
   const { data: lines, error: linesError } = await supabase
     .from("sales_quote_line_items")
-    .select("id,quote_id,selected_design_id")
+    .select("id,quote_id,selected_design_id,quantity")
     .eq("quote_id", candidate.salesQuoteId);
   if (linesError) throw new CrmAuthError(502, "The linked V2 quote lines could not be loaded.");
 
@@ -290,7 +332,7 @@ export async function resolveSalesQuoteV2Route(
   if (lineRows.length) {
     const { data: designRows, error: designsError } = await supabase
       .from("sales_quote_designs")
-      .select("id,line_item_id")
+      .select("id,line_item_id,unit_price")
       .in(
         "line_item_id",
         lineRows.map((line) => line.id),
@@ -300,16 +342,37 @@ export async function resolveSalesQuoteV2Route(
     }
     designs = (designRows ?? []) as unknown as StoredSalesDesignRouteRow[];
   }
+  const designsByLineItemId = new Map<string, StoredSalesDesignRouteRow[]>();
+  for (const design of designs) {
+    const lineDesigns = designsByLineItemId.get(design.line_item_id) ?? [];
+    lineDesigns.push(design);
+    designsByLineItemId.set(design.line_item_id, lineDesigns);
+  }
 
-  const historicalPriceLock = await loadHistoricalPriceLock(
+  let historicalPriceLock = await loadHistoricalPriceLock(
     supabase,
     crmQuoteId,
     (crmQuote as unknown as StoredCrmQuoteRouteRow).quote_total,
   );
+  const crmQuoteRow = crmQuote as unknown as StoredCrmQuoteRouteRow;
+  const salesQuoteRow = salesQuote as unknown as StoredSalesQuoteRouteRow;
+  if (
+    !historicalPriceLock &&
+    salesQuoteRow.quote_v2_backend === true &&
+    salesQuoteRow.quote_v2_status === "sent" &&
+    hasExactMirrorIdentity(crmQuoteRow, candidate.salesQuoteId)
+  ) {
+    historicalPriceLock = await loadUpstreamHistoricalPriceLock(
+      supabase,
+      salesQuoteRow,
+      lineRows,
+      designsByLineItemId,
+    );
+  }
 
   return classifySalesQuoteV2Route({
-    crmQuote: crmQuote as unknown as StoredCrmQuoteRouteRow,
-    salesQuote: salesQuote as unknown as StoredSalesQuoteRouteRow,
+    crmQuote: crmQuoteRow,
+    salesQuote: salesQuoteRow,
     lines: lineRows,
     designs,
     historicalPriceLock,

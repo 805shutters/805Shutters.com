@@ -45,9 +45,9 @@ describe("historical quote price locks", () => {
     });
   });
 
-  it("keeps a converted draft or stale quote on its historical lock until V4 pricing completes", () => {
+  it("keeps a converted unpriced quote, including Sent, on its historical lock", () => {
     const priceLock = { total: 3499.1, designUnitPrices: {}, lineUnitPrices: {} };
-    for (const quoteV2Status of ["draft", "stale", "blocked"]) {
+    for (const quoteV2Status of ["draft", "stale", "blocked", "sent"]) {
       expect(
         shouldUseHistoricalQuotePriceLock({
           quoteV2Backend: true,
@@ -56,7 +56,7 @@ describe("historical quote price locks", () => {
         }),
       ).toBe(true);
     }
-    for (const quoteV2Status of ["priced", "sent"]) {
+    for (const quoteV2Status of ["priced"]) {
       expect(
         shouldUseHistoricalQuotePriceLock({
           quoteV2Backend: true,

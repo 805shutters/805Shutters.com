@@ -7,14 +7,12 @@ type AnyRow = Record<string, any>;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function money(value: unknown) {
-  const number = Number(value || 0);
-  return Number.isFinite(number) ? Math.round(number * 100) / 100 : 0;
-}
-
-function normalizeQuantity(value: unknown) {
-  const parsed = Math.floor(Number(value) || 1);
-  return parsed > 0 ? parsed : 1;
+function exactMoneyCents(value: unknown): number | null {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const scaled = amount * 100;
+  const cents = Math.round(scaled);
+  return Number.isSafeInteger(cents) && Math.abs(scaled - cents) < 1e-7 ? cents : null;
 }
 
 function strictQuantity(value: unknown): number | null {
@@ -32,17 +30,8 @@ function groupBy(rows: AnyRow[], key: string) {
   return map;
 }
 
-function historicalSubtotal(
-  lineItems: AnyRow[],
-  designsByLineItemId: Map<string, AnyRow[]>,
-) {
-  return money(
-    lineItems.reduce((quoteSum, lineItem) => {
-      const designTotal = (designsByLineItemId.get(String(lineItem.id)) || [])
-        .reduce((designSum, design) => designSum + money(design.unit_price), 0);
-      return quoteSum + designTotal * normalizeQuantity(lineItem.quantity);
-    }, 0),
-  );
+function moneyFromCents(cents: number) {
+  return cents / 100;
 }
 
 export function projectHistoricalSalesQuoteMirrorPricing(input: {
@@ -52,10 +41,11 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
   targetLineItems: AnyRow[];
   targetDesignsByLineItemId: Map<string, AnyRow[]>;
 }) {
-  const sourceTotal = money(input.sourceQuote.quote_total);
-  if (sourceTotal <= 0) {
+  const sourceTotalCents = exactMoneyCents(input.sourceQuote.quote_total);
+  if (sourceTotalCents === null) {
     throw new CrmAuthError(409, "The historical price total is missing or invalid.");
   }
+  const sourceTotal = moneyFromCents(sourceTotalCents);
 
   const sourceLineIds = new Set(input.sourceLineItems.map((line) => String(line.id || "")));
   const targetLineIds = new Set(input.targetLineItems.map((line) => String(line.id || "")));
@@ -63,14 +53,17 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
     sourceLineIds.size === input.sourceLineItems.length &&
     targetLineIds.size === input.targetLineItems.length &&
     sourceLineIds.size > 0 &&
+    [...sourceLineIds].every((lineId) => lineId.length > 0) &&
+    [...targetLineIds].every((lineId) => lineId.length > 0) &&
     sourceLineIds.size === targetLineIds.size &&
     [...sourceLineIds].every((lineId) => targetLineIds.has(lineId));
   if (!lineMappingIsExact) {
-    throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+    throw new CrmAuthError(409, "The historical price line identities no longer match this quote.");
   }
 
   const sourceDesignsByLineItemId = groupBy(input.sourceDesigns, "line_item_id");
   const projectedDesignsByLineItemId = new Map<string, AnyRow[]>();
+  let subtotalCents = 0;
   for (const targetLine of input.targetLineItems) {
     const lineId = String(targetLine.id);
     const sourceLine = input.sourceLineItems.find((line) => String(line.id) === lineId);
@@ -81,12 +74,15 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
     if (
       !sourceLine ||
       sourceQuantity === null ||
-      targetQuantity === null ||
-      sourceQuantity !== targetQuantity ||
-      sourceDesigns.length === 0 ||
-      sourceDesigns.length !== targetDesigns.length
+      targetQuantity === null
     ) {
-      throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+      throw new CrmAuthError(409, "The historical price line quantity is missing or invalid.");
+    }
+    if (sourceDesigns.length === 0 || targetDesigns.length === 0) {
+      throw new CrmAuthError(409, "The historical price design mapping is missing.");
+    }
+    if (sourceDesigns.length !== targetDesigns.length) {
+      throw new CrmAuthError(409, "The historical price design count no longer matches this quote.");
     }
 
     const sourceByDesignId = new Map(sourceDesigns.map((design) => [String(design.id), design]));
@@ -99,25 +95,41 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
         sourceByDesignId.size === targetDesignIds.size &&
         [...sourceByDesignId.keys()].every((designId) => targetDesignIds.has(designId)));
     if (!designMappingIsExact) {
-      throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+      throw new CrmAuthError(409, "The historical price design identities no longer match this quote.");
     }
     const projected = targetDesigns.map((targetDesign) => {
       const sourceDesign =
         sourceByDesignId.get(String(targetDesign.id)) ||
         (mayMapSoleDesignByLine ? sourceDesigns[0] : null);
-      const unitPrice = money(sourceDesign?.unit_price);
-      if (!sourceDesign || unitPrice <= 0) {
-        throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+      const sourceUnitCents = exactMoneyCents(sourceDesign?.unit_price);
+      if (!sourceDesign || sourceUnitCents === null) {
+        throw new CrmAuthError(409, "A historical source design price is missing or invalid.");
       }
-      return { ...targetDesign, unit_price: unitPrice };
+      const protectedExtendedCents = sourceUnitCents * sourceQuantity;
+      if (!Number.isSafeInteger(protectedExtendedCents)) {
+        throw new CrmAuthError(409, "A historical source design amount is outside the safe range.");
+      }
+      if (protectedExtendedCents % targetQuantity !== 0) {
+        throw new CrmAuthError(409, "A historical quantity regroup would require a fractional-cent price.");
+      }
+      const targetUnitCents = protectedExtendedCents / targetQuantity;
+      if (targetUnitCents <= 0 || targetUnitCents * targetQuantity !== protectedExtendedCents) {
+        throw new CrmAuthError(409, "A historical quantity regroup could not preserve its protected amount.");
+      }
+      const nextSubtotalCents = subtotalCents + targetUnitCents * targetQuantity;
+      if (!Number.isSafeInteger(nextSubtotalCents)) {
+        throw new CrmAuthError(409, "The historical protected subtotal is outside the safe range.");
+      }
+      subtotalCents = nextSubtotalCents;
+      return { ...targetDesign, unit_price: moneyFromCents(targetUnitCents) };
     });
     projectedDesignsByLineItemId.set(lineId, projected);
   }
 
-  const subtotal = historicalSubtotal(input.targetLineItems, projectedDesignsByLineItemId);
-  if (subtotal <= 0 || subtotal !== sourceTotal) {
+  if (subtotalCents <= 0 || subtotalCents !== sourceTotalCents) {
     throw new CrmAuthError(409, "The historical price total is inconsistent with its protected lines.");
   }
+  const subtotal = moneyFromCents(subtotalCents);
 
   return {
     subtotal,

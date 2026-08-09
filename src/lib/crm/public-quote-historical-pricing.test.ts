@@ -22,12 +22,12 @@ function rowsForMaggie(options: FixtureOptions = {}) {
   const sourceLines = options.sourceLines ?? PRICES.map((_, index) => ({
     id: `line-${index + 1}`,
     quote_id: SOURCE_QUOTE_ID,
-    quantity: index === 3 ? 2 : 1,
+    quantity: 1,
   }));
   const sourceDesigns = options.sourceDesigns ?? PRICES.map((unitPrice, index) => ({
     id: `protected-design-${index + 1}`,
     line_item_id: `line-${index + 1}`,
-    unit_price: unitPrice,
+    unit_price: index === 3 ? 813.74 : unitPrice,
   }));
   const mirrorLines = options.mirrorLines ?? PRICES.map((_, index) => ({
     id: `line-${index + 1}`,
@@ -209,6 +209,7 @@ describe("existing sent CRM mirror historical read projection", () => {
       406.87,
       604.5,
     ]);
+    expect(quote?.lines[3]?.unitPrice).toBe(406.87);
     expect(quote?.lines[0]?.options).toContain("Hinge Color: 101_White");
     expect(fake.writes).toEqual([]);
   });

@@ -154,7 +154,15 @@ export function QuoteWorkspace({
               />
             )}
             {effectiveTab === "pricing" && <PricingGrids />}
-            {effectiveTab === "contract" && <QuoteContract />}
+            {effectiveTab === "contract" && (
+              <QuoteContract
+                historicalPriceLock={
+                  openRequest?.quoteId === activeQuoteId
+                    ? openRequest.historicalPriceLock
+                    : null
+                }
+              />
+            )}
           </div>
 
           <Toaster richColors position="top-right" />

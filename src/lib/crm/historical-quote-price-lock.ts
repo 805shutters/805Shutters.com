@@ -70,7 +70,6 @@ export function shouldUseHistoricalQuotePriceLock(input: {
     input.quoteV2Backend &&
       input.priceLock &&
       input.priceLock.total > 0 &&
-      input.quoteV2Status !== "priced" &&
-      input.quoteV2Status !== "sent",
+      input.quoteV2Status !== "priced",
   );
 }
