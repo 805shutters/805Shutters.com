@@ -159,5 +159,6 @@ export function filterOrderPanelQuotesForStatsTile<T extends { id: string }>(
   visibleQuoteIds: Set<string>
 ): T[] {
   if (filter === "all") return quotes;
+  if (filter !== "sold" && filter !== "ordered" && filter !== "received") return [];
   return quotes.filter((quote) => visibleQuoteIds.has(quote.id));
 }

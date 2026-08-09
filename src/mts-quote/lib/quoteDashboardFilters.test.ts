@@ -221,6 +221,9 @@ describe("quote dashboard stats filters", () => {
       filterOrderPanelQuotesForStatsTile(orderRows, "draft", new Set())
     ).toEqual([]);
     expect(
+      filterOrderPanelQuotesForStatsTile(orderRows, "installed", new Set(["sold-visible"]))
+    ).toEqual([]);
+    expect(
       filterOrderPanelQuotesForStatsTile(orderRows, "all", new Set())
     ).toEqual(orderRows);
   });
