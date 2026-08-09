@@ -329,20 +329,20 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
   };
 }
 
-export async function loadHistoricalSalesQuoteMirrorPricing(
-  supabase: SupabaseClient,
-  salesQuote: AnyRow,
-  targetLineItems: AnyRow[],
-  targetDesignsByLineItemId: Map<string, AnyRow[]>,
-) {
-  if (salesQuote.quote_v2_backend !== true || salesQuote.quote_v2_status === "priced") {
-    return null;
-  }
+type ProtectedHistoricalPricingSource = {
+  sourceQuote: AnyRow;
+  sourceLineItems: AnyRow[];
+  sourceDesigns: AnyRow[];
+};
 
+async function loadProtectedHistoricalPricingSource(
+  supabase: SupabaseClient,
+  salesQuoteId: string,
+): Promise<ProtectedHistoricalPricingSource> {
   const { data: sourceQuotes, error: sourceQuoteError } = await supabase
     .from("crm_quotes")
     .select("id,quote_total,meta")
-    .eq("meta->>target_sales_quote_id", salesQuote.id);
+    .eq("meta->>target_sales_quote_id", salesQuoteId);
   if (sourceQuoteError) {
     throw new CrmAuthError(502, "The original historical quote price lock could not be loaded.");
   }
@@ -351,7 +351,7 @@ export async function loadHistoricalSalesQuoteMirrorPricing(
   }
 
   const sourceQuote = sourceQuotes[0] as AnyRow;
-  if (sourceQuote.meta?.target_sales_quote_id !== salesQuote.id) {
+  if (sourceQuote.meta?.target_sales_quote_id !== salesQuoteId) {
     throw new CrmAuthError(409, "The original historical quote identity is inconsistent.");
   }
 
@@ -375,10 +375,29 @@ export async function loadHistoricalSalesQuoteMirrorPricing(
     throw new CrmAuthError(502, "The original historical quote prices could not be loaded.");
   }
 
-  return projectHistoricalSalesQuoteMirrorPricing({
+  return {
     sourceQuote,
     sourceLineItems: sourceLines,
     sourceDesigns: (sourceDesigns || []) as AnyRow[],
+  };
+}
+
+export async function loadHistoricalSalesQuoteMirrorPricing(
+  supabase: SupabaseClient,
+  salesQuote: AnyRow,
+  targetLineItems: AnyRow[],
+  targetDesignsByLineItemId: Map<string, AnyRow[]>,
+) {
+  if (salesQuote.quote_v2_backend !== true || salesQuote.quote_v2_status === "priced") {
+    return null;
+  }
+
+  const source = await loadProtectedHistoricalPricingSource(supabase, String(salesQuote.id));
+
+  return projectHistoricalSalesQuoteMirrorPricing({
+    sourceQuote: source.sourceQuote,
+    sourceLineItems: source.sourceLineItems,
+    sourceDesigns: source.sourceDesigns,
     targetLineItems,
     targetDesignsByLineItemId,
   });
@@ -414,6 +433,184 @@ export function mirroredSalesQuoteId(quote: AnyRow): string | null {
   return salesQuoteId.toLowerCase();
 }
 
+const DONOR_NON_CONFIGURATION_FIELDS = new Set([
+  "id",
+  "line_item_id",
+  "quote_id",
+  "room",
+  "width_in",
+  "height_in",
+  "quantity",
+  "sort_order",
+  "selected_design_id",
+  "designs",
+  "discount_percent",
+  "unit_price",
+  "wholesale_unit_price",
+  "price_status",
+  "priced_at",
+  "created_at",
+  "updated_at",
+]);
+
+function canonicalDonorConfiguration(value: unknown): string {
+  const isNestedIdentityPriceOrAuditField = (key: string) => {
+    const normalized = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    return ["mtslineitemid", "mtsdesignid", "lineitemid", "designid", "quoteid"].includes(normalized) ||
+      ["amount", "total", "subtotal"].includes(normalized) ||
+      /price|cost|margin|profit/.test(normalized) ||
+      ["createdat", "updatedat", "pricedat", "timestamp"].includes(normalized);
+  };
+  const canonicalize = (candidate: unknown, nested = false): unknown => {
+    if (Array.isArray(candidate)) return candidate.map((item) => canonicalize(item, true));
+    if (!candidate || typeof candidate !== "object") return candidate;
+    return Object.fromEntries(
+      Object.entries(candidate as AnyRow)
+        .filter(([key]) => !nested || !isNestedIdentityPriceOrAuditField(key))
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, canonicalize(child, true)]),
+    );
+  };
+  const configuration = value && typeof value === "object"
+    ? Object.fromEntries(
+        Object.entries(value as AnyRow)
+          .filter(([key]) => !DONOR_NON_CONFIGURATION_FIELDS.has(key)),
+      )
+    : value;
+  return JSON.stringify(canonicalize(configuration));
+}
+
+function requireUniqueLineIds(lines: AnyRow[], side: "source" | "target"): Set<string> {
+  const ids = lines.map(lineId);
+  const unique = new Set(ids);
+  if (ids.some((id) => !id) || unique.size !== lines.length) {
+    throw new CrmAuthError(409, `The historical ${side} line identities are missing or ambiguous.`);
+  }
+  return unique;
+}
+
+function sameCrmDimensions(left: AnyRow, right: AnyRow): boolean {
+  const leftWidth = crmDimensionSixteenths(left.width_in);
+  const leftHeight = crmDimensionSixteenths(left.height_in);
+  return leftWidth !== null &&
+    leftHeight !== null &&
+    leftWidth === crmDimensionSixteenths(right.width_in) &&
+    leftHeight === crmDimensionSixteenths(right.height_in);
+}
+
+function projectOneMissingHistoricalCrmMirrorLine(input: {
+  mirrorQuote: AnyRow;
+  source: ProtectedHistoricalPricingSource;
+  targetLineItems: AnyRow[];
+  targetDesignsByLineItemId: Map<string, AnyRow[]>;
+}) {
+  if (
+    input.mirrorQuote.signed_at ||
+    input.mirrorQuote.customer_signature ||
+    input.mirrorQuote.customer_printed_name
+  ) {
+    throw new CrmAuthError(409, "A signed historical mirror cannot reconstruct a missing line.");
+  }
+
+  const sourceIds = requireUniqueLineIds(input.source.sourceLineItems, "source");
+  const targetIds = requireUniqueLineIds(input.targetLineItems, "target");
+  const sourceByFingerprint = uniqueLinesByFingerprint(input.source.sourceLineItems, "source");
+  const targetByFingerprint = uniqueLinesByFingerprint(input.targetLineItems, "target");
+  if ([...targetByFingerprint.keys()].some((fingerprint) => !sourceByFingerprint.has(fingerprint))) {
+    throw new CrmAuthError(409, "The historical target line fingerprints are not an exact source subset.");
+  }
+  const missingFingerprints = [...sourceByFingerprint.keys()]
+    .filter((fingerprint) => !targetByFingerprint.has(fingerprint));
+  if (missingFingerprints.length !== 1) {
+    throw new CrmAuthError(409, "Exactly one historical source line must be missing from the mirror.");
+  }
+
+  const missingSourceLine = sourceByFingerprint.get(missingFingerprints[0]);
+  const missingSourceId = lineId(missingSourceLine || {});
+  if (
+    !missingSourceLine ||
+    !sourceIds.has(missingSourceId) ||
+    targetIds.has(missingSourceId) ||
+    strictQuantity(missingSourceLine.quantity) !== 1
+  ) {
+    throw new CrmAuthError(409, "The missing historical source line identity or quantity is invalid.");
+  }
+
+  const sourceDesignsByLineItemId = groupBy(input.source.sourceDesigns, "line_item_id");
+  const protectedDesigns = sourceDesignsByLineItemId.get(missingSourceId) || [];
+  const protectedDesign = protectedDesigns[0];
+  const protectedUnitCents = exactMoneyCents(protectedDesign?.unit_price);
+  if (protectedDesigns.length !== 1 || !lineId(protectedDesign || {}) || protectedUnitCents === null) {
+    throw new CrmAuthError(409, "The missing historical source line must have one exact protected design price.");
+  }
+
+  const donors = input.targetLineItems.filter((line) => sameCrmDimensions(line, missingSourceLine));
+  if (!donors.length) {
+    throw new CrmAuthError(409, "The missing historical line has no exact-dimension donor.");
+  }
+  const donorDesigns = donors.map((donor) => input.targetDesignsByLineItemId.get(lineId(donor)) || []);
+  if (donorDesigns.some((designs) => designs.length !== 1)) {
+    throw new CrmAuthError(409, "Every exact-dimension donor must have exactly one current design.");
+  }
+  const donorConfigurations = new Set(
+    donors.map((donor, index) => [
+      canonicalDonorConfiguration(donor),
+      canonicalDonorConfiguration(donorDesigns[index][0]),
+    ].join("\u0000")),
+  );
+  if (donorConfigurations.size !== 1) {
+    throw new CrmAuthError(409, "The exact-dimension donor configuration is ambiguous.");
+  }
+
+  const donorLine = donors[0];
+  const donorDesign = donorDesigns[0][0];
+  const syntheticDesignId = String(protectedDesign.id);
+  const currentDesignIds = new Set(
+    [...input.targetDesignsByLineItemId.values()].flat().map((design) => String(design.id || "")),
+  );
+  if (!syntheticDesignId || currentDesignIds.has(syntheticDesignId)) {
+    throw new CrmAuthError(409, "The reconstructed historical design identity is invalid or ambiguous.");
+  }
+
+  const syntheticDesign = {
+    ...donorDesign,
+    id: syntheticDesignId,
+    line_item_id: missingSourceId,
+    unit_price: moneyFromCents(protectedUnitCents),
+  };
+  const syntheticLine = {
+    ...donorLine,
+    id: missingSourceId,
+    room: missingSourceLine.room,
+    width_in: missingSourceLine.width_in,
+    height_in: missingSourceLine.height_in,
+    quantity: missingSourceLine.quantity,
+    sort_order: missingSourceLine.sort_order,
+    selected_design_id: syntheticDesignId,
+    designs: [syntheticDesign],
+  };
+  const lineItems = [...input.targetLineItems, syntheticLine];
+  const designsByLineItemId = new Map(input.targetDesignsByLineItemId);
+  designsByLineItemId.set(missingSourceId, [syntheticDesign]);
+  if (!uniqueLinesBySortOrder(input.source.sourceLineItems)) {
+    throw new CrmAuthError(409, "The protected historical line order is missing or ambiguous.");
+  }
+  lineItems.sort((left, right) => {
+    const leftSource = sourceByFingerprint.get(structuralFingerprint(left));
+    const rightSource = sourceByFingerprint.get(structuralFingerprint(right));
+    return Number(leftSource?.sort_order) - Number(rightSource?.sort_order);
+  });
+
+  const pricing = projectHistoricalSalesQuoteMirrorPricing({
+    sourceQuote: input.source.sourceQuote,
+    sourceLineItems: input.source.sourceLineItems,
+    sourceDesigns: input.source.sourceDesigns,
+    targetLineItems: lineItems,
+    targetDesignsByLineItemId: designsByLineItemId,
+  });
+  return { ...pricing, lineItems };
+}
+
 export async function loadHistoricalCrmMirrorPricing(
   supabase: SupabaseClient,
   mirrorQuote: AnyRow,
@@ -434,10 +631,24 @@ export async function loadHistoricalCrmMirrorPricing(
     throw new CrmAuthError(409, "The mirrored sales quote identity is inconsistent.");
   }
 
-  return loadHistoricalSalesQuoteMirrorPricing(
-    supabase,
-    salesQuote as AnyRow,
+  if (salesQuote.quote_v2_backend !== true || salesQuote.quote_v2_status === "priced") return null;
+
+  const source = await loadProtectedHistoricalPricingSource(supabase, salesQuoteId);
+  if (source.sourceLineItems.length === targetLineItems.length + 1) {
+    return projectOneMissingHistoricalCrmMirrorLine({
+      mirrorQuote,
+      source,
+      targetLineItems,
+      targetDesignsByLineItemId,
+    });
+  }
+
+  const pricing = projectHistoricalSalesQuoteMirrorPricing({
+    sourceQuote: source.sourceQuote,
+    sourceLineItems: source.sourceLineItems,
+    sourceDesigns: source.sourceDesigns,
     targetLineItems,
     targetDesignsByLineItemId,
-  );
+  });
+  return { ...pricing, lineItems: targetLineItems };
 }

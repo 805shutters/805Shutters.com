@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadPublicQuoteByToken } from "./public-quote";
+import { loadHistoricalCrmMirrorPricing } from "./historical-sales-quote-pricing";
 
 const SALES_QUOTE_ID = "22222222-2222-4222-8222-222222222222";
 const MIRROR_QUOTE_ID = "33333333-3333-4333-8333-333333333333";
@@ -68,6 +69,8 @@ function rowsForMaggie(options: FixtureOptions = {}) {
       wholesale_unit_price: null,
       price_breakdown: {
         source: "mts_805_bookkeeping",
+        mtsLineItemId: `target-line-${index + 1}`,
+        mtsDesignId: `current-design-${index + 1}`,
         productType: "Shutters",
         details: [{ label: "Hinge Color", value: "101_White" }],
       },
@@ -177,6 +180,10 @@ function fakeSupabase(options: FixtureOptions = {}) {
         writes.push(`${table}.update`);
         throw new Error("read projection must not update");
       },
+      insert: () => {
+        writes.push(`${table}.insert`);
+        throw new Error("read projection must not insert");
+      },
       upsert: () => {
         writes.push(`${table}.upsert`);
         throw new Error("read projection must not upsert");
@@ -193,6 +200,7 @@ function fakeSupabase(options: FixtureOptions = {}) {
 
   return {
     client: { from, rpc: () => { writes.push("rpc"); throw new Error("read projection must not call rpc"); } },
+    fixture,
     writes,
     reads,
   };
@@ -207,8 +215,20 @@ function groupedLineTotals(lines: Array<{ lineItemId: string; lineTotal: number 
 }
 
 describe("existing sent CRM mirror historical read projection", () => {
-  it("projects Maggie's seven protected line amounts without changing current configuration or writing", async () => {
-    const fake = fakeSupabase();
+  it("reconstructs Maggie's one omitted historical row without changing current configuration or writing", async () => {
+    const complete = rowsForMaggie();
+    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 5);
+    const fake = fakeSupabase({ mirrorLines });
+
+    const historical = await loadHistoricalCrmMirrorPricing(
+      fake.client as never,
+      fake.fixture.mirror,
+      fake.fixture.mirrorLines,
+      new Map(fake.fixture.mirrorLines.map((line) => [
+        String(line.id),
+        line.designs as Row[],
+      ])),
+    );
 
     const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
 
@@ -224,9 +244,54 @@ describe("existing sent CRM mirror historical read projection", () => {
       406.87,
       604.5,
     ]);
+    expect(groupedLineTotals(quote?.lines ?? [])).toHaveLength(7);
+    expect(quote?.lines).toHaveLength(8);
     expect(quote?.lines[3]?.unitPrice).toBe(406.87);
     expect(quote?.lines[3]?.lineItemId).toBe("target-line-4");
     expect(quote?.lines.every((line) => line.options.includes("Hinge Color: 101_White"))).toBe(true);
+    const missingLine = historical?.lineItems.find((line) => line.id === "source-line-6");
+    expect(missingLine).toMatchObject({
+      room: "Bed 1",
+      width_in: 35,
+      height_in: 60,
+      quantity: 1,
+      sort_order: 5,
+    });
+    expect(quote?.lines.find((line) => line.lineItemId === "source-line-6")).toMatchObject({
+      options: expect.arrayContaining(["Hinge Color: 101_White"]),
+      unitPrice: 406.87,
+      lineTotal: 406.87,
+    });
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when same-dimension donors have different customer configuration", async () => {
+    const complete = rowsForMaggie();
+    const mirrorLines = complete.mirrorLines
+      .filter((_, index) => index !== 5)
+      .map((line, index) => index === 1
+        ? {
+            ...line,
+            designs: [{
+              ...(line.designs as Row[])[0],
+              details: { hinge_color: "102_Off_White" },
+            }],
+          }
+        : line);
+    const fake = fakeSupabase({ mirrorLines });
+
+    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+      .rejects.toThrow(/donor configuration/i);
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when two protected source rows are missing from the mirror", async () => {
+    const complete = rowsForMaggie();
+    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 4 && index !== 5);
+    const fake = fakeSupabase({ mirrorLines });
+
+    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+      .rejects.toThrow(/historical price line count/i);
     expect(fake.writes).toEqual([]);
   });
 

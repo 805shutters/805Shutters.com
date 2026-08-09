@@ -805,7 +805,7 @@ async function projectPublicQuote(
     new Map(lineItems.map((lineItem) => [lineItem.id, lineItem.designs])),
   );
   if (historicalPricing) {
-    lineItems = lineItems.map((lineItem) => ({
+    lineItems = (historicalPricing.lineItems as CrmQuoteLineItem[]).map((lineItem) => ({
       ...lineItem,
       designs: historicalPricing.designsByLineItemId.get(lineItem.id) as CrmQuoteDesign[],
     }));
