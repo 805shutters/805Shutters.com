@@ -1,5 +1,6 @@
 import { createPublicKey, verify } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { legacyShareTokenPatch } from "@/lib/crm/legacy-share-token";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -220,7 +221,7 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
       customer_signature: quote.customer_signature || null,
       customer_printed_name: quote.customer_printed_name || null,
       signed_at: quote.signed_at || null,
-      share_token: quote.share_token || null,
+      ...legacyShareTokenPatch(quote.share_token),
       notes: quote.installer_notes || null,
       meta: buildImportedQuoteMeta(quote, legacySubtotal, accountId),
     });

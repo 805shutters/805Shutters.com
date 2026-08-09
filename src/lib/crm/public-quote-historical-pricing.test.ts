@@ -26,6 +26,8 @@ type FixtureOptions = {
   sourceLines?: Row[];
   sourceDesigns?: Row[];
   mirrorLines?: Row[];
+  directTokenMiss?: boolean;
+  sentAliasUrl?: string | null;
 };
 
 function rowsForMaggie(options: FixtureOptions = {}) {
@@ -143,9 +145,17 @@ function fakeSupabase(options: FixtureOptions = {}) {
 
   const sourceRows = (table: string, filters: Array<[string, unknown]>) => {
     if (table === "crm_quotes") {
-      if (filters.some(([column]) => column === "share_token")) return [fixture.mirror];
+      if (filters.some(([column]) => column === "share_token")) {
+        return options.directTokenMiss ? [] : [fixture.mirror];
+      }
       if (filters.some(([column]) => column === "meta->>target_sales_quote_id")) return fixture.sourceQuotes;
       return [fixture.mirror];
+    }
+    if (table === "crm_activity_events") {
+      const requestedUrl = filters.find(([column]) => column === "metadata->>url")?.[1];
+      return options.sentAliasUrl && requestedUrl === options.sentAliasUrl
+        ? [{ entity_id: MIRROR_QUOTE_ID }]
+        : [];
     }
     if (table === "sales_quotes") return fixture.salesQuote ? [fixture.salesQuote] : [];
     if (table === "crm_quote_line_items") {
@@ -175,6 +185,8 @@ function fakeSupabase(options: FixtureOptions = {}) {
         rows = sourceRows(table, filters);
         return Promise.resolve({ data: rows, error: null });
       },
+      order: () => query,
+      limit: () => query,
       maybeSingle: async () => ({ data: sourceRows(table, filters)[0] ?? null, error: null }),
       update: () => {
         writes.push(`${table}.update`);
@@ -215,6 +227,26 @@ function groupedLineTotals(lines: Array<{ lineItemId: string; lineTotal: number 
 }
 
 describe("existing sent CRM mirror historical read projection", () => {
+  it("keeps an already emailed customer token working after a legacy sync clears the mirror token", async () => {
+    const fake = fakeSupabase({
+      directTokenMiss: true,
+      sentAliasUrl: `https://www.805shutters.com/quote/${TOKEN}`,
+      mirror: { share_token: null },
+    });
+
+    const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
+
+    expect(quote?.id).toBe(MIRROR_QUOTE_ID);
+    expect(quote?.token).toBe(TOKEN);
+    expect(quote?.total).toBe(3499.1);
+    expect(fake.reads).toContainEqual({
+      table: "crm_activity_events",
+      column: "metadata->>url",
+      value: `https://www.805shutters.com/quote/${TOKEN}`,
+    });
+    expect(fake.writes).toEqual([]);
+  });
+
   it("reconstructs Maggie's one omitted historical row without changing current configuration or writing", async () => {
     const complete = rowsForMaggie();
     const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 5);

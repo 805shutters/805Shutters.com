@@ -763,8 +763,86 @@ export function applyStoredSignedSelection(
 
 async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise<CrmQuote | null> {
   if (!token) return null;
-  const { data } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
-  return (data as CrmQuote) ?? null;
+  const { data, error } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
+  if (error) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+  if (data) return data as CrmQuote;
+
+  // Historical sales quotes are mirrored into crm_quotes before they are sent.
+  // Older syncs could later overwrite a generated mirror token with NULL when
+  // the source sales quote did not retain that token. The send audit is the
+  // durable proof that the unguessable URL belonged to this exact CRM quote, so
+  // use it as a read-only compatibility alias instead of breaking an already
+  // delivered customer link.
+  for (const url of sentPublicQuoteUrlCandidates(token)) {
+    const { data: activity, error: activityError } = await supabase
+      .from("crm_activity_events")
+      .select("entity_id")
+      .eq("entity_type", "quote")
+      .eq("action", "send_to_customer")
+      .eq("metadata->>url", url)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (activityError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+    const quoteId = (activity as { entity_id?: string | null } | null)?.entity_id;
+    if (!quoteId) continue;
+
+    const { data: aliasedQuote, error: quoteError } = await supabase
+      .from("crm_quotes")
+      .select("*")
+      .eq("id", quoteId)
+      .maybeSingle();
+    if (quoteError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
+    if (aliasedQuote) return aliasedQuote as CrmQuote;
+  }
+  return null;
+}
+
+export function sentPublicQuoteUrlCandidates(token: string): string[] {
+  const path = `/quote/${token}`;
+  const configured = publicQuoteUrl(token);
+  return [...new Set([
+    configured,
+    `https://www.805shutters.com${path}`,
+    `https://805shutters.com${path}`,
+  ])];
+}
+
+async function claimTokenForResolvedQuote(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  requestedToken: string,
+): Promise<string> {
+  if (quote.share_token) return quote.share_token;
+
+  // Signing is the first write in the public flow. If this request arrived
+  // through a verified historical send alias, restore that token before the
+  // atomic signature claim so the old customer link remains fully functional,
+  // not merely readable.
+  const { data, error } = await supabase
+    .from("crm_quotes")
+    .update({ share_token: requestedToken })
+    .eq("id", quote.id)
+    .is("share_token", null)
+    .select("share_token")
+    .maybeSingle();
+  if (error) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
+  const restored = (data as { share_token?: string | null } | null)?.share_token;
+  if (restored) return restored;
+
+  // Another request may have restored or rotated the canonical token between
+  // the read and this conditional update. Re-read it and use that value for the
+  // atomic claim; the originally requested token was already authenticated by
+  // the durable send audit.
+  const { data: current, error: currentError } = await supabase
+    .from("crm_quotes")
+    .select("share_token")
+    .eq("id", quote.id)
+    .maybeSingle();
+  if (currentError) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
+  const currentToken = (current as { share_token?: string | null } | null)?.share_token;
+  if (!currentToken) throw new CrmAuthError(409, "This contract link changed. Please refresh and try again.");
+  return currentToken;
 }
 
 export async function loadPublicQuoteByToken(
@@ -1500,6 +1578,8 @@ export async function acceptPublicQuote(
     return { ok: true, alreadySigned: true };
   }
 
+  const claimToken = await claimTokenForResolvedQuote(supabase, quote, token);
+
   const printedName = (input.printedName || "").trim();
   if (!printedName) throw new CrmAuthError(400, "Please type your name to sign.");
   const signature = (input.signature || printedName).trim();
@@ -1555,7 +1635,7 @@ export async function acceptPublicQuote(
   const partialResult = partialPlan
     ? await supabase.rpc("partition_crm_partial_quote_acceptance", {
         p_quote_id: quote.id,
-        p_share_token: token,
+        p_share_token: claimToken,
         p_selected_line_ids: partialPlan.selectedLineIds,
         p_line_quantities: partialPlan.lineQuantities,
         p_signed_at: now,
@@ -1593,7 +1673,7 @@ export async function acceptPublicQuote(
           ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
         })
         .eq("id", quote.id)
-        .eq("share_token", token)
+        .eq("share_token", claimToken)
         .is("signed_at", null)
         .select("id");
   const { data: claimed, error } = claim;
@@ -1806,6 +1886,7 @@ export async function backfillPartialPublicQuoteAcceptance(
   if (!quote.signed_at || quote.signed_at !== input.expectedSignedAt) {
     throw new CrmAuthError(409, "The historical signature timestamp changed; no backfill was applied.");
   }
+  const claimToken = await claimTokenForResolvedQuote(supabase, quote, input.token);
   const pub = await loadPublicQuoteByToken(supabase, input.token);
   if (!pub) throw new CrmAuthError(404, "The historical public quote could not be loaded.");
   const plan = await buildPartialAcceptancePlanWithCosts(supabase, quote, pub, input.selectedLineIds);
@@ -1814,7 +1895,7 @@ export async function backfillPartialPublicQuoteAcceptance(
   }
   const { data, error } = await supabase.rpc("partition_crm_partial_quote_acceptance", {
     p_quote_id: quote.id,
-    p_share_token: input.token,
+    p_share_token: claimToken,
     p_selected_line_ids: plan.selectedLineIds,
     p_line_quantities: plan.lineQuantities,
     p_signed_at: input.expectedSignedAt,

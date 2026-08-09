@@ -24,6 +24,7 @@ import {
   V2SendPreparationError,
 } from "@/lib/crm/sales-quote-v2-send";
 import { loadHistoricalSalesQuoteMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
+import { legacyShareTokenPatch } from "@/lib/crm/legacy-share-token";
 import {
   build805SoldQuoteSmsMessageForRecipient,
 } from "@mts/lib/quoteSoldNotification";
@@ -349,7 +350,7 @@ async function mirrorSalesQuoteV2ForCustomerSend(
     customer_signature: quote.customer_signature || null,
     customer_printed_name: quote.customer_printed_name || null,
     signed_at: quote.signed_at || null,
-    share_token: quote.share_token || null,
+    ...legacyShareTokenPatch(quote.share_token),
     quote_group_id: quote.quote_group_id || null,
     quote_label: quote.quote_letter || null,
     notes: null,
@@ -629,7 +630,7 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     customer_signature: quote.customer_signature || null,
     customer_printed_name: quote.customer_printed_name || null,
     signed_at: quote.signed_at || null,
-    share_token: quote.share_token || null,
+    ...legacyShareTokenPatch(quote.share_token),
     quote_group_id: quote.quote_group_id || null,
     quote_label: quote.quote_letter || null,
     notes: quote.installer_notes || null,
