@@ -46,4 +46,4 @@ export default async function PublicQuotePage({
     paymentOptions={{ venmoHandle: VENMO_HANDLE, venmoQrSvg, zelleDestination: ZELLE_DESTINATION }} />;
 }
 
-const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;

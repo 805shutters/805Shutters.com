@@ -5,6 +5,7 @@ import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { SignQuote } from "./SignQuote";
 import styles from "./QuoteSelection.module.css";
+import { quoteProductDetails } from "./quoteLinePresentation";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -164,86 +165,58 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         <p style={sectionEyebrow}>Complete contract</p>
         <h2 id="contract-details-heading" style={sectionHeading}>Product and window details</h2>
         <p style={sectionIntro}>The specifications, quantities, and line pricing below are part of this contract.</p>
-      <table className={styles.detailsTable} style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
-        <thead className={styles.detailsTableHead}>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #d8d8d2" }}>
-            {mode === "some" ? <th style={{ ...th, width: 36 }}></th> : null}
-            <th style={th}>Window</th>
-            <th style={th}>Product</th>
-            <th style={{ ...th, textAlign: "right" }}>Qty</th>
-            <th style={{ ...th, textAlign: "right" }}>Price</th>
-          </tr>
-        </thead>
+      <table className={styles.detailsTable}>
         <tbody>
           {quote.lines.map((line) => {
             const isChecked = selected.has(line.id);
             const dimmed = mode === "some" && !isChecked;
             return (
-              <tr key={line.id} style={{ borderBottom: "1px solid #eeeeeb", verticalAlign: "top", opacity: dimmed ? 0.4 : 1 }}>
-                {mode === "some" ? (
-                  <td className={styles.detailCell} data-label="Select" style={{ ...td, width: 36 }}>
-                    <input type="checkbox" style={{ width: 18, height: 18, margin: "10px 0 0" }} checked={isChecked} onChange={() => toggle(line.id)} />
-                  </td>
-                ) : null}
-                <td className={styles.detailCell} data-label="Window" style={td}>
-                  <strong>{line.room}</strong>
+              <tr key={line.id} className={styles.lineItem} style={{ opacity: dimmed ? 0.4 : 1 }}>
+                <td className={styles.lineSummary}>
+                  {mode === "some" ? (
+                    <label className={styles.lineSelect}>
+                      <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} />
+                      <span>Select</span>
+                    </label>
+                  ) : null}
+                  <strong className={styles.roomName}>{line.room}</strong>
+                  <span className={styles.linePrice}>{line.priceReady ? money(line.lineTotal) : "Pricing in progress"}</span>
+                  <span className={styles.lineQuantity}>Quantity {line.quantity}</span>
                   {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
                 </td>
-                <td className={styles.detailCell} data-label="Product" style={td}>
+                <td className={styles.productCell}>
                   {line.priceReady ? (
-                    <div>
-                      {line.showDesignOptions && line.designOptions.length ? (
-                        <div style={{ display: "grid", gap: 8 }}>
+                    line.showDesignOptions && line.designOptions.length ? (
+                        <div className={styles.designOptions}>
                           {line.designOptions.map((option) => (
-                            <div key={option.id} style={designOptionBox}>
+                            <div key={option.id} className={line.designOptions.length > 1 ? styles.designOption : undefined}>
                               {line.designOptions.length > 1 ? (
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                                <div className={styles.designOptionHeading}>
                                   <strong>Option {option.label}</strong>
-                                  <span style={{ whiteSpace: "nowrap" }}>{money(option.lineTotal)}</span>
+                                  <span>{money(option.lineTotal)}</span>
                                 </div>
                               ) : null}
-                              <div>
-                                {option.productName}
-                                {option.styleName ? ` — ${option.styleName}` : ""}
-                              </div>
-                              {option.options.length ? (
-                                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.75 }}>
-                                  {option.options.map((detail, detailIndex) => (
-                                    <li key={detailIndex}>{detail}</li>
-                                  ))}
-                                </ul>
-                              ) : null}
+                              <ProductConfiguration
+                                productName={option.productName}
+                                styleName={option.styleName}
+                                options={option.options}
+                              />
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div>
-                          <div>
-                            {line.productName}
-                            {line.styleName ? ` — ${line.styleName}` : ""}
-                          </div>
-                          {line.options.length ? (
-                            <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.7 }}>
-                              {line.options.map((o, i) => (
-                                <li key={i}>{o}</li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
+                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} />
+                      )
                   ) : (
                     <em style={{ opacity: 0.6 }}>Pricing in progress</em>
                   )}
                 </td>
-                <td className={styles.detailCell} data-label="Qty" style={{ ...td, textAlign: "right" }}>{line.quantity}</td>
-                <td className={styles.detailCell} data-label="Price" style={{ ...td, textAlign: "right" }}>{line.priceReady ? money(line.lineTotal) : "—"}</td>
               </tr>
             );
           })}
           {quote.lines.length === 0 ? (
             <tr>
-              <td className={styles.detailCell} style={td} colSpan={mode === "some" ? 5 : 4}>
+              <td className={styles.emptyDetails} colSpan={2}>
                 <em style={{ opacity: 0.6 }}>This contract is still being prepared.</em>
               </td>
             </tr>
@@ -382,6 +355,25 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
   </div>;
 }
 
+function ProductConfiguration({ productName, styleName, options }: { productName: string; styleName: string; options: string[] }) {
+  const details = quoteProductDetails(styleName, options);
+  return (
+    <div className={styles.productConfiguration}>
+      <strong className={styles.productName}>{productName}</strong>
+      {details.length ? (
+        <dl className={styles.productDetails}>
+          {details.map((detail) => (
+            <div className={styles.productDetail} key={`${detail.label}:${detail.value}`}>
+              <dt>{detail.label}</dt>
+              <dd>{detail.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
 function Row({ label, value, strong, highlight }: { label: string; value: string; strong?: boolean; highlight?: boolean }) {
   return (
     <div style={highlight ? depositDueRow : { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: strong ? 20 : 15 }}>
@@ -391,20 +383,12 @@ function Row({ label, value, strong, highlight }: { label: string; value: string
   );
 }
 
-const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
-const td = { padding: "10px 6px" } as const;
 const selectionNotice = { margin: "0 0 16px", padding: "14px 16px", border: "1px solid #b8b6ae", borderRadius: 10, background: "#f4f4f2", color: "#4d4d49" } as const;
 const pricingSummary = { width: "100%", marginLeft: "auto" } as const;
 const detailsSection = { marginTop: 8 } as const;
 const sectionEyebrow = { margin: "0 0 4px", fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.7 } as const;
 const sectionHeading = { margin: 0, fontSize: 24, lineHeight: 1.2 } as const;
 const sectionIntro = { margin: "6px 0 16px", maxWidth: 470, color: "#4d4d49", fontSize: 14, lineHeight: 1.5 } as const;
-const designOptionBox = {
-  padding: "8px 10px",
-  border: "1px solid #d8d8d2",
-  borderRadius: 6,
-  background: "#fbfbfa",
-} as const;
 const payBox = {
   border: "1px solid #d8d8d2",
   borderRadius: 10,

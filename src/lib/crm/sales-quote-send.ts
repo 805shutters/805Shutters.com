@@ -129,6 +129,15 @@ const LEGACY_INTERNAL_OPTION_KEYS = new Set([
   "pricing_grid_height",
   "pricing_built_in_adjustment",
   "sent_price_snapshot",
+  "discount_percent",
+  "fabric_color_id",
+  "fabric_color_collection",
+  "fabric_color_code",
+  "fabric_color_name",
+  "fabric_color_type",
+  "fabric_product_id",
+  "fabric_program_id",
+  "fabric_surcharge_id",
 ]);
 
 function requireTechnicalMeasureDecision(value: unknown): TechnicalMeasureDecision {

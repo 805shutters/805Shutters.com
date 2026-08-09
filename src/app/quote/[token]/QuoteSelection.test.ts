@@ -77,10 +77,18 @@ describe("QuoteSelection", () => {
 
     expect(html).toContain("Roller Shades");
     expect(html).toContain("Callie");
-    expect(html).toContain("Fabric: Callie - Linen");
-    expect(html).toContain("Lift System: Cordless");
-    expect(html).toContain("Mount Type: Inside Mount");
-    expect(html).toContain("Valance: Cassette");
+    expect(html).toContain("Fabric");
+    expect(html).toContain("Callie - Linen");
+    expect(html).toContain("Lift System");
+    expect(html).toContain("Cordless");
+    expect(html).toContain("Mount Type");
+    expect(html).toContain("Inside Mount");
+    expect(html).toContain("Valance");
+    expect(html).toContain("Cassette");
+    const roomIndex = html.indexOf("Kitchen");
+    const linePriceIndex = html.indexOf("$509.40", roomIndex);
+    expect(roomIndex).toBeGreaterThan(-1);
+    expect(linePriceIndex - roomIndex).toBeLessThan(500);
     expect(html).not.toContain('48&quot; W');
   });
 
