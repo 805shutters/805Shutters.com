@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateSalesQuoteMirrorPricing,
-  loadHistoricalSalesQuoteMirrorPricing,
-  projectHistoricalSalesQuoteMirrorPricing,
   resolveSalesQuoteCustomerWorkflow,
   salesQuotesToMirror,
   upsertSalesQuoteMirrorRow,
 } from "./sales-quote-send";
+import {
+  loadHistoricalSalesQuoteMirrorPricing,
+  projectHistoricalSalesQuoteMirrorPricing,
+} from "./historical-sales-quote-pricing";
 
 describe("resolveSalesQuoteCustomerWorkflow", () => {
   it("routes ordinary sales quotes through V1", () => {
@@ -146,6 +148,24 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
         targetDesignsByLineItemId: targetDesigns,
       }),
     ).toThrow(/historical price total/i);
+  });
+
+  it("requires exact design identities when a line has multiple designs", () => {
+    expect(() =>
+      projectHistoricalSalesQuoteMirrorPricing({
+        sourceQuote: { id: "crm-source", quote_total: 30 },
+        sourceLineItems: [{ id: "line", quantity: 1 }],
+        sourceDesigns: [
+          { id: "protected-a", line_item_id: "line", unit_price: 10 },
+          { id: "protected-b", line_item_id: "line", unit_price: 20 },
+        ],
+        targetLineItems: [{ id: "line", quantity: 1 }],
+        targetDesignsByLineItemId: new Map([["line", [
+          { id: "protected-a", line_item_id: "line", unit_price: 0 },
+          { id: "unrelated", line_item_id: "line", unit_price: 0 },
+        ]]]),
+      }),
+    ).toThrow(/historical price mapping/i);
   });
 });
 

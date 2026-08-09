@@ -75,6 +75,7 @@ import {
   SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
 } from "@mts/lib/quoteSoldNotification";
 import { loadQuotePaymentState, type QuotePaymentState } from "@/lib/crm/quote-payment-state";
+import { loadHistoricalCrmMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -794,9 +795,21 @@ async function projectPublicQuote(
     .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
     .eq("quote_id", quote.id);
 
-  const lineItems = ((items as CrmQuoteLineItem[]) ?? [])
+  let lineItems = ((items as CrmQuoteLineItem[]) ?? [])
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
+  const historicalPricing = await loadHistoricalCrmMirrorPricing(
+    supabase,
+    quote,
+    lineItems,
+    new Map(lineItems.map((lineItem) => [lineItem.id, lineItem.designs])),
+  );
+  if (historicalPricing) {
+    lineItems = lineItems.map((lineItem) => ({
+      ...lineItem,
+      designs: historicalPricing.designsByLineItemId.get(lineItem.id) as CrmQuoteDesign[],
+    }));
+  }
   const legacyMts = isLegacyMtsQuote(quote);
   const projectedLines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
     expandPublicQuoteLine(projectLine(lineItem, legacyMts))
