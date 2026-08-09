@@ -405,6 +405,56 @@ describe("projectLine (per-line discount on the contract)", () => {
     expect(line.options.join(" ")).not.toMatch(/End Cap|N\/A/);
   });
 
+  it("removes a zero-dollar generated placeholder when a priced legacy design exists", () => {
+    const placeholder = {
+      ...design({
+        product_id: "onyx_shutters",
+        unit_price: 0,
+        price_breakdown: {
+          source: "mts_805_bookkeeping",
+          productType: "Shutters",
+          details: [
+            { label: "Supplier", value: "Onyx" },
+            { label: "Catalog Product Id", value: "onyx_shutters" },
+            { label: "Catalog Manufacturer", value: "Onyx" },
+            { label: "Catalog Product Type", value: "Shutters" },
+            { label: "Quote Lab Product Id", value: "onyx_shutters" },
+          ],
+        },
+      }),
+      id: "placeholder-a",
+      label: "A",
+      sort_order: 0,
+    };
+    const selected = {
+      ...design({
+        product_id: "onyx_shutters",
+        unit_price: 527,
+        price_breakdown: {
+          source: "mts_805_bookkeeping",
+          productType: "Shutters",
+          details: [
+            { label: "Supplier", value: "Onyx" },
+            { label: "Material", value: "Poly Composite" },
+            { label: "Control Type", value: "Hidden Tiltrod" },
+          ],
+        },
+      }),
+      id: "selected-c",
+      label: "C",
+      sort_order: 2,
+    };
+
+    const line = projectLine(lineItem({ notes: "Shutters", designs: [placeholder, selected] }), true);
+
+    expect(line.designOptions).toHaveLength(1);
+    expect(line.designOptions[0]?.id).toBe("selected-c");
+    expect(line.lineTotal).toBe(527);
+    expect(line.options.join(" ")).not.toMatch(/Option A|Option C|Catalog Product|Quote Lab/);
+    expect(line.options).toContain("Material: Poly Composite");
+    expect(line.options).toContain("Control Type: Hidden Tiltrod");
+  });
+
   it("expands quantity into separate customer contract rows", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
     const line = projectLine(lineItem({ id: "line-1", quantity: 3, designs: [d], selected_design_id: d.id }), false);

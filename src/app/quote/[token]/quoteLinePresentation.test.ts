@@ -43,4 +43,21 @@ describe("quoteProductDetails", () => {
       { label: "Color", value: "7021 — Antique Lace" },
     ]);
   });
+
+  it("removes catalog and quote-lab implementation metadata", () => {
+    expect(quoteProductDetails("", [
+      "Supplier: Onyx",
+      "Catalog Product Id: onyx_shutters",
+      "Catalog Manufacturer: Onyx",
+      "Catalog Product Type: Shutters",
+      "Quote Lab Product Id: onyx_shutters",
+      "Control Type: Hidden Tiltrod",
+      "Control Side: Left",
+      "Requires Takedown: false",
+    ])).toEqual([
+      { label: "Supplier", value: "Onyx" },
+      { label: "Control Type", value: "Hidden Tiltrod" },
+      { label: "Control Side", value: "Left" },
+    ]);
+  });
 });

@@ -67,7 +67,12 @@ describe("buildQuoteEmail", () => {
           room: "Living Room",
           productName: "Honeycomb Shades",
           styleName: "Cordless",
-          options: ["Inside mount"],
+          options: [
+            "Mount Type: Inside mount",
+            "Catalog Product Id: honeycomb",
+            "Catalog Manufacturer: Norman",
+            "Quote Lab Product Id: honeycomb",
+          ],
           quantity: 2,
           lineTotal: 4250,
         },
@@ -83,8 +88,13 @@ describe("buildQuoteEmail", () => {
     // email are the header logo and the financing-section logos).
     const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("Two Financing Options"));
     expect(lineItemTable).not.toContain("<img");
+    expect(lineItemTable).toContain("<strong>Product:</strong> Honeycomb Shades");
+    expect(lineItemTable).toContain("<strong>Style:</strong> Cordless");
+    expect(lineItemTable).toContain("<strong>Mount Type:</strong> Inside mount");
+    expect(lineItemTable).not.toMatch(/Catalog Product|Catalog Manufacturer|Quote Lab/);
     expect(text).toContain("Contract items:");
-    expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
+    expect(text).toContain("Living Room - Product: Honeycomb Shades; Mount Type: Inside mount; Style: Cordless");
+    expect(text).not.toMatch(/Catalog Product|Catalog Manufacturer|Quote Lab/);
     expect(text).not.toContain('72" W');
   });
 

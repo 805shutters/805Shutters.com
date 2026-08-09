@@ -101,7 +101,7 @@ export function CustomerContractDocument({
   );
 }
 
-const wrap = { maxWidth: 1120, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const wrap = { maxWidth: 1120, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;
 const quoteTabsSection = { marginBottom: 22, padding: 14, border: "2px solid #0b0b0b", borderRadius: 12, background: "#f4f4f2" } as const;
 const quoteTabsHeading = { display: "block", marginBottom: 10, fontSize: 15 } as const;
 const quoteTabsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 } as const;
@@ -109,6 +109,6 @@ const quoteTab = { display: "flex", minHeight: 78, flexDirection: "column", just
 const quoteTabLabel = { fontSize: 18, fontWeight: 800, lineHeight: 1.2 } as const;
 const quoteTabPrice = { marginTop: 4, fontSize: 16, fontWeight: 650, lineHeight: 1.2 } as const;
 const quoteTabStatus = { marginTop: 5, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } as const;
-const contractPreviewWrap = { maxWidth: "none", margin: 0, padding: "18px 20px 32px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const contractPreviewWrap = { maxWidth: "none", margin: 0, padding: "18px 20px 32px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;
 const officialContractBar = { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 14px", marginBottom: 18, padding: "10px 12px", border: "1px solid #d8d8d2", background: "#f4f4f2", fontSize: 12, lineHeight: 1.4 } as const;
 const contractFooter = { display: "grid", gap: 6, marginTop: 30, paddingTop: 18, borderTop: "2px solid #0b0b0b", fontSize: 12, lineHeight: 1.5 } as const;

@@ -7,6 +7,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
@@ -606,13 +607,25 @@ function legacyLineOptions(designOptions: PublicQuoteDesignOption[]): string[] {
   });
 }
 
+const LEGACY_PLACEHOLDER_DETAIL_LABELS = new Set(["supplier", "manufacturer", "product type"]);
+
+function isLegacyPlaceholderOption(option: PublicQuoteDesignOption): boolean {
+  if (!option.priceReady || option.unitPrice !== 0 || option.lineTotal !== 0 || option.styleName.trim()) return false;
+  const details = quoteProductDetails(option.styleName, option.options);
+  return details.every((detail) => LEGACY_PLACEHOLDER_DETAIL_LABELS.has(detail.label.trim().toLocaleLowerCase()));
+}
+
 export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine {
   const qty = Math.max(1, Math.floor(Number(li.quantity) || 1));
   const discountPercent = Math.min(100, Math.max(0, Number(li.discount_percent) || 0));
   if (legacyMts) {
-    const designOptions = [...(li.designs || [])]
+    const projectedDesignOptions = [...(li.designs || [])]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((design) => projectDesignOption(design, qty));
+    const hasPricedDesign = projectedDesignOptions.some((option) => option.priceReady && option.lineTotal > 0);
+    const designOptions = hasPricedDesign
+      ? projectedDesignOptions.filter((option) => !isLegacyPlaceholderOption(option))
+      : projectedDesignOptions;
     const first = designOptions[0] || null;
     const priceReady = designOptions.length > 0 && designOptions.every((option) => option.priceReady);
     return {

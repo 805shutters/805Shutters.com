@@ -3,6 +3,7 @@
 
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
+import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string; uncertain?: boolean };
 export type EmailAttachment = {
@@ -280,7 +281,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     logoUrl: details.logoUrl
   });
   const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${versionsText}${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
-  const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
+  const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:'Helvetica Neue',Arial,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -400,14 +401,16 @@ export function buildSignedQuoteShopEmail(customerName: string, url: string, tot
 function quoteLinesTable(lines: QuoteEmailLine[]): string {
   const rows = lines.map((line) => {
     const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
-    const style = line.styleName ? ` - ${line.styleName}` : "";
-    const details = (line.options ?? []).filter(Boolean).join(" | ");
+    const details = quoteProductDetails(line.styleName ?? "", line.options ?? []);
+    const detailRows = [
+      { label: "Product", value: product },
+      ...details,
+    ].map((detail) => `<div style="font-size:12px;line-height:1.55;color:#0b0b0b"><strong>${escapeHtml(detail.label)}:</strong> ${escapeHtml(detail.value)}</div>`).join("");
     const price = line.priceReady === false ? "-" : money(line.lineTotal);
     return `<tr>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">
         <strong>${escapeHtml(line.room || "Window")}</strong><br>
-        <span style="color:#0b0b0b">${escapeHtml(product)}${escapeHtml(style)}</span>
-        ${details ? `<br><span style="font-size:12px;color:#0b0b0b">${escapeHtml(details)}</span>` : ""}
+        <div style="margin-top:5px">${detailRows}</div>
       </td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${line.quantity}</td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${price}</td>
@@ -460,10 +463,13 @@ function summaryRow(label: string, value: number): string {
 }
 
 function textLine(line: QuoteEmailLine, _index: number): string {
-  const product = line.priceReady === false ? "Pricing in progress" : [line.productName, line.styleName].filter(Boolean).join(" - ");
-  const details = (line.options ?? []).filter(Boolean).join("; ");
+  const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
+  const details = quoteProductDetails(line.styleName ?? "", line.options ?? []);
+  const selections = [{ label: "Product", value: product }, ...details]
+    .map((detail) => `${detail.label}: ${detail.value}`)
+    .join("; ");
   const total = line.priceReady === false ? "Pricing in progress" : money(line.lineTotal);
-  return `${line.room || "Window"} - ${product}${details ? ` (${details})` : ""} - Qty ${line.quantity} - ${total}`;
+  return `${line.room || "Window"} - ${selections} - Qty ${line.quantity} - ${total}`;
 }
 
 function money(n: number): string {
