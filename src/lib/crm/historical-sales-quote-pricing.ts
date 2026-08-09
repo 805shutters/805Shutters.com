@@ -498,6 +498,92 @@ function sameCrmDimensions(left: AnyRow, right: AnyRow): boolean {
     leftHeight === crmDimensionSixteenths(right.height_in);
 }
 
+function normalizeHistoricalCrmPublicSource(
+  source: ProtectedHistoricalPricingSource,
+): ProtectedHistoricalPricingSource {
+  const linesByFingerprint = new Map<string, AnyRow[]>();
+  for (const line of source.sourceLineItems) {
+    const fingerprint = structuralFingerprint(line);
+    const lines = linesByFingerprint.get(fingerprint) || [];
+    lines.push(line);
+    linesByFingerprint.set(fingerprint, lines);
+  }
+  const duplicateGroups = [...linesByFingerprint.values()].filter((lines) => lines.length > 1);
+  if (!duplicateGroups.length) return source;
+
+  requireUniqueLineIds(source.sourceLineItems, "source");
+  if (!uniqueLinesBySortOrder(source.sourceLineItems)) {
+    throw new CrmAuthError(409, "A duplicate historical source line group has ambiguous orders.");
+  }
+
+  const designsByLineItemId = groupBy(source.sourceDesigns, "line_item_id");
+  const designIdentityCounts = new Map<string, number>();
+  for (const design of source.sourceDesigns) {
+    const designId = lineId(design);
+    designIdentityCounts.set(designId, (designIdentityCounts.get(designId) || 0) + 1);
+  }
+
+  const canonicalLineByGroupedId = new Map<string, AnyRow>();
+  const canonicalDesignByGroupedId = new Map<string, AnyRow>();
+  for (const group of duplicateGroups) {
+    const ordered = [...group].sort((left, right) =>
+      Number(left.sort_order) - Number(right.sort_order));
+    const sortOrders = ordered.map((line) => strictSortOrder(line.sort_order));
+    const consecutiveOrders = sortOrders.every((order, index) =>
+      order !== null && (index === 0 || order === (sortOrders[index - 1] as number) + 1));
+    const protectedDesigns = ordered.map((line) => designsByLineItemId.get(lineId(line)) || []);
+    const soleDesigns = protectedDesigns.map((designs) => designs[0]);
+    const unitPrices = soleDesigns.map((design) => exactMoneyCents(design?.unit_price));
+    const designIds = soleDesigns.map((design) => lineId(design || {}));
+    const sharedUnitPrice = unitPrices[0];
+    if (
+      !consecutiveOrders ||
+      ordered.some((line) => strictQuantity(line.quantity) !== 1) ||
+      protectedDesigns.some((designs) => designs.length !== 1) ||
+      sharedUnitPrice === null ||
+      unitPrices.some((unitPrice) => unitPrice !== sharedUnitPrice) ||
+      designIds.some((designId) => !designId || designIdentityCounts.get(designId) !== 1)
+    ) {
+      throw new CrmAuthError(409, "A duplicate historical source line group is ambiguous.");
+    }
+
+    const canonicalLine = { ...ordered[0], quantity: ordered.length };
+    const canonicalDesign = {
+      ...soleDesigns[0],
+      line_item_id: lineId(canonicalLine),
+      unit_price: moneyFromCents(sharedUnitPrice),
+    };
+    for (const line of ordered) {
+      canonicalLineByGroupedId.set(lineId(line), canonicalLine);
+      canonicalDesignByGroupedId.set(lineId(line), canonicalDesign);
+    }
+  }
+
+  const emittedLines = new Set<string>();
+  const sourceLineItems = source.sourceLineItems.flatMap((line) => {
+    const canonical = canonicalLineByGroupedId.get(lineId(line));
+    if (!canonical) return [line];
+    const canonicalId = lineId(canonical);
+    if (emittedLines.has(canonicalId)) return [];
+    emittedLines.add(canonicalId);
+    return [canonical];
+  });
+  const groupedLineIds = new Set(canonicalLineByGroupedId.keys());
+  const emittedDesigns = new Set<string>();
+  const sourceDesigns = source.sourceDesigns.flatMap((design) => {
+    const groupedLineId = String(design.line_item_id || "");
+    if (!groupedLineIds.has(groupedLineId)) return [design];
+    const canonical = canonicalDesignByGroupedId.get(groupedLineId);
+    if (!canonical) return [];
+    const canonicalId = lineId(canonical);
+    if (emittedDesigns.has(canonicalId)) return [];
+    emittedDesigns.add(canonicalId);
+    return [canonical];
+  });
+
+  return { ...source, sourceLineItems, sourceDesigns };
+}
+
 function projectOneMissingHistoricalCrmMirrorLine(input: {
   mirrorQuote: AnyRow;
   source: ProtectedHistoricalPricingSource;
@@ -633,7 +719,8 @@ export async function loadHistoricalCrmMirrorPricing(
 
   if (salesQuote.quote_v2_backend !== true || salesQuote.quote_v2_status === "priced") return null;
 
-  const source = await loadProtectedHistoricalPricingSource(supabase, salesQuoteId);
+  const protectedSource = await loadProtectedHistoricalPricingSource(supabase, salesQuoteId);
+  const source = normalizeHistoricalCrmPublicSource(protectedSource);
   if (source.sourceLineItems.length === targetLineItems.length + 1) {
     return projectOneMissingHistoricalCrmMirrorLine({
       mirrorQuote,

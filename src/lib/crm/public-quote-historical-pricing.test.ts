@@ -6,15 +6,24 @@ const SALES_QUOTE_ID = "22222222-2222-4222-8222-222222222222";
 const MIRROR_QUOTE_ID = "33333333-3333-4333-8333-333333333333";
 const SOURCE_QUOTE_ID = "44444444-4444-4444-8444-444444444444";
 const TOKEN = "maggie-existing-link";
-const PRICES = [406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5];
-const ROOMS = [
+const SOURCE_PRICES = [406.87, 406.87, 604.5, 406.87, 406.87, 255.75, 406.87, 604.5];
+const SOURCE_ROOMS = [
   ["Flex Room", 35, 60],
   ["Dining Room", 35, 60],
   ["Dining Room", 60, 52],
   ["Living Room", 35, 60],
+  ["Living Room", 35, 60],
   ["Bed 1", 22, 60],
   ["Bed 1", 35, 60],
   ["Bed 2", 60, 52],
+] as const;
+const MIRROR_ROOMS = [
+  ["Flex Room", 35, 60, 1],
+  ["Dining Room", 35, 60, 1],
+  ["Dining Room", 60, 52, 1],
+  ["Living Room", 35, 60, 2],
+  ["Bed 1", 22, 60, 1],
+  ["Bed 2", 60, 52, 1],
 ] as const;
 
 type Row = Record<string, unknown>;
@@ -31,27 +40,27 @@ type FixtureOptions = {
 };
 
 function rowsForMaggie(options: FixtureOptions = {}) {
-  const sourceLines = options.sourceLines ?? PRICES.map((_, index) => ({
+  const sourceLines = options.sourceLines ?? SOURCE_PRICES.map((_, index) => ({
     id: `source-line-${index + 1}`,
     quote_id: SOURCE_QUOTE_ID,
     quantity: 1,
-    room: ROOMS[index][0],
-    width_in: ROOMS[index][1],
-    height_in: ROOMS[index][2],
+    room: SOURCE_ROOMS[index][0],
+    width_in: SOURCE_ROOMS[index][1],
+    height_in: SOURCE_ROOMS[index][2],
     sort_order: index,
   }));
-  const sourceDesigns = options.sourceDesigns ?? PRICES.map((unitPrice, index) => ({
+  const sourceDesigns = options.sourceDesigns ?? SOURCE_PRICES.map((unitPrice, index) => ({
     id: `protected-design-${index + 1}`,
     line_item_id: `source-line-${index + 1}`,
-    unit_price: index === 3 ? 813.74 : unitPrice,
+    unit_price: unitPrice,
   }));
-  const mirrorLines = options.mirrorLines ?? PRICES.map((_, index) => ({
+  const mirrorLines = options.mirrorLines ?? MIRROR_ROOMS.map((room, index) => ({
     id: `target-line-${index + 1}`,
     quote_id: MIRROR_QUOTE_ID,
-    room: ROOMS[index][0],
-    width_in: ROOMS[index][1],
-    height_in: ROOMS[index][2],
-    quantity: index === 3 ? 2 : 1,
+    room: room[0],
+    width_in: room[1],
+    height_in: room[2],
+    quantity: room[3],
     discount_percent: 0,
     sort_order: index,
     selected_design_id: `current-design-${index + 1}`,
@@ -281,9 +290,7 @@ describe("existing sent CRM mirror historical read projection", () => {
   });
 
   it("reconstructs Maggie's one omitted historical row without changing current configuration or writing", async () => {
-    const complete = rowsForMaggie();
-    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 5);
-    const fake = fakeSupabase({ mirrorLines });
+    const fake = fakeSupabase();
 
     const historical = await loadHistoricalCrmMirrorPricing(
       fake.client as never,
@@ -314,15 +321,15 @@ describe("existing sent CRM mirror historical read projection", () => {
     expect(quote?.lines[3]?.unitPrice).toBe(406.87);
     expect(quote?.lines[3]?.lineItemId).toBe("target-line-4");
     expect(quote?.lines.every((line) => line.options.includes("Hinge Color: 101_White"))).toBe(true);
-    const missingLine = historical?.lineItems.find((line) => line.id === "source-line-6");
+    const missingLine = historical?.lineItems.find((line) => line.id === "source-line-7");
     expect(missingLine).toMatchObject({
       room: "Bed 1",
       width_in: 35,
       height_in: 60,
       quantity: 1,
-      sort_order: 5,
+      sort_order: 6,
     });
-    expect(quote?.lines.find((line) => line.lineItemId === "source-line-6")).toMatchObject({
+    expect(quote?.lines.find((line) => line.lineItemId === "source-line-7")).toMatchObject({
       options: expect.arrayContaining(["Hinge Color: 101_White"]),
       unitPrice: 406.87,
       lineTotal: 406.87,
@@ -333,7 +340,6 @@ describe("existing sent CRM mirror historical read projection", () => {
   it("fails closed when same-dimension donors have different customer configuration", async () => {
     const complete = rowsForMaggie();
     const mirrorLines = complete.mirrorLines
-      .filter((_, index) => index !== 5)
       .map((line, index) => index === 1
         ? {
             ...line,
@@ -352,11 +358,35 @@ describe("existing sent CRM mirror historical read projection", () => {
 
   it("fails closed when two protected source rows are missing from the mirror", async () => {
     const complete = rowsForMaggie();
-    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 4 && index !== 5);
+    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 4);
     const fake = fakeSupabase({ mirrorLines });
 
     await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
       .rejects.toThrow(/historical price line count/i);
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when duplicate protected source rows have mixed prices", async () => {
+    const complete = rowsForMaggie();
+    const sourceDesigns = complete.sourceDesigns.map((design, index) => index === 4
+      ? { ...design, unit_price: 406.88 }
+      : design);
+    const fake = fakeSupabase({ sourceDesigns });
+
+    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+      .rejects.toThrow(/duplicate historical source line/i);
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when duplicate protected source rows have non-consecutive orders", async () => {
+    const complete = rowsForMaggie();
+    const sourceLines = complete.sourceLines.map((line, index) => index === 4
+      ? { ...line, sort_order: 9 }
+      : line);
+    const fake = fakeSupabase({ sourceLines });
+
+    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+      .rejects.toThrow(/duplicate historical source line/i);
     expect(fake.writes).toEqual([]);
   });
 
