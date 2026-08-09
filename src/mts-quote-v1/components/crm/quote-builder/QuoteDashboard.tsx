@@ -525,18 +525,18 @@ export function QuoteDashboard({
     },
   });
 
-  const openQuoteRow = (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
+  const openQuoteRowInBuilder = (quote: QuoteTableRow) => {
     const targetId = quoteBuilderTargetId(quote);
     if (!targetId) {
-      onOpenCrmQuote?.(quote.id, tab);
+      onOpenCrmQuote?.(quote.id, "builder");
       return;
     }
     setActiveQuote(targetId);
-    setActiveTab(tab);
+    setActiveTab("builder");
   };
 
   const handleOpenQuote = (quote: QuoteTableRow) => {
-    openQuoteRow(quote, "contract");
+    openQuoteRowInBuilder(quote);
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
@@ -600,9 +600,7 @@ export function QuoteDashboard({
       {/* Contracts Section */}
       <ContractsSection
         quotes={filteredQuotes}
-        onOpenContract={(quote) => {
-          openQuoteRow(quote, "contract");
-        }}
+        onOpenContract={openQuoteRowInBuilder}
       />
 
       {/* New Quote Dialog */}
