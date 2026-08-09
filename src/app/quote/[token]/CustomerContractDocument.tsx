@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
@@ -33,27 +34,54 @@ export function CustomerContractDocument({
   const preparedFor = customerDetails(quote);
 
   return (
-    <main className={embedded ? "public-quote-contract-embed" : undefined} style={embedded ? contractPreviewWrap : wrap}>
-      <style>{`@media print { .no-print { display: none !important; } main { padding: 0 !important; } }`}</style>
-      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
-        {previewOnly ? <strong style={{ fontSize: 12 }}>Internal document preview · no customer action is available</strong> : <span />}
-        <PrintButton />
+    <main className={`customer-contract-print-root${embedded ? " public-quote-contract-embed" : ""}`} style={embedded ? contractPreviewWrap : wrap}>
+      <style>{`.customer-contract-print-only { display: none !important; }
+      .customer-contract-screen-brand { display: grid; justify-items: center; margin: 0 0 18px; }
+      .customer-contract-print-action { position: fixed; top: 16px; left: 16px; z-index: 20; }
+      @media (max-width: 640px) {
+        .customer-contract-print-action { top: 10px; left: 10px; }
+      }
+      @media print {
+        body * { visibility: hidden !important; }
+        .customer-contract-print-root,
+        .customer-contract-print-root * { visibility: visible !important; }
+        .site-header-shell,
+        .financing-banner,
+        .site-footer { display: none !important; }
+        .customer-contract-print-root { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+        .customer-contract-print-only { display: block !important; }
+        .no-print { display: none !important; }
+      }`}</style>
+      <div className="customer-contract-screen-brand">
+        <Image
+          src="/brand/805-shutters-logo-header.png"
+          alt="805 Shutters"
+          width={227}
+          height={148}
+          priority
+          style={contractLogo}
+        />
       </div>
-      <div style={officialContractBar}>
-        <strong>Official 805 Shutters contract</strong>
-        <a href={brandIdentity.website}>{quote.business.website}</a>
-        <a href={brandIdentity.phoneHref}>{quote.business.phone}</a>
+      <div className="no-print customer-contract-print-action">
+        {previewOnly ? <strong style={{ fontSize: 12 }}>Internal preview</strong> : <PrintButton />}
       </div>
-      <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20 }}>
-        <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
-          {quote.business.name}
-        </p>
-        <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
-        <p style={{ margin: 0 }}>
-          Prepared for <strong>{preparedFor.join(", ")}</strong>
-          {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
-        </p>
-      </header>
+      <div className="customer-contract-print-only">
+        <div style={officialContractBar}>
+          <strong>Official 805 Shutters contract</strong>
+          <a href={brandIdentity.website}>{quote.business.website}</a>
+          <a href={brandIdentity.phoneHref}>{quote.business.phone}</a>
+        </div>
+        <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20 }}>
+          <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
+            {quote.business.name}
+          </p>
+          <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
+          <p style={{ margin: 0 }}>
+            Prepared for <strong>{preparedFor.join(", ")}</strong>
+            {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
+          </p>
+        </header>
+      </div>
 
       {!previewOnly && quote.versions.length > 1 ? (
         <section className="no-print" style={quoteTabsSection} aria-label="Compare quote options">
@@ -89,7 +117,7 @@ export function CustomerContractDocument({
       ) : null}
 
       <QuoteSelection quote={quote} paymentOptions={paymentOptions} previewOnly={previewOnly} />
-      <footer style={contractFooter}>
+      <footer className="customer-contract-print-only" style={contractFooter}>
         <strong>{quote.business.name}</strong>
         <span>
           Official contact: <a href={brandIdentity.website}>{quote.business.website}</a> ·{" "}
@@ -102,6 +130,7 @@ export function CustomerContractDocument({
 }
 
 const wrap = { maxWidth: 1120, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;
+const contractLogo = { display: "block", width: 170, maxWidth: "46vw", height: "auto" } as const;
 const quoteTabsSection = { marginBottom: 22, padding: 14, border: "2px solid #0b0b0b", borderRadius: 12, background: "#f4f4f2" } as const;
 const quoteTabsHeading = { display: "block", marginBottom: 10, fontSize: 15 } as const;
 const quoteTabsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 } as const;

@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import { DEFAULT_ADJUSTMENTS } from "@/lib/crm/quote-builder";
 import { QuoteSelection } from "./QuoteSelection";
+import { CustomerContractDocument } from "./CustomerContractDocument";
+
+const quoteSelectionCss = readFileSync(new URL("./QuoteSelection.module.css", import.meta.url), "utf8");
 
 function quoteWithLegacyDetails(signed = true): PublicQuote {
   return {
@@ -106,15 +110,26 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain('48&quot; W');
   });
 
-  it("puts one sign path in the side action panel before contract pricing", () => {
+  it("puts a compact order summary before the signing and deposit actions", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       paymentOptions,
     }));
     expect(html.match(/Sign the contract/g)).toHaveLength(1);
     expect(html.match(/Sign &amp; approve/g)).toHaveLength(1);
-    expect(html.indexOf("Finish your order")).toBeLessThan(html.indexOf("Contract pricing"));
-    expect(html.indexOf("Contract pricing")).toBeLessThan(html.indexOf("Complete contract"));
+    expect(html).toContain("Sign contract here");
+    expect(html).not.toContain("Next steps");
+    expect(html).not.toContain("Finish your order");
+    expect(html.indexOf("Order Summary")).toBeLessThan(html.indexOf("Sign contract here"));
+    expect(html.indexOf("Kitchen")).toBeLessThan(html.indexOf("Sign contract here"));
+    expect(html.indexOf("$509.40")).toBeLessThan(html.indexOf("Sign contract here"));
+    expect(html).toContain("Make a deposit");
+  });
+
+  it("keeps the desktop action panel fixed over the full-width contract", () => {
+    expect(quoteSelectionCss).toMatch(/\.contractLayout\s*{\s*display:\s*block;/);
+    expect(quoteSelectionCss).toMatch(/\.actionPanel\s*{[^}]*position:\s*fixed;[^}]*top:\s*16px;[^}]*right:\s*16px;/s);
+    expect(quoteSelectionCss).toMatch(/\.actionPanel\s*{[^}]*z-index:\s*30;/s);
   });
 
   it("shows the ledger-derived deposit due with card, Zelle, and Venmo paths", () => {
@@ -128,6 +143,9 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Pay deposit with card");
     expect(html).toContain("@approved-venmo");
     expect(html).toContain("805-806-9344");
+    expect(html).toContain("Copy Zelle phone number 805-806-9344");
+    expect(html).toContain("Copy Venmo address @approved-venmo");
+    expect(html.match(/Tap to copy/g)).toHaveLength(2);
   });
 
   it("switches the side panel to the authoritative balance after the deposit is paid", () => {
@@ -155,12 +173,27 @@ describe("QuoteSelection", () => {
       paymentOptions,
     }));
 
-    expect(html).toContain("Contract pricing");
-    expect(html).toContain("Complete contract");
+    expect(html).toContain("Order Summary");
     expect(html).toContain("Roller Shades");
     expect(html).not.toContain("Purchase:");
     expect(html).not.toContain("Sign &amp; approve");
     expect(html).not.toContain("Pay deposit with card");
     expect(html).not.toContain("Make a payment");
+  });
+
+  it("isolates the contract from website chrome when printing", () => {
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, {
+      quote: quoteWithLegacyDetails(true),
+    }));
+
+    expect(html).toContain("customer-contract-print-root");
+    expect(html).toContain("805-shutters-logo-header.png");
+    expect(html).toContain("customer-contract-screen-brand");
+    expect(html).toContain(".customer-contract-print-only { display: none !important; }");
+    expect(html).toContain("class=\"customer-contract-print-only\"");
+    expect(html).toContain("body * { visibility: hidden !important; }");
+    expect(html).toContain(".site-header-shell,");
+    expect(html).toContain(".site-footer { display: none !important; }");
+    expect(html).toContain(".no-print { display: none !important; }");
   });
 });

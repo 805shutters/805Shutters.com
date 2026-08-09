@@ -54,82 +54,85 @@
   opacity: 0.7;
 }
 
-.pricingSection {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-  gap: 24px;
-  align-items: start;
-  margin: 14px 0 28px;
+.orderSummary {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
   padding: 20px;
   border: 1px solid #b8b6ae;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #ffffff;
-}
-
-.detailsTable {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 12px;
   font-family: var(--font-body, "Helvetica Neue", Arial, sans-serif);
-  font-size: 15px;
 }
 
-.lineItem {
-  vertical-align: top;
+.orderSummaryHeader {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #0b0b0b;
+}
+
+.orderSummaryHeader h2 {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.1;
+}
+
+.orderLines {
+  display: grid;
+  gap: 10px;
+}
+
+.orderLine {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid #d8d8d2;
+  border-radius: 10px;
+  background: #fbfbfa;
   transition: opacity 160ms ease;
+  break-inside: avoid;
 }
 
-.lineSummary,
-.productCell,
-.emptyDetails {
-  border-top: 1px solid #d8d8d2;
-  border-bottom: 1px solid #d8d8d2;
+.orderLineHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.lineSummary {
-  width: 180px;
-  padding: 20px;
-  border-left: 1px solid #d8d8d2;
-  border-radius: 12px 0 0 12px;
-  background: #f4f4f2;
-}
-
-.productCell {
-  padding: 20px 22px;
-  border-right: 1px solid #d8d8d2;
-  border-radius: 0 12px 12px 0;
-  background: #ffffff;
-}
-
-.roomName,
-.linePrice,
-.lineQuantity {
-  display: block;
+.orderLineHeader > div {
+  min-width: 0;
 }
 
 .roomName {
-  font-size: 18px;
-  line-height: 1.25;
+  display: block;
+  font-size: 21px;
+  line-height: 1.15;
 }
 
 .linePrice {
-  margin-top: 8px;
-  font-size: 18px;
+  display: block;
+  flex: 0 0 auto;
+  font-size: 21px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .lineQuantity {
+  display: block;
   margin-top: 4px;
   color: #5b5b58;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .lineSelect {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   font-size: 12px;
   font-weight: 700;
 }
@@ -143,11 +146,11 @@
 
 .designOptions {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .designOption {
-  padding: 14px;
+  padding: 9px;
   border: 1px solid #d8d8d2;
   border-radius: 9px;
   background: #fbfbfa;
@@ -157,9 +160,10 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  margin-bottom: 7px;
+  padding-bottom: 6px;
   border-bottom: 1px solid #eeeeeb;
+  font-size: 11px;
 }
 
 .designOptionHeading span {
@@ -173,23 +177,26 @@
 
 .productName {
   display: block;
-  font-size: 18px;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.3;
 }
 
 .productDetails {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 22px;
-  margin: 14px 0 0;
+  gap: 4px 16px;
+  margin: 6px 0 0;
 }
 
 .productDetail {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: baseline;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+  font-size: 10.5px;
+  line-height: 1.3;
 }
 
 .productDetail dt {
@@ -205,40 +212,54 @@
   margin: 0;
   overflow-wrap: anywhere;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .emptyDetails {
-  padding: 20px;
-  border-right: 1px solid #d8d8d2;
-  border-left: 1px solid #d8d8d2;
-  border-radius: 12px;
-  background: #ffffff;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #d8d8d2;
+  border-radius: 10px;
+  color: #5b5b58;
+  font-size: 12px;
+}
+
+.orderLineDetails {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e4de;
+}
+
+.orderTotals {
+  width: min(100%, 320px);
+  margin: 14px 0 0 auto;
+  padding-top: 12px;
+  border-top: 2px solid #0b0b0b;
 }
 
 .contractLayout {
-  display: grid;
-  grid-template-columns: minmax(0, 760px) minmax(290px, 330px);
-  gap: 28px;
-  align-items: start;
+  display: block;
 }
 
 .contractLayoutSingle {
-  grid-template-columns: minmax(0, 760px);
+  display: block;
 }
 
 .contractContent {
-  grid-column: 1;
-  grid-row: 1;
   min-width: 0;
+  margin-top: 20px;
 }
 
 .actionPanel {
-  grid-column: 2;
-  grid-row: 1;
-  position: sticky;
-  top: 10px;
-  overflow: hidden;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 30;
+  width: min(330px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid #c8c6bd;
   border-radius: 16px;
   background: #ffffff;
@@ -246,32 +267,15 @@
 }
 
 .actionPanelHeader {
-  padding: 16px 18px 15px;
+  padding: 13px 18px;
   background: #0b0b0b;
   color: #ffffff;
 }
 
-.actionPanelHeader > span {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.72;
-}
-
 .actionPanelHeader > strong {
   display: block;
-  font-size: 21px;
+  font-size: 17px;
   line-height: 1.15;
-}
-
-.actionPanelHeader > p {
-  margin: 7px 0 0;
-  font-size: 13px;
-  line-height: 1.45;
-  opacity: 0.78;
 }
 
 .actionSection {
@@ -382,18 +386,36 @@
   gap: 11px;
 }
 
-.peerPaymentDetails > div {
+.copyPaymentButton {
   display: grid;
   gap: 1px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid #d8d8d2;
+  border-radius: 8px;
+  background: #fbfbfa;
+  color: #0b0b0b;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.peerPaymentDetails span,
-.peerPaymentDetails small {
+.copyPaymentButton:hover,
+.copyPaymentButton:focus-visible {
+  border-color: #0b0b0b;
+  background: #ffffff;
+  outline: none;
+}
+
+.copyPaymentButton span,
+.copyPaymentButton small {
   color: #5b5b58;
   font-size: 11px;
 }
 
-.peerPaymentDetails strong {
+.copyPaymentButton strong {
   overflow-wrap: anywhere;
   font-size: 14px;
 }
@@ -414,13 +436,26 @@
   }
 
   .actionPanel,
-  .contractContent {
+  .contractContent,
+  .orderSummary {
     width: 100%;
   }
 
-  .actionPanel {
-    position: static;
+  .orderSummary {
+    order: 1;
     box-sizing: border-box;
+  }
+
+  .actionPanel {
+    order: 2;
+    position: static;
+    max-height: none;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .contractContent {
+    order: 3;
   }
 }
 
@@ -443,50 +478,42 @@
     text-align: center;
   }
 
-  .pricingSection {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    padding: 16px;
+  .orderSummary {
+    padding: 15px;
+    border-radius: 12px;
   }
 
-  .detailsTable,
-  .detailsTable tbody,
-  .detailsTable tr,
-  .lineSummary,
-  .productCell,
-  .emptyDetails {
-    display: block;
-    width: 100%;
+  .orderSummaryHeader h2 {
+    font-size: 23px;
   }
 
-  .detailsTable tr {
-    box-sizing: border-box;
-    margin-bottom: 12px;
-    border-radius: 10px;
+  .orderLine {
+    padding: 12px;
   }
 
-  .lineSummary {
-    box-sizing: border-box;
-    padding: 16px;
-    border-right: 1px solid #d8d8d2;
-    border-radius: 10px 10px 0 0;
-  }
-
-  .productCell {
-    box-sizing: border-box;
-    padding: 16px;
-    border-top: 0;
-    border-left: 1px solid #d8d8d2;
-    border-radius: 0 0 10px 10px;
+  .roomName,
+  .linePrice {
+    font-size: 19px;
   }
 
   .productDetails {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
   }
 
   .productDetail {
-    grid-template-columns: minmax(110px, max-content) minmax(0, 1fr);
+    display: block;
+    font-size: 10px;
+  }
+
+  .productDetail dt {
+    color: #5b5b58;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .productDetail dd {
+    margin-top: 1px;
   }
 
   .actionPanel {

@@ -5,6 +5,7 @@ import {
   calculateLineItemDesignTotal,
   calculateQuoteDesignSubtotal,
   getQuoteBuilderNote,
+  getQuoteEmailNote,
   hasPricedQuoteDesigns,
   parseQuoteAdminControls,
   resolveQuoteTotalDesign,
@@ -12,6 +13,27 @@ import {
 } from "./quoteTotals";
 
 describe("quote note metadata", () => {
+  it("does not inject deposit payment instructions into the customer email note", () => {
+    expect(getQuoteEmailNote({ installer_notes: null })).toBe("");
+    expect(getQuoteEmailNote({
+      installer_notes: JSON.stringify({ __customerEmailNote: "Thanks again for meeting with us." }),
+    })).toBe("Thanks again for meeting with us.");
+  });
+
+  it("removes the legacy deposit instructions from saved customer email notes", () => {
+    const legacyPaymentNote =
+      "Pay your deposit: Venmo @ken-hill-13 · Zelle 805-806-9344 · Card payment available on your quote review page.";
+
+    expect(getQuoteEmailNote({
+      installer_notes: JSON.stringify({
+        __customerEmailNote: `Thanks again for meeting with us.\n\n${legacyPaymentNote}`,
+      }),
+    })).toBe("Thanks again for meeting with us.");
+    expect(getQuoteEmailNote({
+      installer_notes: JSON.stringify({ __customerEmailNote: legacyPaymentNote }),
+    })).toBe("");
+  });
+
   it("treats plain legacy installer notes as the general job note", () => {
     expect(getQuoteBuilderNote({ installer_notes: "Bring Norman samples." })).toBe(
       "Bring Norman samples."

@@ -31,9 +31,11 @@ describe("buildQuoteEmail", () => {
     expect(subject).toContain("$4,250");
     expect(subject).toContain("contract");
     expect(html).toContain("https://x/quote/abc");
-    expect(text).toContain("Jane Smith");
+    expect(text).toContain("Hi Jane,");
     expect(text).toContain("Your contract from 805 Shutters");
-    expect(html).toContain("Jane Smith");
+    expect(html).toContain("Hi Jane,");
+    expect(text).not.toContain("Hi Jane Smith");
+    expect(html).not.toContain("Hi Jane Smith");
     expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
     expect(html).toContain("805@805shutters.com");
   });
@@ -58,6 +60,9 @@ describe("buildQuoteEmail", () => {
     expect(html).toContain('bgcolor="#ffffff"');
     expect(html).toContain("background:#ffffff");
     expect(html).toContain("color:#0b0b0b");
+    expect(html).toContain('align="center"');
+    expect(html).toContain("text-align:center");
+    expect(html).toContain("margin:0 auto;border:0");
   });
   it("renders clean text line items without product images", () => {
     const { html, text } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4250, {
@@ -129,10 +134,11 @@ describe("buildQuoteEmail", () => {
     expect(html).toContain('padding:7px 0 7px 12px');
     expect(html).not.toContain('display:flex;justify-content:space-between;gap:16px');
     expect(html).toContain("large tabs at the top");
-    expect(html.match(/Review and approve contract/g)).toHaveLength(2);
+    expect(html.match(/Review and approve your quote here/g)).toHaveLength(2);
+    expect(html).not.toContain("Review and approve contract");
     expect(html.match(/background:#dc2626/g)).toHaveLength(2);
-    expect(html.indexOf("Review and approve contract")).toBeLessThan(html.indexOf("3 quotes included"));
-    expect(html.lastIndexOf("Review and approve contract")).toBeGreaterThan(html.indexOf("3 quotes included"));
+    expect(html.indexOf("Review and approve your quote here")).toBeLessThan(html.indexOf("3 quotes included"));
+    expect(html.lastIndexOf("Review and approve your quote here")).toBeGreaterThan(html.indexOf("3 quotes included"));
   });
 });
 

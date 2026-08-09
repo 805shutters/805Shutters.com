@@ -263,7 +263,8 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   text: string;
 } {
   const amount = money(total);
-  const name = customerName && customerName !== "Valued customer" ? customerName : "there";
+  const fullName = customerName.trim();
+  const name = fullName && fullName !== "Valued customer" ? fullName.split(/\s+/)[0] : "there";
   const quoteLabel = details.quoteNumber ? `Contract ${details.quoteNumber}` : "Your Contract";
   const subject = `Your 805 Shutters contract${total > 0 ? ` - ${amount}` : ""}`;
   const personalNote = details.personalNote?.trim();
@@ -286,7 +287,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
-      ${details.logoUrl ? `<div style="display:inline-block;background:#ffffff!important;background-color:#ffffff!important;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;color:#0b0b0b">805 SHUTTERS</div>`}
+      ${details.logoUrl ? `<div align="center" style="display:block;text-align:center;background:#ffffff!important;background-color:#ffffff!important;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0 auto;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;color:#0b0b0b">805 SHUTTERS</div>`}
       <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(quoteLabel)}</div>
       <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">Ready for review</h1>
       <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hi ${escapeHtml(name)}, your contract${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
@@ -439,7 +440,7 @@ function officialContactFooterHtml(): string {
 
 function reviewContractButton(url: string, margin: string): string {
   return `<div style="margin:${margin}">
-    <a href="${escapeAttr(url)}" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
+    <a href="${escapeAttr(url)}" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve your quote here</a>
   </div>`;
 }
 

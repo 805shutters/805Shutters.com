@@ -45,8 +45,15 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
   const [computing, setComputing] = useState(false);
   const [squareBusy, setSquareBusy] = useState<QuotePaymentType | null>(null);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
+  const [copiedPayment, setCopiedPayment] = useState<"zelle" | "venmo" | null>(null);
+  const [copyFailed, setCopyFailed] = useState<"zelle" | "venmo" | null>(null);
   const [signedNow, setSignedNow] = useState(false);
   const reqId = useRef(0);
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+  }, []);
 
   useEffect(() => {
     if (previewOnly) return;
@@ -131,6 +138,38 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
     setSelected(new Set());
   }
 
+  async function copyPaymentValue(kind: "zelle" | "venmo", value: string) {
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(value);
+      copied = true;
+    } catch {
+      const field = document.createElement("textarea");
+      field.value = value;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      try {
+        document.body.appendChild(field);
+        field.select();
+        field.setSelectionRange(0, value.length);
+        copied = document.execCommand("copy");
+      } catch {
+        copied = false;
+      } finally {
+        field.remove();
+      }
+    }
+
+    setCopiedPayment(copied ? kind : null);
+    setCopyFailed(copied ? null : kind);
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = setTimeout(() => {
+      setCopiedPayment(null);
+      setCopyFailed(null);
+    }, 2400);
+  }
+
   return (
     <>
       {allowSelection ? (
@@ -151,12 +190,71 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
       ) : null}
 
       <div className={`${styles.contractLayout} ${showActionPanel ? "" : styles.contractLayoutSingle}`}>
+        <section className={styles.orderSummary} aria-labelledby="order-summary-heading">
+          <div className={styles.orderSummaryHeader}>
+            <h2 id="order-summary-heading">Order Summary</h2>
+          </div>
+
+          {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
+
+          <div className={styles.orderLines}>
+            {quote.lines.map((line) => {
+              const isChecked = selected.has(line.id);
+              const dimmed = mode === "some" && !isChecked;
+              return (
+                <article key={line.id} className={styles.orderLine} style={{ opacity: dimmed ? 0.4 : 1 }}>
+                  <div className={styles.orderLineHeader}>
+                    <div>
+                      {mode === "some" ? (
+                        <label className={styles.lineSelect}>
+                          <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} />
+                          <span>Select</span>
+                        </label>
+                      ) : null}
+                      <strong className={styles.roomName}>{line.room}</strong>
+                      <span className={styles.lineQuantity}>Quantity {line.quantity}</span>
+                    </div>
+                    <strong className={styles.linePrice}>{line.priceReady ? money(line.lineTotal) : "Pricing in progress"}</strong>
+                  </div>
+                  {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
+                  <div className={styles.orderLineDetails}>
+                    {line.priceReady ? (
+                      line.showDesignOptions && line.designOptions.length ? (
+                        <div className={styles.designOptions}>
+                          {line.designOptions.map((option) => (
+                            <div key={option.id} className={line.designOptions.length > 1 ? styles.designOption : undefined}>
+                              {line.designOptions.length > 1 ? (
+                                <div className={styles.designOptionHeading}>
+                                  <strong>Option {option.label}</strong>
+                                  <span>{money(option.lineTotal)}</span>
+                                </div>
+                              ) : null}
+                              <ProductConfiguration productName={option.productName} styleName={option.styleName} options={option.options} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} />
+                      )
+                    ) : (
+                      <em style={{ opacity: 0.6 }}>Pricing in progress</em>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+            {quote.lines.length === 0 ? <p className={styles.emptyDetails}><em>This contract is still being prepared.</em></p> : null}
+          </div>
+
+          <div className={styles.orderTotals}>
+            <PricingSummary quote={quote} live={live} computing={computing} />
+          </div>
+        </section>
+
         {showActionPanel ? (
           <aside className={`${styles.actionPanel} no-print`} aria-label="Sign contract and make a payment">
             <div className={styles.actionPanelHeader}>
-              <span>Next steps</span>
-              <strong>Finish your order</strong>
-              <p>Sign your contract and use the payment method that works best for you.</p>
+              <strong>Sign contract here</strong>
             </div>
 
             {canSign ? (
@@ -183,7 +281,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
               <section id="payment" className={styles.actionSection} aria-labelledby="payment-heading">
                 <div className={styles.actionStep}>
                   <span>{canSign ? "2" : "1"}</span>
-                  <strong id="payment-heading">Make a payment</strong>
+                  <strong id="payment-heading">{paymentType === "deposit" ? "Make a deposit" : "Make a payment"}</strong>
                 </div>
                 {!live.payment.available ? (
                   <p className={styles.actionNotice}>We couldn&apos;t verify the current amount due. Please refresh or call {quote.business.phone}.</p>
@@ -203,17 +301,27 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
                     </button>
                     {squareMsg ? <p className={styles.paymentError}>{squareMsg}</p> : null}
                     <div className={styles.peerPayments}>
-                      <div className={styles.peerPaymentDetails}>
-                        <div>
+                      <div className={styles.peerPaymentDetails} aria-live="polite">
+                        <button
+                          type="button"
+                          className={styles.copyPaymentButton}
+                          onClick={() => copyPaymentValue("zelle", paymentOptions.zelleDestination)}
+                          aria-label={`Copy Zelle phone number ${paymentOptions.zelleDestination}`}
+                        >
                           <span>Zelle</span>
                           <strong>{paymentOptions.zelleDestination}</strong>
-                          <small>Send from your bank app</small>
-                        </div>
-                        <div>
+                          <small>{copiedPayment === "zelle" ? "Copied to clipboard ✓" : copyFailed === "zelle" ? "Couldn’t copy — press and hold" : "Tap to copy"}</small>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.copyPaymentButton}
+                          onClick={() => copyPaymentValue("venmo", `@${paymentOptions.venmoHandle}`)}
+                          aria-label={`Copy Venmo address @${paymentOptions.venmoHandle}`}
+                        >
                           <span>Venmo</span>
                           <strong>@{paymentOptions.venmoHandle}</strong>
-                          <small>Reference your name</small>
-                        </div>
+                          <small>{copiedPayment === "venmo" ? "Copied to clipboard ✓" : copyFailed === "venmo" ? "Couldn’t copy — press and hold" : "Tap to copy"}</small>
+                        </button>
                       </div>
                       <div
                         className={styles.venmoQr}
@@ -231,82 +339,6 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         ) : null}
 
         <div className={styles.contractContent}>
-          {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
-
-          <section aria-labelledby="contract-pricing-heading" className={styles.pricingSection}>
-        <div>
-          <p style={sectionEyebrow}>Contract pricing</p>
-          <h2 id="contract-pricing-heading" style={sectionHeading}>Your price at a glance</h2>
-          <p style={sectionIntro}>Review the total, deposit, and remaining balance before reading the complete product details.</p>
-        </div>
-        <PricingSummary quote={quote} live={live} computing={computing} />
-          </section>
-
-      <section aria-labelledby="contract-details-heading" style={detailsSection}>
-        <p style={sectionEyebrow}>Complete contract</p>
-        <h2 id="contract-details-heading" style={sectionHeading}>Product and window details</h2>
-        <p style={sectionIntro}>The specifications, quantities, and line pricing below are part of this contract.</p>
-      <table className={styles.detailsTable}>
-        <tbody>
-          {quote.lines.map((line) => {
-            const isChecked = selected.has(line.id);
-            const dimmed = mode === "some" && !isChecked;
-            return (
-              <tr key={line.id} className={styles.lineItem} style={{ opacity: dimmed ? 0.4 : 1 }}>
-                <td className={styles.lineSummary}>
-                  {mode === "some" ? (
-                    <label className={styles.lineSelect}>
-                      <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} />
-                      <span>Select</span>
-                    </label>
-                  ) : null}
-                  <strong className={styles.roomName}>{line.room}</strong>
-                  <span className={styles.linePrice}>{line.priceReady ? money(line.lineTotal) : "Pricing in progress"}</span>
-                  <span className={styles.lineQuantity}>Quantity {line.quantity}</span>
-                  {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
-                </td>
-                <td className={styles.productCell}>
-                  {line.priceReady ? (
-                    line.showDesignOptions && line.designOptions.length ? (
-                        <div className={styles.designOptions}>
-                          {line.designOptions.map((option) => (
-                            <div key={option.id} className={line.designOptions.length > 1 ? styles.designOption : undefined}>
-                              {line.designOptions.length > 1 ? (
-                                <div className={styles.designOptionHeading}>
-                                  <strong>Option {option.label}</strong>
-                                  <span>{money(option.lineTotal)}</span>
-                                </div>
-                              ) : null}
-                              <ProductConfiguration
-                                productName={option.productName}
-                                styleName={option.styleName}
-                                options={option.options}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} />
-                      )
-                  ) : (
-                    <em style={{ opacity: 0.6 }}>Pricing in progress</em>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-          {quote.lines.length === 0 ? (
-            <tr>
-              <td className={styles.emptyDetails} colSpan={2}>
-                <em style={{ opacity: 0.6 }}>This contract is still being prepared.</em>
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-
-      </section>
-
           {!previewOnly && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
             <div className="no-print" style={financingBox}>
               <FinancingOptions
@@ -432,10 +464,6 @@ function Row({ label, value, strong, highlight }: { label: string; value: string
 
 const selectionNotice = { margin: "0 0 16px", padding: "14px 16px", border: "1px solid #b8b6ae", borderRadius: 10, background: "#f4f4f2", color: "#4d4d49" } as const;
 const pricingSummary = { width: "100%", marginLeft: "auto" } as const;
-const detailsSection = { marginTop: 8 } as const;
-const sectionEyebrow = { margin: "0 0 4px", fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.7 } as const;
-const sectionHeading = { margin: 0, fontSize: 24, lineHeight: 1.2 } as const;
-const sectionIntro = { margin: "6px 0 16px", maxWidth: 470, color: "#4d4d49", fontSize: 14, lineHeight: 1.5 } as const;
 const financingBox = {
   border: "1px solid #d8d8d2",
   borderRadius: 10,
