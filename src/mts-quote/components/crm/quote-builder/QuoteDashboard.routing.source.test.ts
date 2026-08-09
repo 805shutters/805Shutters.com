@@ -15,9 +15,9 @@ const quoteWorkspaceVersions = ["mts-quote", "mts-quote-v1"].map((version) => ({
 
 describe("quote dashboard routing", () => {
   for (const { version, dashboardSource, tableSource } of quoteWorkspaceVersions) {
-    it(`opens ${version} quote-table and contract-list rows in the editable builder`, () => {
+    it(`opens ${version} CRM rows through the standard quote editor route`, () => {
       expect(dashboardSource).toMatch(
-        /const openQuoteRowInBuilder = \(quote: QuoteTableRow\) => \{[\s\S]*?onOpenCrmQuote\?\.\(quote\.id, "builder"\);[\s\S]*?setActiveTab\("builder"\);[\s\S]*?\};/
+        /const openQuoteRowInBuilder = \(quote: QuoteTableRow\) => \{\s*if \(quote\.source === "crm"\) \{\s*onOpenCrmQuote\?\.\(quote\.id, "builder"\);\s*return;\s*\}\s*setActiveQuote\(quote\.id\);\s*setActiveTab\("builder"\);\s*\};/
       );
       expect(dashboardSource).toMatch(
         /const handleOpenQuote = \(quote: QuoteTableRow\) => \{\s*openQuoteRowInBuilder\(quote\);\s*\};/

@@ -91,11 +91,6 @@ function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function quoteBuilderTargetId(quote: QuoteTableRow): string | null {
-  if (quote.source === "crm") return quote.sourceQuoteId || null;
-  return quote.id;
-}
-
 function crmQuoteCustomerName(quote: CrmQuote, job?: CrmJob): string {
   return quote.customer_name || job?.customer_name || "—";
 }
@@ -689,12 +684,11 @@ export function QuoteDashboard({
   // it must land in the editor; contract preview remains an explicit action
   // inside the opened builder.
   const openQuoteRowInBuilder = (quote: QuoteTableRow) => {
-    const targetId = quoteBuilderTargetId(quote);
-    if (!targetId) {
+    if (quote.source === "crm") {
       onOpenCrmQuote?.(quote.id, "builder");
       return;
     }
-    setActiveQuote(targetId);
+    setActiveQuote(quote.id);
     setActiveTab("builder");
   };
 

@@ -13,6 +13,7 @@ describe("CRM customer contract route", () => {
 
   it("reserves the builder route for an explicitly labeled edit action", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
+    expect(source).toContain('window.location.assign(`/crm/quote/${quoteId}`)');
     expect(source).toContain('label: "Edit Quote"');
   });
 

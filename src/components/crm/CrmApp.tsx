@@ -942,8 +942,7 @@ export function CrmApp({
     // used for quotes created in V2; opening an old quote must never import,
     // convert, reprice, or replace its saved configuration.
     if (quote) {
-      setBuilderVersion("current");
-      setBuilderQuoteId(quoteId);
+      window.location.assign(`/crm/quote/${quoteId}`);
       return;
     }
 
