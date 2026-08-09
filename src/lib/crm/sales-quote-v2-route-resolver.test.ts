@@ -8,6 +8,15 @@ import {
 const CRM_ID = "11111111-1111-4111-8111-111111111111";
 const SALES_ID = "22222222-2222-4222-8222-222222222222";
 const SOURCE_CRM_ID = "33333333-3333-4333-8333-333333333333";
+const ROOMS = [
+  ["Flex Room", 35, 60],
+  ["Dining Room", 35, 60],
+  ["Dining Room", 60, 52],
+  ["Living Room", 35, 60],
+  ["Bed 1", 22, 60],
+  ["Bed 1", 35, 60],
+  ["Bed 2", 60, 52],
+] as const;
 
 type Row = Record<string, unknown>;
 
@@ -30,24 +39,34 @@ function sentMirrorSupabase(
   };
   const sourceUnitPrices = [406.87, 406.87, 604.5, sourceLine4UnitPrice, 255.75, 406.87, 604.5];
   const salesLines = sourceUnitPrices.map((_, index) => ({
-    id: `line-${index + 1}`,
+    id: `target-line-${index + 1}`,
     quote_id: SALES_ID,
     selected_design_id: `target-design-${index + 1}`,
     quantity: index === 3 ? 2 : 1,
+    room_name: ROOMS[index][0],
+    width_whole: ROOMS[index][1],
+    width_fraction: "0",
+    height_whole: ROOMS[index][2],
+    height_fraction: "0",
+    sort_order: index,
   }));
   const salesDesigns = sourceUnitPrices.map((_, index) => ({
     id: `target-design-${index + 1}`,
-    line_item_id: `line-${index + 1}`,
+    line_item_id: `target-line-${index + 1}`,
     unit_price: 0,
   }));
   const sourceLines = sourceUnitPrices.map((_, index) => ({
-    id: `line-${index + 1}`,
+    id: `source-line-${index + 1}`,
     quote_id: SOURCE_CRM_ID,
     quantity: 1,
+    room: ROOMS[index][0],
+    width_in: ROOMS[index][1],
+    height_in: ROOMS[index][2],
+    sort_order: index,
   }));
   const sourceDesigns = sourceUnitPrices.map((unitPrice, index) => ({
     id: `protected-design-${index + 1}`,
-    line_item_id: `line-${index + 1}`,
+    line_item_id: `source-line-${index + 1}`,
     unit_price: unitPrice,
   }));
 
@@ -214,13 +233,13 @@ describe("server-side historical quote V2 route resolver", () => {
       historicalPriceLock: {
         total: 3499.1,
         lineUnitPrices: {
-          "line-1": 406.87,
-          "line-2": 406.87,
-          "line-3": 604.5,
-          "line-4": 406.87,
-          "line-5": 255.75,
-          "line-6": 406.87,
-          "line-7": 604.5,
+          "target-line-1": 406.87,
+          "target-line-2": 406.87,
+          "target-line-3": 604.5,
+          "target-line-4": 406.87,
+          "target-line-5": 255.75,
+          "target-line-6": 406.87,
+          "target-line-7": 604.5,
         },
         designUnitPrices: {
           "target-design-1": 406.87,

@@ -6,6 +6,24 @@ type AnyRow = Record<string, any>;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SIXTEENTH_FRACTIONS = new Map<string, number>([
+  ["0", 0],
+  ["1/16", 1],
+  ["1/8", 2],
+  ["3/16", 3],
+  ["1/4", 4],
+  ["5/16", 5],
+  ["3/8", 6],
+  ["7/16", 7],
+  ["1/2", 8],
+  ["9/16", 9],
+  ["5/8", 10],
+  ["11/16", 11],
+  ["3/4", 12],
+  ["13/16", 13],
+  ["7/8", 14],
+  ["15/16", 15],
+]);
 
 function exactMoneyCents(value: unknown): number | null {
   const amount = Number(value);
@@ -34,6 +52,166 @@ function moneyFromCents(cents: number) {
   return cents / 100;
 }
 
+function lineId(line: AnyRow): string {
+  return typeof line.id === "string" ? line.id : "";
+}
+
+function strictSortOrder(value: unknown): number | null {
+  if (
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizedRoom(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
+  return normalized || null;
+}
+
+function crmDimensionSixteenths(value: unknown): number | null {
+  if (
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) return null;
+  const parsed = Number(value);
+  const sixteenths = Math.round(parsed * 16);
+  return Number.isFinite(parsed) &&
+    parsed > 0 &&
+    Number.isSafeInteger(sixteenths) &&
+    Math.abs(parsed * 16 - sixteenths) < 1e-7
+    ? sixteenths
+    : null;
+}
+
+function v4DimensionSixteenths(whole: unknown, fraction: unknown): number | null {
+  if (
+    (typeof whole !== "number" && typeof whole !== "string") ||
+    (typeof whole === "string" && !whole.trim())
+  ) return null;
+  const parsedWhole = Number(whole);
+  const fractionSixteenths = typeof fraction === "string"
+    ? SIXTEENTH_FRACTIONS.get(fraction)
+    : undefined;
+  if (!Number.isSafeInteger(parsedWhole) || parsedWhole < 0 || fractionSixteenths === undefined) {
+    return null;
+  }
+  const sixteenths = parsedWhole * 16 + fractionSixteenths;
+  return Number.isSafeInteger(sixteenths) && sixteenths > 0 ? sixteenths : null;
+}
+
+function structuralFingerprint(line: AnyRow): string {
+  const hasCrmDimensions = ["width_in", "height_in"].some((key) => key in line);
+  const hasV4Dimensions = [
+    "width_whole",
+    "width_fraction",
+    "height_whole",
+    "height_fraction",
+  ].some((key) => key in line);
+  if (hasCrmDimensions === hasV4Dimensions) {
+    throw new CrmAuthError(409, "A historical price line dimension shape is missing or ambiguous.");
+  }
+
+  const room = normalizedRoom(hasCrmDimensions ? line.room : line.room_name);
+  if (!room) {
+    throw new CrmAuthError(409, "A historical price line room is blank or invalid.");
+  }
+  const width = hasCrmDimensions
+    ? crmDimensionSixteenths(line.width_in)
+    : v4DimensionSixteenths(line.width_whole, line.width_fraction);
+  const height = hasCrmDimensions
+    ? crmDimensionSixteenths(line.height_in)
+    : v4DimensionSixteenths(line.height_whole, line.height_fraction);
+  if (width === null || height === null) {
+    throw new CrmAuthError(409, "A historical price line dimension is missing or invalid.");
+  }
+  return `${room}\u0000${width}\u0000${height}`;
+}
+
+function resolveSourceLineByTargetId(
+  sourceLineItems: AnyRow[],
+  targetLineItems: AnyRow[],
+): Map<string, AnyRow> {
+  const sourceLineIds = new Set(sourceLineItems.map(lineId));
+  const targetLineIds = new Set(targetLineItems.map(lineId));
+  const lineMappingIsExact =
+    sourceLineIds.size === sourceLineItems.length &&
+    targetLineIds.size === targetLineItems.length &&
+    sourceLineIds.size > 0 &&
+    [...sourceLineIds].every((id) => id.length > 0) &&
+    [...targetLineIds].every((id) => id.length > 0) &&
+    sourceLineIds.size === targetLineIds.size &&
+    [...sourceLineIds].every((id) => targetLineIds.has(id));
+  if (lineMappingIsExact) {
+    return new Map(sourceLineItems.map((line) => [lineId(line), line]));
+  }
+
+  if (
+    sourceLineItems.length === 0 ||
+    targetLineItems.length === 0 ||
+    sourceLineItems.length !== targetLineItems.length
+  ) {
+    throw new CrmAuthError(409, "The historical price line count no longer matches this quote.");
+  }
+  if (
+    sourceLineIds.size !== sourceLineItems.length ||
+    targetLineIds.size !== targetLineItems.length
+  ) {
+    throw new CrmAuthError(409, "The historical price line mapping contains duplicate identities.");
+  }
+  if ([...sourceLineIds, ...targetLineIds].some((id) => !id)) {
+    throw new CrmAuthError(409, "A historical price line identity is missing or invalid.");
+  }
+
+  const sourceBySort = new Map<number, AnyRow>();
+  const targetBySort = new Map<number, AnyRow>();
+  for (const line of sourceLineItems) {
+    const sortOrder = strictSortOrder(line.sort_order);
+    if (sortOrder === null) {
+      throw new CrmAuthError(409, "A historical source line sort order is missing or invalid.");
+    }
+    if (sourceBySort.has(sortOrder)) {
+      throw new CrmAuthError(409, "The historical source line sort orders are ambiguous.");
+    }
+    sourceBySort.set(sortOrder, line);
+  }
+  for (const line of targetLineItems) {
+    const sortOrder = strictSortOrder(line.sort_order);
+    if (sortOrder === null) {
+      throw new CrmAuthError(409, "A historical target line sort order is missing or invalid.");
+    }
+    if (targetBySort.has(sortOrder)) {
+      throw new CrmAuthError(409, "The historical target line sort orders are ambiguous.");
+    }
+    targetBySort.set(sortOrder, line);
+  }
+  if (
+    sourceBySort.size !== targetBySort.size ||
+    [...sourceBySort.keys()].some((sortOrder) => !targetBySort.has(sortOrder))
+  ) {
+    throw new CrmAuthError(409, "The historical price line sort order sets no longer match.");
+  }
+
+  const sourceByTargetId = new Map<string, AnyRow>();
+  for (const [sortOrder, targetLine] of targetBySort) {
+    const sourceLine = sourceBySort.get(sortOrder);
+    if (!sourceLine || structuralFingerprint(sourceLine) !== structuralFingerprint(targetLine)) {
+      throw new CrmAuthError(409, "A historical price line structural fingerprint no longer matches.");
+    }
+    const targetId = lineId(targetLine);
+    if (sourceByTargetId.has(targetId)) {
+      throw new CrmAuthError(409, "The historical price line mapping contains duplicate targets.");
+    }
+    sourceByTargetId.set(targetId, sourceLine);
+  }
+  if (sourceByTargetId.size !== targetLineItems.length) {
+    throw new CrmAuthError(409, "The historical price line mapping is incomplete.");
+  }
+  return sourceByTargetId;
+}
+
 export function projectHistoricalSalesQuoteMirrorPricing(input: {
   sourceQuote: AnyRow;
   sourceLineItems: AnyRow[];
@@ -47,27 +225,19 @@ export function projectHistoricalSalesQuoteMirrorPricing(input: {
   }
   const sourceTotal = moneyFromCents(sourceTotalCents);
 
-  const sourceLineIds = new Set(input.sourceLineItems.map((line) => String(line.id || "")));
-  const targetLineIds = new Set(input.targetLineItems.map((line) => String(line.id || "")));
-  const lineMappingIsExact =
-    sourceLineIds.size === input.sourceLineItems.length &&
-    targetLineIds.size === input.targetLineItems.length &&
-    sourceLineIds.size > 0 &&
-    [...sourceLineIds].every((lineId) => lineId.length > 0) &&
-    [...targetLineIds].every((lineId) => lineId.length > 0) &&
-    sourceLineIds.size === targetLineIds.size &&
-    [...sourceLineIds].every((lineId) => targetLineIds.has(lineId));
-  if (!lineMappingIsExact) {
-    throw new CrmAuthError(409, "The historical price line identities no longer match this quote.");
-  }
+  const sourceLineByTargetId = resolveSourceLineByTargetId(
+    input.sourceLineItems,
+    input.targetLineItems,
+  );
 
   const sourceDesignsByLineItemId = groupBy(input.sourceDesigns, "line_item_id");
   const projectedDesignsByLineItemId = new Map<string, AnyRow[]>();
   let subtotalCents = 0;
   for (const targetLine of input.targetLineItems) {
     const lineId = String(targetLine.id);
-    const sourceLine = input.sourceLineItems.find((line) => String(line.id) === lineId);
-    const sourceDesigns = sourceDesignsByLineItemId.get(lineId) || [];
+    const sourceLine = sourceLineByTargetId.get(lineId);
+    const sourceLineId = String(sourceLine?.id || "");
+    const sourceDesigns = sourceDesignsByLineItemId.get(sourceLineId) || [];
     const targetDesigns = input.targetDesignsByLineItemId.get(lineId) || [];
     const sourceQuantity = strictQuantity(sourceLine?.quantity);
     const targetQuantity = strictQuantity(targetLine.quantity);
@@ -167,7 +337,7 @@ export async function loadHistoricalSalesQuoteMirrorPricing(
 
   const { data: sourceLineItems, error: sourceLineError } = await supabase
     .from("crm_quote_line_items")
-    .select("id,quantity")
+    .select("id,quantity,room,width_in,height_in,sort_order")
     .eq("quote_id", sourceQuote.id);
   if (sourceLineError) {
     throw new CrmAuthError(502, "The original historical quote lines could not be loaded.");

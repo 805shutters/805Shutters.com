@@ -27,6 +27,12 @@ type StoredSalesLineRouteRow = {
   quote_id: string;
   selected_design_id?: string | null;
   quantity?: number | string | null;
+  room_name?: string | null;
+  width_whole?: number | string | null;
+  width_fraction?: string | null;
+  height_whole?: number | string | null;
+  height_fraction?: string | null;
+  sort_order?: number | string | null;
 };
 
 type StoredSalesDesignRouteRow = {
@@ -323,7 +329,9 @@ export async function resolveSalesQuoteV2Route(
 
   const { data: lines, error: linesError } = await supabase
     .from("sales_quote_line_items")
-    .select("id,quote_id,selected_design_id,quantity")
+    .select(
+      "id,quote_id,selected_design_id,quantity,room_name,width_whole,width_fraction,height_whole,height_fraction,sort_order",
+    )
     .eq("quote_id", candidate.salesQuoteId);
   if (linesError) throw new CrmAuthError(502, "The linked V2 quote lines could not be loaded.");
 

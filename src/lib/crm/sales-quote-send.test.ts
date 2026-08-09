@@ -82,28 +82,48 @@ describe("calculateSalesQuoteMirrorPricing", () => {
 
 describe("projectHistoricalSalesQuoteMirrorPricing", () => {
   const prices = [406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5];
+  const rooms = [
+    ["Flex Room", 35, 60],
+    ["Dining Room", 35, 60],
+    ["Dining Room", 60, 52],
+    ["Living Room", 35, 60],
+    ["Bed 1", 22, 60],
+    ["Bed 1", 35, 60],
+    ["Bed 2", 60, 52],
+  ] as const;
   const sourceLines = prices.map((_, index) => ({
-    id: `line-${index + 1}`,
+    id: `source-line-${index + 1}`,
     quantity: 1,
+    room: rooms[index][0],
+    width_in: rooms[index][1],
+    height_in: rooms[index][2],
+    sort_order: index,
   }));
   const sourceDesigns = prices.map((unitPrice, index) => ({
     id: `design-${index + 1}`,
-    line_item_id: `line-${index + 1}`,
+    line_item_id: `source-line-${index + 1}`,
     unit_price: index === 3 ? 813.74 : unitPrice,
   }));
   const targetLines = sourceLines.map((line, index) => ({
-    ...line,
+    id: `target-line-${index + 1}`,
     quantity: index === 3 ? 2 : line.quantity,
+    room_name: rooms[index][0],
+    width_whole: rooms[index][1],
+    width_fraction: "0",
+    height_whole: rooms[index][2],
+    height_fraction: "0",
+    sort_order: index,
   }));
   const targetDesigns = new Map(
-    sourceDesigns.map((design) => [
-      design.line_item_id,
+    sourceDesigns.map((design, index) => [
+      `target-line-${index + 1}`,
       [{
         ...design,
+        line_item_id: `target-line-${index + 1}`,
         unit_price: 0,
-        hinge_color: design.id === "design-1" ? "101_White" : null,
+        hinge_color: "101_White",
         options_json: {
-          fabric_color_code: design.id === "design-1" ? "101_White" : "other",
+          fabric_color_code: "101_White",
         },
       }],
     ]),
@@ -121,15 +141,71 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
     expect(projection.total).toBe(3499.1);
     expect(projection.subtotal).toBe(3499.1);
     expect(projection.shouldSyncSourceTotal).toBe(true);
-    expect(projection.designsByLineItemId.get("line-4")?.[0].unit_price).toBe(406.87);
+    expect(projection.designsByLineItemId.get("target-line-4")?.[0].unit_price).toBe(406.87);
     expect(
-      Number(projection.designsByLineItemId.get("line-4")?.[0].unit_price) *
+      Number(projection.designsByLineItemId.get("target-line-4")?.[0].unit_price) *
         targetLines[3].quantity,
     ).toBe(813.74);
-    expect(projection.designsByLineItemId.get("line-1")?.[0].hinge_color).toBe("101_White");
-    expect(projection.designsByLineItemId.get("line-1")?.[0].options_json).toEqual({
+    expect(projection.designsByLineItemId.get("target-line-1")?.[0].hinge_color).toBe("101_White");
+    expect(projection.designsByLineItemId.get("target-line-1")?.[0].options_json).toEqual({
       fabric_color_code: "101_White",
     });
+    expect([...projection.designsByLineItemId.values()].flat().every(
+      (design) => design.hinge_color === "101_White",
+    )).toBe(true);
+  });
+
+  it("fails closed when structural fingerprints differ", () => {
+    expect(() => projectHistoricalSalesQuoteMirrorPricing({
+      sourceQuote: { id: "crm-source", quote_total: 3499.1 },
+      sourceLineItems: sourceLines,
+      sourceDesigns,
+      targetLineItems: targetLines.map((line, index) =>
+        index === 3 ? { ...line, width_whole: 36 } : line),
+      targetDesignsByLineItemId: targetDesigns,
+    })).toThrow(/structural fingerprint/i);
+  });
+
+  it("fails closed when fallback sort orders are duplicated", () => {
+    expect(() => projectHistoricalSalesQuoteMirrorPricing({
+      sourceQuote: { id: "crm-source", quote_total: 3499.1 },
+      sourceLineItems: sourceLines.map((line, index) =>
+        index === 1 ? { ...line, sort_order: 0 } : line),
+      sourceDesigns,
+      targetLineItems: targetLines,
+      targetDesignsByLineItemId: targetDesigns,
+    })).toThrow(/sort orders are ambiguous/i);
+  });
+
+  it.each([
+    ["missing sort order", { source: { sort_order: null } }, /sort order is missing or invalid/i],
+    ["different sort sets", { source: { sort_order: 99 } }, /sort order sets no longer match/i],
+    ["blank room", { target: { room_name: "  " } }, /line room is blank or invalid/i],
+    ["unsupported fraction", { target: { width_fraction: "2\/3" } }, /dimension is missing or invalid/i],
+    ["duplicate line identity", { sourceId: "source-line-2" }, /duplicate identities/i],
+  ])("fails closed for %s", (_label, mutation, expected) => {
+    const typedMutation = mutation as {
+      source?: Record<string, unknown>;
+      target?: Record<string, unknown>;
+      sourceId?: string;
+    };
+    const mutatedSource = sourceLines.map((line, index) => index === 0
+      ? {
+          ...line,
+          ...(typedMutation.source ?? {}),
+          ...(typedMutation.sourceId ? { id: typedMutation.sourceId } : {}),
+        }
+      : line);
+    const mutatedTarget = targetLines.map((line, index) => index === 0
+      ? { ...line, ...(typedMutation.target ?? {}) }
+      : line);
+    expect(() => projectHistoricalSalesQuoteMirrorPricing({
+      sourceQuote: { id: "crm-source", quote_total: 3499.1 },
+      sourceLineItems: mutatedSource,
+      sourceDesigns,
+      targetLineItems: mutatedTarget,
+      targetDesignsByLineItemId: targetDesigns,
+    })).toThrow(expected);
   });
 
   it("preserves same-quantity protected unit prices", () => {
@@ -169,17 +245,17 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
         sourceQuote: { id: "crm-source", quote_total: 3499.1 },
         sourceLineItems: sourceLines.slice(0, -1),
         sourceDesigns: sourceDesigns.slice(0, -1),
-        targetLineItems: sourceLines,
+        targetLineItems: targetLines,
         targetDesignsByLineItemId: targetDesigns,
       }),
-    ).toThrow(/historical price line identities/i);
+    ).toThrow(/historical price line count/i);
 
     expect(() =>
       projectHistoricalSalesQuoteMirrorPricing({
         sourceQuote: { id: "crm-source", quote_total: 1 },
         sourceLineItems: sourceLines,
         sourceDesigns,
-        targetLineItems: sourceLines,
+        targetLineItems: targetLines,
         targetDesignsByLineItemId: targetDesigns,
       }),
     ).toThrow(/historical price total/i);

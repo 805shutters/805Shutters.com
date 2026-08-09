@@ -6,6 +6,15 @@ const MIRROR_QUOTE_ID = "33333333-3333-4333-8333-333333333333";
 const SOURCE_QUOTE_ID = "44444444-4444-4444-8444-444444444444";
 const TOKEN = "maggie-existing-link";
 const PRICES = [406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5];
+const ROOMS = [
+  ["Flex Room", 35, 60],
+  ["Dining Room", 35, 60],
+  ["Dining Room", 60, 52],
+  ["Living Room", 35, 60],
+  ["Bed 1", 22, 60],
+  ["Bed 1", 35, 60],
+  ["Bed 2", 60, 52],
+] as const;
 
 type Row = Record<string, unknown>;
 
@@ -20,19 +29,25 @@ type FixtureOptions = {
 
 function rowsForMaggie(options: FixtureOptions = {}) {
   const sourceLines = options.sourceLines ?? PRICES.map((_, index) => ({
-    id: `line-${index + 1}`,
+    id: `source-line-${index + 1}`,
     quote_id: SOURCE_QUOTE_ID,
     quantity: 1,
+    room: ROOMS[index][0],
+    width_in: ROOMS[index][1],
+    height_in: ROOMS[index][2],
+    sort_order: index,
   }));
   const sourceDesigns = options.sourceDesigns ?? PRICES.map((unitPrice, index) => ({
     id: `protected-design-${index + 1}`,
-    line_item_id: `line-${index + 1}`,
+    line_item_id: `source-line-${index + 1}`,
     unit_price: index === 3 ? 813.74 : unitPrice,
   }));
   const mirrorLines = options.mirrorLines ?? PRICES.map((_, index) => ({
-    id: `line-${index + 1}`,
+    id: `target-line-${index + 1}`,
     quote_id: MIRROR_QUOTE_ID,
-    room: `Room ${index + 1}`,
+    room: ROOMS[index][0],
+    width_in: ROOMS[index][1],
+    height_in: ROOMS[index][2],
     quantity: index === 3 ? 2 : 1,
     discount_percent: 0,
     sort_order: index,
@@ -40,7 +55,7 @@ function rowsForMaggie(options: FixtureOptions = {}) {
     notes: "Shutters",
     designs: [{
       id: `current-design-${index + 1}`,
-      line_item_id: `line-${index + 1}`,
+      line_item_id: `target-line-${index + 1}`,
       label: "A",
       sort_order: 0,
       product_id: "onyx_shutters",
@@ -54,7 +69,7 @@ function rowsForMaggie(options: FixtureOptions = {}) {
       price_breakdown: {
         source: "mts_805_bookkeeping",
         productType: "Shutters",
-        details: index === 0 ? [{ label: "Hinge Color", value: "101_White" }] : [],
+        details: [{ label: "Hinge Color", value: "101_White" }],
       },
       price_status: "ok",
       priced_at: null,
@@ -210,7 +225,8 @@ describe("existing sent CRM mirror historical read projection", () => {
       604.5,
     ]);
     expect(quote?.lines[3]?.unitPrice).toBe(406.87);
-    expect(quote?.lines[0]?.options).toContain("Hinge Color: 101_White");
+    expect(quote?.lines[3]?.lineItemId).toBe("target-line-4");
+    expect(quote?.lines.every((line) => line.options.includes("Hinge Color: 101_White"))).toBe(true);
     expect(fake.writes).toEqual([]);
   });
 
