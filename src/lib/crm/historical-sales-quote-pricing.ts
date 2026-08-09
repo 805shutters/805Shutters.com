@@ -130,6 +130,31 @@ function structuralFingerprint(line: AnyRow): string {
   return `${room}\u0000${width}\u0000${height}`;
 }
 
+function uniqueLinesByFingerprint(lines: AnyRow[], side: "source" | "target"): Map<string, AnyRow> {
+  const byFingerprint = new Map<string, AnyRow>();
+  for (const line of lines) {
+    const fingerprint = structuralFingerprint(line);
+    if (byFingerprint.has(fingerprint)) {
+      throw new CrmAuthError(
+        409,
+        `The historical ${side} line structural fingerprints are ambiguous.`,
+      );
+    }
+    byFingerprint.set(fingerprint, line);
+  }
+  return byFingerprint;
+}
+
+function uniqueLinesBySortOrder(lines: AnyRow[]): Map<number, AnyRow> | null {
+  const bySortOrder = new Map<number, AnyRow>();
+  for (const line of lines) {
+    const sortOrder = strictSortOrder(line.sort_order);
+    if (sortOrder === null || bySortOrder.has(sortOrder)) return null;
+    bySortOrder.set(sortOrder, line);
+  }
+  return bySortOrder;
+}
+
 function resolveSourceLineByTargetId(
   sourceLineItems: AnyRow[],
   targetLineItems: AnyRow[],
@@ -165,39 +190,34 @@ function resolveSourceLineByTargetId(
     throw new CrmAuthError(409, "A historical price line identity is missing or invalid.");
   }
 
-  const sourceBySort = new Map<number, AnyRow>();
-  const targetBySort = new Map<number, AnyRow>();
-  for (const line of sourceLineItems) {
-    const sortOrder = strictSortOrder(line.sort_order);
-    if (sortOrder === null) {
-      throw new CrmAuthError(409, "A historical source line sort order is missing or invalid.");
-    }
-    if (sourceBySort.has(sortOrder)) {
-      throw new CrmAuthError(409, "The historical source line sort orders are ambiguous.");
-    }
-    sourceBySort.set(sortOrder, line);
-  }
-  for (const line of targetLineItems) {
-    const sortOrder = strictSortOrder(line.sort_order);
-    if (sortOrder === null) {
-      throw new CrmAuthError(409, "A historical target line sort order is missing or invalid.");
-    }
-    if (targetBySort.has(sortOrder)) {
-      throw new CrmAuthError(409, "The historical target line sort orders are ambiguous.");
-    }
-    targetBySort.set(sortOrder, line);
-  }
+  const sourceByFingerprint = uniqueLinesByFingerprint(sourceLineItems, "source");
+  const targetByFingerprint = uniqueLinesByFingerprint(targetLineItems, "target");
   if (
-    sourceBySort.size !== targetBySort.size ||
-    [...sourceBySort.keys()].some((sortOrder) => !targetBySort.has(sortOrder))
+    sourceByFingerprint.size !== targetByFingerprint.size ||
+    [...sourceByFingerprint.keys()].some((fingerprint) => !targetByFingerprint.has(fingerprint))
   ) {
-    throw new CrmAuthError(409, "The historical price line sort order sets no longer match.");
+    throw new CrmAuthError(409, "The historical price line structural fingerprint sets no longer match.");
   }
 
+  const sourceBySort = uniqueLinesBySortOrder(sourceLineItems);
+  const targetBySort = uniqueLinesBySortOrder(targetLineItems);
+  const sortOrderMappingMatches =
+    sourceBySort !== null &&
+    targetBySort !== null &&
+    sourceBySort.size === targetBySort.size &&
+    [...sourceBySort].every(([sortOrder, sourceLine]) => {
+      const targetLine = targetBySort.get(sortOrder);
+      return targetLine && structuralFingerprint(sourceLine) === structuralFingerprint(targetLine);
+    });
+
   const sourceByTargetId = new Map<string, AnyRow>();
-  for (const [sortOrder, targetLine] of targetBySort) {
-    const sourceLine = sourceBySort.get(sortOrder);
-    if (!sourceLine || structuralFingerprint(sourceLine) !== structuralFingerprint(targetLine)) {
+  for (const targetLine of targetLineItems) {
+    const targetFingerprint = structuralFingerprint(targetLine);
+    const targetSortOrder = strictSortOrder(targetLine.sort_order);
+    const sourceLine = sortOrderMappingMatches && targetSortOrder !== null
+      ? sourceBySort.get(targetSortOrder)
+      : sourceByFingerprint.get(targetFingerprint);
+    if (!sourceLine || structuralFingerprint(sourceLine) !== targetFingerprint) {
       throw new CrmAuthError(409, "A historical price line structural fingerprint no longer matches.");
     }
     const targetId = lineId(targetLine);

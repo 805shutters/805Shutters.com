@@ -155,6 +155,49 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
     )).toBe(true);
   });
 
+  it("maps reordered appended target IDs by unique structural fingerprint", () => {
+    const repairedTargetLines = targetLines.map((line, index) => {
+      if (index === 5) return { ...line, sort_order: 6 };
+      if (index === 6) return { ...line, sort_order: 5 };
+      return line;
+    });
+
+    const projection = projectHistoricalSalesQuoteMirrorPricing({
+      sourceQuote: { id: "crm-source", quote_total: 3499.1 },
+      sourceLineItems: sourceLines,
+      sourceDesigns,
+      targetLineItems: repairedTargetLines,
+      targetDesignsByLineItemId: targetDesigns,
+    });
+
+    expect(targetLines.map((line) =>
+      projection.designsByLineItemId.get(line.id)?.[0].unit_price,
+    )).toEqual([406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5]);
+    expect(Number(projection.designsByLineItemId.get("target-line-4")?.[0].unit_price) * 2)
+      .toBe(813.74);
+    expect(projection.total).toBe(3499.1);
+  });
+
+  it.each(["source", "target"] as const)(
+    "fails closed for duplicate %s structural fingerprints",
+    (side) => {
+      const duplicateSourceLines = sourceLines.map((line, index) => index === 1
+        ? { ...line, room: sourceLines[0].room }
+        : line);
+      const duplicateTargetLines = targetLines.map((line, index) => index === 1
+        ? { ...line, room_name: targetLines[0].room_name }
+        : line);
+
+      expect(() => projectHistoricalSalesQuoteMirrorPricing({
+        sourceQuote: { id: "crm-source", quote_total: 3499.1 },
+        sourceLineItems: side === "source" ? duplicateSourceLines : sourceLines,
+        sourceDesigns,
+        targetLineItems: side === "target" ? duplicateTargetLines : targetLines,
+        targetDesignsByLineItemId: targetDesigns,
+      })).toThrow(/structural fingerprints are ambiguous/i);
+    },
+  );
+
   it("fails closed when structural fingerprints differ", () => {
     expect(() => projectHistoricalSalesQuoteMirrorPricing({
       sourceQuote: { id: "crm-source", quote_total: 3499.1 },
@@ -166,20 +209,22 @@ describe("projectHistoricalSalesQuoteMirrorPricing", () => {
     })).toThrow(/structural fingerprint/i);
   });
 
-  it("fails closed when fallback sort orders are duplicated", () => {
-    expect(() => projectHistoricalSalesQuoteMirrorPricing({
+  it("uses unique structural fingerprints when sort orders are duplicated", () => {
+    const projection = projectHistoricalSalesQuoteMirrorPricing({
       sourceQuote: { id: "crm-source", quote_total: 3499.1 },
       sourceLineItems: sourceLines.map((line, index) =>
         index === 1 ? { ...line, sort_order: 0 } : line),
       sourceDesigns,
       targetLineItems: targetLines,
       targetDesignsByLineItemId: targetDesigns,
-    })).toThrow(/sort orders are ambiguous/i);
+    });
+
+    expect(targetLines.map((line) =>
+      projection.designsByLineItemId.get(line.id)?.[0].unit_price,
+    )).toEqual([406.87, 406.87, 604.5, 406.87, 255.75, 406.87, 604.5]);
   });
 
   it.each([
-    ["missing sort order", { source: { sort_order: null } }, /sort order is missing or invalid/i],
-    ["different sort sets", { source: { sort_order: 99 } }, /sort order sets no longer match/i],
     ["blank room", { target: { room_name: "  " } }, /line room is blank or invalid/i],
     ["unsupported fraction", { target: { width_fraction: "2\/3" } }, /dimension is missing or invalid/i],
     ["duplicate line identity", { sourceId: "source-line-2" }, /duplicate identities/i],
