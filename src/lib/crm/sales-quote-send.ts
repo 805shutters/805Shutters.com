@@ -553,8 +553,18 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     );
   }
 
-  const designsByLineItemId = groupBy((designs || []) as AnyRow[], "line_item_id");
-  const pricing = calculateSalesQuoteMirrorPricing(quote, lineRows, designsByLineItemId);
+  let designsByLineItemId = groupBy((designs || []) as AnyRow[], "line_item_id");
+  const historicalPricing = await loadHistoricalSalesQuoteMirrorPricing(
+    supabase,
+    quote,
+    lineRows,
+    designsByLineItemId,
+  );
+  if (historicalPricing) {
+    designsByLineItemId = historicalPricing.designsByLineItemId;
+  }
+  const pricing = historicalPricing ||
+    calculateSalesQuoteMirrorPricing(quote, lineRows, designsByLineItemId);
   const quoteForMirror: AnyRow = { ...quote, total_amount: pricing.total };
   if (pricing.shouldSyncSourceTotal) {
     const { error } = await supabase
@@ -630,6 +640,61 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
 
   await upsertImportedQuoteStructure(supabase, importedQuote.id, lineRows, designsByLineItemId);
   return importedQuote.id;
+}
+
+export async function loadHistoricalSalesQuoteMirrorPricing(
+  supabase: CrmSupabaseClient,
+  quote: AnyRow,
+  targetLineItems: AnyRow[],
+  targetDesignsByLineItemId: Map<string, AnyRow[]>,
+) {
+  if (quote.quote_v2_backend !== true || quote.quote_v2_status === "priced") {
+    return null;
+  }
+
+  const { data: sourceQuotes, error: sourceQuoteError } = await supabase
+    .from("crm_quotes")
+    .select("id,quote_total,meta")
+    .eq("meta->>target_sales_quote_id", quote.id);
+  if (sourceQuoteError) {
+    throw new CrmAuthError(502, "The original historical quote price lock could not be loaded.");
+  }
+  if (!sourceQuotes || sourceQuotes.length !== 1) {
+    throw new CrmAuthError(409, "The original historical quote price lock is missing or ambiguous.");
+  }
+
+  const sourceQuote = sourceQuotes[0] as AnyRow;
+  if (sourceQuote.meta?.target_sales_quote_id !== quote.id) {
+    throw new CrmAuthError(409, "The original historical quote identity is inconsistent.");
+  }
+
+  const { data: sourceLineItems, error: sourceLineError } = await supabase
+    .from("crm_quote_line_items")
+    .select("id,quantity")
+    .eq("quote_id", sourceQuote.id);
+  if (sourceLineError) {
+    throw new CrmAuthError(502, "The original historical quote lines could not be loaded.");
+  }
+
+  const sourceLines = (sourceLineItems || []) as AnyRow[];
+  const sourceLineIds = sourceLines.map((line) => line.id).filter(Boolean);
+  const { data: sourceDesigns, error: sourceDesignError } = sourceLineIds.length
+    ? await supabase
+        .from("crm_quote_designs")
+        .select("id,line_item_id,unit_price")
+        .in("line_item_id", sourceLineIds)
+    : { data: [], error: null };
+  if (sourceDesignError) {
+    throw new CrmAuthError(502, "The original historical quote prices could not be loaded.");
+  }
+
+  return projectHistoricalSalesQuoteMirrorPricing({
+    sourceQuote,
+    sourceLineItems: sourceLines,
+    sourceDesigns: (sourceDesigns || []) as AnyRow[],
+    targetLineItems,
+    targetDesignsByLineItemId,
+  });
 }
 
 async function upsertImportedQuoteStructure(
@@ -823,6 +888,74 @@ export function calculateSalesQuoteMirrorPricing(
     subtotal,
     total,
     shouldSyncSourceTotal: hasLineItemTotal && Math.abs(storedTotal - total) >= 0.01,
+  };
+}
+
+export function projectHistoricalSalesQuoteMirrorPricing(input: {
+  sourceQuote: AnyRow;
+  sourceLineItems: AnyRow[];
+  sourceDesigns: AnyRow[];
+  targetLineItems: AnyRow[];
+  targetDesignsByLineItemId: Map<string, AnyRow[]>;
+}) {
+  const sourceTotal = money(input.sourceQuote.quote_total);
+  if (sourceTotal <= 0) {
+    throw new CrmAuthError(409, "The historical price total is missing or invalid.");
+  }
+
+  const sourceLineIds = new Set(input.sourceLineItems.map((line) => String(line.id || "")));
+  const targetLineIds = new Set(input.targetLineItems.map((line) => String(line.id || "")));
+  const lineMappingIsExact =
+    sourceLineIds.size === input.sourceLineItems.length &&
+    targetLineIds.size === input.targetLineItems.length &&
+    sourceLineIds.size > 0 &&
+    sourceLineIds.size === targetLineIds.size &&
+    [...sourceLineIds].every((lineId) => targetLineIds.has(lineId));
+  if (!lineMappingIsExact) {
+    throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+  }
+
+  const sourceDesignsByLineItemId = groupBy(input.sourceDesigns, "line_item_id");
+  const projectedDesignsByLineItemId = new Map<string, AnyRow[]>();
+  for (const targetLine of input.targetLineItems) {
+    const lineId = String(targetLine.id);
+    const sourceLine = input.sourceLineItems.find((line) => String(line.id) === lineId);
+    const sourceDesigns = sourceDesignsByLineItemId.get(lineId) || [];
+    const targetDesigns = input.targetDesignsByLineItemId.get(lineId) || [];
+    if (
+      !sourceLine ||
+      normalizeQuantity(sourceLine.quantity) !== normalizeQuantity(targetLine.quantity) ||
+      sourceDesigns.length === 0 ||
+      sourceDesigns.length !== targetDesigns.length
+    ) {
+      throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+    }
+
+    const sourceByDesignId = new Map(sourceDesigns.map((design) => [String(design.id), design]));
+    const mayMapSoleDesignByLine = sourceDesigns.length === 1 && targetDesigns.length === 1;
+    const projected = targetDesigns.map((targetDesign) => {
+      const sourceDesign =
+        sourceByDesignId.get(String(targetDesign.id)) ||
+        (mayMapSoleDesignByLine ? sourceDesigns[0] : null);
+      const unitPrice = money(sourceDesign?.unit_price);
+      if (!sourceDesign || unitPrice <= 0) {
+        throw new CrmAuthError(409, "The historical price mapping no longer matches this quote.");
+      }
+      return { ...targetDesign, unit_price: unitPrice };
+    });
+    projectedDesignsByLineItemId.set(lineId, projected);
+  }
+
+  const subtotal = legacyQuoteSubtotal(input.targetLineItems, projectedDesignsByLineItemId);
+  if (subtotal <= 0 || Math.abs(subtotal - sourceTotal) >= 0.01) {
+    throw new CrmAuthError(409, "The historical price total is inconsistent with its protected lines.");
+  }
+
+  return {
+    subtotal,
+    total: sourceTotal,
+    shouldSyncSourceTotal: true,
+    designsByLineItemId: projectedDesignsByLineItemId,
   };
 }
 
