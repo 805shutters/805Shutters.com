@@ -726,7 +726,8 @@ function exactLegacyBreakdownDetail(design: AnyRow, label: string): string | nul
 }
 
 function isExactLegacyOnyxPolyCompositeDesign(design: AnyRow): boolean {
-  return design.product_id === "onyx_shutters" &&
+  // Generic legacy Shutters mirrors were stored with the Norman placeholder id.
+  return design.product_id === "norman_shutters" &&
     design.program_id === null &&
     design.fabric === "Poly Composite" &&
     design.price_breakdown?.source === "mts_805_bookkeeping" &&

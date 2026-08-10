@@ -175,7 +175,7 @@ function aggregateSentMirrorSupabase(options: { customerMirrors?: Row[] } = {}) 
     line_item_id: line.id,
     label: "A",
     sort_order: 0,
-    product_id: "onyx_shutters",
+    product_id: "norman_shutters",
     program_id: null,
     fabric: "Poly Composite",
     hinge_color: "Match",

@@ -63,7 +63,7 @@ function rowsForAggregateLegacyQuote(options: FixtureOptions = {}) {
       line_item_id: `target-line-${index + 1}`,
       label: "A",
       sort_order: 0,
-      product_id: "onyx_shutters",
+      product_id: "norman_shutters",
       program_id: null,
       fabric: "Poly Composite",
       hinge_color: "Match",
