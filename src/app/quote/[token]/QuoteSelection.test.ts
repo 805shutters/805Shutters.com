@@ -145,6 +145,14 @@ describe("QuoteSelection", () => {
     expect(html).toContain("max-width:none");
   });
 
+  it("uses a responsive four-column grid for product details", () => {
+    expect(quoteSelectionCss).toMatch(/\.productConfiguration\s*{[^}]*container:\s*product-details\s*\/\s*inline-size;/s);
+    expect(quoteSelectionCss).toMatch(/\.productDetails\s*{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/s);
+    expect(quoteSelectionCss).toContain("@container product-details (max-width: 839px)");
+    expect(quoteSelectionCss).toContain("@container product-details (max-width: 599px)");
+    expect(quoteSelectionCss).toContain("@container product-details (max-width: 279px)");
+  });
+
   it("shows the ledger-derived deposit due with card, Zelle, and Venmo paths", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
