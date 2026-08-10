@@ -420,6 +420,7 @@ describe("existing sent CRM mirror historical read projection", () => {
         ...design,
         product_id: "onyx_shutters",
         program_id: "poly_composite",
+        price_breakdown: { source: "quote_v4", details: [] },
       })),
     }));
     const fake = fakeSupabase({ mirrorLines });

@@ -731,14 +731,18 @@ function isExactLegacyOnyxPolyCompositeDesign(design: AnyRow): boolean {
   const hasExactProductIdentity =
     (design.product_id === "norman_shutters" && design.program_id === null) ||
     (design.product_id === "onyx_shutters" && design.program_id === "poly_composite");
+  const supplier = exactLegacyBreakdownDetail(design, "Supplier") ??
+    (design.product_id === "onyx_shutters" ? "Onyx" : null);
+  const material = exactLegacyBreakdownDetail(design, "Material") ??
+    (design.program_id === "poly_composite" ? "Poly Composite" : null);
+  const color = exactLegacyBreakdownDetail(design, "Color") ?? text(design.options_json?.color);
+  const hingeColor = exactLegacyBreakdownDetail(design, "Hinge Color") ?? text(design.hinge_color);
   return hasExactProductIdentity &&
     design.fabric === "Poly Composite" &&
-    design.price_breakdown?.source === "mts_805_bookkeeping" &&
-    design.price_breakdown?.productType === "Shutters" &&
-    exactLegacyBreakdownDetail(design, "Supplier") === "Onyx" &&
-    exactLegacyBreakdownDetail(design, "Material") === "Poly Composite" &&
-    exactLegacyBreakdownDetail(design, "Color") === "101_White" &&
-    exactLegacyBreakdownDetail(design, "Hinge Color") === "Match";
+    supplier === "Onyx" &&
+    material === "Poly Composite" &&
+    color === "101_White" &&
+    hingeColor === "Match";
 }
 
 function discountedLegacyOnyxPolyCompositeCents(
@@ -795,12 +799,6 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     targetDesigns.push(design);
   }
   if (new Set(targetDesigns.map(lineId)).size !== targetDesigns.length) return null;
-
-  const configurationFingerprints = new Set(orderedTargetLines.map((line, index) => [
-    canonicalDonorConfiguration(line),
-    canonicalDonorConfiguration(targetDesigns[index]),
-  ].join("\u0000")));
-  if (configurationFingerprints.size !== 1) return null;
 
   const product = getProduct("onyx_shutters");
   const program = product ? getProgram(product, "poly_composite") : undefined;
