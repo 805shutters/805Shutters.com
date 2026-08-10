@@ -2994,7 +2994,6 @@ export function CrmApp({
           ["order-forms", "Order Forms"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
-          ["installation", "Installation"],
           ["calendar", "Calendar"]
         ].map(([tab, label]) => (
           <button
