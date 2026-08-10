@@ -243,6 +243,24 @@ function groupedLineTotals(lines: Array<{ lineItemId: string; lineTotal: number 
   return [...totals.values()];
 }
 
+function protectedZeroPriceMirrorRows() {
+  const sourceLines = MIRROR_ROOMS.map((room, index) => ({
+    id: `protected-line-${index + 1}`,
+    quote_id: SOURCE_QUOTE_ID,
+    room: room[0],
+    width_in: room[1],
+    height_in: room[2],
+    quantity: room[3],
+    sort_order: index,
+  }));
+  const sourceDesigns = sourceLines.map((line, index) => ({
+    id: `protected-design-${index + 1}`,
+    line_item_id: line.id,
+    unit_price: 0,
+  }));
+  return { sourceLines, sourceDesigns };
+}
+
 describe("existing sent CRM mirror historical read projection", () => {
   it("only accepts one source quote in the narrow post-send repair window", () => {
     expect(historicalSalesQuoteSentWindow("2026-08-09T21:36:18.316564+00:00")).toEqual({
@@ -361,6 +379,28 @@ describe("existing sent CRM mirror historical read projection", () => {
       unitPrice: 406.87,
       lineTotal: 406.87,
     });
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("recovers the exact protected six-row zero-price mirror used by the V1 to V4 transfer", async () => {
+    const fake = fakeSupabase(protectedZeroPriceMirrorRows());
+
+    const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
+
+    expect(quote?.total).toBe(3499.1);
+    expect(quote?.subtotal).toBe(3499.1);
+    expect(quote?.allPriced).toBe(true);
+    expect(groupedLineTotals(quote?.lines ?? [])).toEqual([
+      406.87,
+      406.87,
+      604.5,
+      813.74,
+      255.75,
+      406.87,
+      604.5,
+    ]);
+    expect(quote?.lines).toHaveLength(8);
+    expect(quote?.lines.every((line) => line.options.includes("Color: 101_White"))).toBe(true);
     expect(fake.writes).toEqual([]);
   });
 
