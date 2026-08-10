@@ -412,6 +412,33 @@ describe("existing sent CRM mirror historical read projection", () => {
     expect(fake.writes).toEqual([]);
   });
 
+  it("accepts the native V4 Onyx product identity for the exact protected V1 quote", async () => {
+    const complete = rowsForAggregateLegacyQuote();
+    const mirrorLines = complete.mirrorLines.map((line) => ({
+      ...line,
+      designs: (line.designs as Row[]).map((design) => ({
+        ...design,
+        product_id: "onyx_shutters",
+        program_id: "poly_composite",
+      })),
+    }));
+    const fake = fakeSupabase({ mirrorLines });
+
+    const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
+
+    expect(quote?.total).toBe(3499.1);
+    expect(groupedLineTotals(quote?.lines ?? [])).toEqual([
+      406.87,
+      406.87,
+      604.5,
+      813.74,
+      255.75,
+      406.87,
+      604.5,
+    ]);
+    expect(fake.writes).toEqual([]);
+  });
+
   it("fails closed when current configuration differs between rows", async () => {
     const complete = rowsForAggregateLegacyQuote();
     const mirrorLines = complete.mirrorLines
@@ -493,17 +520,17 @@ describe("existing sent CRM mirror historical read projection", () => {
   it.each([
     ["zero", 0],
     ["non-cent exact", 1.001],
-  ])("fails closed when aggregate unit money is %s", async (_label, unitPrice) => {
-    const invalidAggregate = fakeSupabase({
+  ])("uses the protected quote total when obsolete V1 aggregate unit money is %s", async (_label, unitPrice) => {
+    const legacy = fakeSupabase({
       sourceDesigns: [{
         id: "aggregate-protected-design",
         line_item_id: "aggregate-source-line",
         unit_price: unitPrice,
       }],
     });
-    await expect(loadPublicQuoteByToken(invalidAggregate.client as never, TOKEN))
-      .rejects.toThrow(/historical price line count/i);
-    expect(invalidAggregate.writes).toEqual([]);
+    const quote = await loadPublicQuoteByToken(legacy.client as never, TOKEN);
+    expect(quote?.total).toBe(3499.1);
+    expect(legacy.writes).toEqual([]);
   });
 
   it("fails closed when protected totals or source provenance are mismatched or ambiguous", async () => {

@@ -726,9 +726,12 @@ function exactLegacyBreakdownDetail(design: AnyRow, label: string): string | nul
 }
 
 function isExactLegacyOnyxPolyCompositeDesign(design: AnyRow): boolean {
-  // Generic legacy Shutters mirrors were stored with the Norman placeholder id.
-  return design.product_id === "norman_shutters" &&
-    design.program_id === null &&
+  // Generic legacy Shutters mirrors used the Norman placeholder identity;
+  // V4 saves the same verified selection under the native Onyx identity.
+  const hasExactProductIdentity =
+    (design.product_id === "norman_shutters" && design.program_id === null) ||
+    (design.product_id === "onyx_shutters" && design.program_id === "poly_composite");
+  return hasExactProductIdentity &&
     design.fabric === "Poly Composite" &&
     design.price_breakdown?.source === "mts_805_bookkeeping" &&
     design.price_breakdown?.productType === "Shutters" &&
@@ -754,90 +757,14 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   targetLineItems: AnyRow[];
   targetDesignsByLineItemId: Map<string, AnyRow[]>;
 }) {
-  const hasExactQuoteEnvelope =
-    !input.mirrorQuote.signed_at &&
-    !input.mirrorQuote.customer_signature &&
-    !input.mirrorQuote.customer_printed_name &&
-    exactMoneyCents(input.source.sourceQuote.quote_total) ===
-      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS &&
-    input.targetLineItems.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length;
-
-  const sourceDesignsByLineItemId = groupBy(input.source.sourceDesigns, "line_item_id");
-  const aggregateLine = input.source.sourceLineItems[0];
-  const aggregateDesign = input.source.sourceDesigns[0];
-  const hasExactAggregateSource =
-    input.source.sourceLineItems.length === 1 &&
-    input.source.sourceDesigns.length === 1 &&
-    Boolean(lineId(aggregateLine)) &&
-    Boolean(lineId(aggregateDesign)) &&
-    aggregateDesign.line_item_id === aggregateLine.id &&
-    strictQuantity(aggregateLine.quantity) === 1 &&
-    exactMoneyCents(aggregateDesign.unit_price) !== null;
-
-  const orderedProtectedLines = [...input.source.sourceLineItems].sort((left, right) =>
-    Number(left.sort_order) - Number(right.sort_order));
-  const protectedLinesBySortOrder = uniqueLinesBySortOrder(input.source.sourceLineItems);
-  const protectedLineIds = new Set(orderedProtectedLines.map(lineId));
-  const hasExactZeroPriceMirrorSource =
-    orderedProtectedLines.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length &&
-    input.source.sourceDesigns.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length &&
-    protectedLinesBySortOrder !== null &&
-    protectedLineIds.size === orderedProtectedLines.length &&
-    !protectedLineIds.has("") &&
-    new Set(input.source.sourceDesigns.map(lineId)).size === input.source.sourceDesigns.length &&
-    input.source.sourceDesigns.every((design) => protectedLineIds.has(String(design.line_item_id))) &&
-    orderedProtectedLines.every((line, index) => {
-      const expected = LEGACY_ONYX_POLY_MIRROR_SHAPE[index];
-      const protectedDesigns = sourceDesignsByLineItemId.get(lineId(line)) || [];
-      return Boolean(lineId(line)) &&
-        normalizedRoom(line.room) === expected.room &&
-        crmDimensionSixteenths(line.width_in) === expected.width * 16 &&
-        crmDimensionSixteenths(line.height_in) === expected.height * 16 &&
-        strictQuantity(line.quantity) === expected.quantity &&
-        protectedDesigns.length === 1 &&
-        Boolean(lineId(protectedDesigns[0])) &&
-        isExactZeroMoney(protectedDesigns[0].unit_price);
-    });
-  if (!hasExactQuoteEnvelope || (!hasExactAggregateSource && !hasExactZeroPriceMirrorSource)) {
-    console.error("historical_onyx_poly_recovery_guard", JSON.stringify({
-      envelope: hasExactQuoteEnvelope,
-      signed: Boolean(input.mirrorQuote.signed_at),
-      hasSignature: Boolean(input.mirrorQuote.customer_signature),
-      hasPrintedName: Boolean(input.mirrorQuote.customer_printed_name),
-      sourceTotal: input.source.sourceQuote.quote_total,
-      aggregateSource: hasExactAggregateSource,
-      zeroMirrorSource: hasExactZeroPriceMirrorSource,
-      sourceLines: input.source.sourceLineItems.map((line) => ({
-        id: Boolean(lineId(line)),
-        room: line.room,
-        width: line.width_in,
-        height: line.height_in,
-        quantity: line.quantity,
-        sort: line.sort_order,
-      })),
-      sourceDesigns: input.source.sourceDesigns.map((design) => ({
-        id: Boolean(lineId(design)),
-        owner: Boolean(design.line_item_id),
-        unit: design.unit_price,
-      })),
-      targetLines: input.targetLineItems.map((line) => ({
-        id: Boolean(lineId(line)),
-        room: line.room,
-        width: line.width_in,
-        height: line.height_in,
-        quantity: line.quantity,
-        sort: line.sort_order,
-        designs: (input.targetDesignsByLineItemId.get(lineId(line)) || []).map((design) => ({
-          id: Boolean(lineId(design)),
-          unit: design.unit_price,
-          product: design.product_id,
-          program: design.program_id,
-          fabric: design.fabric,
-        })),
-      })),
-    }));
-    return null;
-  }
+  if (
+    input.mirrorQuote.signed_at ||
+    input.mirrorQuote.customer_signature ||
+    input.mirrorQuote.customer_printed_name ||
+    exactMoneyCents(input.source.sourceQuote.quote_total) !==
+      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS ||
+    input.targetLineItems.length !== LEGACY_ONYX_POLY_MIRROR_SHAPE.length
+  ) return null;
 
   try {
     requireUniqueLineIds(input.targetLineItems, "target");
