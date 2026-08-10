@@ -10,8 +10,8 @@ function appointmentJob(id: string, appointment_start: string, status: CrmJob["s
   return { ...job(id, "2026-08-07T09:00:00-07:00", status), appointment_start };
 }
 
-function row(id: string, soldDate: string | null, total: number): CrmBookkeepingRow {
-  return { id, source: "manual", quoteId: null, jobId: id, customerName: id, customerPhone: null, quoteNumber: null, soldDate, total } as CrmBookkeepingRow;
+function row(id: string, soldDate: string | null, total: number, jobStatus: CrmJob["status"] = "sold"): CrmBookkeepingRow {
+  return { id, source: "crm_quote", quoteId: id, jobId: id, customerName: id, customerPhone: null, quoteNumber: null, soldDate, total, jobStatus } as CrmBookkeepingRow;
 }
 
 describe("buildCommandPerformanceMetrics", () => {
@@ -145,5 +145,15 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.revenue60Days).toBe(19_000);
     expect(metrics.yearToDateRevenue).toBe(19_000);
     expect(metrics.currentYearForecast).toBe(Math.round((19_000 / 219) * 365));
+  });
+
+  it("counts only signed CRM contracts in revenue metrics", () => {
+    const metrics = buildCommandPerformanceMetrics([], [
+      row("signed", "2026-08-07", 10_000, "sold"),
+      row("sent-quote", "2026-08-07", 1_222, "quoted"),
+      { ...row("manual", "2026-08-07", 933, "sold"), source: "manual" }
+    ], now);
+
+    expect(metrics.revenue30Days).toBe(10_000);
   });
 });

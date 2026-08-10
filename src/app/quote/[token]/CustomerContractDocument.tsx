@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import type { PublicQuote } from "@/lib/crm/public-quote";
+import { formatPublicCustomerPhone, type PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
@@ -10,6 +10,15 @@ import { PrintButton } from "./PrintButton";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function customerDetails(quote: PublicQuote): string[] {
+  return [
+    quote.customerName,
+    quote.customerAddress,
+    formatPublicCustomerPhone(quote.customerPhone),
+    quote.customerEmail,
+  ].filter((detail): detail is string => Boolean(detail));
 }
 
 export function CustomerContractDocument({
@@ -25,6 +34,7 @@ export function CustomerContractDocument({
   embedded?: boolean;
   previewOnly?: boolean;
 }) {
+  const preparedFor = customerDetails(quote);
   const reserveCustomerActionRail =
     !embedded &&
     !previewOnly &&
@@ -77,15 +87,19 @@ export function CustomerContractDocument({
           <a href={brandIdentity.website}>{quote.business.website}</a>
           <a href={brandIdentity.phoneHref}>{quote.business.phone}</a>
         </div>
-        <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20 }}>
+        <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20, textAlign: "center" }}>
           <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
             {quote.business.name}
           </p>
-          <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
-          <p style={{ margin: 0 }}>
-            Prepared for <strong>{quote.customerName}</strong>
-            {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
-          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "baseline", gap: "4px 10px", marginTop: 4 }}>
+            <h1 style={{ margin: 0 }}>Your Contract</h1>
+            <p style={{ margin: 0, fontWeight: 700 }}>
+              {preparedFor.map((detail, index) => (
+                <span key={detail}>{index ? <span aria-hidden="true" style={{ whiteSpace: "pre", fontWeight: 400 }}> · </span> : null}{detail}</span>
+              ))}
+            </p>
+            {quote.quoteNumber ? <span style={{ whiteSpace: "pre", fontWeight: 400 }}> · Contract {quote.quoteNumber}</span> : null}
+          </div>
         </header>
       </div>
 

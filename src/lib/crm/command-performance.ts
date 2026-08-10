@@ -120,7 +120,18 @@ function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
   return rows.reduce((total, row) => {
     const soldAt = validDate(row.soldDate);
     const amount = Number(row.total);
-    if (!soldAt || soldAt < since || soldAt > through || !Number.isFinite(amount) || amount <= 0) return total;
+    // Revenue on the Command Center is booked only when a CRM contract is
+    // signed. Manual ledger entries and open/sent quotes must not inflate the
+    // signed-contract figure.
+    if (
+      row.source !== "crm_quote" ||
+      !wonStatuses.has(row.jobStatus || "new") ||
+      !soldAt ||
+      soldAt < since ||
+      soldAt > through ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) return total;
     return total + amount;
   }, 0);
 }
