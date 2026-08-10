@@ -8778,6 +8778,41 @@ button.crm-calendar-month-event:focus-visible {
   text-transform: uppercase;
 }
 
+.crm-ken-monthly-cut {
+  align-items: center;
+  background: linear-gradient(135deg, #0b5d3f, #137a4f);
+  border: 1px solid #1aae6f;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px auto 0;
+  max-width: 1280px;
+  padding: 18px 24px;
+  text-align: center;
+}
+
+.crm-ken-monthly-cut span {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-ken-monthly-cut strong {
+  color: #d8ffe8;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 900;
+}
+
+@media (max-width: 560px) {
+  .crm-ken-monthly-cut {
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+  }
+}
+
 .crm-bookkeeping-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));

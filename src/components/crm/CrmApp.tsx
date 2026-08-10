@@ -3562,6 +3562,8 @@ function KenPortalView({
   busy: boolean;
   onTabChange: (tab: CrmTab) => void;
 }) {
+  const monthlyCut = data?.partnerPaymentLedger?.people.ken.owed ?? data?.bookkeepingTotals?.kenMonthlyDue ?? 0;
+
   return (
     <div className="crm-app-shell crm-ken-app-shell">
       <header className="crm-topbar crm-ken-topbar">
@@ -3571,6 +3573,11 @@ function KenPortalView({
           <span aria-hidden="true">Ken Portal</span>
         </div>
       </header>
+
+      <section className="crm-ken-monthly-cut" aria-label="Ken monthly cut">
+        <span>Ken's Monthly Cut</span>
+        <strong>{toLedgerCurrency(monthlyCut)}</strong>
+      </section>
 
       <nav className="crm-tabs" aria-label="Ken CRM sections">
         <button
