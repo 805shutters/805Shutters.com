@@ -218,7 +218,7 @@ function aggregateSentMirrorSupabase(options: { customerMirrors?: Row[] } = {}) 
   const protectedDesigns = [{
     id: "aggregate-protected-design",
     line_item_id: "aggregate-source-line",
-    unit_price: 3499.1,
+    unit_price: 3887.89,
   }];
 
   const rowsFor = (table: string, filters: Array<[string, unknown]>): Row[] => {
