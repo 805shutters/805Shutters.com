@@ -118,6 +118,8 @@ describe("QuoteSelection", () => {
     expect(html.match(/Sign the contract/g)).toHaveLength(1);
     expect(html.match(/Sign &amp; approve/g)).toHaveLength(1);
     expect(html).toContain("Sign contract here");
+    expect(html).toContain("I have reviewed my contract and agreed to the details and terms.");
+    expect(html).not.toContain("I authorize 805 Shutters to proceed");
     expect(html).not.toContain("Next steps");
     expect(html).not.toContain("Finish your order");
     expect(html.indexOf("Contract")).toBeLessThan(html.indexOf("Sign contract here"));

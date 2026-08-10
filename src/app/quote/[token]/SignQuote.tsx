@@ -79,7 +79,7 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
       </label>
       <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: compact ? 12 : 14, lineHeight: 1.4, marginBottom: compact ? 12 : 16 }}>
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ flex: "0 0 18px", width: 18, height: 18, marginTop: 2 }} />
-        <span>I authorize 805 Shutters to proceed with this order at the total shown, and I understand a deposit may be required.</span>
+        <span>I have reviewed my contract and agreed to the details and terms.</span>
       </label>
       <button
         type="button"
