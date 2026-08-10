@@ -95,6 +95,7 @@ const input = parseHistoricalPartialRepairInput({
 const evidence: HistoricalPartialRepairEvidence = {
   quote: {
     id: "quote-id",
+    updated_at: "2026-08-06T12:01:00.000Z",
     quote_number: "805-0172",
     quote_total: 3303,
     signed_at: "2026-08-06T12:00:00.000Z",
@@ -105,6 +106,7 @@ const evidence: HistoricalPartialRepairEvidence = {
   job: { id: "job-id", deposit_paid: 342.9 },
   contract: {
     id: "contract-id",
+    updated_at: "2026-08-06T12:01:00.000Z",
     total_amount: 3303,
     signed_at: "2026-08-06T12:00:00.000Z",
     meta: {},

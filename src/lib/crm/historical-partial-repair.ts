@@ -26,6 +26,7 @@ export type HistoricalPartialRepairInput = {
 export type HistoricalPartialRepairEvidence = {
   quote: {
     id: string;
+    updated_at: string;
     quote_number: string | null;
     quote_total: number | string | null;
     signed_at: string | null;
@@ -36,6 +37,7 @@ export type HistoricalPartialRepairEvidence = {
   job: { id: string; deposit_paid: number | string | null };
   contract: {
     id: string;
+    updated_at: string;
     total_amount: number | string | null;
     signed_at: string | null;
     meta: unknown;
@@ -167,7 +169,7 @@ export async function repairHistoricalPartialAcceptance(
   const input = parseHistoricalPartialRepairInput(rawInput);
   const { data: quote, error: quoteError } = await supabase
     .from("crm_quotes")
-    .select("id,job_id,quote_number,quote_total,signed_at,share_token,customer_printed_name,meta")
+    .select("id,updated_at,job_id,quote_number,quote_total,signed_at,share_token,customer_printed_name,meta")
     .eq("id", quoteId)
     .maybeSingle();
   if (quoteError || !quote) throw new CrmAuthError(404, "The signed quote was not found.");
@@ -178,7 +180,7 @@ export async function repairHistoricalPartialAcceptance(
       supabase.from("crm_jobs").select("id,deposit_paid").eq("id", quote.job_id).maybeSingle(),
       supabase
         .from("crm_customer_contracts")
-        .select("id,total_amount,signed_at,meta")
+        .select("id,updated_at,total_amount,signed_at,meta")
         .eq("external_source", "crm_quote")
         .eq("external_id", `contract:${quoteId}`)
         .maybeSingle(),
@@ -238,10 +240,10 @@ export async function repairHistoricalPartialAcceptance(
     .from("crm_quotes")
     .update({ meta: stagedQuoteMeta })
     .eq("id", quoteId)
+    .eq("updated_at", quote.updated_at)
     .eq("signed_at", input.expectedSignedAt)
     .eq("quote_total", input.expectedSourceTotal)
-    .eq("meta", originalQuoteMeta)
-    .select("id")
+    .select("id,updated_at")
     .maybeSingle();
   if (stageQuoteError || !stagedQuote) {
     throw new CrmAuthError(409, "The quote changed before repair staging; no repair was applied.");
@@ -251,17 +253,17 @@ export async function repairHistoricalPartialAcceptance(
     .from("crm_customer_contracts")
     .update({ total_amount: input.expectedSelectedTotal, meta: stagedContractMeta })
     .eq("id", contract.id)
+    .eq("updated_at", contract.updated_at)
     .eq("signed_at", input.expectedSignedAt)
     .eq("total_amount", input.expectedSourceTotal)
-    .eq("meta", originalContractMeta)
-    .select("id")
+    .select("id,updated_at")
     .maybeSingle();
   if (stageContractError || !stagedContract) {
     await supabase
       .from("crm_quotes")
       .update({ meta: originalQuoteMeta })
       .eq("id", quoteId)
-      .eq("meta", stagedQuoteMeta);
+      .eq("updated_at", stagedQuote.updated_at);
     throw new CrmAuthError(409, "The contract changed before repair staging; no repair was applied.");
   }
 
@@ -280,7 +282,7 @@ export async function repairHistoricalPartialAcceptance(
       .from("crm_quotes")
       .update({ meta: originalQuoteMeta })
       .eq("id", quoteId)
-      .eq("meta", stagedQuoteMeta)
+      .eq("updated_at", stagedQuote.updated_at)
       .select("id")
       .maybeSingle();
     if (rolledBackQuote) {
@@ -288,8 +290,8 @@ export async function repairHistoricalPartialAcceptance(
         .from("crm_customer_contracts")
         .update({ total_amount: input.expectedSourceTotal, meta: originalContractMeta })
         .eq("id", contract.id)
-        .eq("total_amount", input.expectedSelectedTotal)
-        .eq("meta", stagedContractMeta);
+        .eq("updated_at", stagedContract.updated_at)
+        .eq("total_amount", input.expectedSelectedTotal);
       throw error;
     }
     throw new CrmAuthError(
@@ -323,8 +325,8 @@ export async function repairHistoricalPartialAcceptance(
     .from("crm_customer_contracts")
     .update({ meta: finalContractMeta })
     .eq("id", contract.id)
-    .eq("total_amount", input.expectedSelectedTotal)
-    .eq("meta", stagedContractMeta);
+    .eq("updated_at", stagedContract.updated_at)
+    .eq("total_amount", input.expectedSelectedTotal);
   if (snapshotError) {
     throw new CrmAuthError(
       502,
