@@ -117,6 +117,27 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain('48&quot; W');
   });
 
+  it("shows the customer's full contact information above the contract line items", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails() }));
+
+    expect(html).toContain("Customer Information");
+    expect(html).toContain("Full name");
+    expect(html).toContain("Test Customer");
+    expect(html).toContain("123 Main St, Ventura, CA 93001");
+    expect(html).toContain("(805) 555-1212");
+    expect(html).toContain("test@example.com");
+    expect(html.indexOf("Customer Information")).toBeLessThan(html.indexOf("Kitchen"));
+  });
+
+  it("omits the email field when the customer did not provide one", () => {
+    const quote = quoteWithLegacyDetails();
+    quote.customerEmail = null;
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote }));
+
+    expect(html).not.toContain("test@example.com");
+    expect(html).not.toMatch(/<dt>Email<\/dt>/);
+  });
+
   it("puts contract details before the full signing and deposit forms", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),

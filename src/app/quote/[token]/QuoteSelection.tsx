@@ -14,6 +14,14 @@ function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+function customerPhoneDisplay(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length !== 10) return phone.trim();
+  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+}
+
 type LiveMoney = {
   subtotal: number;
   fees: number;
@@ -108,6 +116,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
   const depositReady = contractSigned && paymentType === "deposit";
   const venmoAddress = paymentOptions ? formatVenmoAddress(paymentOptions.venmoHandle) : "";
+  const customerPhone = customerPhoneDisplay(quote.customerPhone);
 
   async function startSquare(type: QuotePaymentType) {
     setSquareMsg(null);
@@ -196,6 +205,30 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
             <h2 id="order-summary-heading">Contract</h2>
             {contractSigned ? <span className={styles.signedBadge} role="status">Contract Signed</span> : null}
           </div>
+
+          <section className={styles.customerInformation} aria-labelledby="customer-information-heading">
+            <h3 id="customer-information-heading">Customer Information</h3>
+            <dl className={styles.customerInformationDetails}>
+              <div className={styles.customerInformationField}>
+                <dt>Full name</dt>
+                <dd>{quote.customerName}</dd>
+              </div>
+              <div className={styles.customerInformationField}>
+                <dt>Address</dt>
+                <dd>{quote.customerAddress || "Not provided"}</dd>
+              </div>
+              <div className={styles.customerInformationField}>
+                <dt>Phone</dt>
+                <dd>{customerPhone || "Not provided"}</dd>
+              </div>
+              {quote.customerEmail ? (
+                <div className={styles.customerInformationField}>
+                  <dt>Email</dt>
+                  <dd>{quote.customerEmail}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </section>
 
           {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
 

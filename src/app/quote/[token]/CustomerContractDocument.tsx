@@ -12,15 +12,6 @@ function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-function customerDetails(quote: PublicQuote): string[] {
-  const digits = quote.customerPhone?.replace(/\D/g, "") || "";
-  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  const phone = local.length === 10
-    ? `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`
-    : quote.customerPhone?.trim() || null;
-  return [quote.customerName, quote.customerAddress, phone, quote.customerEmail].filter((detail): detail is string => Boolean(detail));
-}
-
 export function CustomerContractDocument({
   quote,
   paymentOptions,
@@ -34,7 +25,6 @@ export function CustomerContractDocument({
   embedded?: boolean;
   previewOnly?: boolean;
 }) {
-  const preparedFor = customerDetails(quote);
   const reserveCustomerActionRail =
     !embedded &&
     !previewOnly &&
@@ -93,7 +83,7 @@ export function CustomerContractDocument({
           </p>
           <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
           <p style={{ margin: 0 }}>
-            Prepared for <strong>{preparedFor.join(", ")}</strong>
+            Prepared for <strong>{quote.customerName}</strong>
             {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
           </p>
         </header>
