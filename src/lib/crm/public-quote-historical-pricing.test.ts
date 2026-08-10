@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   historicalSalesQuoteSentWindow,
   loadPublicQuoteByToken,
@@ -381,6 +381,84 @@ describe("existing sent CRM mirror historical read projection", () => {
     await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
       .rejects.toThrow(/historical price line count/i);
     expect(fake.writes).toEqual([]);
+  });
+
+  it("logs boolean/count-only aggregate guard metadata only for the exact protected-total candidate", async () => {
+    const complete = rowsForAggregateLegacyQuote();
+    const mismatchedLines = complete.mirrorLines.map((line, index) => index === 0
+      ? {
+          ...line,
+          designs: [{
+            ...(line.designs as Row[])[0],
+            fabric: "Vinyl",
+          }],
+        }
+      : line);
+    const candidate = fakeSupabase({ mirrorLines: mismatchedLines });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    try {
+      await expect(loadHistoricalCrmMirrorPricing(
+        candidate.client as never,
+        candidate.fixture.mirror,
+        candidate.fixture.mirrorLines,
+        new Map(candidate.fixture.mirrorLines.map((line) => [
+          String(line.id),
+          line.designs as Row[],
+        ])),
+      )).rejects.toThrow(/historical price line count/i);
+
+      expect(errorSpy).toHaveBeenCalledOnce();
+      expect(errorSpy).toHaveBeenCalledWith("historical_onyx_poly_aggregate_guard_mismatch", {
+        stage: "target",
+        targetLineIndex: 0,
+        roomMatches: true,
+        widthMatches: true,
+        heightMatches: true,
+        quantityMatches: true,
+        designCount: 1,
+        designIdentityMatches: true,
+        selectedDesignMatches: true,
+        zeroMoneyMatches: true,
+        legacyProductPlaceholderMatches: true,
+        programNullMatches: true,
+        fabricMatches: false,
+        sourceMatches: true,
+        productTypeMatches: true,
+        supplierMatches: true,
+        materialMatches: true,
+        colorMatches: true,
+        hingeMatches: true,
+      });
+      const metadata = errorSpy.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(Object.entries(metadata).every(([key, value]) =>
+        key === "stage"
+          ? value === "target"
+          : typeof value === "boolean" || Number.isSafeInteger(value),
+      )).toBe(true);
+
+      errorSpy.mockClear();
+      const nonCandidate = fakeSupabase({
+        mirrorLines: mismatchedLines,
+        sourceQuotes: [{
+          id: SOURCE_QUOTE_ID,
+          quote_total: 1,
+          meta: { target_sales_quote_id: SALES_QUOTE_ID },
+        }],
+      });
+      await expect(loadHistoricalCrmMirrorPricing(
+        nonCandidate.client as never,
+        nonCandidate.fixture.mirror,
+        nonCandidate.fixture.mirrorLines,
+        new Map(nonCandidate.fixture.mirrorLines.map((line) => [
+          String(line.id),
+          line.designs as Row[],
+        ])),
+      )).rejects.toThrow(/historical price line count/i);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it.each([
