@@ -39,7 +39,6 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
     balanceDue: quote.balanceDue,
     payment: quote.payment,
   };
-  const allowSelection = !previewOnly && !quote.signed && quote.lines.length > 1;
   const [mode, setMode] = useState<"all" | "some">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
   const [live, setLive] = useState<LiveMoney>(fullMoney);
@@ -95,13 +94,16 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, previewOnly, selected, quote.token]);
 
+  const contractSigned = quote.signed || signedNow;
+  const allowSelection = !previewOnly && !contractSigned && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
-  const canSign = !quote.signed && quote.allPriced;
+  const canSign = !contractSigned && quote.allPriced;
   const showActionPanel = !previewOnly && (canSign || Boolean(paymentOptions));
   const paymentType = live.payment.available ? live.payment.dueType : null;
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
+  const depositReady = contractSigned && paymentType === "deposit";
   const venmoAddress = paymentOptions ? formatVenmoAddress(paymentOptions.venmoHandle) : "";
 
   async function startSquare(type: QuotePaymentType) {
@@ -175,7 +177,10 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         <nav className={`${styles.mobileActionBar} no-print`} aria-label="Contract actions">
           {canSign ? <a className={styles.mobileActionButton} href="#sign-contract">Sign contract here</a> : null}
           {paymentOptions && paymentType ? (
-            <a className={`${styles.mobileActionButton} ${styles.mobileActionButtonSecondary}`} href="#payment">
+            <a
+              className={`${styles.mobileActionButton} ${styles.mobileActionButtonSecondary} ${depositReady ? styles.mobileActionButtonPaymentReady : ""}`}
+              href="#payment"
+            >
               {paymentType === "deposit" ? "Pay deposit here" : "Pay balance here"}
             </a>
           ) : null}
@@ -186,6 +191,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         <section className={styles.orderSummary} aria-labelledby="order-summary-heading">
           <div className={styles.orderSummaryHeader}>
             <h2 id="order-summary-heading">Contract</h2>
+            {contractSigned ? <span className={styles.signedBadge} role="status">Contract Signed</span> : null}
           </div>
 
           {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
@@ -247,33 +253,56 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         {showActionPanel ? (
           <aside className={`${styles.actionPanel} no-print`} aria-label="Sign contract and make a payment">
             <div className={styles.actionPanelHeader}>
-              <strong>Sign contract here</strong>
+              <strong>{contractSigned ? "Contract Signed" : "Sign contract here"}</strong>
             </div>
 
-            {canSign ? (
-              <section id="sign-contract" className={styles.actionSection} aria-labelledby="sign-contract-heading">
-                <div className={styles.actionStep}><span>1</span><strong id="sign-contract-heading">Sign the contract</strong></div>
-                {selectionEmpty ? (
-                  <p className={styles.actionNotice}>Select at least one item below before signing.</p>
-                ) : (
+            {canSign || signedNow ? (
+              <section
+                id="sign-contract"
+                className={styles.actionSection}
+                aria-label={signedNow ? "Contract signed" : undefined}
+                aria-labelledby={signedNow ? undefined : "sign-contract-heading"}
+              >
+                {signedNow ? (
                   <SignQuote
                     token={quote.token}
                     customerName={quote.customerName}
                     total={acknowledgedTotal}
                     selectedLineIds={selectedLineIds}
-                    done={signedNow}
-                    onSigned={() => setSignedNow(true)}
+                    done
                     placement="top"
                     compact
                   />
+                ) : (
+                  <>
+                    <div className={styles.actionStep}><span>1</span><strong id="sign-contract-heading">Sign the contract</strong></div>
+                    {selectionEmpty ? (
+                      <p className={styles.actionNotice}>Select at least one item below before signing.</p>
+                    ) : (
+                      <SignQuote
+                        token={quote.token}
+                        customerName={quote.customerName}
+                        total={acknowledgedTotal}
+                        selectedLineIds={selectedLineIds}
+                        onSigned={() => setSignedNow(true)}
+                        placement="top"
+                        compact
+                      />
+                    )}
+                  </>
                 )}
               </section>
             ) : null}
 
             {paymentOptions ? (
-              <section id="payment" className={styles.actionSection} aria-labelledby="payment-heading">
+              <section
+                id="payment"
+                className={`${styles.actionSection} ${depositReady ? styles.actionSectionPaymentReady : ""}`}
+                aria-labelledby="payment-heading"
+                data-payment-ready={depositReady || undefined}
+              >
                 <div className={styles.actionStep}>
-                  <span>{canSign ? "2" : "1"}</span>
+                  <span>{canSign || signedNow ? "2" : "1"}</span>
                   <strong id="payment-heading">{paymentType === "deposit" ? "Make a deposit" : "Make a payment"}</strong>
                 </div>
                 {!live.payment.available ? (

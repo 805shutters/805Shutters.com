@@ -128,12 +128,6 @@ export function CustomerContractDocument({
           </section>
         ) : null}
 
-        {quote.signed ? (
-          <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-            <strong>This contract has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
-          </div>
-        ) : null}
-
         <QuoteSelection quote={quote} paymentOptions={paymentOptions} previewOnly={previewOnly} />
       </div>
       <footer className="customer-contract-print-only" style={contractFooter}>

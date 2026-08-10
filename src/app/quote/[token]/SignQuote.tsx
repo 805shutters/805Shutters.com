@@ -48,8 +48,8 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
   if (done) {
     return (
       <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: compact ? 14 : 20, marginTop: compact ? 0 : 20 }}>
-        <h3 style={{ margin: "0 0 6px" }}>Thank you — your order is confirmed! 🎉</h3>
-        <p style={{ margin: 0 }}>We&apos;ve received your signed approval and will reach out to schedule. You can close this page.</p>
+        <h3 style={{ margin: "0 0 6px" }}>Your contract is signed.</h3>
+        <p style={{ margin: 0 }}>Continue below to make your deposit.</p>
       </div>
     );
   }

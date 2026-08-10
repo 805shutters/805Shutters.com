@@ -8,6 +8,7 @@ import { QuoteSelection } from "./QuoteSelection";
 import { CustomerContractDocument } from "./CustomerContractDocument";
 
 const quoteSelectionCss = readFileSync(new URL("./QuoteSelection.module.css", import.meta.url), "utf8");
+const signQuoteSource = readFileSync(new URL("./SignQuote.tsx", import.meta.url), "utf8");
 
 function quoteWithLegacyDetails(signed = true): PublicQuote {
   return {
@@ -143,6 +144,23 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toMatch(/\.contractLayoutWithMobileActions\s*{[^}]*padding-bottom:\s*calc\(64px \+ env\(safe-area-inset-bottom\)\);/s);
   });
 
+  it("keeps a signed customer on the contract and emphasizes the deposit as the next step", () => {
+    const quote = quoteWithLegacyDetails(true);
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, paymentOptions }));
+
+    expect(html).toContain("Contract Signed");
+    expect(html).toContain('role="status"');
+    expect(html).toContain('data-payment-ready="true"');
+    expect(html).toContain("Pay deposit here");
+    expect(html).not.toContain("Sign &amp; approve");
+    expect(html).not.toContain("This contract has been approved and signed.");
+    expect(quoteSelectionCss).toMatch(/\.signedBadge\s*{[^}]*border:\s*2px solid #aeb3b8;/s);
+    expect(quoteSelectionCss).toMatch(/\.actionSectionPaymentReady\s*{[^}]*border:\s*2px solid #aeb3b8;/s);
+    expect(signQuoteSource).toContain("onSigned?.();");
+    expect(signQuoteSource).toContain("Continue below to make your deposit.");
+    expect(signQuoteSource).not.toMatch(/window\.location|location\.href|router\.(?:push|replace)/);
+  });
+
   it("keeps the desktop action panel fixed over the full-width contract", () => {
     expect(quoteSelectionCss).toMatch(/\.contractLayout\s*{\s*display:\s*block;/);
     expect(quoteSelectionCss).toMatch(/\.actionPanel\s*{[^}]*position:\s*fixed;[^}]*top:\s*16px;[^}]*right:\s*16px;/s);
@@ -202,6 +220,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Deposit paid");
     expect(html).toContain("Pay balance with card");
     expect(html).not.toContain("Pay deposit with card");
+    expect(html).not.toContain('data-payment-ready="true"');
   });
 
   it("renders the complete customer document without action controls in an internal preview", () => {
