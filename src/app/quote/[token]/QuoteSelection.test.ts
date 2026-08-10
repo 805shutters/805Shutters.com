@@ -9,6 +9,7 @@ import { CustomerContractDocument } from "./CustomerContractDocument";
 
 const quoteSelectionCss = readFileSync(new URL("./QuoteSelection.module.css", import.meta.url), "utf8");
 const signQuoteSource = readFileSync(new URL("./SignQuote.tsx", import.meta.url), "utf8");
+const walletButtonsSource = readFileSync(new URL("./QuoteWalletButtons.tsx", import.meta.url), "utf8");
 
 function quoteWithLegacyDetails(signed = true): PublicQuote {
   return {
@@ -208,6 +209,9 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Pay deposit with Google Pay");
     expect(html).toContain("quote-google-pay-");
     expect(quoteSelectionCss).toContain("-webkit-appearance: -apple-pay-button");
+    expect(quoteSelectionCss).toMatch(/\.walletButtons\[data-layout="single"\]\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
+    expect(walletButtonsSource).toContain('buttonSizeMode: "fill"');
+    expect(walletButtonsSource).toContain('data-layout={available.apple && available.google ? "split" : "single"}');
     expect(html).toContain("@approved-venmo");
     expect(html).toContain("805-806-9344");
     expect(html).toContain("Copy Zelle phone number 805-806-9344");

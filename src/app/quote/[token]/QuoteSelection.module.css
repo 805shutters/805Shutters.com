@@ -446,6 +446,10 @@
   min-height: 40px;
 }
 
+.walletButtons[data-layout="single"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .walletButtons[data-busy="true"],
 .walletButtons[data-disabled="true"] {
   pointer-events: none;
@@ -453,6 +457,7 @@
 }
 
 .googlePayButton {
+  width: 100%;
   min-width: 0;
   min-height: 40px;
   overflow: hidden;

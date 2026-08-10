@@ -24,7 +24,13 @@ type WalletMethod = {
 type GooglePayMethod = WalletMethod & {
   attach: (
     selector: string,
-    options?: { buttonColor?: "default" | "black" | "white"; buttonType?: "long" | "short" },
+    options?: {
+      buttonColor?: "default" | "black" | "white";
+      buttonType?: "long" | "short";
+      buttonSizeMode?: "static" | "fill";
+      buttonRadius?: number;
+      buttonBorderType?: "default_border" | "no_border";
+    },
   ) => Promise<void>;
 };
 
@@ -163,7 +169,13 @@ export function QuoteWalletButtons({
         try {
           const google = await payments.googlePay(paymentRequest);
           if (!cancelled) {
-            await google.attach(`#${googleTargetId}`, { buttonColor: "black", buttonType: "long" });
+            await google.attach(`#${googleTargetId}`, {
+              buttonColor: "black",
+              buttonType: "long",
+              buttonSizeMode: "fill",
+              buttonRadius: 7,
+              buttonBorderType: "no_border",
+            });
             methods.google = google;
             const target = document.getElementById(googleTargetId);
             if (target) {
@@ -290,6 +302,7 @@ export function QuoteWalletButtons({
       {available.apple || available.google ? <span className={styles.walletHeading}>Express checkout</span> : null}
       <div
         className={styles.walletButtons}
+        data-layout={available.apple && available.google ? "split" : "single"}
         data-busy={busy ? "true" : undefined}
         data-disabled={disabled ? "true" : undefined}
       >
