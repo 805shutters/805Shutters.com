@@ -171,7 +171,18 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         </div>
       ) : null}
 
-      <div className={`${styles.contractLayout} ${showActionPanel ? "" : styles.contractLayoutSingle}`}>
+      {showActionPanel ? (
+        <nav className={`${styles.mobileActionBar} no-print`} aria-label="Contract actions">
+          {canSign ? <a className={styles.mobileActionButton} href="#sign-contract">Sign contract here</a> : null}
+          {paymentOptions && paymentType ? (
+            <a className={`${styles.mobileActionButton} ${styles.mobileActionButtonSecondary}`} href="#payment">
+              {paymentType === "deposit" ? "Pay deposit here" : "Pay balance here"}
+            </a>
+          ) : null}
+        </nav>
+      ) : null}
+
+      <div className={`${styles.contractLayout} ${showActionPanel ? styles.contractLayoutWithMobileActions : styles.contractLayoutSingle}`}>
         <section className={styles.orderSummary} aria-labelledby="order-summary-heading">
           <div className={styles.orderSummaryHeader}>
             <h2 id="order-summary-heading">Contract</h2>
@@ -240,7 +251,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
             </div>
 
             {canSign ? (
-              <section className={styles.actionSection} aria-labelledby="sign-contract-heading">
+              <section id="sign-contract" className={styles.actionSection} aria-labelledby="sign-contract-heading">
                 <div className={styles.actionStep}><span>1</span><strong id="sign-contract-heading">Sign the contract</strong></div>
                 {selectionEmpty ? (
                   <p className={styles.actionNotice}>Select at least one item below before signing.</p>

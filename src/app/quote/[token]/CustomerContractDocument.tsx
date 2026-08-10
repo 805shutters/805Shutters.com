@@ -44,6 +44,9 @@ export function CustomerContractDocument({
       .customer-contract-print-action { position: fixed; top: 16px; left: 16px; z-index: 20; }
       @media (max-width: 640px) {
         .customer-contract-print-action { top: 10px; left: 10px; }
+        body:has(.customer-contract-print-root) { padding-bottom: 0 !important; }
+        body:has(.customer-contract-print-root) .mobile-action-bar,
+        body:has(.customer-contract-print-root) .assistant-widget { display: none !important; }
       }
       @media screen and (min-width: 1101px) {
         .customer-contract-main-content--with-actions {

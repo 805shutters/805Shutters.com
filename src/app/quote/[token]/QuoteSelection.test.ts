@@ -110,7 +110,7 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain('48&quot; W');
   });
 
-  it("puts a compact order summary before the signing and deposit actions", () => {
+  it("puts contract details before the full signing and deposit forms", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       paymentOptions,
@@ -122,10 +122,25 @@ describe("QuoteSelection", () => {
     expect(html).not.toContain("I authorize 805 Shutters to proceed");
     expect(html).not.toContain("Next steps");
     expect(html).not.toContain("Finish your order");
-    expect(html.indexOf("Contract")).toBeLessThan(html.indexOf("Sign contract here"));
-    expect(html.indexOf("Kitchen")).toBeLessThan(html.indexOf("Sign contract here"));
-    expect(html.indexOf("$509.40")).toBeLessThan(html.indexOf("Sign contract here"));
+    expect(html.indexOf("Kitchen")).toBeLessThan(html.indexOf('id="sign-contract"'));
+    expect(html.indexOf("$509.40")).toBeLessThan(html.indexOf('id="sign-contract"'));
     expect(html).toContain("Make a deposit");
+  });
+
+  it("provides a thin fixed mobile action bar that links to the full forms", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, {
+      quote: quoteWithLegacyDetails(false),
+      paymentOptions,
+    }));
+
+    expect(html).toContain('aria-label="Contract actions"');
+    expect(html).toContain('href="#sign-contract"');
+    expect(html).toContain('href="#payment"');
+    expect(html).toContain("Sign contract here");
+    expect(html).toContain("Pay deposit here");
+    expect(quoteSelectionCss).toMatch(/\.mobileActionBar\s*{\s*display:\s*none;/);
+    expect(quoteSelectionCss).toMatch(/@media \(max-width: 640px\)[\s\S]*?\.mobileActionBar\s*{[^}]*position:\s*fixed;[^}]*bottom:[^;]+;[^}]*z-index:\s*1210;/s);
+    expect(quoteSelectionCss).toMatch(/\.contractLayoutWithMobileActions\s*{[^}]*padding-bottom:\s*calc\(64px \+ env\(safe-area-inset-bottom\)\);/s);
   });
 
   it("keeps the desktop action panel fixed over the full-width contract", () => {
@@ -218,5 +233,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain(".site-header-shell,");
     expect(html).toContain(".site-footer { display: none !important; }");
     expect(html).toContain(".no-print { display: none !important; }");
+    expect(html).toContain("body:has(.customer-contract-print-root) .mobile-action-bar,");
+    expect(html).toContain("body:has(.customer-contract-print-root) .assistant-widget { display: none !important; }");
   });
 });
