@@ -4,7 +4,10 @@ import {
   buildHistoricalQuotePriceLock,
   type HistoricalQuotePriceLock,
 } from "@/lib/crm/historical-quote-price-lock";
-import { loadHistoricalSalesQuoteMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
+import {
+  loadHistoricalCrmMirrorPricing,
+  loadHistoricalSalesQuoteMirrorPricing,
+} from "@/lib/crm/historical-sales-quote-pricing";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -261,12 +264,87 @@ function hasExactMirrorIdentity(
   return mirrorCandidates.size === 1 && [...mirrorCandidates][0].toLowerCase() === salesQuoteId;
 }
 
+async function loadExactCustomerMirrorHistoricalPriceLock(
+  supabase: SupabaseClient,
+  salesQuoteId: string,
+): Promise<HistoricalQuotePriceLock | null> {
+  const externalId = `quote:${salesQuoteId}`;
+  const { data: mirrorQuotes, error: mirrorQuoteError } = await supabase
+    .from("crm_quotes")
+    .select("id,external_id,meta,signed_at,customer_signature,customer_printed_name")
+    .eq("external_id", externalId);
+  if (mirrorQuoteError) {
+    throw new CrmAuthError(502, "The customer historical quote mirror could not be loaded.");
+  }
+  if (!mirrorQuotes?.length) return null;
+  if (mirrorQuotes.length !== 1) {
+    throw new CrmAuthError(409, "The customer historical quote mirror is ambiguous.");
+  }
+
+  const mirrorQuote = mirrorQuotes[0] as JsonRecord;
+  if (text(mirrorQuote.id) === null || mirrorQuote.external_id !== externalId) {
+    throw new CrmAuthError(409, "The customer historical quote mirror identity is inconsistent.");
+  }
+
+  const { data: mirrorLines, error: mirrorLinesError } = await supabase
+    .from("crm_quote_line_items")
+    .select("*")
+    .eq("quote_id", mirrorQuote.id);
+  if (mirrorLinesError) {
+    throw new CrmAuthError(502, "The customer historical quote mirror lines could not be loaded.");
+  }
+
+  const lineRows = (mirrorLines ?? []) as JsonRecord[];
+  const lineIds = lineRows.flatMap((line) => {
+    const id = text(line.id);
+    return id ? [id] : [];
+  });
+  let designRows: JsonRecord[] = [];
+  if (lineIds.length) {
+    const { data: mirrorDesigns, error: mirrorDesignsError } = await supabase
+      .from("crm_quote_designs")
+      .select("*")
+      .in("line_item_id", lineIds);
+    if (mirrorDesignsError) {
+      throw new CrmAuthError(502, "The customer historical quote mirror designs could not be loaded.");
+    }
+    designRows = (mirrorDesigns ?? []) as JsonRecord[];
+  }
+
+  const designsByLineItemId = new Map<string, JsonRecord[]>();
+  for (const design of designRows) {
+    const lineItemId = text(design.line_item_id);
+    if (!lineItemId) continue;
+    const lineDesigns = designsByLineItemId.get(lineItemId) ?? [];
+    lineDesigns.push(design);
+    designsByLineItemId.set(lineItemId, lineDesigns);
+  }
+  const projected = await loadHistoricalCrmMirrorPricing(
+    supabase,
+    mirrorQuote,
+    lineRows,
+    designsByLineItemId,
+  );
+  return projected
+    ? buildHistoricalQuotePriceLock(
+        projected.total,
+        [...projected.designsByLineItemId.values()].flat() as StoredCrmDesignPriceRow[],
+      )
+    : null;
+}
+
 async function loadUpstreamHistoricalPriceLock(
   supabase: SupabaseClient,
   salesQuote: StoredSalesQuoteRouteRow,
   targetLineItems: StoredSalesLineRouteRow[],
   targetDesignsByLineItemId: Map<string, StoredSalesDesignRouteRow[]>,
 ): Promise<HistoricalQuotePriceLock> {
+  const customerMirrorLock = await loadExactCustomerMirrorHistoricalPriceLock(
+    supabase,
+    salesQuote.id,
+  );
+  if (customerMirrorLock) return customerMirrorLock;
+
   const projected = await loadHistoricalSalesQuoteMirrorPricing(
     supabase,
     salesQuote,

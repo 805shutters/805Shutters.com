@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   historicalSalesQuoteSentWindow,
   loadPublicQuoteByToken,
@@ -9,23 +9,12 @@ import { loadHistoricalCrmMirrorPricing } from "./historical-sales-quote-pricing
 const SALES_QUOTE_ID = "22222222-2222-4222-8222-222222222222";
 const MIRROR_QUOTE_ID = "33333333-3333-4333-8333-333333333333";
 const SOURCE_QUOTE_ID = "44444444-4444-4444-8444-444444444444";
-const TOKEN = "maggie-existing-link";
-const SOURCE_PRICES = [406.87, 406.87, 604.5, 406.87, 406.87, 255.75, 406.87, 604.5];
-const SOURCE_ROOMS = [
-  ["Flex Room", 35, 60],
-  ["Dining Room", 35, 60],
-  ["Dining Room", 60, 52],
-  ["Living Room", 35, 60],
-  ["Living Room", 35, 60],
-  ["Bed 1", 22, 60],
-  ["Bed 1", 35, 60],
-  ["Bed 2", 60, 52],
-] as const;
+const TOKEN = "legacy-existing-link";
 const MIRROR_ROOMS = [
-  ["Flex Room", 35, 60, 1],
-  ["Dining Room", 35, 60, 1],
-  ["Dining Room", 60, 52, 1],
-  ["Living Room", 35, 60, 2],
+  ["Flex", 35, 60, 1],
+  ["Dining", 35, 60, 1],
+  ["Dining", 60, 52, 1],
+  ["Living", 35, 60, 2],
   ["Bed 1", 22, 60, 1],
   ["Bed 2", 60, 52, 1],
 ] as const;
@@ -43,21 +32,21 @@ type FixtureOptions = {
   sentAliasUrl?: string | null;
 };
 
-function rowsForMaggie(options: FixtureOptions = {}) {
-  const sourceLines = options.sourceLines ?? SOURCE_PRICES.map((_, index) => ({
-    id: `source-line-${index + 1}`,
+function rowsForAggregateLegacyQuote(options: FixtureOptions = {}) {
+  const sourceLines = options.sourceLines ?? [{
+    id: "aggregate-source-line",
     quote_id: SOURCE_QUOTE_ID,
     quantity: 1,
-    room: SOURCE_ROOMS[index][0],
-    width_in: SOURCE_ROOMS[index][1],
-    height_in: SOURCE_ROOMS[index][2],
-    sort_order: index,
-  }));
-  const sourceDesigns = options.sourceDesigns ?? SOURCE_PRICES.map((unitPrice, index) => ({
-    id: `protected-design-${index + 1}`,
-    line_item_id: `source-line-${index + 1}`,
-    unit_price: unitPrice,
-  }));
+    room: "Aggregate",
+    width_in: 1,
+    height_in: 1,
+    sort_order: 0,
+  }];
+  const sourceDesigns = options.sourceDesigns ?? [{
+    id: "aggregate-protected-design",
+    line_item_id: "aggregate-source-line",
+    unit_price: 3499.1,
+  }];
   const mirrorLines = options.mirrorLines ?? MIRROR_ROOMS.map((room, index) => ({
     id: `target-line-${index + 1}`,
     quote_id: MIRROR_QUOTE_ID,
@@ -76,7 +65,9 @@ function rowsForMaggie(options: FixtureOptions = {}) {
       sort_order: 0,
       product_id: "onyx_shutters",
       program_id: null,
-      fabric: null,
+      fabric: "Poly Composite",
+      hinge_color: "Match",
+      options_json: { color: "101_White" },
       details: {},
       surcharges: [],
       motorization: [],
@@ -87,7 +78,12 @@ function rowsForMaggie(options: FixtureOptions = {}) {
         mtsLineItemId: `target-line-${index + 1}`,
         mtsDesignId: `current-design-${index + 1}`,
         productType: "Shutters",
-        details: [{ label: "Hinge Color", value: "101_White" }],
+        details: [
+          { label: "Supplier", value: "Onyx" },
+          { label: "Material", value: "Poly Composite" },
+          { label: "Color", value: "101_White" },
+          { label: "Hinge Color", value: "Match" },
+        ],
       },
       price_status: "ok",
       priced_at: null,
@@ -119,8 +115,8 @@ function rowsForMaggie(options: FixtureOptions = {}) {
     archived_at: null,
     manufacturer_name: null,
     manufacturer_order_ref: null,
-    customer_name: "Maggie",
-    customer_email: "maggie@example.com",
+    customer_name: "Legacy Customer",
+    customer_email: "legacy-customer@example.com",
     customer_phone: "8055551212",
     customer_address: "805 Test St",
     customer_signature: null,
@@ -153,7 +149,7 @@ function rowsForMaggie(options: FixtureOptions = {}) {
 }
 
 function fakeSupabase(options: FixtureOptions = {}) {
-  const fixture = rowsForMaggie(options);
+  const fixture = rowsForAggregateLegacyQuote(options);
   const writes: string[] = [];
   const reads: Array<{ table: string; column: string; value: unknown }> = [];
 
@@ -304,8 +300,13 @@ describe("existing sent CRM mirror historical read projection", () => {
     expect(fake.writes).toEqual([]);
   });
 
-  it("reconstructs Maggie's one omitted historical row without changing current configuration or writing", async () => {
+  it("recovers the exact aggregate legacy quote with catalog pricing without changing configuration or writing", async () => {
     const fake = fakeSupabase();
+    expect(fake.fixture.sourceLines).toHaveLength(1);
+    expect(fake.fixture.sourceDesigns).toEqual([expect.objectContaining({
+      line_item_id: "aggregate-source-line",
+      unit_price: 3499.1,
+    })]);
 
     const historical = await loadHistoricalCrmMirrorPricing(
       fake.client as never,
@@ -335,88 +336,110 @@ describe("existing sent CRM mirror historical read projection", () => {
     expect(quote?.lines).toHaveLength(8);
     expect(quote?.lines[3]?.unitPrice).toBe(406.87);
     expect(quote?.lines[3]?.lineItemId).toBe("target-line-4");
-    expect(quote?.lines.every((line) => line.options.includes("Hinge Color: 101_White"))).toBe(true);
-    const missingLine = historical?.lineItems.find((line) => line.id === "source-line-7");
+    expect(quote?.lines.every((line) => line.options.includes("Color: 101_White"))).toBe(true);
+    expect(quote?.lines.every((line) => line.options.includes("Hinge Color: Match"))).toBe(true);
+    const missingLine = historical?.lineItems.find((line) =>
+      line.room === "Bed 1" && line.width_in === 35 && line.height_in === 60);
     expect(missingLine).toMatchObject({
       room: "Bed 1",
       width_in: 35,
       height_in: 60,
       quantity: 1,
-      sort_order: 6,
     });
-    expect(quote?.lines.find((line) => line.lineItemId === "source-line-7")).toMatchObject({
-      options: expect.arrayContaining(["Hinge Color: 101_White"]),
+    expect(historical?.lineItems.map((line) => [line.room, line.width_in, line.height_in]))
+      .toEqual([
+        ["Flex", 35, 60],
+        ["Dining", 35, 60],
+        ["Dining", 60, 52],
+        ["Living", 35, 60],
+        ["Bed 1", 22, 60],
+        ["Bed 1", 35, 60],
+        ["Bed 2", 60, 52],
+      ]);
+    expect(quote?.lines.find((line) => line.lineItemId === missingLine?.id)).toMatchObject({
+      options: expect.arrayContaining(["Color: 101_White", "Hinge Color: Match"]),
       unitPrice: 406.87,
       lineTotal: 406.87,
     });
     expect(fake.writes).toEqual([]);
   });
 
-  it("fails closed when same-dimension donors have different customer configuration", async () => {
-    const complete = rowsForMaggie();
+  it("fails closed when current configuration differs between rows", async () => {
+    const complete = rowsForAggregateLegacyQuote();
     const mirrorLines = complete.mirrorLines
       .map((line, index) => index === 1
         ? {
             ...line,
             designs: [{
               ...(line.designs as Row[])[0],
-              details: { hinge_color: "102_Off_White" },
+              fabric: "Vinyl",
             }],
           }
         : line);
     const fake = fakeSupabase({ mirrorLines });
 
     await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
-      .rejects.toThrow(/donor configuration/i);
+      .rejects.toThrow(/historical price line count/i);
     expect(fake.writes).toEqual([]);
   });
 
-  it("fails closed when two protected source rows are missing from the mirror", async () => {
-    const complete = rowsForMaggie();
-    const mirrorLines = complete.mirrorLines.filter((_, index) => index !== 4);
+  it.each([
+    ["wrong room", (lines: Row[]) => lines.map((line, index) => index === 0 ? { ...line, room: "Office" } : line)],
+    ["wrong dimensions", (lines: Row[]) => lines.map((line, index) => index === 0 ? { ...line, width_in: 36 } : line)],
+    ["wrong quantity", (lines: Row[]) => lines.map((line, index) => index === 0 ? { ...line, quantity: 2 } : line)],
+    ["missing row", (lines: Row[]) => lines.slice(0, -1)],
+    ["extra row", (lines: Row[]) => [...lines, { ...lines[0], id: "extra-target-line" }]],
+  ])("fails closed for %s", async (_label, mutate) => {
+    const complete = rowsForAggregateLegacyQuote();
+    const fake = fakeSupabase({ mirrorLines: mutate(complete.mirrorLines) });
+
+    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
+      .rejects.toThrow(/historical price line count/i);
+    expect(fake.writes).toEqual([]);
+  });
+
+  it.each([
+    ["wrong supplier", "Supplier", "Norman"],
+    ["wrong material", "Material", "Vinyl"],
+    ["wrong color", "Color", "102_Off_White"],
+    ["wrong hinge color", "Hinge Color", "White"],
+  ])("fails closed for %s", async (_label, detailLabel, value) => {
+    const complete = rowsForAggregateLegacyQuote();
+    const mirrorLines = complete.mirrorLines.map((line) => ({
+      ...line,
+      designs: (line.designs as Row[]).map((design) => ({
+        ...design,
+        price_breakdown: {
+          ...(design.price_breakdown as Row),
+          details: ((design.price_breakdown as Row).details as Row[]).map((detail) =>
+            detail.label === detailLabel ? { ...detail, value } : detail),
+        },
+      })),
+    }));
     const fake = fakeSupabase({ mirrorLines });
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-
-    try {
-      await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
-        .rejects.toThrow(/historical price line count/i);
-      expect(errorSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith("historical_crm_public_count_mismatch", {
-        protectedSourceLineCount: 8,
-        normalizedSourceLineCount: 7,
-        targetLineCount: 5,
-        delta: 2,
-      });
-      const diagnostic = errorSpy.mock.calls[0]?.[1] as Record<string, unknown>;
-      expect(Object.values(diagnostic).every((value) => typeof value === "number")).toBe(true);
-      expect(fake.writes).toEqual([]);
-    } finally {
-      errorSpy.mockRestore();
-    }
-  });
-
-  it("fails closed when duplicate protected source rows have mixed prices", async () => {
-    const complete = rowsForMaggie();
-    const sourceDesigns = complete.sourceDesigns.map((design, index) => index === 4
-      ? { ...design, unit_price: 406.88 }
-      : design);
-    const fake = fakeSupabase({ sourceDesigns });
 
     await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
-      .rejects.toThrow(/duplicate historical source line/i);
+      .rejects.toThrow(/historical price line count/i);
     expect(fake.writes).toEqual([]);
   });
 
-  it("fails closed when duplicate protected source rows have non-consecutive orders", async () => {
-    const complete = rowsForMaggie();
-    const sourceLines = complete.sourceLines.map((line, index) => index === 4
-      ? { ...line, sort_order: 9 }
+  it("fails closed when the mirror is signed or contains a priced design", async () => {
+    const signed = fakeSupabase({ mirror: { signed_at: "2026-08-09T12:00:00.000Z" } });
+    await expect(loadPublicQuoteByToken(signed.client as never, TOKEN))
+      .rejects.toThrow(/historical price line count/i);
+    expect(signed.writes).toEqual([]);
+
+    const complete = rowsForAggregateLegacyQuote();
+    const pricedLines = complete.mirrorLines.map((line, index) => index === 0
+      ? {
+          ...line,
+          designs: [{ ...(line.designs as Row[])[0], unit_price: 1 }],
+        }
       : line);
-    const fake = fakeSupabase({ sourceLines });
-
-    await expect(loadPublicQuoteByToken(fake.client as never, TOKEN))
-      .rejects.toThrow(/duplicate historical source line/i);
-    expect(fake.writes).toEqual([]);
+    const priced = fakeSupabase({ mirrorLines: pricedLines });
+    await expect(loadPublicQuoteByToken(priced.client as never, TOKEN))
+      .rejects.toThrow(/historical price line count/i);
+    expect(priced.writes).toEqual([]);
   });
 
   it("fails closed when protected totals or source provenance are mismatched or ambiguous", async () => {
@@ -428,8 +451,19 @@ describe("existing sent CRM mirror historical read projection", () => {
       }],
     });
     await expect(loadPublicQuoteByToken(mismatchedTotal.client as never, TOKEN))
-      .rejects.toThrow(/historical price total/i);
+      .rejects.toThrow(/historical price line count/i);
     expect(mismatchedTotal.writes).toEqual([]);
+
+    const aggregateMismatch = fakeSupabase({
+      sourceDesigns: [{
+        id: "aggregate-protected-design",
+        line_item_id: "aggregate-source-line",
+        unit_price: 3499.09,
+      }],
+    });
+    await expect(loadPublicQuoteByToken(aggregateMismatch.client as never, TOKEN))
+      .rejects.toThrow(/historical price line count/i);
+    expect(aggregateMismatch.writes).toEqual([]);
 
     const ambiguousSource = fakeSupabase({
       sourceQuotes: [
@@ -464,7 +498,7 @@ describe("existing sent CRM mirror historical read projection", () => {
   });
 
   it("leaves ordinary V1 public quote pricing unchanged", async () => {
-    const fixture = rowsForMaggie();
+    const fixture = rowsForAggregateLegacyQuote();
     const ordinaryLine = {
       ...fixture.mirrorLines[0],
       quantity: 1,
@@ -494,7 +528,7 @@ describe("existing sent CRM mirror historical read projection", () => {
   });
 
   it("keeps authoritative priced V2 pricing unchanged", async () => {
-    const fixture = rowsForMaggie();
+    const fixture = rowsForAggregateLegacyQuote();
     const currentLine = {
       ...fixture.mirrorLines[0],
       quantity: 1,

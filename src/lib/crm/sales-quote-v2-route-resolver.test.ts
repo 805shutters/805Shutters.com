@@ -115,6 +115,178 @@ function sentMirrorSupabase(
   return { client: { from }, reads };
 }
 
+function aggregateSentMirrorSupabase(options: { customerMirrors?: Row[] } = {}) {
+  const reads: Array<{ table: string; column: string; value: unknown }> = [];
+  const writes: string[] = [];
+  const routeQuote = {
+    id: CRM_ID,
+    external_id: `quote:${SALES_ID}`,
+    meta: { mts_quote_id: SALES_ID },
+    quote_total: 0,
+    signed_at: null,
+    customer_signature: null,
+    customer_printed_name: null,
+  };
+  const salesQuote = {
+    id: SALES_ID,
+    quote_v2_backend: true,
+    quote_v2_status: "sent",
+    status: "sent",
+  };
+  const mirrorShape = [
+    ["Flex", 35, 60, 1],
+    ["Dining", 35, 60, 1],
+    ["Dining", 60, 52, 1],
+    ["Living", 35, 60, 2],
+    ["Bed 1", 22, 60, 1],
+    ["Bed 2", 60, 52, 1],
+  ] as const;
+  const salesLines = mirrorShape.map(([room, width, height, quantity], index) => ({
+    id: `target-line-${index + 1}`,
+    quote_id: SALES_ID,
+    selected_design_id: `target-design-${index + 1}`,
+    quantity,
+    room_name: room,
+    width_whole: width,
+    width_fraction: "0",
+    height_whole: height,
+    height_fraction: "0",
+    sort_order: index,
+  }));
+  const salesDesigns = salesLines.map((line, index) => ({
+    id: `target-design-${index + 1}`,
+    line_item_id: line.id,
+    unit_price: 0,
+  }));
+  const customerMirrors = options.customerMirrors ?? [routeQuote];
+  const customerLines = mirrorShape.map(([room, width, height, quantity], index) => ({
+    id: `target-line-${index + 1}`,
+    quote_id: CRM_ID,
+    selected_design_id: `target-design-${index + 1}`,
+    quantity,
+    room,
+    width_in: width,
+    height_in: height,
+    sort_order: index,
+    notes: "Shutters",
+  }));
+  const customerDesigns = customerLines.map((line, index) => ({
+    id: `target-design-${index + 1}`,
+    line_item_id: line.id,
+    label: "A",
+    sort_order: 0,
+    product_id: "onyx_shutters",
+    program_id: null,
+    fabric: "Poly Composite",
+    hinge_color: "Match",
+    options_json: { color: "101_White" },
+    details: {},
+    surcharges: [],
+    motorization: [],
+    unit_price: 0,
+    wholesale_unit_price: null,
+    price_breakdown: {
+      source: "mts_805_bookkeeping",
+      mtsLineItemId: line.id,
+      mtsDesignId: `target-design-${index + 1}`,
+      productType: "Shutters",
+      details: [
+        { label: "Supplier", value: "Onyx" },
+        { label: "Material", value: "Poly Composite" },
+        { label: "Color", value: "101_White" },
+        { label: "Hinge Color", value: "Match" },
+      ],
+    },
+    price_status: "ok",
+    priced_at: null,
+    notes: null,
+  }));
+  const protectedQuote = {
+    id: SOURCE_CRM_ID,
+    quote_total: 3499.1,
+    meta: { target_sales_quote_id: SALES_ID },
+  };
+  const protectedLines = [{
+    id: "aggregate-source-line",
+    quote_id: SOURCE_CRM_ID,
+    quantity: 1,
+    room: "Aggregate",
+    width_in: 1,
+    height_in: 1,
+    sort_order: 0,
+  }];
+  const protectedDesigns = [{
+    id: "aggregate-protected-design",
+    line_item_id: "aggregate-source-line",
+    unit_price: 3499.1,
+  }];
+
+  const rowsFor = (table: string, filters: Array<[string, unknown]>): Row[] => {
+    const filter = (column: string) => filters.find(([name]) => name === column)?.[1];
+    if (table === "crm_quotes") {
+      if (filter("id") === CRM_ID) return [routeQuote];
+      if (filter("external_id") === `quote:${SALES_ID}`) return customerMirrors;
+      if (filter("meta->>target_sales_quote_id") === SALES_ID) return [protectedQuote];
+      return [];
+    }
+    if (table === "sales_quotes") return filter("id") === SALES_ID ? [salesQuote] : [];
+    if (table === "sales_quote_line_items") return salesLines;
+    if (table === "sales_quote_designs") return salesDesigns;
+    if (table === "crm_quote_line_items") {
+      if (filter("quote_id") === CRM_ID) return customerLines;
+      if (filter("quote_id") === SOURCE_CRM_ID) return protectedLines;
+      return [];
+    }
+    if (table === "crm_quote_designs") {
+      const requestedIds = filter("line_item_id");
+      if (Array.isArray(requestedIds) && requestedIds.includes("aggregate-source-line")) {
+        return protectedDesigns;
+      }
+      return customerDesigns;
+    }
+    return [];
+  };
+
+  const from = (table: string) => {
+    const filters: Array<[string, unknown]> = [];
+    const result = () => ({ data: rowsFor(table, filters), error: null });
+    const query = {
+      select: () => query,
+      eq: (column: string, value: unknown) => {
+        filters.push([column, value]);
+        reads.push({ table, column, value });
+        return query;
+      },
+      in: (column: string, value: unknown[]) => {
+        filters.push([column, value]);
+        reads.push({ table, column, value });
+        return Promise.resolve(result());
+      },
+      update: () => { writes.push(`${table}.update`); throw new Error("read-only resolver"); },
+      insert: () => { writes.push(`${table}.insert`); throw new Error("read-only resolver"); },
+      upsert: () => { writes.push(`${table}.upsert`); throw new Error("read-only resolver"); },
+      delete: () => { writes.push(`${table}.delete`); throw new Error("read-only resolver"); },
+      maybeSingle: async () => {
+        const rows = rowsFor(table, filters);
+        return { data: rows[0] ?? null, error: null };
+      },
+      then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) =>
+        Promise.resolve(result()).then(resolve, reject),
+    };
+    return query;
+  };
+
+  return {
+    client: {
+      from,
+      rpc: () => { writes.push("rpc"); throw new Error("read-only resolver"); },
+    },
+    customerLines,
+    reads,
+    writes,
+  };
+}
+
 describe("server-side historical quote V2 route resolver", () => {
   it("uses an explicit typed target without confusing it with source provenance", () => {
     expect(
@@ -257,6 +429,70 @@ describe("server-side historical quote V2 route resolver", () => {
       column: "meta->>target_sales_quote_id",
       value: SALES_ID,
     });
+  });
+
+  it("reuses the exact customer mirror recovery for an aggregate protected source", async () => {
+    const fake = aggregateSentMirrorSupabase();
+
+    const route = await resolveSalesQuoteV2Route(fake.client as never, CRM_ID);
+
+    expect(fake.customerLines.find((line) => line.room === "Living")?.quantity).toBe(2);
+    expect(route).toMatchObject({
+      status: "ready",
+      quoteV2Status: "sent",
+      historicalPriceLock: {
+        total: 3499.1,
+        designUnitPrices: {
+          "target-design-1": 406.87,
+          "target-design-2": 406.87,
+          "target-design-3": 604.5,
+          "target-design-4": 406.87,
+          "target-design-5": 255.75,
+          "target-design-6": 604.5,
+        },
+      },
+    });
+    expect(fake.reads).toContainEqual({
+      table: "crm_quotes",
+      column: "external_id",
+      value: `quote:${SALES_ID}`,
+    });
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when the exact customer mirror is ambiguous", async () => {
+    const fake = aggregateSentMirrorSupabase({
+      customerMirrors: [
+        {
+          id: CRM_ID,
+          external_id: `quote:${SALES_ID}`,
+          meta: { mts_quote_id: SALES_ID },
+        },
+        {
+          id: "55555555-5555-4555-8555-555555555555",
+          external_id: `quote:${SALES_ID}`,
+          meta: { mts_quote_id: SALES_ID },
+        },
+      ],
+    });
+
+    await expect(resolveSalesQuoteV2Route(fake.client as never, CRM_ID))
+      .rejects.toThrow(/customer historical quote mirror.*ambiguous/i);
+    expect(fake.writes).toEqual([]);
+  });
+
+  it("fails closed when the exact customer mirror identity conflicts", async () => {
+    const fake = aggregateSentMirrorSupabase({
+      customerMirrors: [{
+        id: CRM_ID,
+        external_id: `quote:${SALES_ID}`,
+        meta: { mts_quote_id: "66666666-6666-4666-8666-666666666666" },
+      }],
+    });
+
+    await expect(resolveSalesQuoteV2Route(fake.client as never, CRM_ID))
+      .rejects.toThrow(/identity is ambiguous/i);
+    expect(fake.writes).toEqual([]);
   });
 
   it("fails closed when a zero Sent mirror has ambiguous CRM-native sources", async () => {
