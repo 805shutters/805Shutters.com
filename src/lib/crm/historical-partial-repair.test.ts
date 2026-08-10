@@ -96,6 +96,7 @@ const evidence: HistoricalPartialRepairEvidence = {
   quote: {
     id: "quote-id",
     updated_at: "2026-08-06T12:01:00.000Z",
+    external_id: "quote:00000000-0000-4000-8000-000000000001",
     quote_number: "805-0172",
     quote_total: 3303,
     signed_at: "2026-08-06T12:00:00.000Z",

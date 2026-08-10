@@ -4,6 +4,7 @@ import {
   backfillPartialPublicQuoteAcceptance,
   buildPartialAcceptancePlan,
   buildSignedContractSnapshot,
+  linkedSalesQuoteIdForPublicQuote,
   loadPublicQuoteById,
   type PublicQuote,
 } from "@/lib/crm/public-quote";
@@ -27,6 +28,7 @@ export type HistoricalPartialRepairEvidence = {
   quote: {
     id: string;
     updated_at: string;
+    external_id: string | null;
     quote_number: string | null;
     quote_total: number | string | null;
     signed_at: string | null;
@@ -160,6 +162,117 @@ function summarizeQuote(quote: PublicQuote) {
   };
 }
 
+async function reconcileCompletedHistoricalPartition(
+  supabase: SupabaseClient,
+  input: HistoricalPartialRepairInput,
+  quote: HistoricalPartialRepairEvidence["quote"] & { job_id: string; quote_number: string | null },
+  job: HistoricalPartialRepairEvidence["job"],
+  contract: HistoricalPartialRepairEvidence["contract"],
+) {
+  const quoteMeta = record(quote.meta);
+  const partial = record(quoteMeta.partial_acceptance);
+  const prePartition = record(partial.pre_partition);
+  const signedSelection = record(quoteMeta.signed_selection);
+  const storedIds = Array.isArray(signedSelection.lineItemIds)
+    ? signedSelection.lineItemIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const futureQuoteId = typeof partial.future_quote_id === "string" ? partial.future_quote_id : "";
+  const futureJobId = typeof partial.future_job_id === "string" ? partial.future_job_id : "";
+  if (
+    partial.role !== "current" ||
+    partial.historical_backfill !== true ||
+    !futureQuoteId ||
+    !futureJobId ||
+    quote.quote_number !== input.expectedQuoteNumber ||
+    quote.signed_at !== input.expectedSignedAt ||
+    cents(prePartition.quote_total) !== cents(input.expectedSourceTotal) ||
+    cents(quote.quote_total) !== cents(input.expectedSelectedTotal) ||
+    cents(job.deposit_paid) !== cents(input.expectedDepositPaid) ||
+    cents(contract.total_amount) !== cents(input.expectedSelectedTotal) ||
+    storedIds.length !== input.selectedLineIds.length ||
+    [...storedIds].sort().join("|") !== [...input.selectedLineIds].sort().join("|")
+  ) {
+    throw new CrmAuthError(409, "The existing partial partition does not match this repair evidence.");
+  }
+
+  if (input.mode === "apply") {
+    const linkedSalesQuoteId = linkedSalesQuoteIdForPublicQuote(quote);
+    if (linkedSalesQuoteId) {
+      const { data: linked, error: linkedReadError } = await supabase
+        .from("sales_quotes")
+        .select("id,total_amount")
+        .eq("id", linkedSalesQuoteId)
+        .maybeSingle();
+      if (linkedReadError || !linked) {
+        throw new CrmAuthError(409, "The linked legacy quote could not be reconciled.");
+      }
+      if (cents(linked.total_amount) === cents(input.expectedSourceTotal)) {
+        const { data: updated, error: updateError } = await supabase
+          .from("sales_quotes")
+          .update({ total_amount: input.expectedSelectedTotal })
+          .eq("id", linkedSalesQuoteId)
+          .eq("total_amount", input.expectedSourceTotal)
+          .select("id")
+          .maybeSingle();
+        if (updateError || !updated) {
+          throw new CrmAuthError(409, "The linked legacy quote changed before reconciliation.");
+        }
+      } else if (cents(linked.total_amount) !== cents(input.expectedSelectedTotal)) {
+        throw new CrmAuthError(409, "The linked legacy quote total conflicts with this repair.");
+      }
+    }
+  }
+
+  const [current, future] = await Promise.all([
+    loadPublicQuoteById(supabase, quote.id),
+    loadPublicQuoteById(supabase, futureQuoteId),
+  ]);
+  const expectedFutureTotal = Math.round((input.expectedSourceTotal - input.expectedSelectedTotal) * 100) / 100;
+  if (
+    !current ||
+    !future ||
+    cents(current.total) !== cents(input.expectedSelectedTotal) ||
+    cents(future.total) !== cents(expectedFutureTotal)
+  ) {
+    throw new CrmAuthError(409, "The existing current/future projections do not match this repair.");
+  }
+  if (input.mode === "dryRun") {
+    return { mode: "dryRun" as const, current: summarizeQuote(current), future: summarizeQuote(future) };
+  }
+
+  const finalContractMeta = {
+    ...record(contract.meta),
+    contract_snapshot: buildSignedContractSnapshot(
+      current,
+      input.expectedSignedAt,
+      quote.customer_printed_name || current.customerName,
+    ),
+    historical_partial_repair: {
+      ...record(record(contract.meta).historical_partial_repair),
+      completedAt: new Date().toISOString(),
+      futureQuoteId,
+      futureJobId,
+    },
+  };
+  const { data: updatedContract, error: contractError } = await supabase
+    .from("crm_customer_contracts")
+    .update({ meta: finalContractMeta })
+    .eq("id", contract.id)
+    .eq("updated_at", contract.updated_at)
+    .eq("total_amount", input.expectedSelectedTotal)
+    .select("id")
+    .maybeSingle();
+  if (contractError || !updatedContract) {
+    throw new CrmAuthError(409, "The signed contract changed before reconciliation.");
+  }
+  return {
+    mode: "apply" as const,
+    current: summarizeQuote(current),
+    future: summarizeQuote(future),
+    futureJobId,
+  };
+}
+
 export async function repairHistoricalPartialAcceptance(
   supabase: SupabaseClient,
   quoteId: string,
@@ -169,7 +282,7 @@ export async function repairHistoricalPartialAcceptance(
   const input = parseHistoricalPartialRepairInput(rawInput);
   const { data: quote, error: quoteError } = await supabase
     .from("crm_quotes")
-    .select("id,updated_at,job_id,quote_number,quote_total,signed_at,share_token,customer_printed_name,meta")
+    .select("id,updated_at,external_id,job_id,quote_number,quote_total,signed_at,share_token,customer_printed_name,meta")
     .eq("id", quoteId)
     .maybeSingle();
   if (quoteError || !quote) throw new CrmAuthError(404, "The signed quote was not found.");
@@ -189,6 +302,10 @@ export async function repairHistoricalPartialAcceptance(
   if (jobError || !job) throw new CrmAuthError(409, "The signed quote's job was not found.");
   if (contractError || !contract) throw new CrmAuthError(409, "The signed customer contract was not found.");
   if (!publicQuote) throw new CrmAuthError(409, "The customer quote could not be projected.");
+
+  if (record(record(quote.meta).partial_acceptance).role === "current") {
+    return reconcileCompletedHistoricalPartition(supabase, input, quote, job, contract);
+  }
 
   const plan = validateHistoricalPartialRepairEvidence(
     { quote, job, contract, publicQuote },
@@ -321,13 +438,15 @@ export async function repairHistoricalPartialAcceptance(
       futureJobId: repaired.futureJobId,
     },
   };
-  const { error: snapshotError } = await supabase
+  const { data: updatedSnapshot, error: snapshotError } = await supabase
     .from("crm_customer_contracts")
     .update({ meta: finalContractMeta })
     .eq("id", contract.id)
     .eq("updated_at", stagedContract.updated_at)
-    .eq("total_amount", input.expectedSelectedTotal);
-  if (snapshotError) {
+    .eq("total_amount", input.expectedSelectedTotal)
+    .select("id")
+    .maybeSingle();
+  if (snapshotError || !updatedSnapshot) {
     throw new CrmAuthError(
       502,
       "The quote split completed, but the corrected signed-contract snapshot needs reconciliation.",

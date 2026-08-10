@@ -442,7 +442,8 @@ async function legacySourceTotalAdjustment(
   calculatedTotal: number,
 ): Promise<number> {
   const meta = record(quote.meta);
-  const sourceQuoteId = typeof meta.mts_quote_id === "string" ? meta.mts_quote_id : null;
+  const isFuturePartition = record(meta.partial_acceptance).role === "future";
+  const sourceQuoteId = !isFuturePartition && typeof meta.mts_quote_id === "string" ? meta.mts_quote_id : null;
   if (sourceQuoteId) {
     const { data } = await supabase
       .from("sales_quotes")
