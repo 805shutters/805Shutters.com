@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
-import { createLineItem, loadQuoteBuilder } from "@/lib/crm/quote-builder";
+import { createLineItem } from "@/lib/crm/quote-builder";
+import { loadProjectedQuoteBuilder } from "@/lib/crm/historical-quote-builder-projection";
 import { listQuoteVersions } from "@/lib/crm/quote-groups";
 
 export const runtime = "nodejs";
@@ -11,7 +12,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   try {
     const { supabase } = await requireCrmUser(request);
     const { id } = await context.params;
-    const [quote, versions] = await Promise.all([loadQuoteBuilder(supabase, id), listQuoteVersions(supabase, id)]);
+    const [quote, versions] = await Promise.all([
+      loadProjectedQuoteBuilder(supabase, id),
+      listQuoteVersions(supabase, id),
+    ]);
     return NextResponse.json({ quote, versions });
   } catch (error) {
     return crmAuthErrorResponse(error);
