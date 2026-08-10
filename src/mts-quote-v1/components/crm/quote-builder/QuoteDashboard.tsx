@@ -82,6 +82,14 @@ function dateOnly(value: string | null | undefined): string | null {
 
 function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
   const meta = quote.meta || {};
+  const partialAcceptance = meta.partial_acceptance;
+  if (
+    partialAcceptance &&
+    typeof partialAcceptance === "object" &&
+    (partialAcceptance as Record<string, unknown>).role === "future"
+  ) {
+    return null;
+  }
   const value = meta.mts_quote_id || meta.sales_quote_id;
   return typeof value === "string" && value.trim() ? value : null;
 }

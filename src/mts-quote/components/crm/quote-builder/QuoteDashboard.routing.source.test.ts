@@ -46,6 +46,14 @@ describe("quote dashboard routing", () => {
     );
   });
 
+  it("does not inherit sold bookkeeping from a signed source onto future-partition quotes", () => {
+    for (const { dashboardSource } of quoteWorkspaceVersions) {
+      expect(dashboardSource).toContain("partialAcceptance");
+      expect(dashboardSource).toContain('.role === "future"');
+      expect(dashboardSource).toMatch(/role === "future"[\s\S]*?return null;/);
+    }
+  });
+
   it("hides soft-deleted sales quotes and refreshes CRM rows after deletion", () => {
     const currentDashboardSource = quoteWorkspaceVersions.find(
       ({ version }) => version === "mts-quote",
