@@ -754,14 +754,13 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   targetLineItems: AnyRow[];
   targetDesignsByLineItemId: Map<string, AnyRow[]>;
 }) {
-  if (
-    input.mirrorQuote.signed_at ||
-    input.mirrorQuote.customer_signature ||
-    input.mirrorQuote.customer_printed_name ||
-    exactMoneyCents(input.source.sourceQuote.quote_total) !==
-      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS ||
-    input.targetLineItems.length !== LEGACY_ONYX_POLY_MIRROR_SHAPE.length
-  ) return null;
+  const hasExactQuoteEnvelope =
+    !input.mirrorQuote.signed_at &&
+    !input.mirrorQuote.customer_signature &&
+    !input.mirrorQuote.customer_printed_name &&
+    exactMoneyCents(input.source.sourceQuote.quote_total) ===
+      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS &&
+    input.targetLineItems.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length;
 
   const sourceDesignsByLineItemId = groupBy(input.source.sourceDesigns, "line_item_id");
   const aggregateLine = input.source.sourceLineItems[0];
@@ -799,7 +798,46 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
         Boolean(lineId(protectedDesigns[0])) &&
         isExactZeroMoney(protectedDesigns[0].unit_price);
     });
-  if (!hasExactAggregateSource && !hasExactZeroPriceMirrorSource) return null;
+  if (!hasExactQuoteEnvelope || (!hasExactAggregateSource && !hasExactZeroPriceMirrorSource)) {
+    console.error("historical_onyx_poly_recovery_guard", JSON.stringify({
+      envelope: hasExactQuoteEnvelope,
+      signed: Boolean(input.mirrorQuote.signed_at),
+      hasSignature: Boolean(input.mirrorQuote.customer_signature),
+      hasPrintedName: Boolean(input.mirrorQuote.customer_printed_name),
+      sourceTotal: input.source.sourceQuote.quote_total,
+      aggregateSource: hasExactAggregateSource,
+      zeroMirrorSource: hasExactZeroPriceMirrorSource,
+      sourceLines: input.source.sourceLineItems.map((line) => ({
+        id: Boolean(lineId(line)),
+        room: line.room,
+        width: line.width_in,
+        height: line.height_in,
+        quantity: line.quantity,
+        sort: line.sort_order,
+      })),
+      sourceDesigns: input.source.sourceDesigns.map((design) => ({
+        id: Boolean(lineId(design)),
+        owner: Boolean(design.line_item_id),
+        unit: design.unit_price,
+      })),
+      targetLines: input.targetLineItems.map((line) => ({
+        id: Boolean(lineId(line)),
+        room: line.room,
+        width: line.width_in,
+        height: line.height_in,
+        quantity: line.quantity,
+        sort: line.sort_order,
+        designs: (input.targetDesignsByLineItemId.get(lineId(line)) || []).map((design) => ({
+          id: Boolean(lineId(design)),
+          unit: design.unit_price,
+          product: design.product_id,
+          program: design.program_id,
+          fabric: design.fabric,
+        })),
+      })),
+    }));
+    return null;
+  }
 
   try {
     requireUniqueLineIds(input.targetLineItems, "target");
