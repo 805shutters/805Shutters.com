@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { formatPublicCustomerPhone, type PublicQuote } from "@/lib/crm/public-quote";
+import type { PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
@@ -12,11 +12,19 @@ function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+function formatCustomerPhone(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length !== 10) return phone.trim();
+  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+}
+
 function customerDetails(quote: PublicQuote): string[] {
   return [
     quote.customerName,
     quote.customerAddress,
-    formatPublicCustomerPhone(quote.customerPhone),
+    formatCustomerPhone(quote.customerPhone),
     quote.customerEmail,
   ].filter((detail): detail is string => Boolean(detail));
 }

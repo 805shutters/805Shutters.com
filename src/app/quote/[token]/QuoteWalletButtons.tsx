@@ -102,6 +102,33 @@ function customerNames(customerName: string) {
   };
 }
 
+export function QuoteApplePayButton({
+  available,
+  paymentType,
+  disabled,
+  onClick,
+}: {
+  available: boolean;
+  paymentType: QuotePaymentType;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  if (!available) return null;
+
+  return (
+    <button
+      type="button"
+      className={styles.applePayButton}
+      aria-label={`Pay ${paymentType} with Apple Pay`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <span className={styles.applePayButtonText}>Buy with</span>
+      <span className={styles.applePayButtonLogo} aria-hidden="true">Apple Pay</span>
+    </button>
+  );
+}
+
 export function QuoteWalletButtons({
   config,
   token,
@@ -306,20 +333,15 @@ export function QuoteWalletButtons({
         data-busy={busy ? "true" : undefined}
         data-disabled={disabled ? "true" : undefined}
       >
-        <button
-          type="button"
-          className={styles.applePayButton}
-          aria-label={`Pay ${paymentType} with Apple Pay`}
-          hidden={!available.apple}
+        <QuoteApplePayButton
+          available={available.apple}
+          paymentType={paymentType}
           disabled={disabled || busy !== null}
           onClick={() => {
             const apple = methodsRef.current.apple;
             if (apple) void startWalletPayment(apple, "apple_pay");
           }}
-        >
-          <span className={styles.applePayButtonText}>Buy with</span>
-          <span className={styles.applePayButtonLogo} aria-hidden="true">Apple Pay</span>
-        </button>
+        />
         <div
           id={googleTargetId}
           className={styles.googlePayButton}

@@ -6,6 +6,7 @@ import type { PublicQuote } from "@/lib/crm/public-quote";
 import { DEFAULT_ADJUSTMENTS } from "@/lib/crm/quote-builder";
 import { QuoteSelection } from "./QuoteSelection";
 import { CustomerContractDocument } from "./CustomerContractDocument";
+import { QuoteApplePayButton } from "./QuoteWalletButtons";
 
 const quoteSelectionCss = readFileSync(new URL("./QuoteSelection.module.css", import.meta.url), "utf8");
 const signQuoteSource = readFileSync(new URL("./SignQuote.tsx", import.meta.url), "utf8");
@@ -215,7 +216,7 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toContain("@container product-details (max-width: 279px)");
   });
 
-  it("shows separate card, official Google Pay, Apple Pay, Zelle, and Venmo paths", () => {
+  it("shows separate card, official Google Pay, Zelle, and Venmo paths before Apple Pay availability is confirmed", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       paymentOptions,
@@ -226,7 +227,8 @@ describe("QuoteSelection", () => {
     expect(html).toContain("$254.70");
     expect(html).toContain("Pay deposit with card");
     expect(html).not.toContain("card or Google Pay");
-    expect(html).toContain("Pay deposit with Apple Pay");
+    expect(html).not.toContain("Pay deposit with Apple Pay");
+    expect(html).not.toContain("Buy with");
     expect(html).toContain("Pay deposit with Google Pay");
     expect(html).toContain("quote-google-pay-");
     expect(quoteSelectionCss).toContain("-webkit-appearance: -apple-pay-button");
@@ -242,6 +244,46 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Copy Zelle phone number 805-806-9344");
     expect(html).toContain("Copy Venmo address @approved-venmo");
     expect(html.match(/Tap to copy/g)).toHaveLength(2);
+  });
+
+  it("does not render an Apple Pay button or fallback label when Square reports it unavailable", () => {
+    const html = renderToStaticMarkup(createElement(QuoteApplePayButton, {
+      available: false,
+      paymentType: "deposit",
+      disabled: false,
+      onClick: () => undefined,
+    }));
+
+    expect(html).toBe("");
+    expect(html).not.toContain("Apple Pay");
+    expect(html).not.toContain("Buy with");
+  });
+
+  it("renders the accessible Apple Pay control after Square confirms availability", () => {
+    const html = renderToStaticMarkup(createElement(QuoteApplePayButton, {
+      available: true,
+      paymentType: "deposit",
+      disabled: false,
+      onClick: () => undefined,
+    }));
+
+    expect(html).toContain('type="button"');
+    expect(html).toContain('aria-label="Pay deposit with Apple Pay"');
+    expect(html).toContain("Buy with");
+    expect(html).toContain("Apple Pay");
+  });
+
+  it("gates Apple Pay rendering on Square initialization without changing direct tokenization", () => {
+    const squareConfirmation = walletButtonsSource.indexOf("const apple = await payments.applePay(paymentRequest);");
+    const appleAvailable = walletButtonsSource.indexOf("setAvailable((current) => ({ ...current, apple: true }));");
+    const directTokenization = walletButtonsSource.indexOf("const tokenPromise = method.tokenize();");
+    const awaitedToken = walletButtonsSource.indexOf("const tokenResult = await tokenPromise;");
+
+    expect(squareConfirmation).toBeGreaterThan(-1);
+    expect(appleAvailable).toBeGreaterThan(squareConfirmation);
+    expect(walletButtonsSource).not.toContain("hidden={!available.apple}");
+    expect(directTokenization).toBeGreaterThan(-1);
+    expect(awaitedToken).toBeGreaterThan(directTokenization);
   });
 
   it("switches the side panel to the authoritative balance after the deposit is paid", () => {
