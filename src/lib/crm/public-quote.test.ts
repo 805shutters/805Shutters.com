@@ -101,6 +101,22 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
     expect(d.options.some((o) => /shim/i.test(o))).toBe(true);
   });
 
+  it("reduces historic surcharge metadata to its customer-facing description", () => {
+    const d = describeDesign(design({
+      product_id: "onyx_shutters",
+      price_breakdown: {
+        source: "mts_805_bookkeeping",
+        productType: "Onyx Shutters",
+        details: [{
+          label: "Surcharges",
+          value: "Id: shutters-onyx-shutter-fixed-surcharges-arch-fixed-200, Name: Arch, Type: fixed, Value: 200, Category: Onyx Shutter Fixed Surcharges, Quantity: 1",
+        }],
+      },
+    }));
+    expect(d.options).toContain("Arch");
+    expect(d.options.join(" ")).not.toMatch(/Id:|Type:|Value:|Category:|Quantity:/);
+  });
+
   it("resolves customer-visible product details and motorization names", () => {
     const d = describeDesign(design({
       product_id: "roller",

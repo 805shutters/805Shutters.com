@@ -516,6 +516,17 @@ function quoteHasOnyxManufacturer(quote: CrmQuote): boolean {
   return /onyx/i.test(quote.manufacturer_name || "");
 }
 
+function customerReadableLegacyDetail(label: string, value: string): string {
+  if (!/^surcharges?$/i.test(label)) return `${label}: ${value}`;
+
+  // Historic snapshots stored a full pricing object here. A customer contract
+  // should identify the selected upgrade, not expose its internal metadata.
+  const names = [...value.matchAll(/(?:^|[,;]\s*)Name:\s*([^,;]+)/gi)]
+    .map((match) => match[1]?.trim())
+    .filter((name): name is string => Boolean(name));
+  return names.length ? names.join(", ") : value;
+}
+
 /** Customer-readable description of a design from the catalog (no prices leaked beyond unit_price). */
 export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[] } {
   const legacy = legacyDesignSnapshot(design);
@@ -546,7 +557,7 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   if (!styleName && design.fabric) styleName = design.fabric;
   const legacyOptions = legacy?.details
     ?.filter((detail) => customerSelectedLegacyValue(detail.value))
-    .map((detail) => `${detail.label}: ${detail.value}`) ?? [];
+    .map((detail) => customerReadableLegacyDetail(detail.label, detail.value)) ?? [];
   const v2ConfigurationOptions = v2CustomerConfigurationOptions(
     details[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL],
   );
