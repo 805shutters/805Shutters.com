@@ -17,7 +17,7 @@ function row(id: string, soldDate: string | null, total: number): CrmBookkeeping
 describe("buildCommandPerformanceMetrics", () => {
   const now = new Date(2026, 7, 7, 12);
 
-  it("calculates close rates from explicit customer outcomes and excludes open work", () => {
+  it("calculates close rates from every customer opportunity in each cohort", () => {
     const metrics = buildCommandPerformanceMetrics([
       appointmentJob("won-recent", "2026-08-06T10:00:00-07:00", "sold"),
       appointmentJob("lost-recent", "2026-08-05T10:00:00-07:00", "lost"),
@@ -27,15 +27,15 @@ describe("buildCommandPerformanceMetrics", () => {
       appointmentJob("not-sold-old", "2025-12-01T10:00:00-08:00", "follow_up")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBe(50);
+    expect(metrics.closeRate30Days).toBe(33);
     expect(metrics.closeRate30DaysWon).toBe(1);
-    expect(metrics.closeRate30DaysTotal).toBe(2);
-    expect(metrics.closeRate60Days).toBe(67);
+    expect(metrics.closeRate30DaysTotal).toBe(3);
+    expect(metrics.closeRate60Days).toBe(50);
     expect(metrics.closeRate60DaysWon).toBe(2);
-    expect(metrics.closeRate60DaysTotal).toBe(3);
-    expect(metrics.currentCrmSalesRate).toBe(67);
+    expect(metrics.closeRate60DaysTotal).toBe(4);
+    expect(metrics.currentCrmSalesRate).toBe(40);
     expect(metrics.currentCrmSalesWon).toBe(2);
-    expect(metrics.currentCrmSalesTotal).toBe(3);
+    expect(metrics.currentCrmSalesTotal).toBe(5);
   });
 
   it("counts a customer once and treats any sold outcome as the customer outcome", () => {
@@ -84,9 +84,9 @@ describe("buildCommandPerformanceMetrics", () => {
       appointmentJob("recent-not-sold", "2026-08-01T10:00:00-07:00", "quoted")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBeNull();
-    expect(metrics.closeRate60Days).toBeNull();
-    expect(metrics.currentCrmSalesRate).toBeNull();
+    expect(metrics.closeRate30Days).toBe(0);
+    expect(metrics.closeRate60Days).toBe(0);
+    expect(metrics.currentCrmSalesRate).toBe(50);
   });
 
   it("falls back to created time for opportunities without appointments", () => {
@@ -95,7 +95,7 @@ describe("buildCommandPerformanceMetrics", () => {
       job("open-without-appointment", "2026-08-01T10:00:00-07:00", "quoted")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate30Days).toBe(50);
   });
 
   it("excludes future-dated records from current windows", () => {
@@ -108,16 +108,16 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.currentCrmSalesRate).toBe(0);
   });
 
-  it("does not publish 100% when authoritative loss history is absent", () => {
+  it("keeps open opportunities in the conversion denominator when loss history is absent", () => {
     const metrics = buildCommandPerformanceMetrics([
       job("won", "2026-08-01T10:00:00-07:00", "sold"),
       job("open", "2026-08-02T10:00:00-07:00", "quoted")
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate30Days).toBe(50);
     expect(metrics.closeRate30DaysWon).toBe(1);
-    expect(metrics.closeRate30DaysTotal).toBe(1);
-    expect(formatCloseRate(metrics.closeRate30Days)).toBe("Unavailable");
+    expect(metrics.closeRate30DaysTotal).toBe(2);
+    expect(formatCloseRate(metrics.closeRate30Days)).toBe("50%");
   });
 
   it("excludes deleted opportunities from the cohort", () => {
@@ -127,7 +127,7 @@ describe("buildCommandPerformanceMetrics", () => {
       deletedLost
     ], [], now);
 
-    expect(metrics.closeRate30Days).toBeNull();
+    expect(metrics.closeRate30Days).toBe(100);
     expect(metrics.closeRate30DaysTotal).toBe(1);
   });
 

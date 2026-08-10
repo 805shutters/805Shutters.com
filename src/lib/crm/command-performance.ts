@@ -71,12 +71,12 @@ function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
 
 export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
   const identityKeys = customerIdentityKeys(jobs, files);
-  const outcomes = new Map<string, { inCohort: boolean; won: boolean; lost: boolean }>();
+  const outcomes = new Map<string, { inCohort: boolean; won: boolean }>();
   for (const job of jobs) {
     if (job.meta?.deleted_at) continue;
 
     const key = identityKeys.get(job.id) || `job:${job.id}`;
-    const outcome = outcomes.get(key) || { inCohort: false, won: false, lost: false };
+    const outcome = outcomes.get(key) || { inCohort: false, won: false };
 
     // Cohort membership is based on the customer's opportunity date.
     // Appointment time is the durable lead date; imported rows without one
@@ -87,12 +87,12 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
       outcome.inCohort = true;
     }
 
-    // Determine the customer's outcome from every non-future record, not only
-    // the row that put them in the cohort. This prevents a duplicate or an open
-    // quote version from turning a customer who later bought into a loss.
+    // A customer is counted once. Any non-future sale makes the customer a win;
+    // unresolved opportunities remain in the denominator so the live dashboard
+    // continues to show a conversion rate even when explicit lost rows are not
+    // recorded in the CRM.
     if (!opportunityAt || !through || opportunityAt <= through) {
       if (wonStatuses.has(job.status)) outcome.won = true;
-      if (job.status === "lost") outcome.lost = true;
     }
 
     outcomes.set(key, outcome);
@@ -100,17 +100,11 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
 
   const cohort = [...outcomes.values()].filter((outcome) => outcome.inCohort);
   const won = cohort.filter((outcome) => outcome.won).length;
-  const lost = cohort.filter((outcome) => !outcome.won && outcome.lost).length;
-  const total = won + lost;
+  const total = cohort.length;
   return {
     won,
-    lost,
-    open: cohort.length - total,
     total,
-    // A 100% rate with no recorded losses is not evidence of a complete loss
-    // history. Keep the metric unavailable until the cohort contains an
-    // authoritative explicit loss instead of treating open work as lost.
-    rate: lost > 0 ? Math.round((won / total) * 100) : null
+    rate: total ? Math.round((won / total) * 100) : null
   };
 }
 
