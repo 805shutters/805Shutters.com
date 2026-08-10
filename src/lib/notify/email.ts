@@ -13,8 +13,6 @@ export type EmailAttachment = {
 };
 
 const DEFAULT_EMAIL_FROM = "805 Shutters <805@805shutters.com>";
-const HEADER_LOGO_PATH = "/brand/805-shutters-logo-header.png";
-const EMAIL_LOGO_PATH = "/brand/805-shutters-logo-email-white.png";
 
 function resendFromAddress(): string {
   return process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || DEFAULT_EMAIL_FROM;
@@ -48,7 +46,7 @@ export async function sendEmail(input: {
         from: resendFromAddress(),
         to: [to],
         subject: input.subject,
-        html: applyEmailLogoContrast(input.html),
+        html: input.html,
         text: input.text,
         ...(input.attachments?.length
           ? {
@@ -73,17 +71,25 @@ export async function sendEmail(input: {
   }
 }
 
-function applyEmailLogoContrast(html: string): string {
-  return html.replaceAll(HEADER_LOGO_PATH, EMAIL_LOGO_PATH);
-}
-
 export type QuoteEmailLine = {
   room: string;
   productName: string;
   styleName?: string;
   options?: string[];
+  designOptions?: QuoteEmailDesignOption[];
+  showDesignOptions?: boolean;
   quantity: number;
   lineTotal: number;
+  priceReady?: boolean;
+};
+
+export type QuoteEmailDesignOption = {
+  id?: string;
+  label?: string;
+  productName: string;
+  styleName?: string;
+  options?: string[];
+  lineTotal?: number;
   priceReady?: boolean;
 };
 
@@ -400,34 +406,72 @@ export function buildSignedQuoteShopEmail(customerName: string, url: string, tot
 }
 
 function quoteLinesTable(lines: QuoteEmailLine[]): string {
-  const rows = lines.map((line) => {
-    const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
-    const details = quoteProductDetails(line.styleName ?? "", line.options ?? []);
-    const detailRows = [
-      { label: "Product", value: product },
-      ...details,
-    ].map((detail) => `<div style="font-size:12px;line-height:1.55;color:#0b0b0b"><strong>${escapeHtml(detail.label)}:</strong> ${escapeHtml(detail.value)}</div>`).join("");
-    const price = line.priceReady === false ? "-" : money(line.lineTotal);
-    return `<tr>
-      <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">
-        <strong>${escapeHtml(line.room || "Window")}</strong><br>
-        <div style="margin-top:5px">${detailRows}</div>
-      </td>
-      <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${line.quantity}</td>
-      <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${price}</td>
-    </tr>`;
-  }).join("");
+  const rows = lines.map(quoteLineHtml).join("");
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px 0">
-    <thead>
-      <tr>
-        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Item</th>
-        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Qty</th>
-        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Total</th>
-      </tr>
-    </thead>
     <tbody>${rows}</tbody>
   </table>`;
+}
+
+function quoteLineHtml(line: QuoteEmailLine): string {
+  const price = line.priceReady === false ? "Pricing in progress" : money(line.lineTotal);
+  const configurations = quoteLineConfigurations(line);
+  const showOptionLabels = configurations.length > 1;
+  const configurationHtml = configurations
+    .map((configuration) => quoteConfigurationHtml(configuration, showOptionLabels))
+    .join("");
+
+  return `<tr>
+    <td style="padding:18px 0;border-top:1px solid #0b0b0b;vertical-align:top;color:#0b0b0b">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
+        <tr>
+          <td style="padding:0 12px 0 0;vertical-align:top">
+            <div style="font-size:18px;line-height:1.25;font-weight:700;color:#0b0b0b">${escapeHtml(line.room || "Window")}</div>
+          </td>
+          <td width="64" align="center" style="width:64px;padding:0 8px;vertical-align:top">
+            <div style="font-size:10px;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:#666666">Qty</div>
+            <div style="margin-top:3px;font-size:15px;font-weight:700;color:#0b0b0b">${line.quantity}</div>
+          </td>
+          <td width="112" align="right" style="width:112px;padding:0;vertical-align:top">
+            <div style="font-size:10px;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:#666666">Price</div>
+            <div style="margin-top:3px;font-size:15px;font-weight:700;color:#0b0b0b;white-space:nowrap">${price}</div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="3" style="padding:12px 0 0 0">${configurationHtml}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+}
+
+function quoteConfigurationHtml(configuration: QuoteEmailDesignOption, showOptionLabel: boolean): string {
+  const product = configuration.priceReady === false
+    ? "Pricing in progress"
+    : configuration.productName || "Window treatment";
+  const selections = quoteProductDetails(configuration.styleName || "", configuration.options ?? []);
+  const selectionRows = selections
+    .map((selection) => `<tr>
+      <td width="34%" style="width:34%;padding:3px 14px 3px 0;vertical-align:top;font-size:12px;line-height:1.4;color:#666666">${escapeHtml(selection.label)}</td>
+      <td style="padding:3px 0;vertical-align:top;font-size:13px;line-height:1.4;color:#0b0b0b">${escapeHtml(selection.value)}</td>
+    </tr>`)
+    .join("");
+
+  return `<div style="${showOptionLabel ? "border-top:1px solid #e5e5e0;padding-top:10px;margin-top:10px" : ""}">
+    ${showOptionLabel ? `<div style="font-size:10px;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:#666666">Option ${escapeHtml(configuration.label || "A")}</div>` : ""}
+    <div style="margin:${showOptionLabel ? "3px" : "0"} 0 5px 0;font-size:15px;line-height:1.35;font-weight:700;color:#0b0b0b">${escapeHtml(product)}</div>
+    ${selectionRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${selectionRows}</table>` : ""}
+  </div>`;
+}
+
+function quoteLineConfigurations(line: QuoteEmailLine): QuoteEmailDesignOption[] {
+  if (line.showDesignOptions && line.designOptions?.length) return line.designOptions;
+  return [{
+    productName: line.productName,
+    styleName: line.styleName,
+    options: line.options,
+    priceReady: line.priceReady,
+  }];
 }
 
 function officialContactFooterHtml(): string {
@@ -464,13 +508,16 @@ function summaryRow(label: string, value: number): string {
 }
 
 function textLine(line: QuoteEmailLine, _index: number): string {
-  const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
-  const details = quoteProductDetails(line.styleName ?? "", line.options ?? []);
-  const selections = [{ label: "Product", value: product }, ...details]
-    .map((detail) => `${detail.label}: ${detail.value}`)
-    .join("; ");
   const total = line.priceReady === false ? "Pricing in progress" : money(line.lineTotal);
-  return `${line.room || "Window"} - ${selections} - Qty ${line.quantity} - ${total}`;
+  const configurations = quoteLineConfigurations(line);
+  const showOptionLabels = configurations.length > 1;
+  const configurationText = configurations.map((configuration) => {
+    const product = configuration.priceReady === false ? "Pricing in progress" : configuration.productName || "Window treatment";
+    const heading = `${showOptionLabels ? `Option ${configuration.label || "A"} - ` : ""}${product}`;
+    const selections = quoteProductDetails(configuration.styleName || "", configuration.options ?? []);
+    return [heading, ...selections.map((selection) => `  ${selection.label}: ${selection.value}`)].join("\n");
+  }).join("\n");
+  return `${line.room || "Window"}\nQuantity: ${line.quantity}\nPrice: ${total}\n${configurationText}`;
 }
 
 function money(n: number): string {

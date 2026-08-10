@@ -94,4 +94,41 @@ describe("getQuoteDesignDetails", () => {
       { label: "Control Side", value: "Left" },
     ]);
   });
+
+  it("keeps only selected Onyx builder values and removes internal mirror metadata", () => {
+    const design = miniBlindDesign();
+    design.product_type = "Shutters";
+    design.supplier = "Onyx";
+    design.material = "Poly Composite";
+    design.louver_size = '3 1/2"';
+    design.tilt_type = "H2 - Hidden Tiltrod Notch On Louver";
+    design.hinge_color = "Match";
+    design.panel_config = "LR";
+    design.mount_type = null;
+    design.options_json = {
+      color: "100_ Pure White",
+      frame_type: "VZ Fine FS",
+      onyx_mount: "IM",
+      frame_sides: 4,
+      catalog_product_id: "onyx_shutters",
+      catalog_manufacturer: "Onyx",
+      catalog_product_type: "Shutters",
+      quote_lab_product_id: "onyx_shutters",
+      onyx_program_code: "H2",
+      requires_specialty_review: false,
+    };
+
+    expect(getQuoteDesignDetails(design)).toEqual([
+      { label: "Supplier", value: "Onyx" },
+      { label: "Material", value: "Poly Composite" },
+      { label: "Louver Size", value: '3 1/2"' },
+      { label: "Tilt Type", value: "H2 - Hidden Tiltrod Notch On Louver" },
+      { label: "Hinge Color", value: "Match" },
+      { label: "Panel Config", value: "LR" },
+      { label: "Color", value: "100_ Pure White" },
+      { label: "Frame Type", value: "VZ Fine FS" },
+      { label: "Onyx Mount", value: "IM" },
+      { label: "Frame Sides", value: "4" },
+    ]);
+  });
 });

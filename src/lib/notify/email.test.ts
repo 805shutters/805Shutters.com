@@ -93,14 +93,68 @@ describe("buildQuoteEmail", () => {
     // email are the header logo and the financing-section logos).
     const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("Two Financing Options"));
     expect(lineItemTable).not.toContain("<img");
-    expect(lineItemTable).toContain("<strong>Product:</strong> Honeycomb Shades");
-    expect(lineItemTable).toContain("<strong>Style:</strong> Cordless");
-    expect(lineItemTable).toContain("<strong>Mount Type:</strong> Inside mount");
+    expect(lineItemTable).toContain("Honeycomb Shades");
+    expect(lineItemTable).toContain(">Style</td>");
+    expect(lineItemTable).toContain(">Cordless</td>");
+    expect(lineItemTable).toContain(">Mount Type</td>");
+    expect(lineItemTable).toContain(">Inside mount</td>");
     expect(lineItemTable).not.toMatch(/Catalog Product|Catalog Manufacturer|Quote Lab/);
     expect(text).toContain("Contract items:");
-    expect(text).toContain("Living Room - Product: Honeycomb Shades; Mount Type: Inside mount; Style: Cordless");
+    expect(text).toContain("Living Room\nQuantity: 2\nPrice: $4,250.00");
+    expect(text).toContain("Honeycomb Shades\n  Mount Type: Inside mount\n  Style: Cordless");
     expect(text).not.toMatch(/Catalog Product|Catalog Manufacturer|Quote Lab/);
     expect(text).not.toContain('72" W');
+  });
+
+  it("renders contract-style selection rows without internal catalog metadata", () => {
+    const { html, text } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 527, {
+      lines: [
+        {
+          room: "Living Room",
+          productName: "Shutters",
+          quantity: 1,
+          lineTotal: 527,
+          showDesignOptions: true,
+          designOptions: [
+            {
+              id: "design-c",
+              label: "C",
+              productName: "Shutters — Poly Composite",
+              options: [
+                "Supplier: Onyx",
+                "Material: Poly Composite",
+                'Louver Size: 3 1/2"',
+                "Tilt Type: H2 - Hidden Tiltrod Notch On Louver",
+                "Hinge Color: Match",
+                "Panel Config: LR",
+                "Color: 100_ Pure White",
+                "Frame Type: VZ Fine FS",
+                "Onyx Mount: IM",
+                "Frame Sides: 4",
+                "Catalog Product Id: onyx_shutters",
+                "Catalog Manufacturer: Onyx",
+                "Catalog Product Type: Shutters",
+                "Quote Lab Product Id: onyx_shutters",
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(html).toContain("Living Room");
+    expect(html).toContain("Shutters — Poly Composite");
+    expect(html).toContain("Louver Size");
+    expect(html).toContain("100_ Pure White");
+    expect(html).toContain("Frame Type");
+    expect(html).not.toContain("Catalog Product");
+    expect(html).not.toContain("Catalog Manufacturer");
+    expect(html).not.toContain("Quote Lab");
+    expect(html).not.toContain(" | ");
+    expect(text).toContain("Living Room\nQuantity: 1\nPrice: $527.00");
+    expect(text).toContain("  Supplier: Onyx");
+    expect(text).not.toContain("Catalog Product");
+    expect(text).not.toContain("Quote Lab");
   });
 
   it("renders legacy/source total deltas as a generic contract adjustment", () => {

@@ -29,6 +29,7 @@ import {
   build805SoldQuoteSmsMessageForRecipient,
 } from "@mts/lib/quoteSoldNotification";
 import { sendSoldQuoteSmsNotifications } from "@/lib/crm/sold-quote-notifications";
+import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { isInvisibleTiltPanelSelectionMissing } from "@mts/lib/shutterOptionSurcharges";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
@@ -118,30 +119,6 @@ export async function markSalesQuoteSold(
 
 const IMPORT_SOURCE = "mts_805_bookkeeping";
 const DEFAULT_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
-const LEGACY_INTERNAL_OPTION_KEYS = new Set([
-  "base_price",
-  "surcharge_total",
-  "manual_price_override",
-  "discount_source_price",
-  "discount_amount",
-  "pricing_method",
-  "pricing_grid_key",
-  "pricing_grid_price",
-  "pricing_grid_width",
-  "pricing_grid_height",
-  "pricing_built_in_adjustment",
-  "sent_price_snapshot",
-  "discount_percent",
-  "fabric_color_id",
-  "fabric_color_collection",
-  "fabric_color_code",
-  "fabric_color_name",
-  "fabric_color_type",
-  "fabric_product_id",
-  "fabric_program_id",
-  "fabric_surcharge_id",
-]);
-
 function requireTechnicalMeasureDecision(value: unknown): TechnicalMeasureDecision {
   if (isTechnicalMeasureDecision(value)) return value;
   throw new CrmAuthError(400, "Choose whether a technical measure is needed before marking this contract sold.");
@@ -957,31 +934,7 @@ function legacyDesignBreakdown(lineItem: AnyRow, design: AnyRow, label: string) 
 }
 
 function legacyDesignDetails(design: AnyRow) {
-  const directFields: Array<[string, unknown]> = [
-    ["Supplier", design.supplier],
-    ["Material", design.material],
-    ["Louver Size", design.louver_size],
-    ["Tilt Type", design.tilt_type],
-    ["Hinge Color", design.hinge_color],
-    ["Panel Config", design.panel_config],
-    ["Mount Type", design.mount_type],
-    ["Shade Type", design.shade_type],
-    ["Lift System", design.lift_system],
-    ["Valance", design.valance],
-    ["Fabric", design.fabric],
-    ["Motor Type", design.motor_type],
-    ["Remote Type", design.remote_type],
-  ];
-  const details = directFields.filter(([, value]) => hasLegacyValue(value)).map(([label, value]) => ({ label, value: String(value) }));
-  if (design.hard_surface_install) details.push({ label: "Hard Surface Install", value: "Yes" });
-  if (design.ladder_over_15ft) details.push({ label: "Requires Ladder Over 15ft", value: "Yes" });
-  if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
-  for (const [key, value] of Object.entries(design.options_json || {})) {
-    if (!hasLegacyValue(value) || LEGACY_INTERNAL_OPTION_KEYS.has(key)) continue;
-    details.push({ label: humanizeLegacyKey(key), value: formatLegacyOptionValue(value) });
-  }
-  if (design.notes) details.push({ label: "Notes", value: design.notes });
-  return details;
+  return getQuoteDesignDetails(design as SalesQuoteDesign);
 }
 
 function compareLegacyDesigns(a: AnyRow, b: AnyRow) {
@@ -1107,31 +1060,6 @@ function textOrNull(value: unknown) {
   if (value === null || value === undefined) return null;
   const text = String(value).trim();
   return text || null;
-}
-
-function hasLegacyValue(value: unknown) {
-  if (value === null || value === undefined) return false;
-  if (typeof value === "string") return value.trim().length > 0;
-  if (Array.isArray(value)) return value.length > 0;
-  return true;
-}
-
-function formatLegacyOptionValue(value: unknown): string {
-  if (Array.isArray(value)) return value.map(formatLegacyOptionValue).join(", ");
-  if (value && typeof value === "object") {
-    return Object.entries(value as AnyRow)
-      .map(([key, nested]) => `${humanizeLegacyKey(key)}: ${formatLegacyOptionValue(nested)}`)
-      .join(", ");
-  }
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
-}
-
-function humanizeLegacyKey(key: string) {
-  return String(key)
-    .replace(/_/g, " ")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function groupBy(rows: AnyRow[], key: string) {
