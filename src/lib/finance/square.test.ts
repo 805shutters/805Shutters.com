@@ -2,10 +2,13 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import {
   createSquarePaymentLink,
+  createSquareWalletPayment,
   fetchSquareOrderFacts,
   verifySquareWebhookSignature,
   squarePaymentLinksUrl,
   squarePaymentLinkRequestBody,
+  squareWalletOrderRequestBody,
+  squareWalletPaymentRequestBody,
   squareOrdersUrl,
   squareEnvironment,
   dollarsToCents,
@@ -14,6 +17,7 @@ import {
   isSquareConfigured,
   isSquarePaidPaymentEvent,
   isSquareWebhookTestPayment,
+  resolveSquareApplicationId,
 } from "./square";
 
 const URL = "https://www.805shutters.com/api/webhooks/square/";
@@ -86,6 +90,13 @@ describe("Square endpoint configuration", () => {
       }
     }
   });
+  it("uses an explicitly configured browser-safe application id without exposing the access token", async () => {
+    vi.stubEnv("SQUARE_APPLICATION_ID", "sq0idp-public-app-id");
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    await expect(resolveSquareApplicationId()).resolves.toBe("sq0idp-public-app-id");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("squarePaymentLinkRequestBody", () => {
@@ -109,7 +120,7 @@ describe("squarePaymentLinkRequestBody", () => {
     expect(body.checkout_options).toEqual({
       allow_tipping: false,
       ask_for_shipping_address: false,
-      accepted_payment_methods: { google_pay: true },
+      accepted_payment_methods: { apple_pay: false, google_pay: false },
     });
     expect(body.pre_populated_data).toEqual({ buyer_email: "customer@example.com" });
     expect("locationId" in body.order).toBe(false);
@@ -142,7 +153,7 @@ describe("createSquarePaymentLink", () => {
       checkout_options: {
         allow_tipping: false,
         ask_for_shipping_address: false,
-        accepted_payment_methods: { google_pay: true },
+        accepted_payment_methods: { apple_pay: false, google_pay: false },
       },
       pre_populated_data: { buyer_email: "customer@example.com" },
       order: {
@@ -161,6 +172,98 @@ describe("createSquarePaymentLink", () => {
       quantity: "1",
       base_price_money: { amount: 52547, currency: "USD" },
     });
+  });
+});
+
+describe("Square Web Payments SDK wallet requests", () => {
+  const input = {
+    sourceId: "wallet-token",
+    verificationToken: "verification-token",
+    amountCents: 26350,
+    title: "Deposit — 805 Shutters (805-0212)",
+    quoteId: "quote-1",
+    jobId: "job-1",
+    paymentType: "deposit" as const,
+    walletType: "google_pay" as const,
+    idempotencyKey: "dd9d9ed9-bbe4-4da6-97d4-57fc5f2395f5",
+    selectedLineIds: ["line-a", "line-b"],
+  };
+
+  it("creates an exact CRM-attributed Square order", () => {
+    const body = squareWalletOrderRequestBody(input, "LOCATION1");
+    expect(body.order).toMatchObject({
+      location_id: "LOCATION1",
+      reference_id: "quote-1",
+      metadata: {
+        quote_id: "quote-1",
+        job_id: "job-1",
+        payment_type: "deposit",
+        wallet_type: "google_pay",
+        expected_amount_cents: "26350",
+        selected_line_ids: "line-a,line-b",
+      },
+    });
+    expect(body.order.line_items[0]).toMatchObject({
+      quantity: "1",
+      base_price_money: { amount: 26350, currency: "USD" },
+    });
+  });
+
+  it("charges the wallet token against that exact order", () => {
+    const body = squareWalletPaymentRequestBody(input, "LOCATION1", "ORDER1");
+    expect(body).toMatchObject({
+      source_id: "wallet-token",
+      verification_token: "verification-token",
+      amount_money: { amount: 26350, currency: "USD" },
+      location_id: "LOCATION1",
+      order_id: "ORDER1",
+      reference_id: "quote-1",
+      autocomplete: true,
+    });
+    expect(body.idempotency_key.length).toBeLessThanOrEqual(45);
+  });
+
+  it("creates the attributed order before charging the one-time wallet token", async () => {
+    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
+    vi.stubEnv("SQUARE_LOCATION_ID", "LOCATION1");
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ order: { id: "ORDER1", total_money: { amount: 26350 } } }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          payment: {
+            id: "PAYMENT1",
+            order_id: "ORDER1",
+            status: "COMPLETED",
+            receipt_url: "https://squareup.com/receipt/PAYMENT1",
+          },
+        }),
+      } as Response);
+
+    await expect(createSquareWalletPayment(input)).resolves.toEqual({
+      paymentId: "PAYMENT1",
+      orderId: "ORDER1",
+      status: "COMPLETED",
+      receiptUrl: "https://squareup.com/receipt/PAYMENT1",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://connect.squareupsandbox.com/v2/orders");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://connect.squareupsandbox.com/v2/payments");
+  });
+
+  it("refuses to charge when Square's order total differs from the verified quote", async () => {
+    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
+    vi.stubEnv("SQUARE_LOCATION_ID", "LOCATION1");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ order: { id: "ORDER1", total_money: { amount: 999 } } }),
+    } as Response);
+
+    await expect(createSquareWalletPayment(input)).rejects.toThrow("did not match the verified quote amount");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

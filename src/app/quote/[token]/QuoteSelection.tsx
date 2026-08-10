@@ -5,6 +5,7 @@ import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-payment-state";
 import { SignQuote } from "./SignQuote";
+import { QuoteWalletButtons, type QuoteWalletConfig } from "./QuoteWalletButtons";
 import styles from "./QuoteSelection.module.css";
 import { copyPaymentText, formatVenmoAddress } from "./copyPaymentText";
 import { quoteProductDetails } from "./quoteLinePresentation";
@@ -27,7 +28,7 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null; previewOnly?: boolean }) {
+export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
@@ -44,6 +45,8 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
   const [live, setLive] = useState<LiveMoney>(fullMoney);
   const [computing, setComputing] = useState(false);
   const [squareBusy, setSquareBusy] = useState<QuotePaymentType | null>(null);
+  const [walletBusy, setWalletBusy] = useState(false);
+  const [walletPaid, setWalletPaid] = useState(false);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
   const [copiedPayment, setCopiedPayment] = useState<"zelle" | "venmo" | null>(null);
   const [copyFailed, setCopyFailed] = useState<"zelle" | "venmo" | null>(null);
@@ -316,12 +319,27 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
                     <button
                       type="button"
                       className={styles.cardPaymentButton}
-                      disabled={squareBusy !== null || selectionEmpty}
+                      disabled={squareBusy !== null || walletBusy || walletPaid || selectionEmpty}
                       onClick={() => startSquare(paymentType)}
                     >
-                      {squareBusy === paymentType ? "Opening secure checkout…" : `Pay ${paymentType} with card or Google Pay`}
+                      {squareBusy === paymentType ? "Opening secure card checkout…" : `Pay ${paymentType} with card`}
                     </button>
                     {squareMsg ? <p className={styles.paymentError}>{squareMsg}</p> : null}
+                    {walletConfig ? (
+                      <QuoteWalletButtons
+                        config={walletConfig}
+                        token={quote.token}
+                        paymentType={paymentType}
+                        amount={live.payment.amountDue}
+                        selectedLineIds={selectedLineIds}
+                        customerName={quote.customerName}
+                        customerEmail={quote.customerEmail}
+                        customerPhone={quote.customerPhone}
+                        disabled={selectionEmpty || squareBusy !== null || walletPaid}
+                        onBusyChange={setWalletBusy}
+                        onPaid={() => setWalletPaid(true)}
+                      />
+                    ) : null}
                     <div className={styles.peerPayments}>
                       <div className={styles.peerPaymentDetails} aria-live="polite">
                         <button

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { squareApplicationId, squareLocationId, squareWebSdkUrl } from "@/lib/finance/square";
+import { resolveSquareApplicationId, squareLocationId, squareWebSdkUrl } from "@/lib/finance/square";
 import { findJobByAutopayToken } from "@/lib/crm/payment-plans";
 import { installmentChargeAmount, formatMoney } from "@/lib/crm/payment-plan-shared";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
@@ -39,7 +39,7 @@ export default async function AutopaySetupPage({ params }: { params: Promise<{ t
       : first?.due_date
         ? `Your first payment is due ${first.due_date}, then monthly.`
         : "";
-  const applicationId = squareApplicationId();
+  const applicationId = await resolveSquareApplicationId();
   const locationId = squareLocationId();
   const configured = Boolean(applicationId && locationId);
   const alreadyLinked = plan.autopay?.status === "linked";

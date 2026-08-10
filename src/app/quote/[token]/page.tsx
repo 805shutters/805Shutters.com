@@ -4,6 +4,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
 import { VENMO_HANDLE, ZELLE_DESTINATION, venmoProfileUrl } from "@/lib/finance/payment-options";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
+import { resolveSquareApplicationId, squareLocationId, squareWebSdkUrl } from "@/lib/finance/square";
 import { CustomerContractDocument } from "./CustomerContractDocument";
 
 export const runtime = "nodejs";
@@ -41,9 +42,15 @@ export default async function PublicQuotePage({
   if (!quote) notFound();
   // Venmo profile QR (static per handle) so the customer can scan to pay.
   const venmoQrSvg = await QRCode.toString(venmoProfileUrl(), { type: "svg", margin: 1 });
+  const applicationId = await resolveSquareApplicationId();
+  const locationId = squareLocationId();
+  const walletConfig = applicationId && locationId
+    ? { applicationId, locationId, sdkUrl: squareWebSdkUrl() }
+    : null;
 
   return <CustomerContractDocument quote={quote} embedded={crmContractPreview}
-    paymentOptions={{ venmoHandle: VENMO_HANDLE, venmoQrSvg, zelleDestination: ZELLE_DESTINATION }} />;
+    paymentOptions={{ venmoHandle: VENMO_HANDLE, venmoQrSvg, zelleDestination: ZELLE_DESTINATION }}
+    walletConfig={walletConfig} />;
 }
 
 const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;

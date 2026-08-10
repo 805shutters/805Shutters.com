@@ -101,7 +101,9 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
     checkout_options: {
       allow_tipping: false,
       ask_for_shipping_address: false,
-      accepted_payment_methods: { google_pay: true },
+      // Digital wallets render as their own Web Payments SDK buttons on the
+      // contract. Keep this hosted checkout path for manual card entry only.
+      accepted_payment_methods: { apple_pay: false, google_pay: false },
     },
     pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,
     payment_note: `quote:${input.quoteId} type:${input.paymentType}`,
@@ -442,6 +444,151 @@ async function squareJson<T>(res: Response, label: string): Promise<T> {
     throw new Error(`${label} failed (${res.status}): ${detail.slice(0, 300)}`);
   }
   return (await res.json()) as T;
+}
+
+let resolvedSquareApplicationId = "";
+let squareApplicationIdRequest: Promise<string> | null = null;
+
+/** Resolve the browser-safe Square application ID. Prefer explicit config,
+ * then use Square's authenticated token-status endpoint so protected Vercel
+ * access tokens never need to be copied into a public environment variable. */
+export async function resolveSquareApplicationId(): Promise<string> {
+  const configured = squareApplicationId();
+  if (configured) return configured;
+  if (resolvedSquareApplicationId) return resolvedSquareApplicationId;
+  if (squareApplicationIdRequest) return squareApplicationIdRequest;
+
+  squareApplicationIdRequest = (async () => {
+    try {
+      const response = await squareApiFetch("/oauth2/token/status", { method: "POST" });
+      const data = await squareJson<{ client_id?: string }>(response, "Square token status");
+      const applicationId = String(data.client_id || "").trim();
+      if (!/^sq0id[ps]-/.test(applicationId)) return "";
+      resolvedSquareApplicationId = applicationId;
+      return applicationId;
+    } catch (error) {
+      console.error("Square application ID could not be resolved from the configured access token", {
+        error: error instanceof Error ? error.message : "Unknown Square token status error",
+      });
+      return "";
+    } finally {
+      squareApplicationIdRequest = null;
+    }
+  })();
+  return squareApplicationIdRequest;
+}
+
+export type SquareWalletPaymentInput = {
+  sourceId: string;
+  verificationToken?: string | null;
+  amountCents: number;
+  title: string;
+  quoteId: string;
+  jobId: string;
+  paymentType: "deposit" | "balance";
+  walletType: "apple_pay" | "google_pay";
+  idempotencyKey: string;
+  selectedLineIds?: string[];
+};
+
+export type SquareWalletPayment = {
+  paymentId: string;
+  orderId: string;
+  status: string;
+  receiptUrl: string | null;
+};
+
+export function squareWalletOrderRequestBody(input: SquareWalletPaymentInput, locationId: string) {
+  return {
+    idempotency_key: `order-${input.idempotencyKey}`.slice(0, 192),
+    order: {
+      location_id: locationId,
+      reference_id: input.quoteId.slice(0, 40),
+      metadata: {
+        quote_id: input.quoteId,
+        job_id: input.jobId,
+        payment_type: input.paymentType,
+        wallet_type: input.walletType,
+        expected_amount_cents: String(input.amountCents),
+        ...(input.selectedLineIds?.length
+          ? { selected_line_ids: input.selectedLineIds.join(",").slice(0, 255) }
+          : {}),
+      },
+      line_items: [
+        {
+          name: input.title,
+          quantity: "1",
+          base_price_money: { amount: input.amountCents, currency: "USD" },
+        },
+      ],
+    },
+  };
+}
+
+export function squareWalletPaymentRequestBody(
+  input: SquareWalletPaymentInput,
+  locationId: string,
+  orderId: string,
+) {
+  return {
+    idempotency_key: `pay-${input.idempotencyKey}`.slice(0, 45),
+    source_id: input.sourceId,
+    verification_token: input.verificationToken || undefined,
+    amount_money: { amount: input.amountCents, currency: "USD" },
+    location_id: locationId,
+    order_id: orderId,
+    reference_id: input.quoteId.slice(0, 40),
+    note: `${input.paymentType}:${input.quoteId}:${input.walletType}`.slice(0, 500),
+    autocomplete: true,
+  };
+}
+
+/** Process a one-time Apple Pay or Google Pay token from Square's Web
+ * Payments SDK. The Square order carries the same authoritative CRM metadata
+ * used by hosted card checkout so the verified webhook reconciliation path is
+ * identical for all three payment methods. */
+export async function createSquareWalletPayment(input: SquareWalletPaymentInput): Promise<SquareWalletPayment> {
+  const locationId = squareLocationId();
+  if (!squareAccessToken() || !locationId) {
+    throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
+  }
+  if (!input.sourceId || !(input.amountCents > 0)) {
+    throw new Error("Square wallet payment requires a token and positive amount.");
+  }
+
+  const orderResponse = await squareApiFetch("/v2/orders", {
+    method: "POST",
+    body: JSON.stringify(squareWalletOrderRequestBody(input, locationId)),
+  });
+  const orderData = await squareJson<{ order?: { id?: string; total_money?: { amount?: number } } }>(
+    orderResponse,
+    "Square wallet order create",
+  );
+  const orderId = orderData.order?.id;
+  if (!orderId) throw new Error("Square did not return an order id for this wallet payment.");
+  if (Number(orderData.order?.total_money?.amount) !== input.amountCents) {
+    throw new Error("Square wallet order total did not match the verified quote amount.");
+  }
+
+  const paymentResponse = await squareApiFetch("/v2/payments", {
+    method: "POST",
+    body: JSON.stringify(squareWalletPaymentRequestBody(input, locationId, orderId)),
+  });
+  const paymentData = await squareJson<{
+    payment?: { id?: string; order_id?: string; status?: string; receipt_url?: string };
+  }>(paymentResponse, "Square wallet payment");
+  const payment = paymentData.payment;
+  if (!payment?.id) throw new Error("Square did not return a wallet payment id.");
+  const status = String(payment.status || "").toUpperCase();
+  if (status !== "COMPLETED") {
+    throw new Error(`Square wallet payment status ${status || "UNKNOWN"}.`);
+  }
+  return {
+    paymentId: payment.id,
+    orderId: payment.order_id || orderId,
+    status,
+    receiptUrl: payment.receipt_url || null,
+  };
 }
 
 export async function createSquareCustomer(input: {

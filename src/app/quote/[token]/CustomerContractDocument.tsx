@@ -5,6 +5,7 @@ import type { PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
+import type { QuoteWalletConfig } from "./QuoteWalletButtons";
 import { PrintButton } from "./PrintButton";
 
 function money(n: number): string {
@@ -23,11 +24,13 @@ function customerDetails(quote: PublicQuote): string[] {
 export function CustomerContractDocument({
   quote,
   paymentOptions,
+  walletConfig,
   embedded = false,
   previewOnly = false,
 }: {
   quote: PublicQuote;
   paymentOptions?: PaymentOptions | null;
+  walletConfig?: QuoteWalletConfig | null;
   embedded?: boolean;
   previewOnly?: boolean;
 }) {
@@ -128,7 +131,7 @@ export function CustomerContractDocument({
           </section>
         ) : null}
 
-        <QuoteSelection quote={quote} paymentOptions={paymentOptions} previewOnly={previewOnly} />
+        <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} />
       </div>
       <footer className="customer-contract-print-only" style={contractFooter}>
         <strong>{quote.business.name}</strong>

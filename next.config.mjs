@@ -221,6 +221,21 @@ const nextConfig = {
   async headers() {
     return [
       {
+        source: "/quote/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "script-src 'self' 'unsafe-inline' https://web.squarecdn.com https://sandbox.web.squarecdn.com https://pay.google.com https://www.googletagmanager.com https://connect.facebook.net https://va.vercel-scripts.com",
+              "frame-src 'self' https://web.squarecdn.com https://sandbox.web.squarecdn.com https://pay.google.com",
+              "connect-src 'self' https://web.squarecdn.com https://sandbox.web.squarecdn.com https://pci-connect.squareup.com https://pci-connect.squareupsandbox.com https://pay.google.com https://o160250.ingest.sentry.io https://www.google-analytics.com https://region1.google-analytics.com https://www.facebook.com https://vitals.vercel-insights.com",
+              "style-src 'self' 'unsafe-inline' https://web.squarecdn.com https://sandbox.web.squarecdn.com",
+              "font-src 'self' data: https://square-fonts-production-f.squarecdn.com https://d1g145x70srn7h.cloudfront.net"
+            ].join("; ")
+          }
+        ]
+      },
+      {
         source: "/:path*",
         headers: [
           {

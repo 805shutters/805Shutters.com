@@ -421,6 +421,94 @@
   opacity: 0.48;
 }
 
+.walletSection {
+  margin-top: 10px;
+}
+
+.walletSection[data-hidden="true"] {
+  display: none;
+}
+
+.walletHeading {
+  display: block;
+  margin-bottom: 6px;
+  color: #4d4d49;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.walletButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 40px;
+}
+
+.walletButtons[data-busy="true"],
+.walletButtons[data-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.58;
+}
+
+.googlePayButton {
+  min-width: 0;
+  min-height: 40px;
+  overflow: hidden;
+  border-radius: 7px;
+}
+
+.googlePayButton > * {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+}
+
+.applePayButton {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  border-radius: 7px;
+  -webkit-appearance: -apple-pay-button;
+  -apple-pay-button-type: pay;
+  -apple-pay-button-style: black;
+  appearance: none;
+  background: #000000;
+  color: #ffffff;
+  font-size: 0;
+  cursor: pointer;
+}
+
+.applePayButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.walletStatus {
+  margin: 7px 0 0;
+  color: #4d4d49;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.walletSuccess {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #a7c7af;
+  border-radius: 8px;
+  background: #f1f8f3;
+  color: #285b3b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.walletSuccess a {
+  color: inherit;
+  font-weight: 700;
+}
+
 .paymentError {
   margin: 8px 0 0;
   color: #991b1b;
