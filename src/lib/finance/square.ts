@@ -98,7 +98,11 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
   return {
     idempotency_key: input.idempotencyKey || `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
     description: input.title,
-    checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
+    checkout_options: {
+      allow_tipping: false,
+      ask_for_shipping_address: false,
+      accepted_payment_methods: { google_pay: true },
+    },
     pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,
     payment_note: `quote:${input.quoteId} type:${input.paymentType}`,
     order: {

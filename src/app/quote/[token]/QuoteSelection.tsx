@@ -120,9 +120,9 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
         window.location.href = data.url;
         return;
       }
-      throw new Error(data?.message || "Could not start card payment.");
+      throw new Error(data?.message || "Could not start secure checkout.");
     } catch (e) {
-      setSquareMsg(e instanceof Error ? e.message : "Card payment unavailable.");
+      setSquareMsg(e instanceof Error ? e.message : "Secure checkout unavailable.");
     } finally {
       setSquareBusy(null);
     }
@@ -319,7 +319,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
                       disabled={squareBusy !== null || selectionEmpty}
                       onClick={() => startSquare(paymentType)}
                     >
-                      {squareBusy === paymentType ? "Opening secure checkout…" : `Pay ${paymentType} with card`}
+                      {squareBusy === paymentType ? "Opening secure checkout…" : `Pay ${paymentType} with card or Google Pay`}
                     </button>
                     {squareMsg ? <p className={styles.paymentError}>{squareMsg}</p> : null}
                     <div className={styles.peerPayments}>

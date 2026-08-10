@@ -106,7 +106,11 @@ describe("squarePaymentLinkRequestBody", () => {
     expect(body.order.reference_id).toBe("quote-1");
     expect(body.order.line_items[0].quantity).toBe("1");
     expect(body.order.line_items[0].base_price_money).toEqual({ amount: 54125, currency: "USD" });
-    expect(body.checkout_options).toEqual({ allow_tipping: false, ask_for_shipping_address: false });
+    expect(body.checkout_options).toEqual({
+      allow_tipping: false,
+      ask_for_shipping_address: false,
+      accepted_payment_methods: { google_pay: true },
+    });
     expect(body.pre_populated_data).toEqual({ buyer_email: "customer@example.com" });
     expect("locationId" in body.order).toBe(false);
     expect("lineItems" in body.order).toBe(false);
@@ -135,7 +139,11 @@ describe("createSquarePaymentLink", () => {
     expect(link).toEqual({ id: "plink", url: "https://square.link/u/test" });
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body).toMatchObject({
-      checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
+      checkout_options: {
+        allow_tipping: false,
+        ask_for_shipping_address: false,
+        accepted_payment_methods: { google_pay: true },
+      },
       pre_populated_data: { buyer_email: "customer@example.com" },
       order: {
         location_id: "loc",

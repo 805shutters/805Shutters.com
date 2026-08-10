@@ -188,7 +188,7 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toContain("@container product-details (max-width: 279px)");
   });
 
-  it("shows the ledger-derived deposit due with card, Zelle, and Venmo paths", () => {
+  it("shows the ledger-derived deposit due with card, Google Pay, Zelle, and Venmo paths", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       paymentOptions,
@@ -196,7 +196,7 @@ describe("QuoteSelection", () => {
 
     expect(html).toContain("Deposit due");
     expect(html).toContain("$254.70");
-    expect(html).toContain("Pay deposit with card");
+    expect(html).toContain("Pay deposit with card or Google Pay");
     expect(html).toContain("@approved-venmo");
     expect(html).toContain("805-806-9344");
     expect(html).toContain("Copy Zelle phone number 805-806-9344");
@@ -218,8 +218,8 @@ describe("QuoteSelection", () => {
 
     expect(html).toContain("Balance due");
     expect(html).toContain("Deposit paid");
-    expect(html).toContain("Pay balance with card");
-    expect(html).not.toContain("Pay deposit with card");
+    expect(html).toContain("Pay balance with card or Google Pay");
+    expect(html).not.toContain("Pay deposit with card or Google Pay");
     expect(html).not.toContain('data-payment-ready="true"');
   });
 
@@ -234,7 +234,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Roller Shades");
     expect(html).not.toContain("Purchase:");
     expect(html).not.toContain("Sign &amp; approve");
-    expect(html).not.toContain("Pay deposit with card");
+    expect(html).not.toContain("Pay deposit with card or Google Pay");
     expect(html).not.toContain("Make a payment");
   });
 
