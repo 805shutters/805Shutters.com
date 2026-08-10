@@ -725,17 +725,19 @@ function exactLegacyBreakdownDetail(design: AnyRow, label: string): string | nul
   return matches.length === 1 ? text(matches[0].value) : null;
 }
 
-function isExactLegacyOnyxPolyCompositeDesign(design: AnyRow): boolean {
+function exactLegacyOnyxPolyCompositeDesignMatches(design: AnyRow) {
   // Generic legacy Shutters mirrors were stored with the Norman placeholder id.
-  return design.product_id === "norman_shutters" &&
-    design.program_id === null &&
-    design.fabric === "Poly Composite" &&
-    design.price_breakdown?.source === "mts_805_bookkeeping" &&
-    design.price_breakdown?.productType === "Shutters" &&
-    exactLegacyBreakdownDetail(design, "Supplier") === "Onyx" &&
-    exactLegacyBreakdownDetail(design, "Material") === "Poly Composite" &&
-    exactLegacyBreakdownDetail(design, "Color") === "101_White" &&
-    exactLegacyBreakdownDetail(design, "Hinge Color") === "Match";
+  return {
+    legacyProductPlaceholderMatches: design.product_id === "norman_shutters",
+    programNullMatches: design.program_id === null,
+    fabricMatches: design.fabric === "Poly Composite",
+    sourceMatches: design.price_breakdown?.source === "mts_805_bookkeeping",
+    productTypeMatches: design.price_breakdown?.productType === "Shutters",
+    supplierMatches: exactLegacyBreakdownDetail(design, "Supplier") === "Onyx",
+    materialMatches: exactLegacyBreakdownDetail(design, "Material") === "Poly Composite",
+    colorMatches: exactLegacyBreakdownDetail(design, "Color") === "101_White",
+    hingeMatches: exactLegacyBreakdownDetail(design, "Hinge Color") === "Match",
+  };
 }
 
 function discountedLegacyOnyxPolyCompositeCents(
@@ -754,35 +756,72 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   targetLineItems: AnyRow[];
   targetDesignsByLineItemId: Map<string, AnyRow[]>;
 }) {
+  const isDiagnosticCandidate = exactMoneyCents(input.source.sourceQuote.quote_total) ===
+    LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS;
+  const guardMismatch = (
+    stage: string,
+    matches: Record<string, boolean | number> = {},
+  ): null => {
+    if (isDiagnosticCandidate) {
+      console.error("historical_onyx_poly_aggregate_guard_mismatch", { stage, ...matches });
+    }
+    return null;
+  };
+
+  if (!isDiagnosticCandidate) return null;
+  const initialMatches = {
+    signedAtAbsent: !input.mirrorQuote.signed_at,
+    customerSignatureAbsent: !input.mirrorQuote.customer_signature,
+    customerPrintedNameAbsent: !input.mirrorQuote.customer_printed_name,
+    sourceLineCount: input.source.sourceLineItems.length,
+    sourceDesignCount: input.source.sourceDesigns.length,
+    targetLineCount: input.targetLineItems.length,
+  };
   if (
-    input.mirrorQuote.signed_at ||
-    input.mirrorQuote.customer_signature ||
-    input.mirrorQuote.customer_printed_name ||
-    exactMoneyCents(input.source.sourceQuote.quote_total) !==
-      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS ||
+    !initialMatches.signedAtAbsent ||
+    !initialMatches.customerSignatureAbsent ||
+    !initialMatches.customerPrintedNameAbsent ||
     input.source.sourceLineItems.length !== 1 ||
     input.source.sourceDesigns.length !== 1 ||
     input.targetLineItems.length !== LEGACY_ONYX_POLY_MIRROR_SHAPE.length
-  ) return null;
+  ) return guardMismatch("initial", initialMatches);
 
   const aggregateLine = input.source.sourceLineItems[0];
   const aggregateDesign = input.source.sourceDesigns[0];
   const aggregateQuantity = strictQuantity(aggregateLine.quantity);
   const aggregateUnitCents = exactMoneyCents(aggregateDesign.unit_price);
+  const aggregateMatches = {
+    lineIdentityMatches: Boolean(lineId(aggregateLine)),
+    designIdentityMatches: Boolean(lineId(aggregateDesign)),
+    designLineIdentityMatches: aggregateDesign.line_item_id === aggregateLine.id,
+    quantityMatches: aggregateQuantity === 1,
+    unitMoneyValid: aggregateUnitCents !== null,
+    unitMoneyZero: isExactZeroMoney(aggregateDesign.unit_price),
+    fivePercentMatches: aggregateUnitCents !== null &&
+      Math.round(aggregateUnitCents * 95 / 100) === LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS,
+    discountedTotalMatches: aggregateUnitCents !== null &&
+      Math.round(aggregateUnitCents * (100 - LEGACY_ONYX_POLY_DISCOUNT_PERCENT) / 100) ===
+        LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS,
+    fifteenPercentMatches: aggregateUnitCents !== null &&
+      Math.round(aggregateUnitCents * 85 / 100) === LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS,
+    twentyPercentMatches: aggregateUnitCents !== null &&
+      Math.round(aggregateUnitCents * 80 / 100) === LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS,
+  };
   if (
-    !lineId(aggregateLine) ||
-    !lineId(aggregateDesign) ||
-    aggregateDesign.line_item_id !== aggregateLine.id ||
-    aggregateQuantity !== 1 ||
-    aggregateUnitCents === null ||
-    Math.round(aggregateUnitCents * (100 - LEGACY_ONYX_POLY_DISCOUNT_PERCENT) / 100) !==
-      LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS
-  ) return null;
+    !aggregateMatches.lineIdentityMatches ||
+    !aggregateMatches.designIdentityMatches ||
+    !aggregateMatches.designLineIdentityMatches ||
+    !aggregateMatches.quantityMatches ||
+    !aggregateMatches.discountedTotalMatches
+  ) return guardMismatch("aggregate", aggregateMatches);
 
   try {
     requireUniqueLineIds(input.targetLineItems, "target");
   } catch {
-    return null;
+    return guardMismatch("target_identity", {
+      targetIdentitiesUnique: false,
+      targetIdentityCount: new Set(input.targetLineItems.map(lineId).filter(Boolean)).size,
+    });
   }
   const targetDesigns: AnyRow[] = [];
   for (let index = 0; index < input.targetLineItems.length; index += 1) {
@@ -790,32 +829,60 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     const expected = LEGACY_ONYX_POLY_MIRROR_SHAPE[index];
     const designs = input.targetDesignsByLineItemId.get(lineId(line)) || [];
     const design = designs[0];
+    const designMatches = exactLegacyOnyxPolyCompositeDesignMatches(design || {});
+    const targetMatches = {
+      targetLineIndex: index,
+      roomMatches: normalizedRoom(line.room) === expected.room,
+      widthMatches: crmDimensionSixteenths(line.width_in) === expected.width * 16,
+      heightMatches: crmDimensionSixteenths(line.height_in) === expected.height * 16,
+      quantityMatches: strictQuantity(line.quantity) === expected.quantity,
+      designCount: designs.length,
+      designIdentityMatches: Boolean(lineId(design || {})),
+      selectedDesignMatches: line.selected_design_id === design?.id,
+      zeroMoneyMatches: isExactZeroMoney(design?.unit_price),
+      ...designMatches,
+    };
     if (
-      normalizedRoom(line.room) !== expected.room ||
-      crmDimensionSixteenths(line.width_in) !== expected.width * 16 ||
-      crmDimensionSixteenths(line.height_in) !== expected.height * 16 ||
-      strictQuantity(line.quantity) !== expected.quantity ||
-      designs.length !== 1 ||
-      !lineId(design || {}) ||
-      line.selected_design_id !== design.id ||
-      !isExactZeroMoney(design.unit_price) ||
-      !isExactLegacyOnyxPolyCompositeDesign(design)
-    ) return null;
+      !targetMatches.roomMatches ||
+      !targetMatches.widthMatches ||
+      !targetMatches.heightMatches ||
+      !targetMatches.quantityMatches ||
+      targetMatches.designCount !== 1 ||
+      !targetMatches.designIdentityMatches ||
+      !targetMatches.selectedDesignMatches ||
+      !targetMatches.zeroMoneyMatches ||
+      Object.values(designMatches).some((matches) => !matches)
+    ) return guardMismatch("target", targetMatches);
     targetDesigns.push(design);
   }
-  if (new Set(targetDesigns.map(lineId)).size !== targetDesigns.length) return null;
+  const targetDesignIdentityCount = new Set(targetDesigns.map(lineId)).size;
+  if (targetDesignIdentityCount !== targetDesigns.length) {
+    return guardMismatch("target_design_identity", {
+      designIdentitiesUnique: false,
+      designIdentityCount: targetDesignIdentityCount,
+    });
+  }
 
   const configurationFingerprints = new Set(input.targetLineItems.map((line, index) => [
     canonicalDonorConfiguration(line),
     canonicalDonorConfiguration(targetDesigns[index]),
   ].join("\u0000")));
-  if (configurationFingerprints.size !== 1) return null;
+  if (configurationFingerprints.size !== 1) {
+    return guardMismatch("configuration", {
+      configurationFingerprintCount: configurationFingerprints.size,
+    });
+  }
 
   const product = getProduct("onyx_shutters");
   const program = product ? getProgram(product, "poly_composite") : undefined;
   const catalogRate = program?.pricePerSqft;
   if (typeof catalogRate !== "number" || !Number.isFinite(catalogRate) || catalogRate <= 0) {
-    return null;
+    return guardMismatch("catalog", {
+      productAvailable: Boolean(product),
+      programAvailable: Boolean(program),
+      catalogRateAvailable: typeof catalogRate === "number" &&
+        Number.isFinite(catalogRate) && catalogRate > 0,
+    });
   }
 
   const donorLine = input.targetLineItems.find((line) =>
@@ -823,13 +890,24 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   const donorDesign = donorLine
     ? targetDesigns[input.targetLineItems.findIndex((line) => line.id === donorLine.id)]
     : null;
-  if (!donorLine || !donorDesign) return null;
+  if (!donorLine || !donorDesign) {
+    return guardMismatch("donor", {
+      donorLineAvailable: Boolean(donorLine),
+      donorDesignAvailable: Boolean(donorDesign),
+    });
+  }
   const syntheticLineId = `${lineId(donorLine)}:legacy-missing-line`;
   const syntheticDesignId = `${lineId(donorDesign)}:legacy-missing-design`;
-  if (
-    input.targetLineItems.some((line) => lineId(line) === syntheticLineId) ||
-    targetDesigns.some((design) => lineId(design) === syntheticDesignId)
-  ) return null;
+  const syntheticLineCollision = input.targetLineItems.some((line) =>
+    lineId(line) === syntheticLineId);
+  const syntheticDesignCollision = targetDesigns.some((design) =>
+    lineId(design) === syntheticDesignId);
+  if (syntheticLineCollision || syntheticDesignCollision) {
+    return guardMismatch("collision", {
+      syntheticLineCollision,
+      syntheticDesignCollision,
+    });
+  }
 
   const syntheticDesign = {
     ...donorDesign,
@@ -862,12 +940,22 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     const quantity = strictQuantity(line.quantity);
     const width = crmDimensionSixteenths(line.width_in);
     const height = crmDimensionSixteenths(line.height_in);
-    if (!design || quantity === null || width === null || height === null) return null;
+    if (!design || quantity === null || width === null || height === null) {
+      return guardMismatch("projection", {
+        ...(targetIndex >= 0 ? { targetLineIndex: targetIndex } : {}),
+        designAvailable: Boolean(design),
+        quantityValid: quantity !== null,
+        widthValid: width !== null,
+        heightValid: height !== null,
+      });
+    }
     const unitCents = discountedLegacyOnyxPolyCompositeCents(width / 16, height / 16, catalogRate);
     subtotalCents += unitCents * quantity;
     designsByLineItemId.set(lineId(line), [{ ...design, unit_price: moneyFromCents(unitCents) }]);
   }
-  if (subtotalCents !== LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS) return null;
+  if (subtotalCents !== LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS) {
+    return guardMismatch("reconcile", { totalReconciles: false });
+  }
 
   return {
     subtotal: moneyFromCents(subtotalCents),
