@@ -676,6 +676,22 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
   return importedQuote.id;
 }
 
+/**
+ * Rebuild the CRM/customer-facing mirror for an existing sales quote without
+ * sending another email or SMS. Historical price-lock repair uses this after
+ * restoring the legacy source rows so the customer's existing share token is
+ * updated in place.
+ */
+export async function resyncSalesQuoteCustomerMirror(
+  supabase: CrmSupabaseClient,
+  salesQuoteId: string,
+): Promise<string> {
+  return mirrorSalesQuoteForCustomerSend(
+    supabase,
+    await loadSalesQuote(supabase, salesQuoteId),
+  );
+}
+
 async function upsertImportedQuoteStructure(
   supabase: CrmSupabaseClient,
   quoteId: string,
