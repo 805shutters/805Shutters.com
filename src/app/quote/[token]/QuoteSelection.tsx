@@ -192,7 +192,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
       <div className={`${styles.contractLayout} ${showActionPanel ? "" : styles.contractLayoutSingle}`}>
         <section className={styles.orderSummary} aria-labelledby="order-summary-heading">
           <div className={styles.orderSummaryHeader}>
-            <h2 id="order-summary-heading">Order Summary</h2>
+            <h2 id="order-summary-heading">Contract</h2>
           </div>
 
           {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}

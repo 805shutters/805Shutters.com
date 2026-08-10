@@ -32,6 +32,10 @@ export function CustomerContractDocument({
   previewOnly?: boolean;
 }) {
   const preparedFor = customerDetails(quote);
+  const reserveCustomerActionRail =
+    !embedded &&
+    !previewOnly &&
+    ((!quote.signed && quote.allPriced) || Boolean(paymentOptions));
 
   return (
     <main className={`customer-contract-print-root${embedded ? " public-quote-contract-embed" : ""}`} style={embedded ? contractPreviewWrap : wrap}>
@@ -40,6 +44,12 @@ export function CustomerContractDocument({
       .customer-contract-print-action { position: fixed; top: 16px; left: 16px; z-index: 20; }
       @media (max-width: 640px) {
         .customer-contract-print-action { top: 10px; left: 10px; }
+      }
+      @media screen and (min-width: 1101px) {
+        .customer-contract-main-content--with-actions {
+          box-sizing: border-box;
+          padding-right: 362px;
+        }
       }
       @media print {
         body * { visibility: hidden !important; }
@@ -83,40 +93,46 @@ export function CustomerContractDocument({
         </header>
       </div>
 
-      {!previewOnly && quote.versions.length > 1 ? (
-        <section className="no-print" style={quoteTabsSection} aria-label="Compare quote options">
-          <strong style={quoteTabsHeading}>Choose a quote to review</strong>
-          <div role="tablist" aria-label="Available quotes" style={quoteTabsGrid}>
-            {quote.versions.map((version) => (
-              <a
-                key={version.token}
-                href={`/quote/${version.token}`}
-                role="tab"
-                aria-selected={version.current}
-                aria-current={version.current ? "page" : undefined}
-                style={{
-                  ...quoteTab,
-                  background: version.current ? "#0b0b0b" : "#ffffff",
-                  color: version.current ? "#ffffff" : "#0b0b0b",
-                  borderColor: version.current ? "#0b0b0b" : "#b8b6ae",
-                }}
-              >
-                <span style={quoteTabLabel}>Quote {version.label}</span>
-                <span style={quoteTabPrice}>{money(version.total)}</span>
-                {version.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
-              </a>
-            ))}
+      <div
+        className={`customer-contract-main-content${
+          reserveCustomerActionRail ? " customer-contract-main-content--with-actions" : ""
+        }`}
+      >
+        {!previewOnly && quote.versions.length > 1 ? (
+          <section className="no-print" style={quoteTabsSection} aria-label="Compare quote options">
+            <strong style={quoteTabsHeading}>Choose a quote to review</strong>
+            <div role="tablist" aria-label="Available quotes" style={quoteTabsGrid}>
+              {quote.versions.map((version) => (
+                <a
+                  key={version.token}
+                  href={`/quote/${version.token}`}
+                  role="tab"
+                  aria-selected={version.current}
+                  aria-current={version.current ? "page" : undefined}
+                  style={{
+                    ...quoteTab,
+                    background: version.current ? "#0b0b0b" : "#ffffff",
+                    color: version.current ? "#ffffff" : "#0b0b0b",
+                    borderColor: version.current ? "#0b0b0b" : "#b8b6ae",
+                  }}
+                >
+                  <span style={quoteTabLabel}>Quote {version.label}</span>
+                  <span style={quoteTabPrice}>{money(version.total)}</span>
+                  {version.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {quote.signed ? (
+          <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+            <strong>This contract has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      {quote.signed ? (
-        <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-          <strong>This contract has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
-        </div>
-      ) : null}
-
-      <QuoteSelection quote={quote} paymentOptions={paymentOptions} previewOnly={previewOnly} />
+        <QuoteSelection quote={quote} paymentOptions={paymentOptions} previewOnly={previewOnly} />
+      </div>
       <footer className="customer-contract-print-only" style={contractFooter}>
         <strong>{quote.business.name}</strong>
         <span>
@@ -129,7 +145,15 @@ export function CustomerContractDocument({
   );
 }
 
-const wrap = { maxWidth: 1120, margin: "0 auto", padding: "40px 20px", fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)', color: "#0b0b0b" } as const;
+const wrap = {
+  width: "100%",
+  maxWidth: "none",
+  margin: 0,
+  padding: "40px 20px",
+  boxSizing: "border-box",
+  fontFamily: 'var(--font-body, "Helvetica Neue", Arial, sans-serif)',
+  color: "#0b0b0b",
+} as const;
 const contractLogo = { display: "block", width: 170, maxWidth: "46vw", height: "auto" } as const;
 const quoteTabsSection = { marginBottom: 22, padding: 14, border: "2px solid #0b0b0b", borderRadius: 12, background: "#f4f4f2" } as const;
 const quoteTabsHeading = { display: "block", marginBottom: 10, fontSize: 15 } as const;

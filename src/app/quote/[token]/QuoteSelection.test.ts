@@ -120,7 +120,7 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Sign contract here");
     expect(html).not.toContain("Next steps");
     expect(html).not.toContain("Finish your order");
-    expect(html.indexOf("Order Summary")).toBeLessThan(html.indexOf("Sign contract here"));
+    expect(html.indexOf("Contract")).toBeLessThan(html.indexOf("Sign contract here"));
     expect(html.indexOf("Kitchen")).toBeLessThan(html.indexOf("Sign contract here"));
     expect(html.indexOf("$509.40")).toBeLessThan(html.indexOf("Sign contract here"));
     expect(html).toContain("Make a deposit");
@@ -130,6 +130,19 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toMatch(/\.contractLayout\s*{\s*display:\s*block;/);
     expect(quoteSelectionCss).toMatch(/\.actionPanel\s*{[^}]*position:\s*fixed;[^}]*top:\s*16px;[^}]*right:\s*16px;/s);
     expect(quoteSelectionCss).toMatch(/\.actionPanel\s*{[^}]*z-index:\s*30;/s);
+    expect(quoteSelectionCss).toContain("@media (max-width: 1100px)");
+  });
+
+  it("reserves a desktop rail so the pinned action panel cannot cover the quote", () => {
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, {
+      quote: quoteWithLegacyDetails(false),
+      paymentOptions,
+    }));
+
+    expect(html).toContain("customer-contract-main-content--with-actions");
+    expect(html).toContain("@media screen and (min-width: 1101px)");
+    expect(html).toContain("padding-right: 362px");
+    expect(html).toContain("max-width:none");
   });
 
   it("shows the ledger-derived deposit due with card, Zelle, and Venmo paths", () => {
@@ -173,7 +186,7 @@ describe("QuoteSelection", () => {
       paymentOptions,
     }));
 
-    expect(html).toContain("Order Summary");
+    expect(html).toContain("Contract");
     expect(html).toContain("Roller Shades");
     expect(html).not.toContain("Purchase:");
     expect(html).not.toContain("Sign &amp; approve");

@@ -427,7 +427,7 @@
   height: 64px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1100px) {
   .contractLayout,
   .contractLayoutSingle {
     display: flex;
