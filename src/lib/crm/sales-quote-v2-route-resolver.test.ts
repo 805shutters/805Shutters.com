@@ -134,10 +134,10 @@ function aggregateSentMirrorSupabase(options: { customerMirrors?: Row[] } = {}) 
     status: "sent",
   };
   const mirrorShape = [
-    ["Flex", 35, 60, 1],
-    ["Dining", 35, 60, 1],
-    ["Dining", 60, 52, 1],
-    ["Living", 35, 60, 2],
+    ["Flex Room", 35, 60, 1],
+    ["Dining Room", 35, 60, 1],
+    ["Dining Room", 60, 52, 1],
+    ["Living Room", 35, 60, 2],
     ["Bed 1", 22, 60, 1],
     ["Bed 2", 60, 52, 1],
   ] as const;
@@ -436,7 +436,7 @@ describe("server-side historical quote V2 route resolver", () => {
 
     const route = await resolveSalesQuoteV2Route(fake.client as never, CRM_ID);
 
-    expect(fake.customerLines.find((line) => line.room === "Living")?.quantity).toBe(2);
+    expect(fake.customerLines.find((line) => line.room === "Living Room")?.quantity).toBe(2);
     expect(route).toMatchObject({
       status: "ready",
       quoteV2Status: "sent",

@@ -709,10 +709,10 @@ function projectOneMissingHistoricalCrmMirrorLine(input: {
 const LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS = 349_910;
 const LEGACY_ONYX_POLY_DISCOUNT_PERCENT = 10;
 const LEGACY_ONYX_POLY_MIRROR_SHAPE = [
-  { room: "flex", width: 35, height: 60, quantity: 1 },
-  { room: "dining", width: 35, height: 60, quantity: 1 },
-  { room: "dining", width: 60, height: 52, quantity: 1 },
-  { room: "living", width: 35, height: 60, quantity: 2 },
+  { room: "flex room", width: 35, height: 60, quantity: 1 },
+  { room: "dining room", width: 35, height: 60, quantity: 1 },
+  { room: "dining room", width: 60, height: 52, quantity: 1 },
+  { room: "living room", width: 35, height: 60, quantity: 2 },
   { room: "bed 1", width: 22, height: 60, quantity: 1 },
   { room: "bed 2", width: 60, height: 52, quantity: 1 },
 ] as const;

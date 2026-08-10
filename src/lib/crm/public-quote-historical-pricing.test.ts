@@ -11,10 +11,10 @@ const MIRROR_QUOTE_ID = "33333333-3333-4333-8333-333333333333";
 const SOURCE_QUOTE_ID = "44444444-4444-4444-8444-444444444444";
 const TOKEN = "legacy-existing-link";
 const MIRROR_ROOMS = [
-  ["Flex", 35, 60, 1],
-  ["Dining", 35, 60, 1],
-  ["Dining", 60, 52, 1],
-  ["Living", 35, 60, 2],
+  ["Flex Room", 35, 60, 1],
+  ["Dining Room", 35, 60, 1],
+  ["Dining Room", 60, 52, 1],
+  ["Living Room", 35, 60, 2],
   ["Bed 1", 22, 60, 1],
   ["Bed 2", 60, 52, 1],
 ] as const;
@@ -348,10 +348,10 @@ describe("existing sent CRM mirror historical read projection", () => {
     });
     expect(historical?.lineItems.map((line) => [line.room, line.width_in, line.height_in]))
       .toEqual([
-        ["Flex", 35, 60],
-        ["Dining", 35, 60],
-        ["Dining", 60, 52],
-        ["Living", 35, 60],
+        ["Flex Room", 35, 60],
+        ["Dining Room", 35, 60],
+        ["Dining Room", 60, 52],
+        ["Living Room", 35, 60],
         ["Bed 1", 22, 60],
         ["Bed 1", 35, 60],
         ["Bed 2", 60, 52],
