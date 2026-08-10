@@ -777,10 +777,12 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
 
   const orderedProtectedLines = [...input.source.sourceLineItems].sort((left, right) =>
     Number(left.sort_order) - Number(right.sort_order));
+  const protectedLinesBySortOrder = uniqueLinesBySortOrder(input.source.sourceLineItems);
   const protectedLineIds = new Set(orderedProtectedLines.map(lineId));
   const hasExactZeroPriceMirrorSource =
     orderedProtectedLines.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length &&
     input.source.sourceDesigns.length === LEGACY_ONYX_POLY_MIRROR_SHAPE.length &&
+    protectedLinesBySortOrder !== null &&
     protectedLineIds.size === orderedProtectedLines.length &&
     !protectedLineIds.has("") &&
     new Set(input.source.sourceDesigns.map(lineId)).size === input.source.sourceDesigns.length &&
@@ -789,7 +791,6 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
       const expected = LEGACY_ONYX_POLY_MIRROR_SHAPE[index];
       const protectedDesigns = sourceDesignsByLineItemId.get(lineId(line)) || [];
       return Boolean(lineId(line)) &&
-        strictSortOrder(line.sort_order) === index &&
         normalizedRoom(line.room) === expected.room &&
         crmDimensionSixteenths(line.width_in) === expected.width * 16 &&
         crmDimensionSixteenths(line.height_in) === expected.height * 16 &&
@@ -805,9 +806,13 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   } catch {
     return null;
   }
+  const targetLinesBySortOrder = uniqueLinesBySortOrder(input.targetLineItems);
+  if (!targetLinesBySortOrder) return null;
+  const orderedTargetLines = [...input.targetLineItems].sort((left, right) =>
+    Number(left.sort_order) - Number(right.sort_order));
   const targetDesigns: AnyRow[] = [];
-  for (let index = 0; index < input.targetLineItems.length; index += 1) {
-    const line = input.targetLineItems[index];
+  for (let index = 0; index < orderedTargetLines.length; index += 1) {
+    const line = orderedTargetLines[index];
     const expected = LEGACY_ONYX_POLY_MIRROR_SHAPE[index];
     const designs = input.targetDesignsByLineItemId.get(lineId(line)) || [];
     const design = designs[0];
@@ -826,7 +831,7 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
   }
   if (new Set(targetDesigns.map(lineId)).size !== targetDesigns.length) return null;
 
-  const configurationFingerprints = new Set(input.targetLineItems.map((line, index) => [
+  const configurationFingerprints = new Set(orderedTargetLines.map((line, index) => [
     canonicalDonorConfiguration(line),
     canonicalDonorConfiguration(targetDesigns[index]),
   ].join("\u0000")));
@@ -839,16 +844,16 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     return null;
   }
 
-  const donorLine = input.targetLineItems.find((line) =>
+  const donorLine = orderedTargetLines.find((line) =>
     sameCrmDimensions(line, { width_in: 35, height_in: 60 }));
   const donorDesign = donorLine
-    ? targetDesigns[input.targetLineItems.findIndex((line) => line.id === donorLine.id)]
+    ? targetDesigns[orderedTargetLines.findIndex((line) => line.id === donorLine.id)]
     : null;
   if (!donorLine || !donorDesign) return null;
   const syntheticLineId = `${lineId(donorLine)}:legacy-missing-line`;
   const syntheticDesignId = `${lineId(donorDesign)}:legacy-missing-design`;
   if (
-    input.targetLineItems.some((line) => lineId(line) === syntheticLineId) ||
+    orderedTargetLines.some((line) => lineId(line) === syntheticLineId) ||
     targetDesigns.some((design) => lineId(design) === syntheticDesignId)
   ) return null;
 
@@ -866,19 +871,19 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     width_in: 35,
     height_in: 60,
     quantity: 1,
-    sort_order: input.targetLineItems[bedTwoIndex].sort_order,
+    sort_order: orderedTargetLines[bedTwoIndex].sort_order,
     selected_design_id: syntheticDesignId,
     designs: [syntheticDesign],
   };
   const lineItems = [
-    ...input.targetLineItems.slice(0, bedTwoIndex),
+    ...orderedTargetLines.slice(0, bedTwoIndex),
     syntheticLine,
-    input.targetLineItems[bedTwoIndex],
+    orderedTargetLines[bedTwoIndex],
   ];
   const designsByLineItemId = new Map<string, AnyRow[]>();
   let subtotalCents = 0;
   for (const line of lineItems) {
-    const targetIndex = input.targetLineItems.findIndex((target) => target.id === line.id);
+    const targetIndex = orderedTargetLines.findIndex((target) => target.id === line.id);
     const design = line.id === syntheticLineId ? syntheticDesign : targetDesigns[targetIndex];
     const quantity = strictQuantity(line.quantity);
     const width = crmDimensionSixteenths(line.width_in);

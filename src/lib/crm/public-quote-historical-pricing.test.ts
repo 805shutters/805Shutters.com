@@ -383,7 +383,15 @@ describe("existing sent CRM mirror historical read projection", () => {
   });
 
   it("recovers the exact protected six-row zero-price mirror used by the V1 to V4 transfer", async () => {
-    const fake = fakeSupabase(protectedZeroPriceMirrorRows());
+    const protectedRows = protectedZeroPriceMirrorRows();
+    const current = rowsForAggregateLegacyQuote();
+    const fake = fakeSupabase({
+      sourceLines: protectedRows.sourceLines
+        .map((line) => ({ ...line, sort_order: Number(line.sort_order) + 10 }))
+        .reverse(),
+      sourceDesigns: protectedRows.sourceDesigns,
+      mirrorLines: [...current.mirrorLines].reverse(),
+    });
 
     const quote = await loadPublicQuoteByToken(fake.client as never, TOKEN);
 
