@@ -6,6 +6,7 @@ import type { PaymentOptions } from "@/lib/finance/payment-options";
 import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-payment-state";
 import { SignQuote } from "./SignQuote";
 import styles from "./QuoteSelection.module.css";
+import { copyPaymentText, formatVenmoAddress } from "./copyPaymentText";
 import { quoteProductDetails } from "./quoteLinePresentation";
 
 function money(n: number): string {
@@ -101,6 +102,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
   const showActionPanel = !previewOnly && (canSign || Boolean(paymentOptions));
   const paymentType = live.payment.available ? live.payment.dueType : null;
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
+  const venmoAddress = paymentOptions ? formatVenmoAddress(paymentOptions.venmoHandle) : "";
 
   async function startSquare(type: QuotePaymentType) {
     setSquareMsg(null);
@@ -139,27 +141,7 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
   }
 
   async function copyPaymentValue(kind: "zelle" | "venmo", value: string) {
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(value);
-      copied = true;
-    } catch {
-      const field = document.createElement("textarea");
-      field.value = value;
-      field.setAttribute("readonly", "");
-      field.style.position = "fixed";
-      field.style.opacity = "0";
-      try {
-        document.body.appendChild(field);
-        field.select();
-        field.setSelectionRange(0, value.length);
-        copied = document.execCommand("copy");
-      } catch {
-        copied = false;
-      } finally {
-        field.remove();
-      }
-    }
+    const copied = await copyPaymentText(value);
 
     setCopiedPayment(copied ? kind : null);
     setCopyFailed(copied ? null : kind);
@@ -315,17 +297,17 @@ export function QuoteSelection({ quote, paymentOptions, previewOnly = false }: {
                         <button
                           type="button"
                           className={styles.copyPaymentButton}
-                          onClick={() => copyPaymentValue("venmo", `@${paymentOptions.venmoHandle}`)}
-                          aria-label={`Copy Venmo address @${paymentOptions.venmoHandle}`}
+                          onClick={() => copyPaymentValue("venmo", venmoAddress)}
+                          aria-label={`Copy Venmo address ${venmoAddress}`}
                         >
                           <span>Venmo</span>
-                          <strong>@{paymentOptions.venmoHandle}</strong>
+                          <strong>{venmoAddress}</strong>
                           <small>{copiedPayment === "venmo" ? "Copied to clipboard ✓" : copyFailed === "venmo" ? "Couldn’t copy — press and hold" : "Tap to copy"}</small>
                         </button>
                       </div>
                       <div
                         className={styles.venmoQr}
-                        aria-label={`Venmo QR code for @${paymentOptions.venmoHandle}`}
+                        aria-label={`Venmo QR code for ${venmoAddress}`}
                         dangerouslySetInnerHTML={{ __html: paymentOptions.venmoQrSvg }}
                       />
                     </div>
