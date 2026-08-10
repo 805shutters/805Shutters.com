@@ -795,6 +795,8 @@ function projectExactLegacyOnyxPolyCompositeAggregateMirror(input: {
     designIdentityMatches: Boolean(lineId(aggregateDesign)),
     designLineIdentityMatches: aggregateDesign.line_item_id === aggregateLine.id,
     quantityMatches: aggregateQuantity === 1,
+    unitMoneyValid: aggregateUnitCents !== null,
+    unitMoneyZero: isExactZeroMoney(aggregateDesign.unit_price),
     unitTotalMatches: aggregateUnitCents !== null && aggregateQuantity !== null &&
       aggregateUnitCents * aggregateQuantity === LEGACY_ONYX_POLY_AGGREGATE_TOTAL_CENTS,
   };
