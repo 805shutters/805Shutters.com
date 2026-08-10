@@ -471,19 +471,50 @@
 }
 
 .applePayButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   min-width: 0;
   min-height: 40px;
   border: 0;
   border-radius: 7px;
   -webkit-appearance: -apple-pay-button;
-  -apple-pay-button-type: pay;
+  -apple-pay-button-type: buy;
   -apple-pay-button-style: black;
-  appearance: none;
   background: #000000;
   color: #ffffff;
-  font-size: 0;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
+}
+
+.applePayButtonLogo {
+  line-height: 1;
+}
+
+.applePayButtonText {
+  line-height: 1;
+}
+
+@supports (background-image: -webkit-named-image(apple-pay-logo-white)) {
+  .applePayButtonLogo {
+    width: 40px;
+    height: 18px;
+    overflow: hidden;
+    color: transparent;
+    background-image: -webkit-named-image(apple-pay-logo-white);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+}
+
+@supports (-webkit-appearance: -apple-pay-button) {
+  .applePayButton > * {
+    display: none;
+  }
 }
 
 .applePayButton:disabled {

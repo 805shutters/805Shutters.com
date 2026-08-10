@@ -317,7 +317,8 @@ export function QuoteWalletButtons({
             if (apple) void startWalletPayment(apple, "apple_pay");
           }}
         >
-          Apple Pay
+          <span className={styles.applePayButtonText}>Buy with</span>
+          <span className={styles.applePayButtonLogo} aria-hidden="true">Apple Pay</span>
         </button>
         <div
           id={googleTargetId}

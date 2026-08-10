@@ -209,6 +209,10 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Pay deposit with Google Pay");
     expect(html).toContain("quote-google-pay-");
     expect(quoteSelectionCss).toContain("-webkit-appearance: -apple-pay-button");
+    expect(quoteSelectionCss).toContain("-apple-pay-button-type: buy");
+    expect(quoteSelectionCss).not.toMatch(/\.applePayButton\s*{[^}]*appearance:\s*none;/s);
+    expect(walletButtonsSource).toContain("applePayButtonText");
+    expect(walletButtonsSource).toContain("applePayButtonLogo");
     expect(quoteSelectionCss).toMatch(/\.walletButtons\[data-layout="single"\]\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
     expect(walletButtonsSource).toContain('buttonSizeMode: "fill"');
     expect(walletButtonsSource).toContain('data-layout={available.apple && available.google ? "split" : "single"}');
