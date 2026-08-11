@@ -117,6 +117,12 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const depositReady = contractSigned && paymentType === "deposit";
   const venmoAddress = paymentOptions ? formatVenmoAddress(paymentOptions.venmoHandle) : "";
   const customerPhone = customerPhoneDisplay(quote.customerPhone);
+  const customerInformation = [
+    quote.customerName,
+    quote.customerAddress,
+    customerPhone,
+    quote.customerEmail,
+  ].filter((detail): detail is string => Boolean(detail));
 
   async function startSquare(type: QuotePaymentType) {
     setSquareMsg(null);
@@ -204,31 +210,15 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
           <div className={styles.orderSummaryHeader}>
             <h2 id="order-summary-heading">Contract</h2>
             {contractSigned ? <span className={styles.signedBadge} role="status">Contract Signed</span> : null}
+            <span className={styles.customerInformationInline} role="group" aria-label="Customer information">
+              {customerInformation.map((detail, index) => (
+                <span className={styles.customerInformationItem} key={`${index}-${detail}`}>
+                  <span className={styles.customerInformationSeparator} aria-hidden="true">·</span>
+                  <span>{detail}</span>
+                </span>
+              ))}
+            </span>
           </div>
-
-          <section className={styles.customerInformation} aria-labelledby="customer-information-heading">
-            <h3 id="customer-information-heading">Customer Information</h3>
-            <dl className={styles.customerInformationDetails}>
-              <div className={styles.customerInformationField}>
-                <dt>Full name</dt>
-                <dd>{quote.customerName}</dd>
-              </div>
-              <div className={styles.customerInformationField}>
-                <dt>Address</dt>
-                <dd>{quote.customerAddress || "Not provided"}</dd>
-              </div>
-              <div className={styles.customerInformationField}>
-                <dt>Phone</dt>
-                <dd>{customerPhone || "Not provided"}</dd>
-              </div>
-              {quote.customerEmail ? (
-                <div className={styles.customerInformationField}>
-                  <dt>Email</dt>
-                  <dd>{quote.customerEmail}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
 
           {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
 
