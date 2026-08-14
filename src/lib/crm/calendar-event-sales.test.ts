@@ -35,6 +35,20 @@ describe("calendarEventSalePresentation", () => {
     ).toEqual({ tone: "sold", bannerLabel: "SOLD" });
   });
 
+  it("keeps the sold banner after the linked job advances to ordered", () => {
+    expect(calendarEventSalePresentation(event({ job_status: "ordered" }), now)).toEqual({
+      tone: "sold",
+      bannerLabel: "SOLD"
+    });
+  });
+
+  it("does not infer a sale from an open linked job", () => {
+    expect(calendarEventSalePresentation(event({ job_status: "quoted" }), now)).toEqual({
+      tone: null,
+      bannerLabel: null
+    });
+  });
+
   it("keeps a future sent quote in its normal appointment state", () => {
     expect(
       calendarEventSalePresentation(event({ quote_sent_at: "2026-08-13T19:00:00.000Z" }), now)
