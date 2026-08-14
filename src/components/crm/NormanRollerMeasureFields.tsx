@@ -126,18 +126,18 @@ export function NormanRollerMeasureFields({ details, disabled, onDetail, onFabri
           <SelectField label="Chain Type" field="chain_type" options={["Plastic", "Stainless Steel Chain", "Cordloop with Stainless Steel Chain"]} details={details} disabled={disabled} onDetail={onDetail} />
           <SelectField label="Control Side" field="control_side" options={["Left", "Right"]} details={details} disabled={disabled} onDetail={onDetail} />
           <SelectField label="Chain Length" field="chain_length_type" options={["Standard", "Custom"]} details={details} disabled={disabled} onDetail={onDetail} />
-          {value(details, "chain_length_type") === "Custom" ? <label><span>Custom Chain Length (inches)</span><input disabled={disabled} inputMode="decimal" value={value(details, "chain_length_in")} onChange={(event) => onDetail("chain_length_in", event.target.value)} /></label> : null}
+          {value(details, "chain_length_type") === "Custom" ? <label><span>Custom Chain Length (inches)</span><input disabled={disabled} inputMode="decimal" value={value(details, "chain_length_in")} onChange={(event) => onDetail("chain_length_in", event.target.value)} onBlur={(event) => onDetail("chain_length_in", event.target.value)} /></label> : null}
         </> : null}
 
         {motorized ? <>
           <SelectField label="Motor" field="motor_type" options={MOTOR_TYPES} details={details} disabled={disabled} onDetail={onDetail} />
           <SelectField label="Motor / Control Side" field="control_side" options={["Left", "Right"]} details={details} disabled={disabled} onDetail={onDetail} />
           <label><span>Remote Type</span><input disabled={disabled} value={value(details, "remote_type")} onChange={(event) => onDetail("remote_type", event.target.value)} /></label>
-          <label><span>Remote Quantity</span><input disabled={disabled} type="number" min="0" value={value(details, "remote_quantity")} onChange={(event) => onDetail("remote_quantity", event.target.value)} /></label>
+          <label><span>Remote Quantity</span><input disabled={disabled} inputMode="numeric" value={value(details, "remote_quantity")} onChange={(event) => onDetail("remote_quantity", event.target.value)} onBlur={(event) => onDetail("remote_quantity", event.target.value)} /></label>
           <label><span>Remote Channel</span><input disabled={disabled} value={value(details, "remote_channel")} onChange={(event) => onDetail("remote_channel", event.target.value)} /></label>
-          <label><span>Hub Quantity</span><input disabled={disabled} type="number" min="0" value={value(details, "hub_quantity")} onChange={(event) => onDetail("hub_quantity", event.target.value)} /></label>
-          <label><span>Wall Switch Quantity</span><input disabled={disabled} type="number" min="0" value={value(details, "wall_switch_quantity")} onChange={(event) => onDetail("wall_switch_quantity", event.target.value)} /></label>
-          <label><span>Solar Panel Quantity</span><input disabled={disabled} type="number" min="0" value={value(details, "solar_panel_quantity")} onChange={(event) => onDetail("solar_panel_quantity", event.target.value)} /></label>
+          <label><span>Hub Quantity</span><input disabled={disabled} inputMode="numeric" value={value(details, "hub_quantity")} onChange={(event) => onDetail("hub_quantity", event.target.value)} onBlur={(event) => onDetail("hub_quantity", event.target.value)} /></label>
+          <label><span>Wall Switch Quantity</span><input disabled={disabled} inputMode="numeric" value={value(details, "wall_switch_quantity")} onChange={(event) => onDetail("wall_switch_quantity", event.target.value)} onBlur={(event) => onDetail("wall_switch_quantity", event.target.value)} /></label>
+          <label><span>Solar Panel Quantity</span><input disabled={disabled} inputMode="numeric" value={value(details, "solar_panel_quantity")} onChange={(event) => onDetail("solar_panel_quantity", event.target.value)} onBlur={(event) => onDetail("solar_panel_quantity", event.target.value)} /></label>
           <label><span>Charging / Power Location</span><input disabled={disabled} value={value(details, "power_location")} onChange={(event) => onDetail("power_location", event.target.value)} /></label>
           <label className="technical-measure-vendor-confirm"><input disabled={disabled} type="checkbox" checked={details.motor_accessories_confirmed === true} onChange={(event) => onDetail("motor_accessories_confirmed", event.target.checked)} /><span>Motor power, controls, and accessories reviewed</span></label>
         </> : null}

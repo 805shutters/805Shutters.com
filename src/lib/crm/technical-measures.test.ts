@@ -69,6 +69,16 @@ describe("technical measure change classification", () => {
     expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
   });
 
+  it("preserves technician notes through draft normalization so they can save", () => {
+    const original = baseline();
+    const current = normalizeTechnicalMeasureLineValues({
+      ...original,
+      notes: "  Leave extra clearance at the sill. ",
+    }, original);
+    expect(current.notes).toBe("  Leave extra clearance at the sill. ");
+    expect(technicalMeasureLineChanges("line-1", original, current).some((change) => change.field === "notes")).toBe(true);
+  });
+
   it("treats Norman portal metadata as internal while keeping selected options contractual", () => {
     const original = baseline();
     const current = normalizeTechnicalMeasureLineValues({

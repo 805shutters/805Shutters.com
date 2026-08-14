@@ -110,7 +110,7 @@ function Field({
     return (
       <label className="technical-measure-vendor-wide">
         <span>{field.label}{field.required ? " *" : ""}</span>
-        <textarea disabled={disabled} rows={3} value={value(values, field.key)} onChange={(event) => onDetail(field.key, event.target.value)} />
+        <textarea disabled={disabled} rows={3} value={value(values, field.key)} onChange={(event) => onDetail(field.key, event.target.value)} onBlur={(event) => onDetail(field.key, event.target.value)} />
       </label>
     );
   }
@@ -120,11 +120,11 @@ function Field({
       <input
         disabled={disabled}
         inputMode={field.input === "dimension" || field.input === "integer" ? "decimal" : undefined}
-        type={field.input === "integer" ? "number" : "text"}
-        min={field.input === "integer" ? 0 : undefined}
+        type="text"
         placeholder={field.input === "dimension" ? "Inches" : undefined}
         value={value(values, field.key)}
         onChange={(event) => onDetail(field.key, event.target.value)}
+        onBlur={(event) => onDetail(field.key, event.target.value)}
       />
     </label>
   );

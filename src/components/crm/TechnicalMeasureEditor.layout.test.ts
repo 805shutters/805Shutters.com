@@ -43,10 +43,22 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain('setMeasurePicker({ ...measurePicker, step: "height_whole" })');
     expect(component).toContain('setFuturePicker("height_whole")');
-    expect(component).toContain("onHeightFraction={(fraction) => { updateLine");
+    expect(component).toContain("onHeightFraction={(fraction) => { selectLineInches");
     expect(component).toContain("setMeasurePicker(null); }}");
     expect(component).toContain("onHeightFraction={(fraction) => { setFutureMeasure");
     expect(component).toContain("setFuturePicker(null); }}");
+  });
+
+  it("commits notes and same-value number selections so draft save can proceed", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+
+    expect(component).toContain("shouldQueueTechnicalMeasureSave");
+    expect(component).toContain("selectTechnicalMeasureInches");
+    expect(component).toContain("commitTechnicalMeasureDetail");
+    expect(component).toContain("userSelectedRef");
+    expect(component).toContain("onBlur={(event) => updateLine(line.id, { notes: event.target.value })}");
+    expect(component).toContain("closeMeasurePicker");
+    expect(component).toContain("beginMeasurePickerAdvance");
   });
 
   it("shows completion feedback and returns successful measures to the mobile dashboard", () => {

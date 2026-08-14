@@ -57,6 +57,11 @@ import {
   technicalMeasureDraftPayload,
   type OfflineMeasureQueueEntry,
 } from "@/lib/crm/technical-measure-offline";
+import {
+  commitTechnicalMeasureDetail,
+  selectTechnicalMeasureInches,
+  shouldQueueTechnicalMeasureSave,
+} from "@/lib/crm/technical-measure-edits";
 
 type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
 type FutureMeasureDraft = { room: string; width_in: number | null; height_in: number | null; notes: string };
@@ -412,6 +417,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const draftSyncPromiseRef = useRef<Promise<{ form: TechnicalMeasureForm; queued: boolean }> | null>(null);
   const linesRef = useRef<EditableLine[]>([]);
   const hydratedFormIdRef = useRef("");
+  const userSelectedRef = useRef(false);
+  const measurePickerAdvanceRef = useRef(false);
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return; }
@@ -487,7 +494,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     const activeOwner = owner();
     const payload = technicalMeasureDraftPayload(lines);
     const serialized = JSON.stringify(payload);
-    if (serialized === lastSyncedPayloadRef.current) return;
+    if (!shouldQueueTechnicalMeasureSave(serialized, lastSyncedPayloadRef.current, userSelectedRef.current)) return;
+    userSelectedRef.current = false;
     void Promise.all([
       cacheTechnicalMeasureDraft(activeOwner, form, lines),
       queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload),
@@ -507,7 +515,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       if (!form || form.status === "submitted" || !linesRef.current.length) return;
       const activeOwner = owner();
       const payload = technicalMeasureDraftPayload(linesRef.current);
-      if (JSON.stringify(payload) === lastSyncedPayloadRef.current) return;
+      if (!shouldQueueTechnicalMeasureSave(
+        JSON.stringify(payload),
+        lastSyncedPayloadRef.current,
+        userSelectedRef.current,
+      )) return;
+      userSelectedRef.current = false;
       void Promise.all([
         cacheTechnicalMeasureDraft(activeOwner, form, linesRef.current),
         queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload),
@@ -562,7 +575,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     };
   }, [desktopWorkspace, session?.access_token, formId, workspaceHome]);
 
+  function markTechnicalMeasureSelection() {
+    userSelectedRef.current = true;
+  }
+
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
+    markTechnicalMeasureSelection();
     setMessage(null);
     setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
@@ -573,16 +591,51 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   }
 
   function updateDetail(lineId: string, key: string, value: string | boolean) {
+    markTechnicalMeasureSelection();
     setMessage(null);
     setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
-      const next = current.map((line) => line.id === lineId ? {
-        ...line,
-        current_values: { ...line.current_values, details: { ...line.current_values.details, [key]: value } },
-      } : line);
+      const next = current.map((line) => {
+        if (line.id !== lineId) return line;
+        const committed = commitTechnicalMeasureDetail(line.current_values.details, key, value);
+        return {
+          ...line,
+          current_values: {
+            ...line.current_values,
+            details: committed.details as TechnicalMeasureLineValues["details"],
+          },
+        };
+      });
       linesRef.current = next;
       return next;
     });
+  }
+
+  function selectLineInches(
+    lineId: string,
+    field: "width_in" | "height_in",
+    whole: number,
+    fraction: string,
+    currentValue: number | null,
+  ) {
+    const selection = selectTechnicalMeasureInches(currentValue, whole, fraction, FRACTIONS);
+    updateLine(lineId, { [field]: selection.inches });
+    return selection;
+  }
+
+  function beginMeasurePickerAdvance() {
+    measurePickerAdvanceRef.current = true;
+    window.setTimeout(() => {
+      measurePickerAdvanceRef.current = false;
+    }, 0);
+  }
+
+  function closeMeasurePicker() {
+    if (measurePickerAdvanceRef.current) {
+      measurePickerAdvanceRef.current = false;
+      return;
+    }
+    setMeasurePicker(null);
   }
 
   async function persistDraftOnce(sourceLines: EditableLine[]) {
@@ -1130,10 +1183,10 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   return isBoolean ? (
                     <div className={`technical-measure-quick-field ${changed(baseline.details[key], value) ? "changed" : ""}`} key={key}><span>{fieldName(key)}</span><div className="technical-measure-quick-options"><button type="button" disabled={readOnly} aria-pressed={value === true} onClick={() => updateDetail(line.id, key, true)}>Yes</button><button type="button" disabled={readOnly} aria-pressed={value !== true} onClick={() => updateDetail(line.id, key, false)}>No</button></div></div>
                   ) : (
-                    <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} /></label>
+                    <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} onBlur={(event) => updateDetail(line.id, key, event.target.value)} /></label>
                   );
                 }) : null}
-                <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
+                <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} onBlur={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>
               <div className="technical-measure-line-navigation">
@@ -1219,15 +1272,15 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         <MeasurementGridModal
           open
           showDirectEntry={false}
-          onClose={() => setMeasurePicker(null)}
+          onClose={closeMeasurePicker}
           step={measurePicker.step}
           pendingWidth={pendingWidth}
           pendingHeight={pendingHeight}
-          onWidthWhole={(whole) => { updateLine(activePickerLine.id, { width_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "width_fraction" }); }}
-          onWidthFraction={(fraction) => { updateLine(activePickerLine.id, { width_in: decimal(wholeFraction(activePickerLine.current_values.width_in).whole, fraction) }); setMeasurePicker({ ...measurePicker, step: "height_whole" }); }}
-          onHeightWhole={(whole) => { updateLine(activePickerLine.id, { height_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
-          onHeightFraction={(fraction) => { updateLine(activePickerLine.id, { height_in: decimal(wholeFraction(activePickerLine.current_values.height_in).whole, fraction) }); setMeasurePicker(null); }}
-          onDirectMeasurements={(width, height) => { updateLine(activePickerLine.id, { width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) }); setMeasurePicker(null); }}
+          onWidthWhole={(whole) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "width_in", whole, "0", activePickerLine.current_values.width_in); setMeasurePicker({ ...measurePicker, step: "width_fraction" }); }}
+          onWidthFraction={(fraction) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "width_in", wholeFraction(activePickerLine.current_values.width_in).whole, fraction, activePickerLine.current_values.width_in); setMeasurePicker({ ...measurePicker, step: "height_whole" }); }}
+          onHeightWhole={(whole) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "height_in", whole, "0", activePickerLine.current_values.height_in); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
+          onHeightFraction={(fraction) => { selectLineInches(activePickerLine.id, "height_in", wholeFraction(activePickerLine.current_values.height_in).whole, fraction, activePickerLine.current_values.height_in); setMeasurePicker(null); }}
+          onDirectMeasurements={(width, height) => { selectLineInches(activePickerLine.id, "width_in", width.whole, width.fraction, activePickerLine.current_values.width_in); selectLineInches(activePickerLine.id, "height_in", height.whole, height.fraction, activePickerLine.current_values.height_in); setMeasurePicker(null); }}
         />
       ) : null}
       {futurePicker ? (
@@ -1257,8 +1310,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           step={locationPicker.step}
           pendingWidth={pickerValue ? wholeFraction(pickerValue) : null}
           pendingHeight={null}
-          onWidthWhole={(whole) => { updateDetail(pickerLine.id, locationPicker.valueKey, String(decimal(whole, "0"))); setLocationPicker({ ...locationPicker, step: "width_fraction" }); }}
-          onWidthFraction={(fraction) => { updateDetail(pickerLine.id, locationPicker.valueKey, String(decimal(wholeFraction(pickerValue).whole, fraction))); setLocationPicker(null); }}
+          onWidthWhole={(whole) => { const selection = selectTechnicalMeasureInches(pickerValue || null, whole, "0", FRACTIONS); updateDetail(pickerLine.id, locationPicker.valueKey, String(selection.inches)); setLocationPicker({ ...locationPicker, step: "width_fraction" }); }}
+          onWidthFraction={(fraction) => { const selection = selectTechnicalMeasureInches(pickerValue || null, wholeFraction(pickerValue).whole, fraction, FRACTIONS); updateDetail(pickerLine.id, locationPicker.valueKey, String(selection.inches)); setLocationPicker(null); }}
           onHeightWhole={() => undefined}
           onHeightFraction={() => undefined}
           onDirectMeasurements={() => undefined}

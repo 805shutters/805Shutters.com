@@ -89,9 +89,15 @@ export function MeasurementGridModal({
     onDirectMeasurements?.(width, height);
   };
 
+  const selectedWhole = (isWidth ? pendingWidth : pendingHeight)?.whole;
+  const selectedFraction = (isWidth ? pendingWidth : pendingHeight)?.fraction;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-y-auto p-4 sm:p-6">
+      <DialogContent
+        className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-y-auto p-4 sm:p-6"
+        onFocusOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">{label}</DialogTitle>
@@ -163,11 +169,13 @@ export function MeasurementGridModal({
             <div className="grid grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-2">
               {wholeNumbers.map((n) => (
                 <button
+                  type="button"
                   key={n}
+                  aria-pressed={selectedWhole === n}
                   onClick={() => handleWholeClick(n)}
                   className={cn(
                     "h-11 rounded border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
-                    "bg-card border-border"
+                    selectedWhole === n ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"
                   )}
                 >
                   {n}
@@ -181,11 +189,13 @@ export function MeasurementGridModal({
             <div className="grid grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-2">
               {FRACTIONS.map((f) => (
                 <button
+                  type="button"
                   key={f}
+                  aria-pressed={selectedFraction === f}
                   onClick={() => handleFractionClick(f)}
                   className={cn(
                     "h-12 rounded-lg border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
-                    "bg-card border-border"
+                    selectedFraction === f ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"
                   )}
                 >
                   {f === "0" ? "0 (even)" : f}

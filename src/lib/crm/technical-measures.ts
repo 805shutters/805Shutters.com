@@ -26,6 +26,7 @@ import {
 } from "@/lib/crm/vendor-orders/manufacturer-technical-measure-schemas";
 import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
 import { normalizeInstallationDurationMinutes } from "@/lib/crm/installation-handoff";
+import { preserveTechnicalMeasureNotes } from "@/lib/crm/technical-measure-edits";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -284,7 +285,7 @@ export function normalizeTechnicalMeasureLineValues(value: unknown, fallback?: T
     width_in: dimension(source.width_in ?? fallback?.width_in),
     height_in: dimension(source.height_in ?? fallback?.height_in),
     quantity: Math.max(1, Math.floor(numeric(source.quantity, fallback?.quantity || 1))),
-    notes: text(source.notes ?? fallback?.notes),
+    notes: preserveTechnicalMeasureNotes(source.notes, fallback?.notes),
     product_id: text(source.product_id) || fallback?.product_id || "",
     program_id: nullableText(source.program_id ?? fallback?.program_id),
     fabric: nullableText(source.fabric ?? fallback?.fabric),
