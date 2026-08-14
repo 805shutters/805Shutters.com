@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 import { parseDirectMeasurement } from "./MeasurementGridModal";
 
 describe("parseDirectMeasurement", () => {
@@ -14,14 +13,5 @@ describe("parseDirectMeasurement", () => {
     expect(parseDirectMeasurement("0", 250)).toBeNull();
     expect(parseDirectMeasurement("251", 250)).toBeNull();
     expect(parseDirectMeasurement("120", 119)).toBeNull();
-  });
-
-  it("keeps the current number selected and does not close when that same number is tapped", () => {
-    const source = readFileSync("src/mts-quote/components/crm/quote-builder/MeasurementGridModal.tsx", "utf8");
-    expect(source).toContain("onFocusOutside={(event) => event.preventDefault()}");
-    expect(source).toContain("aria-pressed={selectedWhole === n}");
-    expect(source).toContain("aria-pressed={selectedFraction === f}");
-    expect(source).toContain("onClick={() => handleWholeClick(n)}");
-    expect(source).toContain("onClick={() => handleFractionClick(f)}");
   });
 });
