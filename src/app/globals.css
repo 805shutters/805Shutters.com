@@ -5192,6 +5192,132 @@ body.qb-fullscreen .crm-app-shell {
   border-color: #b91c1c;
 }
 
+.crm-close-rate-drilldown {
+  width: min(1500px, 100%);
+  margin: 14px auto 0;
+  padding: 18px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-close-rate-drilldown-head,
+.crm-close-rate-group-head,
+.crm-close-rate-customer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.crm-close-rate-drilldown-head h2,
+.crm-close-rate-group-head h3,
+.crm-close-rate-drilldown-head p {
+  margin: 0;
+}
+
+.crm-close-rate-drilldown-head .eyebrow {
+  margin-bottom: 5px;
+}
+
+.crm-close-rate-drilldown-head > div > p:last-child {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.crm-close-rate-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.crm-close-rate-group {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid;
+}
+
+.crm-close-rate-group--sold {
+  background: #ecfdf3;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.crm-close-rate-group--unsold {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.crm-close-rate-group-head h3 {
+  font-size: 20px;
+}
+
+.crm-close-rate-group-head > span,
+.crm-close-rate-customer-head > span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-close-rate-customer-list,
+.crm-close-rate-job-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crm-close-rate-customer-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.crm-close-rate-customer {
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid currentColor;
+}
+
+.crm-close-rate-customer-head strong {
+  color: var(--ink);
+}
+
+.crm-close-rate-job-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.crm-close-rate-job-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 7px;
+  border-top: 1px solid currentColor;
+}
+
+.crm-close-rate-job-list span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.crm-close-rate-job-list small {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.crm-close-rate-empty {
+  margin: 14px 0 0;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed currentColor;
+  font-weight: 700;
+}
+
 .crm-measure-metric {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px 6px;
@@ -5839,6 +5965,31 @@ body.qb-fullscreen .crm-app-shell {
     flex: 0 1 auto;
     min-height: 44px;
     padding-inline: 12px;
+  }
+}
+
+@media (max-width: 760px) {
+  .crm-close-rate-drilldown-head {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .crm-close-rate-drilldown-head .crm-ghost-button {
+    width: auto;
+    justify-self: start;
+  }
+
+  .crm-close-rate-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-close-rate-job-list li,
+  .crm-close-rate-customer-head {
+    display: grid;
+  }
+
+  .crm-close-rate-job-list small {
+    flex: auto;
   }
 }
 

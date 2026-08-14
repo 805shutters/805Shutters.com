@@ -6,9 +6,11 @@ export type CommandPerformanceMetrics = {
   closeRate30Days: number | null;
   closeRate30DaysWon: number;
   closeRate30DaysTotal: number;
+  closeRate30DaysCustomers: CloseRateCohortCustomer[];
   closeRate60Days: number | null;
   closeRate60DaysWon: number;
   closeRate60DaysTotal: number;
+  closeRate60DaysCustomers: CloseRateCohortCustomer[];
   currentCrmSalesRate: number | null;
   currentCrmSalesWon: number;
   currentCrmSalesTotal: number;
@@ -16,6 +18,12 @@ export type CommandPerformanceMetrics = {
   revenue60Days: number;
   yearToDateRevenue: number;
   currentYearForecast: number;
+};
+
+export type CloseRateCohortCustomer = {
+  id: string;
+  outcome: "sold" | "unsold";
+  jobs: CrmJob[];
 };
 
 function startOfRollingWindow(now: Date, days: number) {
@@ -116,7 +124,7 @@ function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
 
 export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
   const identityKeys = customerIdentityKeys(jobs, files);
-  const outcomes = new Map<string, { inCohort: boolean; won: boolean }>();
+  const outcomes = new Map<string, { inCohort: boolean; won: boolean; jobs: CrmJob[] }>();
   for (const job of jobs) {
     if (job.meta?.deleted_at) continue;
 
@@ -125,7 +133,7 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
     // independently verifiable customer and therefore never enter the cohort.
     const key = identityKeys.get(job.id);
     if (!key) continue;
-    const outcome = outcomes.get(key) || { inCohort: false, won: false };
+    const outcome = outcomes.get(key) || { inCohort: false, won: false, jobs: [] };
 
     // Cohort membership is based on the customer's opportunity date.
     // Appointment time is the durable lead date; imported rows without one
@@ -134,6 +142,7 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
     const opportunityAt = appointmentAt || validDate(job.created_at);
     if (opportunityAt && (!since || opportunityAt >= since) && (!through || opportunityAt <= through)) {
       outcome.inCohort = true;
+      outcome.jobs.push(job);
     }
 
     // A customer is counted once. Any non-future sale makes the customer a win;
@@ -147,13 +156,31 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
     outcomes.set(key, outcome);
   }
 
-  const cohort = [...outcomes.values()].filter((outcome) => outcome.inCohort);
-  const won = cohort.filter((outcome) => outcome.won).length;
+  const cohort = [...outcomes.entries()]
+    .filter(([, outcome]) => outcome.inCohort)
+    .map(([id, outcome]) => ({
+      id,
+      outcome: outcome.won ? ("sold" as const) : ("unsold" as const),
+      jobs: [...outcome.jobs].sort((a, b) => {
+        const aTime = (validDate(a.appointment_start) || validDate(a.created_at))?.getTime() || 0;
+        const bTime = (validDate(b.appointment_start) || validDate(b.created_at))?.getTime() || 0;
+        return bTime - aTime;
+      })
+    }))
+    .sort((a, b) => {
+      const aJob = a.jobs[0];
+      const bJob = b.jobs[0];
+      const aTime = aJob ? (validDate(aJob.appointment_start) || validDate(aJob.created_at))?.getTime() || 0 : 0;
+      const bTime = bJob ? (validDate(bJob.appointment_start) || validDate(bJob.created_at))?.getTime() || 0 : 0;
+      return bTime - aTime;
+    });
+  const won = cohort.filter((customer) => customer.outcome === "sold").length;
   const total = cohort.length;
   return {
     won,
     total,
-    rate: total ? Math.round((won / total) * 100) : null
+    rate: total ? Math.round((won / total) * 100) : null,
+    customers: cohort
   };
 }
 
@@ -230,9 +257,11 @@ export function buildCommandPerformanceMetrics(
     closeRate30Days: sales30Days.rate,
     closeRate30DaysWon: sales30Days.won,
     closeRate30DaysTotal: sales30Days.total,
+    closeRate30DaysCustomers: sales30Days.customers,
     closeRate60Days: sales60Days.rate,
     closeRate60DaysWon: sales60Days.won,
     closeRate60DaysTotal: sales60Days.total,
+    closeRate60DaysCustomers: sales60Days.customers,
     currentCrmSalesRate: currentCrmSales.rate,
     currentCrmSalesWon: currentCrmSales.won,
     currentCrmSalesTotal: currentCrmSales.total,

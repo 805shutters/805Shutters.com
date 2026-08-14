@@ -119,6 +119,34 @@ describe("buildCommandPerformanceMetrics", () => {
 
     expect(metrics.closeRate30Days).toBe(50);
     expect(metrics.currentCrmSalesRate).toBe(50);
+    expect(metrics.closeRate30DaysCustomers).toHaveLength(2);
+    expect(metrics.closeRate30DaysCustomers.find((customer) => customer.jobs.some((item) => item.id === "recent"))).toMatchObject({
+      outcome: "sold",
+      jobs: [{ id: "recent" }]
+    });
+  });
+
+  it("returns the exact in-window jobs behind each deduplicated customer outcome", () => {
+    const customerVersions = [
+      { ...appointmentJob("same-customer-quoted", "2026-08-01T10:00:00-07:00", "quoted"), customer_name: "Same Customer", email: "same@customer.com" },
+      { ...appointmentJob("same-customer-sold", "2026-08-03T10:00:00-07:00", "sold"), customer_name: "Same Customer", email: "same@customer.com" }
+    ];
+    const metrics = buildCommandPerformanceMetrics([
+      ...customerVersions,
+      appointmentJob("unsold-customer", "2026-08-02T10:00:00-07:00", "follow_up"),
+      appointmentJob("outside-window", "2026-01-02T10:00:00-08:00", "lost"),
+      appointmentJob("future-customer", "2026-08-08T10:00:00-07:00", "sold")
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBe(50);
+    expect(metrics.closeRate30DaysTotal).toBe(2);
+    expect(metrics.closeRate30DaysCustomers.map((customer) => ({
+      outcome: customer.outcome,
+      jobIds: customer.jobs.map((item) => item.id)
+    }))).toEqual([
+      { outcome: "sold", jobIds: ["same-customer-sold", "same-customer-quoted"] },
+      { outcome: "unsold", jobIds: ["unsold-customer"] }
+    ]);
   });
 
   it("uses appointment dates instead of migration-time created dates", () => {

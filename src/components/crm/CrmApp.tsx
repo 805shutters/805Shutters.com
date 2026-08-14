@@ -43,6 +43,7 @@ import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
 import { DashboardRecordCard, dashboardRecordContactFromJob } from "@/components/crm/DashboardRecordCard";
+import { CloseRateDrilldown } from "@/components/crm/CloseRateDrilldown";
 import { UnifiedActivityFeed } from "@/components/crm/UnifiedActivityFeed";
 import {
   awaitingProductRows,
@@ -882,6 +883,7 @@ export function CrmApp({
   const [builderVersion, setBuilderVersion] = useState<"current" | "original-v1">("current");
   const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
+  const [closeRatePeriod, setCloseRatePeriod] = useState<30 | 60 | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
   const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
   const [jobSearch, setJobSearch] = useState("");
@@ -1045,7 +1047,15 @@ export function CrmApp({
       orderCogsEmails,
       vendorOrderTasks
     );
-    if (payload) setDrill(payload);
+    if (payload) {
+      setCloseRatePeriod(null);
+      setDrill(payload);
+    }
+  }
+
+  function toggleCloseRateDrilldown(periodDays: 30 | 60) {
+    setDrill(null);
+    setCloseRatePeriod((current) => current === periodDays ? null : periodDays);
   }
 
   async function updateVendorOrderTask(
@@ -2937,11 +2947,17 @@ export function CrmApp({
             label="30-Day Close Rate"
             value={formatCloseRate(commandPerformance.closeRate30Days)}
             variant="performance"
+            onClick={() => toggleCloseRateDrilldown(30)}
+            ariaExpanded={closeRatePeriod === 30}
+            ariaControls="crm-close-rate-drilldown"
           />
           <Metric
             label="60-Day Close Rate"
             value={formatCloseRate(commandPerformance.closeRate60Days)}
             variant="performance"
+            onClick={() => toggleCloseRateDrilldown(60)}
+            ariaExpanded={closeRatePeriod === 60}
+            ariaControls="crm-close-rate-drilldown"
           />
           <Metric
             label="Current CRM Close Rate"
@@ -2971,6 +2987,16 @@ export function CrmApp({
           />
         </section>
       </header>
+
+      {closeRatePeriod ? (
+        <CloseRateDrilldown
+          periodDays={closeRatePeriod}
+          customers={closeRatePeriod === 30
+            ? commandPerformance.closeRate30DaysCustomers
+            : commandPerformance.closeRate60DaysCustomers}
+          onClose={() => setCloseRatePeriod(null)}
+        />
+      ) : null}
 
       {message ? <p className="crm-alert">{message}</p> : null}
 
@@ -3614,7 +3640,9 @@ function Metric({
   detail,
   tone,
   variant,
-  onClick
+  onClick,
+  ariaExpanded,
+  ariaControls
 }: {
   label: string;
   value: number | string;
@@ -3622,12 +3650,20 @@ function Metric({
   tone?: "warning" | "danger";
   variant?: "performance";
   onClick?: () => void;
+  ariaExpanded?: boolean;
+  ariaControls?: string;
 }) {
   const className = ["crm-metric", variant ? `crm-metric--${variant}` : "", tone ? `crm-metric--${tone}` : "", onClick ? "crm-metric-button" : ""].filter(Boolean).join(" ");
 
   if (onClick) {
     return (
-      <button type="button" className={className} onClick={onClick}>
+      <button
+        type="button"
+        className={className}
+        onClick={onClick}
+        aria-expanded={ariaExpanded}
+        aria-controls={ariaControls}
+      >
         <span>{label}</span>
         <strong>{value}</strong>
         {detail ? <small>{detail}</small> : null}
