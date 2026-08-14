@@ -571,9 +571,9 @@ export type CrmSummary = {
   depositNeeded: number;
   /** Total deposit still owed across deposit-needed jobs ($). */
   depositNeededAmount: number;
-  /** Completed (installed/invoiced/closed) jobs with an unpaid balance (count). */
+  /** Installations with a completed service report and an unpaid balance (count). */
   balanceDueCompleted: number;
-  /** Total unpaid balance across completed jobs ($). */
+  /** Total unpaid balance across service-report-confirmed installations ($). */
   balanceDueCompletedAmount: number;
   missingCogs: number;
   awaitingProduct: number;

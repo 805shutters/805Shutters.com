@@ -14,6 +14,10 @@ function row(id: string, soldDate: string | null, total: number, jobStatus: CrmJ
   return { id, source: "crm_quote", quoteId: id, jobId: id, customerName: id, customerPhone: null, quoteNumber: null, soldDate, total, jobStatus } as CrmBookkeepingRow;
 }
 
+function ledgerRow(id: string, soldDate: string | null, total: number, source: "legacy_sheet" | "manual", customerName = id): CrmBookkeepingRow {
+  return { ...row(id, soldDate, total), source, quoteId: null, customerName };
+}
+
 describe("buildCommandPerformanceMetrics", () => {
   const now = new Date(2026, 7, 7, 12);
 
@@ -170,11 +174,13 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.closeRate30DaysTotal).toBe(1);
   });
 
-  it("uses sold-date ledger revenue and annualizes current-year actuals", () => {
+  it("uses all valid booked sales for YTD revenue and annualizes current-year actuals", () => {
     const metrics = buildCommandPerformanceMetrics([], [
       row("today", "2026-08-07", 10_000),
       row("day-29", "2026-07-09", 5_000),
       row("day-45", "2026-06-23", 4_000),
+      ledgerRow("historical-import", "2026-02-01", 3_000, "legacy_sheet", "Historical Customer"),
+      ledgerRow("manual-sale", "2026-03-01", 2_000, "manual", "Manual Customer"),
       row("old-year", "2025-12-31", 99_000),
       row("invalid", null, 50_000),
       row("credit", "2026-08-01", -500)
@@ -182,17 +188,21 @@ describe("buildCommandPerformanceMetrics", () => {
 
     expect(metrics.revenue30Days).toBe(15_000);
     expect(metrics.revenue60Days).toBe(19_000);
-    expect(metrics.yearToDateRevenue).toBe(19_000);
-    expect(metrics.currentYearForecast).toBe(Math.round((19_000 / 219) * 365));
+    expect(metrics.yearToDateRevenue).toBe(24_000);
+    expect(metrics.currentYearForecast).toBe(Math.round((24_000 / 219) * 365));
   });
 
-  it("counts only signed CRM contracts in revenue metrics", () => {
+  it("keeps recent revenue strict while including valid ledger sales only in the forecast", () => {
     const metrics = buildCommandPerformanceMetrics([], [
       row("signed", "2026-08-07", 10_000, "sold"),
       row("sent-quote", "2026-08-07", 1_222, "quoted"),
-      { ...row("manual", "2026-08-07", 933, "sold"), source: "manual" }
+      ledgerRow("manual", "2026-08-07", 933, "manual", "Gladys Limon"),
+      ledgerRow("test-import", "2026-08-07", 325, "legacy_sheet", "Locascio, Jill. CS (test)"),
+      ledgerRow("blank-import", "2026-08-07", 500, "legacy_sheet", "")
     ], now);
 
     expect(metrics.revenue30Days).toBe(10_000);
+    expect(metrics.revenue60Days).toBe(10_000);
+    expect(metrics.yearToDateRevenue).toBe(10_933);
   });
 });

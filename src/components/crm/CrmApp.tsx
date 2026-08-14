@@ -5155,10 +5155,10 @@ function buildSummaryDrill(
     case "balanceDueCompleted":
       return {
         title: "Balance Due",
-        subtitle: "Completed jobs with an unpaid balance",
+        subtitle: "Completed installations with an unpaid balance",
         metric,
         placement: "summary",
-        entries: rowsToEntries(balanceDueCompletedRows(rows), (row) => row.balance, { jobs, files })
+        entries: rowsToEntries(balanceDueCompletedRows(rows, jobs, quotes), (row) => row.balance, { jobs, files })
       };
     case "missingCogs":
       return {

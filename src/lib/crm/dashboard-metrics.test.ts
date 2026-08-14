@@ -378,26 +378,79 @@ describe("trackingRowNeedsDeposit", () => {
 });
 
 describe("balanceDueCompletedRows", () => {
-  it("flags completed jobs (installed/invoiced) with an unpaid balance", () => {
+  it("requires a completed service report instead of status or an installer invoice", () => {
     const rows = [
-      row({ id: "a", jobId: "ja", liveStatus: "installed", balance: 500, isPaidInFull: false }),
-      row({ id: "b", jobId: "jb", status: "sold", balance: 500, isPaidInFull: false }),
-      row({ id: "c", jobId: "jc", liveStatus: "closed", balance: 0, isPaidInFull: false }),
-      row({ id: "d", jobId: "jd", liveStatus: "closed", balance: 500, isPaidInFull: true }),
+      row({ id: "status-only", jobId: "status-job", liveStatus: "installed", balance: 500 }),
+      row({
+        id: "invoice-only",
+        jobId: "invoice-job",
+        liveStatus: "invoiced",
+        balance: 500,
+        installationInvoiceDocumentId: "gmail-invoice-1",
+        installationInvoiceAmount: 300,
+        installationMatchStatus: "matched",
+        isInstallationComplete: true,
+      }),
+      row({ id: "completed-report", jobId: "completed-job", liveStatus: "installed", balance: 500 }),
     ];
-    expect(balanceDueCompletedRows(rows).map((r) => r.id)).toEqual(["a"]);
+    const jobs = [
+      job({ id: "status-job", status: "installed" }),
+      job({
+        id: "invoice-job",
+        status: "invoiced",
+        meta: {
+          installationInvoiceSource: "gmail",
+          installationInvoiceMessageId: "gmail-invoice-1",
+          installationInvoiceWorkflowAppliedAt: "2026-08-10T20:50:23.256Z",
+        },
+      }),
+      job({
+        id: "completed-job",
+        status: "installed",
+        meta: {
+          completedServiceReportSource: "gmail",
+          completedServiceReportMessageId: "gmail-service-1",
+          completedServiceReportAppliedAt: "2026-08-11T20:50:23.256Z",
+        },
+      }),
+    ];
+
+    expect(balanceDueCompletedRows(rows, jobs).map((r) => r.id)).toEqual(["completed-report"]);
   });
 
-  it("summary sums the unpaid balance for completed jobs", () => {
+  it("accepts completion evidence from the linked quote and excludes paid jobs", () => {
+    const jobs = [job({ id: "job-a", status: "installed" }), job({ id: "job-b", status: "closed" })];
+    const quotes = [
+      quote({
+        id: "quote-a",
+        job_id: "job-a",
+        status: "installed",
+        meta: {
+          completedServiceReportSource: "gmail",
+          completedServiceReportMessageId: "gmail-service-a",
+          completedServiceReportAppliedAt: "2026-08-11T20:50:23.256Z",
+        },
+      }),
+      quote({
+        id: "quote-b",
+        job_id: "job-b",
+        status: "paid",
+        meta: {
+          completedServiceReportSource: "gmail",
+          completedServiceReportMessageId: "gmail-service-b",
+          completedServiceReportAppliedAt: "2026-08-11T20:50:23.256Z",
+        },
+      }),
+    ];
     const summary = buildDashboardSummaryMetrics({
-      jobs: [],
-      quotes: [],
+      jobs,
+      quotes,
       rows: [
-        row({ id: "a", jobId: "ja", liveStatus: "installed", balance: 400, isPaidInFull: false }),
-        row({ id: "b", jobId: "jb", liveStatus: "closed", balance: 100, isPaidInFull: false }),
+        row({ id: "a", jobId: "job-a", quoteId: "quote-a", liveStatus: "installed", balance: 400 }),
+        row({ id: "b", jobId: "job-b", quoteId: "quote-b", liveStatus: "closed", balance: 0, isPaidInFull: true }),
       ],
     });
-    expect(summary.balanceDueCompleted).toBe(2);
-    expect(summary.balanceDueCompletedAmount).toBe(500);
+    expect(summary.balanceDueCompleted).toBe(1);
+    expect(summary.balanceDueCompletedAmount).toBe(400);
   });
 });

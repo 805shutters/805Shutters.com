@@ -165,7 +165,7 @@ export function formatCloseRate(rate: number | null) {
   return rate === null ? "Unavailable" : `${rate}%`;
 }
 
-function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
+function signedContractRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
   return rows.reduce((total, row) => {
     const soldAt = validDate(row.soldDate);
     const amount = Number(row.total);
@@ -175,12 +175,34 @@ function soldRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
     if (
       row.source !== "crm_quote" ||
       !wonStatuses.has(row.jobStatus || "new") ||
+      !isRealCustomerName(row.customerName) ||
       !soldAt ||
       soldAt < since ||
       soldAt > through ||
       !Number.isFinite(amount) ||
       amount <= 0
     ) return total;
+    return total + amount;
+  }, 0);
+}
+
+function bookedRevenue(rows: CrmBookkeepingRow[], since: Date, through: Date) {
+  return rows.reduce((total, row) => {
+    const soldAt = validDate(row.soldDate);
+    const amount = Number(row.total);
+    if (
+      !isRealCustomerName(row.customerName) ||
+      !soldAt ||
+      soldAt < since ||
+      soldAt > through ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) return total;
+
+    // Current CRM quotes are booked only after a sale. Historical imports and
+    // explicit manual ledger rows are already standalone booked-sale records;
+    // buildBookkeepingRows removes their quote-metadata duplicates upstream.
+    if (row.source === "crm_quote" && !wonStatuses.has(row.jobStatus || "new")) return total;
     return total + amount;
   }, 0);
 }
@@ -199,7 +221,7 @@ export function buildCommandPerformanceMetrics(
   const nextYearStart = new Date(now.getFullYear() + 1, 0, 1);
   const daysInYear = Math.round((nextYearStart.getTime() - yearStart.getTime()) / 86_400_000);
   const elapsedDays = Math.max(1, Math.floor((through.getTime() - yearStart.getTime()) / 86_400_000) + 1);
-  const yearToDateRevenue = soldRevenue(rows, yearStart, through);
+  const yearToDateRevenue = bookedRevenue(rows, yearStart, through);
   const sales30Days = customerSalesSummary(jobs, customerFiles, start30, through);
   const sales60Days = customerSalesSummary(jobs, customerFiles, start60, through);
   const currentCrmSales = customerSalesSummary(jobs, customerFiles, undefined, through);
@@ -214,8 +236,8 @@ export function buildCommandPerformanceMetrics(
     currentCrmSalesRate: currentCrmSales.rate,
     currentCrmSalesWon: currentCrmSales.won,
     currentCrmSalesTotal: currentCrmSales.total,
-    revenue30Days: soldRevenue(rows, start30, through),
-    revenue60Days: soldRevenue(rows, start60, through),
+    revenue30Days: signedContractRevenue(rows, start30, through),
+    revenue60Days: signedContractRevenue(rows, start60, through),
     yearToDateRevenue,
     currentYearForecast: Math.round((yearToDateRevenue / elapsedDays) * daysInYear)
   };

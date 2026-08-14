@@ -100,9 +100,6 @@ export function measureUnscheduledJobs(jobs: CrmJob[]) {
   return measureNeededJobs(jobs).filter((job) => getMeasureNeededMeta(job.meta).schedule_status !== "scheduled");
 }
 
-// Completed (work done) job stages — installed, invoiced, or closed.
-const COMPLETED_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingStatus>(["installed", "invoiced", "closed"]);
-
 /** Sold jobs (sold/approved) where the required deposit hasn't been collected. */
 export function depositNeededRows(rows: CrmBookkeepingRow[]) {
   return rows.filter(trackingRowNeedsDeposit);
@@ -122,10 +119,30 @@ export function trackingRowNeedsDeposit(row: CrmBookkeepingRow) {
   return paid <= 0 || (due > 0 && paid < due);
 }
 
-/** Completed (installed/invoiced/closed) jobs that still owe a balance. */
-export function balanceDueCompletedRows(rows: CrmBookkeepingRow[]) {
+function hasCompletedServiceReport(meta: Record<string, unknown> | null | undefined) {
+  return Boolean(
+    meta?.completedServiceReportSource === "gmail" &&
+      meta.completedServiceReportMessageId &&
+      meta.completedServiceReportAppliedAt,
+  );
+}
+
+/** Physically completed installations with an auditable service report and an unpaid balance. */
+export function balanceDueCompletedRows(rows: CrmBookkeepingRow[], jobs: CrmJob[], quotes: CrmQuote[] = []) {
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const quotesById = new Map(quotes.map((quote) => [quote.id, quote]));
+
   return rows.filter(
-    (row) => !isPaidInFullBookkeepingRow(row) && Number(row.balance) > 0 && COMPLETED_BOOKKEEPING_STATUSES.has(effectiveBookkeepingStatus(row)),
+    (row) => {
+      const job = row.jobId ? jobsById.get(row.jobId) : null;
+      const quote = row.quoteId ? quotesById.get(row.quoteId) : null;
+
+      return (
+        !isPaidInFullBookkeepingRow(row) &&
+        Number(row.balance) > 0 &&
+        (hasCompletedServiceReport(job?.meta) || hasCompletedServiceReport(quote?.meta))
+      );
+    },
   );
 }
 
@@ -170,7 +187,7 @@ export function buildDashboardSummaryMetrics({
   const awaitingProduct = awaitingProductRows(rows);
   const openBalances = openBalanceRows(rows);
   const depositNeeded = depositNeededRows(rows);
-  const balanceDueCompleted = balanceDueCompletedRows(rows);
+  const balanceDueCompleted = balanceDueCompletedRows(rows, jobs, quotes);
   const measureNeeded = measureUnscheduledJobs(jobs);
   const measureScheduled = measureScheduledJobs(jobs);
 
