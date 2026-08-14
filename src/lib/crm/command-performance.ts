@@ -38,35 +38,80 @@ function normalizedText(value: string | null | undefined) {
   return (value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function normalizedPhone(value: string | null | undefined) {
+function officialCustomerEmail(value: string | null | undefined) {
+  const email = (value || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "";
+  if (/@(?:example|test|invalid)\.(?:com|net|org)$/i.test(email)) return "";
+  return email;
+}
+
+function officialCustomerPhone(value: string | null | undefined) {
   const digits = (value || "").replace(/\D/g, "");
-  return digits.length >= 10 ? digits.slice(-10) : "";
+  const phone = digits.length >= 10 ? digits.slice(-10) : "";
+  if (!/^[2-9]\d{2}[2-9]\d{6}$/.test(phone)) return "";
+  if (phone === "1234567890" || phone.slice(3, 6) === "555") return "";
+  return phone;
+}
+
+function isRealCustomerName(value: string | null | undefined) {
+  const name = normalizedText(value);
+  if (!name || !/[a-z]/.test(name)) return false;
+  if (/\b(test|testing|dummy|sample|placeholder|fake|codex|e2e)\b/.test(name)) return false;
+  return !/^(quote|customer|unknown|unnamed|no name|n a|na|none|abc)( \d+)?$/.test(name);
+}
+
+function isTestSource(value: string | null | undefined) {
+  return /\b(test|testing|dummy|sample|placeholder|fake|codex|e2e)\b/.test(normalizedText(value));
+}
+
+function firstOfficialEmail(values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const email = officialCustomerEmail(value);
+    if (email) return email;
+  }
+  return "";
+}
+
+function firstOfficialPhone(values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const phone = officialCustomerPhone(value);
+    if (phone) return phone;
+  }
+  return "";
 }
 
 function customerIdentityKeys(jobs: CrmJob[], files: CrmCustomerFile[]) {
-  const canonicalByJobId = new Map<string, string>();
+  const identityByJobId = new Map<string, string>();
   for (const file of files) {
-    if (!file.customer?.id) continue;
-    for (const job of file.jobs) canonicalByJobId.set(job.id, `customer:${file.customer.id}`);
+    const name = [file.customer?.display_name, file.customerName, ...file.jobs.map((job) => job.customer_name)]
+      .find(isRealCustomerName);
+    if (!name) continue;
+
+    const email = firstOfficialEmail([file.email, file.customer?.email, ...file.jobs.map((job) => job.email)]);
+    const phone = firstOfficialPhone([file.phone, file.customer?.phone, ...file.jobs.map((job) => job.phone)]);
+    if (!email && !phone) continue;
+
+    const key = file.customer?.id ? `customer:${file.customer.id}` : `customer-file:${file.id}`;
+    for (const job of file.jobs) {
+      if (!isTestSource(job.source)) identityByJobId.set(job.id, key);
+    }
   }
 
-  return new Map(jobs.map((job) => {
-    const canonical = canonicalByJobId.get(job.id);
-    if (canonical) return [job.id, canonical];
-
-    const email = normalizedText(job.email);
-    if (email) return [job.id, `email:${email}`];
+  for (const job of jobs) {
+    if (identityByJobId.has(job.id) || isTestSource(job.source) || !isRealCustomerName(job.customer_name)) continue;
 
     const name = normalizedText(job.customer_name);
-    const phone = normalizedPhone(job.phone);
-    const address = normalizedText(job.address);
-    if (name && phone) return [job.id, `name-phone:${name}:${phone}`];
-    if (name && address) return [job.id, `name-address:${name}:${address}`];
+    const email = officialCustomerEmail(job.email);
+    const phone = officialCustomerPhone(job.phone);
+    if (email) {
+      identityByJobId.set(job.id, `name-email:${name}:${email}`);
+    } else if (phone) {
+      // Never merge on phone alone: household and business numbers are often shared.
+      identityByJobId.set(job.id, `name-phone:${name}:${phone}`);
+    }
+  }
 
-    // A name-only match is intentionally exact after normalization. Never merge
-    // on phone alone: shared household and business numbers are common in CRM data.
-    return [job.id, name ? `name:${name}` : `job:${job.id}`];
-  }));
+  return identityByJobId;
 }
 
 export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], since?: Date, through?: Date) {
@@ -75,7 +120,11 @@ export function customerSalesSummary(jobs: CrmJob[], files: CrmCustomerFile[], s
   for (const job of jobs) {
     if (job.meta?.deleted_at) continue;
 
-    const key = identityKeys.get(job.id) || `job:${job.id}`;
+    // Close rates are customer conversion metrics, not quote/job row metrics.
+    // Blank, placeholder, test, and contactless records cannot represent an
+    // independently verifiable customer and therefore never enter the cohort.
+    const key = identityKeys.get(job.id);
+    if (!key) continue;
     const outcome = outcomes.get(key) || { inCohort: false, won: false };
 
     // Cohort membership is based on the customer's opportunity date.

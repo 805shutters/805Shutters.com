@@ -3,7 +3,7 @@ import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/comma
 import type { CrmBookkeepingRow, CrmCustomerFile, CrmJob } from "@/lib/crm/types";
 
 function job(id: string, created_at: string, status: CrmJob["status"]): CrmJob {
-  return { id, created_at, updated_at: created_at, source: "test", lead_id: null, status, priority: "normal", customer_name: id, phone: "", email: null, address: null, city: null, product_interest: "", sales_owner: "", next_action: null, next_action_due: null, appointment_start: null, appointment_end: null, estimated_total: 0, deposit_paid: 0, notes: null };
+  return { id, created_at, updated_at: created_at, source: "crm", lead_id: null, status, priority: "normal", customer_name: id, phone: "", email: `${id}@customer.com`, address: null, city: null, product_interest: "", sales_owner: "", next_action: null, next_action_due: null, appointment_start: null, appointment_end: null, estimated_total: 0, deposit_paid: 0, notes: null };
 }
 
 function appointmentJob(id: string, appointment_start: string, status: CrmJob["status"]): CrmJob {
@@ -57,9 +57,9 @@ describe("buildCommandPerformanceMetrics", () => {
   });
 
   it("deduplicates unlinked quote-version jobs with validated identity fields", () => {
-    const soldVersion = { ...job("quote-v1", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Jane Doe", phone: "(805) 555-0100" };
-    const lostVersion = { ...job("quote-v2", "2026-08-02T10:00:00-07:00", "lost"), customer_name: " jane  doe ", phone: "805-555-0100" };
-    const otherLost = { ...job("other", "2026-08-03T10:00:00-07:00", "lost"), customer_name: "Other Person", phone: "805-555-0100" };
+    const soldVersion = { ...job("quote-v1", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Jane Doe", phone: "(805) 806-0100", email: null };
+    const lostVersion = { ...job("quote-v2", "2026-08-02T10:00:00-07:00", "lost"), customer_name: " jane  doe ", phone: "805-806-0100", email: null };
+    const otherLost = { ...job("other", "2026-08-03T10:00:00-07:00", "lost"), customer_name: "Other Person", phone: "805-806-0100", email: null };
 
     const metrics = buildCommandPerformanceMetrics([soldVersion, lostVersion, otherLost], [], now);
 
@@ -67,9 +67,48 @@ describe("buildCommandPerformanceMetrics", () => {
     expect(metrics.currentCrmSalesRate).toBe(50);
   });
 
+  it("excludes blank, placeholder, test, and contactless quote records", () => {
+    const metrics = buildCommandPerformanceMetrics([
+      { ...job("real", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Real Customer", email: "real@customer.com" },
+      { ...job("blank", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "", email: "blank@customer.com" },
+      { ...job("placeholder", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Quote", email: "quote@customer.com" },
+      { ...job("test-name", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Codex Test Customer", email: "codex@customer.com" },
+      { ...job("test-source", "2026-08-01T10:00:00-07:00", "sold"), source: "e2e_test" },
+      { ...job("no-contact", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "No Contact", email: null, phone: "" },
+      { ...job("fake-email", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Fake Email", email: "fake@example.com", phone: "" },
+      { ...job("fake-phone", "2026-08-01T10:00:00-07:00", "sold"), customer_name: "Fake Phone", email: null, phone: "805-555-0100" }
+    ], [], now);
+
+    expect(metrics.closeRate30Days).toBe(0);
+    expect(metrics.closeRate30DaysWon).toBe(0);
+    expect(metrics.closeRate30DaysTotal).toBe(1);
+    expect(metrics.currentCrmSalesTotal).toBe(1);
+  });
+
+  it("uses an official contact from the canonical customer file", () => {
+    const linkedJobs = [
+      { ...job("linked-quote-1", "2026-08-01T10:00:00-07:00", "lost"), email: null, phone: "" },
+      { ...job("linked-quote-2", "2026-08-02T10:00:00-07:00", "sold"), email: null, phone: "" }
+    ];
+    const customerFiles = [{
+      id: "file-real-customer",
+      customer: { id: "real-customer", display_name: "Real Customer", email: "real@customer.com", phone: null },
+      customerName: "Real Customer",
+      phone: null,
+      email: "real@customer.com",
+      jobs: linkedJobs
+    }] as CrmCustomerFile[];
+
+    const metrics = buildCommandPerformanceMetrics(linkedJobs, [], now, customerFiles);
+
+    expect(metrics.closeRate30Days).toBe(100);
+    expect(metrics.closeRate30DaysWon).toBe(1);
+    expect(metrics.closeRate30DaysTotal).toBe(1);
+  });
+
   it("uses all customer records for the outcome after cohorting the customer", () => {
-    const recentLost = { ...appointmentJob("recent", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Same Customer", email: "same@example.com" };
-    const oldSold = { ...appointmentJob("old", "2026-01-01T10:00:00-08:00", "sold"), customer_name: "Same Customer", email: "same@example.com" };
+    const recentLost = { ...appointmentJob("recent", "2026-08-01T10:00:00-07:00", "lost"), customer_name: "Same Customer", email: "same@customer.com" };
+    const oldSold = { ...appointmentJob("old", "2026-01-01T10:00:00-08:00", "sold"), customer_name: "Same Customer", email: "same@customer.com" };
     const otherLost = appointmentJob("other-lost", "2026-08-02T10:00:00-07:00", "lost");
 
     const metrics = buildCommandPerformanceMetrics([recentLost, oldSold, otherLost], [], now);
