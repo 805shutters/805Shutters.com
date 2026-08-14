@@ -8027,7 +8027,7 @@ button.crm-customer-action-link {
 
 .crm-calendar-event-block--post-sold {
   background: #d7eadc;
-  border-color: #94bfa0;
+  border-color: #176b3a;
   color: #193326;
 }
 
@@ -8115,9 +8115,23 @@ button.crm-customer-action-link {
   border-color: rgba(17, 17, 17, 0.18);
 }
 
+.crm-calendar-event-block--post-sold .crm-calendar-event-owner-badge,
 .crm-calendar-event-block--post-unsold .crm-calendar-event-owner-badge {
   background: rgba(17, 17, 17, 0.08);
   border-color: rgba(17, 17, 17, 0.18);
+}
+
+.crm-calendar-event-status-banner {
+  display: block;
+  margin: -6px -8px 3px;
+  padding: 4px 8px;
+  background: #176b3a;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  text-align: center;
 }
 
 .crm-calendar-event-details {
@@ -8255,6 +8269,7 @@ button.crm-customer-action-link {
 
 .crm-calendar-month-event {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 5px;
   font: inherit;
@@ -8286,8 +8301,15 @@ button.crm-calendar-month-event:focus-visible {
 
 .crm-calendar-month-event.crm-calendar-event-block--post-sold {
   background: #d7eadc;
-  border-color: #94bfa0;
+  border-color: #176b3a;
   color: #193326;
+}
+
+.crm-calendar-month-event .crm-calendar-event-status-banner {
+  flex: 0 0 calc(100% + 12px);
+  margin: -5px -6px 0;
+  padding: 3px 6px;
+  font-size: 8px;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--post-unsold {

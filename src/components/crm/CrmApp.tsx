@@ -62,6 +62,7 @@ import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/
 import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/command-performance";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
+import { calendarEventSalePresentation } from "@/lib/crm/calendar-event-sales";
 import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
 import {
   customerBookableSlotKeys,
@@ -529,22 +530,10 @@ function canRescheduleCalendarEvent(event: CrmCalendarEvent) {
   return isActiveCalendarEvent(event) && event.event_type !== "block";
 }
 
-function isPastCalendarEvent(event: CrmCalendarEvent) {
-  return new Date(event.end_at) <= new Date();
-}
-
-function hasSignedCalendarContract(event: CrmCalendarEvent) {
-  return Boolean(event.customer_contract_signed_at || event.quote_signed_at);
-}
-
-function hasSentCalendarQuote(event: CrmCalendarEvent) {
-  return Boolean(event.quote_sent_at);
-}
-
 function calendarEventCompletionToneClassName(event: CrmCalendarEvent) {
-  if (event.event_type === "block" || event.status === "canceled" || !isPastCalendarEvent(event)) return "";
-  if (hasSignedCalendarContract(event)) return " crm-calendar-event-block--post-sold";
-  if (hasSentCalendarQuote(event)) return " crm-calendar-event-block--post-unsold";
+  const { tone } = calendarEventSalePresentation(event);
+  if (tone === "sold") return " crm-calendar-event-block--post-sold";
+  if (tone === "unsold") return " crm-calendar-event-block--post-unsold";
   return "";
 }
 
@@ -606,7 +595,9 @@ function calendarEventSecondaryDescriptionLines(event: CrmCalendarEvent) {
 }
 
 function calendarEventDescriptionLabel(event: CrmCalendarEvent) {
+  const { bannerLabel } = calendarEventSalePresentation(event);
   return [
+    bannerLabel,
     `${calendarTimeFormatter.format(new Date(event.start_at))} - ${calendarTimeFormatter.format(new Date(event.end_at))}`,
     calendarEventCustomerLabel(event),
     event.event_type === "block" ? null : `Scheduled for: ${calendarEventAssignmentLabel(event)}`,
@@ -14334,6 +14325,7 @@ function CalendarTimelineGrid({
           const canManage = canRescheduleCalendarEvent(event);
           const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
           const customerPhone = cleanCalendarText(event.customer_phone);
+          const { bannerLabel } = calendarEventSalePresentation(event);
 
           return (
             <article
@@ -14367,6 +14359,7 @@ function CalendarTimelineGrid({
               tabIndex={canManage ? 0 : undefined}
               title={descriptionLabel}
             >
+              {bannerLabel ? <div className="crm-calendar-event-status-banner">{bannerLabel}</div> : null}
               <div className="crm-calendar-event-time">
                 <span>
                   {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
@@ -14437,8 +14430,10 @@ function CalendarMonthGrid({
                 {eventPreview.map((event) => {
                   const className = `crm-calendar-month-event ${calendarEventToneClassName(event)}`;
                   const customerPhone = cleanCalendarText(event.customer_phone);
+                  const { bannerLabel } = calendarEventSalePresentation(event);
                   const preview = (
                     <>
+                      {bannerLabel ? <b className="crm-calendar-event-status-banner">{bannerLabel}</b> : null}
                       <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
                       <span>{calendarEventCustomerLabel(event)}</span>
                       {customerPhone ? <em>{customerPhone}</em> : null}
