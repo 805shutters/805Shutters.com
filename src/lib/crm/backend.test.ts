@@ -1776,6 +1776,42 @@ describe("enrichCalendarEventsWithJobDetails", () => {
       customer_contract_signed_at: "2026-06-28T18:00:00.000Z"
     });
   });
+
+  it("finds a signed quote on a duplicate job for the same verified customer", () => {
+    const events = [
+      {
+        id: "event-duplicate-job",
+        created_at: "2026-08-12T16:00:00.000Z",
+        updated_at: "2026-08-12T16:00:00.000Z",
+        job_id: "job-appointment",
+        title: "Gretchen consultation",
+        event_type: "sales_consult",
+        status: "scheduled",
+        assigned_to: "Jessica",
+        start_at: "2026-08-12T17:00:00.000Z",
+        end_at: "2026-08-12T18:00:00.000Z",
+        location: null,
+        notes: null
+      } satisfies CrmCalendarEvent
+    ];
+    const jobs = [
+      job({ id: "job-appointment", status: "scheduled", customer_name: "Gretchen Sirard", phone: "661-609-9131" }),
+      job({ id: "job-sold", status: "sold", customer_name: "Gretchen Sirard", phone: "(661) 609-9131" })
+    ];
+    const quotes = [
+      quote({
+        id: "quote-on-sold-job",
+        job_id: "job-sold",
+        status: "sold",
+        signed_at: "2026-08-12T17:56:48.646Z"
+      })
+    ];
+
+    expect(enrichCalendarEventsWithJobDetails(events, jobs, quotes)[0]).toMatchObject({
+      job_status: "sold",
+      quote_signed_at: "2026-08-12T17:56:48.646Z"
+    });
+  });
 });
 
 describe("cancelCrmCalendarEvent", () => {

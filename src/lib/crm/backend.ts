@@ -1051,6 +1051,25 @@ function latestCalendarTimestamp(values: Array<string | null | undefined>) {
   return latestValue;
 }
 
+function calendarCustomerIdentityKeys(job: CrmJob) {
+  const name = job.customer_name.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (!name) return [];
+
+  const keys: string[] = [];
+  const email = (job.email || "").trim().toLowerCase();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !/@(?:example|test|invalid)\.(?:com|net|org)$/i.test(email)) {
+    keys.push(`name-email:${name}:${email}`);
+  }
+
+  const digits = (job.phone || "").replace(/\D/g, "");
+  const phone = digits.length >= 10 ? digits.slice(-10) : "";
+  if (/^[2-9]\d{2}[2-9]\d{6}$/.test(phone) && phone !== "1234567890" && phone.slice(3, 6) !== "555") {
+    keys.push(`name-phone:${name}:${phone}`);
+  }
+
+  return keys;
+}
+
 export function enrichCalendarEventsWithJobDetails(
   events: CrmCalendarEvent[],
   jobs: CrmJob[],
@@ -1058,9 +1077,18 @@ export function enrichCalendarEventsWithJobDetails(
   contracts: CrmCustomerContract[] = []
 ): CrmCalendarEvent[] {
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const jobsByCustomerIdentity = new Map<string, CrmJob[]>();
   const quotesByJobId = new Map<string, CrmQuote[]>();
   const contractsByJobId = new Map<string, CrmCustomerContract[]>();
   const contractsByQuoteId = new Map<string, CrmCustomerContract[]>();
+
+  for (const job of jobs) {
+    for (const key of calendarCustomerIdentityKeys(job)) {
+      const existing = jobsByCustomerIdentity.get(key) || [];
+      existing.push(job);
+      jobsByCustomerIdentity.set(key, existing);
+    }
+  }
 
   for (const quote of quotes) {
     const existing = quotesByJobId.get(quote.job_id) || [];
@@ -1085,12 +1113,21 @@ export function enrichCalendarEventsWithJobDetails(
   return events.map((event) => {
     const job = event.job_id ? jobsById.get(event.job_id) : null;
     if (!job) return event;
-    const relatedQuotes = quotesByJobId.get(job.id) || [];
+    const relatedJobsById = new Map<string, CrmJob>([[job.id, job]]);
+    for (const key of calendarCustomerIdentityKeys(job)) {
+      for (const relatedJob of jobsByCustomerIdentity.get(key) || []) {
+        relatedJobsById.set(relatedJob.id, relatedJob);
+      }
+    }
+    const relatedJobs = [...relatedJobsById.values()];
+    const relatedQuotes = relatedJobs.flatMap((relatedJob) => quotesByJobId.get(relatedJob.id) || []);
     const relatedQuoteIds = new Set(relatedQuotes.map((quote) => quote.id));
     const relatedContractsById = new Map<string, CrmCustomerContract>();
 
-    for (const contract of contractsByJobId.get(job.id) || []) {
-      relatedContractsById.set(contract.id, contract);
+    for (const relatedJob of relatedJobs) {
+      for (const contract of contractsByJobId.get(relatedJob.id) || []) {
+        relatedContractsById.set(contract.id, contract);
+      }
     }
 
     for (const quoteId of relatedQuoteIds) {
@@ -1110,7 +1147,7 @@ export function enrichCalendarEventsWithJobDetails(
       customer_city: job.city,
       product_interest: job.product_interest,
       customer_notes: event.notes || job.notes,
-      job_status: job.status,
+      job_status: relatedJobs.reduce((status, relatedJob) => advanceJobStatus(status, relatedJob.status), job.status),
       quote_sent_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.sent_at)),
       quote_signed_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.signed_at)),
       customer_contract_signed_at: latestCalendarTimestamp(relatedContracts.map((contract) => contract.signed_at))
