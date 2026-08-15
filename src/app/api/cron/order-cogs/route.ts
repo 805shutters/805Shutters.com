@@ -61,7 +61,10 @@ export async function runOrderCogsCron(
     requireCronAccess(request, dependencies.env);
     const supabase = dependencies.getSupabase();
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
-    const orderCogs = await dependencies.processOrderCogs(supabase, { actorEmail: "order-cogs-cron" });
+    const orderCogs = await dependencies.processOrderCogs(supabase, {
+      actorEmail: "order-cogs-cron",
+      autoApply: false,
+    });
     const [squarePayments, peerPayments] = await Promise.all([
       runAuxiliaryProcessor(
         "Square payment reconciliation",

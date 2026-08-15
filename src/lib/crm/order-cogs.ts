@@ -98,6 +98,12 @@ export type ProcessOrderCogsOptions = {
   target?: ProcessOrderCogsTarget;
   /** Archive (remove from inbox) each recognized order email after processing. Default on. */
   archive?: boolean;
+  /**
+   * When false, scan/extract/match and write audit rows only — no COGS, status,
+   * Telegram, or Gmail archive. Defaults to ORDER_COGS_AUTO_APPLY !== "false".
+   * Live cron and staff pull pass false for the manufacturer-COGS cutover.
+   */
+  autoApply?: boolean;
 };
 
 export type ProcessOrderCogsTarget = {
@@ -1113,15 +1119,34 @@ async function applyOrderCogs(
   return { cogsApplied: false, previousCogsAmount, nextCogsAmount: previousCogsAmount };
 }
 
-async function alreadyAppliedOrderCogsRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
+type OrderCogsEmailRecord = {
+  id?: string;
+  applied_at?: string | null;
+  match_status?: CrmOrderCogsEmailStatus;
+};
+
+async function loadOrderCogsEmailRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
   const { data, error } = await supabase
     .from("crm_order_cogs_emails")
     .select("id,applied_at,match_status")
     .eq("gmail_message_id", gmailMessageId)
     .maybeSingle();
-  if (error) return false;
-  const record = data as { applied_at?: string | null; match_status?: CrmOrderCogsEmailStatus } | null;
-  return Boolean(record?.applied_at && record.match_status === "matched");
+  if (error) return null;
+  return (data as OrderCogsEmailRecord | null) || null;
+}
+
+function shouldSkipOrderCogsMessage(record: OrderCogsEmailRecord | null, autoApply: boolean) {
+  if (!record) return false;
+  // Dual 15-min schedulers must not re-scan a message that already has an audit
+  // row while auto-apply is off. When apply is on, only skip fully applied rows
+  // so a prior needs_review candidate can still be applied.
+  if (!autoApply) return true;
+  return Boolean(record.applied_at && record.match_status === "matched");
+}
+
+function resolveOrderCogsAutoApply(options: ProcessOrderCogsOptions) {
+  if (typeof options.autoApply === "boolean") return options.autoApply;
+  return process.env.ORDER_COGS_AUTO_APPLY !== "false";
 }
 
 async function insertOrderCogsRecord(
@@ -1187,7 +1212,8 @@ export async function processOrderCogsInbox(
     : process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox));
   const maxResults = maxResultsValue(options.maxResults);
   const actor: CrmActor = { email: options.actorEmail || "order-cogs" };
-  const archiveEnabled = options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false";
+  const autoApply = resolveOrderCogsAutoApply(options);
+  const archiveEnabled = autoApply && (options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false");
   const allCandidates = await loadOrderCogsCandidates(supabase);
   const targetName = options.target?.customerName.trim().toLowerCase() || "";
   const candidates = options.target
@@ -1228,8 +1254,8 @@ export async function processOrderCogsInbox(
 
   for (const listed of messages) {
     try {
-      const alreadyApplied = await alreadyAppliedOrderCogsRecord(supabase, listed.id);
-      if (alreadyApplied) {
+      const existingRecord = await loadOrderCogsEmailRecord(supabase, listed.id);
+      if (shouldSkipOrderCogsMessage(existingRecord, autoApply)) {
         result.processed += 1;
         result.skipped += 1;
         if (archiveEnabled && accessToken) {
@@ -1263,19 +1289,20 @@ export async function processOrderCogsInbox(
       // A confident match flips the matched job to "ordered" and writes COGS. If the
       // match has no ledger row (a bare sold job), the job is still marked ordered but
       // the COGS lands in "needs_review" for manual entry rather than being lost.
+      // The manufacturer-COGS cutover keeps scan/audit on and turns apply off.
       let cogsApplied = false;
       let appliedTotalCogs: number | null = null;
       const duplicateApplied = Boolean(
-        review.canApply && match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)
+        autoApply && review.canApply && match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)
       );
       if (duplicateApplied) {
         cogsApplied = false;
-      } else if (review.canApply && match.candidate) {
+      } else if (autoApply && review.canApply && match.candidate) {
         const applied = await applyOrderCogs(supabase, match.candidate, extraction, message, actor);
         cogsApplied = applied.cogsApplied;
         appliedTotalCogs = applied.cogsApplied ? applied.nextCogsAmount : null;
       }
-      if (cogsApplied && match.candidate && extraction.orderAmount && appliedTotalCogs !== null) {
+      if (autoApply && cogsApplied && match.candidate && extraction.orderAmount && appliedTotalCogs !== null) {
         const telegram = await sendTelegramMessage({
           text: orderCogsTelegramText({
             customerName: match.candidate.customerName,
@@ -1288,12 +1315,20 @@ export async function processOrderCogsInbox(
         if (telegram.sent) result.telegramSent += 1;
         else if (telegram.error) result.telegramErrors += 1;
       }
-      const status = duplicateApplied ? "skipped" : review.canApply && !cogsApplied ? "needs_review" : review.status;
-      const reason = duplicateApplied
-        ? "This Gmail order was already applied to the matched job/quote."
-        : review.canApply && !cogsApplied
-          ? `${review.reason} Job marked ordered, but no ledger row exists yet — enter COGS manually.`
-          : review.reason;
+      const status = !autoApply
+        ? "needs_review"
+        : duplicateApplied
+          ? "skipped"
+          : review.canApply && !cogsApplied
+            ? "needs_review"
+            : review.status;
+      const reason = !autoApply
+        ? "auto-apply disabled (COGS cutover)"
+        : duplicateApplied
+          ? "This Gmail order was already applied to the matched job/quote."
+          : review.canApply && !cogsApplied
+            ? `${review.reason} Job marked ordered, but no ledger row exists yet — enter COGS manually.`
+            : review.reason;
 
       // The audit/review log (crm_order_cogs_emails) is best-effort and OFF the critical
       // path: the job's status + COGS were already written above to tables that the
@@ -1326,6 +1361,7 @@ export async function processOrderCogsInbox(
         error_message: null,
         raw: {
           actorEmail: options.actorEmail || null,
+          autoApplyDisabled: !autoApply,
           duplicateApplied,
           pdfExtractionErrors: pdf.errors,
           textPreview: extraction.text.slice(0, 1000)

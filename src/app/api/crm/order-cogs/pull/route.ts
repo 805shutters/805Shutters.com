@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
         : undefined,
       days: typeof payload.days === "number" ? payload.days : undefined,
       target,
-      archive: typeof payload.archive === "boolean" ? payload.archive : undefined
+      archive: typeof payload.archive === "boolean" ? payload.archive : undefined,
+      autoApply: false
     });
 
     return NextResponse.json(result);

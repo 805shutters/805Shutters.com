@@ -860,4 +860,136 @@ describe("processOrderCogsInbox", () => {
       patch: expect.objectContaining({ cogs_amount: 300, manufacturer_order_ref: "KT-1000" })
     });
   });
+
+  function stubNormanGmail(messageId = "msg-norman") {
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret");
+    vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/labels")) return jsonResponse({ labels: [{ id: "label-processed", name: "Processed" }] });
+      if (url.includes("oauth2.googleapis.com/token")) return jsonResponse({ access_token: "token" });
+      if (url.includes("/messages?")) return jsonResponse({ messages: [{ id: messageId }] });
+      if (url.includes("/modify")) return jsonResponse({ id: "archived" });
+      if (url.includes(`/messages/${messageId}`)) {
+        return jsonResponse({
+          id: messageId,
+          threadId: "thread-norman",
+          historyId: "hist-norman",
+          snippet: "Online Order Confirmation",
+          payload: {
+            headers: [
+              { name: "From", value: "OrderConfirmation@normanusa.com" },
+              { name: "To", value: "805shutters@gmail.com" },
+              { name: "Subject", value: "Online Order Confirmation: R00743 | WO# 8880976230" },
+              { name: "Date", value: "Mon, 22 Jun 2026 10:03:00 -0700" }
+            ],
+            mimeType: "text/plain",
+            body: { data: gmailTextBody(NORMAN_BODY) }
+          }
+        });
+      }
+      return jsonResponse({});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("does not apply COGS, status, Telegram, or Gmail archive when autoApply is false", async () => {
+    vi.stubEnv("TELEGRAM_BOT_TOKEN", "bot-token");
+    vi.stubEnv("TELEGRAM_CHAT_ID", "chat-id");
+    const fetchMock = stubNormanGmail();
+    const supabase = new FakeSupabase();
+
+    const result = await processOrderCogsInbox(supabase as never, {
+      maxResults: 1,
+      autoApply: false,
+      actorEmail: "order-cogs-cron"
+    });
+
+    expect(result.scanned).toBe(1);
+    expect(result.processed).toBe(1);
+    expect(result.matched).toBe(0);
+    expect(result.needsReview).toBe(1);
+    expect(result.applied || 0).toBe(0);
+    expect(result.addedCogs || 0).toBe(0);
+    expect(result.archived).toBe(0);
+    expect(result.telegramSent).toBe(0);
+    expect(supabase.updates.filter((u) => u.table === "crm_quote_bookkeeping_entries")).toHaveLength(0);
+    expect(supabase.updates.filter((u) => u.table === "crm_jobs")).toHaveLength(0);
+    expect(supabase.entries[0]).toMatchObject({ cogs_amount: 0 });
+    expect(supabase.jobs[0]).toMatchObject({ status: "sold" });
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/modify"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("api.telegram.org"))).toBe(false);
+  });
+
+  it("writes an auditable needs_review row when auto-apply is disabled", async () => {
+    stubNormanGmail();
+    const supabase = new FakeSupabase();
+
+    await processOrderCogsInbox(supabase as never, {
+      maxResults: 1,
+      autoApply: false,
+      actorEmail: "order-cogs-cron"
+    });
+
+    expect(supabase.records).toHaveLength(1);
+    expect(supabase.records[0]).toMatchObject({
+      gmail_message_id: "msg-norman",
+      extracted_customer_name: "Jim Derenthal",
+      extracted_order_amount: 617.26,
+      extracted_order_number: "8880976230",
+      matched_job_id: "job-1",
+      matched_bookkeeping_entry_id: "entry-1",
+      match_status: "needs_review",
+      match_reason: "auto-apply disabled (COGS cutover)",
+      applied_at: null,
+      raw: expect.objectContaining({
+        actorEmail: "order-cogs-cron",
+        autoApplyDisabled: true
+      })
+    });
+  });
+
+  it("honors ORDER_COGS_AUTO_APPLY=false when the option is omitted", async () => {
+    vi.stubEnv("ORDER_COGS_AUTO_APPLY", "false");
+    stubNormanGmail();
+    const supabase = new FakeSupabase();
+
+    const result = await processOrderCogsInbox(supabase as never, { maxResults: 1 });
+
+    expect(result.needsReview).toBe(1);
+    expect(result.applied || 0).toBe(0);
+    expect(supabase.updates.filter((u) => u.table === "crm_quote_bookkeeping_entries")).toHaveLength(0);
+    expect(supabase.records[0]).toMatchObject({
+      match_status: "needs_review",
+      match_reason: "auto-apply disabled (COGS cutover)",
+      applied_at: null
+    });
+  });
+
+  it("skips any existing audit row when auto-apply is disabled so dual schedulers do not churn", async () => {
+    const fetchMock = stubNormanGmail();
+    const supabase = new FakeSupabase();
+    supabase.records.push({
+      id: "order-cogs-existing",
+      gmail_message_id: "msg-norman",
+      match_status: "needs_review",
+      applied_at: null,
+      match_reason: "auto-apply disabled (COGS cutover)"
+    });
+
+    const result = await processOrderCogsInbox(supabase as never, {
+      maxResults: 1,
+      autoApply: false
+    });
+
+    expect(result.processed).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(result.needsReview).toBe(0);
+    expect(supabase.records).toHaveLength(1);
+    expect(supabase.updates.filter((u) => u.table === "crm_quote_bookkeeping_entries")).toHaveLength(0);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/messages/msg-norman"))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/modify"))).toBe(false);
+  });
 });
