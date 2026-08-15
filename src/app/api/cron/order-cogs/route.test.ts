@@ -98,4 +98,28 @@ describe("order COGS cron route", () => {
     });
     expect(deps.processPeerPayments).toHaveBeenCalledOnce();
   });
+
+  it("disables manufacturer COGS auto-apply and still runs Square and peer processors", async () => {
+    const deps = dependencies();
+
+    const response = await runOrderCogsCron(request(), deps);
+
+    expect(response.status).toBe(200);
+    expect(deps.processOrderCogs).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        actorEmail: "order-cogs-cron",
+        autoApply: false,
+      }),
+    );
+    expect(deps.reconcileSquarePayments).toHaveBeenCalledOnce();
+    expect(deps.processPeerPayments).toHaveBeenCalledOnce();
+    await expect(response.json()).resolves.toMatchObject({
+      processorStates: {
+        orderCogs: { status: "completed" },
+        squarePayments: { status: "completed" },
+        peerPayments: { status: "completed" },
+      },
+    });
+  });
 });
