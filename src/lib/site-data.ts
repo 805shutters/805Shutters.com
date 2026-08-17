@@ -645,6 +645,7 @@ const parentPages: SitePage[] = [
         body:
           "Choose from roller shades, honeycomb shades, woven wood shades, Roman shades, layered shades, light-filtering fabrics, room-darkening options, and motorized controls.",
         links: [
+          { label: "Motorized window shades", href: "/motorized-window-shades-ventura-county/" },
           { label: "Large-window roller shade project", href: "/recent-projects/roller-shades-large-window-ventura-county/" },
           { label: "Layered window shade project", href: "/recent-projects/layered-window-shades-ventura-county/" },
           { label: "Commercial roller shades", href: "/commercial-roller-shades/" }
@@ -1517,6 +1518,7 @@ const supportPages: SitePage[] = [
         body:
           "805 Shutters reviews are published on independent platforms where every review comes from a real customer account.",
         links: [
+          { label: "805 Shutters on Google Maps", href: site.googleMaps.url },
           { label: "805 Shutters on Yelp", href: site.social.yelp },
           { label: "Recent local projects with photos", href: "/recent-projects/" }
         ]
@@ -2895,8 +2897,12 @@ export const homePage: SitePage = withSearchDepth({
   sections: [
     {
       heading: "Local Window Treatment Installation",
-        body:
-        "Our local team measures, recommends, and installs plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, drapery, vertical blinds, and commercial window coverings across Ventura County."
+      body:
+        "Our local team measures, recommends, and installs plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, drapery, vertical blinds, and commercial window coverings across Ventura County.",
+      links: [
+        { label: "Motorized window shades", href: "/motorized-window-shades-ventura-county/" },
+        { label: "Book a free in-home consultation", href: "/book-consultation/" }
+      ]
     },
     {
       heading: "Flexible Monthly Payments",

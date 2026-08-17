@@ -161,7 +161,7 @@ export default function BookConsultationPage() {
         <Link className="booking-page__home-link" href="/" aria-label="Return to homepage">
           ×
         </Link>
-        <h1>Let's Book!</h1>
+        <h1>Book a Free In-Home Consultation in Ventura County</h1>
         <img
           className="booking-page__masthead-logo"
           src="/brand/805-shutters-logo-exact-transparent.png"

@@ -350,22 +350,22 @@ export const answerPages: AnswerPage[] = [
   {
     slug: "motorized-window-shades-ventura-county",
     path: "/motorized-window-shades-ventura-county/",
-    title: "Motorized Window Shades in Ventura County | 805 Shutters",
+    title: "Motorized Window Shades Ventura County | 805 Shutters",
     description:
-      "When are motorized window shades worth it? Compare motorized roller, solar, honeycomb, and room-darkening shade options for Ventura County homes and businesses.",
-    h1: "When Are Motorized Window Shades Worth It?",
-    eyebrow: "Motorized shade answer",
+      "Motorized roller, solar, honeycomb, and room-darkening shades measured and installed across Ventura County. Free in-home consultation.",
+    h1: "Motorized Window Shades in Ventura County",
+    eyebrow: "Motorized shade options",
     answer:
-      "Motorized window shades are worth considering when windows are tall, repeated, hard to reach, used every day, or exposed to strong sun. They can help living rooms, patio-view windows, offices, boardrooms, bedrooms, and commercial spaces control glare, privacy, heat, and room darkening without adjusting each shade by hand.",
+      "805 Shutters measures and installs motorized shades for Ventura County homes and businesses. Compare motorized roller, solar, honeycomb, and room-darkening options for tall, wide, hard-to-reach, and everyday windows.",
     image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
     imageAlt: "Motorized roller shades installed across living room patio-view windows",
-    updated: "2026-06-30",
+    updated: "2026-08-17",
     serviceTypes: ["Motorized shades", "Roller shades", "Solar shades", "Room-darkening shades"],
     sections: [
       {
-        heading: "Where Motorization Helps Most",
+        heading: "When Are Motorized Window Shades Worth It?",
         body:
-          "Motorization is most useful on tall windows, repeated window banks, hard-to-reach openings, rooms with strong sun exposure, and commercial spaces where consistent shade position matters. It can also help customers who want a cleaner look without visible cords."
+          "Motorized window shades are worth considering when windows are tall, repeated, hard to reach, used every day, or exposed to strong sun. They can help living rooms, patio-view windows, offices, boardrooms, bedrooms, and commercial spaces control glare, privacy, heat, and room darkening without adjusting each shade by hand."
       },
       {
         heading: "Products That Can Be Motorized",
