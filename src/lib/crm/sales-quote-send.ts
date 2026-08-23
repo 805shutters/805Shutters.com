@@ -10,7 +10,7 @@ import {
   type TechnicalMeasureDecision,
 } from "@/lib/crm/measure-needed-state";
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
-import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
+import { ensureSoldQuoteInstallerDelivery } from "@/lib/crm/sold-installer-delivery";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
 import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 import { recordCrmActivity } from "@/lib/crm/backend";
@@ -87,13 +87,22 @@ export async function markSalesQuoteSold(
     "in_home_sold"
   );
   const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
-  const crmQuote = await advanceQuoteStatus(supabase, crmQuoteId, "sold", actor);
+  // Defer delivery until the technical-measure decision is persisted below;
+  // otherwise the same sold action could send once without the final handoff
+  // package and again after that package is prepared.
+  const crmQuote = await advanceQuoteStatus(
+    supabase,
+    crmQuoteId,
+    "sold",
+    actor,
+    { deferInstallerDelivery: true },
+  );
   await syncTechnicalMeasureDecisionForSoldCrmQuote(supabase, crmQuote, actor, measureDecision, "in_home_sold");
   const measureForm = typeof crmQuote.job_id === "string"
     ? await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor)
     : null;
   const measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
-  const installerForm = await createAndSendInstallerForm(supabase, crmQuote.id);
+  const installerForm = await ensureSoldQuoteInstallerDelivery(supabase, crmQuote);
 
   const contractUrl = soldSource.share_token
     ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`

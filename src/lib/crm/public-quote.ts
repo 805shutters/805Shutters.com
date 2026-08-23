@@ -1664,8 +1664,8 @@ export async function acceptPublicQuote(
       // Retry a missing/failed installer delivery after an already-signed
       // acceptance claim. The installer helper is quote-idempotent and does
       // not resend a delivery whose recorded sent_at is already present.
-      const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
-      await createAndSendInstallerForm(supabase, quote.id);
+      const { ensureSoldQuoteInstallerDelivery } = await import("@/lib/crm/sold-installer-delivery");
+      await ensureSoldQuoteInstallerDelivery(supabase, quote);
     }
     return { ok: true, alreadySigned: true };
   }
@@ -1946,8 +1946,8 @@ export async function acceptPublicQuote(
   // Installer delivery is a signed-contract invariant, not an optional
   // notification. The notify flag only suppresses customer/shop messages in
   // controlled flows; it must never suppress the MTS installation packet.
-  const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
-  await createAndSendInstallerForm(supabase, signedQuote.id);
+  const { ensureSoldQuoteInstallerDelivery } = await import("@/lib/crm/sold-installer-delivery");
+  await ensureSoldQuoteInstallerDelivery(supabase, signedQuote);
 
   return { ok: true, alreadySigned: false, ...(futureQuoteId ? { futureQuoteId, futureJobId } : {}) };
 }

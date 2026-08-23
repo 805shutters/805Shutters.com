@@ -1395,7 +1395,7 @@ export function QuoteContract({
             id="technical-measure-decision"
             value={measureDecision}
             onChange={(event) => setMeasureDecision(event.target.value as TechnicalMeasureDecision | "")}
-            disabled={markAsSold.isPending || quote.status === "sold"}
+            disabled={markAsSold.isPending}
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
           >
             <option value="">Technical measure?</option>
@@ -1405,11 +1405,11 @@ export function QuoteContract({
           <Button
             size="lg"
             onClick={() => markAsSold.mutate()}
-            disabled={markAsSold.isPending || quote.status === "sold" || !measureDecision}
+            disabled={markAsSold.isPending || !measureDecision}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             <CheckCircle2 className="h-5 w-5 mr-2" />
-            {quote.status === "sold" ? "Already Sold" : "Mark as Sold"}
+            {quote.status === "sold" ? "Retry Sold Handoff" : "Mark as Sold"}
           </Button>
         </div>
       </div>

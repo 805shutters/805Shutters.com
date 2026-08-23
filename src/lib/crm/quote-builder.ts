@@ -47,6 +47,7 @@ import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/
 import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, shutterVariantsFor } from "@/lib/quote/product-options";
 import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
+import { ensureSoldQuoteInstallerDelivery } from "@/lib/crm/sold-installer-delivery";
 import {
   findProductColorOption,
   findProductColorOptionBySelection,
@@ -835,6 +836,7 @@ export async function advanceQuoteStatus(
   quoteId: string,
   nextStatus: CrmQuoteStatus,
   actor: CrmActor,
+  options: { deferInstallerDelivery?: boolean } = {},
 ): Promise<CrmQuoteWithItems> {
   const { data: quote, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
   if (error || !quote) throw new CrmAuthError(404, "Quote was not found.");
@@ -875,7 +877,11 @@ export async function advanceQuoteStatus(
     action: `status.${nextStatus}`,
     metadata: { from: quote.status, to: nextStatus },
   });
-  return recalcQuoteTotals(supabase, quoteId);
+  const updatedQuote = await recalcQuoteTotals(supabase, quoteId);
+  if (!options.deferInstallerDelivery) {
+    await ensureSoldQuoteInstallerDelivery(supabase, updatedQuote);
+  }
+  return updatedQuote;
 }
 
 /**

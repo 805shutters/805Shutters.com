@@ -344,8 +344,28 @@ async function deliverInstallerForm(
 ): Promise<{ form: InstallerFormRow; email: EmailResult }> {
   const handoffState = installerFormInstallationHandoffState(form);
   if (handoffState?.sent_at) {
+    const reconciledStatus = ["partially_installed", "completed"].includes(form.status)
+      ? form.status
+      : "sent";
+    const reconciled = {
+      status: reconciledStatus,
+      sent_at: form.sent_at || handoffState.sent_at,
+      email_recipient: form.email_recipient || INSTALLER_FORM_RECIPIENT,
+      email_message_id: form.email_message_id || handoffState.email_message_id || null,
+      email_error: null,
+    };
+    const { error: reconciliationError } = await supabase
+      .from("crm_installer_forms")
+      .update(reconciled)
+      .eq("id", form.id);
+    if (reconciliationError) {
+      throw new CrmAuthError(
+        502,
+        `The confirmed installer delivery state could not be reconciled: ${reconciliationError.message}`,
+      );
+    }
     return {
-      form,
+      form: { ...form, ...reconciled },
       email: {
         sent: true,
         id: handoffState.email_message_id || undefined,

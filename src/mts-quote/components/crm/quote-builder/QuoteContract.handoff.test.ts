@@ -14,13 +14,16 @@ describe("V4 contract handoff", () => {
     expect(sendSource).toContain("/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/send");
     expect(contractSource).toContain("/api/crm/sales-quotes/${encodeURIComponent(activeQuoteId!)}/sold");
     expect(contractSource).toContain("JSON.stringify({ measureDecision })");
+    expect(contractSource).toContain('quote.status === "sold" ? "Retry Sold Handoff"');
+    expect(contractSource).not.toContain('disabled={markAsSold.isPending || quote.status === "sold"');
     expect(contractSource).not.toMatch(/from\("sales_quotes"\)[\s\S]{0,200}update\(\{\s*status:\s*"sold"/);
   });
 
   it("preserves the canonical V1 customer-contract and downstream CRM bridge", () => {
     expect(serverWorkflowSource).toContain('return "v1"');
     expect(serverWorkflowSource).toContain("mirrorSalesQuoteForCustomerSend");
-    expect(serverWorkflowSource).toContain('advanceQuoteStatus(supabase, crmQuoteId, "sold", actor)');
+    expect(serverWorkflowSource).toContain("{ deferInstallerDelivery: true }");
+    expect(serverWorkflowSource).toContain("ensureSoldQuoteInstallerDelivery");
     expect(serverWorkflowSource).toContain("ensureTechnicalMeasureForm");
   });
 });

@@ -75,6 +75,10 @@ import {
 } from "@/lib/crm/types";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import { computeQuoteMoney, parseAdjustments } from "@/lib/crm/quote-money";
+import {
+  ensureSoldQuoteInstallerDelivery,
+  type SoldQuoteInstallerCandidate,
+} from "@/lib/crm/sold-installer-delivery";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -1910,9 +1914,16 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
+  const status = normalizeEnum<CrmJobStatus>(payload.status, jobStatusSet, "new", "Invalid CRM job status.");
+  if (saleOwnerSyncJobStatuses.has(status)) {
+    throw new CrmAuthError(
+      409,
+      "Create the job before the sale, then use the signed-contract or Mark as Sold workflow so the installer handoff cannot be skipped.",
+    );
+  }
   const record = withLeadSourceMeta({
     source: "crm",
-    status: normalizeEnum<CrmJobStatus>(payload.status, jobStatusSet, "new", "Invalid CRM job status."),
+    status,
     priority: normalizeEnum(payload.priority, prioritySet, "normal", "Invalid CRM job priority."),
     customer_name: requiredText(payload.customer_name, "Customer name and phone are required."),
     phone: requiredText(payload.phone, "Customer name and phone are required."),
@@ -1977,6 +1988,31 @@ export async function updateCrmJob(
     throw new CrmAuthError(400, "No supported CRM job fields provided.");
   }
 
+  let soldQuoteCandidate: SoldQuoteInstallerCandidate | null = null;
+  const existingIsSaleStage = saleOwnerSyncJobStatuses.has(String(existing.status || ""));
+  const targetIsSaleStage = saleOwnerSyncJobStatuses.has(String(patch.status || ""));
+  const enteringSaleStage = targetIsSaleStage && !existingIsSaleStage;
+  const retryingSold = patch.status === "sold" && existing.status === "sold";
+  if (enteringSaleStage || retryingSold) {
+    const { data: quoteRows, error: quoteError } = await supabase
+      .from("crm_quotes")
+      .select("id,status,signed_at,sold_at")
+      .eq("job_id", id)
+      .in("status", saleOwnerSyncQuoteStatuses)
+      .order("signed_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    if (quoteError) {
+      throw new CrmAuthError(502, "The sold contract could not be checked before updating the job.");
+    }
+    soldQuoteCandidate = ((quoteRows || [])[0] as SoldQuoteInstallerCandidate | undefined) || null;
+    if (!soldQuoteCandidate && enteringSaleStage) {
+      throw new CrmAuthError(
+        409,
+        "A job can only enter a sold lifecycle status through a linked sold quote or signed contract.",
+      );
+    }
+  }
+
   const updatedAt = new Date().toISOString();
   patch.meta = {
     ...(existing.meta || {}),
@@ -2011,6 +2047,10 @@ export async function updateCrmJob(
   }
 
   const updatedJob = data as CrmJob;
+
+  if (soldQuoteCandidate) {
+    await ensureSoldQuoteInstallerDelivery(supabase, soldQuoteCandidate);
+  }
 
   if (Object.prototype.hasOwnProperty.call(patch, "status")) {
     try {
@@ -2991,6 +3031,12 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
   }
 
   const status = normalizeEnum<CrmQuoteStatus>(payload.status, quoteStatusSet, "draft", "Invalid quote status.");
+  if (saleOwnerSyncQuoteStatuses.includes(status)) {
+    throw new CrmAuthError(
+      409,
+      "Create and price the quote first, then use the signed-contract or Mark as Sold workflow so the installer handoff cannot be skipped.",
+    );
+  }
   const quoteTotal = toMoney(payload.quote_total);
   const depositPaid = toMoney(payload.deposit_paid ?? payload.deposit_required);
   const balancePaid = toMoney(payload.balance_paid);
@@ -3460,6 +3506,10 @@ export async function updateCrmQuote(
 
   if (job) await syncCustomerFromJob(supabase, job);
   await upsertSoldQuoteContract(supabase, quote as CrmQuote, job);
+
+  if (typeof payload.status === "string") {
+    await ensureSoldQuoteInstallerDelivery(supabase, quote as CrmQuote);
+  }
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",

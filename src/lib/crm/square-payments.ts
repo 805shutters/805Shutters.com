@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmBookkeepingPaymentType, CrmQuoteStatus } from "@/lib/crm/types";
 import { SquareOrderFacts, SquarePaymentFacts } from "@/lib/finance/square";
 import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
+import { ensureSoldQuoteInstallerDelivery } from "@/lib/crm/sold-installer-delivery";
 import type { SquareContractReminderResult } from "@/lib/crm/square-contract-reminders";
 
 type CrmSupabaseClient = SupabaseClient;
@@ -127,6 +128,9 @@ export async function reconcileVerifiedSquareOrderPayment(
   if (result?.status !== "recorded" && result?.status !== "duplicate") {
     throw new Error("Square reconciliation returned an invalid result.");
   }
+  if (result.markedPaid) {
+    await ensureSoldQuoteInstallerDelivery(supabase, { id: verified.quoteId, status: "paid" });
+  }
   return {
     status: result.status,
     quoteId: verified.quoteId,
@@ -169,6 +173,9 @@ export async function reconcileResolvedSquarePayment(
   } | null;
   if (result?.status !== "recorded" && result?.status !== "duplicate") {
     throw new Error("Square reconciliation returned an invalid result.");
+  }
+  if (result.markedPaid) {
+    await ensureSoldQuoteInstallerDelivery(supabase, { id: input.quoteId, status: "paid" });
   }
   return {
     status: result.status,
@@ -315,6 +322,7 @@ export async function reconcileSquareQuotePayment(
   const externalSource = options.externalSource || "square";
   const externalId = options.externalId || facts.squarePaymentId;
   if (isDuplicateSquarePayment(payments, facts.squarePaymentId, externalSource, externalId)) {
+    await ensureSoldQuoteInstallerDelivery(supabase, quote);
     await maybeSendCustomerCloseoutForQuote(
       supabase,
       quote.id,
@@ -356,6 +364,7 @@ export async function reconcileSquareQuotePayment(
 
   const markedPaid = await markQuotePaidIfCovered(supabase, quote, payments, amount);
   if (markedPaid) {
+    await ensureSoldQuoteInstallerDelivery(supabase, { ...quote, status: "paid" });
     await maybeSendCustomerCloseoutForQuote(
       supabase,
       quote.id,

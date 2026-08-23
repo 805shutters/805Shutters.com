@@ -44,7 +44,7 @@ export function QuoteStatusPill({
         {getStatusLabel(status)}
       </span>
 
-      {showAdvance && nextStatus && status !== "sold" && (
+      {showAdvance && nextStatus && nextStatus !== "sold" && (
         <Button
           variant="ghost"
           size="sm"

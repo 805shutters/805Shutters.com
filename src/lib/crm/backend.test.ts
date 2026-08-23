@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("./sold-installer-delivery", () => ({
+  ensureSoldQuoteInstallerDelivery: vi.fn(async () => null),
+}));
 import {
   assertMikePaymentAdmin,
   buildDashboardData,
@@ -896,10 +900,10 @@ describe("quote bookkeeping notes", () => {
     expect(resolveQuoteBookkeepingCustomerName({})).toBe("Linked job");
   });
 
-  it("does not copy customer-facing quote notes into the bookkeeping entry when creating a committed quote", async () => {
+  it("rejects committed quote creation so the sold workflow cannot be bypassed", async () => {
     const { calls, supabase } = createSupabaseRecorder();
 
-    await createCrmQuote(
+    await expect(createCrmQuote(
       supabase,
       {
         job_id: "job-1",
@@ -910,16 +914,12 @@ describe("quote bookkeeping notes", () => {
           '{"__customerEmailNote":"Customer-facing pricing explanation that belongs on the quote, not bookkeeping."}'
       },
       actor
-    );
+    )).rejects.toThrow(/installer handoff cannot be skipped/i);
 
     const entryInsert = calls.find(
       (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "insert"
     );
-    expect(entryInsert?.payload).toMatchObject({
-      source: "crm_quote",
-      quote_id: "quote-created"
-    });
-    expect((entryInsert?.payload as { notes?: unknown }).notes).toBeNull();
+    expect(entryInsert).toBeUndefined();
   });
 
   it("writes bookkeeping_notes to the quote bookkeeping entry without updating quote notes", async () => {

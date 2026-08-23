@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
+import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
 import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
 
 export const runtime = "nodejs";
@@ -161,10 +162,14 @@ export async function PATCH(
         .eq("crm_quote_id", task.crm_quote_id)
         .in("status", ["needs_input", "queued", "processing", "review_ready", "failed"]);
       if (!(remaining || []).length) {
-        await Promise.all([
-          supabase.from("crm_jobs").update({ status: "ordered" }).eq("id", task.crm_job_id),
-          supabase.from("crm_quotes").update({ status: "ordered", ordered_at: now }).eq("id", task.crm_quote_id),
-        ]);
+        // The quote transition is authoritative: it advances the job and runs
+        // the retry-safe sold installer-delivery invariant before completion.
+        await advanceQuoteStatus(
+          supabase,
+          String(task.crm_quote_id),
+          "ordered",
+          { email, userId: user.id },
+        );
       }
     }
 

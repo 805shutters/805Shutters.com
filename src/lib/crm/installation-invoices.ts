@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { ensureSoldQuoteInstallerDelivery } from "@/lib/crm/sold-installer-delivery";
 import {
   CrmBookkeepingEntry,
   CrmInstallationInvoiceEmail,
@@ -1443,6 +1444,10 @@ async function advanceInstallationInvoiceWorkflow(
     if (error) {
       throw new CrmAuthError(502, "Installation invoice matched, but the quote could not be moved to payment collection.");
     }
+    await ensureSoldQuoteInstallerDelivery(supabase, {
+      id: candidate.quoteId,
+      status: String(quotePatch.status || currentQuote?.status || ""),
+    });
   }
 
   if (jobPatch && candidate.jobId) {
@@ -1524,6 +1529,10 @@ async function advanceCompletedServiceReportWorkflow(
     if (error) {
       throw new CrmAuthError(502, "Completed service report matched, but the quote could not be marked installed.");
     }
+    await ensureSoldQuoteInstallerDelivery(supabase, {
+      id: candidate.quoteId,
+      status: String(quotePatch.status || currentQuote?.status || ""),
+    });
   }
 
   if (jobPatch && candidate.jobId) {
