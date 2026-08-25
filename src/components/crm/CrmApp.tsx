@@ -75,6 +75,7 @@ import {
   installmentChargeAmount,
   type CrmPaymentPlanMethod
 } from "@/lib/crm/payment-plan-shared";
+import { paymentControlAmounts } from "@/lib/crm/payment-control-amounts";
 import {
   CrmAccountabilityItem,
   CrmActivitySnapshot,
@@ -2998,7 +2999,11 @@ export function CrmApp({
         />
       ) : null}
 
-      {message ? <p className="crm-alert">{message}</p> : null}
+      {message ? (
+        <p className="crm-alert" role="status" aria-live="polite" aria-atomic="true">
+          {message}
+        </p>
+      ) : null}
 
       <nav className="crm-tabs" aria-label="CRM sections">
         {[
@@ -7696,10 +7701,19 @@ function DrillDetailCard({
         onSave: (value) => saveJob({ next_action: value.trim() }, "Next action updated.")
       }
     : undefined;
-  const depositShortfall = roundCurrency(Math.max((row?.depositDue ?? fallbackDepositDue) - (row?.depositPaid || 0), 0));
-  const configuredBalanceDue = roundCurrency(Math.max((row?.total ?? fallbackTotal) - (row?.depositDue ?? fallbackDepositDue), 0));
-  const balancePaymentShortfall = roundCurrency(Math.max(configuredBalanceDue - (row?.balancePaid || 0), 0));
-  const openJobBalance = roundCurrency(Math.max(row?.balance ?? fallbackTotal, 0));
+  const {
+    depositShortfall,
+    configuredBalanceDue,
+    balanceShortfall: balancePaymentShortfall,
+    balancePaidTarget,
+    openBalance: openJobBalance
+  } = paymentControlAmounts({
+    total: row?.total ?? fallbackTotal,
+    depositDue: row?.depositDue ?? fallbackDepositDue,
+    depositPaid: row?.depositPaid || 0,
+    balancePaid: row?.balancePaid || 0,
+    openBalance: row?.balance ?? fallbackTotal
+  });
   const needsOrderHighlight = rowNeedsOrder(row);
   const depositMissingHighlight = rowDepositShortfall(row) > 0;
   const balanceMissingHighlight = rowBalanceShortfall(row) > 0;
@@ -7724,7 +7738,7 @@ function DrillDetailCard({
         payment_type: rowPaymentType,
         paid_at: paidAt,
         ...(depositShortfall > 0 ? { deposit_paid_target: row?.depositDue ?? fallbackDepositDue } : {}),
-        ...(balancePaymentShortfall > 0 ? { balance_paid_target: configuredBalanceDue } : {}),
+        ...(balancePaymentShortfall > 0 ? { balance_paid_target: balancePaidTarget } : {}),
         mark_balance_paid: true,
         ...(row?.source === "crm_quote" ? { status: "paid" } : {})
       }
@@ -7938,7 +7952,7 @@ function DrillDetailCard({
             onSelect: (paymentType) =>
               void saveRow(
                 {
-                  balance_paid_target: configuredBalanceDue,
+                  balance_paid_target: balancePaidTarget,
                   payment_type: paymentType,
                   paid_at: paidAt,
                   ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
@@ -7950,7 +7964,7 @@ function DrillDetailCard({
           onClick: () =>
             void saveRow(
               {
-                balance_paid_target: configuredBalanceDue,
+                balance_paid_target: balancePaidTarget,
                 payment_type: balancePaymentType,
                 paid_at: paidAt,
                 ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
@@ -10370,10 +10384,18 @@ function CustomerFilesView({
                       );
                     })}
                     {sortedBookkeepingRows.map((row) => {
-                      const depositShortfall = roundCurrency(Math.max((row.depositDue || 0) - (row.depositPaid || 0), 0));
-                      const configuredBalanceDue = roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0));
-                      const balanceShortfall = roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0));
-                      const openBalance = roundCurrency(Math.max(row.balance || 0, 0));
+                      const {
+                        depositShortfall,
+                        balanceShortfall,
+                        balancePaidTarget,
+                        openBalance
+                      } = paymentControlAmounts({
+                        total: row.total || 0,
+                        depositDue: row.depositDue || 0,
+                        depositPaid: row.depositPaid || 0,
+                        balancePaid: row.balancePaid || 0,
+                        openBalance: row.balance || 0
+                      });
                       const rowNeedsOrderHighlight = rowNeedsOrder(row);
                       const rowDepositMissingHighlight = rowDepositShortfall(row) > 0;
                       const rowBalanceMissingHighlight = rowBalanceShortfall(row) > 0;
@@ -10390,7 +10412,7 @@ function CustomerFilesView({
                         payment_type: rowPaymentType,
                         paid_at: paidAt,
                         ...(depositShortfall > 0 ? { deposit_paid_target: row.depositDue } : {}),
-                        ...(balanceShortfall > 0 ? { balance_paid_target: configuredBalanceDue } : {}),
+                        ...(balanceShortfall > 0 ? { balance_paid_target: balancePaidTarget } : {}),
                         mark_balance_paid: true,
                         ...(row.source === "crm_quote" ? { status: "paid" } : {})
                       };
@@ -10561,7 +10583,7 @@ function CustomerFilesView({
                                 void onSaveRow(
                                   row,
                                   {
-                                    balance_paid_target: configuredBalanceDue,
+                                    balance_paid_target: balancePaidTarget,
                                     payment_type: paymentType,
                                     paid_at: paidAt,
                                     ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),

@@ -5071,6 +5071,9 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-alert {
+  position: sticky;
+  z-index: 80;
+  top: 12px;
   width: min(1500px, 100%);
   margin: 18px auto 0;
   padding: 14px 16px;
@@ -5078,6 +5081,7 @@ body.qb-fullscreen .crm-app-shell {
   border: 1px solid #d8d8d2;
   color: #5b5b58;
   font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
 }
 
 .crm-metrics {
