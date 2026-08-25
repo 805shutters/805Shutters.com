@@ -5071,11 +5071,12 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-alert {
-  position: sticky;
-  z-index: 80;
-  top: 12px;
-  width: min(1500px, 100%);
-  margin: 18px auto 0;
+  position: fixed;
+  z-index: 120;
+  right: 20px;
+  bottom: 20px;
+  width: min(520px, calc(100vw - 40px));
+  margin: 0;
   padding: 14px 16px;
   background: #f4f4f2;
   border: 1px solid #d8d8d2;

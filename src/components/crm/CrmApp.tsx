@@ -6581,10 +6581,10 @@ type DrillCommandButton = {
   tone?: "missing" | "warning";
   paymentTypePicker?: {
     defaultValue: CrmBookkeepingPaymentType;
-    onSelect: (paymentType: CrmBookkeepingPaymentType) => void;
+    onSelect: (paymentType: CrmBookkeepingPaymentType) => void | Promise<boolean>;
   };
   disabled?: boolean;
-  onClick: () => void;
+  onClick: () => void | Promise<boolean>;
 };
 
 type DrillAmountCommand = {
@@ -7870,7 +7870,7 @@ function DrillDetailCard({
           detail: "Then order each room and product in Quotes",
           tone: needsOrderHighlight ? "warning" : undefined,
           disabled: busy,
-          onClick: () => void checkOrderConfirmations()
+          onClick: () => checkOrderConfirmations()
         }
       : canFindOrderEmail
         ? {
@@ -7879,7 +7879,7 @@ function DrillDetailCard({
             detail: "Start COGS",
             tone: needsOrderHighlight ? "warning" : undefined,
             disabled: busy,
-            onClick: () => void checkOrderConfirmations()
+            onClick: () => checkOrderConfirmations()
           }
       : null,
     canMarkComplete
@@ -7888,7 +7888,7 @@ function DrillDetailCard({
           label: "Mark Complete",
           detail: "Install complete",
           disabled: busy,
-          onClick: () => void markComplete()
+          onClick: () => markComplete()
         }
       : null,
     {
@@ -7907,7 +7907,7 @@ function DrillDetailCard({
           detail: toLedgerCurrency(openJobBalance || depositShortfall + balancePaymentShortfall),
           tone: depositMissingHighlight || balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
-          onClick: () => void saveRow(payJobPatch, "Job marked paid.")
+          onClick: () => saveRow(payJobPatch, "Job marked paid.")
         }
       : null,
     (row || canEditJob) && depositShortfall > 0
@@ -7920,7 +7920,7 @@ function DrillDetailCard({
           paymentTypePicker: {
             defaultValue: depositPaymentType,
             onSelect: (paymentType) =>
-              void saveRow(
+              saveRow(
                 {
                   deposit_paid_target: row?.depositDue ?? fallbackDepositDue,
                   payment_type: paymentType,
@@ -7930,7 +7930,7 @@ function DrillDetailCard({
               )
           },
           onClick: () =>
-            void saveRow(
+            saveRow(
               {
                 deposit_paid_target: row?.depositDue ?? fallbackDepositDue,
                 payment_type: depositPaymentType,
@@ -7950,7 +7950,7 @@ function DrillDetailCard({
           paymentTypePicker: {
             defaultValue: balancePaymentType,
             onSelect: (paymentType) =>
-              void saveRow(
+              saveRow(
                 {
                   balance_paid_target: balancePaidTarget,
                   payment_type: paymentType,
@@ -7962,7 +7962,7 @@ function DrillDetailCard({
               )
           },
           onClick: () =>
-            void saveRow(
+            saveRow(
               {
                 balance_paid_target: balancePaidTarget,
                 payment_type: balancePaymentType,
@@ -8625,29 +8625,39 @@ function DrillDetailCard({
 
 function DrillCommandButtonControl({ command }: { command: DrillCommandButton }) {
   const [choosingPaymentType, setChoosingPaymentType] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const runAction = async (action: () => void | Promise<boolean>) => {
+    setSaving(true);
+    try {
+      return await action();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (command.paymentTypePicker && choosingPaymentType) {
     return (
       <div className={`crm-drill-command-button crm-drill-command-button--picker ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}>
-        <strong>{command.label}</strong>
-        {command.detail ? <span>{command.detail}</span> : null}
+        <strong>{saving ? "Saving…" : command.label}</strong>
+        {command.detail ? <span>{saving ? "Please wait" : command.detail}</span> : null}
         <div className="crm-payment-type-picker" role="group" aria-label={`Payment type for ${command.label}`}>
           {quickPaymentTypes.map((item) => (
             <button
               type="button"
               className={item.value === command.paymentTypePicker?.defaultValue ? "active" : ""}
               key={item.value}
-              disabled={command.disabled}
-              onClick={() => {
-                command.paymentTypePicker?.onSelect(item.value);
-                setChoosingPaymentType(false);
+              disabled={command.disabled || saving}
+              onClick={async () => {
+                const result = await runAction(() => command.paymentTypePicker?.onSelect(item.value));
+                if (result !== false) setChoosingPaymentType(false);
               }}
             >
               {item.label}
             </button>
           ))}
         </div>
-        <button type="button" className="crm-payment-type-cancel" disabled={command.disabled} onClick={() => setChoosingPaymentType(false)}>
+        <button type="button" className="crm-payment-type-cancel" disabled={command.disabled || saving} onClick={() => setChoosingPaymentType(false)}>
           Cancel
         </button>
       </div>
@@ -8658,17 +8668,18 @@ function DrillCommandButtonControl({ command }: { command: DrillCommandButton })
     <button
       type="button"
       className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}
-      disabled={command.disabled}
-      onClick={() => {
+      disabled={command.disabled || saving}
+      aria-busy={saving}
+      onClick={async () => {
         if (command.paymentTypePicker) {
           setChoosingPaymentType(true);
           return;
         }
-        command.onClick();
+        await runAction(command.onClick);
       }}
     >
-      <strong>{command.label}</strong>
-      {command.detail ? <span>{command.detail}</span> : null}
+      <strong>{saving ? "Saving…" : command.label}</strong>
+      {command.detail ? <span>{saving ? "Please wait" : command.detail}</span> : null}
     </button>
   );
 }

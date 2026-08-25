@@ -12,8 +12,15 @@ describe("CRM action feedback", () => {
     );
 
     const alertRule = globalStyles.match(/(?:^|\n)\.crm-alert \{([\s\S]*?)\n\}/)?.[1] || "";
-    expect(alertRule).toContain("position: sticky;");
-    expect(alertRule).toContain("top: 12px;");
-    expect(alertRule).toContain("z-index: 80;");
+    expect(alertRule).toContain("position: fixed;");
+    expect(alertRule).toContain("bottom: 20px;");
+    expect(alertRule).toContain("z-index: 120;");
+  });
+
+  it("shows an in-button saving state while a CRM action is pending", () => {
+    expect(appSource).toContain('const [saving, setSaving] = useState(false);');
+    expect(appSource).toContain('aria-busy={saving}');
+    expect(appSource).toContain('saving ? "Saving…" : command.label');
+    expect(appSource).toContain('await runAction(command.onClick);');
   });
 });
