@@ -13,6 +13,7 @@ function fixture() {
   const quotes = jobs.slice(0, 6).map((job, n) => ({ id: id(n + 20), created_at: stamp, updated_at: stamp, job_id: job.id, quote_number: `805-DEMO-${n + 1}`, customer_name: job.customer_name, status: n === 2 ? "ordered" : n === 3 ? "installed" : "sold", quote_total: 4000, materials_cost: 1250, labor_cost: 0, discount: 0, tax: 0, deposit_required: 2000, balance_due: 2000, sold_by: "Jessica", sent_at: null, approved_at: null, sold_at: n === 5 ? null : `2026-08-${31 - n}T12:00:00Z`, ordered_at: n === 2 ? stamp : null, received_at: null, installed_at: n === 3 ? stamp : null, archived_at: null, manufacturer_name: n === 2 ? "Norman" : null, manufacturer_order_ref: n === 2 ? "DEMO-PO-200" : null, manufacturer_order_url: null, manufacturer_document_url: null, customer_email: job.email, customer_phone: job.phone, customer_address: job.address, share_token: `test-only-${n}`, customer_signature: null, customer_printed_name: null, signed_at: n === 5 ? null : `2026-08-${31 - n}T12:00:00Z`, quote_group_id: null, quote_label: null, meta: {}, notes: "Demo project notes" }) as CrmQuote);
   const payments = quotes.slice(1, 5).map((quote, n) => ({ id: id(n + 40), created_at: stamp, updated_at: stamp, quote_id: quote.id, job_id: quote.job_id, bookkeeping_entry_id: null, payment_label: "Deposit", payment_type: "zelle", amount: n === 3 ? 4000 : 2000, paid_at: "2026-09-01", source: "crm_quote", notes: "Sample receipt", meta: {} }) as CrmBookkeepingPayment);
   const credits: CrmBookkeepingCredit[] = [];
+  quotes.push({ ...quotes[0], id: id(90), job_id: jobs[6].id, customer_name: jobs[6].customer_name, customer_email: jobs[6].email, status: "sent", sold_at: null, signed_at: null, quote_total: 20000, balance_due: 20000 });
   const entries: CrmBookkeepingEntry[] = [];
   return { jobs, quotes, payments, credits, entries };
 }
@@ -81,6 +82,7 @@ async function setup(page: Page, includeLegacy = false) {
 test("full local tracking workflow: filters, sorting, edits, receipts and Square confirmation", async ({ page }) => {
   const { writes, failNextCogs } = await setup(page);
   const table = page.getByRole("table");
+  await expect(page.getByText("Active sold-job outstanding", { exact: true }).locator("..")).toContainText("$14,000.00");
   await expect(page.getByRole("navigation", { name: "Filter jobs by status" }).getByRole("button").first()).toHaveText("All Active7");
   await expect(page.getByRole("button", { name: /^All Active\s+7$/ })).toHaveAttribute("aria-pressed", "true");
   await expect(table.locator("tbody tr")).toHaveCount(7);

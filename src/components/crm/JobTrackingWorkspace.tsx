@@ -46,7 +46,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const [actionWarning, setActionWarning] = useState("");
   const visible = useMemo(() => filterJobTrackingView(items, filter, search), [items, filter, search]);
   const active = items.filter((item) => !["complete", "lost", "archived"].includes(item.stageId));
-  const openBalance = active.reduce((sum, item) => sum + Math.max(0, item.balanceOutstanding || 0), 0);
+  const openBalance = active.reduce((sum, item) => sum + (item.isSale ? Math.max(0, item.balanceOutstanding || 0) : 0), 0);
   const counts = new Map(JOB_TRACKING_STAGES.map((stage) => [stage.id, items.filter((item) => item.stageId === stage.id).length]));
   const disabled = running || props.busy;
   const open = (item: JobTrackingViewItem, kind: EditKind, paymentType?: "deposit" | "balance") => { opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setError(""); setNotice(""); setSquareUrl(null); setActionWarning(""); setEditor({ item, kind, paymentType, ...(kind === "payment" ? { paymentRequestId: crypto.randomUUID() } : {}) }); };
@@ -134,7 +134,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       <button type="button" className={styles.secondary} onClick={props.onPullInstallInvoices} disabled={disabled}>Pull install invoices</button>
     </header>
     <div className={styles.summary}>
-      <div><span>All jobs</span><strong>{items.length}</strong></div><div><span>Active jobs</span><strong>{active.length}</strong></div><div><span>Known active outstanding</span><strong>{money(openBalance)}</strong></div><div><span>Sold date missing</span><strong>{items.filter((item) => item.isSale && !item.soldDate).length}</strong></div>
+      <div><span>All jobs</span><strong>{items.length}</strong></div><div><span>Active jobs</span><strong>{active.length}</strong></div><div><span>Active sold-job outstanding</span><strong>{money(openBalance)}</strong></div><div><span>Sold date missing</span><strong>{items.filter((item) => item.isSale && !item.soldDate).length}</strong></div>
     </div>
     <nav className={styles.filters} aria-label="Filter jobs by status">
       {[{ id: "active" as const, label: "All Active", count: active.length }, ...JOB_TRACKING_STAGES.filter((stage) => !["complete", "lost", "archived"].includes(stage.id)).map((stage) => ({ ...stage, count: counts.get(stage.id) || 0 })), { id: "archive" as const, label: "Archive", count: items.length - active.length }].map((stage) => <button key={stage.id} type="button" aria-pressed={filter === stage.id} onClick={() => setFilter(stage.id)} className={`${styles.filter} ${filter === stage.id ? styles.selected : ""}`}><span>{stage.label}</span><span className={styles.count}>{stage.count}</span></button>)}
