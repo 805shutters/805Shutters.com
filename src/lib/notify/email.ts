@@ -4,6 +4,7 @@
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
+import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string; uncertain?: boolean };
 export type EmailAttachment = {
@@ -273,9 +274,11 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const name = fullName && fullName !== "Valued customer" ? fullName.split(/\s+/)[0] : "there";
   const quoteLabel = details.quoteNumber ? `Contract ${details.quoteNumber}` : "Your Contract";
   const subject = `Your 805 Shutters contract${total > 0 ? ` - ${amount}` : ""}`;
-  const personalNote = details.personalNote?.trim();
+  const personalNote = customerQuoteText(details.personalNote);
   const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
-  const quoteVersions = (details.versions ?? []).filter((version) => version.label);
+  const quoteVersions = (details.versions ?? []).map((version, index) => ({
+    ...version, label: customerQuoteText(version.label) || String(index + 1),
+  }));
   const versionsText = quoteVersions.length > 1
     ? `\n\nThis link includes ${quoteVersions.length} quotes to compare:\n${quoteVersions.map((version) => `- Quote ${version.label}: ${money(version.total)}`).join("\n")}`
     : "";
@@ -448,7 +451,7 @@ function quoteLineHtml(line: QuoteEmailLine): string {
 function quoteConfigurationHtml(configuration: QuoteEmailDesignOption, showOptionLabel: boolean): string {
   const product = configuration.priceReady === false
     ? "Pricing in progress"
-    : configuration.productName || "Window treatment";
+    : customerQuoteProductName(configuration.productName);
   const selections = quoteProductDetails(configuration.styleName || "", configuration.options ?? []);
   const selectionRows = selections
     .map((selection) => `<tr>
@@ -458,7 +461,7 @@ function quoteConfigurationHtml(configuration: QuoteEmailDesignOption, showOptio
     .join("");
 
   return `<div style="${showOptionLabel ? "border-top:1px solid #e5e5e0;padding-top:10px;margin-top:10px" : ""}">
-    ${showOptionLabel ? `<div style="font-size:10px;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:#666666">Option ${escapeHtml(configuration.label || "A")}</div>` : ""}
+    ${showOptionLabel ? `<div style="font-size:10px;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:#666666">Option ${escapeHtml(customerQuoteText(configuration.label) || "A")}</div>` : ""}
     <div style="margin:${showOptionLabel ? "3px" : "0"} 0 5px 0;font-size:15px;line-height:1.35;font-weight:700;color:#0b0b0b">${escapeHtml(product)}</div>
     ${selectionRows ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${selectionRows}</table>` : ""}
   </div>`;
@@ -491,7 +494,7 @@ function reviewContractButton(url: string, margin: string): string {
 function quoteSummary(details: QuoteEmailDetails, total: number): string {
   const rows = [
     typeof details.subtotal === "number" ? summaryRow("Subtotal", details.subtotal) : "",
-    ...(details.fees ?? []).map((fee) => summaryRow(fee.name, fee.amount)),
+    ...(details.fees ?? []).map((fee) => summaryRow(customerQuoteText(fee.name) || "Additional fee", fee.amount)),
     details.discount && details.discount > 0 ? summaryRow("Discount", -details.discount) : "",
     details.tax && details.tax > 0 ? summaryRow("Tax", details.tax) : "",
     details.sourceTotalAdjustment ? summaryRow("Contract adjustment", details.sourceTotalAdjustment) : "",
@@ -512,8 +515,8 @@ function textLine(line: QuoteEmailLine, _index: number): string {
   const configurations = quoteLineConfigurations(line);
   const showOptionLabels = configurations.length > 1;
   const configurationText = configurations.map((configuration) => {
-    const product = configuration.priceReady === false ? "Pricing in progress" : configuration.productName || "Window treatment";
-    const heading = `${showOptionLabels ? `Option ${configuration.label || "A"} - ` : ""}${product}`;
+    const product = configuration.priceReady === false ? "Pricing in progress" : customerQuoteProductName(configuration.productName);
+    const heading = `${showOptionLabels ? `Option ${customerQuoteText(configuration.label) || "A"} - ` : ""}${product}`;
     const selections = quoteProductDetails(configuration.styleName || "", configuration.options ?? []);
     return [heading, ...selections.map((selection) => `  ${selection.label}: ${selection.value}`)].join("\n");
   }).join("\n");

@@ -40,6 +40,8 @@ import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import { formatDimensionsOrNull } from "@mts/types/quote";
 import { formatCurrency, getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
+import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
+import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import {
   calculateLineItemDesignTotal,
   calculateQuoteDesignSubtotal,
@@ -58,7 +60,7 @@ import {
 } from "@/lib/quote-v2/selected-design";
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
-import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
+import { getCustomerLineItemProductImage } from "@mts/lib/quoteProductImages";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
@@ -933,7 +935,7 @@ export function QuoteContract({
                 const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
                 });
-                const productImage = getLineItemProductImage(item, itemDesigns);
+                const productImage = getCustomerLineItemProductImage(item);
                 const itemDimensions = formatDimensionsOrNull(item);
                 return (
                   <div key={item.id} className="p-4 bg-muted/30 rounded-lg border">
@@ -953,7 +955,7 @@ export function QuoteContract({
                           <h4 className="font-bold">{item.room_name}</h4>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
-                              {item.product_type}
+                              {customerQuoteProductName(item.product_type)}
                             </span>
                             {itemDimensions ? (
                               <span className="font-mono">{itemDimensions}</span>
@@ -996,12 +998,14 @@ export function QuoteContract({
                     {itemDesigns.length > 0 && (
                       <div className="mt-4 space-y-3">
                         {itemDesigns.map((design) => {
-                          const details = getQuoteDesignDetails(design);
+                          const details = quoteProductDetails("", getQuoteDesignDetails(design).map(
+                            (detail) => `${detail.label}: ${detail.value}`,
+                          ));
                           return (
                             <div key={design.id} className="rounded-lg border bg-background p-3">
                               <div className="flex items-center justify-between gap-3">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Option {design.variant || "A"}
+                                  Option {customerQuoteText(design.variant) || "A"}
                                 </p>
                                 <div className="flex items-center gap-1">
                                   <EditableContractPrice
@@ -1080,7 +1084,7 @@ export function QuoteContract({
                 {adminControls.showExtras &&
                   adminControls.extraFees.map((fee) => (
                     <div key={fee.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{fee.name}</span>
+                      <span className="text-muted-foreground">{customerQuoteText(fee.name) || "Additional fee"}</span>
                       <span className="font-medium">
                         ${fee.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </span>
@@ -1211,11 +1215,10 @@ export function QuoteContract({
             </AccordionItem>
             {includesOnyxShutters && (
               <AccordionItem value="onyx-shutters">
-                <AccordionTrigger>2. Onyx Shutters Manufacturer Warranty</AccordionTrigger>
+                <AccordionTrigger>2. Shutter Manufacturer Warranty</AccordionTrigger>
                 <AccordionContent className="space-y-3 text-sm text-muted-foreground">
                   <p>
-                    Your shutters are manufactured by Onyx Shutters, one of the manufacturers used
-                    by {companyName}. Onyx Shutters provides manufacturer warranty coverage to the
+                    Your shutters include manufacturer warranty coverage for the
                     original purchaser when the shutters are properly installed, properly operated,
                     and properly maintained.
                   </p>
@@ -1246,14 +1249,14 @@ export function QuoteContract({
                       Custom color matches and color matches between separate orders are not
                       guaranteed due to material, finish, dye lot, and production variations. Once a
                       custom color sample has been approved, resulting color variation is not covered
-                      by the Onyx manufacturer warranty.
+                      by the manufacturer warranty.
                     </p>
                   </div>
                   <p>
                     If a warranty concern arises, please contact {companyName}. We will review the
                     concern, request photos if needed, and help coordinate the claim process with
-                    Onyx Shutters. Manufacturer warranty approval, repair, replacement, or remake
-                    decisions are subject to Onyx Shutters' review and warranty terms.
+                    the manufacturer. Manufacturer warranty approval, repair, replacement, or remake
+                    decisions are subject to the manufacturer's review and warranty terms.
                   </p>
                 </AccordionContent>
               </AccordionItem>

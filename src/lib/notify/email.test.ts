@@ -152,7 +152,7 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("Quote Lab");
     expect(html).not.toContain(" | ");
     expect(text).toContain("Living Room\nQuantity: 1\nPrice: $527.00");
-    expect(text).toContain("  Supplier: Onyx");
+    expect(text).not.toMatch(/Supplier|Onyx/);
     expect(text).not.toContain("Catalog Product");
     expect(text).not.toContain("Quote Lab");
   });

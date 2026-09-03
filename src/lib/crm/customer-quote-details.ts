@@ -1,3 +1,5 @@
+import { customerQuoteOptions, customerQuoteText } from "./customer-quote-branding";
+
 export type QuoteProductDetail = {
   label: string;
   value: string;
@@ -83,7 +85,8 @@ function stripRepeatedLightControl(value: string, lightControl: string | undefin
  * the source record but never render on the contract or in customer email.
  */
 export function quoteProductDetails(styleName: string, options: string[]): QuoteProductDetail[] {
-  const parsed = options
+  styleName = customerQuoteText(styleName, true);
+  const parsed = customerQuoteOptions(options)
     .map(splitDetail)
     .filter(({ label, value }) => label && value && !EMPTY_VALUES.has(normalized(value)));
   const lightControl = parsed.find(({ label }) => normalized(label) === "light control")?.value;

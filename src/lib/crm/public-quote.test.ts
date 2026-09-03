@@ -128,7 +128,8 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
     expect(d.options).toContain("Mount: Inside mount");
     expect(d.options).toContain("Control side: Left");
     expect(d.options.some((o) => /hard-surface/i.test(o))).toBe(false);
-    expect(d.options.some((o) => /Norman Smart Motorization: Motor/i.test(o))).toBe(true);
+    expect(d.options.some((o) => /Smart Motorization: Motor/i.test(o))).toBe(true);
+    expect(JSON.stringify(d)).not.toContain("Norman");
     expect(JSON.stringify(d)).not.toContain("wholesale");
     expect(JSON.stringify(d)).not.toContain("123.45");
   });
@@ -774,7 +775,7 @@ describe("buildSignedContractSnapshot", () => {
     expect(snapshot.lines[0]).toMatchObject({
       lineItemId: "line-1",
       room: "Living Room",
-      productName: "Onyx Shutters",
+      productName: "Shutters",
       quantity: 1,
       unitPrice: 393.75,
       lineTotal: 393.75,

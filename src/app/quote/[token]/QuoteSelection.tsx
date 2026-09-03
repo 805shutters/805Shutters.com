@@ -1,5 +1,7 @@
 "use client";
 
+import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
+
 import { useEffect, useRef, useState } from "react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
@@ -250,7 +252,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                             <div key={option.id} className={line.designOptions.length > 1 ? styles.designOption : undefined}>
                               {line.designOptions.length > 1 ? (
                                 <div className={styles.designOptionHeading}>
-                                  <strong>Option {option.label}</strong>
+                                  <strong>Option {customerQuoteText(option.label) || "A"}</strong>
                                   <span>{money(option.lineTotal)}</span>
                                 </div>
                               ) : null}
@@ -413,11 +415,10 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
       {quote.hasOnyxShutters ? (
         <details open style={termsBox}>
-          <summary style={summaryStyle}>Onyx Shutters Manufacturer Warranty</summary>
+          <summary style={summaryStyle}>Shutter Manufacturer Warranty</summary>
           <div style={{ marginTop: 10 }}>
             <p style={{ margin: "0 0 10px" }}>
-              Your shutters are manufactured by Onyx Shutters, one of the manufacturers used by
-              805 Shutters. Onyx Shutters provides manufacturer warranty coverage to the original
+              Your shutters include manufacturer warranty coverage for the original
               purchaser when the shutters are properly installed, properly operated, and properly
               maintained.
             </p>
@@ -446,14 +447,14 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
             <p style={{ margin: "6px 0 0" }}>
               Custom color matches and color matches between separate orders are not guaranteed due
               to material, finish, dye lot, and production variations. Once a custom color sample has
-              been approved, resulting color variation is not covered by the Onyx manufacturer
+              been approved, resulting color variation is not covered by the manufacturer
               warranty.
             </p>
             <p style={{ margin: "10px 0 0" }}>
               If a warranty concern arises, please contact 805 Shutters. We will review the concern,
-              request photos if needed, and help coordinate the claim process with Onyx Shutters.
+              request photos if needed, and help coordinate the claim process with the manufacturer.
               Manufacturer warranty approval, repair, replacement, or remake decisions are subject
-              to Onyx Shutters&apos; review and warranty terms.
+              to the manufacturer&apos;s review and warranty terms.
             </p>
           </div>
         </details>
@@ -486,7 +487,7 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
   const depositSatisfied = live.payment.available && live.depositDue > 0 && live.payment.depositPaid >= live.depositDue;
   return <div style={pricingSummary}>
     <Row label="Subtotal" value={money(live.subtotal)} />
-    {quote.fees.map((fee, i) => <Row key={i} label={fee.name} value={money(fee.amount)} />)}
+    {quote.fees.map((fee, i) => <Row key={i} label={customerQuoteText(fee.name) || "Additional fee"} value={money(fee.amount)} />)}
     {live.discount > 0 ? <Row label="Discount" value={`- ${money(live.discount)}`} /> : null}
     {live.tax > 0 ? <Row label="Tax" value={money(live.tax)} /> : null}
     {quote.sourceTotalAdjustment ? <Row label="Contract adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} /> : null}
@@ -501,7 +502,7 @@ function ProductConfiguration({ productName, styleName, options }: { productName
   const details = quoteProductDetails(styleName, options);
   return (
     <div className={styles.productConfiguration}>
-      <strong className={styles.productName}>{productName}</strong>
+      <strong className={styles.productName}>{customerQuoteProductName(productName)}</strong>
       {details.length ? (
         <dl className={styles.productDetails}>
           {details.map((detail) => (

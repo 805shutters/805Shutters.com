@@ -24,7 +24,7 @@ describe("quoteProductDetails", () => {
     expect(details).toEqual([
       { label: "Mount Type", value: "Inside Mount" },
       { label: "Shade Type", value: "Single" },
-      { label: "Lift System", value: "SmartRise Cordless" },
+      { label: "Lift System", value: "Cordless" },
       { label: "Fabric", value: "C4305T - Morning Blush RD" },
       { label: "Cell Size", value: '3/4" Single Cell' },
       { label: "Light Control", value: "Room Darkening" },
@@ -55,7 +55,6 @@ describe("quoteProductDetails", () => {
       "Control Side: Left",
       "Requires Takedown: false",
     ])).toEqual([
-      { label: "Supplier", value: "Onyx" },
       { label: "Control Type", value: "Hidden Tiltrod" },
       { label: "Control Side", value: "Left" },
     ]);

@@ -1,4 +1,17 @@
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { productImage } from "@/lib/quote/product-images";
+import { customerQuoteProductName } from "@/lib/crm/customer-quote-branding";
+
+/** Customer contracts use our unbranded photos, never vendor URLs or logos. */
+export function getCustomerLineItemProductImage(item: Pick<SalesQuoteLineItem, "product_type">) {
+  const types: Record<string, string> = {
+    "Shutters": "shutter", "Roller Shades": "roller_shade", "Roman Shades": "roman_shade",
+    "Honeycomb Shades": "honeycomb_shade", "Sheer Shades": "sheer_shade",
+    "Faux Wood Blinds": "faux_wood_blind", "Wood Blinds": "wood_blind",
+    "Vertical Blinds": "vertical_blind", "Mini Blinds": "aluminum_blind", "Smart Drapes": "smart_drape",
+  };
+  return { title: customerQuoteProductName(item.product_type), imageUrl: productImage(types[item.product_type] || "") };
+}
 
 export type QuoteProductImageSource = "manufacturer" | "uploaded" | "customer" | "job_site";
 

@@ -8,6 +8,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
+import { customerQuoteOptions, customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
@@ -531,7 +532,7 @@ function customerReadableLegacyDetail(label: string, value: string): string {
 export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[] } {
   const legacy = legacyDesignSnapshot(design);
   const product = getProduct(design.product_id);
-  const productName = legacy?.productType || product?.name || design.product_id;
+  const productName = customerQuoteProductName(legacy?.productType || product?.name);
   let styleName = "";
   if (design.program_id) {
     styleName = product?.programs.find((p) => p.id === design.program_id)?.name ?? "";
@@ -589,7 +590,7 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
         ...surchargeOptions,
         ...motorizationOptions,
       ];
-  return { productName, styleName, options };
+  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(options) };
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {
@@ -598,7 +599,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   return {
     id: design.id,
-    label: design.label || "A",
+    label: customerQuoteText(design.label) || "A",
     productName,
     styleName,
     options,
@@ -645,7 +646,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       id: li.id,
       lineItemId: li.id,
       room: li.room || "Window",
-      productName: li.notes || first?.productName || "-",
+      productName: customerQuoteProductName(li.notes || first?.productName),
       styleName: "",
       options: legacyLineOptions(designOptions),
       designOptions,
@@ -1022,7 +1023,7 @@ async function projectPublicQuote(
     const siblings = await listQuoteVersions(supabase, quote.id);
     versions = siblings
       .filter((s) => s.share_token)
-      .map((s) => ({ token: s.share_token as string, label: s.label, total: s.quote_total, signed: s.signed, current: s.share_token === token }));
+      .map((s, index) => ({ token: s.share_token as string, label: customerQuoteText(s.label) || String(index + 1), total: s.quote_total, signed: s.signed, current: s.share_token === token }));
   }
 
   return {
@@ -1038,7 +1039,7 @@ async function projectPublicQuote(
     signedAt: quote.signed_at,
     lines,
     subtotal: money.subtotal,
-    fees: adj.fees,
+    fees: adj.fees.map((fee) => ({ ...fee, name: customerQuoteText(fee.name) || "Additional fee" })),
     discount: money.discountAmount,
     tax: money.taxAmount,
     sourceTotalAdjustment,
@@ -1048,7 +1049,7 @@ async function projectPublicQuote(
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     hasOnyxShutters,
-    adjustments: adj,
+    adjustments: { ...adj, fees: adj.fees.map((fee) => ({ ...fee, name: customerQuoteText(fee.name) || "Additional fee" })) },
     business: {
       name: BUSINESS_NAME,
       phone: brandIdentity.phone,

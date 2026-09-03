@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
+import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
 import type { QuoteWalletConfig } from "./QuoteWalletButtons";
@@ -134,7 +135,7 @@ export function CustomerContractDocument({
                     borderColor: version.current ? "#0b0b0b" : "#b8b6ae",
                   }}
                 >
-                  <span style={quoteTabLabel}>Quote {version.label}</span>
+                  <span style={quoteTabLabel}>Quote {customerQuoteText(version.label) || "Option"}</span>
                   <span style={quoteTabPrice}>{money(version.total)}</span>
                   {version.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
                 </a>
