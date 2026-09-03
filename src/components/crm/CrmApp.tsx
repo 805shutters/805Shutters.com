@@ -60,6 +60,7 @@ import {
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
+import { withInstallationConfirmation } from "@/lib/crm/installation-confirmation";
 import { buildCommandPerformanceMetrics, formatCloseRate } from "@/lib/crm/command-performance";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
@@ -1612,6 +1613,12 @@ export function CrmApp({
   async function updateJobStatus(job: CrmJob, status: CrmJobStatus) {
     if (!session) return;
 
+    const confirmed = withInstallationConfirmation(job.customer_name, [
+      { currentStatus: job.status, patch: { status } }
+    ]);
+    if (!confirmed) return;
+    const statusPatch = confirmed[0].patch;
+
     setData((current) =>
       current
         ? {
@@ -1624,7 +1631,7 @@ export function CrmApp({
     try {
       await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${job.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status })
+        body: JSON.stringify(statusPatch)
       });
       await refresh();
     } catch (error) {
@@ -1635,6 +1642,12 @@ export function CrmApp({
 
   async function saveCustomerRowField(row: CrmBookkeepingRow, patch: Record<string, unknown>, message?: string) {
     if (!session) return false;
+
+    const confirmed = withInstallationConfirmation(row.customerName, [
+      { currentStatus: row.status, installationComplete: row.isInstallationComplete, patch }
+    ]);
+    if (!confirmed) return false;
+    patch = confirmed[0].patch;
 
     setBusy(true);
     setMessage(null);
@@ -1665,6 +1678,10 @@ export function CrmApp({
 
   async function saveCustomerJobField(job: CrmJob, patch: Record<string, unknown>, message?: string) {
     if (!session) return false;
+
+    const confirmed = withInstallationConfirmation(job.customer_name, [{ currentStatus: job.status, patch }]);
+    if (!confirmed) return false;
+    patch = confirmed[0].patch;
 
     setBusy(true);
     setMessage(null);
@@ -1897,6 +1914,21 @@ export function CrmApp({
       setMessage("This card is a customer snapshot. Open the file to edit the source record.");
       return false;
     }
+
+    const targets = [
+      ...(patch.job ? [{ currentStatus: entry.job?.status, patch: patch.job }] : []),
+      ...(patch.row
+        ? [{ currentStatus: row?.status, installationComplete: row?.isInstallationComplete, patch: patch.row }]
+        : [])
+    ];
+    const confirmed = withInstallationConfirmation(entry.customerName || entry.name, targets);
+    if (!confirmed) return false;
+    let targetIndex = 0;
+    patch = {
+      ...patch,
+      ...(patch.job ? { job: confirmed[targetIndex++].patch } : {}),
+      ...(patch.row ? { row: confirmed[targetIndex].patch } : {})
+    };
 
     setBusy(true);
     setMessage(null);
@@ -2183,6 +2215,13 @@ export function CrmApp({
     if (!session) return;
 
     const formData = new FormData(event.currentTarget);
+    const customerName = quote.customer_name || jobs.find((job) => job.id === quote.job_id)?.customer_name || "this customer";
+    const confirmed = withInstallationConfirmation(customerName, [
+      { currentStatus: quote.status, patch: { status: formString(formData, "status") } }
+    ]);
+    if (!confirmed) return;
+    const statusPatch = confirmed[0].patch;
+
     setBusy(true);
     setMessage(null);
 
@@ -2190,7 +2229,7 @@ export function CrmApp({
       await crmFetch<{ quote: CrmQuote }>(session, `/api/crm/quotes/${quote.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          status: formString(formData, "status"),
+          ...statusPatch,
           quote_total: Number(formString(formData, "quote_total") || 0),
           materials_cost: Number(formString(formData, "materials_cost") || 0),
           sold_by: formString(formData, "sold_by"),
@@ -2563,6 +2602,12 @@ export function CrmApp({
   async function persistBookkeepingRowPatch(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
     if (!session) return;
 
+    const confirmed = withInstallationConfirmation(row.customerName, [
+      { currentStatus: row.status, installationComplete: row.isInstallationComplete, patch }
+    ]);
+    if (!confirmed) return;
+    patch = confirmed[0].patch;
+
     const payload = buildBookkeepingRowPayload(row, patch);
     const customerName = String(payload.customer_name || "").trim();
     const soldDate = String(payload.sold_date || "").trim();
@@ -2601,6 +2646,12 @@ export function CrmApp({
 
   async function saveBookkeepingCell(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
     if (!session) return;
+
+    const confirmed = withInstallationConfirmation(row.customerName, [
+      { currentStatus: row.status, installationComplete: row.isInstallationComplete, patch }
+    ]);
+    if (!confirmed) return;
+    patch = confirmed[0].patch;
 
     setBusy(true);
     setMessage(null);

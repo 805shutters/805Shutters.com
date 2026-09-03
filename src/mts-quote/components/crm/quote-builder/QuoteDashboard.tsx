@@ -26,6 +26,7 @@ import {
   isMissingSalesQuoteDeletedAtColumn,
 } from "@mts/lib/quoteDashboardFilters";
 import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
+import { withInstallationConfirmation } from "@/lib/crm/installation-confirmation";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type {
   QuoteLineItemWithDesigns,
@@ -749,6 +750,14 @@ export function QuoteDashboard({
     openQuoteRowInBuilder(quote);
   };
 
+  const handleMoveOrderStatus = (quote: SalesQuote, status: Extract<QuoteStatus, "received" | "installed">) => {
+    const confirmed = withInstallationConfirmation(quote.customer_name, [
+      { currentStatus: quote.status, patch: { status } }
+    ]);
+    if (!confirmed) return;
+    moveOrderStatus.mutate({ quote, status });
+  };
+
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
     if (appointment.quote_id) {
       setAccountId(ACCOUNT_IDS.SHUTTERS_805);
@@ -793,7 +802,7 @@ export function QuoteDashboard({
           onMarkLineOrdered={(quote, lineItem, orderRef) =>
             markProductLineOrdered.mutate({ quote, lineItem, orderRef })
           }
-          onMoveStatus={(quote, status) => moveOrderStatus.mutate({ quote, status })}
+          onMoveStatus={handleMoveOrderStatus}
           isUpdating={markProductLineOrdered.isPending || moveOrderStatus.isPending}
         />
       )}

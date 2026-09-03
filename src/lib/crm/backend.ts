@@ -107,6 +107,8 @@ const calendarEventTypes = new Set(["sales_consult", "measure", "install", "foll
 const calendarStatuses = new Set(["scheduled", "complete", "canceled", "rescheduled"]);
 const saleOwnerSyncJobStatuses = new Set(["sold", "ordered", "installed", "invoiced", "closed"]);
 const saleOwnerSyncQuoteStatuses = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"];
+const installationConfirmationError =
+  "Confirm installation is complete before marking this record installed.";
 
 const allowedJobPatchFields = new Set([
   "status",
@@ -1988,6 +1990,11 @@ export async function updateCrmJob(
     throw new CrmAuthError(400, "No supported CRM job fields provided.");
   }
 
+  const installationTransition = patch.status === "installed" && existing.status !== "installed";
+  if (installationTransition && payload.installation_confirmed !== true) {
+    throw new CrmAuthError(409, installationConfirmationError);
+  }
+
   let soldQuoteCandidate: SoldQuoteInstallerCandidate | null = null;
   const existingIsSaleStage = saleOwnerSyncJobStatuses.has(String(existing.status || ""));
   const targetIsSaleStage = saleOwnerSyncJobStatuses.has(String(patch.status || ""));
@@ -2071,7 +2078,10 @@ export async function updateCrmJob(
     entityId: id,
     action: "update",
     before: existing,
-    after: updatedJob
+    after: updatedJob,
+    metadata: installationTransition
+      ? { installation_confirmed: true, installation_confirmed_at: updatedAt, installation_confirmed_by: actor.email }
+      : undefined
   });
 
   return updatedJob;
@@ -3292,6 +3302,11 @@ export async function updateCrmQuote(
     }
   }
 
+  const installationTransition = patch.status === "installed" && existing.status !== "installed";
+  if (installationTransition && payload.installation_confirmed !== true) {
+    throw new CrmAuthError(409, installationConfirmationError);
+  }
+
   if (typeof payload.status === "string") {
     if ((payload.status === "sold" || payload.status === "approved") && !patch.sold_at) patch.sold_at = now;
     if ((payload.status === "sold" || payload.status === "approved") && !patch.signed_at) patch.signed_at = now;
@@ -3518,8 +3533,15 @@ export async function updateCrmQuote(
     before: existing,
     after: quote,
     metadata:
-      balanceAdjustment || paymentTargetAdjustments.length
-        ? { balanceAdjustment, paymentTargetAdjustments }
+      installationTransition || balanceAdjustment || paymentTargetAdjustments.length
+        ? {
+            ...(installationTransition
+              ? { installation_confirmed: true, installation_confirmed_at: now, installation_confirmed_by: actor.email }
+              : {}),
+            ...(balanceAdjustment || paymentTargetAdjustments.length
+              ? { balanceAdjustment, paymentTargetAdjustments }
+              : {})
+          }
         : undefined
   });
 

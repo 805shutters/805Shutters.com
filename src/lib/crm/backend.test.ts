@@ -29,6 +29,7 @@ import {
   updateCrmBookkeepingPayment,
   updateCrmJobExpense,
   updateCrmInstallationInvoiceEmail,
+  updateCrmJob,
   updateCrmQuote,
   updateCrmSettings,
   vendorOrderTaskFromDraftRow,
@@ -458,6 +459,83 @@ function createSupabaseRecorder(
 
   return { calls, supabase };
 }
+
+describe("installed lifecycle confirmation", () => {
+  const actor = { email: "staff@805shutters.com", userId: "staff-1" };
+
+  for (const acknowledgement of [undefined, false, "true"]) {
+    it(`blocks quote installation with ${String(acknowledgement)} acknowledgement and performs zero writes`, async () => {
+      const { calls, supabase } = createSupabaseRecorder({ existingQuote: quote({ status: "sold" }) });
+
+      await expect(
+        updateCrmQuote(supabase, "quote-1", {
+          status: "installed",
+          ...(acknowledgement === undefined ? {} : { installation_confirmed: acknowledgement })
+        }, actor)
+      ).rejects.toMatchObject({
+        status: 409,
+        message: "Confirm installation is complete before marking this record installed."
+      });
+      expect(calls).toEqual([]);
+    });
+
+    it(`blocks job installation with ${String(acknowledgement)} acknowledgement and performs zero writes`, async () => {
+      const { calls, supabase } = createSupabaseRecorder({ job: job({ status: "sold" }) });
+
+      await expect(
+        updateCrmJob(supabase, "job-1", {
+          status: "installed",
+          ...(acknowledgement === undefined ? {} : { installation_confirmed: acknowledgement })
+        }, actor)
+      ).rejects.toMatchObject({
+        status: 409,
+        message: "Confirm installation is complete before marking this record installed."
+      });
+      expect(calls).toEqual([]);
+    });
+  }
+
+  it("allows explicit true confirmation and records it in quote activity metadata", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ existingQuote: quote({ status: "received" }) });
+
+    await updateCrmQuote(supabase, "quote-1", { status: "installed", installation_confirmed: true }, actor);
+
+    expect(calls.find((call) => call.table === "crm_quotes" && call.action === "update")?.payload).toMatchObject({
+      status: "installed"
+    });
+    expect(calls.find((call) => call.table === "crm_activity_events" && call.action === "insert")?.payload).toMatchObject({
+      metadata: { installation_confirmed: true, installation_confirmed_by: actor.email }
+    });
+  });
+
+  it("allows explicit true confirmation and records it in job activity metadata", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ job: job({ status: "sold" }) });
+
+    await updateCrmJob(supabase, "job-1", { status: "installed", installation_confirmed: true }, actor);
+
+    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({
+      status: "installed"
+    });
+    expect(calls.find((call) => call.table === "crm_activity_events" && call.action === "insert")?.payload).toMatchObject({
+      metadata: { installation_confirmed: true, installation_confirmed_by: actor.email }
+    });
+  });
+
+  it("allows same-status installed retries and edits at later lifecycle stages without a new confirmation", async () => {
+    const installedQuoteRecorder = createSupabaseRecorder({ existingQuote: quote({ status: "installed" }) });
+    await updateCrmQuote(installedQuoteRecorder.supabase, "quote-1", { status: "installed" }, actor);
+    expect(installedQuoteRecorder.calls.some((call) => call.action === "update")).toBe(true);
+
+    const installedJobRecorder = createSupabaseRecorder({ job: job({ status: "installed" }) });
+    await updateCrmJob(installedJobRecorder.supabase, "job-1", { status: "installed" }, actor);
+    expect(installedJobRecorder.calls.some((call) => call.action === "update")).toBe(true);
+
+    const laterStageRecorder = createSupabaseRecorder({ existingQuote: quote({ status: "paid" }) });
+    await updateCrmQuote(laterStageRecorder.supabase, "quote-1", { notes: "Warranty follow-up" }, actor);
+    expect(laterStageRecorder.calls.find((call) => call.table === "crm_quotes" && call.action === "update")?.payload)
+      .toMatchObject({ notes: "Warranty follow-up" });
+  });
+});
 
 describe("vendorOrderTaskFromRow", () => {
   const queuedRow = {
