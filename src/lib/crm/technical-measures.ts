@@ -124,6 +124,7 @@ export type TechnicalMeasureAddendum = {
 };
 
 export type TechnicalMeasureForm = {
+  contractUrl?: string | null;
   id: string;
   created_at: string;
   updated_at: string;
@@ -780,7 +781,16 @@ export async function loadTechnicalMeasureForm(supabase: SupabaseClient, formId:
   ]);
   if (formResult.error || !formResult.data) throw new CrmAuthError(404, "Technical measure form was not found.");
   if (linesResult.error) throw new CrmAuthError(502, "Technical measure line items could not be loaded.");
-  return decorateForm(formResult.data, linesResult.data || [], addendumResult.data || null);
+  const form = decorateForm(formResult.data, linesResult.data || [], addendumResult.data || null);
+  // Use the actual customer contract route, not a reconstructed measure summary.
+  const { data: quote } = await supabase.from("crm_quotes").select("share_token").eq("id", form.quote_id).maybeSingle();
+  form.contractUrl = quote?.share_token ? `/quote/${encodeURIComponent(quote.share_token)}/` : null;
+  if (!form.contractUrl && form.contract_id) {
+    const { data: contract } = await supabase.from("crm_customer_contracts").select("contract_url").eq("id", form.contract_id).eq("quote_id", form.quote_id).maybeSingle();
+    const url = text(contract?.contract_url);
+    if (/^https:\/\//.test(url) || /^\/quote\/[A-Za-z0-9_-]+\/?$/.test(url)) form.contractUrl = url;
+  }
+  return form;
 }
 
 export async function listTechnicalMeasureForms(supabase: SupabaseClient, jobId?: string | null, includeArchived = false) {

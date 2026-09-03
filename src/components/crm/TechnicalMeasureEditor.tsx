@@ -1,8 +1,9 @@
 "use client";
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
+import "./technical-measure-ipad.css";
 import type { Session } from "@supabase/supabase-js";
-import { Archive, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
+import { Archive, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type {
@@ -395,6 +396,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [measureStarted, setMeasureStarted] = useState(false);
+  const [mobilePane, setMobilePane] = useState<"contract" | "measure">("measure");
+  const fieldPaneRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 744px)").matches) setMeasureStarted(true);
+  }, []);
+  useEffect(() => { fieldPaneRef.current?.scrollTo({ top: 0 }); }, [activeLineIndex, measureStarted]);
   const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" } | null>(null);
   const [customOpeningLineId, setCustomOpeningLineId] = useState<string | null>(null);
   const [detailChoice, setDetailChoice] = useState<{ lineId: string; key: string } | null>(null);
@@ -933,7 +940,25 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
 
   return (
     <PortalContainerContext.Provider value={scopeElement}>
-    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell${desktopWorkspace ? " technical-measure-shell--desktop" : ""}${measureStarted ? " technical-measure-shell--active" : ""}`}>
+    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell tm805-split${desktopWorkspace ? " technical-measure-shell--desktop" : ""}${measureStarted ? " technical-measure-shell--active" : ""}`}>
+      <header className="tm805-header">
+        <a href={workspaceHome} aria-label="Return to CRM"><ArrowLeft /></a>
+        <div className="tm805-brand" aria-label="805 Shutters"><strong>805</strong><span>SHUTTERS</span></div>
+        <div className="tm805-title"><h1>Technical Measure</h1><p>{form.customer_snapshot.name} · {form.quote_snapshot.quoteNumber}</p></div>
+        <span className="tm805-status">{offlineMode ? "Offline" : pendingSync ? "Syncing…" : busy ? "Saving…" : form.status.replaceAll("_", " ")}</span>
+      </header>
+      <nav className="tm805-mobile-tabs" aria-label="Measure workspace view">
+        <button type="button" aria-pressed={mobilePane === "contract"} onClick={() => setMobilePane("contract")}>Contract</button>
+        <button type="button" aria-pressed={mobilePane === "measure"} onClick={() => setMobilePane("measure")}>Field measure</button>
+      </nav>
+      <div className="tm805-panes" data-mobile-pane={mobilePane}>
+        <aside className="tm805-contract" aria-label="Customer contract reference">
+          <header className="tm805-pane-heading"><h2><FileText />Customer contract</h2>{form.contractUrl && <a href={form.contractUrl} target="_blank" rel="noopener noreferrer" aria-label="Open original customer contract"><ExternalLink /></a>}</header>
+          {form.contractUrl ? <iframe className="tm805-contract-document" title="Original customer contract" src={form.contractUrl} /> : <div className="tm805-contract-unavailable"><FileText /><h3>Contract unavailable</h3><p>{offlineMode ? "Reconnect to view the original customer contract. Your field measure is still available." : "The original contract link is missing from this customer file."}</p></div>}
+        </aside>
+        <section className="tm805-field" aria-label="Technician field measure">
+          <header className="tm805-pane-heading"><h2><Ruler />Technician field measure</h2><span>Opening {activeLineNumber} of {lines.length}</span></header>
+          <div className="tm805-field-scroll" ref={fieldPaneRef}>
       {(offlineMode || pendingSync) ? (
         <div className="technical-measure-offline-status" data-offline={offlineMode}>
           <span>{offlineMode ? "Offline" : "Saving"}</span>
@@ -1248,6 +1273,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         ) : <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button>}
       </section> : null}
 
+      </div>
       {!readOnly && measureStarted ? <footer className="technical-measure-actions">
         <label className="technical-measure-install-duration">
           <span>Installation duration</span>
@@ -1267,6 +1293,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
         <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
       </footer> : null}
+
+        </section>
+      </div>
 
       {measurePicker && activePickerLine ? (
         <MeasurementGridModal
