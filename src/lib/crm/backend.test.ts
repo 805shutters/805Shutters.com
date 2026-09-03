@@ -1443,6 +1443,8 @@ describe("partner payment write rules", () => {
     };
 
     class PartnerQuery {
+      offset = 0;
+      range(from: number) { this.offset = from; return this; }
       private filters: Record<string, unknown> = {};
       private action: "select" | "insert" = "select";
       private payload: unknown;
@@ -1494,6 +1496,7 @@ describe("partner payment write rules", () => {
       }
 
       private execute(single: boolean) {
+        if (this.offset > 0) return { data: [], error: null };
         if (this.table === "crm_commission_payment_allocations") {
           return { data: null, error: { code: "23503", message: "allocation insert rejected" } };
         }
@@ -1590,6 +1593,8 @@ describe("partner payment write rules", () => {
     };
 
     class PartnerQuery {
+      offset = 0;
+      range(from: number) { this.offset = from; return this; }
       private filters: Record<string, unknown> = {};
       private action: "select" | "insert" = "select";
       private payload: unknown;
@@ -1641,6 +1646,7 @@ describe("partner payment write rules", () => {
       }
 
       private execute(single: boolean) {
+        if (this.offset > 0) return { data: [], error: null };
         if (this.table === "crm_commission_payments") {
           return { data: null, error: { code: "PGRST205", message: "Could not find the table 'public.crm_commission_payments'" } };
         }
@@ -2555,4 +2561,115 @@ describe("job expense CRUD", () => {
     const audit = inserts.find((insert) => insert.table === "crm_activity_events");
     expect(audit?.payload).toMatchObject({ entity_type: "expense", action: "delete" });
   });
+});
+
+ describe("job tracking field writes", () => {
+ const actor = { email: "805shutters@gmail.com" };
+  it("saves an explicitly entered zero COGS over an older imported amount", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1" }),
+      existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "ordered", materials_cost: 0 }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", cogs_amount: 251.82 })
+    });
+    await updateCrmQuote(supabase, "quote-1", { materials_cost: 0 }, actor);
+    expect(calls.find((call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert")?.payload)
+      .toMatchObject({ cogs_amount: 0 });
+  });
+
+  it("requires the technical measure before recording an order date", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ meta: { measure_needed: { status: "needed", form_status: "draft" } } }),
+    });
+    await expect(updateCrmQuote(supabase, "quote-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("records a bare job sold date in metadata without changing its stage", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ job: job({ status: "sold" }) });
+    await updateCrmJob(supabase, "job-1", { sold_at: "2026-08-31T12:00:00Z" }, actor);
+    const patch = calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload;
+    expect(patch).toMatchObject({ meta: { sold_at: "2026-08-31T12:00:00Z" } });
+    expect(patch).not.toHaveProperty("status");
+    expect(patch).not.toHaveProperty("sold_at");
+  });
+
+  it("records exact standalone contact and signed contract evidence without creating payments", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ existingEntry: bookkeepingEntry() });
+    await updateCrmBookkeepingEntry(supabase, "entry-1", { customer_email: "contact@example.com", contract_signed_at: "2026-08-31T12:00:00Z", contract_url: "https://example.com/signed.pdf" }, actor);
+    const patch = calls.find((call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "update")?.payload;
+    expect(patch).toMatchObject({ meta: { customer_email: "contact@example.com", job_tracking_contract: { signed_at: "2026-08-31T12:00:00Z", url: "https://example.com/signed.pdf", recorded_by: actor.email } } });
+    expect(calls.some((call) => call.table === "crm_quote_bookkeeping_payments")).toBe(false);
+  });
+
+  it("checks the linked quote's required measure before dating an imported order without a job ID", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ meta: { measure_needed: { status: "needed", form_status: "draft" } } }),
+      existingQuote: quote({ job_id: "job-1" }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: null, source: "legacy_sheet" })
+    });
+    await expect(updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("records an imported order with a submitted measure without manufacturing a job link", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ meta: { measure_needed: { status: "measured", form_status: "submitted" } } }),
+      existingQuote: quote({ job_id: "job-1" }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: null, source: "legacy_sheet", meta: { unrelated: "keep" } })
+    });
+    await updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor);
+    const patch = calls.find((call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "update")?.payload;
+    expect(patch).toMatchObject({ meta: { unrelated: "keep", job_tracking_dates: { ordered_at: "2026-09-01T12:00:00Z" } } });
+    expect(patch).not.toHaveProperty("job_id");
+    expect(calls.some((call) => call.table === "crm_quote_bookkeeping_payments")).toBe(false);
+  });
+
+  it("rejects contradictory imported quote/job links before recording an order", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingQuote: quote({ job_id: "job-1" }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: "different-job" })
+    });
+    await expect(updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it.each(["entry", "quote", "job"])("rejects a deleted %s in an imported order link", async (deleted) => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ meta: deleted === "job" ? { deleted_at: "2026-09-01" } : {} }),
+      existingQuote: quote({ meta: deleted === "quote" ? { bookkeeping_deleted_at: "2026-09-01" } : {} }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", job_id: null, meta: deleted === "entry" ? { deleted_at: "2026-09-01" } : {} })
+    });
+    await expect(updateCrmBookkeepingEntry(supabase, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 404 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("rejects an absent linked quote instead of bypassing the order measure guard", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ existingEntry: bookkeepingEntry({ quote_id: "missing-quote", job_id: null }) });
+    const missingQuoteClient = {
+      from(table: string) {
+        if (table !== "crm_quotes") return supabase.from(table);
+        const missing = { select: () => missing, eq: () => missing, maybeSingle: async () => ({ data: null, error: null }) };
+        return missing;
+      }
+    } as typeof supabase;
+    await expect(updateCrmBookkeepingEntry(missingQuoteClient, "entry-1", { ordered_at: "2026-09-01T12:00:00Z" }, actor)).rejects.toMatchObject({ status: 404 });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("preserves existing order dates and unrelated metadata when recording installation", async () => {
+    const { calls, supabase } = createSupabaseRecorder({ existingEntry: bookkeepingEntry({
+      meta: { unrelated: "keep", job_tracking: { stage: "balance_needed" }, job_tracking_dates: { ordered_at: "2026-08-20T12:00:00Z" } }
+    }) });
+    await updateCrmBookkeepingEntry(supabase, "entry-1", { installed_at: "2026-09-02T12:00:00Z" }, actor);
+    const patch = calls.find((call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "update")?.payload;
+    expect(patch).toMatchObject({
+      installation_match_status: "matched", installation_matched_at: "2026-09-02T12:00:00Z",
+      meta: { unrelated: "keep", job_tracking: { stage: "balance_needed" }, job_tracking_dates: { ordered_at: "2026-08-20T12:00:00Z", installed_at: "2026-09-02T12:00:00Z" } }
+    });
+    expect(patch).not.toHaveProperty("sold_date");
+    expect(patch).not.toHaveProperty("total_amount");
+    expect(calls.some((call) => call.table === "crm_quote_bookkeeping_payments")).toBe(false);
+  });
+
+
 });

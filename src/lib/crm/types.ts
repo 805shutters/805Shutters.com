@@ -80,6 +80,8 @@ export type CrmQuote = {
   sent_at: string | null;
   approved_at: string | null;
   sold_at: string | null;
+  source_sold_at?: string | null;
+  source_signed_at?: string | null;
   ordered_at: string | null;
   received_at: string | null;
   installed_at: string | null;
@@ -389,6 +391,9 @@ export type CrmOrderCogsEmail = {
 
 export type CrmBookkeepingRow = {
   id: string;
+  meta?: Record<string, unknown> | null;
+  sourceSoldDate?: string | null;
+  customerEmail?: string | null;
   source: CrmBookkeepingEntrySource | "crm_quote";
   quoteId: string | null;
   /** Stable upstream quote ids recorded on the authoritative CRM quote. */
@@ -876,6 +881,7 @@ export type CrmActivitySnapshot = {
 };
 
 export type CrmDashboardData = {
+  loadWarnings?: string[];
   jobs: CrmJob[];
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];

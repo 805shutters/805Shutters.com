@@ -29,6 +29,7 @@ export async function sendEmail(input: {
   html: string;
   text: string;
   attachments?: EmailAttachment[];
+  from?: string;
   idempotencyKey?: string;
 }): Promise<EmailResult> {
   const to = (input.to || "").trim();
@@ -44,7 +45,7 @@ export async function sendEmail(input: {
         ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
       body: JSON.stringify({
-        from: resendFromAddress(),
+        from: input.from || resendFromAddress(),
         to: [to],
         subject: input.subject,
         html: input.html,

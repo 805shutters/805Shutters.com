@@ -379,6 +379,7 @@ export function CrmMobileQuotesApp() {
         <a href="/crm/mobile"><CalendarDays />Appointments</a>
         <a href="/crm/technical-measures"><Ruler />Measures</a>
         <a className="active" href="/crm/mobile/quotes" aria-current="page"><FileText />Quotes</a>
+        <a href="/crm/?view=tracking"><FileText />Job Tracking</a>
       </nav>
       <header className="crm-mobile-quotes-header">
         <a className="crm-mobile-quotes-back" href="/crm/mobile" aria-label="Back to mobile workspaces"><ArrowLeft /></a>

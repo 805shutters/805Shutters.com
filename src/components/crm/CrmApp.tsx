@@ -1,5 +1,6 @@
 "use client";
 
+import { JobTrackingWorkspace, type JobTrackingViewItem, type JobTrackingSavePatch, type JobTrackingStageId as WorkspaceStageId } from "@/components/crm/JobTrackingWorkspace";
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -1018,7 +1019,7 @@ export function CrmApp({
     }
   }
 
-  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) {
+  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: { expectedAmount: number; expectedRecipient: string }) {
     if (!session) throw new Error("Sign in again before sending a payment link.");
     setBusy(true);
     setMessage(null);
@@ -1026,7 +1027,7 @@ export function CrmApp({
       const result = await crmFetch<SquarePaymentLinkResult>(
         session,
         `/api/crm/quotes/${quoteId}/square-payment-link`,
-        { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined }) },
+        { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined, ...confirmation }) },
       );
       if (!result.email.sent) {
         throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
@@ -1036,6 +1037,85 @@ export function CrmApp({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function saveTrackingField(item: JobTrackingViewItem, patch: JobTrackingSavePatch) {
+    if (!session) throw new Error("Sign in again before editing a job.");
+    const quoteId = item.quote?.id || (item.row?.source === "crm_quote" ? item.row.quoteId : null);
+    const jobId = item.job?.id || item.row?.jobId;
+    if ((patch.quote && !quoteId) || (patch.job && !jobId) || (patch.row && !item.row)) {
+      throw new Error("The original source record is missing. Refresh before editing.");
+    }
+    setBusy(true);
+    setMessage(null);
+    try {
+      const quotePatch = { ...patch.quote };
+      if (patch.row && item.row) {
+        if (item.row.source === "crm_quote" && quoteId) {
+          Object.assign(quotePatch, patch.row);
+          if (Object.hasOwn(quotePatch, "sold_date")) {
+            quotePatch.sold_at = `${quotePatch.sold_date}T12:00:00Z`;
+            delete quotePatch.sold_date;
+          }
+        } else {
+          await crmFetch(session, `/api/crm/bookkeeping/${item.row.id}`, { method: "PATCH", body: JSON.stringify(patch.row) });
+        }
+      }
+      if (Object.keys(quotePatch).length && quoteId) {
+        await crmFetch(session, `/api/crm/quotes/${quoteId}`, { method: "PATCH", body: JSON.stringify(quotePatch) });
+      }
+      if (patch.job && jobId) {
+        await crmFetch(session, `/api/crm/jobs/${jobId}`, { method: "PATCH", body: JSON.stringify(patch.job) });
+      }
+      await refresh();
+      setMessage(patch.message || `${item.customerName} updated.`);
+      return true;
+    } catch (error) {
+      // Refresh even after a partial multi-record save. Never invite a blind
+      // repeat of a successfully recorded payment after a later refresh failed.
+      await refresh().catch(() => null);
+      throw error;
+    } finally { setBusy(false); }
+  }
+
+  async function saveTrackingStage(item: JobTrackingViewItem, stage: WorkspaceStageId) {
+    if (!session) throw new Error("Sign in again before editing a job.");
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await crmFetch<{ warning?: string | null }>(session, "/api/crm/job-tracking/stage", {
+        method: "POST", body: JSON.stringify({
+          stage, jobId: item.job?.id || item.row?.jobId || undefined,
+          quoteId: item.quote?.id || item.row?.quoteId || undefined,
+          bookkeepingEntryId: item.row && item.row.source !== "crm_quote" ? item.row.id : undefined,
+        }),
+      });
+      await refresh();
+      setMessage(result.warning || `${item.customerName}'s stage was updated.`);
+      return true;
+    } finally { setBusy(false); }
+  }
+
+  async function sendTrackingSquare(item: JobTrackingViewItem, paymentType: SquareOrderPaymentType) {
+    const standalone = item.row && item.row.source !== "crm_quote";
+    if ((!item.quote && !standalone) || !item.email) {
+      throw new Error("A sale record and verified customer email are required for a Square request.");
+    }
+    const deposit = Math.min(item.depositOutstanding || 0, item.balanceOutstanding || 0);
+    const amount = paymentType === "deposit" ? deposit : Math.max((item.balanceOutstanding || 0) - deposit, 0);
+    if (!(amount > 0)) throw new Error("No amount is currently due for this payment request.");
+    const confirmation = { expectedAmount: amount, expectedRecipient: item.email };
+    if (!standalone) return sendSquarePaymentLink(item.quote!.id, paymentType, undefined, confirmation);
+    if (!session) throw new Error("Sign in again before sending a payment link.");
+    setBusy(true);
+    try {
+      const result = await crmFetch<SquarePaymentLinkResult>(session, `/api/crm/bookkeeping/${item.row!.id}/square-payment-link`, {
+        method: "POST", body: JSON.stringify({ paymentType, ...confirmation }),
+      });
+      if (!result.email.sent) throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+      setMessage(result.warning || `${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
+      return result;
+    } finally { setBusy(false); }
   }
 
   function openSummaryDrill(metric: string) {
@@ -3138,7 +3218,8 @@ export function CrmApp({
       ) : null}
 
       {activeTab === "tracking" ? (
-        <JobTrackingView
+        <JobTrackingWorkspace
+          warnings={data?.loadWarnings}
           jobs={jobs}
           quotes={quotes}
           rows={rows}
@@ -3147,7 +3228,10 @@ export function CrmApp({
           installationInvoiceEmails={installationInvoiceEmails}
           busy={busy}
           onPullInstallInvoices={pullInstallationInvoices}
-          onDrill={setDrill}
+          onSave={saveTrackingField}
+          onStage={saveTrackingStage}
+          onSendSquare={sendTrackingSquare}
+          onOpenCustomer={openCustomerFile}
         />
       ) : null}
 
@@ -3952,6 +4036,7 @@ type CustomerSearchResult = {
 type MeasureNeededAction = "request" | "measured";
 type SquareOrderPaymentType = "deposit" | "balance";
 type SquarePaymentLinkResult = {
+  warning?: string | null;
   paymentType: SquareOrderPaymentType;
   amount: number;
   recipient: string;

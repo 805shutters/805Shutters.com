@@ -532,6 +532,9 @@ function buildEntryRow(
 
   return {
     id: entry.id,
+    meta: entry.meta,
+    sourceSoldDate: entry.sold_date,
+    customerEmail: cleanOptionalText(entry.meta?.customer_email) || cleanOptionalText(linkedQuote?.customer_email),
     source: entry.source,
     quoteId: entry.quote_id,
     quoteIdAliases: quoteIdentityAliases(linkedQuote),
@@ -656,6 +659,11 @@ function buildQuoteRow(
 
   return {
     id: quote.id,
+    meta: quote.meta,
+    sourceSoldDate: Object.hasOwn(quote, "source_sold_at")
+      ? quote.source_sold_at || entry?.sold_date || null
+      : quote.sold_at || quote.signed_at || quote.approved_at || entry?.sold_date || null,
+    customerEmail: cleanOptionalText(quote.customer_email),
     source: "crm_quote",
     quoteId: quote.id,
     quoteIdAliases: quoteIdentityAliases(quote),

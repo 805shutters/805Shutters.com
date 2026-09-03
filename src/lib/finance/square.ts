@@ -86,8 +86,9 @@ export type SquarePaymentLink = { id: string; url: string };
 export type SquarePaymentLinkInput = {
   amountCents: number;
   title: string;
-  quoteId: string;
-  jobId: string;
+  quoteId?: string;
+  jobId?: string;
+  bookkeepingEntryId?: string;
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
   idempotencyKey?: string;
@@ -95,8 +96,10 @@ export type SquarePaymentLinkInput = {
 };
 
 export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, locationId: string) {
+  if (Boolean(input.quoteId) === Boolean(input.bookkeepingEntryId)) throw new Error("Identify exactly one quote or bookkeeping entry for payment.");
+  const reference = input.bookkeepingEntryId || input.quoteId;
   return {
-    idempotency_key: input.idempotencyKey || `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
+    idempotency_key: input.idempotencyKey || `805-${input.bookkeepingEntryId ? "entry" : "quote"}-${reference}-${input.paymentType}-${Date.now()}`,
     description: input.title,
     checkout_options: {
       allow_tipping: false,
@@ -106,12 +109,12 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
       accepted_payment_methods: { apple_pay: false, google_pay: false },
     },
     pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,
-    payment_note: `quote:${input.quoteId} type:${input.paymentType}`,
+    payment_note: `${input.bookkeepingEntryId ? "entry" : "quote"}:${reference} type:${input.paymentType}`,
     order: {
       location_id: locationId,
-      reference_id: input.quoteId,
+      reference_id: reference,
       metadata: {
-        quote_id: input.quoteId,
+        ...(input.bookkeepingEntryId ? { bookkeeping_entry_id: input.bookkeepingEntryId } : { quote_id: input.quoteId }),
         job_id: input.jobId,
         payment_type: input.paymentType,
         expected_amount_cents: String(input.amountCents),
@@ -156,6 +159,7 @@ export type SquarePaymentFacts = {
   amountCents: number;
   currency: string | null;
   status?: string | null;
+  bookkeepingEntryId?: string | null;
   quoteId: string | null;
   jobId: string | null;
   paymentType: string | null;
@@ -352,6 +356,7 @@ export async function fetchSquareCustomerFacts(customerId: string): Promise<Squa
 }
 
 export type SquareOrderFacts = {
+  bookkeepingEntryId?: string | null;
   quoteId: string | null;
   jobId: string | null;
   paymentType: "deposit" | "balance" | null;
@@ -392,7 +397,8 @@ export async function fetchSquareOrderFacts(
   const orderAmount = Number(order?.total_money?.amount);
   const paymentType = meta.payment_type;
   return {
-    quoteId: meta.quote_id || order?.reference_id || order?.referenceId || null,
+    ...(meta.bookkeeping_entry_id ? { bookkeepingEntryId: meta.bookkeeping_entry_id } : {}),
+    quoteId: meta.quote_id || (meta.bookkeeping_entry_id ? null : order?.reference_id || order?.referenceId || null),
     jobId: meta.job_id || null,
     paymentType: paymentType === "deposit" || paymentType === "balance" ? paymentType : null,
     expectedAmountCents:

@@ -1,3 +1,4 @@
+import { reconcileSquareEntryPayment } from "@/lib/crm/square-entry-payments";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   fetchSquareCustomerFacts,
@@ -209,6 +210,14 @@ export async function reconcileSquareApiPayment(
 
     if (payment.orderId) {
       const order = await fetchSquareOrderFacts(payment.orderId);
+      if (order.bookkeepingEntryId) {
+        if (order.quoteId || !order.paymentType || payment.currency !== "USD" || order.currency !== "USD" || order.expectedAmountCents !== payment.amountCents) {
+          throw new Error("Square entry order identity, currency, or amount could not be verified.");
+        }
+        const result = await reconcileSquareEntryPayment(supabase, { ...payment, quoteId: null, bookkeepingEntryId: order.bookkeepingEntryId, paymentType: order.paymentType });
+        await updateReceipt(supabase, payment, "processed", result);
+        return result;
+      }
       if (order.quoteId && order.paymentType) {
         const result = await reconcileVerifiedSquareOrderPayment(supabase, { payment, order });
         if (result.quoteId && (result.status === "recorded" || result.status === "duplicate")) {

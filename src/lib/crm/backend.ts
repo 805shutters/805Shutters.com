@@ -1,3 +1,5 @@
+import { loadCompleteCrmTable } from "@/lib/crm/pagination";
+import { insertReceivedPayment } from "@/lib/crm/received-payment";
 import { SupabaseClient } from "@supabase/supabase-js";
 import {
   BUSINESS_PAYOFF_TARGET,
@@ -899,6 +901,7 @@ export async function recordCrmActivity(
   if (error && !error.message.includes("crm_activity_events")) {
     console.warn("CRM activity event could not be recorded.", error.message);
   }
+  return { recorded: !error };
 }
 
 export async function upsertCrmCustomer(supabase: CrmSupabaseClient, snapshot: CustomerSnapshot) {
@@ -1204,7 +1207,22 @@ export function buildDashboardData({
   payoffTarget: number;
   now?: Date | string;
 }): CrmDashboardData {
-  const contractProjectedQuotes = projectSignedContractsOntoQuotes(quotes, contracts);
+  // Keep real evidence dates separate from legacy status projections. A typed
+  // signature without a timestamp must not turn created_at into the sale date.
+  const quoteCountsByJob = new Map<string, number>();
+  const sourceContractDates = new Map<string, string>();
+  for (const quote of quotes) quoteCountsByJob.set(quote.job_id, (quoteCountsByJob.get(quote.job_id) || 0) + 1);
+  for (const contract of contracts) {
+    const key = contract.quote_id ? `quote:${contract.quote_id}` : contract.share_token ? `token:${contract.share_token}` : contract.job_id ? `job:${contract.job_id}` : null;
+    if (key && contract.signed_at && !sourceContractDates.has(key)) sourceContractDates.set(key, contract.signed_at);
+  }
+  const sourceQuotes = quotes.map((quote) => {
+    const signedAt = quote.signed_at || sourceContractDates.get(`quote:${quote.id}`)
+      || (quote.share_token ? sourceContractDates.get(`token:${quote.share_token}`) : null)
+      || (quoteCountsByJob.get(quote.job_id) === 1 ? sourceContractDates.get(`job:${quote.job_id}`) : null) || null;
+    return { ...quote, source_signed_at: signedAt, source_sold_at: quote.sold_at || signedAt || quote.approved_at || null };
+  });
+  const contractProjectedQuotes = projectSignedContractsOntoQuotes(sourceQuotes, contracts);
   const contractProjectedJobs = projectSignedContractsOntoJobs(jobs, contractProjectedQuotes, contracts);
   const quotesByJob = new Map<string, number>();
   for (const quote of contractProjectedQuotes) {
@@ -1423,7 +1441,8 @@ function projectBookkeepingRowContacts(
       optionalText(row.customerPhone) ||
       optionalText(customer?.phone);
 
-    return customerPhone === row.customerPhone ? row : { ...row, customerPhone };
+    const customerEmail = row.customerEmail || optionalText(quote?.customer_email) || optionalText(job?.email);
+    return customerPhone === row.customerPhone && customerEmail === row.customerEmail ? row : { ...row, customerPhone, customerEmail };
   });
 }
 
@@ -1698,37 +1717,23 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     vendorOrderTasksResult,
     settingsResult
   ] = await Promise.all([
-    // Jobs and quotes use the SAME limit so a job and its quote don't land on
-    // opposite sides of the cap (which blanks quote customer names and shows
-    // "Build Quote" for jobs that already have one). TODO: server-side pagination.
-    supabase.from("crm_jobs").select("*").order("created_at", { ascending: false }).limit(1000),
-    supabase.from("crm_quotes").select("*").order("created_at", { ascending: false }).limit(1000),
+    // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
+    loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_quotes", "created_at"),
     supabase
       .from("crm_calendar_events")
       .select("*")
       .gte("start_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 14).toISOString())
       .order("start_at", { ascending: true })
       .limit(120),
-    supabase.from("crm_customers").select("*").order("latest_sold_date", { ascending: false }).limit(800),
-    supabase.from("crm_customer_products").select("*").order("created_at", { ascending: false }).limit(1600),
-    supabase.from("crm_customer_contracts").select("*").order("created_at", { ascending: false }).limit(1000),
-    supabase
-      .from("crm_quote_bookkeeping_entries")
-      .select("*")
-      .order("sold_date", { ascending: false, nullsFirst: false })
-      .limit(500),
-    supabase.from("crm_quote_bookkeeping_payments").select("*").order("paid_at", { ascending: false }).limit(800),
-    supabase.from("crm_quote_bookkeeping_credits").select("*").order("credit_date", { ascending: false }).limit(500),
-    supabase
-      .from("crm_job_expenses")
-      .select("*")
-      .order("incurred_on", { ascending: false, nullsFirst: false })
-      .limit(1000),
-    supabase
-      .from("crm_installation_invoice_emails")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(2000),
+    loadCompleteCrmTable(supabase, "crm_customers", "latest_sold_date"),
+    loadCompleteCrmTable(supabase, "crm_customer_products", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_customer_contracts", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_entries", "sold_date"),
+    loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_payments", "paid_at"),
+    loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_credits", "credit_date"),
+    loadCompleteCrmTable(supabase, "crm_job_expenses", "incurred_on"),
+    loadCompleteCrmTable(supabase, "crm_installation_invoice_emails", "created_at"),
     supabase
       .from("crm_ken_payments")
       .select("*")
@@ -1739,11 +1744,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .select("*")
       .order("created_at", { ascending: true })
       .limit(2000),
-    supabase
-      .from("crm_order_cogs_emails")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100),
+    loadCompleteCrmTable(supabase, "crm_order_cogs_emails", "created_at"),
     supabase
       .from("crm_activity_events")
       .select("id,created_at,after_data,metadata")
@@ -1892,7 +1893,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
-  return buildDashboardData({
+  const dashboard = buildDashboardData({
     jobs,
     quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
     events,
@@ -1913,6 +1914,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     openingBalance,
     payoffTarget
   });
+  const optionalEvidence = [["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult]] as const;
+  return { ...dashboard, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
@@ -1986,7 +1989,11 @@ export async function updateCrmJob(
     }
   }
 
-  if (!Object.keys(patch).length) {
+  const hasSoldDate = hasPayloadKey(payload, "sold_at");
+  if (hasSoldDate && (typeof payload.sold_at !== "string" || !Number.isFinite(Date.parse(payload.sold_at)))) {
+    throw new CrmAuthError(400, "Enter the actual sold date.");
+  }
+  if (!Object.keys(patch).length && !hasSoldDate) {
     throw new CrmAuthError(400, "No supported CRM job fields provided.");
   }
 
@@ -2024,6 +2031,7 @@ export async function updateCrmJob(
   patch.meta = {
     ...(existing.meta || {}),
     ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+    ...(hasSoldDate ? { sold_at: payload.sold_at } : {}),
     lastUpdatedBy: actor.email,
     lastUpdatedAt: updatedAt
   };
@@ -3280,6 +3288,17 @@ export async function updateCrmQuote(
     .eq("quote_id", id);
   const builderManaged = (lineItemCount ?? 0) > 0;
   const serverPricedFields = new Set(["quote_total", "discount", "tax", "balance_due"]);
+  // Recording an existing order date is another path into Ordered; preserve
+  // the same required-measure guard as the operational stage button.
+  if ((payload.status === "ordered" || optionalText(payload.ordered_at)) && existing.job_id) {
+    const { data: linkedJob, error } = await supabase.from("crm_jobs").select("meta").eq("id", existing.job_id).maybeSingle();
+    if (error || !linkedJob) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
+    const measure = getMeasureNeededMeta(linkedJob.meta);
+    if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
+      throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
+    }
+  }
+
   const hasBuilderTotalOverride =
     builderManaged && payload.manual_total_override === true && hasPayloadKey(payload, "quote_total");
 
@@ -3378,7 +3397,7 @@ export async function updateCrmQuote(
   const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
   const paymentAmount = toMoney(payload.payment_amount);
   if (paymentAmount > 0) {
-    const { error: paymentError } = await supabase.from("crm_quote_bookkeeping_payments").insert({
+    await insertReceivedPayment(supabase, {
       quote_id: id,
       job_id: quote.job_id,
       payment_label: optionalText(payload.payment_label) || "Balance payment",
@@ -3388,9 +3407,7 @@ export async function updateCrmQuote(
       source: "crm_quote",
       notes: optionalText(payload.payment_notes),
       meta: { createdBy: actor.email }
-    });
-
-    if (paymentError) throw new CrmAuthError(502, "Quote was updated, but payment failed to save.");
+    }, payload.payment_request_id, "Quote was updated, but payment failed to save.");
   }
 
   const paymentTargetAdjustments = hasPaymentTargetAdjustment
@@ -3446,7 +3463,7 @@ export async function updateCrmQuote(
       // entry. A payment or status patch must preserve those facts until the
       // canonical quote has been backfilled.
       cogs_amount:
-        toMoney(quote.materials_cost) > 0
+        hasPayloadKey(payload, "materials_cost") || toMoney(quote.materials_cost) > 0
           ? toMoney(quote.materials_cost)
           : toMoney(existingEntry?.cogs_amount),
       sales_owner: normalizeOwner(quote.sold_by),
@@ -3813,10 +3830,63 @@ export async function updateCrmBookkeepingEntry(
   const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
   const hasBalanceAdjustment = hasPayloadKey(payload, "balance_due_target");
   const hasDepositDueTarget = hasPayloadKey(payload, "deposit_required");
+  const hasCustomerEmail = hasPayloadKey(payload, "customer_email");
+  const hasSignedContract = hasPayloadKey(payload, "contract_signed_at");
+  const operationalDates = Object.fromEntries(["ordered_at", "installed_at"]
+    .filter((key) => hasPayloadKey(payload, key))
+    .map((key) => [key, optionalText(payload[key])]));
+  const hasOperationalDates = Object.keys(operationalDates).length > 0;
+  for (const value of Object.values(operationalDates)) {
+    if (!value || !Number.isFinite(Date.parse(value))) throw new CrmAuthError(400, "Enter the actual order or installation date.");
+  }
+  if (operationalDates.ordered_at) {
+    if (existing.meta?.deleted_at || existing.meta?.bookkeeping_deleted_at) {
+      throw new CrmAuthError(404, "Bookkeeping row was not found.");
+    }
+    let measureJobId = existing.job_id;
+    if (existing.quote_id) {
+      const { data: linkedQuote, error } = await supabase.from("crm_quotes").select("id,job_id,meta").eq("id", existing.quote_id).maybeSingle();
+      if (error) throw new CrmAuthError(502, "The linked order quote could not be verified.");
+      if (!linkedQuote || linkedQuote.meta?.deleted_at || linkedQuote.meta?.bookkeeping_deleted_at) {
+        throw new CrmAuthError(404, "The linked order quote was not found.");
+      }
+      if (existing.job_id && linkedQuote.job_id !== existing.job_id) {
+        throw new CrmAuthError(409, "The bookkeeping row and quote refer to different jobs. Refresh and repair the links before recording the order.");
+      }
+      if (!linkedQuote.job_id) throw new CrmAuthError(409, "The linked quote has no job to verify. Repair the job link before recording the order.");
+      measureJobId = linkedQuote.job_id;
+    }
+    if (measureJobId) {
+      const { data: linkedJob, error } = await supabase.from("crm_jobs").select("id,meta").eq("id", measureJobId).maybeSingle();
+      if (error) throw new CrmAuthError(502, "The job's technical measure could not be verified.");
+      if (!linkedJob || linkedJob.meta?.deleted_at) throw new CrmAuthError(404, "The linked order job was not found.");
+      const measure = getMeasureNeededMeta(linkedJob.meta);
+      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
+        throw new CrmAuthError(409, "Submit the required technical measure before recording the order.");
+      }
+    }
+  }
+  const contractSignedAt = optionalText(payload.contract_signed_at);
+  const contractUrl = optionalText(payload.contract_url);
+  if (hasSignedContract && (!contractSignedAt || !Number.isFinite(Date.parse(contractSignedAt)))) {
+    throw new CrmAuthError(400, "Enter the actual contract signing date.");
+  }
+  if (hasSignedContract && contractUrl && !/^https?:\/\//i.test(contractUrl)) {
+    throw new CrmAuthError(400, "Use an http or https signed contract URL.");
+  }
+  const customerEmail = optionalText(payload.customer_email);
+  if (hasCustomerEmail && customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+    throw new CrmAuthError(400, "Enter a valid customer email.");
+  }
   const hasPaymentTargetAdjustment =
     hasPayloadKey(payload, "deposit_paid_target") || hasPayloadKey(payload, "balance_paid_target");
   const markBalancePaid = payload.mark_balance_paid === true;
-  const entryMetaPatch = hasDepositDueTarget ? { deposit_required: toMoney(payload.deposit_required) } : {};
+  const entryMetaPatch = {
+    ...(hasDepositDueTarget ? { deposit_required: toMoney(payload.deposit_required) } : {}),
+    ...(hasCustomerEmail ? { customer_email: customerEmail } : {}),
+    ...(hasSignedContract ? { job_tracking_contract: { signed_at: contractSignedAt, url: contractUrl, recorded_by: actor.email, recorded_at: now } } : {}),
+    ...(hasOperationalDates ? { job_tracking_dates: { ...objectMeta(existing.meta?.job_tracking_dates), ...operationalDates } } : {}),
+  };
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedEntryPatchFields.has(key)) continue;
@@ -3840,6 +3910,10 @@ export async function updateCrmBookkeepingEntry(
     patch.installation_match_status = payload.installation_complete ? "matched" : "unmatched";
     patch.installation_matched_at = payload.installation_complete ? now : null;
   }
+  if (operationalDates.installed_at) {
+    patch.installation_match_status = "matched";
+    patch.installation_matched_at = operationalDates.installed_at;
+  }
 
   if (
     !Object.keys(patch).length &&
@@ -3848,13 +3922,16 @@ export async function updateCrmBookkeepingEntry(
     !markBalancePaid &&
     !hasBalanceAdjustment &&
     !hasDepositDueTarget &&
+    !hasCustomerEmail &&
+    !hasSignedContract &&
+    !hasOperationalDates &&
     !hasPaymentTargetAdjustment
   ) {
     throw new CrmAuthError(400, "No supported bookkeeping fields provided.");
   }
 
   let entry = existing;
-  if (Object.keys(patch).length || hasDepositDueTarget) {
+  if (Object.keys(patch).length || hasDepositDueTarget || hasCustomerEmail || hasSignedContract || hasOperationalDates) {
     patch.meta = {
       ...(existing.meta || {}),
       ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
@@ -3877,7 +3954,7 @@ export async function updateCrmBookkeepingEntry(
   const paymentAmount = toMoney(payload.payment_amount);
   if (paymentAmount > 0) {
     const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
-    const { error: paymentError } = await supabase.from("crm_quote_bookkeeping_payments").insert({
+    await insertReceivedPayment(supabase, {
       bookkeeping_entry_id: id,
       payment_label: optionalText(payload.payment_label) || "Balance payment",
       payment_type: paymentType,
@@ -3886,9 +3963,7 @@ export async function updateCrmBookkeepingEntry(
       source: payload.source === "legacy_sheet" ? "legacy_sheet" : "manual",
       notes: optionalText(payload.payment_notes),
       meta: { createdBy: actor.email }
-    });
-
-    if (paymentError) throw new CrmAuthError(502, "Bookkeeping row was updated, but payment failed to save.");
+    }, payload.payment_request_id, "Bookkeeping row was updated, but payment failed to save.");
   }
 
   const paymentTargetAdjustments = hasPaymentTargetAdjustment

@@ -1,3 +1,4 @@
+import { collectCrmPages } from "@/lib/crm/pagination";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity } from "@/lib/brand-identity";
 import { CrmAuthError } from "@/lib/crm/auth";
@@ -15,6 +16,23 @@ import {
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 export type SquareOrderPaymentType = "deposit" | "balance";
+export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string };
+
+export function verifySquarePaymentConfirmation(
+  amount: number,
+  recipient: string,
+  confirmation?: SquarePaymentConfirmation,
+) {
+  if (!confirmation) return;
+  if (!Number.isFinite(confirmation.expectedAmount) || typeof confirmation.expectedRecipient !== "string") {
+    throw new CrmAuthError(400, "Confirm the payment amount and recipient before sending.");
+  }
+  if (dollarsToCents(amount) !== dollarsToCents(confirmation.expectedAmount) ||
+      recipient.trim().toLowerCase() !== confirmation.expectedRecipient.trim().toLowerCase()) {
+    throw new CrmAuthError(409, "The amount or customer email has changed. Refresh the job and review the payment request again.");
+  }
+}
+
 export type SquarePaymentDeliveryState = "accepted" | "failed" | "unknown";
 
 export class SquarePaymentDeliveryError extends CrmAuthError {
@@ -65,6 +83,7 @@ export async function sendSquareOrderPaymentLink(
   actor: CrmActor,
   alternateEmail?: string | null,
   delivery?: { channel: "email" | "text"; idempotencyKey?: string; phone?: string | null },
+  confirmation?: SquarePaymentConfirmation,
 ) {
   if (!isSquareConfigured()) throw new CrmAuthError(503, "Square card payments are not configured.");
 
@@ -73,9 +92,12 @@ export async function sendSquareOrderPaymentLink(
   if (!publicQuote) throw new CrmAuthError(404, "Quote was not found.");
 
   const [paymentsResult, creditsInResult, creditsOutResult] = await Promise.all([
-    supabase.from("crm_quote_bookkeeping_payments").select("amount,payment_label").eq("quote_id", quoteId),
-    supabase.from("crm_quote_bookkeeping_credits").select("amount").eq("to_quote_id", quoteId),
-    supabase.from("crm_quote_bookkeeping_credits").select("amount").eq("from_quote_id", quoteId),
+    collectCrmPages<QuoteLedgerPayment>((from, to) => supabase.from("crm_quote_bookkeeping_payments")
+      .select("amount,payment_label").eq("quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
+    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
+      .select("amount").eq("to_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
+    collectCrmPages<QuoteLedgerCredit>((from, to) => supabase.from("crm_quote_bookkeeping_credits")
+      .select("amount").eq("from_quote_id", quoteId).order("id", { ascending: true }).range(from, to)),
   ]);
   if (paymentsResult.error || creditsInResult.error || creditsOutResult.error) {
     throw new CrmAuthError(502, "The current payment balance could not be verified.");
@@ -97,6 +119,8 @@ export async function sendSquareOrderPaymentLink(
   const customerEmail = delivery?.channel === "text" ? (savedCustomerEmail || null) : squarePaymentRecipient(savedCustomerEmail, alternateEmail);
   const phone = delivery?.channel === "text" ? toE164(delivery.phone) : null;
   if (delivery?.channel === "text" && !phone) throw new CrmAuthError(400, "A valid customer phone number is required to text a payment link.");
+
+  if (confirmation) verifySquarePaymentConfirmation(amount, customerEmail || "", confirmation);
 
   const label = paymentType === "deposit" ? "Deposit" : "Order balance";
   const { data: quoteIdentity, error: quoteIdentityError } = await supabase
@@ -124,12 +148,15 @@ export async function sendSquareOrderPaymentLink(
   });
   const email = delivery?.channel === "text" ? null : await sendEmail({
     to: customerEmail as string,
+    from: "805 Shutters <805@805shutters.com>",
     ...mail,
     idempotencyKey: delivery?.idempotencyKey ? `square-payment-link-${delivery.idempotencyKey}` : undefined,
   });
   const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:`805 Shutters ${label.toLowerCase()} payment link (${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(amount)}): ${link.url}`}) : null;
 
-  await recordCrmActivity(supabase, actor, {
+  let auditRecorded = false;
+  try {
+  const audit = await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: quoteId,
     action: `square_${paymentType}_link.send`,
@@ -154,6 +181,9 @@ export async function sendSquareOrderPaymentLink(
     },
   });
 
+  auditRecorded = audit.recorded;
+  } catch { /* Provider acceptance remains valid when the separate audit fails. */ }
+
   if (delivery?.channel === "text" && !sms?.sent) {
     throw new SquarePaymentDeliveryError(
       sms?.uncertain ? "Text provider acceptance is unknown. Review the audit before retrying." : `The text provider rejected the payment link${sms?.error || sms?.skipped ? `: ${sms.error || sms.skipped}` : "."}`,
@@ -175,6 +205,8 @@ export async function sendSquareOrderPaymentLink(
     recipient: delivery?.channel === "text" ? phone : customerEmail,
     url: link.url,
     linkId: link.id,
+    auditRecorded,
+    warning: auditRecorded ? null : "Payment request processed, but the activity log could not be recorded. Review delivery status before retrying.",
     deliveryState: "accepted" as const,
     providerMessageId: delivery?.channel === "text" ? sms?.sid : email?.id,
     providerStatus: delivery?.channel === "text" ? sms?.providerStatus : "accepted",
