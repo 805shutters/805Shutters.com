@@ -56,7 +56,7 @@ import { sendSms } from "@/lib/notify/twilio";
 import { sendSoldQuoteSmsNotifications } from "@/lib/crm/sold-quote-notifications";
 import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
-import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
+import { ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity } from "@/lib/brand-identity";
 import {
   buildOnyxAgentOrderPackets,
@@ -2196,7 +2196,7 @@ export function buildQuotePaymentLinkSms(
         ? Number(details.total)
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
-  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
 }
 
 export async function sendQuotePaymentLinkToCustomer(

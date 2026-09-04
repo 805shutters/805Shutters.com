@@ -129,7 +129,7 @@ export function SendPaymentLinkDialog({ open, onClose, quote }: SendPaymentLinkD
               <span className="font-mono text-base font-bold">{formatMoney(depositDue)}</span>
             </div>
             <div className="text-emerald-900">
-              Sends Square card payment, Venmo @ken-hill-13, and Zelle 805-806-9344.
+              Sends Square card payment and Zelle 805-806-9344.
             </div>
           </div>
 

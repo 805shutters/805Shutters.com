@@ -581,7 +581,7 @@
 
 .peerPayments {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   margin-top: 10px;
@@ -626,13 +626,6 @@
 .copyPaymentButton strong {
   overflow-wrap: anywhere;
   font-size: 14px;
-}
-
-.venmoQr,
-.venmoQr svg {
-  display: block;
-  width: 64px;
-  height: 64px;
 }
 
 @media (max-width: 1100px) {

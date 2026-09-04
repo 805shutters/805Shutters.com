@@ -9,7 +9,7 @@ import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-paymen
 import { SignQuote } from "./SignQuote";
 import { QuoteWalletButtons, type QuoteWalletConfig } from "./QuoteWalletButtons";
 import styles from "./QuoteSelection.module.css";
-import { copyPaymentText, formatVenmoAddress } from "./copyPaymentText";
+import { copyPaymentText } from "./copyPaymentText";
 import { quoteProductDetails } from "./quoteLinePresentation";
 
 function money(n: number): string {
@@ -58,8 +58,8 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const [walletBusy, setWalletBusy] = useState(false);
   const [walletPaid, setWalletPaid] = useState(false);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
-  const [copiedPayment, setCopiedPayment] = useState<"zelle" | "venmo" | null>(null);
-  const [copyFailed, setCopyFailed] = useState<"zelle" | "venmo" | null>(null);
+  const [copiedPayment, setCopiedPayment] = useState<"zelle" | null>(null);
+  const [copyFailed, setCopyFailed] = useState<"zelle" | null>(null);
   const [signedNow, setSignedNow] = useState(false);
   const reqId = useRef(0);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,7 +117,6 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const paymentType = live.payment.available ? live.payment.dueType : null;
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
   const depositReady = contractSigned && paymentType === "deposit";
-  const venmoAddress = paymentOptions ? formatVenmoAddress(paymentOptions.venmoHandle) : "";
   const customerPhone = customerPhoneDisplay(quote.customerPhone);
   const customerInformation = [
     quote.customerName,
@@ -162,7 +161,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
     setSelected(new Set());
   }
 
-  async function copyPaymentValue(kind: "zelle" | "venmo", value: string) {
+  async function copyPaymentValue(kind: "zelle", value: string) {
     const copied = await copyPaymentText(value);
 
     setCopiedPayment(copied ? kind : null);
@@ -377,22 +376,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                           <strong>{paymentOptions.zelleDestination}</strong>
                           <small>{copiedPayment === "zelle" ? "Copied to clipboard ✓" : copyFailed === "zelle" ? "Couldn’t copy — press and hold" : "Tap to copy"}</small>
                         </button>
-                        <button
-                          type="button"
-                          className={styles.copyPaymentButton}
-                          onClick={() => copyPaymentValue("venmo", venmoAddress)}
-                          aria-label={`Copy Venmo address ${venmoAddress}`}
-                        >
-                          <span>Venmo</span>
-                          <strong>{venmoAddress}</strong>
-                          <small>{copiedPayment === "venmo" ? "Copied to clipboard ✓" : copyFailed === "venmo" ? "Couldn’t copy — press and hold" : "Tap to copy"}</small>
-                        </button>
                       </div>
-                      <div
-                        className={styles.venmoQr}
-                        aria-label={`Venmo QR code for ${venmoAddress}`}
-                        dangerouslySetInnerHTML={{ __html: paymentOptions.venmoQrSvg }}
-                      />
                     </div>
                   </>
                 ) : (

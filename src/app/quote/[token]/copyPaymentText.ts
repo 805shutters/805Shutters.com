@@ -28,10 +28,6 @@ function browserCopyDependencies(): CopyPaymentTextDependencies {
   };
 }
 
-export function formatVenmoAddress(handle: string): string {
-  return `@${handle.trim().replace(/^@+/, "")}`;
-}
-
 export async function copyPaymentText(
   value: string,
   dependencies: CopyPaymentTextDependencies = browserCopyDependencies(),

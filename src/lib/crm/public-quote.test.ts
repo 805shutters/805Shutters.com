@@ -164,14 +164,14 @@ describe("signed SMS copy", () => {
     expect(msg).not.toContain("attached quote");
   });
 
-  it("payment link message names card, Venmo, Zelle, amount due, and link", () => {
+  it("payment link message names card, Zelle, amount due, and link", () => {
     const msg = buildQuotePaymentLinkSms("https://www.805shutters.com/quote/test-token#payment", {
       depositDue: 2125,
     });
     expect(msg).toContain("deposit payment link");
     expect(msg).toContain("$2,125.00");
     expect(msg).toContain("Square card");
-    expect(msg).toContain("Venmo @");
+    expect(msg).not.toMatch(/venmo|ken-hill/i);
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");
     expect(msg).toContain("3 monthly payments");

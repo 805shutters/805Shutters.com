@@ -241,7 +241,7 @@ describe("financing options section", () => {
 });
 
 describe("buildPaymentLinkEmail", () => {
-  it("includes Square, Venmo, Zelle, amount due, and the payment anchor link", () => {
+  it("includes Square, Zelle, amount due, and the payment anchor link", () => {
     const { subject, html, text } = buildPaymentLinkEmail("Jane Smith", "https://x/quote/abc#payment", {
       depositDue: 2125,
       quoteNumber: "Q-100",
@@ -253,11 +253,11 @@ describe("buildPaymentLinkEmail", () => {
     expect(html).toContain("Here is a payment link to pay the deposit");
     expect(html).toContain("new window coverings");
     expect(html).toContain("Square");
-    expect(html).toContain("Venmo");
+    expect(html).not.toMatch(/venmo|ken-hill/i);
     expect(html).toContain("Zelle");
     expect(text).toContain("Hello Jane Smith");
     expect(text).toContain("Square card payment: https://x/quote/abc#payment");
-    expect(text).toContain("Venmo: @");
+    expect(text).not.toMatch(/venmo|ken-hill/i);
     expect(text).toContain("Zelle");
     expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
     expect(html).toContain("805@805shutters.com");
@@ -316,5 +316,24 @@ describe("buildSignedQuoteShopEmail", () => {
     expect(html).toContain("Signed");
     expect(html).toContain("https://x/quote/abc");
     expect(text).toContain("SIGNED");
+  });
+});
+
+describe("contract communication payment options", () => {
+  it.each([buildQuoteEmail, buildSignedQuoteShopEmail])("preserves contract details and Zelle in HTML and text without Venmo", (build) => {
+    const mail = build("Jane Smith", "https://x/quote/abc", 4250, {
+      quoteNumber: "Q-100", subtotal: 4250, depositDue: 2125, balanceDue: 2125,
+      lines: [{ room: "Kitchen", productName: "Roller Shades", quantity: 2, lineTotal: 4250 }],
+    });
+    for (const body of [mail.html, mail.text]) {
+      expect(body).not.toMatch(/venmo|ken-hill/i);
+      expect(body).toContain("Zelle");
+      expect(body).toContain("Jane");
+      expect(body).toContain("https://x/quote/abc");
+      expect(body).toContain("$4,250.00");
+      expect(body).toContain("Roller Shades");
+      expect(body).toContain("3 monthly payments");
+    }
+    expect(mail.html).toContain("$2,125.00");
   });
 });

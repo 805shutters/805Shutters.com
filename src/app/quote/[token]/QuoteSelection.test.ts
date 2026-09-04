@@ -88,8 +88,6 @@ function quoteWithLegacyDetails(signed = true): PublicQuote {
 
 describe("QuoteSelection", () => {
   const paymentOptions = {
-    venmoHandle: "approved-venmo",
-    venmoQrSvg: "<svg></svg>",
     zelleDestination: "805-806-9344",
   };
   const walletConfig = {
@@ -97,6 +95,21 @@ describe("QuoteSelection", () => {
     locationId: "LOCATION1",
     sdkUrl: "https://web.squarecdn.com/v1/square.js",
   };
+
+  it.each([false, true])("keeps contract payments and details without Venmo (signed=%s)", (signed) => {
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, {
+      quote: quoteWithLegacyDetails(signed),
+      paymentOptions,
+      walletConfig,
+    }));
+    expect(html).not.toMatch(/venmo|ken-hill|venmoQr|Scan with your phone/i);
+    expect(html).toContain("Copy Zelle phone number 805-806-9344");
+    expect(html).toContain("Pay deposit with card");
+    expect(html).toContain("Pay deposit with Google Pay");
+    expect(html).toContain("$254.70");
+    expect(html).toContain("$509.40");
+    expect(html).toContain("Roller Shades");
+  });
 
   it("renders saved legacy product specifications on the customer contract", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails() }));
@@ -219,7 +232,7 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toContain("@container product-details (max-width: 279px)");
   });
 
-  it("shows separate card, official Google Pay, Zelle, and Venmo paths before Apple Pay availability is confirmed", () => {
+  it("shows separate card, official Google Pay, and Zelle paths before Apple Pay availability is confirmed", () => {
     const html = renderToStaticMarkup(createElement(QuoteSelection, {
       quote: quoteWithLegacyDetails(false),
       paymentOptions,
@@ -242,11 +255,10 @@ describe("QuoteSelection", () => {
     expect(quoteSelectionCss).toMatch(/\.walletButtons\[data-layout="single"\]\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
     expect(walletButtonsSource).toContain('buttonSizeMode: "fill"');
     expect(walletButtonsSource).toContain('data-layout={available.apple && available.google ? "split" : "single"}');
-    expect(html).toContain("@approved-venmo");
+    expect(html).not.toMatch(/venmo|ken-hill|Scan with your phone/i);
     expect(html).toContain("805-806-9344");
     expect(html).toContain("Copy Zelle phone number 805-806-9344");
-    expect(html).toContain("Copy Venmo address @approved-venmo");
-    expect(html.match(/Tap to copy/g)).toHaveLength(2);
+    expect(html.match(/Tap to copy/g)).toHaveLength(1);
   });
 
   it("does not render an Apple Pay button or fallback label when Square reports it unavailable", () => {

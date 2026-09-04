@@ -1,7 +1,7 @@
 // Resend email helper. Env-gated and NEVER throws (same contract as Twilio).
 // Env: RESEND_API_KEY + optional RESEND_FROM / BOOKING_EMAIL_FROM.
 
-import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
+import { ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
@@ -291,7 +291,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${versionsText}${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
+  const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${versionsText}${itemText}\n\nPay your deposit: Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:'Helvetica Neue',Arial,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -307,7 +307,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     ${quoteVersions.length > 1 ? `<div style="border:2px solid #0b0b0b;background:#f4f4f2;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:15px;font-weight:700;margin-bottom:8px">${quoteVersions.length} quotes included</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${quoteVersions.map((version) => `<tr><td width="50%" style="width:50%;padding:7px 12px 7px 0;border-top:1px solid #d8d8d2;white-space:nowrap"><strong>Quote ${escapeHtml(version.label)}</strong></td><td width="50%" align="right" style="width:50%;padding:7px 0 7px 12px;border-top:1px solid #d8d8d2;white-space:nowrap"><strong>${money(version.total)}</strong></td></tr>`).join("")}</table><div style="font-size:13px;line-height:1.45;margin-top:8px;color:#0b0b0b">Use the large tabs at the top of the contract page to compare each quote.</div></div>` : ""}
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
-    <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#0b0b0b">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
+    <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#0b0b0b">Prefer to pay directly? Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
     ${reviewContractButton(url, "26px 0 18px 0")}
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${financing.html}
@@ -352,7 +352,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Venmo: @${VENMO_HANDLE}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Venmo or Zelle.${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
+  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Zelle.${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -371,9 +371,6 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
         <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Square card payment</strong><br><a href="${escapeAttr(url)}" style="color:#0b0b0b;font-weight:700">${escapeHtml(squareLabel)}</a><br><span style="color:#0b0b0b">Pay by credit or debit card through Square.</span></td>
       </tr>
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Venmo</strong><br><span style="color:#0b0b0b">@${escapeHtml(VENMO_HANDLE)}</span></td>
-      </tr>
-      <tr>
         <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Zelle</strong><br><span style="color:#0b0b0b">${escapeHtml(ZELLE_DESTINATION)}</span></td>
       </tr>
     </table>
@@ -381,7 +378,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
       <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">${escapeHtml(squareLabel)}</a>
     </div>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
-    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Please reference your name when paying by Venmo or Zelle.</p>
+    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Please reference your name when paying by Zelle.</p>
     ${financing.html}
     ${officialContactFooterHtml()}
   </div>

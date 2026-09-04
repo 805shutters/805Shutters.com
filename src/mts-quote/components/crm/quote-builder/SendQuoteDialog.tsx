@@ -29,7 +29,6 @@ import {
   PenLine,
   Plus,
   Trash2,
-  Banknote,
   CreditCard,
   type LucideIcon,
 } from "lucide-react";
@@ -406,7 +405,6 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
 
               <DialogSection title="Payment options" description="Included in the customer message.">
                 <div className="grid gap-2 text-sm">
-                  <PaymentOption icon={Banknote} label="Venmo" value="@ken-hill-13" />
                   <PaymentOption icon={Zap} label="Zelle" value="805-806-9344" />
                   <PaymentOption icon={CreditCard} label="Card" value="Quote review page" />
                 </div>
