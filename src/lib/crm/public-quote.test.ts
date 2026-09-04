@@ -14,6 +14,7 @@ import {
   REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS,
   SOLD_QUOTE_CONTACT_SMS_RECIPIENT,
   soldQuoteShopSmsRecipients,
+  technicalMeasureDecisionForSignedQuote,
   linkedSalesQuoteIdForPublicQuote,
   formatDimensions,
   publicQuoteCustomerDetails,
@@ -26,6 +27,29 @@ import {
 import { DEFAULT_ADJUSTMENTS, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
+
+describe("signed contract technical measure decision", () => {
+  it("requires a remeasure when neither the quote nor job has a decision", () => {
+    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, { meta: {} })).toBe("needed");
+  });
+
+  it("requires a remeasure even when the linked job is missing", () => {
+    expect(technicalMeasureDecisionForSignedQuote({ meta: {} }, null)).toBe("needed");
+  });
+
+  it.each(["needed", "not_needed"] as const)("honors the saved quote decision: %s", (status) => {
+    expect(technicalMeasureDecisionForSignedQuote(
+      { meta: { measure_needed: { status } } },
+      { meta: { measure_needed: { status: status === "needed" ? "not_needed" : "needed" } } },
+    )).toBe(status);
+  });
+
+  it("honors an explicit job waiver when the quote has no decision", () => {
+    expect(technicalMeasureDecisionForSignedQuote(
+      { meta: {} }, { meta: { measure_needed: { status: "not_needed" } } },
+    )).toBe("not_needed");
+  });
+});
 
 function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
   return {
@@ -185,13 +209,17 @@ describe("signed SMS copy", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
-        "Technical Measure: Not Needed",
+        "Technical Measure: Needed",
       ].join("\n")
     );
   });
   it("shop message can flag technical measure needed", () => {
     const msg = buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "needed" });
     expect(msg).toContain("Technical Measure: Needed");
+  });
+  it("honors an explicit technical measure waiver in the shop message", () => {
+    expect(buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "not_needed" }))
+      .toContain("Technical Measure: Not Needed");
   });
   it("primary shop recipient gets customer phone and address", () => {
     const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {

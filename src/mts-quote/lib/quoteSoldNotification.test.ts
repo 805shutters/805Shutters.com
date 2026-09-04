@@ -21,7 +21,7 @@ describe("805 sold quote SMS notification", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
-        "Technical Measure: Not Needed",
+        "Technical Measure: Needed",
       ].join("\n")
     );
   });
@@ -30,6 +30,16 @@ describe("805 sold quote SMS notification", () => {
     expect(build805SoldQuoteSmsMessage({ ...quote, technical_measure: "needed" }, null)).toContain(
       "Technical Measure: Needed"
     );
+  });
+
+  it("defaults a null decision to needed", () => {
+    expect(build805SoldQuoteSmsMessage({ ...quote, technical_measure: null }, null))
+      .toContain("Technical Measure: Needed");
+  });
+
+  it("honors an explicit technical measure waiver", () => {
+    expect(build805SoldQuoteSmsMessage({ ...quote, technical_measure: "not_needed" }, null))
+      .toContain("Technical Measure: Not Needed");
   });
 
   it("adds customer phone and address for the primary recipient", () => {

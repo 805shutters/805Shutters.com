@@ -44,7 +44,7 @@ export function isTechnicalMeasureDecision(value: unknown): value is TechnicalMe
 }
 
 export function technicalMeasureSmsLine(status?: CrmMeasureNeededStatus | null): string {
-  return `Technical Measure: ${status === "needed" ? "Needed" : "Not Needed"}`;
+  return `Technical Measure: ${status === "not_needed" || status === "measured" ? "Not Needed" : "Needed"}`;
 }
 
 export function measureNeededLabel(job: Pick<CrmJob, "meta">) {

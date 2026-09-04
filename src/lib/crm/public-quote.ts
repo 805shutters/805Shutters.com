@@ -1555,8 +1555,12 @@ async function saveTechnicalMeasureDecisionForQuote(
   }
 }
 
-function technicalMeasureDecisionForSignedQuote(quote: CrmQuote, job: CrmJob | null): TechnicalMeasureDecision {
-  return technicalMeasureDecisionFromMeta(quote.meta) || technicalMeasureDecisionFromMeta(job?.meta) || "not_needed";
+export function technicalMeasureDecisionForSignedQuote(
+  quote: Pick<CrmQuote, "meta">,
+  job: Pick<CrmJob, "meta"> | null,
+): TechnicalMeasureDecision {
+  // Closing a contract requires a remeasure unless staff explicitly waived it.
+  return technicalMeasureDecisionFromMeta(quote.meta) || technicalMeasureDecisionFromMeta(job?.meta) || "needed";
 }
 
 async function syncTechnicalMeasureDecisionForSoldJob(
@@ -1565,8 +1569,8 @@ async function syncTechnicalMeasureDecisionForSoldJob(
   job: CrmJob | null,
   source: string
 ) {
-  if (!job) return "not_needed";
   const decision = technicalMeasureDecisionForSignedQuote(quote, job);
+  if (!job) return decision;
 
   try {
     if (decision === "needed") {

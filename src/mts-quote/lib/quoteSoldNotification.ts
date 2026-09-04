@@ -1,3 +1,5 @@
+import { technicalMeasureSmsLine } from "@/lib/crm/measure-needed-state";
+
 export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-298-5555", "805-914-4917"] as const;
 export const SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT = "805-298-5555" as const;
 
@@ -44,10 +46,6 @@ function buildContractUrl(shareToken?: string | null): string | null {
 function optionalSmsLine(label: string, value?: string | null): string | null {
   const text = value?.trim();
   return text ? `${label}: ${text}` : null;
-}
-
-function technicalMeasureSmsLine(value?: SoldQuoteSmsInput["technical_measure"]): string {
-  return `Technical Measure: ${value === "needed" ? "Needed" : "Not Needed"}`;
 }
 
 export function build805SoldQuoteSmsMessage(
