@@ -29,13 +29,13 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain('aria-label="Select height"');
     expect(component).toContain('<span aria-hidden="true">W</span>');
     expect(component).toContain('<span aria-hidden="true">H</span>');
-    expect(component).toContain(">WS</button>");
-    expect(component).toContain(">F2F</button>");
+    expect(component).toContain('aria-label="Window size"');
+    expect(component).toContain('aria-label="Frame to frame"');
     expect(styles).toContain("technical-measure-dimensions--with-basis");
     expect(styles).toContain("border-radius: 7px;");
     expect(styles).toContain("min-height: 42px;");
     expect(component.indexOf('aria-label="Select width"')).toBeLessThan(component.indexOf('aria-label="Select height"'));
-    expect(component.indexOf('aria-label="Select height"')).toBeLessThan(component.indexOf('className="technical-measure-dimension-basis"'));
+    expect(component.indexOf('className="technical-measure-basis technical-measure-field-basis"')).toBeLessThan(component.indexOf('aria-label="Select width"'));
   });
 
   it("continues from width fraction directly into height selection", () => {
@@ -77,16 +77,18 @@ describe("technical measure mobile controls", () => {
     expect(styles).toContain(".technical-measure-alert--active");
   });
 
-  it("keeps incomplete-sheet guidance non-blocking during submission", () => {
+  it("blocks order completion until every opening is validated and submitted", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
 
-    expect(component).toContain("Optional quality check");
-    expect(component).toContain("Incomplete fields do not prevent submission.");
-    expect(component).toContain("You can still complete and submit this measure.");
-    expect(component).not.toContain("setMessage(compactTechnicalMeasureCompletionSummary(issues));\n        return;");
+    expect(component).toContain("Complete this opening");
+    expect(component).not.toContain("Incomplete fields do not prevent submission.");
+    expect(component).not.toContain("You can still complete and submit this measure.");
+    expect(component).toContain("setMessage(compactTechnicalMeasureCompletionSummary(issues));\n        return;");
+    expect(component).toContain("Submit every opening before completing the order.");
+    expect(component).toContain("handleSubmitLine");
     expect(service).not.toContain("validateNormanRollerMeasureForSubmission(form)");
-    expect(service).not.toContain("technicalMeasureCompletionIssues(form)");
+    expect(service).toContain("technicalMeasureCompletionIssues(form)");
   });
 
   it("uses a customer launch screen and one-line mobile workspace", () => {
@@ -96,7 +98,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("Start Measure");
     expect(component).toContain("technical-measure-shell--active");
     expect(component).toContain("technical-measure-workspace");
-    expect(component).toContain("Return to customer summary");
+    expect(component).toContain("Back to line items");
     expect(component).toContain("Folding direction");
     expect(component).toContain("Window Size");
     expect(component).toContain("Frame-to-Frame Size");
@@ -143,7 +145,7 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain("technical-measure-opening-row");
     expect(component).toContain('aria-label="Opening identifier"');
-    expect(component).toContain('OPENING_LABELS = ["A", "B", "C", "D"]');
+    expect(component).toContain('OPENING_LABELS = ["A", "B", "C", "D", "E"]');
     expect(component).toContain("OPENING_LABELS.map");
     expect(component).toContain(">Custom</button>");
     expect(component).toContain('aria-label="Custom opening identifier"');
@@ -219,4 +221,21 @@ describe("technical measure mobile controls", () => {
     expect(component).not.toContain('aria-label="Decrease quantity"');
     expect(component).toContain("Add Future Measure");
   });
+  it("uses the MTS line-item ledger and focused opening workflow", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const styles = readFileSync("src/components/crm/technical-measure-ipad.css", "utf8");
+
+    expect(component).toContain('useState<"ledger" | "line">("ledger")');
+    expect(component).toContain('aria-label="Technical measure line items"');
+    expect(component).toContain("Needs measure");
+    expect(component).toContain("Back to line items");
+    expect(component).toContain("Submit line item");
+    expect(component).toContain("Confirm width");
+    expect(component).toContain("Confirm height");
+    expect(component).toContain('FIELD_MEASURE_FRACTIONS = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"]');
+    expect(component).toContain("wholeEnd={125}");
+    expect(styles).toContain(".technical-measure-ledger-list");
+    expect(styles).toContain('button[data-complete="true"]');
+  });
+
 });

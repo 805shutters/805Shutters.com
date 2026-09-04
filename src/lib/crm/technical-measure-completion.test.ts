@@ -10,9 +10,13 @@ function line(id: string, room: string, overrides: Record<string, unknown> = {})
     id,
     current_values: {
       room,
+      opening_label: "A",
       width_in: 42.125,
       height_in: 106,
-      details: {},
+      width_confirmed: true,
+      height_confirmed: true,
+      product_id: "roller",
+      details: { mount_type: "Inside Mount" },
       ...overrides,
     },
     measure_schema: null,
@@ -47,7 +51,7 @@ describe("technical measure completion validation", () => {
   it("names only the missing fields on the applicable line", () => {
     const form = {
       lines: [{
-        ...line("line-1", "Office", { width_in: null }),
+        ...line("line-1", "Office", { width_in: null, details: {} }),
         measure_schema: {
           fields: [
             { key: "mount_type", label: "Mount", required: true },
@@ -63,5 +67,28 @@ describe("technical measure completion validation", () => {
     expect(compactTechnicalMeasureCompletionSummary(issues)).toBe(
       "Line 1 (Office): complete Width, Mount.",
     );
+  });
+
+  it("requires MTS-style room, opening, eighth-inch confirmation, and mount", () => {
+    const form = {
+      lines: [{
+        ...line("line-1", "Window", {
+          opening_label: "",
+          width_in: 42.0625,
+          width_confirmed: false,
+          height_confirmed: false,
+          details: {},
+        }),
+        measure_schema: { fields: [] },
+      }],
+    } as unknown as TechnicalMeasureForm;
+
+    expect(technicalMeasureCompletionIssues(form).map((issue) => issue.field)).toEqual([
+      "room",
+      "opening_label",
+      "width_in",
+      "height_confirmed",
+      "mount_type",
+    ]);
   });
 });

@@ -9,6 +9,8 @@ interface MeasurementGridModalProps {
   showDirectEntry?: boolean;
   singleDimensionLabel?: string;
   wholeStart?: number;
+  wholeEnd?: number;
+  fractions?: readonly string[];
   onClose: () => void;
   step: MeasurementStep;
   onWidthWhole: (n: number) => void;
@@ -28,6 +30,8 @@ export function MeasurementGridModal({
   showDirectEntry = false,
   singleDimensionLabel,
   wholeStart = 10,
+  wholeEnd,
+  fractions = FRACTIONS,
   onClose,
   step,
   onWidthWhole,
@@ -49,7 +53,7 @@ export function MeasurementGridModal({
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  const maxWholeInches = showDirectEntry && isWidth ? 250 : 119;
+  const maxWholeInches = wholeEnd ?? (showDirectEntry && isWidth ? 250 : 119);
   const wholeNumbers: number[] = [];
   for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
@@ -179,7 +183,7 @@ export function MeasurementGridModal({
           {/* Fraction strip */}
           {isFractionStep && (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-2">
-              {FRACTIONS.map((f) => (
+              {fractions.map((f) => (
                 <button
                   key={f}
                   onClick={() => handleFractionClick(f)}

@@ -27,6 +27,7 @@ import {
 import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
 import { normalizeInstallationDurationMinutes } from "@/lib/crm/installation-handoff";
 import { preserveTechnicalMeasureNotes } from "@/lib/crm/technical-measure-edits";
+import { technicalMeasureCompletionIssues } from "@/lib/crm/technical-measure-completion";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -48,6 +49,9 @@ export type TechnicalMeasureLineValues = {
   motorization: Array<{ groupId: string; optionId: string; units?: number }>;
   surcharges: Array<{ id: string; units?: number }>;
   discount_percent: number;
+  measure_complete?: boolean;
+  width_confirmed?: boolean;
+  height_confirmed?: boolean;
 };
 
 export type FutureMeasureEntry = {
@@ -294,6 +298,9 @@ export function normalizeTechnicalMeasureLineValues(value: unknown, fallback?: T
     motorization: selectionList(source.motorization ?? fallback?.motorization, "motorization") as TechnicalMeasureLineValues["motorization"],
     surcharges: selectionList(source.surcharges ?? fallback?.surcharges, "surcharges") as TechnicalMeasureLineValues["surcharges"],
     discount_percent: Math.min(100, Math.max(0, numeric(source.discount_percent, fallback?.discount_percent || 0))),
+    measure_complete: source.measure_complete === true || (source.measure_complete === undefined && fallback?.measure_complete === true),
+    width_confirmed: source.width_confirmed === true || (source.width_confirmed === undefined && fallback?.width_confirmed === true),
+    height_confirmed: source.height_confirmed === true || (source.height_confirmed === undefined && fallback?.height_confirmed === true),
   };
 }
 
@@ -339,6 +346,9 @@ const INTERNAL_MEASURE_DETAIL_KEYS = new Set([
   "light_guard",
   "hold_downs",
   "hold_down_color",
+  "frame_sides",
+  "field_measure_custom_room",
+  "field_measure_bedroom",
 ]);
 
 function comparableContractDetail(key: string, value: unknown) {
@@ -1023,6 +1033,13 @@ async function finalizeTechnicalMeasure(
   actor: CrmActor,
   installationDurationMinutesInput: unknown,
 ) {
+  if (form.lines.some((line) => !line.current_values.measure_complete)) {
+    throw new CrmAuthError(409, "Every opening must be submitted before the technical measure can be completed.");
+  }
+  const completionIssues = technicalMeasureCompletionIssues(form);
+  if (completionIssues.length) {
+    throw new CrmAuthError(409, completionIssues[0].instruction);
+  }
   const installationDurationMinutes = normalizeInstallationDurationMinutes(
     installationDurationMinutesInput,
   );

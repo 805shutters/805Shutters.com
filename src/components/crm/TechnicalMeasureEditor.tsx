@@ -3,7 +3,7 @@
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import "./technical-measure-ipad.css";
 import type { Session } from "@supabase/supabase-js";
-import { Archive, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
+import { Archive, ArrowLeft, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type {
@@ -127,7 +127,10 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
 ] as const;
 const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
 const HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"]);
-const OPENING_LABELS = ["A", "B", "C", "D"] as const;
+const OPENING_LABELS = ["A", "B", "C", "D", "E"] as const;
+const FIELD_MEASURE_FRACTIONS = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"] as const;
+const FIELD_MEASURE_ROOMS = ["Living Room", "Family Room", "Dining Room", "Bathroom", "Bedroom", "Primary", "Primary Bath", "Office", "Den", "Laundry", "Loft", "Kitchen", "Garage", "Custom"] as const;
+const FIELD_MEASURE_FRAME_SIDES = ["4", "3 SP", "3 SPL", "3 SBT", "3 SPR", "3", "2 SP", "T", "B"] as const;
 const INSTALLATION_DURATION_CHOICES = Array.from({ length: 32 }, (_, index) => (index + 1) * 15);
 
 function installationDurationLabel(minutes: number) {
@@ -160,6 +163,12 @@ function detailText(details: Record<string, unknown>, ...keys: string[]) {
   return "";
 }
 
+function fieldMeasureRoomLabel(values: TechnicalMeasureLineValues) {
+  if (values.room === "Custom") return detailText(values.details, "field_measure_custom_room") || "Custom room";
+  if (values.room === "Bedroom" && values.details.field_measure_bedroom) return `Bedroom ${values.details.field_measure_bedroom}`;
+  return values.room || "Choose room";
+}
+
 function isOnyxShutter(productId: string, details: Record<string, unknown>) {
   return productId.toLowerCase().includes("onyx") || detailText(details, "supplier", "manufacturer").toLowerCase().includes("onyx");
 }
@@ -173,8 +182,7 @@ function shutterMeasurementBasis(details: Record<string, unknown>) {
   ].map((value) => String(value || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_"));
   if (candidates.some((value) => value.includes("window_size"))) return "window_size";
   if (candidates.some((value) => value.includes("frame_to_frame"))) return "frame_to_frame";
-  if (details.frame_type || details.frame_style || details.frame_sides) return "window_size";
-  return "frame_to_frame";
+  return "";
 }
 
 function shutterMeasurementBasisOptions(onyx: boolean) {
@@ -396,12 +404,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [measureStarted, setMeasureStarted] = useState(false);
+  const [measureView, setMeasureView] = useState<"ledger" | "line">("ledger");
   const [mobilePane, setMobilePane] = useState<"contract" | "measure">("measure");
   const fieldPaneRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (window.matchMedia("(min-width: 744px)").matches) setMeasureStarted(true);
   }, []);
-  useEffect(() => { fieldPaneRef.current?.scrollTo({ top: 0 }); }, [activeLineIndex, measureStarted]);
+  useEffect(() => { fieldPaneRef.current?.scrollTo({ top: 0 }); }, [activeLineIndex, measureStarted, measureView]);
   const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" } | null>(null);
   const [customOpeningLineId, setCustomOpeningLineId] = useState<string | null>(null);
   const [detailChoice, setDetailChoice] = useState<{ lineId: string; key: string } | null>(null);
@@ -591,7 +600,16 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     setMessage(null);
     setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
-      const next = current.map((line) => line.id === lineId ? { ...line, current_values: { ...line.current_values, ...patch } } : line);
+      const next = current.map((line) => line.id === lineId ? {
+        ...line,
+        current_values: {
+          ...line.current_values,
+          ...patch,
+          measure_complete: Object.prototype.hasOwnProperty.call(patch, "measure_complete")
+            ? Boolean(patch.measure_complete)
+            : false,
+        },
+      } : line);
       linesRef.current = next;
       return next;
     });
@@ -610,6 +628,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           current_values: {
             ...line.current_values,
             details: committed.details as TechnicalMeasureLineValues["details"],
+            measure_complete: false,
           },
         };
       });
@@ -625,8 +644,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     fraction: string,
     currentValue: number | null,
   ) {
-    const selection = selectTechnicalMeasureInches(currentValue, whole, fraction, FRACTIONS);
-    updateLine(lineId, { [field]: selection.inches });
+    const selection = selectTechnicalMeasureInches(currentValue, whole, fraction, FIELD_MEASURE_FRACTIONS);
+    updateLine(lineId, {
+      [field]: selection.inches,
+      [field === "width_in" ? "width_confirmed" : "height_confirmed"]: true,
+    });
     return selection;
   }
 
@@ -737,8 +759,48 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     finally { setBusy(false); }
   }
 
+  async function handleSubmitLine(index: number) {
+    if (!form) return;
+    const currentLines = linesRef.current;
+    const line = currentLines[index];
+    if (!line) return;
+    const issues = technicalMeasureCompletionIssues({ ...form, lines: currentLines });
+    const lineIssues = issues.filter((issue) => issue.lineId === line.id);
+    setCompletionIssues(lineIssues);
+    if (lineIssues.length) {
+      setMessage(compactTechnicalMeasureCompletionSummary(lineIssues));
+      return;
+    }
+
+    markTechnicalMeasureSelection();
+    const nextLines = currentLines.map((candidate) => candidate.id === line.id
+      ? { ...candidate, current_values: { ...candidate.current_values, measure_complete: true } }
+      : candidate);
+    linesRef.current = nextLines;
+    setLines(nextLines);
+    setBusy(true);
+    setMessage(null);
+    try {
+      const saved = await persistDraftOnce(nextLines);
+      setMeasureView("ledger");
+      setCompletionIssues([]);
+      setMessage(saved.queued
+        ? `Opening ${index + 1} saved on this iPad.`
+        : `Opening ${index + 1} submitted.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "This opening could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSubmit() {
     if (!form) return;
+    if (!linesRef.current.length || linesRef.current.some((line) => !line.current_values.measure_complete)) {
+      setMeasureView("ledger");
+      setMessage("Submit every opening before completing the order.");
+      return;
+    }
     setBusy(true); setMessage(null);
     try {
       const saved = await flushLatestDraft();
@@ -746,7 +808,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       setCompletionIssues(issues);
       if (issues.length) {
         setActiveLineIndex(issues[0].lineIndex);
-        setMessage(`${compactTechnicalMeasureCompletionSummary(issues)} You can still complete and submit this measure.`);
+        setMeasureView("line");
+        setMessage(compactTechnicalMeasureCompletionSummary(issues));
+        return;
       }
       if (saved.form.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
@@ -927,11 +991,17 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       || vendorOrderPreparations.some((preparation) => !preparation.orderPacketUrl)
     );
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
+  const completedLineCount = readOnly
+    ? lines.length
+    : lines.filter((line) => line.current_values.measure_complete).length;
+  const allLinesComplete = lines.length > 0 && completedLineCount === lines.length;
   const futureMeasures = form?.futureMeasures || [];
 
   function showLine(index: number) {
     setActiveLineIndex(Math.min(Math.max(index, 0), Math.max(lines.length - 1, 0)));
-    document.getElementById("technical-measure-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMeasureView("line");
+    setCompletionIssues([]);
+    setMessage(null);
   }
 
   if (authLoading || loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /><p>Loading technical measure...</p></main>;
@@ -957,7 +1027,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           {form.contractUrl ? <iframe className="tm805-contract-document" title="Original customer contract" src={form.contractUrl} /> : <div className="tm805-contract-unavailable"><FileText /><h3>Contract unavailable</h3><p>{offlineMode ? "Reconnect to view the original customer contract. Your field measure is still available." : "The original contract link is missing from this customer file."}</p></div>}
         </aside>
         <section className="tm805-field" aria-label="Technician field measure">
-          <header className="tm805-pane-heading"><h2><Ruler />Technician field measure</h2><span>Opening {activeLineNumber} of {lines.length}</span></header>
+          <header className="tm805-pane-heading"><h2><Ruler />Technician field measure</h2><span>{measureView === "ledger" ? `${completedLineCount} of ${lines.length} complete` : `Opening ${activeLineNumber} of ${lines.length}`}</span></header>
           <div className="tm805-field-scroll" ref={fieldPaneRef}>
       {(offlineMode || pendingSync) ? (
         <div className="technical-measure-offline-status" data-offline={offlineMode}>
@@ -1035,7 +1105,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           <span style={{ width: `${lines.length ? (activeLineNumber / lines.length) * 100 : 0}%` }} />
         </div>
       </section>
-      <button className="technical-measure-launch" type="button" onClick={() => setMeasureStarted(true)}>
+      <button className="technical-measure-launch" type="button" onClick={() => { setMeasureStarted(true); setMeasureView("ledger"); }}>
         <Ruler /> Start Measure <ChevronRight />
       </button>
       </> : null}
@@ -1047,7 +1117,34 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
             <span data-status="submitted">Submitted</span>
           </div>
         ) : null}
-        {lines.map((line, index) => {
+        {measureView === "ledger" ? (
+          <section className="technical-measure-ledger" aria-label="Technical measure line items">
+            <header>
+              <div><span>Field measure</span><h2>Line items</h2></div>
+              <strong>{completedLineCount}/{lines.length}</strong>
+            </header>
+            {message ? <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div> : null}
+            <div className="technical-measure-ledger-list">
+              {lines.map((line, index) => {
+                const complete = readOnly || line.current_values.measure_complete;
+                const supplier = detailText(line.current_values.details, "supplier", "manufacturer");
+                return (
+                  <button type="button" onClick={() => showLine(index)} data-complete={complete} key={line.id}>
+                    <span className="technical-measure-ledger-number">{index + 1}</span>
+                    <span className="technical-measure-ledger-copy">
+                      <strong>{fieldMeasureRoomLabel(line.current_values)}{line.current_values.opening_label ? ` · ${line.current_values.opening_label}` : ""}</strong>
+                      <small>{productLabel(line.current_values.product_id)}{supplier ? ` · ${supplier}` : ""}</small>
+                    </span>
+                    <span className="technical-measure-ledger-size">{inches(line.current_values.width_in)} × {inches(line.current_values.height_in)}</span>
+                    <span className="technical-measure-ledger-status">{complete ? <><Check />Done</> : <>Needs measure<ChevronRight /></>}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {!readOnly ? <button className="technical-measure-add-future" type="button" onClick={() => { setMeasureStarted(false); setFutureMeasureOpen(true); window.setTimeout(() => document.getElementById("future-measures")?.scrollIntoView({ behavior: "smooth" }), 0); }}><Plus /> Add future window</button> : null}
+          </section>
+        ) : null}
+        {measureView === "line" ? lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
           const isExpandedWindow = (line.source_quantity || 1) > 1;
@@ -1071,7 +1168,10 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
             || (/^(yes|true)$/i.test(detailText(current.details, "divider_rail")) ? "Center" : "None");
           const priorityDetailKeys: readonly string[] = shutterProduct ? SHUTTER_MEASURE_PRIORITY_KEYS : SHADE_MEASURE_PRIORITY_KEYS;
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
-            .filter((key) => (!normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key)) && !priorityDetailKeys.includes(key) && !HEADER_DETAIL_KEYS.has(key));
+            .filter((key) => (!normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key))
+              && !priorityDetailKeys.includes(key)
+              && !HEADER_DETAIL_KEYS.has(key)
+              && !["frame_sides", "field_measure_custom_room", "field_measure_bedroom"].includes(key));
           const lineCompletionIssues = completionIssues.filter((issue) => issue.lineId === line.id);
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
@@ -1081,13 +1181,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                     <span>Line {index + 1} of {lines.length}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span>
                     <div className="technical-measure-line-meta"><strong>{money(line.current_unit_price)} each</strong><b>{productLabel(current.product_id)}{supplier ? ` (${supplier})` : ""}</b></div>
                   </div>
-                  <button type="button" aria-label="Return to customer summary" onClick={() => setMeasureStarted(false)}><X /></button>
+                  <button type="button" aria-label="Back to line items" onClick={() => setMeasureView("ledger")}><ArrowLeft /></button>
                 </div>
                 {(message || lineCompletionIssues.length) ? (
                   <div className="technical-measure-alert technical-measure-alert--active" role={lineCompletionIssues.length ? "alert" : "status"}>
                     {lineCompletionIssues.length ? (
                       <>
-                        <strong>Optional quality check</strong>
+                        <strong>Complete this opening</strong>
                         <ul>
                           {lineCompletionIssues.map((issue) => (
                             <li key={`${issue.lineId}-${issue.field}`}>
@@ -1095,7 +1195,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                             </li>
                           ))}
                         </ul>
-                        <small>Incomplete fields do not prevent submission.</small>
                         {message ? <small>{message}</small> : null}
                       </>
                     ) : message}
@@ -1104,16 +1203,18 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               </div>
               <div className="technical-measure-opening-row technical-measure-opening-row--priority">
                   <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
-                    <span>Room</span>
-                    <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room || "Select room"}<ChevronRight /></button>
+                    <span>1. Room name</span>
+                    <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room === "Custom" ? detailText(current.details, "field_measure_custom_room") || "Custom" : current.room === "Bedroom" && current.details.field_measure_bedroom ? `Bedroom ${current.details.field_measure_bedroom}` : current.room || "Select room"}<ChevronRight /></button>
                     {choiceField?.lineId === line.id && choiceField.field === "room" ? (
                       <div className="technical-measure-choice-grid">
-                        {ROOM_PRESETS.map((room) => <button type="button" aria-pressed={current.room === room} key={room} onClick={() => { updateLine(line.id, { room }); setChoiceField(null); }}>{room}</button>)}
+                        {FIELD_MEASURE_ROOMS.map((room) => <button type="button" aria-pressed={current.room === room} key={room} onClick={() => { updateLine(line.id, { room }); setChoiceField(null); }}>{room}</button>)}
                       </div>
                     ) : null}
+                    {current.room === "Bedroom" ? <div className="technical-measure-choice-grid technical-measure-bedroom-choices" aria-label="Bedroom number">{["1", "2", "3", "4", "5"].map((bedroom) => <button type="button" disabled={readOnly} aria-pressed={String(current.details.field_measure_bedroom || "") === bedroom} key={bedroom} onClick={() => updateDetail(line.id, "field_measure_bedroom", bedroom)}>{bedroom}</button>)}</div> : null}
+                    {current.room === "Custom" ? <input disabled={readOnly} aria-label="Custom room name" placeholder="Enter room name" value={detailText(current.details, "field_measure_custom_room")} onChange={(event) => updateDetail(line.id, "field_measure_custom_room", event.target.value)} /> : null}
                   </div>
                   <div className={`technical-measure-opening-choice ${changed(baseline.opening_label, current.opening_label) ? "changed" : ""}`}>
-                    <span>Opening</span>
+                    <span>Opening letter</span>
                     <div aria-label="Opening identifier">
                       {OPENING_LABELS.map((opening) => <button type="button" disabled={readOnly} aria-pressed={current.opening_label === opening} key={opening} onClick={() => { updateLine(line.id, { opening_label: opening }); setCustomOpeningLineId((active) => active === line.id ? null : active); }}>{opening}</button>)}
                       <button className="technical-measure-opening-custom-button" type="button" disabled={readOnly} aria-pressed={customOpening} onClick={() => { setCustomOpeningLineId(line.id); if (OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number])) updateLine(line.id, { opening_label: "" }); }}>Custom</button>
@@ -1121,15 +1222,29 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                     {customOpening ? <input className="technical-measure-custom-opening" aria-label="Custom opening identifier" disabled={readOnly} autoFocus placeholder="Enter custom opening" value={current.opening_label} onChange={(event) => updateLine(line.id, { opening_label: event.target.value })} /> : null}
                   </div>
               </div>
-              <div className={`technical-measure-dimensions${shutterProduct ? " technical-measure-dimensions--with-basis" : ""}`}>
+              <div className="technical-measure-section-label">2. {shutterProduct ? "Measurement type" : "Mount"}</div>
+              {shutterProduct ? <div className="technical-measure-basis technical-measure-field-basis"><span>W = window size · F = frame to frame</span><div>
+                <button type="button" disabled={readOnly} aria-label="Window size" aria-pressed={measurementBasis === "window_size"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[0].label)}>W</button>
+                <button type="button" disabled={readOnly} aria-label="Frame to frame" aria-pressed={measurementBasis === "frame_to_frame"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[1].label)}>F</button>
+              </div></div> : <div className="technical-measure-basis technical-measure-field-basis"><span>I = inside mount · O = outside mount</span><div>
+                <button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Inside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Inside Mount")}>I</button>
+                <button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Outside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Outside Mount")}>O</button>
+              </div></div>}
+              <div className="technical-measure-section-label">3. Width &amp; height</div>
+              <div className="technical-measure-dimensions">
                 <button type="button" aria-label="Select width" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
                 <button type="button" aria-label="Select height" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
-                {shutterProduct ? <div className="technical-measure-dimension-basis" aria-label={onyxShutter ? "W/F" : "Measurement type"}>
-                  <button type="button" disabled={readOnly} aria-label="Window size" aria-pressed={measurementBasis === "window_size"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[0].label)}>WS</button>
-                  <button type="button" disabled={readOnly} aria-label="Frame to frame" aria-pressed={measurementBasis === "frame_to_frame"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[1].label)}>F2F</button>
-                </div> : null}
               </div>
-              {shutterProduct ? <div className="technical-measure-priority-grid">
+              <div className="technical-measure-dimension-confirmations">
+                <button type="button" disabled={readOnly || !current.width_in} data-confirmed={current.width_confirmed} onClick={() => updateLine(line.id, { width_confirmed: true })}>{current.width_confirmed ? <Check /> : null} Confirm width</button>
+                <button type="button" disabled={readOnly || !current.height_in} data-confirmed={current.height_confirmed} onClick={() => updateLine(line.id, { height_confirmed: true })}>{current.height_confirmed ? <Check /> : null} Confirm height</button>
+              </div>
+              {shutterProduct ? <><div className="technical-measure-section-label">4. Shutter configuration</div><div className="technical-measure-priority-grid">
+                <div className="technical-measure-quick-field technical-measure-frame-sides">
+                  <span>Frame sides</span>
+                  <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__frame_sides"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__frame_sides" ? null : { lineId: line.id, key: "__frame_sides" })}><span>{detailText(current.details, "frame_sides") || "Select"}</span><ChevronRight /></button>
+                  {detailChoice?.lineId === line.id && detailChoice.key === "__frame_sides" ? <div className="technical-measure-choice-grid technical-measure-detail-options">{FIELD_MEASURE_FRAME_SIDES.map((option) => <button type="button" aria-pressed={current.details.frame_sides === option} key={option} onClick={() => { updateDetail(line.id, "frame_sides", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
+                </div>
                 <div className="technical-measure-quick-field technical-measure-folding">
                   <span>Folding direction</span>
                   <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__panel_config"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? null : { lineId: line.id, key: "__panel_config" })}><span>{panelConfiguration || "Select"}</span><ChevronRight /></button>
@@ -1156,8 +1271,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                     <button type="button" disabled={readOnly} aria-pressed={dividerRailLocation === "Custom"} onClick={() => { updateDetail(line.id, "divider_rail", "Yes"); updateDetail(line.id, "divider_rail_location", "Custom"); setLocationPicker({ lineId: line.id, label: "Divider Rail Location", valueKey: "divider_rail_height", step: "width_whole" }); }}>Custom{current.details.divider_rail_height ? ` · ${inches(Number(current.details.divider_rail_height))}` : ""}</button>
                   </div>
                 </div>
-              </div> : <div className="technical-measure-priority-grid technical-measure-priority-grid--shade">
-                <div className="technical-measure-basis"><span>Mount</span><div><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Inside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Inside Mount")}>Inside</button><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Outside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Outside Mount")}>Outside</button></div></div>
+              </div></> : <div className="technical-measure-priority-grid technical-measure-priority-grid--shade">
                 <div className="technical-measure-basis"><span>Control side</span><div><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "left"} onClick={() => updateDetail(line.id, "control_side", "Left")}>Left</button><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "right"} onClick={() => updateDetail(line.id, "control_side", "Right")}>Right</button></div></div>
               </div>}
               <div className="technical-measure-secondary">
@@ -1214,14 +1328,14 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} onBlur={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>
-              <div className="technical-measure-line-navigation">
-                <button type="button" disabled={index === 0} onClick={() => showLine(index - 1)}><ChevronLeft />Previous</button>
-                <span>{current.width_in && current.height_in ? "Measurements entered" : "Width and height required"}</span>
-                <button type="button" disabled={index === lines.length - 1} onClick={() => showLine(index + 1)}>Next<ChevronRight /></button>
+              <div className="technical-measure-line-navigation technical-measure-line-submit">
+                <button type="button" onClick={() => setMeasureView("ledger")}><ArrowLeft />Back to line items</button>
+                <span>{current.measure_complete ? "Opening complete" : "Review every required field"}</span>
+                <button type="button" disabled={readOnly || busy} onClick={() => void handleSubmitLine(index)}>{busy ? <Loader2 className="spin" /> : <Check />}Submit line item</button>
               </div>
             </article>
           );
-        })}
+        }) : null}
       </section> : null}
 
       {!measureStarted && form.requiresAddendum && !readOnly ? (
@@ -1274,7 +1388,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       </section> : null}
 
       </div>
-      {!readOnly && measureStarted ? <footer className="technical-measure-actions">
+      {!readOnly && measureStarted && measureView === "ledger" ? <footer className="technical-measure-actions">
         <label className="technical-measure-install-duration">
           <span>Installation duration</span>
           <select
@@ -1291,7 +1405,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           </select>
         </label>
         <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
-        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
+        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes || !allLinesComplete} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
       </footer> : null}
 
         </section>
@@ -1301,6 +1415,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         <MeasurementGridModal
           open
           showDirectEntry={false}
+          wholeEnd={125}
+          fractions={FIELD_MEASURE_FRACTIONS}
           onClose={closeMeasurePicker}
           step={measurePicker.step}
           pendingWidth={pendingWidth}
