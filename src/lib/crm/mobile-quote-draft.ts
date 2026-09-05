@@ -525,6 +525,42 @@ export function addMobileQuoteWindow(draft: MobileQuoteDraft) {
   return next;
 }
 
+function hasBlankMobileQuoteOpeningDetails(window: MobileQuoteWindow) {
+  return !window.saved && !window.roomChoice && !window.room.trim() && !window.position.trim() &&
+    window.widthWhole === 0 && window.widthFraction === "0" && window.heightWhole === 0 &&
+    window.heightFraction === "0" && !window.notes.trim() && window.photos.length === 0 && !window.price;
+}
+
+function isReusableMobileQuotePlaceholder(draft: MobileQuoteDraft, window: MobileQuoteWindow) {
+  if (!hasBlankMobileQuoteOpeningDetails(window)) return false;
+  if (isUntouchedMobileQuoteWindow(window)) return true;
+  const defaults = draft.firstLineDefaults;
+  const family = window.activeProductId ? window.families[window.activeProductId] : null;
+  return mobileQuoteWorkflowMode(draft) === "full-design" && Boolean(
+    defaults && family && window.activeProductId === defaults.productId &&
+    Object.keys(window.families).length === 1 && family.productType === defaults.productType &&
+    family.overriddenPaths.length === 0 && changedMobileQuoteDesignPaths(defaults.design, family.design).length === 0,
+  );
+}
+
+export function saveMobileQuoteWindowAndAdvance(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  updatedAt = new Date().toISOString(),
+) {
+  if (draft.submission.snapshot || !draft.windows.some((window) => window.id === windowId)) return draft;
+  let next = structuredClone(draft);
+  next.windows.find((window) => window.id === windowId)!.saved = true;
+  const placeholder = next.windows.find((window) => window.id !== windowId && isReusableMobileQuotePlaceholder(next, window));
+  if (placeholder) {
+    next.activeWindowId = placeholder.id;
+  } else {
+    next = addMobileQuoteWindow(next);
+  }
+  next.updatedAt = updatedAt;
+  return next;
+}
+
 export function mobileQuoteLine(draft: MobileQuoteDraft, window: MobileQuoteWindow): SalesQuoteLineItem {
   const family = window.activeProductId ? window.families[window.activeProductId] : null;
   return {

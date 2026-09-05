@@ -23,6 +23,7 @@ import {
   removeMobileQuoteWindow,
   selectMobileQuoteBedroomNumber,
   selectMobileQuoteProduct,
+  saveMobileQuoteWindowAndAdvance,
   selectMobileQuoteRoom,
   selectMobileQuoteWindowLetter,
   setMobileQuoteWorkflow,
@@ -248,6 +249,53 @@ describe("mobile quote measure-first workflow", () => {
     const afterSaveAndNext = addMobileQuoteWindow(draft);
     expect(afterSaveAndNext.windows.slice(0, 2).map((line) => line.room)).toEqual(["Kitchen", "Office"]);
     expect(afterSaveAndNext.windows[2]).toMatchObject({ id: afterSaveAndNext.activeWindowId, activeProductId: null, families: {} });
+  });
+
+  it("reuses the untouched next opening after reopening a saved line without adding blanks", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(draft, 0, "Kitchen");
+    const firstId = draft.windows[0].id;
+    draft = saveMobileQuoteWindowAndAdvance(draft, firstId, "2026-09-05T06:30:00.000Z");
+    const untouchedId = draft.activeWindowId;
+    expect(draft.windows).toHaveLength(2);
+    expect(draft.windows[0].saved).toBe(true);
+
+    draft.activeWindowId = firstId;
+    draft = saveMobileQuoteWindowAndAdvance(draft, firstId, "2026-09-05T06:31:00.000Z");
+
+    expect(draft.windows).toHaveLength(2);
+    expect(draft.activeWindowId).toBe(untouchedId);
+    expect(draft.windows.map((line) => line.id)).toEqual([firstId, untouchedId]);
+  });
+
+  it("preserves a partial future opening and appends one new blank after reopening", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(draft, 0, "Kitchen");
+    draft = saveMobileQuoteWindowAndAdvance(draft, draft.windows[0].id);
+    const partialId = draft.activeWindowId;
+    draft.windows[1].notes = "Started at bay window";
+    draft.activeWindowId = draft.windows[0].id;
+
+    draft = saveMobileQuoteWindowAndAdvance(draft, draft.windows[0].id);
+
+    expect(draft.windows).toHaveLength(3);
+    expect(draft.windows[1]).toMatchObject({ id: partialId, notes: "Started at bay window" });
+    expect(draft.activeWindowId).toBe(draft.windows[2].id);
+  });
+
+  it("reuses a pristine inherited full-design placeholder", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    draft = selectMobileQuoteProduct(draft, draft.windows[0].id, product(draft.windows[0].id, "roller", "Roller Shades"));
+    measured(draft, 0, "Living room");
+    draft = saveMobileQuoteWindowAndAdvance(draft, draft.windows[0].id);
+    const inheritedId = draft.activeWindowId;
+    draft.activeWindowId = draft.windows[0].id;
+
+    draft = saveMobileQuoteWindowAndAdvance(draft, draft.windows[0].id);
+
+    expect(draft.windows).toHaveLength(2);
+    expect(draft.activeWindowId).toBe(inheritedId);
+    expect(draft.windows[1]).toMatchObject({ activeProductId: "roller", saved: false, room: "" });
   });
 
   it("derives only current same-product selection ids", () => {
