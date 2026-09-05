@@ -1517,11 +1517,13 @@ export function TechnicalMeasureList() {
   const [activeFilter, setActiveFilter] = useState<MeasureFilter>("need_measure");
   const [orderingKey, setOrderingKey] = useState<string | null>(null);
   useEffect(() => {
-    const selected = new URLSearchParams(window.location.search).get("status");
+    let selected = new URLSearchParams(window.location.search).get("status");
+    try { selected ||= window.sessionStorage.getItem("805-measure-filter"); } catch { /* URL selection still works when storage is unavailable. */ }
     if (measureFilters.includes(selected as MeasureFilter)) setActiveFilter(selected as MeasureFilter);
   }, []);
   function selectFilter(filter: MeasureFilter) {
     setActiveFilter(filter);
+    try { window.sessionStorage.setItem("805-measure-filter", filter); } catch { /* Keep filtering available in restricted browsers. */ }
     const url = new URL(window.location.href);
     url.searchParams.set("status", filter);
     window.history.replaceState(null, "", url);

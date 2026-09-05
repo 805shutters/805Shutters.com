@@ -210,6 +210,9 @@ test("filters, partial ordering, archive, persistence, and failures", async ({
   await expect(
     filters.getByRole("button", { name: "Needs Order 2", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  // The editor return link uses the bare queue URL; retain the selected filter there too.
+  await page.goto("/crm/technical-measures/");
+  await expect(filters.getByRole("button", { name: "Needs Order 2", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Mark Shutters ordered" }).click();
   await expect(
     filters.getByRole("button", { name: "Archive 2", exact: true }),
