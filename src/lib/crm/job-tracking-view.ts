@@ -165,5 +165,5 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
 
 export function filterJobTrackingView(items: JobTrackingViewItem[], filter: JobTrackingFilter, search = "") {
   const needle = search.trim().toLocaleLowerCase();
-  return items.filter((item) => (filter === "all" || (filter === "active" ? !TERMINAL.has(item.stageId) : filter === "archive" ? TERMINAL.has(item.stageId) : item.stageId === filter)) && (!needle || [item.customerName, item.phone, item.email, item.address, item.project, item.vendor, item.orderReference, item.job?.id, item.quote?.id, item.row?.id].some((value) => value?.toLocaleLowerCase().includes(needle))));
+  return items.filter((item) => (filter === "all" || (filter === "active" ? !TERMINAL.has(item.stageId) : filter === "archive" ? TERMINAL.has(item.stageId) : item.stageId === filter)) && (!needle || [item.customerName, item.phone, item.email, item.address, item.project, item.vendor, item.orderReference, item.quote?.quote_number, item.job?.id, item.quote?.id, item.row?.id].some((value) => value?.toLocaleLowerCase().includes(needle))));
 }

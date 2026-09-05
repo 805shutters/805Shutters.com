@@ -1,4 +1,5 @@
 "use client";
+import { JobTrackingSearch } from "./JobTrackingSearch";
 import {FulfillmentWorkspace,type FulfillmentChange} from "./FulfillmentWorkspace";
 import {emptyFulfillment,type FulfillmentData,type FulfillmentScope} from "@/lib/crm/fulfillment";
 import {OwnedActionsWorkspace} from "./OwnedActionsWorkspace";
@@ -8,7 +9,7 @@ import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "@/lib/crm/j
 
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowDown, Check, ChevronDown, ChevronRight, ExternalLink, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ExternalLink, X } from "lucide-react";
 import type { CrmBookkeepingRow, CrmCustomerFile, CrmInstallationInvoiceEmail, CrmJob, CrmOrderCogsEmail, CrmQuote } from "@/lib/crm/types";
 import { buildJobTrackingView, filterJobTrackingView, JOB_TRACKING_STAGES, trackingSafeUrl, type JobTrackingFilter, type JobTrackingSavePatch, type JobTrackingStageId, type JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import styles from "./JobTrackingWorkspace.module.css";
@@ -46,6 +47,8 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const items = useMemo(() => buildJobTrackingView(props), [props.jobs, props.quotes, props.rows, props.files, props.orderCogsEmails, props.installationInvoiceEmails, props.installerOutcomes, props.sourceHealth, props.ownedActions,props.fulfillment]);
   const [filter, setFilter] = useState<JobTrackingFilter>("active");
   const [search, setSearch] = useState("");
+  const [selectedSearchId, setSelectedSearchId] = useState<string | null>(null);
+  const changeSearch = (value: string) => { setSearch(value); setSelectedSearchId(null); };
   useEffect(()=>{const id=new URLSearchParams(window.location.search).get("jobId");if(id){setSearch(id);setFilter("all");}},[]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -56,7 +59,8 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const [notice, setNotice] = useState("");
   const [squareUrl, setSquareUrl] = useState<string | null>(null);
   const [actionWarning, setActionWarning] = useState("");
-  const visible = useMemo(() => filterJobTrackingView(items, filter, search), [items, filter, search]);
+  const matches = useMemo(() => filterJobTrackingView(items, filter, search), [items, filter, search]);
+  const visible = selectedSearchId ? matches.filter(item => item.id === selectedSearchId) : matches;
   const active = items.filter((item) => !["complete", "lost", "archived"].includes(item.stageId));
   const openBalance = active.reduce((sum, item) => sum + (item.isSale ? Math.max(0, item.balanceOutstanding || 0) : 0), 0);
   const counts = new Map(JOB_TRACKING_STAGES.map((stage) => [stage.id, items.filter((item) => item.stageId === stage.id).length]));
@@ -150,18 +154,17 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       <div><span>All order / opportunity records</span><strong>{items.length}</strong></div><div><span>Active order / opportunity records</span><strong>{active.length}</strong></div><div><span>Active order balances</span><strong>{money(openBalance)}</strong></div><div><span>Sold date missing</span><strong>{items.filter((item) => item.isSale && !item.soldDate).length}</strong></div>
     </div>
     <nav className={styles.filters} aria-label="Filter jobs by status">
-      {[{ id: "active" as const, label: "All Active", count: active.length }, ...JOB_TRACKING_STAGES.filter((stage) => !["complete", "lost", "archived"].includes(stage.id)).map((stage) => ({ ...stage, count: counts.get(stage.id) || 0 })), { id: "archive" as const, label: "Archive", count: items.length - active.length }].map((stage) => <button key={stage.id} type="button" aria-pressed={filter === stage.id} onClick={() => setFilter(stage.id)} className={`${styles.filter} ${filter === stage.id ? styles.selected : ""}`}><span>{stage.label}</span><span className={styles.count}>{stage.count}</span></button>)}
+      {[{ id: "active" as const, label: "All Active", count: active.length }, ...JOB_TRACKING_STAGES.filter((stage) => !["complete", "lost", "archived"].includes(stage.id)).map((stage) => ({ ...stage, count: counts.get(stage.id) || 0 })), { id: "archive" as const, label: "Archive", count: items.length - active.length }].map((stage) => <button key={stage.id} type="button" aria-pressed={filter === stage.id} onClick={() => { setFilter(stage.id); setSelectedSearchId(null); }} className={`${styles.filter} ${filter === stage.id ? styles.selected : ""}`}><span>{stage.label}</span><span className={styles.count}>{stage.count}</span></button>)}
     </nav>
     <div className={styles.toolbar}>
-      <label className={styles.search}><Search size={17} aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search customer, phone, quote, vendor or order…" aria-label="Search job tracking" />{search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><X size={16} /></button>}</label>
-      <div className={styles.sort}><ArrowDown size={14} aria-hidden="true" /> Sold newest → oldest <span>· {visible.length} shown</span></div>
+      <JobTrackingSearch value={search} matches={matches} onChange={changeSearch} onSelect={item => {
+        setSearch(item.customerName); setSelectedSearchId(item.id);
+      }} />
     </div>
     {notice && <div role="status" className={styles.success}><Check size={16} aria-hidden="true" /><span>{notice}</span>{squareUrl && <SafeLink url={squareUrl}>Open generated link</SafeLink>}</div>}
     {actionWarning && <p role="status" className={styles.warning}>{actionWarning}</p>}
     {props.warnings?.map((warning, index) => <p key={`${index}:${warning}`} role="status" className={styles.warning}>{warning}</p>)}
-    {props.asOf && <p role="status">Snapshot: {new Date(props.asOf).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} Pacific · Source load time; importer freshness is separate.</p>}
     {props.busy && <p role="status" className={styles.loading}>Refreshing job records…</p>}
-    {props.onSaveOwnedAction && <OwnedActionsWorkspace items={items} actions={props.ownedActions || []} busy={disabled} onSave={props.onSaveOwnedAction} onFocus={item=>{setFilter(item.progress.active ? "active" : "archive");setSearch(item.quote?.quote_number || item.customerName);setExpanded(new Set([item.id]));}}/>}
     {fulfillmentItem && props.onLoadFulfillmentScope && props.onSaveFulfillment && <FulfillmentWorkspace item={fulfillmentItem} data={props.fulfillment||emptyFulfillment} events={props.events||[]} reports={props.installerOutcomes||[]} actions={props.ownedActions||[]} onClose={()=>setFulfillmentItem(null)} onScope={props.onLoadFulfillmentScope} onSave={props.onSaveFulfillment}/>}
     <div className={styles.tableShell} tabIndex={0} role="region" aria-label="Job tracking table; scroll horizontally for all columns">
       <table className={styles.table}>
@@ -252,6 +255,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       })}
       {!visible.length && <p className={styles.cardEmpty}>{props.busy ? "Loading job records…" : items.length ? "No jobs match this status and search." : "No job records are available in the loaded CRM data."}</p>}
     </div>
+    {props.onSaveOwnedAction && <details className={styles.actionDisclosure}><summary>Next actions</summary><OwnedActionsWorkspace items={items} actions={props.ownedActions || []} busy={disabled} onSave={props.onSaveOwnedAction} onFocus={item=>{setFilter(item.progress.active ? "active" : "archive");changeSearch(item.quote?.quote_number || item.customerName);setExpanded(new Set([item.id]));}}/></details>}
     {props.integrationHealth && <details><summary>Email sync details</summary>{props.integrationHealth.map((source) => <p key={source.processor}>{source.processor.replaceAll("-", " ")}: {source.state} · Last attempt {date(source.lastAttemptAt)} · Last success {date(source.lastSuccessAt)}</p>)}</details>}
     <p className={styles.footer}>Missing sold dates are listed last. Open job details for the full record. Stage changes do not record a signature or payment.</p>
     <Dialog.Root open={Boolean(editor)} onOpenChange={(isOpen) => { if (!isOpen) close(); }}>

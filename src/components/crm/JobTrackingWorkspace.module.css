@@ -20,7 +20,7 @@
 .count { display: inline-flex; justify-content: center; min-width: 22px; padding: 2px 6px; border-radius: 5px; background: #f2f2f2; color: #737373; font-size: 11px; font-variant-numeric: tabular-nums; }
 .selected .count { color: #fff; background: #ffffff24; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
-.search { display: flex; align-items: center; gap: 10px; flex: 1 1 380px; max-width: 580px; min-width: 160px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #898989; }
+.search { display: flex; align-items: center; gap: 10px; flex: 1 1 380px; max-width: none; min-width: 160px; height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: #898989; }
 .search input { border: 0; outline: none; min-width: 0; width: 100%; height: 100%; font-size: 13px; background: transparent; color: var(--ink); box-shadow: none; padding: 0; }
 .search button { background: none; border: 0; display: inline-flex; padding: 6px; }
 .sort { font-size: 12px; color: #606060; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
@@ -178,3 +178,19 @@
 @media (max-width: 900px) { .summary { padding: 16px; gap: 18px 0; } .summary > div { flex-basis: 50%; padding: 0 18px; } .summary > div:nth-child(odd) { padding-left: 0; } .summary > div:nth-child(even) { border-right: 0; } .toolbar { flex-wrap: wrap; } .search { max-width: none; } .sort { font-size: 11px; } .tableShell { max-height: 75vh; } }
 @media (max-width: 600px) { .heading { align-items: flex-start; } .heading p { font-size: 11px; } .heading .secondary { padding: 8px 10px; max-width: 120px; font-size: 10px !important; } .summary { margin-bottom: 16px; border-radius: 8px; } .summary strong { font-size: 23px; } .filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; } .workspace .filter { min-height: 44px; } .table thead th:first-child, .table tbody th { width: 194px; min-width: 194px; max-width: 194px; } .table th, .table td { padding: 13px 11px; } .customerName { font-size: 12px !important; } .modal { padding: 23px 19px; width: calc(100vw - 22px); max-height: 90dvh; } .modalActions { flex-wrap: wrap; } .modalActions .primary { flex: 1; } .formColumns { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { :global(.crm-app-shell):has(.workspace) :global(.crm-metrics) { display: none; } :global(.crm-app-shell):has(.workspace) :global(.crm-topbar) { padding-top: 12px; padding-bottom: 12px; } :global(.crm-app-shell):has(.workspace) :global(.crm-tabs) { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 5px; padding: 10px 0; } :global(.crm-app-shell):has(.workspace) :global(.crm-tabs) button { flex: 0 0 auto; width: max-content; min-height: 44px; padding: 10px 14px; white-space: nowrap; } }
+
+.searchControl { position: relative; width: 100%; min-width: 0; }
+.suggestions { position: absolute; inset: calc(100% + 4px) 0 auto; z-index: 10; max-height: 320px; overflow-y: auto; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 22px #00000014; }
+.suggestions ul { list-style: none; margin: 0; padding: 4px; }
+.suggestions li { display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 4px; cursor: pointer; overflow-wrap: anywhere; }
+.suggestions li[aria-selected="true"] { background: #f0f0ed; }
+.suggestions strong { font: 600 13px/1.35 Arial, sans-serif; color: var(--ink); }
+.suggestions span, .suggestions p { font: 12px/1.4 Arial, sans-serif; color: #666; }
+.suggestions p { padding: 8px 14px; margin: 0; }
+.actionDisclosure { margin-top: 14px; }
+.actionDisclosure > summary { cursor: pointer; padding: 8px 0; font-size: 13px; }
+.search:focus-within { border-color: #858585; box-shadow: 0 0 0 2px #85858530; }
+.workspace .search input { flex: 1 1 0; }
+.workspace .search input:focus-visible { outline: none; }
+.workspace .search > svg { flex: 0 0 17px; }
+.workspace .search button { flex: 0 0 32px; width: 32px; min-width: 32px; height: 32px; padding: 6px; align-items: center; justify-content: center; color: #666; }

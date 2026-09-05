@@ -20,8 +20,9 @@ function fixture() {
   const entries: CrmBookkeepingEntry[] = [];
   return { jobs, quotes, payments, credits, entries, sourceHealth:[] as ProgressSourceHealth[], fulfillment:structuredClone(emptyFulfillment) as FulfillmentData, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
 }
-async function setup(page: Page, includeLegacy = false) {
+async function setup(page: Page, includeLegacy = false, duplicateName = false) {
   const records = fixture();
+  if (duplicateName) { records.jobs[1].customer_name = records.jobs[0].customer_name; records.quotes[1].customer_name = records.quotes[0].customer_name; }
   if (includeLegacy) records.entries.push({ id: id(300), job_id: null, quote_id: null, source: "legacy_sheet", customer_name: "Legacy Sample", sold_date: "2026-09-02", total_amount: 2000, cogs_amount: 600, payment_type: "cash", meta: { customer_email: "legacy@example.com", deposit_required: 1000 }, created_at: stamp, updated_at: stamp, installation_invoice_amount: 0, installation_match_status: "unmatched", notes: "Imported test record", sales_owner: null, sales_owner_auth_user_id: null, sales_owner_set_at: null, installation_invoice_document_id: null, installation_invoice_number: null, installation_invoice_url: null, installation_matched_at: null, jessica_commission_paid_at: null, manufacturer_name: null, manufacturer_order_ref: null, manufacturer_order_url: null, manufacturer_document_url: null, imported_sheet_row: 300, ken_cut_override: null });
   const writes: { url: string; body: Record<string, unknown> }[] = [];
   let failCogs = false;
@@ -121,7 +122,8 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
   await expect(table.locator("tbody tr")).toHaveCount(1);
   await expect(table).toContainText("Taylor Example");
   await page.getByRole("button", { name: /^All Active\s+7$/ }).click();
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("Avery");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("Avery");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   await page.getByRole("button", { name: "Record COGS for Avery Sample", exact: true }).click();
   await page.getByRole("spinbutton", { name: "Record COGS", exact: true }).fill("0");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -163,7 +165,8 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Synthetic save failure");
   await expect(page.getByRole("spinbutton")).toHaveValue("99");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("Jordan");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("Jordan");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   await page.getByRole("button", { name: /Change stage for Jordan/ }).click();
   await page.getByRole("radio", { name: "Ordered", exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
@@ -172,7 +175,8 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
 
 test("imported job uses its own Square ledger and editable verified contact", async ({ page }) => {
   const { writes } = await setup(page, true);
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("Legacy Sample");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("Legacy Sample");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   const table = page.getByRole("table");
   await table.getByRole("button", { name: "Send balance link", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("legacy@example.com");
@@ -215,13 +219,15 @@ test("imported job uses its own Square ledger and editable verified contact", as
 
 test("actual sold date reorders jobs and quote evidence edits preserve unrelated metadata", async ({ page }) => {
   const { writes, records } = await setup(page);
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("Riley");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("Riley");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   await page.getByRole("button", { name: "Edit sold date for Riley Test" }).click();
   await page.getByLabel("Actual date sold", { exact: true }).fill("2026-09-03");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.body).toMatchObject({ sold_at: "2026-09-03T12:00:00Z" });
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   await expect(page.getByRole("table").locator("tbody tr").first()).toContainText("Riley Test");
   await page.getByRole("button", { name: "Record signed contract for Riley Test" }).click();
   // Another editor changed the job after this dialog opened. Only the intended
@@ -282,7 +288,8 @@ for (const viewport of [{ name: "desktop", width: 1728, height: 1117 }, { name: 
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page.getByRole("textbox", { name: "Search job tracking" }).fill("no matching fixture");
+    await page.getByRole("combobox", { name: "Search job tracking" }).fill("no matching fixture");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
     await expect(page.getByText(/No jobs match this status and search/).filter({ visible: true })).toBeVisible();
   });
 }
@@ -307,7 +314,8 @@ test("unsupported terminal label stays actionable and preserves all payments", a
 test("mobile card records received money separately from confirmed Square requests", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const { records, writes } = await setup(page);
-  await page.getByRole("textbox", { name: "Search job tracking" }).fill("Avery");
+  await page.getByRole("combobox", { name: "Search job tracking" }).fill("Avery");
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
   const card = page.getByRole("article").first();
   await card.getByRole("button", { name: "Record payment", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("No customer charge or message will be sent");
@@ -372,6 +380,7 @@ test("failed refresh retains the last snapshot and recovery clears the warning",
 
 test("owned actions retain conflicting edits and show assigned commitments", async ({page}) => {
  const {records,writes}=await setup(page);
+ await page.locator('summary').filter({hasText: /^Next actions$/}).click();
  await page.getByRole('button',{name:'Add internal action',exact:true}).click();
  const dialog=page.getByRole('dialog');
  await expect(dialog.getByRole('textbox',{name:'Owner',exact:true})).toHaveValue('Mike');
@@ -396,7 +405,8 @@ test("owned actions retain conflicting edits and show assigned commitments", asy
 
 test('exact purchased quantities distinguish shipment from physical receipt',async({page})=>{
  const {records,writes}=await setup(page);
- await page.getByRole('textbox',{name:'Search job tracking'}).fill('Avery');
+ await page.getByRole('combobox',{name:'Search job tracking'}).fill('Avery');
+  await page.getByRole("combobox", { name: "Search job tracking" }).press("Escape");
  await page.getByRole('button',{name:'Orders, receipts & visits',exact:true}).click();
  const dialog=page.getByRole('dialog');
  await expect(dialog).toContainText('Complete receipt needs verification');
@@ -546,4 +556,55 @@ test("dashboard net payables match the Jessica ledger including advances and mis
   await page.getByRole("button", { name: "Command Center", exact: true }).click();
   await expect(page.getByRole("button", { name: /Jessica Due/ })).toContainText("Unavailable");
   expect(writes).toHaveLength(0);
+});
+
+for (const width of [1456, 390]) {
+  test(`compact live search suggestions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    const { writes } = await setup(page);
+    const search = page.getByRole("combobox", { name: "Search job tracking" });
+    await expect(page.getByText(/^Snapshot:/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Add internal action", exact: true })).not.toBeVisible();
+    await search.fill("a");
+    await expect(page.getByRole("option").first()).toBeVisible();
+    await search.pressSequentially("ve");
+    await expect(page.getByRole("option")).toHaveCount(1);
+    await expect(page.getByRole("option")).toContainText("Avery Sample");
+    await search.press("ArrowDown");
+    await search.press("Enter");
+    await expect(search).toHaveValue("Avery Sample");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await page.getByRole("button", { name: "Clear search" }).click();
+    await expect(search).toHaveValue("");
+    await search.fill("805-DEMO-3");
+    await expect(page.getByRole("option")).toContainText("Taylor Example");
+    const box = await page.getByRole("listbox").boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: `/tmp/805-live-search-${width}.png` });
+    await page.getByRole("option").click();
+    await expect(search).toHaveValue("Taylor Example");
+    await search.fill("no such customer");
+    await expect(page.getByRole("status").filter({ hasText: /^No matches$/ })).toBeVisible();
+    await search.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    expect(writes).toHaveLength(0);
+  });
+}
+
+test("suggestions select exact records for duplicate customer names", async ({ page }) => {
+  await setup(page, false, true);
+  const search = page.getByRole("combobox", { name: "Search job tracking" });
+  await search.fill("Avery");
+  await expect(page.getByRole("option")).toHaveCount(2);
+  await page.getByRole("option").filter({ hasText: "805-DEMO-2" }).click();
+  await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(1);
+  await expect(page.getByRole("table")).toContainText("805-DEMO-2");
+  await search.fill("Aver");
+  await expect(page.getByRole("table").locator("tbody tr")).toHaveCount(2);
+  await search.press("Escape");
+  await page.getByRole("button", { name: /^Archive/ }).click();
+  await search.fill("Quinn");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("option")).toContainText("Quinn Lost");
 });
