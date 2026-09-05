@@ -1,0 +1,62 @@
+{
+  "style": "C - Soft shaded graphite",
+  "tool": "Built-in image generation",
+  "assets": [
+    {
+      "id": "center-plain",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact center-plain construction, proportions, individual louvers, centered front tilt rod, all louvers partly open at same slight tilt, NO divider rail. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-9672033d-da09-4c50-8d11-f769a80893b1.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-plain-angled.webp",
+      "sha256": "36c48dfd50fc5d7aebd786965e7d85e8982698c1a2f4f2cb612a28f47716f387"
+    },
+    {
+      "id": "center-split",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact center-split construction, proportions, individual louvers, centered front tilt rod, upper section louvers partly open and lower section louvers CLOSED; clearly separate operating sections, NO divider rail. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-5b630095-3bab-44e0-9350-0a281557c8fa.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-split-angled.webp",
+      "sha256": "41c2900f7449a6cf164f62cdc829818c5bbedcfc5661253f1b0b1d7436f6d1fd"
+    },
+    {
+      "id": "center-divider",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact center-divider construction, proportions, individual louvers, centered front tilt rod, all louvers partly open at same slight tilt, one substantial horizontal divider rail at midpoint. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-3044b1b0-ef11-4aa0-bc0e-391144ecb926.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-divider-angled.webp",
+      "sha256": "94452959d53994b9ae5a4536ac8fad7dbf8c38aeced8bf431313f37c5460a1de"
+    },
+    {
+      "id": "center-split-divider",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact center-split-divider construction, proportions, individual louvers, centered front tilt rod, upper section louvers partly open and lower section louvers CLOSED; clearly separate operating sections, one substantial horizontal divider rail at midpoint. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-d4abd3b7-dd84-4be9-87e9-602ed0748c9b.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-split-divider-angled.webp",
+      "sha256": "126a1bfef68d33a01398dac38ac7655d069f47d6915bc7fb4481095ff18a79f7"
+    },
+    {
+      "id": "hidden-plain",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact hidden-plain construction, proportions, individual louvers, NO visible tilt bar, hidden tilt, all louvers partly open at same slight tilt, NO divider rail. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-4a23e546-c4ab-4ecc-9f6c-914b9c2b68c2.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-plain-angled.webp",
+      "sha256": "b02a3dc67ca34b6fae5bfc394c2669ac36cdae863ad037bb56eaa3f8d4e9b80b"
+    },
+    {
+      "id": "hidden-split",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact hidden-split construction, proportions, individual louvers, NO visible tilt bar, hidden tilt, upper section louvers partly open and lower section louvers CLOSED; clearly separate operating sections, NO divider rail. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-5832425c-2eb6-4932-b166-f4f8eafbc530.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-split-angled.webp",
+      "sha256": "ac3dd3284957164e69f5c4d67378e89c02e68550e2dbfce2bdabe38fd44dcf27"
+    },
+    {
+      "id": "hidden-divider",
+      "prompt": "Use case: precise-object-edit. Edit target: first reference, a single narrow plantation shutter panel. Supporting style reference: second image roller shade. Change ONLY the shutter's viewing angle to the same subtle three-quarter perspective as the roller shade: see a thin right-hand outer edge and slight perspective on top/bottom rails, upright verticals. Preserve this exact hidden-divider construction, proportions, individual louvers, NO visible tilt bar, hidden tilt, all louvers partly open at same slight tilt, one substantial horizontal divider rail at midpoint. Entire single panel alone, white background, no window, wall, text, caption, shadows outside product or additional panels. Match Option C soft shaded graphite pencil texture. Tall portrait composition, panel fills canvas with tiny even margins. This panel will be repeated side by side; keep whole panel visible and modest perspective, not dramatically rotated.",
+      "generationSource": "exec-2ed166ef-d171-4cbd-85e8-bdcefe9edcad.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-divider-angled.webp",
+      "sha256": "bd6981db088c0d3585772614f03e7e7031a4529eabffae02c45d4eb5b3fd027e"
+    },
+    {
+      "id": "hidden-split-divider",
+      "prompt": "Use case: precise-object-edit. Keep this exact single hidden-tilt shutter, slight three-quarter perspective and C soft graphite sketch style. Correct one feature: add a clearly visible substantial fixed HORIZONTAL DIVIDER RAIL at the midpoint, between open upper louvers and closed lower louvers. The rail must have a flat face, straight top and bottom edges and be twice a louver's face height. It spans BETWEEN the two side stiles. This fixed structural rail must be visibly distinct from the overlapping angled lower louvers. Upper louvers remain partly open; lower louvers remain CLOSED. Hidden tilt means NO front rod or knob. White background, product only, no window, text or scenery. Same tall narrow composition.",
+      "generationSource": "exec-15ea567f-11a6-4c08-a79a-39551d48f36e.png",
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-split-divider-angled.webp",
+      "sha256": "a282def82e3b89e1fedfa5f564a1abcdff99202d159843fa0412e716fd84cdb5"
+    }
+  ]
+}

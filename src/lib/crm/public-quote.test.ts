@@ -75,6 +75,17 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
 }
 
 describe("describeDesign (customer-readable, no internal data leaked)", () => {
+  it("projects the valance drawing before removing manufacturer attribution", () => {
+    const d = describeDesign(design({ product_id: "roller", details: { quote_v2_customer_configuration: { manufacturerId: "norman", selections: { valance: "Square Fascia*", lift_system: "Motorized" } } } }));
+    expect(d.valanceArtId).toBe("norman-square-fascia");
+    expect(d.options.join(" ")).not.toContain("Norman");
+    expect(d.options).toContain("Valance: Square Fascia*");
+  });
+  it("uses a Polar catalog fascia surcharge on the public contract", () => {
+    const d = describeDesign(design({ product_id: "polar_interior_roller", surcharges: [{id: "fascia_4", quantity: 1}] }));
+    expect(d.valanceArtId).toBe("polar-fascia");
+  });
+
   it("omits non-applicable catalog choices and keeps physically selected details", () => {
     const d = describeDesign(design({
       product_id: "roller",

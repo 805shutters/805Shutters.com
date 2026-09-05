@@ -1,3 +1,4 @@
+import { valanceIllustration } from "@/lib/quote/valance-illustrations";
 // Customer-facing quote: load by unguessable share_token, project to a SAFE
 // public shape (no cost/profit/internal fields), and accept (e-sign -> sold).
 // All access is service-role + server-only (same trust model as public booking).
@@ -99,6 +100,7 @@ export type PublicQuoteLine = {
   productName: string;
   styleName: string;
   options: string[];
+  valanceArtId?: string | null;
   designOptions: PublicQuoteDesignOption[];
   showDesignOptions: boolean;
   unitPrice: number;
@@ -115,6 +117,7 @@ export type PublicQuoteDesignOption = {
   productName: string;
   styleName: string;
   options: string[];
+  valanceArtId?: string | null;
   unitPrice: number;
   lineTotal: number;
   priceReady: boolean;
@@ -185,6 +188,7 @@ export type SignedContractSnapshot = {
     productName: string;
     styleName: string;
     options: string[];
+    valanceArtId?: string | null;
     unitPrice: number;
     quantity: number;
     lineTotal: number;
@@ -254,6 +258,7 @@ export function buildSignedContractSnapshot(
       productName: line.productName,
       styleName: line.styleName,
       options: [...line.options],
+      valanceArtId: line.valanceArtId,
       unitPrice: line.unitPrice,
       quantity: line.quantity,
       lineTotal: line.lineTotal,
@@ -529,7 +534,7 @@ function customerReadableLegacyDetail(label: string, value: string): string {
 }
 
 /** Customer-readable description of a design from the catalog (no prices leaked beyond unit_price). */
-export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[] } {
+export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[]; valanceArtId: string | null } {
   const legacy = legacyDesignSnapshot(design);
   const product = getProduct(design.product_id);
   const productName = customerQuoteProductName(legacy?.productType || product?.name);
@@ -590,11 +595,11 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
         ...surchargeOptions,
         ...motorizationOptions,
       ];
-  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(options) };
+  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(options), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {
-  const { productName, styleName, options } = describeDesign(design);
+  const { productName, styleName, options, valanceArtId } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   return {
@@ -603,6 +608,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
     productName,
     styleName,
     options,
+    valanceArtId,
     unitPrice,
     lineTotal: priceReady ? round2(unitPrice * quantity + designOnceTotal(design)) : 0,
     priceReady,
@@ -677,7 +683,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       priceReady: false
     };
   }
-  const { productName, styleName, options } = describeDesign(design);
+  const { productName, styleName, options, valanceArtId } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   const lineTotal = priceReady ? lineItemSubtotal(li) : 0;
@@ -688,6 +694,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     productName,
     styleName,
     options,
+    valanceArtId,
     designOptions: [projectDesignOption(design, qty)],
     showDesignOptions: false,
     unitPrice,

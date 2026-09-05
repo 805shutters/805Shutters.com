@@ -20,7 +20,7 @@ describe("configured shutter pencil catalog", () => {
       const art = contractIllustration("Shutters", ["Panel configuration: LLRR", `Tilt: ${tilt}`, `Split tilt: ${split ? "Yes":"No"}`, `Divider rail: ${divider ? "Yes":"No"}`]);
       const kind = tilt.startsWith("Invisible") ? "hidden" : "center";
       const variant = split && divider ? "split-divider" : split ? "split" : divider ? "divider" : "plain";
-      expect(art?.src).toContain(`shutter-${kind}-${variant}.webp`);
+      expect(art?.src).toContain(`shutter-${kind}-${variant}-angled.webp`);
       expect(existsSync(`public${art?.src}`)).toBe(true);
       expect(art?.remote).toBe(false);
     }

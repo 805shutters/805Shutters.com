@@ -257,12 +257,12 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                                   <span>{money(option.lineTotal)}</span>
                                 </div>
                               ) : null}
-                              <ProductConfiguration productName={option.productName} styleName={option.styleName} options={option.options} />
+                              <ProductConfiguration productName={option.productName} styleName={option.styleName} options={option.options} valanceArtId={option.valanceArtId} />
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} />
+                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} valanceArtId={line.valanceArtId} />
                       )
                     ) : (
                       <em style={{ opacity: 0.6 }}>Pricing in progress</em>
@@ -484,11 +484,11 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
   </div>;
 }
 
-function ProductConfiguration({ productName, styleName, options }: { productName: string; styleName: string; options: string[] }) {
+function ProductConfiguration({ productName, styleName, options, valanceArtId }: { productName: string; styleName: string; options: string[]; valanceArtId?: string | null }) {
   const details = quoteProductDetails(styleName, options);
   return (
     <div className={styles.illustratedConfiguration}>
-      <ContractProductIllustration productType={productName} options={options} />
+      <ContractProductIllustration productType={productName} options={options} valanceArtId={valanceArtId} />
       <div className={styles.productConfiguration}>
       <strong className={styles.productName}>{customerQuoteProductName(productName)}</strong>
       {details.length ? (

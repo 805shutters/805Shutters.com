@@ -1,3 +1,4 @@
+import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1033,6 +1034,7 @@ export function QuoteContract({
                                 <ContractProductIllustration
                                   productType={customerQuoteProductName(design.product_type || item.product_type)}
                                   options={getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`)}
+                                  valanceArtId={valanceIllustration(design.product_type || item.product_type, getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`), undefined, valanceSurchargeIds(design.options_json?.surcharges))}
                                 />
                               {details.length > 0 && (
                                 <dl className="grid min-w-0 flex-1 basis-48 grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2">

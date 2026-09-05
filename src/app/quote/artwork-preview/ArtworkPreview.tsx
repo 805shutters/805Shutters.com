@@ -1,4 +1,5 @@
 "use client";
+import { VALANCE_ARTWORK, valanceIllustration } from "@/lib/quote/valance-illustrations";
 import { useState } from "react";
 import { CustomerContractDocument } from "../[token]/CustomerContractDocument";
 import type { PublicQuote, PublicQuoteLine } from "@/lib/crm/public-quote";
@@ -18,15 +19,20 @@ export function ArtworkPreview() {
   const [product,setProduct]=useState("Roller Shades");
   const [operation,setOperation]=useState("Continuous Cord Loop");
   const [side,setSide]=useState("Left");
+  const [manufacturer,setManufacturer]=useState("norman");
+  const [valance,setValance]=useState("");
+  const valances=VALANCE_ARTWORK.filter(a=>a.manufacturer===manufacturer && (a.products as readonly string[]).includes(product.toLowerCase()));
+  const selectedValance=valances.find(a=>a.id===valance);
   const [panels,setPanels]=useState(2);
   const [tilt,setTilt]=useState("Standard Tilt");
   const [split,setSplit]=useState(false);
   const [divider,setDivider]=useState(false);
   const shutterOptions = [`Panel Config: ${"L".repeat(panels)}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
-  const options = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
+  const productOptions = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
+  const options = [...productOptions, `Manufacturer: ${manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
   const lines: PublicQuoteLine[] = [[product, options] as [string,string[]], ...examples].map(([productName,opts],i)=>({
-    id:`sample-${i}`,lineItemId:`sample-${i}`,room:i===0?"Interactive sample":`Product ${i}`,productName,styleName:"",options:opts,
-    designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
+    id:`sample-${i}`,lineItemId:`sample-${i}`,room:i===0?"Interactive sample":`Product ${i}`,productName,styleName:"",options:opts.filter(o=>!o.startsWith("Manufacturer:")),
+    valanceArtId:valanceIllustration(productName,opts),designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
   }));
   const quote: PublicQuote = {
     token:"preview-only",id:"preview-only",quoteNumber:"ARTWORK REVIEW",customerName:"Sample customer",customerAddress:null,customerPhone:null,customerEmail:null,
@@ -40,6 +46,8 @@ export function ArtworkPreview() {
       <strong>Option C · Working contract preview</strong>
       <label>Product <select aria-label="Preview product" value={product} onChange={e=>setProduct(e.target.value)}>{examples.map(([p])=><option key={p}>{p}</option>)}</select></label>
       {product !== "Shutters" ? <>
+        <label>Manufacturer <select aria-label="Preview manufacturer" value={manufacturer} onChange={e=>{setManufacturer(e.target.value);setValance("");}}>{["norman","polar","lotus","onyx"].map(m=><option key={m}>{m}</option>)}</select></label>
+        <label>Valance <select aria-label="Preview valance" value={selectedValance?.id||""} onChange={e=>setValance(e.target.value)}><option value="">No valance sketch</option>{valances.map(a=><option value={a.id} key={a.id}>{a.label}</option>)}</select></label>
         <label>Operating system <select aria-label="Preview operating system" value={operation} onChange={e=>setOperation(e.target.value)}>{["Continuous Cord Loop","Cordless","Motorized","Cordless TDBU","Motorized TDBU",""].map(p=><option key={p} value={p}>{p||"None"}</option>)}</select></label>
         <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
       </> : null}
@@ -51,6 +59,7 @@ export function ArtworkPreview() {
       </> : null}
     </div>
     {product === "Shutters" ? <details className="no-print" style={{padding:20}}><summary>Shutter sketch catalog · {panels} panels</summary><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:20,paddingTop:20}}>{["Standard Tilt","Invisible Tilt"].flatMap(t=>[false,true].flatMap(s=>[false,true].map(d=><div key={`${t}-${s}-${d}`}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${"L".repeat(panels)}`,`Tilt Type: ${t}`,`Split Tilt: ${s?"Yes":"No"}`,`Divider Rail: ${d?"Yes":"No"}`]} /><p>{t} · {s?"Split tilt":"Full tilt"}{d?" · Divider rail":""}</p></div>)))}</div></details> : null}
+    <details className="no-print" style={{padding:20}}><summary>Manufacturer valance sketch catalog · {VALANCE_ARTWORK.length} profiles</summary><p>Visual references for existing order selections. Manufacturer names stay off customer contracts.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:24}}>{VALANCE_ARTWORK.map(a=><div key={a.id}><strong style={{textTransform:"capitalize"}}>{a.manufacturer}</strong><ContractProductIllustration productType={a.products[0]} valanceArtId={a.id} /></div>)}</div><p>Onyx profiles, ambiguous “Interior Cassette” selections, and unverified specialty valances await manufacturer confirmation.</p></details>
     <CustomerContractDocument quote={quote} previewOnly previewLabel="Development sample — no customer record" />
   </>;
 }

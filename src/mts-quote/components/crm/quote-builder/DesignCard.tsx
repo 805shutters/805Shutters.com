@@ -1,3 +1,4 @@
+import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import {
@@ -5622,7 +5623,7 @@ export function DesignCard({
       <CardContent className="space-y-4">
         {currentDesign && (
           <div className="flex items-start gap-3" aria-label="Contract product illustration">
-            <ContractProductIllustration productType={lineItem.product_type} options={getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`)} />
+            <ContractProductIllustration productType={lineItem.product_type} options={getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`)} valanceArtId={valanceIllustration(lineItem.product_type, getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`), undefined, valanceSurchargeIds(currentDesign.options_json?.surcharges))} />
           </div>
         )}
         {/* Variant tabs */}

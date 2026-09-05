@@ -1,0 +1,167 @@
+{
+  "style": "C - Soft shaded graphite",
+  "verifiedDate": "2026-09-05",
+  "tool": "Built-in image generation",
+  "assets": [
+    {
+      "id": "norman-fabric",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-FabricValance.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-fabric.webp",
+      "sha256": "be231009d2dc44090ff23267c0a77315fdcddea014bf6849c5cef6a3c84d053f",
+      "generationSource": "exec-3f64255c-8bad-463e-b875-b1dd99d4e32b.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the straight tailored fabric-wrapped valance with a slim finished lower edge visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-wood",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-WoodModernValance.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-wood.webp",
+      "sha256": "9d45f9df645eadaa5f4493495038c9fb170dbd25f7b6a320c971b1677555ee98",
+      "generationSource": "exec-76e4613f-b6aa-459c-b6ab-ee31a3a2ac45.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the flat Modern Wood Valance with a clean rectangular face visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-curved-fascia",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-CurvedFascia.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-curved-fascia.webp",
+      "sha256": "e5f1558ae223539989fe7b71844142f2b25c0650d704ec69e77b2ab009538659",
+      "generationSource": "exec-50ad571a-704b-4ee0-975e-2c123e06499b.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the smooth gently curved fascia, NOT a full round cassette visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-square-fascia",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-SquareFascia.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-square-fascia.webp",
+      "sha256": "b20bbdc1a6dce5c7769e4eb0d7681d41c76ae488c1d7b106826a516b9890ca8f",
+      "generationSource": "exec-13a5d22e-745f-4441-b3b7-2b1304a3ff1d.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the flat square L-shaped fascia cover with slim angular end profile visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-curved-cassette",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-Cassette-Roller.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-curved-cassette.webp",
+      "sha256": "3dfd430ae3327bd8bafc9d9e318aa3a2cad504a64f51937a5c5262ffa843a7b3",
+      "generationSource": "exec-d72a0dc4-4293-4db0-8107-6ee8c87c41f6.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the smooth curved enclosed cassette with rounded end cap visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-square-cassette",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-Square-Cassette-Roller-002.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-square-cassette.webp",
+      "sha256": "480ddf38cc5657b35c20860e5826310a67ffab9ca9ecfcfdfe209d0061a75bd8",
+      "generationSource": "exec-3f9fa4bf-0b88-4708-bb0f-c4d991bd439a.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the enclosed rectangular square cassette with square end cap visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "polar-fascia",
+      "manufacturerPage": "https://polarshade.com/interior-shades",
+      "referenceImage": "https://polarshade.com/hubfs/00_new_website_images/customize/fascia-1.png",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/polar-fascia.webp",
+      "sha256": "e895dbf3d64203d9c4232024f59e2062aed487b4f4dc3cf470f91db81584b4aa",
+      "generationSource": "exec-bfff61e4-2289-4cdd-b0e8-785f77164573.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the L-shaped fascia visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "polar-fabric-wrapped",
+      "manufacturerPage": "https://polarshade.com/interior-shades",
+      "referenceImage": "https://polarshade.com/hubfs/00_new_website_images/customize/fascia-2.png",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/polar-fabric-wrapped.webp",
+      "sha256": "603772155798943a47631bc0d067f0d153577cd9a5b2b195f028f4a334b10135",
+      "generationSource": "exec-facc590c-3cce-418a-98a7-02fab69e579a.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the fabric-wrapped fascia visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "polar-curved-cassette",
+      "manufacturerPage": "https://polarshade.com/interior-shades",
+      "referenceImage": "https://polarshade.com/hubfs/00_new_website_images/customize/fascia-3.png",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/polar-curved-cassette.webp",
+      "sha256": "f25b6ddf9309fe1245195ac32265a373803bd53a49e79ef126af123b5b648f9c",
+      "generationSource": "exec-24ba7d0b-95e1-4ff9-9409-41398187b150.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the curved cassette visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "polar-square-cassette",
+      "manufacturerPage": "https://polarshade.com/interior-shades",
+      "referenceImage": "https://polarshade.com/hubfs/00_new_website_images/customize/fascia-4.png",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/polar-square-cassette.webp",
+      "sha256": "a603d87088e864ad7fbad7f68829c1e99598904f7849cc66e67234b61ff20921",
+      "generationSource": "exec-e26d1ca4-8833-42ec-83dd-68233a1a8444.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the square cassette visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "polar-head-pocket",
+      "manufacturerPage": "https://polarshade.com/interior-shades",
+      "referenceImage": "https://polarshade.com/hubfs/00_new_website_images/customize/fascia-5.png",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/polar-head-pocket.webp",
+      "sha256": "c911c4e73c7351494bb88572740afacd38f74901e4d05515aa2d57a6dd10bf9e",
+      "generationSource": "exec-7bf8fc70-0b60-455e-b709-824685a853d9.png",
+      "prompt": "Use case: style-transfer. Create a contract product detail illustration of ONLY the head pocket visible at the TOP of the FIRST manufacturer reference photo. Second reference defines approved Option C soft shaded graphite pencil style. Preserve the manufacturer's visible profile and edge geometry. Isolate this valance/headbox alone, remove the entire hanging shade, all operating chains, window, wall and scenery. Draw a long horizontal valance in a subtle three-quarter perspective, showing front face and a small right end, with horizontal length about 5 times face height. White background, monochrome fine graphite lines and soft shading, no color, logos, text, dimensions or labels. Generous clean white margins, landscape canvas. Only one valance, no alternate views. Product-only artistic explanatory sketch, clean enough for small contract line item."
+    },
+    {
+      "id": "norman-contempo",
+      "manufacturerPage": "https://normanusa.com/product/ultimate-normandy-wood-blinds/",
+      "referenceImage": "https://normanusa.com/app/uploads/2022/07/525-x-394_Normandy_ContempoValance.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-contempo.webp",
+      "sha256": "4b432a1ae487c461490d8239b4d85a78958bed7d18456496faaaf966454b2061",
+      "generationSource": "exec-bdc26a34-d6ba-4949-8353-be24ce37f37a.png",
+      "prompt": "Use case: style-transfer. First image manufacturer reference, second image approved C graphite style. Create ONLY one long horizontal Contempo blind valance: simple flat rectangular face; use right reference object profile, do not include separate end sample. Remove whole blind, slats, wand, window and room. Product alone white background. Subtle three-quarter perspective revealing front and short right end. Monochrome soft shaded pencil with fine graphite texture, no labels, text, logo, separate views or parts. Length about 5 times height. Landscape canvas generous margins. This is a small visual explanation on a customer contract. Preserve the profile from the manufacturer photo, not a generic valance."
+    },
+    {
+      "id": "norman-designer-crown",
+      "manufacturerPage": "https://normanusa.com/product/ultimate-normandy-wood-blinds/",
+      "referenceImage": "https://normanusa.com/app/uploads/2022/07/525-x-394_Normandy_DesignerCrownValance.jpg",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-designer-crown.webp",
+      "sha256": "7e2e90eabd02886d7ed1a3689cc5bed4b9a576f1528497d19d79ff3092c8f748",
+      "generationSource": "exec-2bb6aa7f-0807-46a6-9f70-553bf965783c.png",
+      "prompt": "Use case: style-transfer. First image manufacturer reference, second image approved C graphite style. Create ONLY one long horizontal Designer Crown blind valance: faithfully copy this molded curved face with raised upper lip and stepped lower beads; use right reference object, no separate end sample. Remove whole blind, slats, wand, window and room. Product alone white background. Subtle three-quarter perspective revealing front and short right end. Monochrome soft shaded pencil with fine graphite texture, no labels, text, logo, separate views or parts. Length about 5 times height. Landscape canvas generous margins. This is a small visual explanation on a customer contract. Preserve the profile from the manufacturer photo, not a generic valance."
+    },
+    {
+      "id": "lotus-crown",
+      "manufacturerPage": "https://www.lotusblind.com/products/cflx3564bw-width-range-30-25-35-length-range-54-64",
+      "referenceImage": "https://www.lotusblind.com/cdn/shop/files/SHFLX_70420bd8-2410-4cc7-9b4f-bcc317b4643d.jpg?v=1750344706",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/lotus-crown.webp",
+      "sha256": "cb890b4851b4f1c9ecdd1e0ba299035dcb8b05e31d2cbdaec22d295eb5ec7503",
+      "generationSource": "exec-4b6e2246-93d2-4179-8667-382271e61bb6.png",
+      "prompt": "Use case: style-transfer. First image manufacturer reference, second image approved C graphite style. Create ONLY one long horizontal Lotus FLX Crown valance above the middle blind: preserve molded crown face and multiple narrow lower beaded ridges. Remove whole blind, slats, wand, window and room. Product alone white background. Subtle three-quarter perspective revealing front and short right end. Monochrome soft shaded pencil with fine graphite texture, no labels, text, logo, separate views or parts. Length about 5 times height. Landscape canvas generous margins. This is a small visual explanation on a customer contract. Preserve the profile from the manufacturer photo, not a generic valance."
+    },
+    {
+      "id": "lotus-beaded",
+      "manufacturerPage": "https://www.lotusblind.com/products/cfcx1772w-width-range-13-17-length-range-62-72",
+      "referenceImage": "https://www.lotusblind.com/cdn/shop/files/shfcx_15e5ce36-dbb2-4f0a-acb3-bb07911b59e0.jpg?v=1750344626",
+      "referenceNote": "Manufacturer product/profile photo visually inspected.",
+      "file": "public/images/contract-illustrations/valances-c-v1/lotus-beaded.webp",
+      "sha256": "380c067d79ec201c4a9e123b064b8cbbacd876ac007171ba715f258efc21f495",
+      "generationSource": "exec-81ed74e2-2e47-4a4b-876b-de8fe50755e7.png",
+      "prompt": "Use case: style-transfer. First image manufacturer reference, second image approved C graphite style. Create ONLY one long horizontal Lotus FCX beaded valance above the blind: preserve flat broad middle face and thin horizontal beaded ridges. Remove whole blind, slats, wand, window and room. Product alone white background. Subtle three-quarter perspective revealing front and short right end. Monochrome soft shaded pencil with fine graphite texture, no labels, text, logo, separate views or parts. Length about 5 times height. Landscape canvas generous margins. This is a small visual explanation on a customer contract. Preserve the profile from the manufacturer photo, not a generic valance."
+    },
+    {
+      "id": "norman-curved-fabric",
+      "manufacturerPage": "https://normanusa.com/product/soluna-roller-shades/",
+      "referenceImage": "https://normanusa.com/app/uploads/2024/04/525-x-394-CurvedFascia.jpg",
+      "referenceNote": "Fabric surface variant follows existing Curved Fascia with Fabric selection.",
+      "file": "public/images/contract-illustrations/valances-c-v1/norman-curved-fabric.webp",
+      "sha256": "ab868c8e349c9135220427c5cc86f90ed1b09cb9b158968a48569840d576a327",
+      "generationSource": "exec-ca8bda22-1291-4599-bfd5-5812cd6d550f.png",
+      "prompt": "Use case: precise-object-edit. First image is the existing C pencil sketch of a Norman curved fascia. Create the Curved Fascia with Fabric variant. Keep the exact outer curved fascia profile, shape, dimensions, subtle three-quarter viewing angle, right end cap, white background. Change ONLY the broad front surface to visibly fine WOVEN FABRIC texture with gentle pencil crosshatching. No wood grain; no hanging shade, window, cord or text. Match the same artistic soft shaded graphite style. One long horizontal valance, landscape."
+    }
+  ]
+}

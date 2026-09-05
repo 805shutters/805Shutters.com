@@ -27,5 +27,5 @@ export function shutterIllustration(fields: readonly string[][]) {
   const divider = rails.has(true);
   const variant = split && divider ? "split-divider" : split ? "split" : divider ? "divider" : "plain";
   const details = [panels === 1 ? "1 panel" : `${panels} panels`, tilt === "hidden" ? "Hidden tilt" : "Center tilt bar", ...(split ? ["Split tilt: upper louvers open, lower louvers closed"] : []), ...(divider ? ["Divider rail"] : [])];
-  return { asset: `shutter-${tilt}-${variant}`, panels, detail: details.join(" · ") };
+  return { asset: `shutter-${tilt}-${variant}-angled`, panels, detail: details.join(" · ") };
 }
