@@ -38,6 +38,14 @@ function displayMeasurement(whole: number, fraction: string) {
   return `${whole}${fraction !== "0" ? ` ${fraction}` : ""}″`;
 }
 
+function isMeasurementFilled(whole: number, fraction: string) {
+  return Number.isFinite(whole)
+    && Number.isInteger(whole)
+    && whole >= 0
+    && MOBILE_QUOTE_FRACTIONS.some((value) => value === fraction)
+    && (whole > 0 || fraction !== "0");
+}
+
 const QUICK_FRACTIONS = ["0", "1/4", "1/2", "3/4"];
 const KEYPAD_ROWS: Array<Array<number | "backspace" | "clear">> = [
   [1, 2, 3],
@@ -110,7 +118,8 @@ export function MobileMeasurementKeypad({
         const selected = side === activeSide;
         const sideWhole = side === "width" ? widthWhole : heightWhole;
         const sideFraction = side === "width" ? widthFraction : heightFraction;
-        return <button type="button" key={side} aria-pressed={selected} onClick={() => selectSide(side)}>
+        const filled = isMeasurementFilled(sideWhole, sideFraction);
+        return <button type="button" key={side} aria-pressed={selected} data-filled={filled} onClick={() => selectSide(side)}>
           <span>{side}</span><strong>{displayMeasurement(sideWhole, sideFraction)}</strong>
         </button>;
       })}
