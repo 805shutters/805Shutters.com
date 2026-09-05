@@ -161,8 +161,7 @@ export function OperationsReports({
                       : r.value}
               </div>
               <small>
-                {r.records.length} {r.unit}
-                {r.records.length === 1 ? "" : "s"} · {r.jobCount} parent jobs ·{" "}
+                {r.records.length} {r.records.length === 1 ? r.unit : r.unit === "opportunity" ? "opportunities" : `${r.unit}s`} · {r.jobCount} parent jobs ·{" "}
                 {r.status}
               </small>
             </button>

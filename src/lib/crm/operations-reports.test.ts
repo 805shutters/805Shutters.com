@@ -205,3 +205,18 @@ it("reconciles every additive report to its unique contributing records on a lar
     `Operational reports: 1000 opportunities / ${reports.length} reports in ${Math.round(elapsed)}ms`,
   );
 });
+it("excludes explicitly labeled test jobs and linked ledger records without changing stored data", () => {
+  const data=dashboard([quote("real","real",{status:"sold",sold_at:stamp,signed_at:stamp}),quote("fixture","fixture",{status:"sold",sold_at:stamp,signed_at:stamp})], [{id:"fixture-receipt",payment_label:"Receipt",source:"crm_quote",created_at:stamp,job_id:"fixture",quote_id:"fixture",amount:100,paid_at:"2026-09-04"} as CrmBookkeepingPayment]);
+  data.jobs.find(j=>j.id==="fixture")!.customer_name="CODEX INSTALLER FLOW TEST __INSTALLER_FLOW_LIVE_TEST__";
+  const reports=buildOperationsReports(data,opts);
+  expect(reports.flatMap(r=>r.records).filter(r=>r.jobId==="fixture"||r.quoteId==="fixture")).toEqual([]);
+  expect(reports.find(r=>r.id==="collected")?.value).toBe(0);
+  expect(data.jobs).toHaveLength(2);
+  expect(data.bookkeepingPayments).toHaveLength(1);
+});
+it("shows overpaid balances separately without reducing another customer's receivable",()=>{
+  const data=dashboard([quote("due","due",{status:"sold",sold_at:stamp,signed_at:stamp}),quote("over","over",{status:"sold",sold_at:stamp,signed_at:stamp})], [{id:"over-receipt",payment_label:"Receipt",source:"crm_quote",created_at:stamp,job_id:"over",quote_id:"over",amount:1200,paid_at:"2026-09-04",payment_type:"cash"} as CrmBookkeepingPayment]);
+  const reports=buildOperationsReports(data,opts);
+  expect(reports.find(r=>r.id==="receivables")?.value).toBe(1000);
+  expect(reports.find(r=>r.id==="overpayments")?.value).toBe(-200);
+});

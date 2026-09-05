@@ -55,3 +55,5 @@ Constraints: preserve monetary authority, payout policy, desktop workspace, sour
 
 ## Remaining external dependency
 Gmail scheduled recovery requires a secure 805-scoped token broker or direct 805 OAuth connection. The configured MTS setup endpoint cannot return access tokens and must not become an unauthenticated token endpoint. Last-success unknown/failure states are explicit. A narrow applying replay still requires separate authorization and exact effect verification.
+
+- Authenticated report verification exposed labeled legacy test records and netted overpayments. Reports now exclude explicit test identities across customer-file mirrors and linked ledgers, show the exclusion count, and present positive receivables separately from overpayments. Affected source records remain untouched. Added regressions cover both cases; attention conflicts sort before ordinary legacy actions.

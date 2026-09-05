@@ -52,6 +52,26 @@ export function buildOperationsReports(
   options: ReportOptions,
   activity?: CrmActivitySnapshot | null,
 ): OperationalReport[] {
+  // Explicit test metadata/source markers and labeled fixture names are report exclusions,
+  // not business-record deletions. Exact IDs carry the exclusion to linked ledgers.
+  const markedTest = (meta: Record<string, unknown> | null | undefined, source?: string | null, name?: string | null) =>
+    Boolean(meta?.is_test || meta?.test_mode || /\b(test|testing|dummy|sample|placeholder|fake|codex|e2e)\b/i.test(`${source || ""} ${name || ""}`));
+  const excludedJobs = new Set(data.jobs.filter(j=>markedTest(j.meta,j.source,j.customer_name)).map(j=>j.id));
+  const excludedQuotes = new Set(data.quotes.filter(q=>excludedJobs.has(q.job_id)||markedTest(q.meta,null,q.customer_name)).map(q=>q.id));
+  const excluded = (jobId: string | null, quoteId: string | null) => Boolean(jobId && excludedJobs.has(jobId) || quoteId && excludedQuotes.has(quoteId));
+  data = {...data,
+    jobs:data.jobs.filter(j=>!excludedJobs.has(j.id)),
+    quotes:data.quotes.filter(q=>!excludedQuotes.has(q.id)),
+    bookkeepingRows:data.bookkeepingRows.filter(r=>!excluded(r.jobId,r.quoteId)&&!markedTest(r.meta,null,r.customerName)),
+    bookkeepingPayments:data.bookkeepingPayments.filter(p=>!excluded(p.job_id,p.quote_id)),
+    bookkeepingCredits:data.bookkeepingCredits.filter(c=>!excluded(null,c.to_quote_id)),
+    ownedActions:data.ownedActions?.filter(a=>!excluded(a.job_id,a.quote_id)),
+    customerFiles:data.customerFiles.map(f=>({...f,
+      jobs:f.jobs.filter(j=>!excludedJobs.has(j.id)),
+      quotes:f.quotes.filter(q=>!excludedQuotes.has(q.id)),
+      bookkeepingRows:f.bookkeepingRows.filter(r=>!excluded(r.jobId,r.quoteId)&&!markedTest(r.meta,null,r.customerName)),
+    })),
+  };
   const today = businessDate(options.asOf)!;
   const inPeriod = (date: string | null) =>
     Boolean(
@@ -616,13 +636,16 @@ export function buildOperationsReports(
     "payment obligation",
     "Contract ledger obligations minus receipts and applicable credits. Due classification requires an exact reconciled schedule.",
     "Contract due date; unknown terms separate",
-    balances,
+    balances.filter(r => (r.amount || 0) > 0),
     "money",
     [],
     [
       "A job-only plan is not allocated across multiple orders. Dispute status is unavailable unless explicitly recorded; no absence-of-dispute claim is made.",
     ],
   );
+  add("overpayments", "Overpayments / refund review", "payment obligation",
+    "Negative contract balances shown separately from positive receivables; review before any refund.",
+    "Current ledger snapshot", balances.filter(r => (r.amount || 0) < 0), "money");
   add(
     "documents",
     "Missing evidence / blockers",
@@ -798,8 +821,8 @@ export function buildOperationsReports(
       });
   actions.sort(
     (a, b) =>
-      Number(b.status === "blocked" || (!!b.due && b.due < today)) -
-        Number(a.status === "blocked" || (!!a.due && a.due < today)) ||
+      Number(["blocked","attention"].includes(b.status) || (!!b.due && b.due < today)) -
+        Number(["blocked","attention"].includes(a.status) || (!!a.due && a.due < today)) ||
       (a.due || "9999").localeCompare(b.due || "9999"),
   );
   add(
@@ -812,5 +835,6 @@ export function buildOperationsReports(
     "count",
     ["owned actions"],
   );
+  reports.forEach(r => r.notes.push(`Explicit test exclusions: ${excludedJobs.size} jobs, ${excludedQuotes.size} linked quotes. Business records remain unchanged.`));
   return reports;
 }
