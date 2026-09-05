@@ -27,10 +27,11 @@ export function ArtworkPreview() {
   const [temporary,setTemporary]=useState(false);
   const [track,setTrack]=useState("");
   const [panels,setPanels]=useState(2);
+  const [layout,setLayout]=useState("LR");
   const [tilt,setTilt]=useState("Standard Tilt");
   const [split,setSplit]=useState(false);
   const [divider,setDivider]=useState(false);
-  const shutterOptions = [...(track ? [`Shutter Type: Tracked Shutter`, `Track System: ${track}`] : []),`Panel Config: ${"L".repeat(panels)}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
+  const shutterOptions = [...(track ? [`Shutter Type: Tracked Shutter`, `Track System: ${track}`] : []),`Panel Config: ${layout}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
   const productOptions = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
   const options = [...productOptions, ...(temporary ? ["Complimentary temporary shade: Free"] : []), `Manufacturer: ${manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
   const lines: PublicQuoteLine[] = [[product, options] as [string,string[]], ...examples].map(([productName,opts],i)=>({
@@ -56,15 +57,17 @@ export function ArtworkPreview() {
       </> : null}
       {product === "Shutters" ? <>
         <label>System <select aria-label="Preview shutter system" value={track} onChange={e=>setTrack(e.target.value)}>{["","Bypass Track","Bifold 180"].map(t=><option key={t} value={t}>{t||"Hinged"}</option>)}</select></label>
-        <label>Panels <select aria-label="Preview shutter panels" value={panels} onChange={e=>setPanels(Number(e.target.value))}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></label>
+        <label>Panels <select aria-label="Preview shutter panels" value={panels} onChange={e=>{const n=Number(e.target.value);setPanels(n);setLayout("L".repeat(Math.floor(n/2))+"R".repeat(Math.ceil(n/2)));}}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></label>
+        <label>Layout <select aria-label="Preview shutter layout" value={layout} onChange={e=>setLayout(e.target.value)}>{Array.from(new Set([layout,...Array.from({length:panels+1},(_,n)=>"L".repeat(n)+"R".repeat(panels-n))])).map(l=><option key={l}>{l}</option>)}</select></label>
         <label>Tilt <select aria-label="Preview shutter tilt" value={tilt} onChange={e=>setTilt(e.target.value)}>{["Standard Tilt","Invisible Tilt"].map(t=><option key={t}>{t}</option>)}</select></label>
         <label><input type="checkbox" checked={split} onChange={e=>setSplit(e.target.checked)} /> Split tilt</label>
         <label><input type="checkbox" checked={divider} onChange={e=>setDivider(e.target.checked)} /> Divider rail</label>
       </> : null}
     </div>
     <div className="no-print" style={{padding:20}}><TemporaryShadeOption selected={temporary} onChange={setTemporary} /></div>
+    <details className="no-print" style={{padding:20}} open><summary>Assembled shutter windows · one shared frame</summary><div style={{display:"flex",gap:32,flexWrap:"wrap",padding:20}}>{["LR","LRR","LLR","LLRR"].map(l=><div key={l}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${l}`,"Tilt Type: Standard Tilt"]} /><p style={{textAlign:"center"}}>{l} · {l.length} panels</p></div>)}</div></details>
     <details className="no-print" style={{padding:20}} open><summary>New sketches · tracked shutters and temporary shades</summary><div style={{display:"flex",gap:32,flexWrap:"wrap",padding:20}}><ContractProductIllustration productType="Shutters" options={["Track System: Bypass Track"]} /><ContractProductIllustration productType="Shutters" options={["Track System: Bifold 180"]} /><ContractProductIllustration productType="Roller Shades" options={["Lift System: Cordless","Complimentary temporary shade: Free"]} /></div></details>
-    {product === "Shutters" ? <details className="no-print" style={{padding:20}}><summary>Shutter sketch catalog · {panels} panels</summary><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:20,paddingTop:20}}>{["Standard Tilt","Invisible Tilt"].flatMap(t=>[false,true].flatMap(s=>[false,true].map(d=><div key={`${t}-${s}-${d}`}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${"L".repeat(panels)}`,`Tilt Type: ${t}`,`Split Tilt: ${s?"Yes":"No"}`,`Divider Rail: ${d?"Yes":"No"}`]} /><p>{t} · {s?"Split tilt":"Full tilt"}{d?" · Divider rail":""}</p></div>)))}</div></details> : null}
+    {product === "Shutters" ? <details className="no-print" style={{padding:20}}><summary>Shutter sketch catalog · {panels} panels</summary><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:20,paddingTop:20}}>{["Standard Tilt","Invisible Tilt"].flatMap(t=>[false,true].flatMap(s=>[false,true].map(d=><div key={`${t}-${s}-${d}`}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${layout}`,`Tilt Type: ${t}`,`Split Tilt: ${s?"Yes":"No"}`,`Divider Rail: ${d?"Yes":"No"}`]} /><p>{t} · {s?"Split tilt":"Full tilt"}{d?" · Divider rail":""}</p></div>)))}</div></details> : null}
     <details className="no-print" style={{padding:20}}><summary>Manufacturer valance sketch catalog · {VALANCE_ARTWORK.length} profiles</summary><p>Visual references for existing order selections. Manufacturer names stay off customer contracts.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:24}}>{VALANCE_ARTWORK.map(a=><div key={a.id}><strong style={{textTransform:"capitalize"}}>{a.manufacturer}</strong><ContractProductIllustration productType={a.products[0]} valanceArtId={a.id} /></div>)}</div><p>Onyx profiles, ambiguous “Interior Cassette” selections, and unverified specialty valances await manufacturer confirmation.</p></details>
     <CustomerContractDocument quote={quote} previewOnly previewLabel="Development sample — no customer record" />
   </>;

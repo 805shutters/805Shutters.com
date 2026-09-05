@@ -9,6 +9,7 @@ export type ContractIllustration = {
   remote: boolean;
   mirror: boolean;
   panels?: number;
+  shutterLayout?: string;
   operationReference?: { src: string; label: string };
 };
 
@@ -71,7 +72,7 @@ export function contractIllustration(productType: string, options: readonly stri
   if (product === "shutters") {
     if (operation) return null;
     const shutter = shutterIllustration(fields);
-    return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels, ...(track ? { operationReference: track } : {}) } : track ? { src: track.src, alt: `${track.label} — pencil illustration`, remote: false, mirror: false, operationReference: track } : null;
+    return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels, shutterLayout: shutter.layout, ...(track ? { operationReference: track } : {}) } : track ? { src: track.src, alt: `${track.label} — pencil illustration`, remote: false, mirror: false, operationReference: track } : null;
   }
   let asset = tdbu ? "honeycomb-tdbu" : product;
   let mirror = false;

@@ -1,19 +1,18 @@
 .figure { margin: 0; width: 160px; max-width: 100%; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; align-self: start; break-inside: avoid; background: #fff; }
 .product { display: block; width: 160px; height: 160px; max-width: 100%; object-fit: contain; }
 .remote { display: block; width: 62px; height: 62px; object-fit: contain; }
-.shutterPanels { --shutter-panel-width: 50px; display: flex; align-items: center; justify-content: center; max-width: 100%; }
-.shutterPanel { display: block; height: auto; min-width: 0; }
+.shutterAssembly { display: block; width: 160px; height: 160px; max-width: 100%; }
 @media (max-width: 640px) {
   .figure { width: 108px; }
   .product { width: 108px; height: 108px; }
   .remote { width: 48px; height: 48px; }
-  .shutterPanels { --shutter-panel-width: 34px; }
+  .shutterAssembly { width: 108px; height: 108px; }
 }
 @media print {
   .figure { width: 120px; }
   .product { width: 120px; height: 120px; }
   .remote { width: 48px; height: 48px; }
-  .shutterPanels { --shutter-panel-width: 37.5px; }
+  .shutterAssembly { width: 120px; height: 120px; }
 }
 
 .valance { width: 100%; margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 10px; line-height: 1.3; color: #333; }

@@ -2,6 +2,7 @@ import { CONTRACT_ART_ROOT, contractIllustration } from "@/lib/quote/contract-il
 import { valanceArtwork, valanceIllustration } from "@/lib/quote/valance-illustrations";
 import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 import styles from "./ContractProductIllustration.module.css";
+import { ShutterAssembly } from "./ShutterAssembly";
 
 export function ContractProductIllustration({ productType, options = [], valanceArtId }: { productType: string; options?: readonly string[]; valanceArtId?: string | null }) {
   const art = contractIllustration(productType, options);
@@ -12,9 +13,7 @@ export function ContractProductIllustration({ productType, options = [], valance
   return (
     <div className={temporary ? styles.companions : undefined}>
     <figure className={styles.figure} data-contract-illustration="c-v1">
-      {art ? panels ? <div className={styles.shutterPanels} style={{width: `min(100%, calc(${panels} * var(--shutter-panel-width)))`}} role="img" aria-label={art.alt} data-panel-count={panels}>
-        {Array.from({ length: panels }, (_, index) => <img key={index} src={art.src} alt="" className={styles.shutterPanel} style={{ width: `${100 / panels}%` }} />)}
-      </div> : <img src={art.src} alt={art.alt} width={160} height={160} className={styles.product} style={art.mirror ? { transform: "scaleX(-1)" } : undefined} /> : null}
+      {art ? panels ? <ShutterAssembly src={art.src} alt={art.alt} panels={panels} layout={art.shutterLayout || ""} /> : <img src={art.src} alt={art.alt} width={160} height={160} className={styles.product} style={art.mirror ? { transform: "scaleX(-1)" } : undefined} /> : null}
       {art?.operationReference ? <figcaption className={styles.operation}>
         {art.panels ? <img src={art.operationReference.src} alt={art.operationReference.label} width={160} height={140} /> : null}
         <span>{art.operationReference.label}</span>
