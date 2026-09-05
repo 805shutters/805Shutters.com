@@ -2,6 +2,7 @@
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import "./technical-measure-ipad.css";
+import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import type { Session } from "@supabase/supabase-js";
 import { Archive, ArrowLeft, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -1146,6 +1147,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         ) : null}
         {measureView === "line" ? lines.map((line, index) => {
           const baseline = line.baseline;
+          const contractOptions = quoteProductDetails("", [
+            ...Object.entries(baseline.details)
+              .filter(([key, value]) => !HEADER_DETAIL_KEYS.has(key) && !key.startsWith("field_measure_") && value != null && value !== "" && typeof value !== "object")
+              .map(([key, value]) => `${fieldName(key)}: ${typeof value === "boolean" ? value ? "Yes" : "No" : value}`),
+          ]);
           const current = line.current_values;
           const isExpandedWindow = (line.source_quantity || 1) > 1;
           const normanRoller = current.product_id === "roller"
@@ -1179,7 +1185,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                 <div className="technical-measure-line-head">
                   <div>
                     <span>Line {index + 1} of {lines.length}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span>
-                    <div className="technical-measure-line-meta"><strong>{money(line.current_unit_price)} each</strong><b>{productLabel(current.product_id)}{supplier ? ` (${supplier})` : ""}</b></div>
+                    <div className="technical-measure-line-meta"><b>{productLabel(current.product_id)}</b><strong>{money(line.current_unit_price)} each</strong></div>
+                    {supplier ? <small className="tm805-line-supplier">{supplier}</small> : null}
                   </div>
                   <button type="button" aria-label="Back to line items" onClick={() => setMeasureView("ledger")}><ArrowLeft /></button>
                 </div>
@@ -1201,6 +1208,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   </div>
                 ) : null}
               </div>
+              <button className="tm805-contract-jump" type="button" onClick={() => document.getElementById(`contract-options-${line.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}><FileText />View contract options<ChevronRight /></button>
               <div className="technical-measure-opening-row technical-measure-opening-row--priority">
                   <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
                     <span>1. Room name</span>
@@ -1328,6 +1336,18 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} onBlur={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>
+              <section className="tm805-contract-options" id={`contract-options-${line.id}`} aria-label="Original contract options">
+                <header><div><span>Original selections</span><h3>Contract options</h3></div>{form.contractUrl ? <a href={form.contractUrl} target="_blank" rel="noopener noreferrer" aria-label="Open full contract">Full contract<ExternalLink /></a> : null}</header>
+                <div className="tm805-contract-summary"><strong>{baseline.room}{baseline.opening_label ? ` · ${baseline.opening_label}` : ""}</strong><span>{inches(baseline.width_in)} × {inches(baseline.height_in)}</span></div>
+                <dl>
+                  <div><dt>Product</dt><dd>{productLabel(baseline.product_id)}</dd></div>
+                  {detailText(baseline.details, "supplier", "manufacturer") ? <div><dt>Manufacturer</dt><dd>{detailText(baseline.details, "supplier", "manufacturer")}</dd></div> : null}
+                  {baseline.program_id ? <div><dt>Program</dt><dd>{baseline.program_id}</dd></div> : null}
+                  {baseline.fabric ? <div><dt>Material / Fabric</dt><dd>{baseline.fabric}</dd></div> : null}
+                  {contractOptions.map((option) => <div key={option.label}><dt>{option.label}</dt><dd>{option.value}</dd></div>)}
+                  {baseline.notes ? <div className="tm805-contract-note"><dt>Contract notes</dt><dd>{baseline.notes}</dd></div> : null}
+                </dl>
+              </section>
               <div className="technical-measure-line-navigation technical-measure-line-submit">
                 <button type="button" onClick={() => setMeasureView("ledger")}><ArrowLeft />Back to line items</button>
                 <span>{current.measure_complete ? "Opening complete" : "Review every required field"}</span>

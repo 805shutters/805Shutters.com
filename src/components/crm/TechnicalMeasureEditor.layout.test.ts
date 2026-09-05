@@ -132,7 +132,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("<span>Tilt Type</span>");
     expect(component).toContain("shutterProduct ? <div");
     expect(component).toContain("productLabel(current.product_id)");
-    expect(component).toContain('supplier ? ` (${supplier})` : ""');
+    expect(component).toContain('<small className="tm805-line-supplier">{supplier}</small>');
     expect(component).toContain('HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"])');
     expect(styles).toContain(".technical-measure-line-meta");
     expect(service).toContain("panel_config: details.panel_config");
