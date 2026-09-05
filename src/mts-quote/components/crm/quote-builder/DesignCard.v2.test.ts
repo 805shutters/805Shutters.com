@@ -23,6 +23,7 @@ import {
   getStandardShutterGridOptions,
   ManufacturerCatalogStampChooser,
   ManualQuoteOnlyBadge,
+  mobileShutterMaterialRoutePatch,
   motorizationEligibleControlOptions,
   needsShutterRoutePatch,
   normalizeCrmQuoteCatalog,
@@ -100,6 +101,23 @@ describe("V2 exact-interface contract", () => {
           "manufacturer_action",
         ]),
       },
+    });
+  });
+
+  it("keeps mobile Norman material routing on one design while selecting canonical programs", () => {
+    expect(mobileShutterMaterialRoutePatch("Norman", "Composite")).toMatchObject({
+      productId: "norman_shutters",
+      programId: "woodlore",
+      options: { material_type: "Composite", composite_subtype: "Woodlore" },
+    });
+    expect(mobileShutterMaterialRoutePatch("Norman", "Wood")).toMatchObject({
+      productId: "norman_shutters",
+      options: { material_type: "Wood", wood_route: "Premium Wood" },
+    });
+    expect(mobileShutterMaterialRoutePatch("Onyx", "Poly")).toMatchObject({
+      productId: "onyx_shutters",
+      programId: "poly_composite",
+      options: { material_type: "Poly" },
     });
   });
 

@@ -45,6 +45,14 @@ export function normalizeMobileAppointmentScope(value: string | null | undefined
   return value === "my" ? "my" : "all";
 }
 
+export function normalizeMobileAppointmentEventType(value: string | null | undefined): "sales_consult" | null {
+  const normalized = value?.trim() || null;
+  if (normalized && normalized !== "sales_consult") {
+    throw new CrmAuthError(400, "Unsupported appointment event type.");
+  }
+  return normalized === "sales_consult" ? normalized : null;
+}
+
 function parseIsoDate(value: string | null | undefined) {
   if (!value || !datePattern.test(value)) return null;
   const [year, month, day] = value.split("-").map(Number);

@@ -7,6 +7,7 @@ import {
   filterMobileAppointments,
   mobileAppointmentDurationMinutes,
   mobileAppointmentWindowCount,
+  normalizeMobileAppointmentEventType,
   normalizeMobileAppointmentScope,
   parseMobileAppointmentRange
 } from "@/lib/crm/mobile-appointments";
@@ -29,12 +30,16 @@ export async function GET(request: NextRequest) {
     const owner = scope === "my" ? crmMobileOwnerForEmail(email) : null;
     const range = parseMobileAppointmentRange(params.get("start"), params.get("end"));
 
-    const eventsResult = await supabase
+    const eventType = normalizeMobileAppointmentEventType(params.get("event_type"));
+
+    let eventsQuery = supabase
       .from("crm_calendar_events")
       .select("*")
       .in("status", ["scheduled", "rescheduled"])
       .lt("start_at", range.endAt)
-      .gt("end_at", range.startAt)
+      .gt("end_at", range.startAt);
+    if (eventType) eventsQuery = eventsQuery.eq("event_type", eventType);
+    const eventsResult = await eventsQuery
       .order("start_at", { ascending: true })
       .limit(500);
 

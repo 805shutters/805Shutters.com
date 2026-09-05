@@ -3,9 +3,11 @@ import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuild
 import {
   createQuoteV2Draft,
   customerSafeQuoteV2Options,
+  isQuoteV2FullyAuthoritative,
   mutateQuoteV2Structure,
   quoteV2DesignPatch,
   quoteV2LinePatch,
+  quoteV2PricingOutcome,
   quoteV2QuotePatch,
 } from "./quoteV2ServerClient";
 
@@ -114,6 +116,8 @@ describe("Quote V2 authenticated client boundary", () => {
     await createQuoteV2Draft(database, {
       customerName: "Internal Test",
       customerEmail: null,
+      createdJobId: "33333333-3333-4333-8333-333333333333",
+      idempotencyKey: "mobile-create:stable-request",
     });
 
     const [, request] = fetchMock.mock.calls[0];
@@ -125,11 +129,52 @@ describe("Quote V2 authenticated client boundary", () => {
       expect.objectContaining({
         customerName: "Internal Test",
         customerEmail: null,
+        createdJobId: "33333333-3333-4333-8333-333333333333",
+        idempotencyKey: "mobile-create:stable-request",
       }),
     );
     expect(body).not.toHaveProperty("accountId");
     expect(body).not.toHaveProperty("totalAmount");
     fetchMock.mockRestore();
+  });
+
+  it("requires quote-wide authoritative coverage rather than trusting the target design status", () => {
+    const expected = [
+      { lineItemId: "line-1", designId: "design-1" },
+      { lineItemId: "line-2", designId: "design-2" },
+    ];
+    const response = {
+      backend: "authoritative_v2" as const,
+      quoteId: "quote-1",
+      lineItemId: "line-1",
+      designId: "design-1",
+      revision: 4,
+      quoteStatus: "stale",
+      quoteTotal: 100,
+      priceStatus: "authoritative" as const,
+      pricedDesignCount: 1,
+      blockedDesignCount: 1,
+      lines: [
+        { ...expected[0], priceStatus: "authoritative" as const },
+        { ...expected[1], priceStatus: "blocked" as const },
+      ],
+    };
+    expect(isQuoteV2FullyAuthoritative(response, expected)).toBe(false);
+    expect(quoteV2PricingOutcome(response, expected)).toEqual({
+      complete: false,
+      expectedRevision: 4,
+      priceStatus: "blocked",
+      finalTotal: null,
+    });
+    expect(isQuoteV2FullyAuthoritative({
+      ...response,
+      revision: 5,
+      quoteStatus: "priced",
+      quoteTotal: 250,
+      pricedDesignCount: 2,
+      blockedDesignCount: 0,
+      lines: expected.map((identity) => ({ ...identity, priceStatus: "authoritative" as const })),
+    }, expected)).toBe(true);
   });
 
   it("sends structural identities and revision without client money", async () => {

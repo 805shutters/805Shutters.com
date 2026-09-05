@@ -46,6 +46,21 @@ describe("Quote V2 structural request parsing", () => {
         productCost: 50,
       }),
     ).toThrow(/rejected field.*productCost/i);
+
+    expect(
+      parseCreateSalesQuoteV2DraftBody({
+        idempotencyKey: "draft:create:linked",
+        createdJobId: TARGET_LINE_ID,
+        customerName: "Browser display value",
+      }).createdJobId,
+    ).toBe(TARGET_LINE_ID);
+    expect(() =>
+      parseCreateSalesQuoteV2DraftBody({
+        idempotencyKey: "draft:create:linked",
+        createdJobId: "not-a-job-id",
+        customerName: "Test Customer",
+      }),
+    ).toThrow(/createdJobId.*UUID/i);
   });
 
   it("normalizes core single-quote operations and line defaults", () => {
@@ -312,6 +327,39 @@ describe("Quote V2 structural persistence wrappers", () => {
       lineCount: 0,
     });
     expect(result).not.toHaveProperty("internalCost");
+  });
+
+  it("uses the atomic mobile RPC when binding an existing CRM job", async () => {
+    const client = rpcClient({
+      data: {
+        backend: "authoritative_v2",
+        quoteId: QUOTE_ID,
+        quoteNumber: "805-1234",
+        revision: 1,
+        status: "draft",
+        quoteV2Status: "draft",
+        lineCount: 0,
+      },
+      error: null,
+    });
+    const parsed = parseCreateSalesQuoteV2DraftBody({
+      idempotencyKey: "draft:create:linked-wrapper",
+      createdJobId: TARGET_LINE_ID,
+      customerName: "Stable submitted customer",
+    });
+
+    await createSalesQuoteV2Draft(client, ACTOR_ID, parsed);
+
+    expect((client as { rpc: ReturnType<typeof vi.fn> }).rpc).toHaveBeenCalledTimes(1);
+    expect((client as { rpc: ReturnType<typeof vi.fn> }).rpc).toHaveBeenCalledWith(
+      "create_mobile_quote_v2_draft",
+      {
+        p_idempotency_key: "draft:create:linked-wrapper",
+        p_actor_id: ACTOR_ID,
+        p_created_job_id: TARGET_LINE_ID,
+        p_quote_patch: { customerName: "Stable submitted customer" },
+      },
+    );
   });
 
   it("calls one atomic structural RPC and strips unexpected internal response fields", async () => {

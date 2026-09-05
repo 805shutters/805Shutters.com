@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, ChevronRight, FileText, Search } from "lucide-react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
+import { MobileQuoteWalkthrough } from "./MobileQuoteWalkthrough";
 import {
   mobileQuoteStatus,
   mobileSendOutcome,
@@ -37,9 +38,9 @@ const date = (value: string | null) =>
       })
     : "Date unavailable";
 
-export function MobileQuotesWorkspace({
+function MobileContractsWorkspace({
   session,
-  title = "Quotes",
+  title = "Contracts",
   onSessionExpired,
 }: {
   session: Session;
@@ -47,6 +48,13 @@ export function MobileQuotesWorkspace({
   onSessionExpired: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [initialContractId, setInitialContractId] = useState("");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialQuery = params.get("q")?.trim();
+    if (initialQuery) setQuery(initialQuery);
+    setInitialContractId(params.get("quote")?.trim() || "");
+  }, []);
   const [letter, setLetter] = useState("");
   const [results, setResults] = useState<MobileQuoteCustomer[]>([]);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
@@ -127,6 +135,18 @@ export function MobileQuotesWorkspace({
     // Session refresh must retry with the new access token.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, letter, searchRevision, session.access_token]);
+
+  useEffect(() => {
+    if (!initialContractId || selection) return;
+    for (const customer of results) {
+      const contract = customer.contracts.find((item) => item.id === initialContractId);
+      if (!contract) continue;
+      setSelection({ customer, contract });
+      setInitialContractId("");
+      setMode("view");
+      return;
+    }
+  }, [initialContractId, results, selection]);
 
   useEffect(() => {
     if (!selection) return;
@@ -654,5 +674,21 @@ export function MobileQuotesWorkspace({
         </button>
       )}
     </main>
+  );
+}
+
+export function MobileQuotesWorkspace({
+  session,
+  mode = "quotes",
+  onSessionExpired,
+}: {
+  session: Session;
+  mode?: "quotes" | "contracts";
+  onSessionExpired: () => void;
+}) {
+  return mode === "contracts" ? (
+    <MobileContractsWorkspace session={session} title="Contracts" onSessionExpired={onSessionExpired} />
+  ) : (
+    <MobileQuoteWalkthrough session={session} onSessionExpired={onSessionExpired} />
   );
 }

@@ -8,6 +8,7 @@ import {
   filterMobileAppointments,
   mobileAppointmentDurationMinutes,
   mobileAppointmentWindowCount,
+  normalizeMobileAppointmentEventType,
   normalizeMobileAppointmentScope,
   parseMobileAppointmentRange
 } from "./mobile-appointments";
@@ -51,6 +52,13 @@ describe("805 mobile appointment helpers", () => {
     expect(normalizeMobileAppointmentScope(null)).toBe("all");
   });
 
+  it("only filters sales consults when explicitly requested", () => {
+    expect(normalizeMobileAppointmentEventType(null)).toBeNull();
+    expect(normalizeMobileAppointmentEventType("")).toBeNull();
+    expect(normalizeMobileAppointmentEventType("sales_consult")).toBe("sales_consult");
+    expect(() => normalizeMobileAppointmentEventType("measure")).toThrow("Unsupported appointment event type");
+  });
+
   it("validates mobile appointment ranges", () => {
     const range = parseMobileAppointmentRange("2026-07-01", "2026-07-08");
     expect(range.startDate).toBe("2026-07-01");
@@ -74,6 +82,13 @@ describe("805 mobile appointment helpers", () => {
       "jessica",
       "mike"
     ]);
+    expect(
+      filterMobileAppointments(
+        [jessica, event({ id: "measure", event_type: "measure" })],
+        "jessica@805shutters.com",
+        "all",
+      ).map((row) => row.id),
+    ).toEqual(["jessica", "measure"]);
   });
 
   it("extracts appointment window counts and durations", () => {

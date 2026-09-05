@@ -276,6 +276,25 @@ export function quoteV2QuotePatch(
   return patch;
 }
 
+export function quoteV2PreviewLine(line: SalesQuoteLineItem): JsonObject {
+  const safe: JsonObject = {};
+  for (const [source] of LINE_FIELDS) safe[source] = line[source];
+  safe.id = line.id;
+  return safe;
+}
+
+export function quoteV2PreviewDesign(design: SalesQuoteDesign): JsonObject {
+  const safe: JsonObject = {
+    id: design.id,
+    line_item_id: design.line_item_id,
+    variant: design.variant,
+  };
+  for (const [source] of DESIGN_STRING_FIELDS) safe[source] = design[source] ?? null;
+  for (const [source] of DESIGN_BOOLEAN_FIELDS) safe[source] = Boolean(design[source]);
+  safe.options_json = customerSafeQuoteV2Options(design.options_json ?? {});
+  return safe;
+}
+
 export function quoteV2RequestKey(scope: string): string {
   const normalizedScope =
     scope.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 60) || "quote-v2";
@@ -358,14 +377,17 @@ export function createQuoteV2Draft(
     installerNotes?: string | null;
     quoteGroupId?: string | null;
     quoteLetter?: string;
+    createdJobId?: string | null;
+    idempotencyKey?: string;
   }>,
 ): Promise<QuoteV2DraftResponse> {
+  const { idempotencyKey, ...details } = input;
   return postAuthenticated<QuoteV2DraftResponse>(
     database,
     "/api/crm/sales-quotes/v2",
     {
-      idempotencyKey: quoteV2RequestKey("draft-create"),
-      ...input,
+      idempotencyKey: idempotencyKey || quoteV2RequestKey("draft-create"),
+      ...details,
     },
   );
 }
@@ -375,16 +397,49 @@ export function mutateQuoteV2Structure(
   quoteId: string,
   expectedRevision: number,
   operations: readonly QuoteV2StructureOperation[],
+  options: Readonly<{ idempotencyKey?: string }> = {},
 ): Promise<QuoteV2StructureResponse> {
   return postAuthenticated<QuoteV2StructureResponse>(
     database,
     `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/structure`,
     {
       expectedRevision,
-      idempotencyKey: quoteV2RequestKey("structure"),
+      idempotencyKey: options.idempotencyKey || quoteV2RequestKey("structure"),
       operations,
     },
   );
+}
+
+export function isQuoteV2FullyAuthoritative(
+  response: QuoteV2PriceResponse,
+  expectedDesigns: readonly Readonly<{ lineItemId: string; designId: string }>[],
+): boolean {
+  if (response.quoteStatus !== "priced" || response.blockedDesignCount !== 0) return false;
+  if (response.pricedDesignCount !== expectedDesigns.length || response.lines.length !== expectedDesigns.length) return false;
+  const authoritative = new Set(
+    response.lines
+      .filter((line) => line.priceStatus === "authoritative")
+      .map((line) => `${line.lineItemId}:${line.designId}`),
+  );
+  return expectedDesigns.every((design) => authoritative.has(`${design.lineItemId}:${design.designId}`));
+}
+
+export function quoteV2PricingOutcome(
+  response: QuoteV2PriceResponse,
+  expectedDesigns: readonly Readonly<{ lineItemId: string; designId: string }>[],
+): Readonly<{
+  complete: boolean;
+  expectedRevision: number;
+  priceStatus: "authoritative" | "blocked" | "unpriceable";
+  finalTotal: number | null;
+}> {
+  const complete = isQuoteV2FullyAuthoritative(response, expectedDesigns);
+  return {
+    complete,
+    expectedRevision: response.revision,
+    priceStatus: complete ? "authoritative" : response.blockedDesignCount > 0 ? "blocked" : "unpriceable",
+    finalTotal: complete ? response.quoteTotal : null,
+  };
 }
 
 export function priceQuoteV2(
@@ -394,14 +449,16 @@ export function priceQuoteV2(
     lineItemId: string;
     designId: string;
     expectedRevision: number;
+    idempotencyKey?: string;
   }>,
 ): Promise<QuoteV2PriceResponse> {
+  const { idempotencyKey, ...priceInput } = input;
   return postAuthenticated<QuoteV2PriceResponse>(
     database,
     `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/price`,
     {
-      ...input,
-      idempotencyKey: quoteV2RequestKey("price"),
+      ...priceInput,
+      idempotencyKey: idempotencyKey || quoteV2RequestKey("price"),
     },
   );
 }

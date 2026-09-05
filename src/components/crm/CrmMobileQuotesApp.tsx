@@ -109,6 +109,28 @@ export function CrmMobileQuotesApp({ workspace = "quotes" }: { workspace?: "quot
 
   const configured = Boolean(supabase);
 
+  useEffect(() => {
+    if (workspace !== "quotes" || !("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.register("/mobile-quotes-sw.js", { scope: "/crm/mobile/quotes" }).then(async (registration) => {
+      await registration.update();
+      const worker = registration.installing || registration.waiting || registration.active;
+      const urls = Array.from(document.querySelectorAll<HTMLScriptElement | HTMLLinkElement>("script[src],link[href]"))
+        .map((element) => element instanceof HTMLScriptElement ? element.src : element.href)
+        .filter((value) => {
+          try {
+            const url = new URL(value);
+            return url.origin === window.location.origin && url.pathname.startsWith("/_next/static/");
+          } catch {
+            return false;
+          }
+        });
+      const message = { type: "CACHE_MOBILE_QUOTES_STATIC", urls };
+      worker?.postMessage(message);
+      const readyRegistration = await navigator.serviceWorker.ready;
+      readyRegistration.active?.postMessage(message);
+    }).catch(() => undefined);
+  }, [workspace]);
+
   async function loadQuotes(activeSession: Session) {
     setMessage(null);
     const sessionResult = await crmFetch<CrmUser>(activeSession, "/api/crm/session");
@@ -227,9 +249,11 @@ export function CrmMobileQuotesApp({ workspace = "quotes" }: { workspace?: "quot
     }
 
     async function initialize() {
+      let cachedSession: Session | null = null;
       try {
         const callbackSession = await consumeEmailOtpCallback();
         const activeSession = callbackSession ?? (await activeSupabase.auth.getSession()).data.session;
+        cachedSession = activeSession;
         if (!mounted) return;
         sessionIdentityRef.current = activeSession
           ? { userId: activeSession.user.id, accessToken: activeSession.access_token }
@@ -241,7 +265,13 @@ export function CrmMobileQuotesApp({ workspace = "quotes" }: { workspace?: "quot
         }
       } catch (error) {
         if (!mounted) return;
-        await handleLoadError(error);
+        if (workspace === "quotes" && cachedSession && !navigator.onLine && !isCrmSessionFetchError(error)) {
+          setSession(cachedSession);
+          setData({ ready: true });
+          setMessage("Offline mode · locally saved quote drafts remain available. Reconnect before submitting.");
+        } else {
+          await handleLoadError(error);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -354,5 +384,5 @@ export function CrmMobileQuotesApp({ workspace = "quotes" }: { workspace?: "quot
     );
   }
 
-  return <MobileQuotesWorkspace title={title} key={session.user.id} session={session} onSessionExpired={() => void clearCrmSession("Your CRM login expired. Sign in again.")} />;
+  return <MobileQuotesWorkspace mode={workspace} key={session.user.id} session={session} onSessionExpired={() => void clearCrmSession("Your CRM login expired. Sign in again.")} />;
 }

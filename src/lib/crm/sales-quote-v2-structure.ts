@@ -139,6 +139,7 @@ const DESIGN_PATCH_BOOLEAN_FIELDS = [
 
 export type QuoteV2CreateDraftBody = Readonly<{
   idempotencyKey: string;
+  createdJobId?: string | null;
   customerName: string;
   customerPhone?: string | null;
   customerEmail?: string | null;
@@ -715,16 +716,19 @@ function parseOperation(value: unknown, index: number): QuoteV2StructureOperatio
 
 export function parseCreateSalesQuoteV2DraftBody(
   value: unknown,
-): Readonly<{ idempotencyKey: string; quotePatch: JsonObject }> {
+): Readonly<{ idempotencyKey: string; createdJobId?: string | null; quotePatch: JsonObject }> {
   const body = plainObject(value, "Quote V2 draft request");
   assertAllowedKeys(
     body,
-    ["idempotencyKey", ...QUOTE_PATCH_FIELDS],
+    ["idempotencyKey", "createdJobId", ...QUOTE_PATCH_FIELDS],
     "Quote V2 draft request",
   );
-  const { idempotencyKey: rawKey, ...rawPatch } = body;
+  const { idempotencyKey: rawKey, createdJobId: rawJobId, ...rawPatch } = body;
   return {
     idempotencyKey: idempotencyKey(rawKey),
+    ...(rawJobId === undefined
+      ? {}
+      : { createdJobId: nullableUuid(rawJobId, "Quote V2 draft request.createdJobId") }),
     quotePatch: quotePatch(rawPatch, "Quote V2 draft request", true),
   };
 }
@@ -878,11 +882,18 @@ export async function createSalesQuoteV2Draft(
   input: ReturnType<typeof parseCreateSalesQuoteV2DraftBody>,
 ): Promise<QuoteV2CreateDraftResponse> {
   const actorId = uuid(actorIdValue, "actorId");
-  const { data, error } = await supabase.rpc("create_quote_v2_draft", {
-    p_idempotency_key: input.idempotencyKey,
-    p_actor_id: actorId,
-    p_quote_patch: input.quotePatch,
-  });
+  const { data, error } = input.createdJobId
+    ? await supabase.rpc("create_mobile_quote_v2_draft", {
+        p_idempotency_key: input.idempotencyKey,
+        p_actor_id: actorId,
+        p_created_job_id: input.createdJobId,
+        p_quote_patch: input.quotePatch,
+      })
+    : await supabase.rpc("create_quote_v2_draft", {
+        p_idempotency_key: input.idempotencyKey,
+        p_actor_id: actorId,
+        p_quote_patch: input.quotePatch,
+      });
   if (error) {
     throw databaseMutationError(
       error,

@@ -13,6 +13,9 @@ interface ManufacturerProductButtonsProps {
   onSelectManufacturer: (manufacturer: string | null) => void;
   onSelectProduct: (productId: string | null) => void;
   loading?: boolean;
+  mobileProductFamily?: string | null;
+  onSelectMobileProductFamily?: (productType: string | null) => void;
+  compactMobile?: boolean;
 }
 
 export function ManufacturerProductButtons({
@@ -22,21 +25,37 @@ export function ManufacturerProductButtons({
   onSelectManufacturer,
   onSelectProduct,
   loading = false,
+  mobileProductFamily,
+  onSelectMobileProductFamily,
+  compactMobile = false,
 }: ManufacturerProductButtonsProps) {
-  const manufacturers = quoteManufacturers(products);
+  const productFamilies = Array.from(new Set(products.map((product) => product.productType))).sort();
+  const familyProducts = onSelectMobileProductFamily
+    ? (mobileProductFamily ? products.filter((product) => product.productType === mobileProductFamily) : [])
+    : products;
+  const manufacturers = quoteManufacturers(familyProducts);
   const manufacturerProducts = productsForManufacturer(
-    products,
+    familyProducts,
     selectedManufacturer,
   );
 
   return (
     <div
-      className="quote-add-card space-y-3 rounded-[1.5rem] border border-white/80 bg-white/70 p-3 shadow-[0_18px_45px_rgba(15,35,70,0.08)] backdrop-blur"
+      className={cn("quote-add-card space-y-3 border border-white/80 bg-white/70 shadow-[0_18px_45px_rgba(15,35,70,0.08)] backdrop-blur", compactMobile ? "rounded-xl p-2" : "rounded-[1.5rem] p-3")}
       aria-label="Choose manufacturer and exact product"
     >
+      {onSelectMobileProductFamily && <div>
+        <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">1. Product family</div>
+        <div className="quote-add-button-row flex flex-wrap gap-1.5">
+          {productFamilies.map((family) => {
+            const selected = family === mobileProductFamily;
+            return <button key={family} type="button" aria-pressed={selected} onClick={() => { onSelectMobileProductFamily(selected ? null : family); onSelectManufacturer(null); onSelectProduct(null); }} className={cn("min-h-11 rounded-lg border px-3 py-2 text-xs font-bold", selected ? "border-black bg-black text-white" : "border-zinc-300 bg-white text-zinc-900")}>{family}</button>;
+          })}
+        </div>
+      </div>}
       <div>
         <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-          1. Manufacturer
+          {onSelectMobileProductFamily ? "2. Manufacturer" : "1. Manufacturer"}
         </div>
         <div className="quote-add-button-row flex flex-wrap gap-2">
           {loading ? (
@@ -71,7 +90,7 @@ export function ManufacturerProductButtons({
 
       <div>
         <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-          2. Exact product
+          {onSelectMobileProductFamily ? "3. Exact product" : "2. Exact product"}
         </div>
         {!selectedManufacturer ? (
           <p className="px-1 text-sm font-medium text-slate-500">

@@ -4,6 +4,8 @@ import {
   useMemo,
   useRef,
   useCallback,
+  createContext,
+  useContext,
   type ChangeEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -442,6 +444,9 @@ export async function loadQuoteBuilderCatalog() {
   return request;
 }
 
+const QuoteBuilderCatalogProductsContext = createContext<readonly QuoteLabCatalogProduct[] | null>(null);
+const MobileDesignCardContext = createContext(false);
+
 export interface SideBySideLineOption {
   lineId: string;
   label: string;
@@ -454,6 +459,8 @@ interface DesignCardProps {
   lineNumberLabel?: string;
   designs: SalesQuoteDesign[];
   authoritativeV2?: boolean;
+  mobilePresentation?: boolean;
+  catalogProducts?: readonly QuoteLabCatalogProduct[];
   onUpdateDesign: (
     design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
   ) => void;
@@ -2360,6 +2367,18 @@ function withShutterSelectionField(
   return fields;
 }
 
+export function mobileShutterMaterialRoutePatch(
+  supplier: string | null | undefined,
+  materialType: string,
+): ShutterRoutePatch | null {
+  if (materialType === "Composite") return getAutoShutterRoutePatch("B");
+  if (materialType === "Poly") return getAutoShutterRoutePatch("C");
+  if (materialType === "Wood") {
+    return getWoodShutterRoutePatch(supplier === "Norman" ? "Premium Wood" : "Standard Wood");
+  }
+  return null;
+}
+
 export function buildAuthoritativeShutterRouteUpdate(
   patch: ShutterRoutePatch,
   design: SalesQuoteDesign | undefined,
@@ -2802,8 +2821,8 @@ function OptionSlot({
 }) {
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
-  const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
   const isDirectSelect = option.type === "select" || option.type === "number";
+  const isInlineChoice = (!isDirectSelect && renderSelectedDirect) || isYesNo || (option.type === "buttons" && option.options.length <= 2);
   const showConfirmedCard = selected && !renderSelectedDirect && !isOpen;
 
   return (
@@ -3912,6 +3931,8 @@ function GridButtonGroup({
         {options.map((opt) => (
           <button
             key={opt}
+            type="button"
+            aria-pressed={value === opt}
             onClick={() => onChange(opt)}
             className={cn(
               "quote-style-option-button rounded-md border text-[11px] font-semibold transition-all",
@@ -4432,6 +4453,8 @@ function GridYesNo({
         {items.map((opt) => (
           <button
             key={opt}
+            type="button"
+            aria-pressed={value === opt}
             onClick={() => onChange(opt)}
             className={cn(
               "quote-style-option-button quote-style-yes-no-button rounded-md border text-[11px] font-semibold transition-all",
@@ -4456,6 +4479,8 @@ export function DesignCard({
   lineNumberLabel,
   designs,
   authoritativeV2: authoritativeV2Override,
+  mobilePresentation = false,
+  catalogProducts,
   onUpdateDesign,
   onCopyAll,
   onCopySome,
@@ -4484,8 +4509,8 @@ export function DesignCard({
   const authoritativeV2 = authoritativeV2Override ?? runtimeAuthoritativeV2;
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
-    () => (isShutters ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
-    [isShutters]
+    () => (isShutters && !mobilePresentation ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
+    [isShutters, mobilePresentation]
   );
   const [activeVariant, setActiveVariant] = useState(() =>
     preferredSavedQuoteVariant(designs, variants)
@@ -5330,6 +5355,8 @@ export function DesignCard({
   const hasMeasurements = lineItem.width_whole > 0 || lineItem.height_whole > 0;
 
   return (
+    <QuoteBuilderCatalogProductsContext.Provider value={catalogProducts ?? null}>
+    <MobileDesignCardContext.Provider value={mobilePresentation}>
     <Card
       data-quote-line-id={lineItem.id}
       data-line-number={lineNumber}
@@ -5433,7 +5460,7 @@ export function DesignCard({
           </div>
           <div className="quote-line-card-summary">
             {/* Sqft + editable $/sqft for shutters */}
-            {isShutters && sqft !== null && currentRetailPerSqft !== null && (
+            {!mobilePresentation && isShutters && sqft !== null && currentRetailPerSqft !== null && (
               <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
                 <span>
                   {rawSqft !== null ? rawSqft.toFixed(1) : "—"} ft²
@@ -5500,7 +5527,7 @@ export function DesignCard({
                 )}
               </div>
             )}
-            <div className="flex items-center gap-1.5 text-right">
+            {!mobilePresentation && <div className="flex items-center gap-1.5 text-right">
               <Lock className="h-3.5 w-3.5 text-muted-foreground" />
               <div className="quote-line-price-readout">
                 <span className="text-lg font-bold">
@@ -5511,7 +5538,7 @@ export function DesignCard({
                   {displayedPrice.fromHistoricalLock ? "original quote · " : ""}excl. tax
                 </div>
               </div>
-            </div>
+            </div>}
             <label className="quote-line-quantity-control" title="Line item quantity">
               <span>Qty</span>
               <input
@@ -5755,7 +5782,7 @@ export function DesignCard({
           </div>
         )}
 
-        <PriceExplanation
+        {!mobilePresentation && <PriceExplanation
           design={currentDesign}
           productType={lineItem.product_type}
           widthIn={widthIn}
@@ -5764,10 +5791,10 @@ export function DesignCard({
           sqft={sqft}
           quantity={quantity}
           currentRetailPerSqft={currentRetailPerSqft}
-        />
+        />}
 
         {/* Copy actions */}
-        <div className="quote-line-action-row">
+        {!mobilePresentation && <div className="quote-line-action-row">
           <span className="quote-line-action-label">Copy this design to:</span>
           <Button
             variant="outline"
@@ -5813,7 +5840,7 @@ export function DesignCard({
             <Archive className="h-3 w-3" />
             Stack
           </Button>
-        </div>
+        </div>}
         {showLineNote && (
           <DeferredTextInput
             value={currentDesign?.notes || ""}
@@ -5825,6 +5852,8 @@ export function DesignCard({
         )}
       </CardContent>
     </Card>
+    </MobileDesignCardContext.Provider>
+    </QuoteBuilderCatalogProductsContext.Provider>
   );
 }
 
@@ -5841,15 +5870,17 @@ export function ManufacturerCatalogStampChooser({
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   catalogProducts?: QuoteLabCatalogProduct[];
 }) {
+  const injectedCatalogProducts = useContext(QuoteBuilderCatalogProductsContext);
+  const effectiveCatalogProducts = catalogProducts ?? injectedCatalogProducts;
   const [products, setProducts] = useState<QuoteLabCatalogProduct[]>(
-    catalogProducts ?? [],
+    () => [...(effectiveCatalogProducts ?? [])],
   );
   const options =
     (design?.options_json as Record<string, unknown> | undefined) || {};
 
   useEffect(() => {
-    if (catalogProducts) {
-      setProducts(catalogProducts);
+    if (effectiveCatalogProducts) {
+      setProducts([...effectiveCatalogProducts]);
       return;
     }
     let active = true;
@@ -5863,7 +5894,7 @@ export function ManufacturerCatalogStampChooser({
     return () => {
       active = false;
     };
-  }, [catalogProducts]);
+  }, [effectiveCatalogProducts]);
 
   const availableProducts = useMemo(
     () => usableCatalogProductsForLine(products, productType),
@@ -6056,7 +6087,8 @@ function QuoteLabCatalogControls({
   design: SalesQuoteDesign | undefined;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
-  const [products, setProducts] = useState<QuoteLabCatalogProduct[]>([]);
+  const injectedCatalogProducts = useContext(QuoteBuilderCatalogProductsContext);
+  const [products, setProducts] = useState<QuoteLabCatalogProduct[]>(() => [...(injectedCatalogProducts ?? [])]);
   const options = (design?.options_json as Record<string, unknown> | undefined) || {};
   const productId = typeof options.quote_lab_product_id === "string" ? options.quote_lab_product_id : "";
   const programId = typeof options.quote_lab_program_id === "string" ? options.quote_lab_program_id : "";
@@ -6070,12 +6102,16 @@ function QuoteLabCatalogControls({
     : [];
 
   useEffect(() => {
+    if (injectedCatalogProducts) {
+      setProducts([...injectedCatalogProducts]);
+      return;
+    }
     let active = true;
     loadQuoteBuilderCatalog()
       .then((payload: QuoteBuilderCatalogResponse) => { if (active) setProducts(payload.products); })
       .catch(() => { if (active) setProducts([]); });
     return () => { active = false; };
-  }, []);
+  }, [injectedCatalogProducts]);
 
   if (availableProducts.length === 0) return null;
 
@@ -6353,6 +6389,7 @@ function ShutterDesignOptions({
   authoritativeV2: boolean;
   allowManualPriceEditing: boolean;
 }) {
+  const mobilePresentation = useContext(MobileDesignCardContext);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const draftDesign = useMemo(
@@ -6525,7 +6562,10 @@ function ShutterDesignOptions({
     handleUpdate(step.field, value);
   };
 
-  const definingSteps = getDefiningSteps(workingDesign);
+  const allDefiningSteps = getDefiningSteps(workingDesign);
+  const definingSteps = mobilePresentation
+    ? allDefiningSteps.filter((step) => step.field !== "json:wood_route")
+    : allDefiningSteps;
   const standardComplete = isStandardShutterComplete(workingDesign);
   const useOldSteps = isTrackedOrSpecialty(workingDesign);
   const optionsJson = (workingDesign.options_json as Record<string, unknown>) || {};
@@ -6544,11 +6584,21 @@ function ShutterDesignOptions({
     });
   };
 
+  const mobileMaterialOptions: GridOption[] = mobilePresentation && ["Norman", "Onyx"].includes(workingDesign.supplier || "")
+    ? [{
+        key: "mobile-shutter-material",
+        label: "Material",
+        field: "json:material_type",
+        type: "buttons",
+        options: workingDesign.supplier === "Norman" ? ["Wood", "Composite"] : ["Wood", "Poly"],
+      }]
+    : [];
   const gridOptions = standardComplete && !useOldSteps
     ? getStandardShutterGridOptions(workingDesign, authoritativeV2)
     : [];
-  const slotOptions = standardComplete && !useOldSteps ? [...definingOptions, ...gridOptions] : definingOptions;
+  const slotOptions = standardComplete && !useOldSteps ? [...mobileMaterialOptions, ...definingOptions, ...gridOptions] : [...mobileMaterialOptions, ...definingOptions];
   const optionRows = partitionOptionSlots(slotOptions, [
+    ...mobileMaterialOptions.map((option) => option.field),
     ...definingOptions.map((option) => option.field),
     ...getShutterMandatoryFields(gridOptions),
   ]);
@@ -6556,7 +6606,16 @@ function ShutterDesignOptions({
     ...optionRows.mandatory,
     ...optionRows.optional,
   ]);
-  const editableOptionRows = getEditableOptionRows(optionRows, workingDesign, openOptionField);
+  const editableOptionRows = mobilePresentation
+    ? optionRows
+    : getEditableOptionRows(optionRows, workingDesign, openOptionField);
+
+  const handleMobileMaterialSelect = (value: string) => {
+    const patch = mobileShutterMaterialRoutePatch(workingDesign.supplier, value);
+    if (!patch) return;
+    if (authoritativeV2) applyShutterRoutePatch(patch, design, onUpdateFields);
+    else onUpdateFields(buildLegacyShutterRouteUpdate(patch, workingDesign));
+  };
 
   const renderOptionControl = (opt: GridOption) => {
     const value = getFieldValue(workingDesign, opt.field);
@@ -6569,7 +6628,9 @@ function ShutterDesignOptions({
           value={value}
           hideLabel
           onChange={(v) => {
-            if (definingOptions.some((option) => option.field === opt.field)) {
+            if (mobilePresentation && opt.key === "mobile-shutter-material") {
+              handleMobileMaterialSelect(v);
+            } else if (definingOptions.some((option) => option.field === opt.field)) {
               const step = definingSteps.find((candidate) => candidate.field === opt.field);
               if (step) handleDefiningStepSelect(step, v);
             } else {
@@ -6638,7 +6699,7 @@ function ShutterDesignOptions({
       requirement={requirement}
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
-      renderSelectedDirect={opt.type === "select" || opt.type === "number"}
+      renderSelectedDirect={mobilePresentation || opt.type === "select" || opt.type === "number"}
     >
       {renderOptionControl(opt)}
     </OptionSlot>
@@ -6651,11 +6712,11 @@ function ShutterDesignOptions({
 
   return (
     <div className="space-y-3">
-      <ConfirmedOptionStrip
+      {!mobilePresentation && <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
         onReset={handleConfirmedOptionReset}
-      />
+      />}
 
       {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
         <OptionSlotRows
@@ -6742,7 +6803,7 @@ function ShutterDesignOptions({
       )}
 
       {/* Price input */}
-      {(standardComplete || useOldSteps) && (
+      {!mobilePresentation && (standardComplete || useOldSteps) && (
         <div className="pt-2 border-t">
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Price:</Label>
@@ -7058,7 +7119,10 @@ function PolarInteriorDesignOptions({
   productId: string;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
-  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(null);
+  const injectedCatalogProducts = useContext(QuoteBuilderCatalogProductsContext);
+  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(
+    () => injectedCatalogProducts?.find((candidate) => candidate.id === productId) ?? null,
+  );
   const options =
     (design?.options_json as Record<string, unknown> | undefined) || {};
   const selectedSurcharges = Array.isArray(options.surcharges)
@@ -7096,6 +7160,10 @@ function PolarInteriorDesignOptions({
   });
 
   useEffect(() => {
+    if (injectedCatalogProducts) {
+      setProduct(injectedCatalogProducts.find((candidate) => candidate.id === productId) ?? null);
+      return;
+    }
     let active = true;
     loadQuoteBuilderCatalog()
       .then((payload) => {
@@ -7112,7 +7180,7 @@ function PolarInteriorDesignOptions({
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [injectedCatalogProducts, productId]);
 
   const updateOptions = (
     patch: Record<string, unknown>,
@@ -7489,7 +7557,10 @@ function PolarPublishedRetailOptions({
   widthInches: number;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
-  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(null);
+  const injectedCatalogProducts = useContext(QuoteBuilderCatalogProductsContext);
+  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(
+    () => injectedCatalogProducts?.find((candidate) => candidate.id === productId) ?? null,
+  );
   const options =
     (design?.options_json as Record<string, unknown> | undefined) || {};
   const isDrapery = productId === "polar_drapery_track";
@@ -7520,6 +7591,10 @@ function PolarPublishedRetailOptions({
     : [];
 
   useEffect(() => {
+    if (injectedCatalogProducts) {
+      setProduct(injectedCatalogProducts.find((candidate) => candidate.id === productId) ?? null);
+      return;
+    }
     let active = true;
     loadQuoteBuilderCatalog()
       .then((payload) => {
@@ -7536,7 +7611,7 @@ function PolarPublishedRetailOptions({
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [injectedCatalogProducts, productId]);
 
   const updateOptions = (patch: Record<string, unknown>) =>
     onUpdateFields({ options_json: { ...options, ...patch } });
@@ -7947,7 +8022,10 @@ function PolarExteriorDesignOptions({
   productId: string;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
-  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(null);
+  const injectedCatalogProducts = useContext(QuoteBuilderCatalogProductsContext);
+  const [product, setProduct] = useState<QuoteLabCatalogProduct | null>(
+    () => injectedCatalogProducts?.find((candidate) => candidate.id === productId) ?? null,
+  );
   const options =
     (design?.options_json as Record<string, unknown> | undefined) || {};
   const guide =
@@ -7981,6 +8059,10 @@ function PolarExteriorDesignOptions({
   });
 
   useEffect(() => {
+    if (injectedCatalogProducts) {
+      setProduct(injectedCatalogProducts.find((candidate) => candidate.id === productId) ?? null);
+      return;
+    }
     let active = true;
     loadQuoteBuilderCatalog()
       .then((payload) => {
@@ -7997,7 +8079,7 @@ function PolarExteriorDesignOptions({
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [injectedCatalogProducts, productId]);
 
   const updateOptions = (patch: Record<string, unknown>) => {
     onUpdateFields({ options_json: { ...options, ...patch } });
@@ -8203,6 +8285,7 @@ function ShadesAndBlindsOptions({
   ) => void;
   onClearSideBySidePartner: () => void;
 }) {
+  const mobilePresentation = useContext(MobileDesignCardContext);
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [priceOverrideMessage, setPriceOverrideMessage] = useState("");
@@ -11454,7 +11537,9 @@ function ShadesAndBlindsOptions({
   const moreOptionRows = partitionOptionSlots(moreGridOptions, []);
   const moreEditableOptionRows = getEditableOptionRows(moreOptionRows, design, openOptionField);
   const confirmedOptions = getConfirmedOptionItems(design, gridOptions);
-  const editableOptionRows = getEditableOptionRows(optionRows, design, openOptionField);
+  const editableOptionRows = mobilePresentation
+    ? optionRows
+    : getEditableOptionRows(optionRows, design, openOptionField);
   const productColorLookupOptions =
     productType === "Honeycomb Shades"
       ? { ...optionsJson, lift_system: design?.lift_system ?? null }
@@ -11610,6 +11695,7 @@ function ShadesAndBlindsOptions({
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
       renderSelectedDirect={
+        mobilePresentation ||
         shouldRenderMotorizationControlDirect(opt.field) ||
         opt.type === "number" ||
         (opt.type === "select" &&
@@ -11680,11 +11766,11 @@ function ShadesAndBlindsOptions({
           blind widths; the center is never inferred.
         </div>
       ) : null}
-      <ConfirmedOptionStrip
+      {!mobilePresentation && <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
         onReset={handleConfirmedOptionReset}
-      />
+      />}
 
       {unsupportedSavedMotorization ? (
         <div
@@ -11779,7 +11865,7 @@ function ShadesAndBlindsOptions({
       )}
 
       {/* Price input - always show when at least one option is confirmed */}
-      {hasAnySelectedOption && (
+      {!mobilePresentation && hasAnySelectedOption && (
         <div className="pt-2 border-t">
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Price:</Label>
@@ -11826,7 +11912,7 @@ function ShadesAndBlindsOptions({
           ) : null}
         </div>
       )}
-      {authoritativeV2 && design ? (
+      {!mobilePresentation && authoritativeV2 && design ? (
         <CustomModePanel lineItem={_lineItem} design={design} />
       ) : null}
     </div>
