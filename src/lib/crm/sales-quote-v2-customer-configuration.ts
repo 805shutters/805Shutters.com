@@ -48,6 +48,7 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["operating_system", "Operating system"],
   ["control_type", "Control type"],
   ["control_side", "Control side"],
+  ["chain_location", "Chain location"],
   ["draw_direction", "Draw direction"],
   ["valance", "Valance"],
   ["valance_returns", "Valance returns"],
@@ -293,6 +294,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
     ...V2_CUSTOMER_CONFIGURATION_FIELDS.flatMap(([key, fallbackLabel]) => {
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
+      if ((key === "control_side" || key === "chain_location") && (selected === null || selected === "")) return [];
       return [`${LABELS.get(key) ?? fallbackLabel}: ${displayValue(key, selected)}`];
     }),
   ];

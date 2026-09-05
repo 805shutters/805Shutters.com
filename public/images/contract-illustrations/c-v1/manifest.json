@@ -1,0 +1,134 @@
+{
+  "style": "C — Soft shaded graphite",
+  "version": 1,
+  "assets": [
+    {
+      "id": "shutters",
+      "source": "exec-c447203e-986d-4e3b-8b4a-7fee0df1cab7.png",
+      "sourceSha256": "beaba9467e934dae4f9c145d3eb9ccadcfde3a1f2520f17cfe11c853b91ac45f",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/shutters.webp",
+      "bytes": 56692
+    },
+    {
+      "id": "roman",
+      "source": "exec-1ecc67c2-3124-49fa-bfcb-0b77561e1426.png",
+      "sourceSha256": "2048c94f5d9b11feb320a792343b3707f6acee0a3799e689d9ab359609bf5796",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/roman.webp",
+      "bytes": 54298
+    },
+    {
+      "id": "roller",
+      "source": "exec-0f5549f4-43a2-4a0d-bf1e-cedacefb0825.png",
+      "sourceSha256": "af58f22dafb34ab6d3f871c17bb911daf9425c68bff6040bce9a8ad4b1f41b0c",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/roller.webp",
+      "bytes": 35414
+    },
+    {
+      "id": "honeycomb",
+      "source": "exec-9c00973a-1340-42dd-8d57-0d48cc76fcbb.png",
+      "sourceSha256": "185c4e3b41fd502bbc600eed3c51a23b7b1cf85a209db1d8773afecad87301eb",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/honeycomb.webp",
+      "bytes": 46538
+    },
+    {
+      "id": "faux-wood",
+      "source": "exec-9af3b510-55a6-4ccc-bccc-1f7327fdddc4.png",
+      "sourceSha256": "e29864aac6533184820e330e55f2e3f4d58449ef0db29d32a18ba58323810347",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/faux-wood.webp",
+      "bytes": 28282
+    },
+    {
+      "id": "sheer",
+      "source": "exec-d0e1abad-0279-4a81-bc52-c4437c6292af.png",
+      "sourceSha256": "110bfe1e12e984227220a290605ddabae53a236303a429c217342db877dec40f",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/sheer.webp",
+      "bytes": 106056
+    },
+    {
+      "id": "wood",
+      "source": "exec-afa019b5-7da6-440e-a771-901c31e11b37.png",
+      "sourceSha256": "5c9765ccf6b7af96fa75fb458e686d10bb2a43960b2c2d8ec3ab151e9f4e7b3a",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/wood.webp",
+      "bytes": 48836
+    },
+    {
+      "id": "mini",
+      "source": "exec-e09c107c-5254-4541-bbaf-6439ae83391e.png",
+      "sourceSha256": "3e169dbd9d7f5ac11c54311aa6b253cbe1cd07e03cc34599b4e2d47cb1aea446",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/mini.webp",
+      "bytes": 35032
+    },
+    {
+      "id": "vertical",
+      "source": "exec-a00d9c99-929b-4a2a-b912-1a7bb4dc7de4.png",
+      "sourceSha256": "b85407f2c838372a60a29853df12bc88a25f5991309eeb42daf357061b6461e8",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/vertical.webp",
+      "bytes": 39252
+    },
+    {
+      "id": "smart-drapes",
+      "source": "exec-89223e7a-80b0-4f99-ad1d-c884f5dd23e7.png",
+      "sourceSha256": "bbd1c5d89cfd8b6c5ad03c898820db2dd50a4f43ae33eff540eb2137902ed0bb",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/smart-drapes.webp",
+      "bytes": 58362
+    },
+    {
+      "id": "remote",
+      "source": "exec-0bbca277-320f-487f-9eee-8b7d55c86528.png",
+      "sourceSha256": "d7eb5d0aa921ca62e9b8625b9a06dd19d0c92ebaf2997315d76d60b25564c9ae",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/remote.webp",
+      "bytes": 15796
+    },
+    {
+      "id": "roller-loop-left",
+      "source": "exec-29fed3df-7ee3-4ce7-989e-2aacadbe6904.png",
+      "sourceSha256": "1fcaaf49988fca6cc9c187a61aa434b03249980814b0a784ee584eca0b6b5899",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/roller-loop-left.webp",
+      "bytes": 39816
+    },
+    {
+      "id": "roller-loop-right",
+      "source": "exec-e94d0b40-7eed-4e48-8958-5a61773d48bd.png",
+      "sourceSha256": "70650015e6cecc812885efff7a1b4adb508b4219414e6a0ae74be0ec02006659",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/roller-loop-right.webp",
+      "bytes": 32030
+    },
+    {
+      "id": "honeycomb-loop-left",
+      "source": "exec-78cb1f4e-3a51-4dca-8c1a-b4eb9d83d6e2.png",
+      "sourceSha256": "0af8753fa92ff5b035ffbb662345ade5935965ad4abe5e1a05305af64a75dafb",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/honeycomb-loop-left.webp",
+      "bytes": 45296
+    },
+    {
+      "id": "honeycomb-loop-right",
+      "source": "exec-1c681db2-f1db-4d77-848f-f8dc390e9d21.png",
+      "sourceSha256": "817cb23401c6711661379ef49a79aa08e5c38d836618af0ec289efa1ea65e723",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/honeycomb-loop-right.webp",
+      "bytes": 43324
+    },
+    {
+      "id": "faux-wood-wand-right",
+      "source": "exec-03cd07e2-e7c9-4de7-8e94-15ccc40cebeb.png",
+      "sourceSha256": "bef4f6cc9bb0b2f74a2c118be346d41bd5be87896707e9e5ced0197f41012e2b",
+      "quadrant": "bottom-left",
+      "file": "public/images/contract-illustrations/c-v1/faux-wood-wand-right.webp",
+      "bytes": 26690
+    }
+  ]
+}

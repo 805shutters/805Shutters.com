@@ -353,3 +353,32 @@ describe("QuoteSelection", () => {
     expect(html).toContain("body:has(.customer-contract-print-root) .assistant-widget { display: none !important; }");
   });
 });
+
+
+describe("contract artwork follows each saved option", () => {
+  it("keeps left/right illustrations with their own design and preserves written prices", () => {
+    const quote = quoteWithLegacyDetails(false);
+    const first = quote.lines[0].designOptions[0];
+    quote.lines[0].designOptions = [
+      { ...first, id: "left", label: "A", options: ["Lift System: Continuous Cord Loop", "Control Side: Left"] },
+      { ...first, id: "right", label: "B", options: ["Lift System: Continuous Cord Loop", "Control Side: Right"] },
+    ];
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
+    expect(html).toContain("roller-loop-left.webp");
+    expect(html).toContain("roller-loop-right.webp");
+    expect(html).toContain("$509.40");
+    expect(html).toContain("Control Side");
+    expect(html).not.toContain("remote.webp");
+    expect(html).not.toContain("portfolio-enhanced");
+  });
+
+  it("uses the selected line configuration when alternatives are hidden", () => {
+    const quote = quoteWithLegacyDetails(false);
+    quote.lines[0].showDesignOptions = false;
+    quote.lines[0].options = ["Lift System: Motorized"];
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
+    expect(html).toContain("remote.webp");
+    expect(html).toContain("Motorized shade handheld control");
+    expect(html).not.toContain("rotate(");
+  });
+});

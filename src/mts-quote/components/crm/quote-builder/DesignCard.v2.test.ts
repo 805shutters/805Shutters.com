@@ -1448,3 +1448,13 @@ describe("V2 exact-interface contract", () => {
     );
   });
 });
+
+
+describe("contract control-side selection", () => {
+  it("clears a saved loop side when changing to cordless and keeps it for a loop", () => {
+    const options = { control_side: "Right" };
+    expect(buildLegacyRollerLiftSystemUpdate(options, undefined, "Cordless").options_json?.control_side).toBeNull();
+    expect(buildLegacyRollerLiftSystemUpdate(options, undefined, "Continuous Cord Loop").options_json?.control_side).toBe("Right");
+    expect(options.control_side).toBe("Right");
+  });
+});

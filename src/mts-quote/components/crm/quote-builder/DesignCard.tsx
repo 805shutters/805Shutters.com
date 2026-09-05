@@ -1,3 +1,5 @@
+import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
+import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import {
   useState,
   useEffect,
@@ -1972,7 +1974,10 @@ export function buildLegacyRollerLiftSystemUpdate(
   value: unknown,
 ): Partial<SalesQuoteDesign> {
   const nextJson = { ...currentOptions };
-  if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
+  if (value !== "Continuous Cord Loop") {
+    nextJson.cord_loop_release = null;
+    if ("control_side" in nextJson) nextJson.control_side = null;
+  }
   if (value !== "Motorized") {
     nextJson.hub_required = null;
     nextJson.power_configuration = null;
@@ -5615,6 +5620,11 @@ export function DesignCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {currentDesign && (
+          <div className="flex items-start gap-3" aria-label="Contract product illustration">
+            <ContractProductIllustration productType={lineItem.product_type} options={getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`)} />
+          </div>
+        )}
         {/* Variant tabs */}
         {variants.length > 1 && (
           <Tabs value={activeVariant} onValueChange={handleVariantChange}>
@@ -8567,7 +8577,10 @@ function ShadesAndBlindsOptions({
         return;
       }
       let nextJson = { ...currentJson };
-      if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
+      if (value !== "Continuous Cord Loop") {
+        nextJson.cord_loop_release = null;
+        if ("control_side" in nextJson) nextJson.control_side = null;
+      }
       if (value !== "Motorized") {
         nextJson = clearMotorizationOptions(nextJson);
       } else if (nextJson.tube_class === "All Tubes") {
@@ -9928,6 +9941,13 @@ function ShadesAndBlindsOptions({
 
         if (liftSystem === "Continuous Cord Loop") {
           options.push({
+            key: "control_side",
+            label: "Control Side (from inside the room)",
+            field: "json:control_side",
+            type: "buttons",
+            options: ["Left", "Right"],
+          });
+          options.push({
             key: "cord_loop_release",
             label: "Cord Loop Release",
             field: "json:cord_loop_release",
@@ -10035,7 +10055,7 @@ function ShadesAndBlindsOptions({
           }
           options.push({
             key: "chain_location",
-            label: "Chain Location",
+            label: "Chain Location (from inside the room)",
             field: "json:chain_location",
             type: "buttons",
             options: ROMAN_CHAIN_LOCATIONS,
@@ -10378,7 +10398,7 @@ function ShadesAndBlindsOptions({
         if (!specialtyShapeApplication && isHoneycombChainOperatingSystem(operatingSystem)) {
           options.push({
             key: "chain_location",
-            label: "Chain Location",
+            label: "Chain Location (from inside the room)",
             field: "json:chain_location",
             type: "buttons",
             options: HONEYCOMB_CHAIN_LOCATIONS,
@@ -11285,6 +11305,15 @@ function ShadesAndBlindsOptions({
   };
 
   const gridOptions = getGridOptions();
+  if (["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(productType)) {
+    gridOptions.push({
+      key: "control_side",
+      label: "Wand Side (from inside the room)",
+      field: "json:control_side",
+      type: "buttons",
+      options: ["Left", "Right"],
+    });
+  }
   const optionsJson = (design?.options_json as Record<string, unknown>) || {};
 
   const handleManualPriceChange = async (price: number) => {

@@ -60,7 +60,7 @@ import {
 } from "@/lib/quote-v2/selected-design";
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
-import { getCustomerLineItemProductImage } from "@mts/lib/quoteProductImages";
+import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
@@ -935,26 +935,15 @@ export function QuoteContract({
                 const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
                 });
-                const productImage = getCustomerLineItemProductImage(item);
                 const itemDimensions = formatDimensionsOrNull(item);
                 return (
                   <div key={item.id} className="p-4 bg-muted/30 rounded-lg border">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 gap-4">
-                        {productImage && (
-                          <div className="hidden h-24 w-28 shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm sm:block">
-                            <img
-                              src={productImage.imageUrl}
-                              alt={productImage.title}
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
-                        )}
                         <div className="min-w-0">
                           <h4 className="font-bold">{item.room_name}</h4>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-foreground text-sm font-semibold">
                               {customerQuoteProductName(item.product_type)}
                             </span>
                             {itemDimensions ? (
@@ -966,11 +955,6 @@ export function QuoteContract({
                             )}
                             {item.quantity > 1 && <span>x{item.quantity}</span>}
                           </div>
-                          {productImage && (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              Product image: {productImage.title}
-                            </p>
-                          )}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
@@ -1045,8 +1029,13 @@ export function QuoteContract({
                                   </Button>
                                 </div>
                               </div>
+                              <div className="mt-3 flex flex-wrap items-start gap-4">
+                                <ContractProductIllustration
+                                  productType={customerQuoteProductName(design.product_type || item.product_type)}
+                                  options={getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`)}
+                                />
                               {details.length > 0 && (
-                                <dl className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2">
+                                <dl className="grid min-w-0 flex-1 basis-48 grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2">
                                   {details.map((detail) => (
                                     <div key={`${design.id}-${detail.label}`} className="min-w-0">
                                       <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1057,6 +1046,7 @@ export function QuoteContract({
                                   ))}
                                 </dl>
                               )}
+                              </div>
                             </div>
                           );
                         })}

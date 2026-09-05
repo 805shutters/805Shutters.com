@@ -3,6 +3,7 @@
 import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 
 import { useEffect, useRef, useState } from "react";
+import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-payment-state";
@@ -223,6 +224,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
           {!previewOnly && !quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
 
+          <p style={{ margin: "0 0 10px", fontSize: 11, color: "#5b5b58" }}>Left and right are viewed from inside the room.</p>
           <div className={styles.orderLines}>
             {quote.lines.map((line) => {
               const isChecked = selected.has(line.id);
@@ -485,7 +487,9 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
 function ProductConfiguration({ productName, styleName, options }: { productName: string; styleName: string; options: string[] }) {
   const details = quoteProductDetails(styleName, options);
   return (
-    <div className={styles.productConfiguration}>
+    <div className={styles.illustratedConfiguration}>
+      <ContractProductIllustration productType={productName} options={options} />
+      <div className={styles.productConfiguration}>
       <strong className={styles.productName}>{customerQuoteProductName(productName)}</strong>
       {details.length ? (
         <dl className={styles.productDetails}>
@@ -497,6 +501,7 @@ function ProductConfiguration({ productName, styleName, options }: { productName
           ))}
         </dl>
       ) : null}
+      </div>
     </div>
   );
 }
