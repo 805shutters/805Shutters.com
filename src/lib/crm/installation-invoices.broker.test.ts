@@ -1,0 +1,9 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getBrokeredGmailAccessToken } from "./installation-invoices";
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+function configure() { vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_URL", "https://broker.example.test/token"); vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_SECRET", "test-only"); vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_ACTION", ""); vi.stubEnv("INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_ACTION", ""); }
+describe("pinned Gmail broker contract", () => {
+  it("makes no requests when the operation is not configured", async () => { configure(); const fetch = vi.fn(); vi.stubGlobal("fetch", fetch); await expect(getBrokeredGmailAccessToken("805@example.test")).rejects.toThrow("unconfigured"); expect(fetch).not.toHaveBeenCalled(); });
+  it("uses exactly the configured operation and never probes after rejection", async () => { configure(); vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_ACTION", "verified-contract-operation"); const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: "Unsupported action" }), { status: 400 })); vi.stubGlobal("fetch", fetch); await expect(getBrokeredGmailAccessToken("805@example.test")).rejects.toThrow("HTTP 400"); expect(fetch).toHaveBeenCalledTimes(1); expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ action: "verified-contract-operation", emailAddress: "805@example.test" }); });
+  it("returns the token only for a successful configured response", async () => { configure(); vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_ACTION", "verified-contract-operation"); vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ accessToken: "synthetic-token" })))); expect(await getBrokeredGmailAccessToken("805@example.test")).toBe("synthetic-token"); });
+});

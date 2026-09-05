@@ -737,7 +737,7 @@ describe("readyToOrderTasks", () => {
 });
 
 describe("buildDashboardData", () => {
-  it("counts Open Jobs as sold jobs that are not paid/completed", () => {
+  it("counts prepaid unfinished jobs as open without changing financial projections", () => {
     const data = buildDashboardData({
       jobs: [
         job({ id: "quoted-lead", status: "quoted", customer_name: "Quoted Lead" }),
@@ -768,7 +768,7 @@ describe("buildDashboardData", () => {
       payoffTarget: 500000
     });
 
-    expect(data.summary.openJobs).toBe(3);
+    expect(data.summary.openJobs).toBe(4);
     expect(data.jobs.find((item) => item.id === "paid-balance")?.status).toBe("closed");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-balance")?.jobStatus).toBe("sold");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.status).toBe("paid");

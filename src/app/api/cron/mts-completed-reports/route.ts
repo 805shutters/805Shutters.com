@@ -1,3 +1,5 @@
+import { observeIntegration } from "@/lib/crm/integration-health";
+import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { get805GmailAccessToken } from "@/lib/crm/installation-invoices";
@@ -59,9 +61,11 @@ export async function runMtsCompletedReportsCron(
 ) {
   try {
     requireCronAccess(request, dependencies.env);
-    const accessToken = await dependencies.getAccessToken();
-    await dependencies.verifyModifyAccess(accessToken);
-    const result = await dependencies.fileReports(dependencies.createClient(accessToken));
+    const result = await observeIntegration(dependencies === productionDependencies ? getSupabaseServiceClient() : null, "completed-report-filing", async () => {
+      const accessToken = await dependencies.getAccessToken();
+      await dependencies.verifyModifyAccess(accessToken);
+      return dependencies.fileReports(dependencies.createClient(accessToken));
+    });
     return NextResponse.json({
       mailbox: MTS_COMPLETED_REPORT_RECIPIENT,
       labels: {

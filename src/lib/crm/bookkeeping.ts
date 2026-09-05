@@ -346,8 +346,16 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
   for (const row of rows) {
     const owner = row.salesOwner === "jessica" ? "Jessica" : row.salesOwner === "mike" ? "Mike" : "Sales";
     const status = effectiveBookkeepingStatus(row);
+    const progress = row.operationalProgress;
+    if (progress?.active) items.push({
+      id: `${row.id}-operational-action`, type: "operational_action",
+      label: progress.nextAction,
+      detail: `${row.customerName} · ${progress.blockers.join("; ") || "Review the linked order evidence"}`,
+      owner: "Unassigned", urgency: progress.stage === "attention" ? "urgent" : "warning",
+      rowId: row.id, quoteId: row.quoteId, jobId: row.jobId,
+    });
 
-    if ((status === "sold" || status === "approved") && !row.manufacturerOrderRef) {
+    if (!progress && (status === "sold" || status === "approved") && !row.manufacturerOrderRef) {
       items.push({
         id: `${row.id}-needs-order`,
         type: "needs_order",
@@ -390,7 +398,7 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
       });
     }
 
-    if (status === "ordered") {
+    if (!progress && status === "ordered") {
       items.push({
         id: `${row.id}-awaiting-product`,
         type: "awaiting_product",
@@ -404,7 +412,7 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
       });
     }
 
-    if (status === "received") {
+    if (!progress && status === "received") {
       items.push({
         id: `${row.id}-ready-install`,
         type: "ready_to_install",

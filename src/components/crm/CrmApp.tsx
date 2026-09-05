@@ -862,6 +862,7 @@ export function CrmApp({
   const [data, setData] = useState<CrmDashboardData | null>(null);
   const [activitySnapshot, setActivitySnapshot] = useState<CrmActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [dashboardRefreshError, setDashboardRefreshError] = useState<string | null>(null);
   const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
@@ -872,6 +873,7 @@ export function CrmApp({
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const dashboardRequestVersion = useRef(0);
   const activityPollAbortRef = useRef<AbortController | null>(null);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
@@ -1300,8 +1302,9 @@ export function CrmApp({
 
   async function refresh() {
     if (!session) return null;
+    const requestVersion = ++dashboardRequestVersion.current;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
-    setData(dashboardResult);
+    if (requestVersion === dashboardRequestVersion.current) { setData(dashboardResult); setDashboardRefreshError(null); }
     return dashboardResult;
   }
 
@@ -1578,12 +1581,13 @@ export function CrmApp({
   // without re-subscribing the interval on every save.
   useEffect(() => {
     busyRef.current = busy;
+    dashboardRequestVersion.current += 1;
   }, [busy]);
 
   // Keep the dashboard live: silently refetch on an interval, and immediately
   // when the tab regains focus. Skips while a save is in flight (so it can't
   // clobber an edit) or while the tab is hidden (so it doesn't poll in the
-  // background). A failed background refresh stays silent — no error banner.
+  // background). Preserve the snapshot and expose failed refreshes.
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
@@ -1591,12 +1595,14 @@ export function CrmApp({
     const sync = async () => {
       if (cancelled || busyRef.current) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      const requestVersion = ++dashboardRequestVersion.current;
       try {
         const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
-        if (cancelled) return;
+        if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
         setData(dashboardResult);
+        setDashboardRefreshError(null);
       } catch {
-        // Background refresh is best-effort; the next tick will retry.
+        if (!cancelled && requestVersion === dashboardRequestVersion.current) setDashboardRefreshError("Refresh failed. Showing the last successful snapshot; figures may be stale.");
       }
     };
 
@@ -3068,6 +3074,9 @@ export function CrmApp({
           />
         )
       ) : null}
+      {data?.integrationHealth?.filter((source) => source.state !== "succeeded").map((source) => <p role="status" className="crm-feedback-banner" key={source.processor}>{source.processor.replaceAll("-", " ")}: {source.state === "unknown" ? "No processing history recorded" : source.state}. Last successful processing: {source.lastSuccessAt ? new Date(source.lastSuccessAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }) : "Unknown"}. Refreshing the dashboard does not rerun this integration.</p>)}
+      {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
+      {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
       <header className="crm-topbar">
         <div className="crm-logo-lockup">
           <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} />
@@ -3076,7 +3085,7 @@ export function CrmApp({
         </div>
         <section className="crm-metrics" aria-label="CRM summary">
           <Metric
-            label="30-Day Close Rate"
+            label="30-Day Customer Conversion"
             value={formatCloseRate(commandPerformance.closeRate30Days)}
             variant="performance"
             onClick={() => toggleCloseRateDrilldown(30)}
@@ -3084,7 +3093,7 @@ export function CrmApp({
             ariaControls="crm-close-rate-drilldown"
           />
           <Metric
-            label="60-Day Close Rate"
+            label="60-Day Customer Conversion"
             value={formatCloseRate(commandPerformance.closeRate60Days)}
             variant="performance"
             onClick={() => toggleCloseRateDrilldown(60)}
@@ -3092,13 +3101,13 @@ export function CrmApp({
             ariaControls="crm-close-rate-drilldown"
           />
           <Metric
-            label="Current CRM Close Rate"
+            label="Current CRM Customer Conversion"
             value={formatCloseRate(commandPerformance.currentCrmSalesRate)}
             variant="performance"
           />
           <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
           <Metric label="60-Day Revenue" value={toCurrency(commandPerformance.revenue60Days)} variant="performance" />
-          <Metric label={`${new Date().getFullYear()} Sales Forecast`} value={toCurrency(commandPerformance.currentYearForecast)} variant="performance" />
+          <Metric label={`${new Date().getFullYear()} Booked-Sales Run Rate`} value={toCurrency(commandPerformance.currentYearForecast)} detail="YTD booked sales ÷ elapsed days × days in year" variant="performance" />
           <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
           <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
           <Metric label="Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
@@ -3109,7 +3118,7 @@ export function CrmApp({
           {readyToOrderCount > 0 ? (
             <Metric label="Ready to Order" value={readyToOrderCount} tone="warning" onClick={() => openSummaryDrill("readyToOrder")} />
           ) : null}
-          <Metric label="Balance Due" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
+          <Metric label="Completed / Balance Open" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
           <Metric label="Missing COGS" value={missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
           <MeasureMetric
@@ -3220,6 +3229,10 @@ export function CrmApp({
       {activeTab === "tracking" ? (
         <JobTrackingWorkspace
           warnings={data?.loadWarnings}
+          integrationHealth={data?.integrationHealth}
+          installerOutcomes={data?.installerOutcomes}
+          sourceHealth={data?.sourceHealth}
+          asOf={data?.asOf}
           jobs={jobs}
           quotes={quotes}
           rows={rows}
@@ -5232,7 +5245,7 @@ function buildSummaryDrill(
     case "openJobs":
       return {
         title: "Open Jobs",
-        subtitle: "Sold jobs not yet paid in full",
+        subtitle: "Distinct jobs with unfinished work or obligations; includes prepaid work",
         metric,
         placement: "summary",
         entries: rowsToEntries(uniqueOpenSoldRows(rows), (row) => row.balance, { jobs, files })
@@ -5273,7 +5286,7 @@ function buildSummaryDrill(
     case "needsOrder":
       return {
         title: "Need To Order",
-        subtitle: "Sold jobs not yet moved to ordered",
+        subtitle: "Accepted orders ready for order review; one row per order",
         metric,
         placement: "summary",
         entries: rowsToEntries(needToOrderRows(rows), (row) => row.total, { jobs, files })
@@ -5331,8 +5344,8 @@ function buildSummaryDrill(
       };
     case "balanceDueCompleted":
       return {
-        title: "Balance Due",
-        subtitle: "Completed installations with an unpaid balance",
+        title: "Completed / Balance Open",
+        subtitle: "Recorded completed orders with an open balance; due dates require contract review",
         metric,
         placement: "summary",
         entries: rowsToEntries(balanceDueCompletedRows(rows, jobs, quotes), (row) => row.balance, { jobs, files })

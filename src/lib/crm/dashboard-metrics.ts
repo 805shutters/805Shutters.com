@@ -1,5 +1,7 @@
+import { buildJobTrackingView } from "./job-tracking-view";
+import type { JobProgress } from "./job-progress";
 import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
-import { getMeasureNeededMeta, isMeasureNeededJob } from "@/lib/crm/measure-needed-state";
+import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   CrmBookkeepingRow,
   CrmBookkeepingStatus,
@@ -50,13 +52,15 @@ export function distinctRowsByJob(rows: CrmBookkeepingRow[]) {
   return result;
 }
 
+function progressForRows(rows: CrmBookkeepingRow[], jobs: CrmJob[] = [], quotes: CrmQuote[] = []) {
+  if (rows.every((row) => row.operationalProgress)) return (row: CrmBookkeepingRow) => row.operationalProgress!;
+  const derived = new Map(buildJobTrackingView({ rows, jobs, quotes, files: [] }).filter((item) => item.row).map((item) => [item.row!.id, item.progress]));
+  return (row: CrmBookkeepingRow): JobProgress | undefined => row.operationalProgress || derived.get(row.id);
+}
+
 export function openSoldRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter(
-    (row) => {
-      const status = effectiveBookkeepingStatus(row);
-      return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && SOLD_PIPELINE_STATUSES.has(status);
-    }
-  );
+  const progress = progressForRows(rows);
+  return rows.filter((row) => row.total > 0 && progress(row)?.commercial === "accepted" && progress(row)?.active);
 }
 
 export function soldRows(rows: CrmBookkeepingRow[]) {
@@ -68,16 +72,13 @@ export function soldLifecycleJobs(jobs: CrmJob[]) {
 }
 
 export function needToOrderRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter(
-    (row) => {
-      const status = effectiveBookkeepingStatus(row);
-      return row.total > 0 && !isPaidInFullBookkeepingRow(row) && (status === "sold" || status === "approved");
-    }
-  );
+  const progress = progressForRows(rows);
+  return rows.filter((row) => progress(row)?.stage === "need_to_order");
 }
 
 export function awaitingProductRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter((row) => row.total > 0 && !isPaidInFullBookkeepingRow(row) && effectiveBookkeepingStatus(row) === "ordered");
+  const progress = progressForRows(rows);
+  return rows.filter((row) => progress(row)?.stage === "ordered");
 }
 
 export function missingCogsRows(rows: CrmBookkeepingRow[]) {
@@ -89,7 +90,7 @@ export function openBalanceRows(rows: CrmBookkeepingRow[]) {
 }
 
 export function measureNeededJobs(jobs: CrmJob[]) {
-  return jobs.filter(isMeasureNeededJob);
+  return jobs.filter((job) => getMeasureNeededMeta(job.meta).status === "needed");
 }
 
 export function measureScheduledJobs(jobs: CrmJob[]) {
@@ -102,7 +103,8 @@ export function measureUnscheduledJobs(jobs: CrmJob[]) {
 
 /** Sold jobs (sold/approved) where the required deposit hasn't been collected. */
 export function depositNeededRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter(trackingRowNeedsDeposit);
+  const progress = progressForRows(rows);
+  return rows.filter((row) => progress(row)?.stage === "sold_need_deposit");
 }
 
 /**
@@ -119,31 +121,10 @@ export function trackingRowNeedsDeposit(row: CrmBookkeepingRow) {
   return paid <= 0 || (due > 0 && paid < due);
 }
 
-function hasCompletedServiceReport(meta: Record<string, unknown> | null | undefined) {
-  return Boolean(
-    meta?.completedServiceReportSource === "gmail" &&
-      meta.completedServiceReportMessageId &&
-      meta.completedServiceReportAppliedAt,
-  );
-}
-
-/** Physically completed installations with an auditable service report and an unpaid balance. */
+/** Completion cohort with open balances; contractual due dates remain separate. */
 export function balanceDueCompletedRows(rows: CrmBookkeepingRow[], jobs: CrmJob[], quotes: CrmQuote[] = []) {
-  const jobsById = new Map(jobs.map((job) => [job.id, job]));
-  const quotesById = new Map(quotes.map((quote) => [quote.id, quote]));
-
-  return rows.filter(
-    (row) => {
-      const job = row.jobId ? jobsById.get(row.jobId) : null;
-      const quote = row.quoteId ? quotesById.get(row.quoteId) : null;
-
-      return (
-        !isPaidInFullBookkeepingRow(row) &&
-        Number(row.balance) > 0 &&
-        (hasCompletedServiceReport(job?.meta) || hasCompletedServiceReport(quote?.meta))
-      );
-    },
-  );
+  const progress = progressForRows(rows, jobs, quotes);
+  return rows.filter((row) => progress(row)?.stage === "balance_needed");
 }
 
 export function quotedPipelineQuotes(quotes: CrmQuote[], now: Date | string = new Date()) {
@@ -200,13 +181,13 @@ export function buildDashboardSummaryMetrics({
     soldPipeline: openRows.reduce((total, row) => total + (Number(row.total) || 0), 0),
     depositCollected: jobs.reduce((total, job) => total + (Number(job.deposit_paid) || 0), 0),
     openBalance: openBalances.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
-    needsOrder: distinctRowsByJob(needOrder).length,
-    depositNeeded: distinctRowsByJob(depositNeeded).length,
+    needsOrder: needOrder.length,
+    depositNeeded: depositNeeded.length,
     depositNeededAmount: depositNeeded.reduce((total, row) => total + Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0), 0),
-    balanceDueCompleted: distinctRowsByJob(balanceDueCompleted).length,
+    balanceDueCompleted: balanceDueCompleted.length,
     balanceDueCompletedAmount: balanceDueCompleted.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     missingCogs: missingCogs.length,
-    awaitingProduct: distinctRowsByJob(awaitingProduct).length,
+    awaitingProduct: awaitingProduct.length,
     measureNeeded: measureNeeded.length,
     measureScheduled: measureScheduled.length
   };

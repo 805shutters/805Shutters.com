@@ -1,3 +1,4 @@
+import { observeIntegration } from "@/lib/crm/integration-health";
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { processInstallationInvoiceInbox } from "@/lib/crm/installation-invoices";
@@ -7,7 +8,7 @@ export const runtime = "nodejs";
 
 function requireCronAccess(request: NextRequest) {
   const secret = process.env.INSTALLATION_INVOICE_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret) return;
+  if (!secret) throw new CrmAuthError(503, "Installation invoice cron secret is not configured.");
 
   const authorization = request.headers.get("authorization") || "";
   if (authorization !== `Bearer ${secret}`) {
@@ -21,9 +22,9 @@ async function run(request: NextRequest) {
     const supabase = getSupabaseServiceClient();
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
 
-    const result = await processInstallationInvoiceInbox(supabase, {
+    const result = await observeIntegration(supabase, "installation-invoices", () => processInstallationInvoiceInbox(supabase, {
       actorEmail: "installation-invoice-cron"
-    });
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

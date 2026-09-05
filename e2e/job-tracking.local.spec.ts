@@ -1,3 +1,4 @@
+import type { InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
 import { test, expect, devices, type Page } from "@playwright/test";
 import { buildDashboardData } from "../src/lib/crm/backend";
 import type { CrmJob, CrmQuote, CrmBookkeepingPayment, CrmBookkeepingCredit, CrmBookkeepingEntry } from "../src/lib/crm/types";
@@ -15,7 +16,7 @@ function fixture() {
   const credits: CrmBookkeepingCredit[] = [];
   quotes.push({ ...quotes[0], id: id(90), job_id: jobs[6].id, customer_name: jobs[6].customer_name, customer_email: jobs[6].email, status: "sent", sold_at: null, signed_at: null, quote_total: 20000, balance_due: 20000 });
   const entries: CrmBookkeepingEntry[] = [];
-  return { jobs, quotes, payments, credits, entries };
+  return { jobs, quotes, payments, credits, entries, installerOutcomes: [] as InstallerOutcomeEvidence[] };
 }
 async function setup(page: Page, includeLegacy = false) {
   const records = fixture();
@@ -82,7 +83,7 @@ async function setup(page: Page, includeLegacy = false) {
 test("full local tracking workflow: filters, sorting, edits, receipts and Square confirmation", async ({ page }) => {
   const { writes, failNextCogs } = await setup(page);
   const table = page.getByRole("table");
-  await expect(page.getByText("Active sold-job outstanding", { exact: true }).locator("..")).toContainText("$14,000.00");
+  await expect(page.getByText("Active order balances", { exact: true }).locator("..")).toContainText("$14,000.00");
   await expect(page.getByRole("navigation", { name: "Filter jobs by status" }).getByRole("button").first()).toHaveText("All Active7");
   await expect(page.getByRole("button", { name: /^All Active\s+7$/ })).toHaveAttribute("aria-pressed", "true");
   await expect(table.locator("tbody tr")).toHaveCount(7);
@@ -130,7 +131,7 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
   await page.getByRole("button", { name: /Change stage for Avery/ }).click();
   await page.getByRole("radio", { name: "Follow Up", exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Change stage for Avery.*Follow Up/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Change stage for Avery.*Deposit Needed/ })).toBeVisible();
   failNextCogs();
   await page.getByRole("button", { name: "Record COGS for Avery Sample", exact: true }).click();
   await page.getByRole("spinbutton").fill("99");
@@ -262,23 +263,16 @@ for (const viewport of [{ name: "desktop", width: 1728, height: 1117 }, { name: 
   });
 }
 
-test("completed work moves to Archive and can be reopened without changing payments", async ({ page }) => {
+test("unsupported terminal label stays actionable and preserves all payments", async ({ page }) => {
   const { records, writes } = await setup(page);
-  const originalPayments = records.payments.map((payment) => ({ ...payment }));
+  const originalPayments = structuredClone(records.payments);
   await page.getByRole("button", { name: /Change stage for Avery/ }).click();
   await page.getByRole("radio", { name: "Complete", exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("table")).not.toContainText("Avery Sample");
-  await page.getByRole("button", { name: /^Archive\s+2$/ }).click();
   await expect(page.getByRole("table")).toContainText("Avery Sample");
-  await page.getByRole("button", { name: /Change stage for Avery/ }).click();
-  await page.getByRole("radio", { name: "Follow Up", exact: true }).check();
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("table")).not.toContainText("Avery Sample");
-  await page.getByRole("button", { name: /^All Active\s+7$/ }).click();
-  await expect(page.getByRole("table")).toContainText("Avery Sample");
+  await page.getByRole("button", { name: /^Needs Attention\s+1$/ }).click();
+  await expect(page.getByRole("table")).toContainText("Recorded complete");
   expect(records.payments).toEqual(originalPayments);
   expect(writes.every((write) => write.url === "/api/crm/job-tracking/stage")).toBe(true);
 });
@@ -308,4 +302,42 @@ test("mobile card records received money separately from confirmed Square reques
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.body).toMatchObject({ expectedAmount: 1500, expectedRecipient: "avery@example.com" });
   expect(records.payments).toHaveLength(receivedCount);
+});
+
+
+test("partial reports and terminal conflicts agree with operational queues", async ({ page }, testInfo) => {
+  const { records, writes } = await setup(page);
+  records.installerOutcomes.push({ id: id(501), job_id: records.jobs[4].id, quote_id: records.quotes[4].id, status: "partially_installed", signed_at: "2026-09-03T12:00:00Z", issues: [{ lineId: "opening-1", notInstalled: true, details: "Missing product" }], meta: { workflow: { outcome: "partially_completed", updatedAt: "2026-09-03T12:00:00Z" } } });
+  records.quotes[4].meta = { job_tracking: { stage: "complete" } };
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "Job tracking", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /^Needs Attention\s+1$/ }).click();
+  await expect(page.getByRole("table")).toContainText("Cameron Fixture");
+  await expect(page.getByRole("table")).toContainText("Partial / incomplete");
+  await expect(page.getByRole("table")).toContainText("Paid in full");
+  await page.getByRole("button", { name: "Show details for Cameron Fixture" }).click();
+  await expect(page.getByRole("table")).toContainText(id(501));
+  await page.screenshot({ path: testInfo.outputPath("partial-paid-attention-desktop.png"), scale: "css" });
+  await page.getByRole("button", { name: /^Balance Needed\s+1$/ }).click();
+  await expect(page.getByRole("table")).toContainText("Morgan Preview");
+  const balanceTile = page.getByText("Completed / Balance Open", { exact: true }).locator("..");
+  await expect(balanceTile).toContainText("1");
+  await balanceTile.click();
+  await expect(page.getByRole("region", { name: "Completed / Balance Open", exact: true })).toBeVisible();
+  await expect(page.getByRole("listbox", { name: "Completed / Balance Open records" }).getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("listbox", { name: "Completed / Balance Open records" })).toContainText("Morgan Preview");
+  expect(writes).toHaveLength(0);
+});
+
+
+test("failed refresh retains the last snapshot and recovery clears the warning", async ({ page }) => {
+  const { writes } = await setup(page);
+  await page.route("**/api/crm/jobs**", route => route.fulfill({ status: 503, json: { message: "Synthetic source outage" } }));
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.getByRole("alert").filter({ hasText: "Refresh failed" })).toBeVisible();
+  await expect(page.getByText("Active order balances", { exact: true }).locator("..")).toContainText("$14,000.00");
+  await page.unroute("**/api/crm/jobs**");
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.getByRole("alert").filter({ hasText: "Refresh failed" })).toHaveCount(0);
+  expect(writes).toHaveLength(0);
 });

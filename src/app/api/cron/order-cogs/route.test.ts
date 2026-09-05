@@ -99,6 +99,15 @@ describe("order COGS cron route", () => {
     expect(deps.processPeerPayments).toHaveBeenCalledOnce();
   });
 
+  it("does not run processors when cron authentication is unconfigured", async () => {
+    const deps = dependencies();
+    deps.env = {};
+    const response = await runOrderCogsCron(request(), deps);
+    expect(response.status).toBe(503);
+    expect(deps.processOrderCogs).not.toHaveBeenCalled();
+    expect(deps.reconcileSquarePayments).not.toHaveBeenCalled();
+  });
+
   it("disables manufacturer COGS auto-apply and still runs Square and peer processors", async () => {
     const deps = dependencies();
 

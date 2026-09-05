@@ -1,3 +1,5 @@
+import type { IntegrationHealth } from "./integration-health";
+import type { JobProgress, InstallerOutcomeEvidence, ProgressSourceHealth } from "./job-progress";
 export const crmJobStatuses = [
   "new",
   "follow_up",
@@ -36,6 +38,7 @@ export type CrmCommissionRecipient = "mike" | "jessica";
 export type CrmInstallationMatchStatus = "unmatched" | "matched" | "needs_review";
 
 export type CrmJob = {
+  source_status?: CrmJobStatus;
   id: string;
   created_at: string;
   updated_at: string;
@@ -390,6 +393,7 @@ export type CrmOrderCogsEmail = {
 };
 
 export type CrmBookkeepingRow = {
+  operationalProgress?: JobProgress;
   id: string;
   meta?: Record<string, unknown> | null;
   sourceSoldDate?: string | null;
@@ -505,6 +509,7 @@ export type CrmBookkeepingTotals = {
 export type CrmAccountabilityItem = {
   id: string;
   type:
+    | "operational_action"
     | "needs_order"
     | "missing_cogs"
     | "payment_due"
@@ -881,7 +886,11 @@ export type CrmActivitySnapshot = {
 };
 
 export type CrmDashboardData = {
+  installerOutcomes?: InstallerOutcomeEvidence[];
+  sourceHealth?: ProgressSourceHealth[];
+  asOf?: string;
   loadWarnings?: string[];
+  integrationHealth?: IntegrationHealth[];
   jobs: CrmJob[];
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];

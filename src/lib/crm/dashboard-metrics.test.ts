@@ -141,7 +141,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
 }
 
 describe("dashboard summary metrics", () => {
-  it("counts Need to Order by sold/approved status, not order-number presence", () => {
+  it("counts prepaid unfinished orders and separates deposit prerequisites", () => {
     const rows = [
       row({ id: "sold-with-ref", jobId: "job-sold", status: "sold", manufacturerOrderRef: "ABC-123" }),
       row({ id: "approved", jobId: "job-approved", status: "approved" }),
@@ -150,7 +150,7 @@ describe("dashboard summary metrics", () => {
       row({ id: "paid", jobId: "job-paid", status: "sold", isPaidInFull: true, balance: 0 })
     ];
 
-    expect(needToOrderRows(rows).map((item) => item.id)).toEqual(["sold-with-ref", "approved"]);
+    expect(needToOrderRows(rows).map((item) => item.id)).toEqual(["closed-live", "paid"]);
 
     const summary = buildDashboardSummaryMetrics({
       jobs: [],
@@ -201,7 +201,7 @@ describe("dashboard summary metrics", () => {
     expect(summary).not.toHaveProperty("payoffLeft");
   });
 
-  it("separates unscheduled and scheduled active sold measures", () => {
+  it("keeps required measures visible after ordering", () => {
     const summary = buildDashboardSummaryMetrics({
       jobs: [
         job({ id: "needs-measure", meta: { measure_needed: { status: "needed" } } }),
@@ -225,7 +225,7 @@ describe("dashboard summary metrics", () => {
       orderCogsEmails: []
     });
 
-    expect(summary.measureNeeded).toBe(1);
+    expect(summary.measureNeeded).toBe(2);
     expect(summary.measureScheduled).toBe(1);
   });
 
@@ -296,7 +296,7 @@ describe("dashboard summary metrics", () => {
     });
 
     expect(summary.quotedPipeline).toBe(2500);
-    expect(summary.soldPipeline).toBe(4500);
+    expect(summary.soldPipeline).toBe(9500);
   });
 
   it("keeps closed-status rows with open balances in active sold totals", () => {

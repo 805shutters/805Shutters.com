@@ -1,3 +1,6 @@
+import { loadIntegrationHealth } from "./integration-health";
+import { buildJobTrackingView } from "./job-tracking-view";
+import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "./job-progress";
 import { loadCompleteCrmTable } from "@/lib/crm/pagination";
 import { insertReceivedPayment } from "@/lib/crm/received-payment";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -1176,6 +1179,8 @@ export function buildDashboardData({
   credits,
   expenses,
   installationInvoiceEmails = [],
+  installerOutcomes = [],
+  sourceHealth = [],
   kenPayments,
   kenPaymentAllocations = [],
   orderCogsEmails = [],
@@ -1197,6 +1202,8 @@ export function buildDashboardData({
   credits: CrmBookkeepingCredit[];
   expenses: CrmJobExpense[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
+  installerOutcomes?: InstallerOutcomeEvidence[];
+  sourceHealth?: ProgressSourceHealth[];
   kenPayments: CrmKenPayment[];
   kenPaymentAllocations?: CrmKenPaymentAllocation[];
   orderCogsEmails?: CrmOrderCogsEmail[];
@@ -1239,7 +1246,6 @@ export function buildDashboardData({
   const liveQuotes = projectLiveQuoteStatuses(contractProjectedQuotes, statusBookkeepingRows);
   const bookkeepingRows = projectBookkeepingRowContacts(statusBookkeepingRows, liveJobs, liveQuotes, customers);
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
-  const accountability = buildAccountabilityQueue(bookkeepingRows);
   const kenPayoff = buildKenPayoffSummary({
     rows: bookkeepingRows,
     payments: kenPayments,
@@ -1264,11 +1270,15 @@ export function buildDashboardData({
   });
   const jobsWithQuotes = liveJobs.map((job) => ({
     ...job,
+    source_status: sourceJobStatusById.get(job.id) || job.status,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
   const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts);
+  const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
+  for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
   return {
+    installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
     jobs: jobsWithQuotes,
     quotes: liveQuotes,
     events: calendarEvents,
@@ -1291,7 +1301,7 @@ export function buildDashboardData({
     commissionPaymentAllocations,
     commissionSummary,
     partnerPaymentLedger,
-    accountability,
+    accountability: buildAccountabilityQueue(bookkeepingRows),
     vendorOrderTasks: readyToOrderTasks(vendorOrderTasks, liveJobs, liveQuotes, bookkeepingRows),
     summary: buildDashboardSummaryMetrics({
       jobs: jobsWithQuotes,
@@ -1715,7 +1725,9 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     commissionPaymentAllocationsResult,
     vendorOrderDraftsResult,
     vendorOrderTasksResult,
-    settingsResult
+    settingsResult,
+    installerOutcomesResult,
+    integrationHealth
   ] = await Promise.all([
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
     loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
@@ -1734,16 +1746,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_credits", "credit_date"),
     loadCompleteCrmTable(supabase, "crm_job_expenses", "incurred_on"),
     loadCompleteCrmTable(supabase, "crm_installation_invoice_emails", "created_at"),
-    supabase
-      .from("crm_ken_payments")
-      .select("*")
-      .order("paid_on", { ascending: false, nullsFirst: false })
-      .limit(500),
-    supabase
-      .from("crm_ken_payment_allocations")
-      .select("*")
-      .order("created_at", { ascending: true })
-      .limit(2000),
+    loadCompleteCrmTable(supabase, "crm_ken_payments", "paid_on"),
+    loadCompleteCrmTable(supabase, "crm_ken_payment_allocations", "created_at"),
     loadCompleteCrmTable(supabase, "crm_order_cogs_emails", "created_at"),
     supabase
       .from("crm_activity_events")
@@ -1752,16 +1756,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .eq("action", "order_cogs_email_audit_fallback")
       .order("created_at", { ascending: false })
       .limit(100),
-    supabase
-      .from("crm_commission_payments")
-      .select("*")
-      .order("paid_on", { ascending: false, nullsFirst: false })
-      .limit(1000),
-    supabase
-      .from("crm_commission_payment_allocations")
-      .select("*")
-      .order("created_at", { ascending: true })
-      .limit(4000),
+    loadCompleteCrmTable(supabase, "crm_commission_payments", "paid_on"),
+    loadCompleteCrmTable(supabase, "crm_commission_payment_allocations", "created_at"),
     supabase
       .from("crm_vendor_order_drafts")
       .select("id,external_task_id,technical_measure_form_id,crm_job_id,crm_quote_id,manufacturer,product_type,status,source_kind,requested_at,customer_snapshot,quote_snapshot,routing_keys,product_names,line_count,portal_url,order_packet_url,manufacturer_order_ref,message,error_message")
@@ -1773,7 +1769,9 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .eq("status", "submitted")
       .order("submitted_at", { ascending: false })
       .limit(1000),
-    supabase.from("crm_settings").select("*")
+    supabase.from("crm_settings").select("*"),
+    loadCompleteCrmTable(supabase, "crm_installer_forms", "updated_at", "id,job_id,quote_id,status,signed_at,updated_at,created_at,issues,meta"),
+    loadIntegrationHealth(supabase)
   ]);
 
   if (
@@ -1893,7 +1891,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
+  const optionalEvidence = [["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
+  const loadedAt = new Date().toISOString();
+  const sourceHealth: ProgressSourceHealth[] = optionalEvidence.map(([source, result]) => ({ source, state: result.error ? "unavailable" : "complete", loadedAt, ...(result.error ? { message: `Could not load ${source}. Related conclusions are incomplete.` } : {}) }));
+  // Never send the public installer bearer token or signed/customer snapshots to dashboard consumers.
+  const installerOutcomes = (installerOutcomesResult.error ? [] : installerOutcomesResult.data || []) as InstallerOutcomeEvidence[];
+  const safeInstallerOutcomes = installerOutcomes.map((report) => ({ ...report, meta: { workflow: report.meta?.workflow } }));
   const dashboard = buildDashboardData({
+    installerOutcomes: safeInstallerOutcomes, sourceHealth,
     jobs,
     quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
     events,
@@ -1914,8 +1919,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     openingBalance,
     payoffTarget
   });
-  const optionalEvidence = [["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult]] as const;
-  return { ...dashboard, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
+  return { ...dashboard, integrationHealth, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {

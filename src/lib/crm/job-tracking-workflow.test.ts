@@ -130,7 +130,7 @@ describe("manual job tracking stages", () => {
     const rows = buildBookkeepingRows({ quotes, entries, payments: [] });
     const items = buildJobTrackingView({ jobs: db.tables.crm_jobs.map((j) => ({ ...j, customer_name: "Sample customer" })) as unknown as CrmJob[], quotes, rows, files: [] });
     expect(items).toHaveLength(1);
-    expect(items[0]).toMatchObject({ stageId: "need_follow_up", manualStage: true });
+    expect(items[0]).toMatchObject({ stageId: "sold_need_deposit", manualStage: true });
     expect(items[0].soldDate).toBe("2026-08-01");
   });
 
@@ -141,7 +141,8 @@ describe("manual job tracking stages", () => {
     const rows = buildBookkeepingRows({ quotes, entries: [], payments: [payment] });
     expect(rows[0].isPaidInFull).toBe(true);
     const items = buildJobTrackingView({ jobs: [{ ...db.tables.crm_jobs[0], status: "closed" }] as unknown as CrmJob[], quotes, rows, files: [] });
-    expect(items[0]).toMatchObject({ stageId: "need_to_order", balanceOutstanding: 0 });
+    expect(items[0]).toMatchObject({ stageId: "attention", balanceOutstanding: 0 });
+    expect(items[0].progress.conflicts).not.toHaveLength(0);
   });
 
   it("does not display inferred created_at as a signature or sold date", () => {

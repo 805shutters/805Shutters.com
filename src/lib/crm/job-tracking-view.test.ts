@@ -92,9 +92,9 @@ describe("job tracking projection", () => {
   it("uses exact unambiguous standalone job lifecycle without treating projected closed as installed", () => {
     const standalone = row({ source: "manual", quoteId: null, status: "manual", isInstallationComplete: false });
     expect(view({ jobs: [job({ status: "ordered" })], rows: [standalone] })[0].stageId).toBe("ordered");
-    expect(view({ jobs: [job({ status: "installed" })], rows: [standalone] })[0].stageId).toBe("balance_needed");
-    expect(view({ jobs: [job({ status: "lost" })], rows: [standalone] })[0].stageId).toBe("lost");
-    expect(view({ jobs: [job({ status: "closed" })], rows: [{ ...standalone, balance: 0, depositPaid: 500 }] })[0].stageId).toBe("need_to_order");
+    expect(view({ jobs: [job({ status: "installed" })], rows: [standalone] })[0].stageId).toBe("sold_need_deposit");
+    expect(view({ jobs: [job({ status: "lost" })], rows: [standalone] })[0].stageId).toBe("attention");
+    expect(view({ jobs: [job({ status: "closed" })], rows: [{ ...standalone, balance: 0, depositPaid: 500 }] })[0].stageId).toBe("attention");
     expect(view({ jobs: [job({ status: "ordered" })], rows: [standalone, { ...standalone, id: "second-entry" }] }).every((item) => item.stageId !== "ordered")).toBe(true);
   });
 
@@ -103,9 +103,9 @@ describe("job tracking projection", () => {
     expect(view({ quotes: [quote({ installed_at: "2026-09-02" })], rows: [row({ balance: 0 })] })[0].stageId).toBe("complete");
   });
 
-  it("lets exact quote stage corrections override stale imported-row and job markers", () => {
+  it("retains exact quote marker while deriving prerequisites independently", () => {
     const items = view({ jobs: [job({ meta: { job_tracking: { stage: "ordered" } } })], quotes: [quote({ meta: { job_tracking: { stage: "need_follow_up" } } })], rows: [{ ...row(), meta: { job_tracking: { stage: "complete" } } } as CrmBookkeepingRow] });
-    expect(items[0]).toMatchObject({ stageId: "need_follow_up", manualStage: true, balanceOutstanding: 1000, signatureRecorded: false });
+    expect(items[0]).toMatchObject({ stageId: "sold_need_deposit", manualStage: true, balanceOutstanding: 1000, signatureRecorded: false });
   });
 
   it("does not leak a job-only stage marker across multiple actual orders", () => {
@@ -116,7 +116,7 @@ describe("job tracking projection", () => {
   it("does not apply a sibling quote's email via a less-specific shared job match", () => {
     const items = view({ jobs: [job()], quotes: [quote(), quote({ id: "quote-2" })], orderCogsEmails: [orderEmail({ matched_quote_id: "quote-2", subject: "Shipped" }), orderEmail({ id: "ambiguous-job", matched_quote_id: null })] });
     expect(items.find((item) => item.quote?.id === "quote-1")?.orderEmails).toHaveLength(0);
-    expect(items.find((item) => item.quote?.id === "quote-2")?.stageId).toBe("shipped");
+    expect(items.find((item) => item.quote?.id === "quote-2")?.stageId).toBe("sold_need_deposit");
   });
 
   it("matches quote email evidence without confusing quote row IDs with metadata entry IDs", () => {
@@ -126,7 +126,7 @@ describe("job tracking projection", () => {
 
   it("does not treat unconfirmed email matches or shipping ETA text as shipped", () => {
     expect(view({ quotes: [quote()], orderCogsEmails: [orderEmail({ match_status: "needs_review", subject: "Shipped" })] })[0].orderEmails).toHaveLength(0);
-    expect(view({ quotes: [quote()], orderCogsEmails: [orderEmail({ subject: "Order ETA" })] })[0].stageId).toBe("ordered");
+    expect(view({ quotes: [quote()], orderCogsEmails: [orderEmail({ subject: "Order ETA" })] })[0].stageId).toBe("sold_need_deposit");
   });
 
   it("caps deposit link requests to remaining receivable after credits", () => {
@@ -164,8 +164,8 @@ describe("job tracking projection", () => {
     expect(installed).toMatchObject({ installedAt: "2026-09-03T12:00:00Z", stageId: "balance_needed", balanceOutstanding: 1000 });
   });
 
-  it("includes Lost and Archived in All Jobs but not All Active", () => {
-    const items = view({ quotes: [quote({ status: "lost" }), quote({ id: "quote-2", job_id: "job-2", status: "archived" })] });
+  it("keeps unsold Lost and Archived records in Archive", () => {
+    const items = view({ quotes: [quote({ status: "lost", sold_at: null }), quote({ id: "quote-2", job_id: "job-2", status: "archived", sold_at: null })] });
     expect(filterJobTrackingView(items, "all")).toHaveLength(2);
     expect(filterJobTrackingView(items, "active")).toHaveLength(0);
     expect(filterJobTrackingView(items, "lost")).toHaveLength(1);
@@ -175,9 +175,9 @@ describe("job tracking projection", () => {
 
   it("groups operational Complete, Lost and Archived in Archive while active work stays separate", () => {
     const items = view({ quotes: [
-      quote({ id: "complete", job_id: "j1", meta: { job_tracking: { stage: "complete" } } }),
-      quote({ id: "lost", job_id: "j2", status: "lost" }),
-      quote({ id: "archived", job_id: "j3", status: "archived" }),
+      quote({ id: "complete", job_id: "j1", installed_at: "2026-09-02", balance_due: 0, meta: { job_tracking: { stage: "complete" } } }),
+      quote({ id: "lost", job_id: "j2", status: "lost", sold_at: null }),
+      quote({ id: "archived", job_id: "j3", status: "archived", sold_at: null }),
       quote({ id: "active", job_id: "j4", status: "ordered" }),
     ] });
     expect(filterJobTrackingView(items, "archive").map((item) => item.stageId).sort()).toEqual(["archived", "complete", "lost"]);

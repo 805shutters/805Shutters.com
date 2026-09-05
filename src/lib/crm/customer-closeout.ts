@@ -156,15 +156,7 @@ export async function maybeSendCustomerCloseoutForQuote(
     if (roundMoney(quote.quote_total) <= 0 || remaining > 0.005) return { status: "not_paid" };
 
     const job = jobResult.data as Record<string, unknown> | null;
-    const jobStatus = String(job?.status || "");
-    if (quote.job_id && jobStatus && jobStatus !== "closed" && jobStatus !== "lost") {
-      try {
-        const { updateCrmJob } = await import("@/lib/crm/backend");
-        await updateCrmJob(supabase, String(quote.job_id), { status: "closed" }, actor);
-      } catch (closeError) {
-        return { status: "error", message: closeError instanceof Error ? closeError.message : "Paid job could not be closed." };
-      }
-    }
+    // A receipt acknowledges financial settlement; it does not close purchased work.
     const recipient = String(recipientOverride || quote.customer_email || job?.email || "").trim();
     if (!recipient) return { status: "skipped", message: "Customer email is missing." };
     const customerName = String(job?.customer_name || quote.customer_name || quote.customer_printed_name || "Valued customer");

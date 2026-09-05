@@ -17,10 +17,11 @@ export async function collectCrmPages<T>(
   return { data: null, error: { message: "CRM data exceeded the safe page limit; no partial ledger was returned." } };
 }
 
-export function loadCompleteCrmTable(supabase: SupabaseClient, table: string, orderColumn = "created_at") {
-  return collectCrmPages<Record<string, unknown>>((from, to) =>
-    supabase.from(table).select("*")
+export function loadCompleteCrmTable(supabase: SupabaseClient, table: string, orderColumn = "created_at", columns = "*") {
+  return collectCrmPages<Record<string, unknown>>(async (from, to) => {
+    const result = await supabase.from(table).select(columns)
       .order(orderColumn, { ascending: false, nullsFirst: false })
-      .order("id", { ascending: true }).range(from, to),
-  );
+      .order("id", { ascending: true }).range(from, to);
+    return { data: result.data as unknown as Record<string, unknown>[] | null, error: result.error };
+  });
 }

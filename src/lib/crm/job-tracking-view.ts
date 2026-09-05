@@ -1,14 +1,16 @@
+import { deriveJobProgress, type JobProgress, type InstallerOutcomeEvidence, type ProgressSourceHealth } from "./job-progress";
 import type { CrmBookkeepingRow, CrmCustomerContract, CrmCustomerFile, CrmInstallationInvoiceEmail, CrmJob, CrmOrderCogsEmail, CrmQuote } from "@/lib/crm/types";
 import { getMeasureNeededMeta, objectMeta } from "@/lib/crm/measure-needed-state";
 
 export const JOB_TRACKING_STAGES = [
+  { id: "attention", label: "Needs Attention", color: "#ad4f2f" },
   { id: "scheduled", label: "Scheduled", color: "#236c77" },
   { id: "need_follow_up", label: "Follow Up", color: "#85631c" },
   { id: "sold_need_deposit", label: "Sold / Deposit Needed", color: "#ad4f2f" },
   { id: "need_measure", label: "Measure Needed", color: "#7353a0" },
   { id: "need_to_order", label: "Need to Order", color: "#317b48" },
   { id: "ordered", label: "Ordered", color: "#28689b" },
-  { id: "shipped", label: "Shipped / Received", color: "#007f77" },
+  { id: "shipped", label: "Receipt Recorded", color: "#007f77" },
   { id: "balance_needed", label: "Balance Needed", color: "#9a3d57" },
   { id: "complete", label: "Complete", color: "#485448" },
   { id: "lost", label: "Lost", color: "#756b67" },
@@ -20,7 +22,7 @@ export type JobTrackingFilter = JobTrackingStageId | "all" | "active" | "archive
 export type JobTrackingSavePatch = { job?: Record<string, unknown>; row?: Record<string, unknown>; quote?: Record<string, unknown>; message?: string };
 export type JobTrackingViewItem = {
   id: string; job?: CrmJob; quote?: CrmQuote; row?: CrmBookkeepingRow; file?: CrmCustomerFile;
-  stageId: JobTrackingStageId; customerName: string; soldDate: string | null; isSale: boolean;
+  progress: JobProgress; stageId: JobTrackingStageId; customerName: string; soldDate: string | null; isSale: boolean;
   phone: string | null; email: string | null; address: string | null; project: string;
   total: number | null; depositRequired: number | null; depositReceived: number | null;
   depositOutstanding: number | null; squareBalanceOutstanding: number | null; balanceReceived: number | null; balanceOutstanding: number | null; cogs: number | null;
@@ -30,7 +32,7 @@ export type JobTrackingViewItem = {
   measureStatus: string; notes: string; nextAction: string; manualStage: boolean;
 };
 
-export type JobTrackingViewInput = { jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[]; orderCogsEmails?: CrmOrderCogsEmail[]; installationInvoiceEmails?: CrmInstallationInvoiceEmail[] };
+export type JobTrackingViewInput = { jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[]; installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[]; orderCogsEmails?: CrmOrderCogsEmail[]; installationInvoiceEmails?: CrmInstallationInvoiceEmail[] };
 const SOLD_STATUSES = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced", "paid", "closed", "manual", "legacy"]);
 const TERMINAL = new Set(["complete", "lost", "archived"]);
 const finiteMoney = (value: unknown): number | null => value === null || value === undefined || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
@@ -61,27 +63,6 @@ function matchesEvidence(source: { matched_bookkeeping_entry_id: string | null; 
   if (source.matched_bookkeeping_entry_id) return source.matched_bookkeeping_entry_id === row?.id;
   if (source.matched_quote_id) return source.matched_quote_id === (quote?.id || row?.quoteId);
   return unambiguousJob && Boolean(source.matched_job_id && source.matched_job_id === (job?.id || row?.jobId));
-}
-
-function classify(item: Omit<JobTrackingViewItem, "stageId">, override?: JobTrackingStageId, unambiguousJob = false): JobTrackingStageId {
-  if (override) return override;
-  const { quote, row, job } = item;
-  const jobLifecycle = unambiguousJob && !quote && job?.status !== "closed" ? job?.status : undefined;
-  const status = row && ["lost", "archived"].includes(row.status) ? row.status : quote?.status || jobLifecycle || row?.status || job?.status || "new";
-  if (status === "archived") return "archived";
-  if (status === "lost") return "lost";
-  // Payment completion alone is never proof of an installed job.
-  const installed = Boolean(item.installedAt || row?.isInstallationComplete || ["installed", "invoiced"].includes(status));
-  if (installed) return item.balanceOutstanding !== null && item.balanceOutstanding <= 0 ? "complete" : "balance_needed";
-  if (quote?.received_at || status === "received" || item.orderEmails.some((mail) => /\b(shipped|in transit|delivered|shipment dispatched)\b/i.test(`${mail.subject || ""} ${mail.snippet || ""}`))) return "shipped";
-  if (item.orderedAt || status === "ordered" || item.orderEmails.length) return "ordered";
-  if (item.isSale) {
-    if (item.depositOutstanding === null || item.depositOutstanding > 0) return "sold_need_deposit";
-    if (getMeasureNeededMeta(job?.meta).status === "needed") return "need_measure";
-    return "need_to_order";
-  }
-  if (job?.status === "scheduled" || job?.appointment_start) return "scheduled";
-  return "need_follow_up";
 }
 
 export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingViewItem[] {
@@ -153,11 +134,11 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
     const depositRequired = finiteMoney(row?.depositDue ?? quote?.deposit_required);
     const depositReceived = finiteMoney(row?.depositPaid ?? (unambiguousJob ? job?.deposit_paid : null));
     const balanceOutstanding = finiteMoney(row?.balance ?? quote?.balance_due);
-    const depositOutstanding = depositRequired === null || depositReceived === null ? null : Math.max(0, Math.min(depositRequired - depositReceived, balanceOutstanding ?? Infinity));
+    const depositOutstanding = depositRequired === null || depositReceived === null || (!quote && depositRequired === 0 && depositReceived === 0 && (balanceOutstanding ?? 0) > 0) ? null : Math.max(0, Math.min(depositRequired - depositReceived, balanceOutstanding ?? Infinity));
     const orderEmails = (input.orderCogsEmails || []).filter((mail) => (mail.match_status === "matched" || mail.applied_at) && matchesEvidence(mail, row, quote, job, unambiguousJob));
     const installEmails = (input.installationInvoiceEmails || []).filter((mail) => (mail.match_status === "matched" || mail.applied_at) && matchesEvidence(mail, row, quote, job, unambiguousJob));
     const measure = getMeasureNeededMeta(job?.meta);
-    const base: Omit<JobTrackingViewItem, "stageId"> = {
+    const base: Omit<JobTrackingViewItem, "stageId" | "progress"> = {
       id: row ? `row:${row.id}` : quote && quoteIsTrackingSale(quote) ? `quote:${quote.id}` : job ? `job:${job.id}` : `quote:${quote!.id}`,
       row, quote, job, file, customerName: row?.customerName || quote?.customer_name || job?.customer_name || "Customer not recorded", soldDate, isSale,
       phone: quote?.customer_phone || row?.customerPhone || job?.phone || null,
@@ -177,7 +158,8 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
       measureStatus: measure.status === "measured" ? "Measured" : measure.status === "not_needed" ? "Not needed" : measure.status === "needed" ? "Needed" : "Not recorded",
       notes: [...new Set([row?.notes, quote?.notes, job?.notes].filter(Boolean))].join("\n"), nextAction: job?.next_action || "", manualStage: Boolean(override),
     };
-    return { ...base, stageId: classify(base, override, unambiguousJob) };
+    const progress = deriveJobProgress({ ...base, recordedStage: override, unambiguousJob, installerOutcomes: input.installerOutcomes, sourceHealth: input.sourceHealth });
+    return { ...base, progress, nextAction: progress.nextAction, stageId: progress.stage };
   }).sort((a, b) => (b.soldDate ? Date.parse(b.soldDate) : -Infinity) - (a.soldDate ? Date.parse(a.soldDate) : -Infinity) || a.id.localeCompare(b.id));
 }
 

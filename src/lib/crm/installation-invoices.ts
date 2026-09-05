@@ -222,24 +222,7 @@ export function hasInstallationInvoiceGmailAuth() {
   return Boolean(googleOAuthCredentials() || gmailAccessTokenBrokerConfig());
 }
 
-// The broker reads an `action` field, but its exact vocabulary isn't documented in this
-// repo (the broker is an external service). Pin it with GMAIL_ACCESS_TOKEN_BROKER_ACTION
-// if known; otherwise try the likely names and use whichever returns a token.
-const BROKER_ACTION_CANDIDATES = [
-  "access-token",
-  "get-access-token",
-  "getAccessToken",
-  "access_token",
-  "accessToken",
-  "token",
-  "get-token",
-  "getToken",
-  "mint-access-token",
-  "mint",
-  "gmail-access-token",
-  "refresh"
-];
-
+// The broker operation must come from its protected, verified contract. Never probe actions.
 async function requestBrokerToken(url: string, secret: string, action: string, mailbox: string) {
   const response = await fetch(url, {
     method: "POST",
@@ -248,6 +231,7 @@ async function requestBrokerToken(url: string, secret: string, action: string, m
       Accept: "application/json",
       Authorization: `Bearer ${secret}`
     },
+    signal: AbortSignal.timeout(15_000),
     body: JSON.stringify({ action, emailAddress: mailbox })
   });
 
@@ -268,27 +252,16 @@ export async function getBrokeredGmailAccessToken(mailbox: string) {
   if (!broker) return null;
 
   const pinned = envValue(["GMAIL_ACCESS_TOKEN_BROKER_ACTION", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_ACTION"]);
-  const actions = pinned ? [pinned] : BROKER_ACTION_CANDIDATES;
-
-  let lastDetail = "no broker action accepted";
-  for (const action of actions) {
-    let result: Awaited<ReturnType<typeof requestBrokerToken>>;
-    try {
-      result = await requestBrokerToken(broker.url, broker.secret, action, mailbox);
-    } catch (err) {
-      lastDetail = err instanceof Error ? err.message : String(err);
-      continue;
-    }
-
-    if (result.ok && result.token) return result.token;
-
-    lastDetail = result.error || `HTTP ${result.status}`;
-    // Keep trying only while the broker is rejecting the *action* name. Any other
-    // failure (auth, scope, mailbox) means the action was accepted — surface it.
-    if (!/unsupported|unknown|invalid|not.?supported|action/i.test(lastDetail)) break;
+  if (!pinned) throw new CrmAuthError(503, "Gmail broker action is unconfigured. Verify the broker contract and set GMAIL_ACCESS_TOKEN_BROKER_ACTION; no actions were attempted.");
+  let result: Awaited<ReturnType<typeof requestBrokerToken>>;
+  try {
+    result = await requestBrokerToken(broker.url, broker.secret, pinned, mailbox);
+  } catch {
+    throw new CrmAuthError(502, "805 Gmail token broker request failed. Check protected broker health and configuration.");
   }
-
-  throw new CrmAuthError(502, `805 Gmail token broker failed: ${lastDetail}`);
+  if (result.ok && result.token) return result.token;
+  // Do not echo arbitrary provider payloads that could include credentials.
+  throw new CrmAuthError(502, `805 Gmail token broker rejected the configured operation (HTTP ${result.status}). Verify its supported contract.`);
 }
 
 export async function get805GmailAccessToken() {

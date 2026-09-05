@@ -1,3 +1,4 @@
+import { observeIntegration } from "@/lib/crm/integration-health";
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { processOrderCogsInbox } from "@/lib/crm/order-cogs";
@@ -28,7 +29,7 @@ const defaultDependencies: OrderCogsCronDependencies = {
 
 function requireCronAccess(request: NextRequest, env: OrderCogsCronDependencies["env"]) {
   const secret = env.ORDER_COGS_CRON_SECRET || env.CRON_SECRET;
-  if (!secret) return;
+  if (!secret) throw new CrmAuthError(503, "Order COGS cron secret is not configured.");
   if ((request.headers.get("authorization") || "") !== `Bearer ${secret}`) {
     throw new CrmAuthError(401, "Order COGS cron is not authorized.");
   }
@@ -61,10 +62,10 @@ export async function runOrderCogsCron(
     requireCronAccess(request, dependencies.env);
     const supabase = dependencies.getSupabase();
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
-    const orderCogs = await dependencies.processOrderCogs(supabase, {
+    const orderCogs = await observeIntegration(supabase, "order-cogs", () => dependencies.processOrderCogs(supabase, {
       actorEmail: "order-cogs-cron",
       autoApply: false,
-    });
+    }));
     const [squarePayments, peerPayments] = await Promise.all([
       runAuxiliaryProcessor(
         "Square payment reconciliation",

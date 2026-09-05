@@ -14,6 +14,7 @@ vi.mock("@/lib/crm/backend", () => ({
   updateCrmJob: vi.fn().mockResolvedValue(undefined)
 }));
 
+import { updateCrmJob } from "@/lib/crm/backend";
 import { sendEmail } from "@/lib/notify/email";
 
 const sendEmailMock = vi.mocked(sendEmail);
@@ -33,7 +34,7 @@ function makeSupabase(input: { total?: number; paid?: number; meta?: Record<stri
     select: vi.fn(() => ({
       eq: vi.fn(() => {
         if (name === "crm_quotes") return { maybeSingle: vi.fn(async () => ({ data: quote, error: null })) };
-        if (name === "crm_jobs") return { maybeSingle: vi.fn(async () => ({ data: { id: "job-1", status: "closed", customer_name: "Mary Ann", email: "job@example.com" }, error: null })) };
+        if (name === "crm_jobs") return { maybeSingle: vi.fn(async () => ({ data: { id: "job-1", status: "ordered", customer_name: "Mary Ann", email: "job@example.com" }, error: null })) };
         if (name === "crm_quote_bookkeeping_payments") return Promise.resolve({ data: [{ amount: input.paid ?? 1000, paid_at: "2026-07-18" }], error: null });
         return Promise.resolve({ data: [], error: null });
       })
@@ -80,6 +81,7 @@ describe("maybeSendCustomerCloseoutForQuote", () => {
     const { supabase, updates } = makeSupabase({ total: 1000, paid: 1000 });
     const result = await maybeSendCustomerCloseoutForQuote(supabase, "quote-1", actor, "square-payment-email-poller");
     expect(result.status).toBe("sent");
+    expect(updateCrmJob).not.toHaveBeenCalled();
     expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({
       to: "customer@example.com",
       idempotencyKey: "customer-closeout-quote-1",
