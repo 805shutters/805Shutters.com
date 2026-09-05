@@ -2,12 +2,9 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, CalendarDays, FileText, Ruler } from "lucide-react";
+import { MobileQuotesWorkspace } from "./MobileQuotesWorkspace";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail } from "@/lib/crm/allowed-users";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
-import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 
 type CrmEmailOtpType = "signup" | "invite" | "magiclink" | "recovery" | "email_change" | "email";
 
@@ -16,12 +13,7 @@ type CrmUser = {
   displayName: string | null;
 };
 
-type MobileQuotesData = {
-  jobs: CrmJob[];
-  quotes: CrmQuote[];
-  events: CrmCalendarEvent[];
-  customers: CrmCustomer[];
-};
+type MobileQuotesData = { ready: true };
 
 class CrmFetchError extends Error {
   status: number;
@@ -105,23 +97,19 @@ function isCrmSessionFetchError(error: unknown) {
 export function CrmMobileQuotesApp() {
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<CrmUser | null>(null);
+  const [, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<MobileQuotesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [emailLoginMessage, setEmailLoginMessage] = useState<string | null>(null);
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
-  const [originalV1QuoteId, setOriginalV1QuoteId] = useState<string | null>(null);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
 
   const configured = Boolean(supabase);
 
   async function loadQuotes(activeSession: Session) {
     setMessage(null);
-    const [sessionResult, quotesResult] = await Promise.all([
-      crmFetch<CrmUser>(activeSession, "/api/crm/session"),
-      crmFetch<MobileQuotesData>(activeSession, "/api/crm/mobile/quotes-data")
-    ]);
+    const sessionResult = await crmFetch<CrmUser>(activeSession, "/api/crm/session");
 
     if (isKenCrmEmail(sessionResult.email)) {
       window.location.replace("/crm/ken");
@@ -129,7 +117,7 @@ export function CrmMobileQuotesApp() {
     }
 
     setUser(sessionResult);
-    setData(quotesResult);
+    setData({ ready: true });
   }
 
   async function clearCrmSession(notice?: string) {
@@ -325,7 +313,7 @@ export function CrmMobileQuotesApp() {
         <section className="crm-login-panel">
           <p className="eyebrow">Private CRM</p>
           <h1>Quote login.</h1>
-          <p>Use an approved 805 Shutters email to access the iPad quote workspace.</p>
+          <p>Use an approved 805 Shutters email to view, send, and sign contracts.</p>
           {emailLoginMessage ? <p className="crm-alert">{emailLoginMessage}</p> : null}
           <form className="crm-email-login" onSubmit={sendEmailLogin}>
             <label>
@@ -349,7 +337,7 @@ export function CrmMobileQuotesApp() {
       <div className="crm-app-shell">
         <section className="crm-login-panel">
           <p className="eyebrow">805 Quotes</p>
-          <h1>Quote workspace is blocked.</h1>
+          <h1>Contracts could not be loaded.</h1>
           <p>{message}</p>
           <div className="crm-form-actions">
             <button type="button" className="button primary" onClick={() => void refresh()}>
@@ -364,47 +352,5 @@ export function CrmMobileQuotesApp() {
     );
   }
 
-  return (
-    <section className="crm-mobile-quotes-shell">
-      {originalV1QuoteId ? (
-        <OriginalV1QuoteBuilderPanel
-          session={session}
-          quoteId={originalV1QuoteId}
-          onClose={() => setOriginalV1QuoteId(null)}
-          onChanged={() => void refresh()}
-          onSwitch={setOriginalV1QuoteId}
-        />
-      ) : null}
-      <nav className="mobile-crm-workspaces" aria-label="Mobile CRM workspaces">
-        <a href="/crm/mobile"><CalendarDays />Appointments</a>
-        <a href="/crm/technical-measures"><Ruler />Measures</a>
-        <a className="active" href="/crm/mobile/quotes" aria-current="page"><FileText />Quotes</a>
-        <a href="/crm/?view=tracking"><FileText />Job Tracking</a>
-      </nav>
-      <header className="crm-mobile-quotes-header">
-        <a className="crm-mobile-quotes-back" href="/crm/mobile" aria-label="Back to mobile workspaces"><ArrowLeft /></a>
-        <div>
-          <p className="eyebrow">805 Quotes</p>
-          <h1>Quote workspace</h1>
-          {user ? <p>{user.displayName || user.email}</p> : null}
-        </div>
-        <div className="crm-form-actions">
-          <button type="button" className="crm-ghost-button" onClick={() => void refresh()} disabled={loading}>
-            Refresh
-          </button>
-          <button type="button" className="crm-ghost-button" onClick={() => void signOut()}>
-            Sign Out
-          </button>
-        </div>
-      </header>
-      {message ? <p className="crm-alert">{message}</p> : null}
-      <QuotesWorkspace
-        session={session}
-        jobs={data?.jobs || []}
-        quotes={data?.quotes || []}
-        events={data?.events || []}
-        onChanged={() => void refresh()}
-      />
-    </section>
-  );
+  return <MobileQuotesWorkspace key={session.user.id} session={session} onSessionExpired={() => void clearCrmSession("Your CRM login expired. Sign in again.")} />;
 }

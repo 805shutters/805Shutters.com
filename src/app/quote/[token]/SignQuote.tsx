@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 
-export function SignQuote({ token, customerName, total, selectedLineIds, done: doneFromParent, onSigned, placement = "bottom", compact = false }: {
+export function SignQuote({ token, customerName, total, selectedLineIds, done: doneFromParent, onSigned, onBusyChange, onConflict, placement = "bottom", compact = false }: {
   token: string; customerName: string; total: number; selectedLineIds?: string[];
-  done?: boolean; onSigned?: () => void; placement?: "top" | "bottom"; compact?: boolean;
+  done?: boolean; onSigned?: () => void; onBusyChange?: (busy: boolean) => void; onConflict?: (message: string) => void; placement?: "top" | "bottom"; compact?: boolean;
 }) {
   const [name, setName] = useState(customerName && customerName !== "Valued customer" ? customerName : "");
   const [agree, setAgree] = useState(false);
@@ -21,7 +21,9 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
       setError("Please check the authorization box to continue.");
       return;
     }
+    if (busy) return;
     setBusy(true);
+    onBusyChange?.(true);
     setError(null);
     try {
       const res = await fetch(`/api/quote/${token}/accept`, {
@@ -33,13 +35,21 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
         body: JSON.stringify({ printedName: name.trim(), signature: name.trim(), acknowledgedTotal: total, ...(selectedLineIds ? { selectedLineIds } : {}) }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.message || body.error || "We couldn't record your signature.");
+      if (!res.ok) {
+        const message = body.message || body.error || "We couldn't record your signature.";
+        if (res.status === 409 && onConflict) {
+          onConflict(message);
+          return;
+        }
+        throw new Error(message);
+      }
       setLocalDone(true);
       onSigned?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 

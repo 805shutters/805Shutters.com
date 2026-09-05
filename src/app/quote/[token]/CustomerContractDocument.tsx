@@ -36,12 +36,14 @@ export function CustomerContractDocument({
   walletConfig,
   embedded = false,
   previewOnly = false,
+  previewLabel = "Internal preview",
 }: {
   quote: PublicQuote;
   paymentOptions?: PaymentOptions | null;
   walletConfig?: QuoteWalletConfig | null;
   embedded?: boolean;
   previewOnly?: boolean;
+  previewLabel?: string;
 }) {
   const preparedFor = customerDetails(quote);
   const reserveCustomerActionRail =
@@ -88,7 +90,7 @@ export function CustomerContractDocument({
         />
       </div>
       <div className="no-print customer-contract-print-action">
-        {previewOnly ? <strong style={{ fontSize: 12 }}>Internal preview</strong> : <PrintButton />}
+        {previewOnly ? <strong style={{ fontSize: 12 }}>{previewLabel}</strong> : <PrintButton />}
       </div>
       <div className="customer-contract-print-only">
         <div style={officialContractBar}>

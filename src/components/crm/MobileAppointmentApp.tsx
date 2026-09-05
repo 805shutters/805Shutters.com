@@ -116,7 +116,7 @@ export function MobileWorkspaceMenu({
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/quotes">
             <span className="mobile-crm-action-icon"><FileText /></span>
-            <div><strong>Quotes</strong><span>Create and manage quotes</span></div>
+            <div><strong>Quotes</strong><span>Find, send, and sign contracts</span></div>
             <ArrowRight />
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/contracts">

@@ -2075,6 +2075,7 @@ export async function sendQuoteToCustomer(
     phone?: string | null;
     note?: string | null;
     measureDecision?: TechnicalMeasureDecision | null;
+    expectedRecipients?: { email?: string | null; sms?: string | null };
   } = {},
 ): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
   const wantSms = options.sms !== false;
@@ -2122,7 +2123,17 @@ export async function sendQuoteToCustomer(
   const publicQuote = await loadPublicQuoteByToken(supabase, token);
   const total = publicQuote?.total ?? (Number(quote.quote_total) || 0);
   const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
-  const requestedPhone = options.phone?.trim() || phone;
+  // Mobile confirms the recipient from the displayed document. Existing callers
+  // keep their job-contact defaults unless they opt into that confirmation.
+  const requestedPhone = options.phone?.trim() || (options.expectedRecipients ? publicQuote?.customerPhone : null) || phone;
+  const requestedEmails = uniqueEmails(options.emailRecipients);
+  const contractEmail = (options.expectedRecipients ? publicQuote?.customerEmail : null) || email;
+  const emailRecipients = requestedEmails.length ? requestedEmails : contractEmail ? [contractEmail] : [];
+  const expected = options.expectedRecipients;
+  if ((wantSms && expected?.sms !== undefined && expected.sms !== requestedPhone) ||
+      (wantEmail && expected?.email !== undefined && (emailRecipients.length !== 1 || expected.email !== emailRecipients[0]))) {
+    throw new CrmAuthError(409, "The contract recipient changed. Reopen the contract and review the recipient before sending.");
+  }
   const note = options.note?.trim();
   const smsBody = buildQuoteShareSms(url);
   const sms = wantSms
@@ -2143,8 +2154,6 @@ export async function sendQuoteToCustomer(
     businessPhone: publicQuote?.business.phone,
     personalNote: note,
   });
-  const requestedEmails = uniqueEmails(options.emailRecipients);
-  const emailRecipients = requestedEmails.length ? requestedEmails : email ? [email] : [];
   const emailRes = wantEmail
     ? await sendEmailToMany(emailRecipients, mail)
     : { sent: false, skipped: "email not selected", results: [] };
@@ -2155,7 +2164,7 @@ export async function sendQuoteToCustomer(
     sms.sent ? "sms" :
     emailRes.sent ? "email" :
     null;
-  if (status === "draft") {
+  if (status === "draft" && sentVia) {
     await supabase.from("crm_quotes").update({
       status: "sent",
       sent_at: new Date().toISOString(),

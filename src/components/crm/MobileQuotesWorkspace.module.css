@@ -1,0 +1,220 @@
+.searchShell {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-bottom: 88px;
+}
+.searchShell > header {
+  padding-right: 54px;
+  margin-bottom: 24px;
+}
+.searchShell :global(.mobile-customer-letter-index) button {
+  min-height: 44px;
+}
+.empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: #64645e;
+}
+.empty svg {
+  width: 30px;
+  height: 30px;
+}
+.customerButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 4px 0;
+  color: inherit;
+  cursor: pointer;
+}
+.customerButton strong {
+  font:
+    500 28px/1.2 Georgia,
+    serif;
+}
+.customerButton small,
+.contractButtons small {
+  display: block;
+  font-size: 13px;
+  color: #575752;
+  margin-top: 7px;
+  line-height: 1.5;
+}
+.customerButton svg,
+.contractButtons svg {
+  flex-shrink: 0;
+}
+.contractButtons {
+  display: grid;
+  gap: 10px;
+}
+.contractButtons button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  min-height: 64px;
+  border: 1px solid #c9c9c3;
+  border-radius: 8px;
+  background: #fafaf8;
+  text-align: left;
+  cursor: pointer;
+  color: #171717;
+}
+.contractButtons button span {
+  flex: 1;
+}
+.contractButtons button:hover,
+.customerButton:hover {
+  background: #efefeb;
+}
+.documentShell {
+  background: #fff;
+  color: #171717;
+  min-height: 100dvh;
+  padding-bottom: 80px;
+}
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 66px 12px 16px;
+  background: #f5f5f3;
+  border-bottom: 1px solid #d6d6ce;
+}
+.toolbar span {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+.toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  background: #fff;
+  color: #171717;
+  cursor: pointer;
+}
+.toolbar svg {
+  width: 18px;
+  height: 18px;
+}
+.toolbar button:disabled,
+.actionPanel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.documentTitle,
+.notice,
+.error,
+.actionPanel {
+  max-width: 760px;
+  margin: 20px auto;
+  padding: 0 20px;
+  overflow-wrap: anywhere;
+}
+.documentTitle h1 {
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+.documentTitle p {
+  font-size: 14px;
+  margin: 6px 0;
+}
+.error {
+  color: #9b1c1c;
+}
+.notice {
+  color: #45453f;
+}
+.actionPanel {
+  padding: 20px;
+  border: 1px solid #c9c9c3;
+  border-radius: 10px;
+  background: #f5f5f3;
+}
+.actionPanel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 18px 0;
+}
+.channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.channels label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 16px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+}
+.channels input {
+  width: 18px;
+  height: 18px;
+}
+.actionPanel > button,
+.loadMore,
+.retry {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  background: white;
+  color: #171717;
+  margin: 8px 8px 0 0;
+  cursor: pointer;
+}
+.actionPanel > .primary {
+  background: #171717;
+  color: white;
+}
+.documentShell :global(.customer-contract-print-action) {
+  position: static;
+  text-align: right;
+  padding: 0 16px;
+}
+.documentShell *,
+.searchShell * {
+  box-sizing: border-box;
+}
+.searchShell button:focus-visible,
+.documentShell button:focus-visible,
+.searchShell input:focus-visible {
+  outline: 3px solid #77623d;
+  outline-offset: 3px;
+}
+@media (max-width: 540px) {
+  .toolbar {
+    gap: 5px;
+    padding-left: 10px;
+  }
+  .toolbar span {
+    display: none;
+  }
+  .toolbar button {
+    flex: 1;
+    padding: 8px;
+  }
+  .actionPanel {
+    margin: 16px 10px;
+  }
+}

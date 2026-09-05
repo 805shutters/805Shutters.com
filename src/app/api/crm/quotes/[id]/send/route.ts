@@ -10,8 +10,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const body = (await request.json().catch(() => ({}))) as { channels?: { email?: boolean; sms?: boolean } };
-    const result = await sendQuoteToCustomer(supabase, id, { email, userId: user.id }, body.channels || {});
+    const body = (await request.json().catch(() => ({}))) as { channels?: { email?: boolean; sms?: boolean }; expectedRecipients?: { email?: string | null; sms?: string | null } };
+    const result = await sendQuoteToCustomer(supabase, id, { email, userId: user.id }, { ...body.channels, expectedRecipients: body.expectedRecipients });
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);
