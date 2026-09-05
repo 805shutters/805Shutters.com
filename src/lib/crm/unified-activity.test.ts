@@ -275,3 +275,22 @@ describe("unified CRM activity", () => {
     expect(reconcileDisplayedActivity(displayed as never, latest as never, 0)).toEqual({ feed: latest, pendingCount: 0 });
   });
 });
+
+describe("clean operational timeline", () => {
+  it("keeps background processing in raw audit and preserves unrelated unlinked activity", () => {
+    const base = { created_at: "2026-09-04T20:00:00Z", actor_email: "system", entity_type: "system", entity_id: "run-1", before_data: null, after_data: null, metadata: {} };
+    const feed = buildUnifiedActivityFeed({ jobs: [], quotes: [], rows: [], customers: [], payments: [], signedContracts: [], activityEvents: [
+      ...["order-cogs", "installation-invoices", "completed-report-filing"].flatMap(processor => ["running", "failed", "succeeded"].map(state => ({ ...base, id: `${processor}-${state}`, action: `${processor}.${state}` }))),
+      { ...base, id: "other", action: "create_advance" },
+      { ...base, id: "job", entity_type: "job", action: "order-cogs.failed" },
+    ] } as never);
+    expect(filterUnifiedActivity(feed, "all")).toHaveLength(11);
+    expect(filterUnifiedActivity(feed, "operations").map(e => e.sourceId).sort()).toEqual(["job", "other"]);
+  });
+
+  it("distinguishes separate notification recipients without claiming delivery or dropping records", () => {
+    const feed = buildUnifiedActivityFeed({ jobs: [], quotes: [], rows: [], customers: [], payments: [], signedContracts: [], activityEvents: ["office@example.com", "sales@example.com"].map((recipient, n) => ({ id: String(n), created_at: "2026-09-04T20:00:00Z", actor_email: "automation:sold_quote_sms", entity_type: "quote", entity_id: "quote-1", action: "sold_quote.sms.accepted", before_data: null, after_data: null, metadata: { recipient } })) } as never);
+    expect(filterUnifiedActivity(feed, "operations")).toHaveLength(2);
+    expect(feed.map(e => e.description).sort()).toEqual(["Sale notification SMS accepted by provider · office@example.com", "Sale notification SMS accepted by provider · sales@example.com"]);
+  });
+});

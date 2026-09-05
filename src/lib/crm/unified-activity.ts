@@ -26,7 +26,7 @@ export type UnifiedActivityEvent = {
   entityType: string;
   entityId: string | null;
   sortAt: string;
-  telemetry?: boolean; autosave?: boolean; correlationId?: string | null; sourceRevision?: string | null; groupedSourceIds?: string[];
+  systemProcessing?: boolean; telemetry?: boolean; autosave?: boolean; correlationId?: string | null; sourceRevision?: string | null; groupedSourceIds?: string[];
 };
 
 type UnifiedActivityInput = {
@@ -145,6 +145,10 @@ function activityDescription(event: CrmActivityEvent, category: UnifiedActivityC
   const metadata = record(event.metadata);
 
   if (metadata.business_event_id && metadata.description) return String(metadata.description);
+  if (event.action === "sold_quote.sms.accepted") {
+    const recipient = textFrom(metadata.recipient);
+    return `Sale notification SMS accepted by provider${recipient ? ` · ${recipient}` : ""}`;
+  }
 
   if (category === "follow_up") {
     const action = textFrom(after.next_action, metadata.next_action, metadata.follow_up, metadata.description);
@@ -317,6 +321,7 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
       entityType: event.entity_type,
       entityId: event.entity_id,
       sortAt: event.created_at,
+      systemProcessing: event.entity_type === "system" && /^(order-cogs|installation-invoices|completed-report-filing)\.(running|succeeded|failed)$/.test(action),
       telemetry: /visitor|telemetry|page_view/.test(action),
       autosave: /technical[._ ]measure[._ ]save|autosave/.test(action),
       sourceRevision: metadata.source_revision == null ? null : String(metadata.source_revision),
@@ -358,7 +363,7 @@ export function operationalTimeline(feed: UnifiedActivityEvent[]) {
   const correlations = new Map<string,UnifiedActivityEvent>();
   const edits = new Map<string,UnifiedActivityEvent>();
   for (const event of feed) {
-    if (event.telemetry) continue;
+    if (event.telemetry || event.systemProcessing) continue;
     const correlation = event.correlationId ? `${event.correlationId}:${event.category}:${event.sourceRevision || "unknown"}` : null;
     const related = correlation ? correlations.get(correlation) : undefined;
     if (related) { related.groupedSourceIds = [...(related.groupedSourceIds || [related.sourceId]),event.sourceId]; continue; }

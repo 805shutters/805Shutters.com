@@ -454,3 +454,49 @@ test("failed cost source withholds financial conclusions and preserves operation
  await expect(page.getByText('Active order balances',{exact:true}).locator('..')).toContainText('$14,000.00');
  expect(writes).toHaveLength(0);
 });
+
+test("activity rows remain readable at desktop and narrow widths with raw processing on demand", async ({ page }) => {
+  const { records, writes } = await setup(page);
+  const base = { created_at: stamp, actor_email: "automation:sold_quote_sms", entity_type: "quote", entity_id: records.quotes[0].id, before_data: null, after_data: null };
+  await page.route("**/api/crm/activity{,/,?*}", route => route.fulfill({ json: { payments: records.payments, signedContracts: [], activityEvents: [
+    { ...base, id: id(800), action: "sold_quote.sms.accepted", metadata: { recipient: "office@example.com" } },
+    { ...base, id: id(801), action: "sold_quote.sms.accepted", metadata: { recipient: "sales@example.com" } },
+    { ...base, id: id(802), actor_email: "very-long-source-label-without-spaces-for-overflow-verification@example.com", action: "note", metadata: { note: "Approved fabric and confirmed the installation access arrangements." } },
+    { ...base, id: id(803), entity_type: "system", action: "order-cogs.failed", metadata: {} },
+  ] } }));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Command Center", exact: true }).click();
+  const panel = page.locator(".crm-activity-dashboard");
+  const feed = panel.getByRole("feed");
+  await expect(feed.getByRole("button", { name: /office@example.com/ })).toBeVisible();
+  await expect(feed.getByRole("button", { name: /sales@example.com/ })).toBeVisible();
+  await expect(feed).not.toContainText("Order cogs failed");
+  const row = feed.getByRole("button", { name: /office@example.com/ });
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(panel.getByRole("complementary", { name: "Avery Sample activity details" })).toBeVisible();
+  for (const width of [1728, 1024, 600]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(row.locator(".crm-activity-description")).toHaveCSS("color", "rgb(78, 85, 75)");
+    const geometry = await panel.evaluate(el => {
+      const feed = el.querySelector('.crm-activity-scroll')!;
+      return { fits: feed.scrollWidth <= feed.clientWidth + 1, rows: Array.from(el.querySelectorAll('.crm-activity-row')).map(row => {
+        const icon = row.querySelector('.crm-activity-icon')!.getBoundingClientRect();
+        const body = row.querySelector('.crm-activity-body')!.getBoundingClientRect();
+        const trailing = row.querySelector('.crm-activity-trailing')!.getBoundingClientRect();
+        return { separate: icon.right <= body.left && (body.right <= trailing.left || body.bottom <= trailing.top), within: body.right <= row.getBoundingClientRect().right };
+      }) };
+    });
+    expect(geometry.fits).toBe(true);
+    expect(geometry.rows.every(r => r.separate && r.within)).toBe(true);
+    if (width === 600) await panel.screenshot({ path: "/tmp/805-activity-clean-narrow.png" });
+  }
+  await page.setViewportSize({ width: 1728, height: 1117 });
+  await panel.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(panel.getByRole("complementary")).toHaveCount(0);
+  await panel.scrollIntoViewIfNeeded();
+  await panel.screenshot({ path: "/tmp/805-activity-clean-desktop.png" });
+  await panel.getByRole("tab", { name: /Raw audit/ }).click();
+  await expect(feed.getByRole("button", { name: /Order cogs failed/ })).toBeVisible();
+  expect(writes).toHaveLength(0);
+});
