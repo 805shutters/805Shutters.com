@@ -3,6 +3,9 @@ import {
   addMobileQuoteWindow,
   allowsNeedsPricingDraft,
   appendMobileQuotePhoto,
+  beginMobileQuoteGridSelection,
+  chooseMobileQuoteGridWhole,
+  commitMobileQuoteGridSelection,
   createMobileQuoteDraft,
   emptyMobileQuoteDesign,
   isManualQuoteEditorHandoffReady,
@@ -26,6 +29,38 @@ function product(lineId: string, productId: string, productType: string, option 
   design.options_json = { color: option, mount: "inside" };
   return { productId, productType, design };
 }
+
+describe("mobile quote optional measurement grid", () => {
+  it("stages a whole-inch choice without mutating the draft, so cancel retains all values", () => {
+    const draft = createMobileQuoteDraft("owner", customer);
+    const line = draft.windows[0];
+    Object.assign(line, { widthWhole: 48, widthFraction: "1/2", heightWhole: 60, heightFraction: "3/16", room: "Living room" });
+    const before = structuredClone(draft);
+
+    const selection = chooseMobileQuoteGridWhole(beginMobileQuoteGridSelection(line, "width"), 52);
+
+    expect(selection).toMatchObject({ windowId: line.id, side: "width", whole: 52, fraction: "1/2", step: "fraction" });
+    expect(draft).toEqual(before);
+  });
+
+  it("commits only the selected dimension on the selected line", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    draft = addMobileQuoteWindow(draft);
+    const [first, second] = draft.windows;
+    Object.assign(first, { widthWhole: 48, widthFraction: "1/2", heightWhole: 60, heightFraction: "3/16", room: "Living room", notes: "Keep trim", saved: true });
+    Object.assign(second, { widthWhole: 30, widthFraction: "1/4", heightWhole: 40, heightFraction: "5/16", room: "Kitchen", notes: "Sink", saved: true });
+    const firstBefore = structuredClone(first);
+    const secondMetadata = { heightWhole: second.heightWhole, heightFraction: second.heightFraction, room: second.room, notes: second.notes, families: second.families, photos: second.photos };
+    const selection = chooseMobileQuoteGridWhole(beginMobileQuoteGridSelection(second, "width"), 36);
+
+    draft = commitMobileQuoteGridSelection(draft, selection, "7/16", "2026-09-05T12:00:00.000Z");
+
+    expect(draft.windows[0]).toEqual(firstBefore);
+    expect(draft.windows[1]).toMatchObject({ ...secondMetadata, widthWhole: 36, widthFraction: "7/16", saved: false, price: null });
+    expect(draft.quotePrice).toBeNull();
+    expect(draft.updatedAt).toBe("2026-09-05T12:00:00.000Z");
+  });
+});
 
 describe("mobile quote first-line defaults", () => {
   it("broadcasts the initial first-line product and gives future lines independent inherited defaults", () => {

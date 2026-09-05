@@ -97,6 +97,58 @@ export type MobileQuoteDraft = {
   updatedAt: string;
 };
 
+export type MobileQuoteGridSelection = {
+  windowId: string;
+  side: "width" | "height";
+  whole: number;
+  fraction: string;
+  step: "whole" | "fraction";
+};
+
+export function beginMobileQuoteGridSelection(
+  window: MobileQuoteWindow,
+  side: MobileQuoteGridSelection["side"],
+): MobileQuoteGridSelection {
+  return {
+    windowId: window.id,
+    side,
+    whole: side === "width" ? window.widthWhole : window.heightWhole,
+    fraction: side === "width" ? window.widthFraction : window.heightFraction,
+    step: "whole",
+  };
+}
+
+export function chooseMobileQuoteGridWhole(
+  selection: MobileQuoteGridSelection,
+  whole: number,
+): MobileQuoteGridSelection {
+  return { ...selection, whole, step: "fraction" };
+}
+
+export function commitMobileQuoteGridSelection(
+  draft: MobileQuoteDraft,
+  selection: MobileQuoteGridSelection,
+  fraction: string,
+  updatedAt = new Date().toISOString(),
+): MobileQuoteDraft {
+  const index = draft.windows.findIndex((window) => window.id === selection.windowId);
+  if (index < 0) return draft;
+  const next = structuredClone(draft);
+  const line = next.windows[index];
+  if (selection.side === "width") {
+    line.widthWhole = selection.whole;
+    line.widthFraction = fraction;
+  } else {
+    line.heightWhole = selection.whole;
+    line.heightFraction = fraction;
+  }
+  line.saved = false;
+  line.price = null;
+  next.quotePrice = null;
+  next.updatedAt = updatedAt;
+  return next;
+}
+
 function id() {
   return crypto.randomUUID();
 }

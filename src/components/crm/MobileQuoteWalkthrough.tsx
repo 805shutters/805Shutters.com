@@ -4,21 +4,23 @@ import "@/mts-quote/mts-quote.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Check, ChevronRight, CloudOff, FileImage, List, Plus, Search } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, CloudOff, FileImage, Grid3X3, List, Plus, Search } from "lucide-react";
 import type { QuoteLabCatalogProduct } from "@/lib/quote-lab/types";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 import {
-  addMobileQuoteWindow, appendMobileQuotePhoto, createMobileQuoteDraft, emptyMobileQuoteDesign, isManualQuoteEditorHandoffReady,
+  addMobileQuoteWindow, appendMobileQuotePhoto, beginMobileQuoteGridSelection, chooseMobileQuoteGridWhole, commitMobileQuoteGridSelection, createMobileQuoteDraft, emptyMobileQuoteDesign, isManualQuoteEditorHandoffReady,
   isMobileQuoteDraftAccessible, isQuoteEditorHandoffReady, mobileQuoteFingerprint, mobileQuoteLine, mobileQuotePreflightOutcome, removeMobileQuoteWindow,
   selectMobileQuoteProduct, updateMobileQuoteDesign, validateMobileQuoteWindow,
-  MOBILE_QUOTE_ACCOUNT_ID, MOBILE_QUOTE_FRACTIONS, type MobileQuoteCustomer, type MobileQuoteDraft, type MobileQuotePhoto, type MobileQuoteWindow,
+  MOBILE_QUOTE_ACCOUNT_ID, MOBILE_QUOTE_FRACTIONS, type MobileQuoteCustomer, type MobileQuoteDraft, type MobileQuoteGridSelection, type MobileQuotePhoto, type MobileQuoteWindow,
 } from "@/lib/crm/mobile-quote-draft";
 import { loadMobileQuoteCatalog, loadMobileQuoteDrafts, saveMobileQuoteCatalog, saveMobileQuoteDraft } from "@/lib/crm/mobile-quote-storage";
 import { buildCatalogSelectionPatch, DesignCard, loadQuoteBuilderCatalog } from "@mts/components/crm/quote-builder/DesignCard";
 import { ManufacturerProductButtons } from "@mts/components/crm/quote-builder/ManufacturerProductButtons";
 import { QuoteBuilderDatabaseProvider } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { SelectQuickButtonsProvider } from "@mts/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@mts/components/ui/dialog";
 import { supabase } from "@mts/integrations/supabase/client";
+import { PortalContainerContext } from "@mts/lib/portal-container";
 import { createQuoteV2Draft, mutateQuoteV2Structure, priceQuoteV2, quoteV2DesignPatch, quoteV2PreviewDesign, quoteV2PreviewLine, quoteV2PricingOutcome, type QuoteV2StructureOperation } from "@mts/lib/quoteV2ServerClient";
 import { prepareMobileQuotePhoto } from "./mobileQuoteImage";
 import styles from "./MobileQuoteWalkthrough.module.css";
@@ -61,6 +63,72 @@ function PhotoThumbnail({ photo, onRemove }: { photo: MobileQuotePhoto; onRemove
   return <figure>{url && <img src={url} alt={photo.name} />}{onRemove && <button type="button" onClick={onRemove}>Remove</button>}</figure>;
 }
 
+export function MobileMeasurementGrid({
+  selection,
+  onChooseWhole,
+  onCommit,
+  onClose,
+  onCloseAutoFocus,
+}: {
+  selection: MobileQuoteGridSelection;
+  onChooseWhole: (whole: number) => void;
+  onCommit: (fraction: string) => void;
+  onClose: () => void;
+  onCloseAutoFocus?: () => void;
+}) {
+  const [page, setPage] = useState(() => Math.min(10, Math.max(0, Math.floor(selection.whole / 100))));
+  const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+  const selectedButton = useRef<HTMLButtonElement>(null);
+  const label = selection.side === "width" ? "Width" : "Height";
+  const pageStart = page * 100;
+  const pageEnd = Math.min(1000, pageStart + 99);
+  const wholeNumbers = Array.from({ length: pageEnd - pageStart + 1 }, (_, index) => pageStart + index);
+  const fractions = selection.whole === 1000 ? MOBILE_QUOTE_FRACTIONS.slice(0, 1) : MOBILE_QUOTE_FRACTIONS;
+
+  useEffect(() => {
+    selectedButton.current?.focus();
+  }, [selection.step, page, portalContainer]);
+
+  return <div className="mts-quote-scope" ref={setPortalContainer}>
+    <PortalContainerContext.Provider value={portalContainer}>
+      {portalContainer && <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className={styles.measurementDialog} onCloseAutoFocus={(event) => { event.preventDefault(); onCloseAutoFocus?.(); }}>
+          <DialogHeader>
+        <DialogTitle>{label} grid</DialogTitle>
+        <DialogDescription>{selection.step === "whole" ? `Select whole inches for ${label.toLowerCase()}.` : `Select a fraction for ${selection.whole} inches.`}</DialogDescription>
+      </DialogHeader>
+      {selection.step === "whole" ? <>
+        <div className={styles.gridRange} aria-label="Whole-inch range">
+          <button type="button" onClick={() => setPage((value) => Math.max(0, value - 1))} disabled={page === 0}><ChevronLeft />Previous</button>
+          <strong>{pageStart}–{pageEnd} inches</strong>
+          <button type="button" onClick={() => setPage((value) => Math.min(10, value + 1))} disabled={page === 10}>Next<ChevronRight /></button>
+        </div>
+        <div className={styles.wholeGrid} role="group" aria-label={`${label} whole inches`}>
+          {wholeNumbers.map((whole) => <button
+            type="button"
+            key={whole}
+            ref={whole === selection.whole ? selectedButton : undefined}
+            aria-pressed={whole === selection.whole}
+            aria-label={`${whole} whole inches`}
+            onClick={() => onChooseWhole(whole)}
+          >{whole}</button>)}
+        </div>
+      </> : <div className={styles.gridFractions} role="group" aria-label={`${label} fraction`}>
+        {fractions.map((fraction) => <button
+          type="button"
+          key={fraction}
+          ref={fraction === selection.fraction ? selectedButton : undefined}
+          aria-pressed={fraction === selection.fraction}
+          onClick={() => onCommit(fraction)}
+        >{fraction === "0" ? "0 (even)" : fraction}</button>)}
+      </div>}
+          <button type="button" className={styles.gridCancel} onClick={onClose}>Cancel</button>
+        </DialogContent>
+      </Dialog>}
+    </PortalContainerContext.Provider>
+  </div>;
+}
+
 export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session: Session; onSessionExpired: () => void }) {
   const owner = `${session.user.id}:${MOBILE_QUOTE_ACCOUNT_ID}`;
   const queryClient = useMemo(() => new QueryClient(), []);
@@ -83,6 +151,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   const [newContact, setNewContact] = useState(false);
   const [soldStatus, setSoldStatus] = useState("all");
   const [contact, setContact] = useState({ name: "", phone: "", email: "", address: "" });
+  const [measurementGrid, setMeasurementGrid] = useState<MobileQuoteGridSelection | null>(null);
+  const measurementGridTrigger = useRef<HTMLButtonElement | null>(null);
   const camera = useRef<HTMLInputElement>(null);
   const library = useRef<HTMLInputElement>(null);
   const draftRef = useRef<MobileQuoteDraft | null>(null);
@@ -213,6 +283,19 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     Object.assign(line, patch, { saved: false, price: null });
     next.quotePrice = null;
     next.updatedAt = new Date().toISOString(); setDraft(next);
+  }
+
+  function openMeasurementGrid(side: "width" | "height", trigger: HTMLButtonElement) {
+    if (!active || draft?.submission.snapshot) return;
+    measurementGridTrigger.current = trigger;
+    setMeasurementGrid(beginMobileQuoteGridSelection(active, side));
+  }
+
+  function commitMeasurementGrid(fraction: string) {
+    if (!measurementGrid) return;
+    setDraft((current) => current ? commitMobileQuoteGridSelection(current, measurementGrid, fraction) : current);
+    setMeasurementGrid(null);
+    setError("");
   }
 
   async function addPhoto(file: File | undefined) {
@@ -493,8 +576,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   return <QueryClientProvider client={queryClient}><QuoteBuilderDatabaseProvider database={supabase} authoritativeV2><main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy} onClick={home}><ArrowLeft /></button><div><small>ADD QUOTE</small><h1>{draft.customer.name}</h1></div><span className={styles.save}>{online ? <Check /> : <CloudOff />}{saveState}</span></header><div className={styles.builderBar}><strong>Window {draft.windows.findIndex((line) => line.id === active.id) + 1}{active.room ? ` · ${active.room}` : ""}</strong><button onClick={() => setScreen("review")}><List />All windows ({draft.windows.length})</button></div><section className={styles.builder}>
     <div className={styles.step}><small>01 / PRODUCT</small><h2>What goes here?</h2><p>On line one, a product selection becomes the default for every current and future line. Later line changes stay local.</p><ManufacturerProductButtons products={catalog} selectedManufacturer={manufacturer} selectedProductId={active.activeProductId} onSelectManufacturer={setManufacturer} onSelectProduct={selectProduct} loading={!catalog.length} mobileProductFamily={productFamily} onSelectMobileProductFamily={setProductFamily} compactMobile /></div>
-    <div className={styles.step}><small>02 / LOCATION & SIZE</small><h2>Give this window a home.</h2><div className={styles.fields}><label>Room<input value={active.room} onChange={(event) => updateWindow({ room: event.target.value })} placeholder="Living room" /></label><div className={styles.quickButtons} aria-label="Room presets">{["Living room", "Kitchen", "Dining room", "Bedroom", "Office"].map((room) => <button key={room} type="button" aria-pressed={active.room === room} onClick={() => updateWindow({ room })}>{room}</button>)}</div><label>Window position<input value={active.position} onChange={(event) => updateWindow({ position: event.target.value })} placeholder="Left of fireplace" /></label>{(["width", "height"] as const).map((side) => <div className={styles.dimension} key={side}><label>{side}<input type="number" min="0" max="1000" inputMode="numeric" value={side === "width" ? active.widthWhole : active.heightWhole} onChange={(event) => updateWindow({ [side === "width" ? "widthWhole" : "heightWhole"]: Number(event.target.value) })} /></label><div><span className={styles.fieldLabel}>Fraction</span><div className={styles.fractions}>{MOBILE_QUOTE_FRACTIONS.map((fraction) => { const selected = (side === "width" ? active.widthFraction : active.heightFraction) === fraction; return <button type="button" key={fraction} aria-pressed={selected} onClick={() => updateWindow({ [side === "width" ? "widthFraction" : "heightFraction"]: fraction })}>{fraction === "0" ? "—" : fraction}</button>; })}</div></div></div>)}</div><div className={styles.photos}><Camera /><h3>Window photos</h3><p>Keep the frame, trim, and surroundings in view. Photos stay attached only to this window.</p><div>{active.photos.map((photo) => <PhotoThumbnail key={photo.id} photo={photo} onRemove={() => updateWindow({ photos: active.photos.filter((item) => item.id !== photo.id) })} />)}</div><button type="button" onClick={() => camera.current?.click()}><Camera />Take photo</button><button type="button" onClick={() => library.current?.click()}><FileImage />Choose file</button><input ref={camera} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /><input ref={library} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /></div></div>
+    <div className={styles.step}><small>02 / LOCATION & SIZE</small><h2>Give this window a home.</h2><div className={styles.fields}><label>Room<input value={active.room} onChange={(event) => updateWindow({ room: event.target.value })} placeholder="Living room" /></label><div className={styles.quickButtons} aria-label="Room presets">{["Living room", "Kitchen", "Dining room", "Bedroom", "Office"].map((room) => <button key={room} type="button" aria-pressed={active.room === room} onClick={() => updateWindow({ room })}>{room}</button>)}</div><label>Window position<input value={active.position} onChange={(event) => updateWindow({ position: event.target.value })} placeholder="Left of fireplace" /></label>{(["width", "height"] as const).map((side) => { const inputId = `mobile-quote-${active.id}-${side}`; return <div className={styles.dimension} key={side}><div className={styles.wholeEntry}><div className={styles.dimensionHeader}><label htmlFor={inputId}>{side}</label><button type="button" onClick={(event) => openMeasurementGrid(side, event.currentTarget)} aria-label={`Open ${side} measurement grid`}><Grid3X3 />Grid</button></div><input id={inputId} type="number" min="0" max="1000" inputMode="numeric" value={side === "width" ? active.widthWhole : active.heightWhole} onChange={(event) => updateWindow({ [side === "width" ? "widthWhole" : "heightWhole"]: Number(event.target.value) })} /></div><div><span className={styles.fieldLabel}>Fraction</span><div className={styles.fractions}>{MOBILE_QUOTE_FRACTIONS.map((fraction) => { const selected = (side === "width" ? active.widthFraction : active.heightFraction) === fraction; return <button type="button" key={fraction} aria-pressed={selected} onClick={() => updateWindow({ [side === "width" ? "widthFraction" : "heightFraction"]: fraction })}>{fraction === "0" ? "—" : fraction}</button>; })}</div></div></div>; })}</div><div className={styles.photos}><Camera /><h3>Window photos</h3><p>Keep the frame, trim, and surroundings in view. Photos stay attached only to this window.</p><div>{active.photos.map((photo) => <PhotoThumbnail key={photo.id} photo={photo} onRemove={() => updateWindow({ photos: active.photos.filter((item) => item.id !== photo.id) })} />)}</div><button type="button" onClick={() => camera.current?.click()}><Camera />Take photo</button><button type="button" onClick={() => library.current?.click()}><FileImage />Choose file</button><input ref={camera} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /><input ref={library} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /></div></div>
     <div className={styles.step}><small>03 / PRODUCT DETAILS</small><h2>Configure the current product.</h2>{activeFamily ? <SelectQuickButtonsProvider><div className={styles.designCard}><DesignCard lineItem={mobileQuoteLine(draft, active)} lineNumber={draft.windows.findIndex((line) => line.id === active.id) + 1} designs={[activeFamily.design]} authoritativeV2 mobilePresentation catalogProducts={catalog} onUpdateDesign={(design) => { if (draft.submission.snapshot) { setError("Submission is in progress. Configuration is frozen until this submission completes."); return; } setDraft(updateMobileQuoteDesign(draft, active.id, design)); }} onCopyAll={() => undefined} onCopySome={() => undefined} onStack={() => undefined} copyMode="none" isCopyTarget={false} isSelectedTarget={false} onToggleCopyTarget={() => undefined} /></div></SelectQuickButtonsProvider> : <p className={styles.notice}>Choose an exact product above to load its current production configuration controls.</p>}<label className={styles.notes}>Window notes<textarea value={active.notes} onChange={(event) => updateWindow({ notes: event.target.value })} /></label></div>
     {error && <p className={styles.error} role="alert">{error}</p>}
-  </section><footer className={styles.footer}><div><span>{online ? "Quote so far" : "Last verified · stale"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Price unavailable"}</strong></div><button onClick={saveAndNext}><Plus />Save window & next</button><button className={styles.primary} onClick={review}>Review all<ChevronRight /></button></footer></main></QuoteBuilderDatabaseProvider></QueryClientProvider>;
+  </section><footer className={styles.footer}><div><span>{online ? "Quote so far" : "Last verified · stale"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Price unavailable"}</strong></div><button onClick={saveAndNext}><Plus />Save window & next</button><button className={styles.primary} onClick={review}>Review all<ChevronRight /></button></footer></main>{measurementGrid && <MobileMeasurementGrid selection={measurementGrid} onChooseWhole={(whole) => setMeasurementGrid((current) => current ? chooseMobileQuoteGridWhole(current, whole) : current)} onCommit={commitMeasurementGrid} onClose={() => setMeasurementGrid(null)} onCloseAutoFocus={() => measurementGridTrigger.current?.focus()} />}</QuoteBuilderDatabaseProvider></QueryClientProvider>;
 }
