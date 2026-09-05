@@ -111,6 +111,6 @@ function shutterOperationReference(fields: readonly string[][]) {
   const bifold180 = values.some(value => /bi ?fold.*180|180.*bi ?fold/.test(value));
   const otherBifold = values.some(value => /bi ?fold/.test(value) && !/180/.test(value));
   if (otherBifold || (bypass && bifold180)) return null;
-  const asset = bypass ? "shutter-bypass" : bifold180 ? "shutter-bifold-180" : null;
+  const asset = bypass ? "shutter-bypass" : bifold180 ? "shutter-bifold-180-v2" : null;
   return asset ? { src: `${CONTRACT_ART_ROOT}/${asset}.webp`, label: bypass ? "Bypass operation reference" : "Bifold 180 operation reference · left folding, right closed" } : null;
 }

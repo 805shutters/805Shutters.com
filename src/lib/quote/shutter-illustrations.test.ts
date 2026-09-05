@@ -61,7 +61,7 @@ describe("configured shutter pencil catalog", () => {
 });
 
 describe('tracked shutter operation references',()=>{
-  it.each([['Bypass Track','shutter-bypass'],['Bifold 180','shutter-bifold-180'],['Bi-fold 180','shutter-bifold-180']])('uses explicit %s selection', (system,asset)=>{
+  it.each([['Bypass Track','shutter-bypass'],['Bifold 180','shutter-bifold-180-v2'],['Bi-fold 180','shutter-bifold-180-v2']])('uses explicit %s selection', (system,asset)=>{
     const art=contractIllustration('Shutters',['Shutter Type: Tracked Shutter',`Track System: ${system}`,'Panel Config: LLRR','Tilt Type: Standard Tilt','Split Tilt: Yes','Divider Rail: Yes']);
     expect(art?.operationReference?.src).toContain(asset+'.webp');
     expect(existsSync('public'+art?.operationReference?.src)).toBe(true);

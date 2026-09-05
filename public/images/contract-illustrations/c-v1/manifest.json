@@ -261,10 +261,11 @@
     },
     {
       "id": "shutter-bifold-180",
-      "source": "exec-26155dca-1510-4e63-aab9-5f35c3658677.png",
-      "sourceSha256": "d6b22f952fb39db470fb9703f24678a37433ebac740fd04e7d28f4f49ded55ae",
-      "file": "public/images/contract-illustrations/c-v1/shutter-bifold-180.webp",
-      "bytes": 78122
+      "source": "exec-5ec1c3bd-4b4f-4a40-b984-22645d87e064.png",
+      "sourceSha256": "69619eeade7df92e4c80e54a045630798ee7f22bd9fbfa5badcd7c56693559d6",
+      "file": "public/images/contract-illustrations/c-v1/shutter-bifold-180-v2.webp",
+      "bytes": 120984,
+      "description": "Connected left folding pair with visible shared hinge seam and jamb hinges; right pair closed."
     },
     {
       "id": "temporary-shade",
