@@ -19,6 +19,29 @@ export function businessEventToActivity(
         );
     if (meta.reason) changes.push(`Reason: ${meta.reason}`);
     if (after.resolution) changes.push(`Resolution: ${after.resolution}`);
+  } else if (row.event_type === "purchased_scope_verified") {
+    changes.push(`Purchased scope verified · revision ${row.source_revision}`);
+  } else if (String(row.event_type).startsWith("fulfillment_")) {
+    changes.push(String(row.event_type).replaceAll("_", " "));
+    for (const key of [
+      "room",
+      "vendor_order_ref",
+      "promised_on",
+      "state",
+      "hold_reason",
+      "owner",
+      "outcome",
+    ] as const)
+      if (before[key] !== after[key])
+        changes.push(
+          `${key.replaceAll("_", " ")}: ${before[key] || "not recorded"} → ${after[key] || "not recorded"}`,
+        );
+    if (after.kind)
+      changes.push(
+        `${after.kind}: ${after.quantity} · ${after.occurred_on} · ${after.evidence}`,
+      );
+    if (after.correction_of) changes.push(`Corrects: ${after.correction_of}`);
+    if (meta.reason) changes.push(`Reason: ${meta.reason}`);
   } else {
     const wf = (after.workflow || {}) as Record<string, unknown>;
     changes.push(

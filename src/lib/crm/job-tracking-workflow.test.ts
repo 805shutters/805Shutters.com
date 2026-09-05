@@ -18,7 +18,7 @@ const JOB_ID = "11111111-1111-4111-8111-111111111111";
 const QUOTE_ID = "22222222-2222-4222-8222-222222222222";
 const ENTRY_ID = "33333333-3333-4333-8333-333333333333";
 const OTHER_ID = "44444444-4444-4444-8444-444444444444";
-const actor = { email: "805@805shutters.com", userId: OTHER_ID };
+const actor = { email: "805shutters@gmail.com", userId: OTHER_ID };
 const timestamp = "2026-08-01T00:00:00.000Z";
 type RecordData = Record<string, unknown> & { id: string };
 
@@ -75,7 +75,7 @@ describe("manual job tracking stages", () => {
   it.each(jobTrackingStages)("persists %s as manual, without changing sold/signature/payment facts", async (stage) => {
     const db = database();
     const quoteBefore = structuredClone(db.tables.crm_quotes[0]);
-    const result = await updateJobTrackingStage(db.client, { quoteId: QUOTE_ID, jobId: JOB_ID, bookkeepingEntryId: ENTRY_ID, stage }, actor);
+    const result = await updateJobTrackingStage(db.client, { quoteId: QUOTE_ID, jobId: JOB_ID, bookkeepingEntryId: ENTRY_ID, stage, managerException:["complete","archived","lost"].includes(stage)?"Synthetic manager exception; balance remains collectible":undefined }, actor);
     expect(result).toMatchObject({ auditRecorded: true, warning: null });
     expect(result.jobTracking).toMatchObject({ stage, source: "manual", updated_by: actor.email, updated_by_user_id: actor.userId });
     expect(db.writes).toHaveLength(1);
@@ -102,7 +102,7 @@ describe("manual job tracking stages", () => {
 
   it("updates a standalone entry without inventing quote, job, or sold date", async () => {
     const db = database({ entry: { quote_id: null, job_id: null, sold_date: null } });
-    const result = await updateJobTrackingStage(db.client, { bookkeepingEntryId: ENTRY_ID, stage: "complete" }, actor);
+    const result = await updateJobTrackingStage(db.client, { bookkeepingEntryId: ENTRY_ID, stage: "complete", managerException:"Synthetic legacy evidence exception; no ledger changes" }, actor);
     expect(result).toMatchObject({ entityType: "bookkeeping_entry", quoteId: null, jobId: null });
     expect(db.writes[0].table).toBe("crm_quote_bookkeeping_entries");
     expect(db.tables.crm_quote_bookkeeping_entries[0]).toMatchObject({ sold_date: null, total_amount: 1000, cogs_amount: 200 });
@@ -231,7 +231,7 @@ describe("job tracking stage route", () => {
   it("returns the saved marker for an authenticated staff user", async () => {
     const db = database();
     vi.mocked(requireCrmUser).mockResolvedValue({ supabase: db.client, email: actor.email, user: { id: actor.userId }, displayName: null } as Awaited<ReturnType<typeof requireCrmUser>>);
-    const response = await POST(new NextRequest("https://example.test/api/crm/job-tracking/stage", { method: "POST", body: JSON.stringify({ quoteId: QUOTE_ID, stage: "complete" }) }));
+    const response = await POST(new NextRequest("https://example.test/api/crm/job-tracking/stage", { method: "POST", body: JSON.stringify({ quoteId: QUOTE_ID, stage: "complete", managerException:"Synthetic owner exception retains all obligations" }) }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ quoteId: QUOTE_ID, jobTracking: { stage: "complete", source: "manual" } });
   });
@@ -239,7 +239,7 @@ describe("job tracking stage route", () => {
   it("returns 200 with a truthful partial-audit warning after the stage is saved", async () => {
     const db = database({ auditError: "returned" });
     vi.mocked(requireCrmUser).mockResolvedValue({ supabase: db.client, email: actor.email, user: { id: actor.userId }, displayName: null } as Awaited<ReturnType<typeof requireCrmUser>>);
-    const response = await POST(new NextRequest("https://example.test/api/crm/job-tracking/stage", { method: "POST", body: JSON.stringify({ quoteId: QUOTE_ID, stage: "complete" }) }));
+    const response = await POST(new NextRequest("https://example.test/api/crm/job-tracking/stage", { method: "POST", body: JSON.stringify({ quoteId: QUOTE_ID, stage: "complete", managerException:"Synthetic owner exception retains all obligations" }) }));
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ auditRecorded: false, warning: expect.stringContaining("Stage saved"), jobTracking: { stage: "complete" } });
   });

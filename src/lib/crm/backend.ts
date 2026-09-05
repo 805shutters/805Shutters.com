@@ -1,3 +1,4 @@
+import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
 import {businessEventToActivity} from "./business-events";
 import { loadIntegrationHealth } from "./integration-health";
 import { buildJobTrackingView } from "./job-tracking-view";
@@ -1182,6 +1183,7 @@ export function buildDashboardData({
   installationInvoiceEmails = [],
   installerOutcomes = [],
   ownedActions = [],
+  fulfillment = emptyFulfillment,
   sourceHealth = [],
   kenPayments,
   kenPaymentAllocations = [],
@@ -1206,6 +1208,7 @@ export function buildDashboardData({
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   installerOutcomes?: InstallerOutcomeEvidence[];
   ownedActions?: import("./owned-actions").OwnedAction[];
+  fulfillment?: FulfillmentData;
   sourceHealth?: ProgressSourceHealth[];
   kenPayments: CrmKenPayment[];
   kenPaymentAllocations?: CrmKenPaymentAllocation[];
@@ -1277,11 +1280,11 @@ export function buildDashboardData({
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
   const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts);
-  const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, ownedActions, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
+  const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, fulfillment, ownedActions, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
   for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
   return {
-    ownedActions, installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
+    fulfillment, ownedActions, installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
     jobs: jobsWithQuotes,
     quotes: liveQuotes,
     events: calendarEvents,
@@ -1734,6 +1737,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     settingsResult,
     installerOutcomesResult,
     ownedActionsResult,
+    fulfillmentScopesResult,fulfillmentLinesResult,productMovementsResult,serviceVisitsResult,
     integrationHealth
   ] = await Promise.all([
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
@@ -1779,6 +1783,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     supabase.from("crm_settings").select("*"),
     loadCompleteCrmTable(supabase, "crm_installer_forms", "updated_at", "id,job_id,quote_id,status,signed_at,updated_at,created_at,issues,meta"),
     loadCompleteCrmTable(supabase, "crm_accountability_tasks", "created_at"),
+    loadCompleteCrmTable(supabase,"crm_fulfillment_scopes","verified_at","*","quote_id"),
+    loadCompleteCrmTable(supabase,"crm_fulfillment_lines","created_at"),
+    loadCompleteCrmTable(supabase,"crm_product_movements","created_at"),
+    loadCompleteCrmTable(supabase,"crm_service_visits","created_at"),
     loadIntegrationHealth(supabase)
   ]);
 
@@ -1899,13 +1907,29 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
-  const optionalEvidence = [["owned actions", ownedActionsResult], ["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
+  const optionalEvidence = [["purchased scope",fulfillmentScopesResult],["product quantities",fulfillmentLinesResult],["shipment and receipt evidence",productMovementsResult],["service visits",serviceVisitsResult],["owned actions", ownedActionsResult], ["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
   const loadedAt = new Date().toISOString();
   const sourceHealth: ProgressSourceHealth[] = optionalEvidence.map(([source, result]) => ({ source, state: result.error ? "unavailable" : "complete", loadedAt, ...(result.error ? { message: `Could not load ${source}. Related conclusions are incomplete.` } : {}) }));
   // Never send the public installer bearer token or signed/customer snapshots to dashboard consumers.
   const installerOutcomes = (installerOutcomesResult.error ? [] : installerOutcomesResult.data || []) as InstallerOutcomeEvidence[];
   const safeInstallerOutcomes = installerOutcomes.map((report) => ({ ...report, meta: { workflow: report.meta?.workflow } }));
+  // Registered physical quantities must still match the currently signed selected scope.
+  // Validate only registered quotes, in bounded batches, without writing any quote data.
+  const verifiedFulfillmentScopes: FulfillmentData["scopes"] = [];
+  const registeredScopes = (fulfillmentScopesResult.data || []) as unknown as FulfillmentData["scopes"];
+  if (registeredScopes.length) {
+    const {loadPurchasedFulfillmentScope} = await import("./fulfillment-server");
+    for (let start=0; start<registeredScopes.length; start+=4) {
+      const batch=registeredScopes.slice(start,start+4);
+      const results=await Promise.allSettled(batch.map(scope=>loadPurchasedFulfillmentScope(supabase,scope.quote_id)));
+      results.forEach((result,index)=>{
+        if(result.status==="fulfilled") verifiedFulfillmentScopes.push(result.value);
+        else { verifiedFulfillmentScopes.push(batch[index]); sourceHealth.push({source:`Purchased scope ${batch[index].quote_id}`,state:"unavailable",loadedAt,message:"Current signed scope could not be verified; readiness is incomplete."}); }
+      });
+    }
+  }
   const dashboard = buildDashboardData({
+    fulfillment: {scopes:verifiedFulfillmentScopes,lines:fulfillmentLinesResult.data||[],movements:productMovementsResult.data||[],visits:serviceVisitsResult.data||[]} as unknown as FulfillmentData,
     installerOutcomes: safeInstallerOutcomes, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], sourceHealth,
     jobs,
     quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
@@ -1927,7 +1951,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     openingBalance,
     payoffTarget
   });
-  return { ...dashboard, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], integrationHealth, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
+  return { ...dashboard, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], integrationHealth, loadWarnings: sourceHealth.filter(source=>source.state!=="complete").map(source=>source.message || `Could not load ${source.source}. Related details may be incomplete.`) };
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {

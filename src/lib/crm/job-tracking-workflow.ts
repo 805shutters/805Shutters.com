@@ -1,3 +1,4 @@
+import {verifyOperationalCloseout} from "./closeout-readiness";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
@@ -14,12 +15,14 @@ export type JobTrackingStageInput = {
   quoteId?: string;
   bookkeepingEntryId?: string;
   stage: JobTrackingStage;
+  managerException?: string;
 };
 
 type Actor = { email: string; userId?: string };
 type TrackingRecord = {
   id: string;
   updated_at: string;
+  status?: string;
   job_id?: string | null;
   quote_id?: string | null;
   meta?: Record<string, unknown> | null;
@@ -48,6 +51,7 @@ export function parseJobTrackingStageInput(value: unknown): JobTrackingStageInpu
   if (!result.jobId && !result.quoteId && !result.bookkeepingEntryId) {
     throw new CrmAuthError(400, "An exact job, quote, or bookkeeping entry ID is required.");
   }
+  if (typeof input.managerException === "string" && input.managerException.trim()) result.managerException=input.managerException.trim().slice(0,2000);
   return result;
 }
 
@@ -91,6 +95,8 @@ export async function updateJobTrackingStage(
   const jobId = input.jobId || quote?.job_id || entry?.job_id || undefined;
   const job = jobId ? await fetchRecord(supabase, "crm_jobs", jobId) : null;
 
+  if (input.stage === "complete" || (["archived","lost"].includes(input.stage) && quote && ["sold","ordered","received","installed","paid"].includes(quote.status||""))) await verifyOperationalCloseout(supabase,{quoteId:quoteId,jobId:jobId,bookkeepingEntryId:input.bookkeepingEntryId},actor.email,input.managerException);
+
   if (input.stage === "ordered" && job) {
     const measure = getMeasureNeededMeta(job.meta);
     if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") {
@@ -108,6 +114,7 @@ export async function updateJobTrackingStage(
   const marker = {
     ...objectMeta(beforeMeta.job_tracking),
     stage: input.stage,
+    manager_exception: input.managerException ? {reason:input.managerException,actor:actor.email,recorded_at:new Date().toISOString()} : null,
     updated_at: new Date().toISOString(),
     updated_by: actor.email,
     updated_by_user_id: actor.userId || null,

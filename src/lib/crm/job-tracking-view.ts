@@ -32,7 +32,7 @@ export type JobTrackingViewItem = {
   measureStatus: string; notes: string; nextAction: string; manualStage: boolean;
 };
 
-export type JobTrackingViewInput = { ownedActions?: import("./owned-actions").OwnedAction[]; jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[]; installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[]; orderCogsEmails?: CrmOrderCogsEmail[]; installationInvoiceEmails?: CrmInstallationInvoiceEmail[] };
+export type JobTrackingViewInput = { fulfillment?: import("./fulfillment").FulfillmentData; ownedActions?: import("./owned-actions").OwnedAction[]; jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[]; installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[]; orderCogsEmails?: CrmOrderCogsEmail[]; installationInvoiceEmails?: CrmInstallationInvoiceEmail[] };
 const SOLD_STATUSES = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced", "paid", "closed", "manual", "legacy"]);
 const TERMINAL = new Set(["complete", "lost", "archived"]);
 const finiteMoney = (value: unknown): number | null => value === null || value === undefined || value === "" ? null : Number.isFinite(Number(value)) ? Number(value) : null;
@@ -158,7 +158,7 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
       measureStatus: measure.status === "measured" ? "Measured" : measure.status === "not_needed" ? "Not needed" : measure.status === "needed" ? "Needed" : "Not recorded",
       notes: [...new Set([row?.notes, quote?.notes, job?.notes].filter(Boolean))].join("\n"), nextAction: job?.next_action || "", manualStage: Boolean(override),
     };
-    const progress = deriveJobProgress({ ...base, recordedStage: override, unambiguousJob, ownedActions: input.ownedActions, installerOutcomes: input.installerOutcomes, sourceHealth: input.sourceHealth });
+    const progress = deriveJobProgress({ ...base, recordedStage: override, unambiguousJob, fulfillment: input.fulfillment, ownedActions: input.ownedActions, installerOutcomes: input.installerOutcomes, sourceHealth: input.sourceHealth });
     return { ...base, progress, nextAction: progress.nextAction, stageId: progress.stage };
   }).sort((a, b) => (b.soldDate ? Date.parse(b.soldDate) : -Infinity) - (a.soldDate ? Date.parse(a.soldDate) : -Infinity) || a.id.localeCompare(b.id));
 }

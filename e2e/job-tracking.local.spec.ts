@@ -1,3 +1,4 @@
+import {emptyFulfillment,type FulfillmentData} from "../src/lib/crm/fulfillment";
 import type {OwnedAction,OwnedActionChange} from "../src/lib/crm/owned-actions";
 import type { InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
 import { test, expect, devices, type Page } from "@playwright/test";
@@ -17,7 +18,7 @@ function fixture() {
   const credits: CrmBookkeepingCredit[] = [];
   quotes.push({ ...quotes[0], id: id(90), job_id: jobs[6].id, customer_name: jobs[6].customer_name, customer_email: jobs[6].email, status: "sent", sold_at: null, signed_at: null, quote_total: 20000, balance_due: 20000 });
   const entries: CrmBookkeepingEntry[] = [];
-  return { jobs, quotes, payments, credits, entries, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
+  return { jobs, quotes, payments, credits, entries, fulfillment:structuredClone(emptyFulfillment) as FulfillmentData, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
 }
 async function setup(page: Page, includeLegacy = false) {
   const records = fixture();
@@ -41,10 +42,23 @@ async function setup(page: Page, includeLegacy = false) {
     if (url.pathname === "/api/crm/jobs" && route.request().method() === "GET") {
       return route.fulfill({ json: buildDashboardData({ ...records, events: [], customers: [], products: [], contracts: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 }) });
     }
+    if(url.pathname==='/api/crm/operations/fulfillment'&&route.request().method()==='GET') {
+      const q=records.quotes.find(q=>q.id===url.searchParams.get('quoteId'))!;
+      return route.fulfill({json:{scope:{quote_id:q.id,job_id:q.job_id,source_revision:'fixture-v1',verified_at:stamp,lines:[{id:'opening-1',room:'Living',quantity:2},{id:'opening-2',room:'Bedroom',quantity:1}]}}});
+    }
     if (!url.pathname.startsWith("/api/crm/")) return route.fulfill({ json: { ok: true } });
     if (route.request().method() === "GET") return route.fulfill({ status: 503, json: { message: "Activity is outside this synthetic fixture." } });
     const body = route.request().postDataJSON() as Record<string, unknown>;
     writes.push({ url: url.pathname, body });
+    if(url.pathname==='/api/crm/operations/fulfillment') {
+      const p=body.payload as Record<string,unknown>;
+      if(body.kind==='line') {
+        const scope={quote_id:String(p.quote_id),job_id:String(p.job_id),source_revision:'fixture-v1',verified_at:stamp,lines:[{id:'opening-1',room:'Living',quantity:2},{id:'opening-2',room:'Bedroom',quantity:1}]};
+        records.fulfillment.scopes=[scope];
+        records.fulfillment.lines.push({...p,id:String(body.id),revision:1,source_revision:scope.source_revision,room:scope.lines.find(l=>l.id===p.source_line_id)!.room,quantity:p.source_line_id==='opening-1'?2:1,created_at:stamp,updated_at:stamp} as unknown as FulfillmentData['lines'][number]);
+      } else if(body.kind==='movement') records.fulfillment.movements.push({...p,id:String(body.id),created_at:stamp} as unknown as FulfillmentData['movements'][number]);
+      return route.fulfill({json:{record:p}});
+    }
     if (url.pathname === "/api/crm/operations/tasks") {
       const change=body as unknown as OwnedActionChange;
       const previous=records.ownedActions.find(a=>a.id===change.id);
@@ -55,6 +69,7 @@ async function setup(page: Page, includeLegacy = false) {
     }
     if (url.pathname.endsWith("/square-payment-link")) return route.fulfill({ json: { amount: body.expectedAmount, recipient: body.expectedRecipient, url: "https://square.link/test-only", email: { sent: true } } });
     if (url.pathname === "/api/crm/job-tracking/stage") {
+      if (body.stage === "complete" && !body.managerException) return route.fulfill({status:409,json:{message:"Closeout needs verified completion of every purchased order, resolved service, and settled balances."}});
       if (body.stage === "ordered" && body.jobId === records.jobs[1].id) return route.fulfill({ status: 409, json: { message: "Submit the required technical measure before marking this job ordered." } });
       const quote = records.quotes.find((item) => item.id === body.quoteId);
       if (quote) quote.meta = { ...quote.meta, job_tracking: { stage: body.stage } };
@@ -278,6 +293,9 @@ test("unsupported terminal label stays actionable and preserves all payments", a
   await page.getByRole("button", { name: /Change stage for Avery/ }).click();
   await page.getByRole("radio", { name: "Complete", exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("Closeout needs verified completion");
+  await page.getByRole("textbox",{name:"Manager exception, if needed"}).fill("Synthetic owner exception: unfinished work remains visible");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("table")).toContainText("Avery Sample");
   await page.getByRole("button", { name: /^Needs Attention\s+1$/ }).click();
@@ -374,4 +392,30 @@ test("owned actions retain conflicting edits and show assigned commitments", asy
  await expect(dialog.getByRole('textbox',{name:'Next action',exact:true})).toHaveValue('Arrange return visit');
  expect(records.ownedActions[0].title).toBe('Confirm product receipt');
  expect(writes.filter(w=>w.url==='/api/crm/operations/tasks')).toHaveLength(2);
+});
+
+test('exact purchased quantities distinguish shipment from physical receipt',async({page})=>{
+ const {records,writes}=await setup(page);
+ await page.getByRole('textbox',{name:'Search job tracking'}).fill('Avery');
+ await page.getByRole('button',{name:'Orders, receipts & visits',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ await expect(dialog).toContainText('Complete receipt needs verification');
+ await dialog.getByRole('button',{name:'Register purchased opening'}).click();
+ await dialog.getByRole('combobox',{name:'Purchased opening'}).selectOption('opening-1');
+ await dialog.getByRole('textbox',{name:'Vendor',exact:true}).fill('Vendor A');
+ await dialog.getByRole('textbox',{name:'Vendor order reference',exact:true}).fill('TEST-A');
+ await dialog.getByRole('combobox',{name:'Order evidence state'}).selectOption('acknowledged');
+ await dialog.getByRole('textbox',{name:'Evidence / reason for this change'}).fill('Synthetic confirmation packet');
+ await dialog.getByRole('button',{name:'Save operational evidence'}).click();
+ await expect(dialog).toContainText('1 purchased openings not registered');
+ await dialog.getByRole('button',{name:'Record product movement'}).click();
+ await dialog.getByRole('combobox',{name:'Movement',exact:true}).selectOption('shipped');
+ await dialog.getByRole('spinbutton',{name:'Quantity',exact:true}).fill('2');
+ await dialog.getByLabel('Actual business date').fill('2026-09-04');
+ await dialog.getByRole('textbox',{name:'Supporting document or observation'}).fill('Synthetic shipment confirmation');
+ await dialog.getByRole('textbox',{name:'Evidence / reason for this change'}).fill('Tracking evidence received');
+ await dialog.getByRole('button',{name:'Save operational evidence'}).click();
+ await expect(dialog).toContainText('2 shipped · 0 received');
+ expect(records.fulfillment.movements).toHaveLength(1);
+ expect(writes.every(w=>w.url==='/api/crm/operations/fulfillment')).toBe(true);
 });

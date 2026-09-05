@@ -1080,14 +1080,14 @@ export function CrmApp({
     } finally { setBusy(false); }
   }
 
-  async function saveTrackingStage(item: JobTrackingViewItem, stage: WorkspaceStageId) {
+  async function saveTrackingStage(item: JobTrackingViewItem, stage: WorkspaceStageId, managerException?:string) {
     if (!session) throw new Error("Sign in again before editing a job.");
     setBusy(true);
     setMessage(null);
     try {
       const result = await crmFetch<{ warning?: string | null }>(session, "/api/crm/job-tracking/stage", {
         method: "POST", body: JSON.stringify({
-          stage, jobId: item.job?.id || item.row?.jobId || undefined,
+          stage, managerException, jobId: item.job?.id || item.row?.jobId || undefined,
           quoteId: item.quote?.id || item.row?.quoteId || undefined,
           bookkeepingEntryId: item.row && item.row.source !== "crm_quote" ? item.row.id : undefined,
         }),
@@ -3229,6 +3229,9 @@ export function CrmApp({
       {activeTab === "tracking" ? (
         <JobTrackingWorkspace
           ownedActions={data?.ownedActions}
+          fulfillment={data?.fulfillment} events={events}
+          onLoadFulfillmentScope={async quoteId => { if(!session) throw new Error("CRM session required."); const result=await crmFetch<{scope:import("@/lib/crm/fulfillment").FulfillmentScope}>(session,`/api/crm/operations/fulfillment?quoteId=${encodeURIComponent(quoteId)}`);return result.scope; }}
+          onSaveFulfillment={async change => { if(!session)throw new Error("CRM session required.");setBusy(true);try{await crmFetch(session,"/api/crm/operations/fulfillment",{method:"POST",body:JSON.stringify(change)});await refresh();}finally{setBusy(false);} }}
           onSaveOwnedAction={async change => { if (!session) throw new Error("CRM session required."); setBusy(true); try { await crmFetch(session,"/api/crm/operations/tasks",{method:"POST",body:JSON.stringify(change)}); await refresh(); } finally { setBusy(false); } }}
           warnings={data?.loadWarnings}
           integrationHealth={data?.integrationHealth}
