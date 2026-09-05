@@ -9,6 +9,7 @@ Approved direction: **C — Soft shaded graphite**. Artwork is selected automati
 - [x] Persist roller control side and blind wand side through existing design fields; preserve honeycomb chain location at the V2 public boundary.
 - [x] Pass focused regression tests, full tests, typecheck, and production build.
 - [x] Inspect actual rendered contracts at desktop, iPad, and phone sizes.
+- [x] Add the approved top-down/bottom-up cellular sketch and configured shutter catalog.
 - [ ] Review and publish only this change; verify the production result.
 
 ## Artwork behavior
@@ -16,6 +17,10 @@ Approved direction: **C — Soft shaded graphite**. Artwork is selected automati
 Roller and honeycomb support cordless, continuous cord loop left/right, and motorized. Roman and sheer support the approved cordless/motorized artwork. Faux wood, wood, and mini blinds use the selected wand side, with no strings, tape, or route holes. Wood/mini right-side views mirror their approved left-side drawing. Motorized shade artwork has an upright generic control underneath with no visible caption. Product headings use stronger 14px type (13px on phones).
 
 Left/right means viewed from inside the room. Missing or conflicting control sides, unknown operating systems, and specialized configurations without approved art omit the illustration; written contract specifications remain authoritative. No operation or side is silently defaulted. AutoWand does not receive a remote drawing. No pricing, tax, discount, signature, send, or historical document records are rewritten.
+
+Cellular top-down/bottom-up uses its own C sketch for Cordless TDBU, legacy Top Down-Bottom Up, and Motorized TDBU; motorized adds the upright control. Shutters use eight approved modular panel sketches: center or hidden tilt, each with full tilt, split tilt, a divider rail, or both split tilt and a divider rail. Saved L/R panel configurations determine the actual number of illustrated panels (1–8); T-post markers do not add panels. Split tilt shows upper louvers open and lower louvers closed. Divider rails are illustrated at the representative midpoint; written measurements remain authoritative. Missing panel count/tilt and offset tilt omit artwork. Offset tilt sketches were explicitly excluded by Michael.
+
+The shutter and cellular additions were generated with the built-in image generation tool using the approved C art as the style reference. Final shutter prompts are in `docs/contract-shutter-art-prompts.json`; the asset manifest records original sources, hashes, and crops. The cellular prompt requested an isolated top-down/bottom-up honeycomb shade, separated fixed headrail and lowered movable top rail, fine support cords, raised bottom rail, white background, no window, and no text.
 
 ## QA inventory
 

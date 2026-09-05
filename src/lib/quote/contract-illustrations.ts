@@ -1,3 +1,5 @@
+import { shutterIllustration } from "./shutter-illustrations";
+
 /** Approved C artwork. Presentation only; never supplies missing order selections. */
 export const CONTRACT_ART_ROOT = "/images/contract-illustrations/c-v1";
 
@@ -6,6 +8,7 @@ export type ContractIllustration = {
   alt: string;
   remote: boolean;
   mirror: boolean;
+  panels?: number;
 };
 
 const PRODUCTS: Record<string, string> = {
@@ -13,7 +16,7 @@ const PRODUCTS: Record<string, string> = {
   "roller shade": "roller", "roller shades": "roller",
   "roman shade": "roman", "roman shades": "roman",
   "honeycomb shade": "honeycomb", "honeycomb shades": "honeycomb",
-  "cellular shades": "honeycomb",
+  "cellular shade": "honeycomb", "cellular shades": "honeycomb",
   "sheer shade": "sheer", "sheer shades": "sheer", "smartfold shade": "sheer",
   "faux wood blind": "faux-wood", "faux wood blinds": "faux-wood",
   "wood blind": "wood", "wood blinds": "wood",
@@ -33,12 +36,21 @@ export function contractIllustration(productType: string, options: readonly stri
     return colon < 0 ? [] : [[normalize(option.slice(0, colon)), normalize(option.slice(colon + 1))]];
   });
   const values = (...keys: string[]) => fields.filter(([key]) => keys.includes(key)).map(([, value]) => value);
-  const operationValues = values("lift system", "operating system", "control type", "honeycomb operating system");
-  const operation = operationValues.join(" ");
+  const savedOperations = values("lift system", "operating system", "control type", "honeycomb operating system");
   if (values("specialty shape").some((value) => value && !["none", "rectangle", "rectangular"].includes(value))) return null;
   const special = values("application", "shade type", "shutter type", "honeycomb application", "roller application", "specialty shape").join(" ");
+  const tdbuPattern = /\btdbu\b|top down[ /]*bottom up/;
+  const tdbu = product === "honeycomb" && tdbuPattern.test(special + " " + savedOperations.join(" "));
+  const operationValues = savedOperations.map((value) => {
+    if (!tdbu) return value;
+    // The legacy Top Down-Bottom Up selection denotes the cordless system.
+    if (value === "top down bottom up" || value === "top down/bottom up") return "cordless";
+    return value.replace(tdbuPattern, "").trim();
+  });
+  const operation = operationValues.join(" ");
+  const specialConfiguration = tdbu ? special.replace(tdbuPattern, "") : special;
   // These need their own approved drawings, rather than an ordinary rectangular shade.
-  if (/specialty|arched|arch top|skylight|vertical|day.*night|top.*down|\btdbu\b|\btd\b|coupled|dual|common valance|french door|tracked|lightguard|light guard/.test(special + " " + operation)) return null;
+  if (/specialty|arched|arch top|skylight|vertical|day.*night|top.*down|\btdbu\b|\btd\b|coupled|dual|common valance|french door|tracked|lightguard|light guard/.test(specialConfiguration + " " + operation)) return null;
   if (values("faux blind count", "lotus blind count", "blind count").some((count) => Number(count) > 1)) return null;
 
   const sideValues = values("control side", "chain location", "chain side", "wand side", "wand location", "tilt side", "tilt location");
@@ -52,8 +64,14 @@ export function contractIllustration(productType: string, options: readonly stri
   const cordless = operationValues.some((value) => cordlessSystem.test(value));
   if (["roller", "honeycomb", "roman", "sheer"].includes(product) && operationValues.some((value) => !motorSystem.test(value) && !loopSystem.test(value) && !cordlessSystem.test(value))) return null;
   if ([motorized, loop, cordless].filter(Boolean).length > 1) return null;
+  if (tdbu && (!motorized && !cordless || loop)) return null;
   if (/auto ?wand|motorized wand/.test(operation + " " + values("motor type", "motor", "power source", "power configuration", "motorization components").join(" "))) return null;
-  let asset = product;
+  if (product === "shutters") {
+    if (operation) return null;
+    const shutter = shutterIllustration(fields);
+    return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels } : null;
+  }
+  let asset = tdbu ? "honeycomb-tdbu" : product;
   let mirror = false;
   let detail = "";
   let remote = false;
@@ -79,5 +97,6 @@ export function contractIllustration(productType: string, options: readonly stri
     remote = true;
     detail = "Motorized";
   } else if (motorized || loop) return null;
+  if (tdbu) detail = `Top-down/bottom-up · ${detail}`;
   return { src: `${CONTRACT_ART_ROOT}/${asset}.webp`, alt: `${productType}${detail ? ` · ${detail}` : ""} — pencil illustration`, remote, mirror };
 }

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { CustomerContractDocument } from "../[token]/CustomerContractDocument";
 import type { PublicQuote, PublicQuoteLine } from "@/lib/crm/public-quote";
+import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 
 const examples: [string, string[]][] = [
   ["Roller Shades", ["Lift System: Continuous Cord Loop", "Control Side: Left"]],
@@ -11,13 +12,18 @@ const examples: [string, string[]][] = [
   ["Mini Blinds", ["Control Side: Left"]],
   ["Roman Shades", ["Lift System: Motorized"]],
   ["Sheer Shades", ["Lift System: Cordless"]],
-  ["Shutters", []], ["Vertical Blinds", []], ["Smart Drapes", []],
+  ["Shutters", ["Panel Config: LR", "Tilt Type: Standard Tilt"]], ["Vertical Blinds", []], ["Smart Drapes", []],
 ];
 export function ArtworkPreview() {
   const [product,setProduct]=useState("Roller Shades");
   const [operation,setOperation]=useState("Continuous Cord Loop");
   const [side,setSide]=useState("Left");
-  const options = [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
+  const [panels,setPanels]=useState(2);
+  const [tilt,setTilt]=useState("Standard Tilt");
+  const [split,setSplit]=useState(false);
+  const [divider,setDivider]=useState(false);
+  const shutterOptions = [`Panel Config: ${"L".repeat(panels)}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
+  const options = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
   const lines: PublicQuoteLine[] = [[product, options] as [string,string[]], ...examples].map(([productName,opts],i)=>({
     id:`sample-${i}`,lineItemId:`sample-${i}`,room:i===0?"Interactive sample":`Product ${i}`,productName,styleName:"",options:opts,
     designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
@@ -33,9 +39,18 @@ export function ArtworkPreview() {
     <div className="no-print" style={{padding:20,background:"#eee",display:"flex",gap:16,flexWrap:"wrap",position:"sticky",top:0,zIndex:30}}>
       <strong>Option C · Working contract preview</strong>
       <label>Product <select aria-label="Preview product" value={product} onChange={e=>setProduct(e.target.value)}>{examples.map(([p])=><option key={p}>{p}</option>)}</select></label>
-      <label>Operating system <select aria-label="Preview operating system" value={operation} onChange={e=>setOperation(e.target.value)}>{["Continuous Cord Loop","Cordless","Motorized",""].map(p=><option key={p} value={p}>{p||"None"}</option>)}</select></label>
-      <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
+      {product !== "Shutters" ? <>
+        <label>Operating system <select aria-label="Preview operating system" value={operation} onChange={e=>setOperation(e.target.value)}>{["Continuous Cord Loop","Cordless","Motorized","Cordless TDBU","Motorized TDBU",""].map(p=><option key={p} value={p}>{p||"None"}</option>)}</select></label>
+        <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
+      </> : null}
+      {product === "Shutters" ? <>
+        <label>Panels <select aria-label="Preview shutter panels" value={panels} onChange={e=>setPanels(Number(e.target.value))}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></label>
+        <label>Tilt <select aria-label="Preview shutter tilt" value={tilt} onChange={e=>setTilt(e.target.value)}>{["Standard Tilt","Invisible Tilt"].map(t=><option key={t}>{t}</option>)}</select></label>
+        <label><input type="checkbox" checked={split} onChange={e=>setSplit(e.target.checked)} /> Split tilt</label>
+        <label><input type="checkbox" checked={divider} onChange={e=>setDivider(e.target.checked)} /> Divider rail</label>
+      </> : null}
     </div>
+    {product === "Shutters" ? <details className="no-print" style={{padding:20}}><summary>Shutter sketch catalog · {panels} panels</summary><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:20,paddingTop:20}}>{["Standard Tilt","Invisible Tilt"].flatMap(t=>[false,true].flatMap(s=>[false,true].map(d=><div key={`${t}-${s}-${d}`}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${"L".repeat(panels)}`,`Tilt Type: ${t}`,`Split Tilt: ${s?"Yes":"No"}`,`Divider Rail: ${d?"Yes":"No"}`]} /><p>{t} · {s?"Split tilt":"Full tilt"}{d?" · Divider rail":""}</p></div>)))}</div></details> : null}
     <CustomerContractDocument quote={quote} previewOnly previewLabel="Development sample — no customer record" />
   </>;
 }

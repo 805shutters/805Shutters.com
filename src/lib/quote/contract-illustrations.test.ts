@@ -37,7 +37,7 @@ describe("approved C contract illustrations", () => {
   });
 
   it.each([
-    ["Shutters", []], ["Roman Shades", ["Lift System: Cordless"]],
+    ["Shutters", ["Panel Config: LR", "Tilt Type: Standard Tilt"]], ["Roman Shades", ["Lift System: Cordless"]],
     ["Sheer Shades", ["Lift System: Cordless"]], ["Vertical Blinds", []], ["Smart Drapes", []],
   ] as const)("ships the approved standalone asset for %s", (product, options) => {
     const art = contractIllustration(product, options);
@@ -58,7 +58,7 @@ describe("approved C contract illustrations", () => {
     ["Roller Shades", ["Lift System: Cordless", "Operating System: Motorized"]],
     ["Roller Shades", ["Lift System: Motorized", "Power Configuration: AutoWand"]],
     ["Roller Shades", ["Lift System: Cordless", "Shade Type: Dual Rollers"]],
-    ["Honeycomb Shades", ["Lift System: Motorized TDBU"]],
+    ["Honeycomb Shades", ["Lift System: Cord Loop TDBU", "Chain Location: Left"]],
     ["Honeycomb Shades", ["Lift System: Cord Loop TD", "Chain Location: Left"]],
     ["Roman Shades", ["Lift System: Continuous Cord Loop", "Control Side: Left"]],
     ["Unknown product", ["Lift System: Cordless"]],
@@ -71,6 +71,21 @@ describe("approved C contract illustrations", () => {
     const projected = customerQuoteOptions(v2CustomerConfigurationOptions(customerConfigurationFromSelection(selection)));
     expect(projected).toContain("Chain location: Left");
     expect(contractIllustration("Honeycomb Shades", projected)?.src).toContain("honeycomb-loop-left");
+  });
+
+  it.each(["Cordless TDBU", "Top Down-Bottom Up", "Motorized TDBU"])("renders the cellular top-down/bottom-up configuration %s", (system) => {
+    const options = customerQuoteOptions([`Operating system: ${system}`]);
+    const art = contractIllustration("Cellular Shades", options);
+    expect(art?.src).toContain("honeycomb-tdbu.webp");
+    expect(art?.alt).toContain("Top-down/bottom-up");
+    expect(art?.remote).toBe(system === "Motorized TDBU");
+    expect(existsSync(`public${art?.src}`)).toBe(true);
+  });
+
+  it("keeps TDBU specialty and conflicting operations out of the standard illustration", () => {
+    expect(contractIllustration("Honeycomb Shades", ["Lift System: Motorized TDBU", "Application: Skylight"])).toBeNull();
+    expect(contractIllustration("Honeycomb Shades", ["Lift System: Cordless TDBU", "Operating System: Motorized"])).toBeNull();
+    expect(contractIllustration("Roller Shades", ["Lift System: Cordless TDBU"])).toBeNull();
   });
 
   it("omits cleared sides from customer specifications", () => {

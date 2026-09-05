@@ -129,6 +129,128 @@
       "quadrant": "bottom-left",
       "file": "public/images/contract-illustrations/c-v1/faux-wood-wand-right.webp",
       "bytes": 26690
+    },
+    {
+      "id": "honeycomb-tdbu",
+      "source": "exec-8b8c135d-92cf-4ce9-85be-3aeddec67938.png",
+      "sourceSha256": "8bb64e217fff8eac727ecb8104967471d41065fcae31d6d0c5128ae194510890",
+      "reference": "honeycomb.webp",
+      "generator": "built-in image_gen",
+      "composition": "single product, full image",
+      "file": "public/images/contract-illustrations/c-v1/honeycomb-tdbu.webp",
+      "bytes": 31820
+    },
+    {
+      "id": "shutter-center-plain",
+      "source": "exec-6fed3032-523a-4708-8ff9-d4f89c2bb869.png",
+      "sourceSha256": "6c84154b85091e710ddd5f65d5cd1c0ac0ebcf22c87b9df99ebb3dccffbe7a55",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 143,
+        "top": 77,
+        "width": 543,
+        "height": 1732
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-plain.webp",
+      "bytes": 27198
+    },
+    {
+      "id": "shutter-hidden-plain",
+      "source": "exec-6a59b77a-1dee-4551-9ccd-797b10b96953.png",
+      "sourceSha256": "5fd7667351d464249435381277d6a1117d52df5702153bf5ec25ab870a19bcee",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 150,
+        "top": 70,
+        "width": 539,
+        "height": 1766
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-plain.webp",
+      "bytes": 25640
+    },
+    {
+      "id": "shutter-center-split",
+      "source": "exec-12b78000-dd62-459b-a485-89337a252072.png",
+      "sourceSha256": "deb456c0c634a1d2d6ed102cdf30739b17227a860727907a53d9d7b8e9c98aa0",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 144,
+        "top": 57,
+        "width": 543,
+        "height": 1753
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-split.webp",
+      "bytes": 30656
+    },
+    {
+      "id": "shutter-hidden-split",
+      "source": "exec-286f3588-e113-463d-9d5b-d62d8d319daa.png",
+      "sourceSha256": "6b702f9dc916bac8bcf993b584933d700a2c608a80686f660bbb7ad1c70bc01d",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 137,
+        "top": 86,
+        "width": 553,
+        "height": 1729
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-split.webp",
+      "bytes": 25874
+    },
+    {
+      "id": "shutter-center-divider",
+      "source": "exec-0157834b-1543-4eec-b832-21b65d0efd67.png",
+      "sourceSha256": "6827d61b606997235d90e0786221c24661a735ebed046c5c2963eb5827592b43",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 131,
+        "top": 57,
+        "width": 569,
+        "height": 1773
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-divider.webp",
+      "bytes": 23714
+    },
+    {
+      "id": "shutter-hidden-divider",
+      "source": "exec-03e14612-9a50-4431-93da-d3cda18117ae.png",
+      "sourceSha256": "c25ad4d726f378d74bddaad513976a823d469cca939858e4dda522a2e4142839",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 121,
+        "top": 53,
+        "width": 585,
+        "height": 1775
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-divider.webp",
+      "bytes": 32578
+    },
+    {
+      "id": "shutter-center-split-divider",
+      "source": "exec-0492201b-1b41-4f54-b58d-0c96258771b5.png",
+      "sourceSha256": "13ba7b94b65a929dd1354bac709c1445611ef5f71e9ded4eff16d17339d96938",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 144,
+        "top": 69,
+        "width": 542,
+        "height": 1756
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-center-split-divider.webp",
+      "bytes": 30166
+    },
+    {
+      "id": "shutter-hidden-split-divider",
+      "source": "exec-f288f7ac-1e43-4c04-88d6-b8441974509d.png",
+      "sourceSha256": "a2c717ec775d5e9616d9a8f92eaa7926af23b1ed90ddecf94db3b07c9dd8f9fe",
+      "generator": "built-in image_gen",
+      "crop": {
+        "left": 124,
+        "top": 54,
+        "width": 583,
+        "height": 1796
+      },
+      "file": "public/images/contract-illustrations/c-v1/shutter-hidden-split-divider.webp",
+      "bytes": 22624
     }
   ]
 }
