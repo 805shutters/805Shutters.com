@@ -443,14 +443,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
-  const [measureStarted, setMeasureStarted] = useState(false);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [changeOrderOpen, setChangeOrderOpen] = useState(false);
+  const [futureDetailsOpen, setFutureDetailsOpen] = useState(false);
   const [measureView, setMeasureView] = useState<"ledger" | "line">("ledger");
   const [mobilePane, setMobilePane] = useState<"contract" | "measure">("measure");
   const fieldPaneRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (window.matchMedia("(min-width: 744px)").matches) setMeasureStarted(true);
-  }, []);
-  useEffect(() => { fieldPaneRef.current?.scrollTo({ top: 0 }); }, [activeLineIndex, measureStarted, measureView]);
+  useEffect(() => { fieldPaneRef.current?.scrollTo({ top: 0 }); }, [activeLineIndex, measureView]);
   const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" } | null>(null);
   const [customOpeningLineId, setCustomOpeningLineId] = useState<string | null>(null);
   const [detailChoice, setDetailChoice] = useState<{ lineId: string; key: string } | null>(null);
@@ -492,7 +491,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     setForm(nextForm);
     setLines(nextForm.lines);
     linesRef.current = nextForm.lines;
-    if (desktopWorkspace && nextForm.status === "submitted") setMeasureStarted(true);
     setActiveLineIndex((current) => Math.min(current, Math.max(nextForm.lines.length - 1, 0)));
     setSignerName(nextForm.customer_snapshot.name || "");
     const persistedDuration = persistedInstallationDuration(nextForm);
@@ -854,7 +852,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       }
       if (saved.form.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
-        setMeasureStarted(false);
+        setMeasureView("ledger");
+        setChangeOrderOpen(true);
         window.setTimeout(() => document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" }), 0);
         return;
       }
@@ -1030,7 +1029,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       queuedLineCount !== lines.length
       || vendorOrderPreparations.some((preparation) => !preparation.orderPacketUrl)
     );
-  const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const completedLineCount = readOnly
     ? lines.length
     : lines.filter((line) => line.current_values.measure_complete).length;
@@ -1050,16 +1048,22 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
 
   return (
     <PortalContainerContext.Provider value={scopeElement}>
-    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell tm805-split${desktopWorkspace ? " technical-measure-shell--desktop" : ""}${measureStarted ? " technical-measure-shell--active" : ""}`}>
+    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell tm805-split${desktopWorkspace ? " technical-measure-shell--desktop" : ""} technical-measure-shell--active`}>
       <header className="tm805-header">
         <a href={workspaceHome} aria-label="Return to CRM"><ArrowLeft /></a>
-        <div className="tm805-brand" aria-label="805 Shutters"><strong>805</strong><span>SHUTTERS</span></div>
-        <div className="tm805-title"><h1>Technical Measure</h1><p>{form.customer_snapshot.name} · {form.quote_snapshot.quoteNumber}</p></div>
-        <span className="tm805-status">{offlineMode ? "Offline" : pendingSync ? "Syncing…" : busy ? "Saving…" : form.status.replaceAll("_", " ")}</span>
+        <div className="tm805-customer-header">
+          <h1>{form.customer_snapshot.name || "Customer"}</h1>
+          <p>{[form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || "Address not provided"}</p>
+          <div className="tm805-customer-contact">
+            {form.customer_snapshot.phone ? <a href={`tel:${form.customer_snapshot.phone.replace(/[^+\d]/g, "")}`}>{form.customer_snapshot.phone}</a> : <span>Phone not provided</span>}
+            {form.customer_snapshot.email ? <a href={`mailto:${form.customer_snapshot.email}`}>{form.customer_snapshot.email}</a> : <span>Email not provided</span>}
+          </div>
+          <span className="tm805-status">{offlineMode ? "Offline" : pendingSync ? "Syncing…" : busy ? "Saving…" : form.status.replaceAll("_", " ")}</span>
+        </div>
       </header>
       <nav className="tm805-mobile-tabs" aria-label="Measure workspace view">
         <button type="button" aria-pressed={mobilePane === "contract"} onClick={() => setMobilePane("contract")}>Contract</button>
-        <button type="button" aria-pressed={mobilePane === "measure"} onClick={() => setMobilePane("measure")}>Field measure</button>
+        <button type="button" aria-pressed={mobilePane === "measure"} onClick={() => setMobilePane("measure")}>Field Measure</button>
       </nav>
       <div className="tm805-panes" data-mobile-pane={mobilePane}>
         <aside className="tm805-contract" aria-label="Customer contract reference">
@@ -1067,7 +1071,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           {form.contractUrl ? <iframe className="tm805-contract-document" title="Original customer contract" src={form.contractUrl} /> : <div className="tm805-contract-unavailable"><FileText /><h3>Contract unavailable</h3><p>{offlineMode ? "Reconnect to view the original customer contract. Your field measure is still available." : "The original contract link is missing from this customer file."}</p></div>}
         </aside>
         <section className="tm805-field" aria-label="Technician field measure">
-          <header className="tm805-pane-heading"><h2><Ruler />Technician field measure</h2><span>{measureView === "ledger" ? `${completedLineCount} of ${lines.length} complete` : `Opening ${activeLineNumber} of ${lines.length}`}</span></header>
           <div className="tm805-field-scroll" ref={fieldPaneRef}>
       {(offlineMode || pendingSync) ? (
         <div className="technical-measure-offline-status" data-offline={offlineMode}>
@@ -1075,82 +1078,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           <strong>{!session ? "Saved on phone · sign in when connected to upload" : offlineMode ? "Saved on this phone" : "Uploading saved changes…"}</strong>
         </div>
       ) : null}
-      {!measureStarted ? <>
-      <header className="technical-measure-header">
-        <a href={desktopWorkspace ? "/crm" : "/crm/technical-measures"} aria-label={desktopWorkspace ? "Back to desktop CRM" : "Back to technical measures"}><ArrowLeft /></a>
-        <div><span>{form.quote_snapshot.quoteNumber || "Sold contract"}</span><h1>Technical Measure</h1><p>{form.customer_snapshot.name}</p></div>
-        <strong data-status={form.status}>{form.status.replaceAll("_", " ")}</strong>
-      </header>
-
-      {desktopWorkspace ? (
-        <nav className="technical-measure-workspaces" aria-label="Desktop CRM workspace">
-          <a href="/crm"><ArrowLeft />CRM Command</a>
-          <a className="active" href={measurePath} aria-current="page"><Ruler />Technical Measure</a>
-        </nav>
-      ) : (
-        <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
-          <a href="/crm/mobile"><CalendarDays />Appointments</a>
-          <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
-          <a href="/crm/mobile/quotes"><FileText />Quotes</a>
-        </nav>
-      )}
-
-      {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
-      {technicalMeasureFormIsArchived(form) ? (
-        <div className="technical-measure-alert" role="status">
-          Archived · retained in this customer file for audit history. <button type="button" disabled={busy} onClick={() => void restoreArchivedForm()}>Restore to technician list</button>
-        </div>
-      ) : null}
-      {vendorOrderPreparations.map((preparation) => (
-        <section className="technical-measure-order-status" data-status={preparation.status} key={`${preparation.manufacturer}:${preparation.taskId}`}>
-          <div><span>{String(preparation.manufacturer || "Vendor")} {String(preparation.productType || "order")} preparation</span><strong>{String(preparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
-          <p>{preparation.message}</p>
-          {preparation.issueCount ? <small>{preparation.issueCount} item{preparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
-          {preparation.portalDraftId ? <small>Norman draft: {preparation.portalDraftId}</small> : null}
-          <b>Review every line before placing or submitting the order.</b>
-        </section>
-      ))}
-      {canBackfillVendorOrders ? (
-        <section className="technical-measure-order-status" data-status="needs_input">
-          <div><span>Manufacturer order preparation</span><strong>Not queued</strong></div>
-          <p>This submitted measure predates the manufacturer-separated CRM order queue.</p>
-          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
-            Queue Manufacturer Orders
-          </button>
-        </section>
-      ) : null}
-      {canRebuildVendorOrders ? (
-        <section className="technical-measure-order-status" data-status="needs_input">
-          <div><span>Manufacturer order preparation</span><strong>Reset required</strong></div>
-          <p>The queued order no longer matches all submitted measurement lines. Rebuild it from the submitted technical measure before portal entry.</p>
-          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder(true)}>
-            Rebuild Manufacturer Orders
-          </button>
-        </section>
-      ) : null}
-
-      <section className="technical-measure-customer">
-        <div><span>Customer</span><strong>{form.customer_snapshot.name}</strong></div>
-        <div><span>Phone</span><strong>{form.customer_snapshot.phone || "Not provided"}</strong></div>
-        <div><span>Email</span><strong>{form.customer_snapshot.email || "Not provided"}</strong></div>
-        <div><span>Project</span><strong>{[form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || "Not provided"}</strong></div>
-      </section>
-
-      <section className="technical-measure-progress" id="technical-measure-progress">
-        <div>
-          <span>Measure progress</span>
-          <strong>Line {activeLineNumber} of {lines.length}</strong>
-        </div>
-        <div className="technical-measure-progress-track" aria-hidden="true">
-          <span style={{ width: `${lines.length ? (activeLineNumber / lines.length) * 100 : 0}%` }} />
-        </div>
-      </section>
-      <button className="technical-measure-launch" type="button" onClick={() => { setMeasureStarted(true); setMeasureView("ledger"); }}>
-        <Ruler /> Start Measure <ChevronRight />
-      </button>
-      </> : null}
-
-      {measureStarted ? <section className="technical-measure-lines technical-measure-workspace">
+      <section className="technical-measure-lines technical-measure-workspace">
         {desktopWorkspace && form.status === "submitted" ? (
           <div className="technical-measure-alert technical-measure-alert--active" role="status">
             <strong>Saved Technical Measure</strong>
@@ -1160,10 +1088,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         {measureView === "ledger" ? (
           <section className="technical-measure-ledger" aria-label="Technical measure line items">
             <header>
-              <div><span>Field measure</span><h2>Line items</h2></div>
-              <strong>{completedLineCount}/{lines.length}</strong>
+              <h2>Line items</h2>
+              <span>{completedLineCount} of {lines.length} complete</span>
             </header>
             {message ? <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div> : null}
+            {!lines.length ? <p className="tm805-empty">No line items on this measure.</p> : null}
             <div className="technical-measure-ledger-list">
               {lines.map((line, index) => {
                 const complete = readOnly || line.current_values.measure_complete;
@@ -1184,7 +1113,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                 );
               })}
             </div>
-            {!readOnly ? <button className="technical-measure-add-future" type="button" onClick={() => { setMeasureStarted(false); setFutureMeasureOpen(true); window.setTimeout(() => document.getElementById("future-measures")?.scrollIntoView({ behavior: "smooth" }), 0); }}><Plus /> Add future window</button> : null}
+
           </section>
         ) : null}
         {measureView === "line" ? lines.map((line, index) => {
@@ -1390,9 +1319,70 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
             </article>
           );
         }) : null}
-      </section> : null}
+      </section>
 
-      {!measureStarted && form.requiresAddendum && !readOnly ? (
+      {!readOnly && lines.length > 0 && measureView === "ledger" ? <footer className="technical-measure-actions">
+        <label className="technical-measure-install-duration">
+          <span>Installation duration</span>
+          <select
+            aria-label="Installation duration"
+            value={installationDurationMinutes || ""}
+            onChange={(event) => setInstallationDurationMinutes(
+              event.target.value ? Number(event.target.value) : null,
+            )}
+          >
+            <option value="">Choose…</option>
+            {INSTALLATION_DURATION_CHOICES.map((minutes) => (
+              <option value={minutes} key={minutes}>{installationDurationLabel(minutes)}</option>
+            ))}
+          </select>
+        </label>
+        <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
+        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes || !allLinesComplete} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
+      </footer> : null}
+
+      {measureView === "ledger" ? <div className="tm805-secondary-tools">
+      {(technicalMeasureFormIsArchived(form) || vendorOrderPreparations.length > 0 || canBackfillVendorOrders || canRebuildVendorOrders) ? (
+        <details className="tm805-details" open={orderDetailsOpen} onToggle={(event) => setOrderDetailsOpen(event.currentTarget.open)}>
+          <summary>Order status</summary>
+      {technicalMeasureFormIsArchived(form) ? (
+        <div className="technical-measure-alert" role="status">
+          Archived · retained in this customer file for audit history. <button type="button" disabled={busy} onClick={() => void restoreArchivedForm()}>Restore to technician list</button>
+        </div>
+      ) : null}
+      {vendorOrderPreparations.map((preparation) => (
+        <section className="technical-measure-order-status" data-status={preparation.status} key={`${preparation.manufacturer}:${preparation.taskId}`}>
+          <div><span>{String(preparation.manufacturer || "Vendor")} {String(preparation.productType || "order")} preparation</span><strong>{String(preparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
+          <p>{preparation.message}</p>
+          {preparation.issueCount ? <small>{preparation.issueCount} item{preparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
+          {preparation.portalDraftId ? <small>Norman draft: {preparation.portalDraftId}</small> : null}
+          <b>Review every line before placing or submitting the order.</b>
+        </section>
+      ))}
+      {canBackfillVendorOrders ? (
+        <section className="technical-measure-order-status" data-status="needs_input">
+          <div><span>Manufacturer order preparation</span><strong>Not queued</strong></div>
+          <p>This submitted measure predates the manufacturer-separated CRM order queue.</p>
+          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
+            Queue Manufacturer Orders
+          </button>
+        </section>
+      ) : null}
+      {canRebuildVendorOrders ? (
+        <section className="technical-measure-order-status" data-status="needs_input">
+          <div><span>Manufacturer order preparation</span><strong>Reset required</strong></div>
+          <p>The queued order no longer matches all submitted measurement lines. Rebuild it from the submitted technical measure before portal entry.</p>
+          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder(true)}>
+            Rebuild Manufacturer Orders
+          </button>
+        </section>
+      ) : null}
+
+        </details>
+      ) : null}
+      {form.requiresAddendum && !readOnly ? (
+        <details className="tm805-details" open={changeOrderOpen} onToggle={(event) => setChangeOrderOpen(event.currentTarget.open)}>
+          <summary>Contract change order · acknowledgment required</summary>
         <section id="technical-measure-addendum" className="technical-measure-addendum">
           <div className="technical-measure-addendum-head"><FileSignature /><div><span>Customer acknowledgment required</span><h2>Contract Change Order</h2></div></div>
           <div className="technical-measure-change-list">
@@ -1404,13 +1394,16 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           <div><span className="technical-measure-signature-label">Customer signature</span><SignaturePad value={signature} onChange={setSignature} /></div>
           <button className="technical-measure-primary" type="button" disabled={busy || !acknowledged || !signerName.trim() || !signature.length} onClick={handleSign}>{busy ? <Loader2 className="spin" /> : <FileSignature />} Sign and Finalize Change Order</button>
         </section>
+        </details>
       ) : null}
 
       {form.addendum?.signed_at ? (
-        <section className="technical-measure-complete"><Check /><div><strong>Signed change order on file</strong><span>{form.addendum.status === "emailed" ? `Emailed to ${form.addendum.email_recipient}` : "Customer email delivery needs attention"}</span></div><button type="button" onClick={openAddendumPdf} disabled={busy}>View PDF</button>{form.addendum.status === "email_failed" ? <button type="button" onClick={retryEmail} disabled={busy}><Mail /> Retry email</button> : null}</section>
+        <details className="tm805-details"><summary>Signed change order</summary><section className="technical-measure-complete"><Check /><div><strong>Signed change order on file</strong><span>{form.addendum.status === "emailed" ? `Emailed to ${form.addendum.email_recipient}` : "Customer email delivery needs attention"}</span></div><button type="button" onClick={openAddendumPdf} disabled={busy}>View PDF</button>{form.addendum.status === "email_failed" ? <button type="button" onClick={retryEmail} disabled={busy}><Mail /> Retry email</button> : null}</section></details>
       ) : null}
 
-      {!measureStarted ? <section className="technical-measure-future" id="future-measures">
+      <details className="tm805-details" open={futureDetailsOpen} onToggle={(event) => setFutureDetailsOpen(event.currentTarget.open)}>
+        <summary>Future windows{futureMeasures.length ? ` · ${futureMeasures.length}` : ""}</summary>
+        <section className="technical-measure-future" id="future-measures">
         <div className="technical-measure-future-head">
           <div><span>Customer file</span><h2>Future Measures</h2><p>Save extra windows for a future quote or phase.</p></div>
           <strong>{futureMeasures.length}</strong>
@@ -1438,29 +1431,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               <button className="technical-measure-primary" type="button" disabled={busy || !futureMeasure.width_in || !futureMeasure.height_in} onClick={handleFutureMeasure}>{busy ? <Loader2 className="spin" /> : <Save />} Save to Customer File</button>
             </div>
           </div>
-        ) : <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button>}
-      </section> : null}
+        ) : !readOnly ? <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button> : null}
+      </section>
+      </details>
+      </div> : null}
 
       </div>
-      {!readOnly && measureStarted && measureView === "ledger" ? <footer className="technical-measure-actions">
-        <label className="technical-measure-install-duration">
-          <span>Installation duration</span>
-          <select
-            aria-label="Installation duration"
-            value={installationDurationMinutes || ""}
-            onChange={(event) => setInstallationDurationMinutes(
-              event.target.value ? Number(event.target.value) : null,
-            )}
-          >
-            <option value="">Choose…</option>
-            {INSTALLATION_DURATION_CHOICES.map((minutes) => (
-              <option value={minutes} key={minutes}>{installationDurationLabel(minutes)}</option>
-            ))}
-          </select>
-        </label>
-        <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
-        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes || !allLinesComplete} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
-      </footer> : null}
+
 
         </section>
       </div>

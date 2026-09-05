@@ -6,10 +6,8 @@ describe("technical measure mobile controls", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const desktopPage = readFileSync("src/app/crm/measure/[id]/page.tsx", "utf8");
     expect(desktopPage).toContain('workspace="desktop"');
-    expect(component).toContain('aria-label="Desktop CRM workspace"');
     expect(component).toContain('desktopWorkspace ? "/crm" : "/crm/mobile"');
     expect(component).toContain('desktopWorkspace ? "desktop CRM" : "mobile dashboard"');
-    expect(component).toContain('desktopWorkspace && nextForm.status === "submitted"');
     expect(component).toContain("Saved Technical Measure");
     expect(component).toContain('<span data-status="submitted">Submitted</span>');
     expect(component).toContain("if (desktopWorkspace) {");
@@ -72,7 +70,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("technical-measure-submit-success");
     expect(component).toContain('desktopWorkspace ? "desktop CRM" : "mobile dashboard"');
     expect(component).toContain("technical-measure-alert--active");
-    expect(component).toContain("setMeasureStarted(false)");
+    expect(component).toContain("setChangeOrderOpen(true)");
     expect(styles).toContain(".technical-measure-submit-success");
     expect(styles).toContain(".technical-measure-alert--active");
   });
@@ -91,11 +89,13 @@ describe("technical measure mobile controls", () => {
     expect(service).toContain("technicalMeasureCompletionIssues(form)");
   });
 
-  it("uses a customer launch screen and one-line mobile workspace", () => {
+  it("opens with line items and retains the one-line mobile workspace", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
 
-    expect(component).toContain("Start Measure");
+    expect(component).not.toContain("Start Measure");
+    expect(component).not.toContain("measureStarted");
+    expect(component).toContain("tm805-customer-header");
     expect(component).toContain("technical-measure-shell--active");
     expect(component).toContain("technical-measure-workspace");
     expect(component).toContain("Back to line items");

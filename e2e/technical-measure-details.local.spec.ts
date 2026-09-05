@@ -45,9 +45,7 @@ async function setup(page: Page, form = fixture()) {
     return route.fulfill({ status: 404, json: { message: "Outside fixture" } });
   });
   await page.goto("/crm/technical-measures/measure-fixture/");
-  const start = page.getByRole("button", { name: "Start Measure" });
-  await expect(page.getByRole("heading", { name: "Technician field measure", exact: true })).toBeVisible();
-  if (await start.isVisible()) await start.click();
+  await expect(page.getByRole("heading", { name: "Line items", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Technical measure line items", exact: true })).toBeVisible();
   return writes;
 }
