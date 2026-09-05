@@ -14,14 +14,33 @@ export async function collectCrmPages<T>(
     if (!result.data?.length) return { data, error: null };
     data.push(...result.data);
   }
-  return { data: null, error: { message: "CRM data exceeded the safe page limit; no partial ledger was returned." } };
+  return {
+    data: null,
+    error: {
+      message:
+        "CRM data exceeded the safe page limit; no partial ledger was returned.",
+    },
+  };
 }
 
-export function loadCompleteCrmTable(supabase: SupabaseClient, table: string, orderColumn = "created_at", columns = "*", identityColumn = "id") {
+export function loadCompleteCrmTable(
+  supabase: SupabaseClient,
+  table: string,
+  orderColumn = "created_at",
+  columns = "*",
+  identityColumn = "id",
+  filters: Array<{ column: string; value: string }> = [],
+) {
   return collectCrmPages<Record<string, unknown>>(async (from, to) => {
-    const result = await supabase.from(table).select(columns)
+    let query = supabase.from(table).select(columns);
+    for (const filter of filters) query = query.eq(filter.column, filter.value);
+    const result = await query
       .order(orderColumn, { ascending: false, nullsFirst: false })
-      .order(identityColumn, { ascending: true }).range(from, to);
-    return { data: result.data as unknown as Record<string, unknown>[] | null, error: result.error };
+      .order(identityColumn, { ascending: true })
+      .range(from, to);
+    return {
+      data: result.data as unknown as Record<string, unknown>[] | null,
+      error: result.error,
+    };
   });
 }

@@ -841,6 +841,10 @@ export async function advanceQuoteStatus(
   const { data: quote, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
   if (error || !quote) throw new CrmAuthError(404, "Quote was not found.");
 
+  if (["archived","lost"].includes(nextStatus) && (quote.signed_at || quote.sold_at || ["approved","sold","ordered","received","installed","invoiced","paid"].includes(quote.status))) {
+    const {verifyOperationalCloseout}=await import("./closeout-readiness");
+    await verifyOperationalCloseout(supabase,{quoteId},actor.email);
+  }
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { status: nextStatus };
   const tsCol = STATUS_TIMESTAMP_COLUMN[nextStatus];

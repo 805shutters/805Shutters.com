@@ -1229,12 +1229,10 @@ describe("quote bookkeeping notes", () => {
     expect(calls.find((call) => call.table === "crm_quotes" && call.action === "update")?.payload).toMatchObject({
       status: "paid"
     });
-    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({
-      status: "closed"
-    });
+    expect(calls.filter(call=>call.table==="crm_jobs"&&call.action==="update").some(call=>(call.payload as Record<string,unknown>).status==="closed")).toBe(false);
   });
 
-  it("records a balance-paid checkbox payment and closes a manual row's linked job", async () => {
+  it("records a balance-paid checkbox payment without closing its linked job", async () => {
     const { calls, supabase } = createSupabaseRecorder({
       job: job({ id: "job-1", status: "invoiced" }),
       existingEntry: bookkeepingEntry({ id: "entry-1", job_id: "job-1" })
@@ -1259,9 +1257,7 @@ describe("quote bookkeeping notes", () => {
       paid_at: "2026-06-21",
       source: "manual"
     });
-    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({
-      status: "closed"
-    });
+    expect(calls.filter(call=>call.table==="crm_jobs"&&call.action==="update").some(call=>(call.payload as Record<string,unknown>).status==="closed")).toBe(false);
   });
 
   it("syncs manual bookkeeping total edits onto the linked job estimate", async () => {

@@ -126,7 +126,8 @@ export function statusRank(status: CrmQuoteStatus): number {
 /** Canonical mapping from a quote's status to the parent job's status. */
 export function jobStatusForQuote(status: CrmQuoteStatus): CrmJobStatus {
   if (status === "ordered" || status === "received") return "ordered";
-  if (status === "paid") return "closed";
+  // Settlement proves a sale, never physical completion or parent-job closeout.
+  if (status === "paid") return "sold";
   if (status === "installed" || status === "invoiced") return "installed";
   if (status === "sold" || status === "approved") return "sold";
   if (status === "lost") return "lost";

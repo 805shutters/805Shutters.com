@@ -1,3 +1,4 @@
+import { businessDate } from "./business-date";
 import type { CrmBookkeepingRow, CrmCustomerFile, CrmJob } from "@/lib/crm/types";
 
 const wonStatuses = new Set<CrmJob["status"]>(["sold", "ordered", "installed", "invoiced", "closed"]);
@@ -27,19 +28,13 @@ export type CloseRateCohortCustomer = {
 };
 
 function startOfRollingWindow(now: Date, days: number) {
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - (days - 1));
+  const start = new Date(businessDate(now.toISOString())! + "T00:00:00Z");
+  start.setUTCDate(start.getUTCDate() - (days - 1));
   return start;
 }
-
 function validDate(value: string | null | undefined) {
-  if (!value) return null;
-  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  const date = dateOnly
-    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
-    : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const date = businessDate(value);
+  return date ? new Date(date + "T00:00:00Z") : null;
 }
 
 function normalizedText(value: string | null | undefined) {
@@ -240,12 +235,11 @@ export function buildCommandPerformanceMetrics(
   now = new Date(),
   customerFiles: CrmCustomerFile[] = []
 ): CommandPerformanceMetrics {
-  const through = new Date(now);
-  through.setHours(23, 59, 59, 999);
+  const through = new Date(businessDate(now.toISOString())! + "T23:59:59.999Z");
   const start30 = startOfRollingWindow(now, 30);
   const start60 = startOfRollingWindow(now, 60);
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const nextYearStart = new Date(now.getFullYear() + 1, 0, 1);
+  const yearStart = new Date(Date.UTC(through.getUTCFullYear(), 0, 1));
+  const nextYearStart = new Date(Date.UTC(through.getUTCFullYear() + 1, 0, 1));
   const daysInYear = Math.round((nextYearStart.getTime() - yearStart.getTime()) / 86_400_000);
   const elapsedDays = Math.max(1, Math.floor((through.getTime() - yearStart.getTime()) / 86_400_000) + 1);
   const yearToDateRevenue = bookedRevenue(rows, yearStart, through);

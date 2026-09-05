@@ -1,3 +1,5 @@
+import { currentOfferedQuotes } from "./quote-opportunities";
+import { businessDate } from "./business-date";
 import { buildJobTrackingView } from "./job-tracking-view";
 import type { JobProgress } from "./job-progress";
 import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
@@ -128,22 +130,9 @@ export function balanceDueCompletedRows(rows: CrmBookkeepingRow[], jobs: CrmJob[
 }
 
 export function quotedPipelineQuotes(quotes: CrmQuote[], now: Date | string = new Date()) {
-  const nowMs = typeof now === "string" ? Date.parse(now) : now.getTime();
-  const cutoffMs = nowMs - 60 * 86_400_000;
-  const byGroup = new Map<string, CrmQuote>();
-
-  for (const quote of quotes) {
-    if ((quote.live_status || quote.status) !== "sent" || !quote.sent_at) continue;
-    const sentMs = Date.parse(quote.sent_at);
-    if (!Number.isFinite(sentMs) || sentMs < cutoffMs || sentMs > nowMs) continue;
-    const key = quote.quote_group_id || quote.job_id || quote.id;
-    const existing = byGroup.get(key);
-    if (!existing || Number(quote.quote_total) > Number(existing.quote_total)) {
-      byGroup.set(key, quote);
-    }
-  }
-
-  return [...byGroup.values()];
+  const through=businessDate(typeof now === "string" ? now : now.toISOString())!;
+  const from=new Date(Date.parse(through)-59*86400000).toISOString().slice(0,10);
+  return currentOfferedQuotes(quotes,from,through);
 }
 
 export function buildDashboardSummaryMetrics({

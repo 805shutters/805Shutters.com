@@ -183,14 +183,15 @@ it("retains corrections, rejects duplicates, and leaves damaged product outstand
     db.query("delete from crm_product_movements where id=$1", [id(14)]),
   ).rejects.toThrow("append-only");
 });
-it("links remake and return visit without overwriting the original visit", async () => {
+it("resolves a partial visit through its completed remake return without overwriting history", async () => {
+  await db.query("update crm_installer_forms set meta=$2 where id=$1",[form,{workflow:{outcome:"partially_completed",revision:2}}]);
   await save("visit", id(20), {
     owner: "Mike",
-    outcome: "complete",
+    outcome: "partial",
     installer_form_id: form,
-    report_revision: 1,
-    resolution: "Original work complete",
-    affected_line_ids: [line1, line2],
+    report_revision: 2,
+    resolution: null,
+    affected_line_ids: [line1],
   });
   await save("movement", id(24), {
     line_id: line1,
@@ -213,7 +214,7 @@ it("links remake and return visit without overwriting the original visit", async
   });
   let progress = deriveFulfillment(await snapshot(), quote, "2026-09-08");
   expect(progress.complete).toBe(false);
-  expect(progress.openVisits).toHaveLength(1);
+  expect(progress.openVisits).toHaveLength(2);
   expect(progress.remaining).toBe(1);
   await expect(
     save(
@@ -238,7 +239,7 @@ it("links remake and return visit without overwriting the original visit", async
   });
   await db.query("update crm_installer_forms set meta=$2 where id=$1", [
     form,
-    { workflow: { outcome: "completed", revision: 2 } },
+    { workflow: { outcome: "completed", revision: 3 } },
   ]);
   await save(
     "visit",
@@ -248,7 +249,7 @@ it("links remake and return visit without overwriting the original visit", async
       outcome: "complete",
       original_visit_id: id(20),
       installer_form_id: form,
-      report_revision: 2,
+      report_revision: 3,
       affected_line_ids: [id(21)],
       resolution: "Return work complete",
     },

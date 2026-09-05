@@ -6,7 +6,7 @@ import type {OwnedAction,OwnedActionChange} from "@/lib/crm/owned-actions";
 import type { IntegrationHealth } from "@/lib/crm/integration-health";
 import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "@/lib/crm/job-progress";
 
-import { Fragment, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ArrowDown, Check, ChevronDown, ChevronRight, ExternalLink, Search, X } from "lucide-react";
 import type { CrmBookkeepingRow, CrmCustomerFile, CrmInstallationInvoiceEmail, CrmJob, CrmOrderCogsEmail, CrmQuote } from "@/lib/crm/types";
@@ -46,6 +46,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const items = useMemo(() => buildJobTrackingView(props), [props.jobs, props.quotes, props.rows, props.files, props.orderCogsEmails, props.installationInvoiceEmails, props.installerOutcomes, props.sourceHealth, props.ownedActions,props.fulfillment]);
   const [filter, setFilter] = useState<JobTrackingFilter>("active");
   const [search, setSearch] = useState("");
+  useEffect(()=>{const id=new URLSearchParams(window.location.search).get("jobId");if(id){setSearch(id);setFilter("all");}},[]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editor, setEditor] = useState<Editor | null>(null);
   const [running, setRunning] = useState(false);

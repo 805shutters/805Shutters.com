@@ -164,8 +164,46 @@ export function deriveFulfillment(
           ),
       ).length
     : null;
-  const openVisits = data.visits.filter(
-    (v) => v.quote_id === quoteId && ["planned", "partial"].includes(v.outcome),
+  const visits = data.visits.filter((v) => v.quote_id === quoteId);
+  const byVisit = new Map(visits.map((v) => [v.id, v]));
+  const byLine = new Map(lines.map((l) => [l.id, l]));
+  function follows(visit: ServiceVisit, original: string): boolean {
+    const seen = new Set<string>();
+    let id = visit.original_visit_id;
+    while (id && !seen.has(id)) {
+      if (id === original) return true;
+      seen.add(id);
+      id = byVisit.get(id)?.original_visit_id || null;
+    }
+    return false;
+  }
+  function covers(candidate: string, original: string): boolean {
+    const seen = new Set<string>();
+    let id: string | null = candidate;
+    while (id && !seen.has(id)) {
+      if (id === original) return true;
+      seen.add(id);
+      id = byLine.get(id)?.remake_of || null;
+    }
+    return false;
+  }
+  // Preserve the original partial visit. A later completed return resolves only
+  // the affected openings it actually covers (including their replacement orders).
+  const openVisits = visits.filter(
+    (v) =>
+      ["planned", "partial"].includes(v.outcome) &&
+      !visits.some(
+        (later) =>
+          later.outcome === "complete" &&
+          follows(later, v.id) &&
+          (v.affected_line_ids.length
+            ? v.affected_line_ids.every((id) =>
+                later.affected_line_ids.some((candidate) =>
+                  covers(candidate, id),
+                ),
+              )
+            : later.affected_line_ids.length === 0),
+      ),
   );
   const complete =
     !!scope &&

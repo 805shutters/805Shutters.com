@@ -79,6 +79,8 @@ async function waitForVercelDeployment(sha) {
         "vercel@latest",
         "list",
         PROJECT,
+        "--scope",
+        "805-shutters",
         "--format",
         "json",
         "--meta",
@@ -92,12 +94,12 @@ async function waitForVercelDeployment(sha) {
         deployment = (payload.deployments || []).find((item) => item.target === "production");
       } else {
         const errorOutput = `${result.stdout || ""}\n${result.stderr || ""}`;
-        if (!errorOutput.includes("No existing credentials found")) {
+        if (!/No existing credentials found|Project not found|not authorized|not authenticated/i.test(errorOutput)) {
           process.stderr.write(errorOutput);
           process.exit(result.status || 1);
         }
         useGitHubStatus = true;
-        console.log("Vercel CLI is not authenticated; verifying through the GitHub Vercel status instead.");
+        console.log("Vercel CLI cannot inspect the configured 805 scope; verifying through the GitHub Vercel status instead.");
       }
     }
 

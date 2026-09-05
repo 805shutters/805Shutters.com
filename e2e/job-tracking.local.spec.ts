@@ -1,6 +1,6 @@
 import {emptyFulfillment,type FulfillmentData} from "../src/lib/crm/fulfillment";
 import type {OwnedAction,OwnedActionChange} from "../src/lib/crm/owned-actions";
-import type { InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
+import type { ProgressSourceHealth, InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
 import { test, expect, devices, type Page } from "@playwright/test";
 import { buildDashboardData } from "../src/lib/crm/backend";
 import type { CrmJob, CrmQuote, CrmBookkeepingPayment, CrmBookkeepingCredit, CrmBookkeepingEntry } from "../src/lib/crm/types";
@@ -18,7 +18,7 @@ function fixture() {
   const credits: CrmBookkeepingCredit[] = [];
   quotes.push({ ...quotes[0], id: id(90), job_id: jobs[6].id, customer_name: jobs[6].customer_name, customer_email: jobs[6].email, status: "sent", sold_at: null, signed_at: null, quote_total: 20000, balance_due: 20000 });
   const entries: CrmBookkeepingEntry[] = [];
-  return { jobs, quotes, payments, credits, entries, fulfillment:structuredClone(emptyFulfillment) as FulfillmentData, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
+  return { jobs, quotes, payments, credits, entries, sourceHealth:[] as ProgressSourceHealth[], fulfillment:structuredClone(emptyFulfillment) as FulfillmentData, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
 }
 async function setup(page: Page, includeLegacy = false) {
   const records = fixture();
@@ -418,4 +418,37 @@ test('exact purchased quantities distinguish shipment from physical receipt',asy
  await expect(dialog).toContainText('2 shipped · 0 received');
  expect(records.fulfillment.movements).toHaveLength(1);
  expect(writes.every(w=>w.url==='/api/crm/operations/fulfillment')).toBe(true);
+});
+
+
+test("report totals and filtered contributing records agree without external calls", async ({page}) => {
+ const {writes}=await setup(page);
+ await page.getByRole('button',{name:'Operations Reports',exact:true}).click();
+ const reports=page.getByRole('region',{name:'Operations reports',exact:true});
+ await reports.getByRole('button',{name:/Collected receipts/}).click();
+ const contributors=page.getByRole('region',{name:'Collected receipts contributing records'});
+ await expect(contributors.getByText('4 contributing records · $10,000.00',{exact:true})).toBeVisible();
+ await expect(reports.getByRole('button',{name:/Collected receipts/})).toContainText('$10,000.00');
+ await contributors.getByRole('textbox',{name:'Search contributing records'}).fill('Jordan');
+ await expect(contributors.getByText('1 contributing records · $2,000.00',{exact:true})).toBeVisible();
+ await contributors.getByRole('textbox',{name:'Search contributing records'}).fill('not-a-customer');
+ await expect(reports.getByRole('button',{name:/Collected receipts/})).toContainText('$0.00');
+ await expect(contributors.getByText('0 contributing records · $0.00',{exact:true})).toBeVisible();
+ await reports.getByRole('button',{name:/Invoiced/}).click();
+ await expect(reports.getByRole('button',{name:/Invoiced/})).toContainText('Unavailable');
+ expect(writes).toHaveLength(0);
+});
+
+
+test("failed cost source withholds financial conclusions and preserves operational records",async({page})=>{
+ const {records,writes}=await setup(page);
+ records.sourceHealth.push({source:'job expenses',state:'unavailable',loadedAt:new Date().toISOString(),message:'Synthetic expense outage'});
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+ await page.getByRole('button',{name:'Bookkeeping',exact:true}).click();
+ await expect(page.getByRole('alert').filter({hasText:'Financial summaries are withheld'})).toBeVisible();
+ await expect(page.getByRole('region',{name:'Operations reports',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/Job margin evidence/})).toContainText('Unavailable');
+ await page.getByRole('button',{name:'Job Tracking',exact:true}).click();
+ await expect(page.getByText('Active order balances',{exact:true}).locator('..')).toContainText('$14,000.00');
+ expect(writes).toHaveLength(0);
 });

@@ -23,7 +23,7 @@ class SnapshotQuery {
     return this;
   }
 
-  range(from: number, to: number) { return Promise.resolve({...this.result,data:this.result.data?.slice(from,to+1) || null}); }
+  range(from: number, to: number) { this.calls.push(`range:${from}:${to}`); return Promise.resolve({...this.result,data:this.result.data?.slice(from,to+1) || null}); }
 
   limit(limit: number) {
     this.calls.push(`limit:${limit}`);
@@ -32,7 +32,7 @@ class SnapshotQuery {
 }
 
 describe("CRM activity snapshot loader", () => {
-  it("loads bounded newest-first audit and payment streams", async () => {
+  it("loads complete newest-first audit and payment streams", async () => {
     const events = [{ id: "event-1" }];
     const payments = [{ id: "payment-1" }];
     const signedContracts = [{ id: "quote-1", signed_at: "2026-08-05T20:00:00.000Z" }];
@@ -49,10 +49,10 @@ describe("CRM activity snapshot loader", () => {
 
     expect(snapshot).toEqual({ activityEvents: events, payments, signedContracts, warnings: [] });
     expect(eventQuery.calls).toContain("order:created_at:false");
-    expect(eventQuery.calls).toContain("limit:1000");
+    expect(eventQuery.calls).toContain("range:0:499");
     expect(paymentQuery.calls).toContain("order:paid_at:false");
-    expect(paymentQuery.calls).toContain("limit:800");
-    expect(signedContractsQuery.calls).toContain("not:signed_at:is:null");
+    expect(paymentQuery.calls).toContain("range:0:499");
+    expect(signedContractsQuery.calls).toContain("range:0:499");
     expect(signedContractsQuery.calls).toContain("order:signed_at:false");
   });
 

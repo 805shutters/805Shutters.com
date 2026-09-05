@@ -1,5 +1,6 @@
 "use client";
 
+import { OperationsReports } from "@/components/crm/OperationsReports";
 import { JobTrackingWorkspace, type JobTrackingViewItem, type JobTrackingSavePatch, type JobTrackingStageId as WorkspaceStageId } from "@/components/crm/JobTrackingWorkspace";
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -108,7 +109,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
+type CrmTab = "reports" | "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -3028,6 +3029,8 @@ export function CrmApp({
     );
   }
 
+  const financialUnavailable=(data?.sourceHealth||[]).some(s=>s.state!=="complete"&&["job expenses","installation invoices","order emails","Ken payments","Ken allocations","commission payments","commission allocations","settings"].includes(s.source));
+  if (isKenMode && financialUnavailable) return <div className="crm-app-shell"><p role="alert">Payables are unavailable because cost or allocation sources failed to load. {data?.loadWarnings?.join(" ")}</p><button onClick={()=>void refresh()}>Retry refresh</button></div>;
   if (isKenMode) {
     const activeKenTab = activeTab === "payoff" ? "payoff" : "bookkeeping";
     return (
@@ -3050,6 +3053,8 @@ export function CrmApp({
   const measureNeededCount = summary?.measureNeeded || 0;
   const measureScheduledCount = summary?.measureScheduled || 0;
   const readyToOrderCount = vendorOrderTasks.length;
+
+  const financialViewBlocked=financialUnavailable&&["command","bookkeeping","payments","payoff","customers","jobs","installation"].includes(activeTab);
   const globalDrill = drill && (activeTab !== "command" || drill.placement === "summary") ? drill : null;
   const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
 
@@ -3105,12 +3110,12 @@ export function CrmApp({
             value={formatCloseRate(commandPerformance.currentCrmSalesRate)}
             variant="performance"
           />
-          <Metric label="30-Day Revenue" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
-          <Metric label="60-Day Revenue" value={toCurrency(commandPerformance.revenue60Days)} variant="performance" />
+          <Metric label="30-Day Booked Sales" value={toCurrency(commandPerformance.revenue30Days)} variant="performance" />
+          <Metric label="60-Day Booked Sales" value={toCurrency(commandPerformance.revenue60Days)} variant="performance" />
           <Metric label={`${new Date().getFullYear()} Booked-Sales Run Rate`} value={toCurrency(commandPerformance.currentYearForecast)} detail="YTD booked sales ÷ elapsed days × days in year" variant="performance" />
           <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
           <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
-          <Metric label="Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
+          <Metric label="60-Day Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
           <Metric label="Sold Pipeline" value={toCurrency(data?.summary.soldPipeline)} onClick={() => openSummaryDrill("soldPipeline")} />
           <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
           <Metric label="Need To Order" value={needsOrderCount} tone={needsOrderCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("needsOrder")} />
@@ -3119,7 +3124,7 @@ export function CrmApp({
             <Metric label="Ready to Order" value={readyToOrderCount} tone="warning" onClick={() => openSummaryDrill("readyToOrder")} />
           ) : null}
           <Metric label="Completed / Balance Open" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
-          <Metric label="Missing COGS" value={missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
+          <Metric label="Missing COGS" value={financialUnavailable ? "Unavailable" : missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
           <MeasureMetric
             needed={measureNeededCount}
@@ -3150,6 +3155,7 @@ export function CrmApp({
           ["command", "Command Center"],
           ["intelligence", "Sales Intelligence"],
           ["tracking", "Job Tracking"],
+          ["reports", "Operations Reports"],
           ["quotes", "Quotes"],
           ["commercial", "Commercial Leads & Estimates"],
           ["customers", "Customer Files"],
@@ -3226,6 +3232,8 @@ export function CrmApp({
         />
       ) : null}
 
+      {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
+      {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
       {activeTab === "tracking" ? (
         <JobTrackingWorkspace
           ownedActions={data?.ownedActions}
@@ -3253,7 +3261,7 @@ export function CrmApp({
         />
       ) : null}
 
-      {activeTab === "command" ? (
+      {activeTab === "command" && !financialViewBlocked ? (
         <>
           <CommandDashboard
             jobs={jobs}
@@ -3291,7 +3299,7 @@ export function CrmApp({
         </>
       ) : null}
 
-      {activeTab === "customers" ? (
+      {activeTab === "customers" && !financialViewBlocked ? (
         <CustomerFilesView
           files={customerFiles}
           focusCustomer={focusCustomer}
@@ -3306,7 +3314,7 @@ export function CrmApp({
         />
       ) : null}
 
-      {activeTab === "jobs" ? (
+      {activeTab === "jobs" && !financialViewBlocked ? (
         <section className="crm-workspace crm-jobs-workspace">
           <div className="crm-job-board">
             <div className="crm-job-toolbar">
@@ -3452,7 +3460,7 @@ export function CrmApp({
         </section>
       ) : null}
 
-      {activeTab === "bookkeeping" ? (
+      {activeTab === "bookkeeping" && !financialViewBlocked ? (
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
             <BookkeepingSpreadsheet
@@ -3488,7 +3496,7 @@ export function CrmApp({
         </section>
       ) : null}
 
-      {activeTab === "payments" ? (
+      {activeTab === "payments" && !financialViewBlocked ? (
         <PartnerPaymentsView
           ledger={data?.partnerPaymentLedger}
           activePerson={activePaymentPerson}
@@ -3498,7 +3506,7 @@ export function CrmApp({
         />
       ) : null}
 
-      {activeTab === "installation" ? (
+      {activeTab === "installation" && !financialViewBlocked ? (
         <section className="crm-workspace crm-workspace-wide crm-installation-payables-workspace">
           <InstallationInvoiceInbox
             invoices={installationInvoiceEmails}
@@ -3678,7 +3686,7 @@ export function CrmApp({
         </>
       ) : null}
 
-      {activeTab === "payoff" ? (
+      {activeTab === "payoff" && !financialViewBlocked ? (
         <KenPayoffView
           payoff={data?.kenPayoff}
           buyoutLedger={data?.partnerPaymentLedger?.kenBuyout}

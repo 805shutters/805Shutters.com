@@ -147,7 +147,7 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
       total, depositRequired, depositReceived,
       depositOutstanding,
       squareBalanceOutstanding: balanceOutstanding === null || depositOutstanding === null ? null : Math.max(0, balanceOutstanding - depositOutstanding),
-      balanceReceived: finiteMoney(row?.balancePaid), balanceOutstanding, cogs: finiteMoney(row?.cogs ?? quote?.materials_cost),
+      balanceReceived: finiteMoney(row?.balancePaid), balanceOutstanding, cogs: input.sourceHealth?.some(s=>s.state!=="complete"&&["order emails","job expenses"].includes(s.source)) ? null : finiteMoney(row?.cogs ?? quote?.materials_cost),
       signedAt, signatureRecorded: Boolean(signedAt || quote?.customer_signature),
       contractUrl: trackingSafeUrl(typeof contractMarker.url === "string" ? contractMarker.url : null) || trackingSafeUrl(quote?.share_token ? `/quote/${encodeURIComponent(quote.share_token)}` : contracts.find((contract) => contract.contract_url && objectMeta(contract.meta).source !== "bookkeeping_row")?.contract_url), contracts,
       orderEmails, installEmails,

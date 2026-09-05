@@ -26,7 +26,7 @@ export type UnifiedActivityEvent = {
   entityType: string;
   entityId: string | null;
   sortAt: string;
-  telemetry?: boolean; autosave?: boolean; correlationId?: string | null; groupedSourceIds?: string[];
+  telemetry?: boolean; autosave?: boolean; correlationId?: string | null; sourceRevision?: string | null; groupedSourceIds?: string[];
 };
 
 type UnifiedActivityInput = {
@@ -319,6 +319,7 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
       sortAt: event.created_at,
       telemetry: /visitor|telemetry|page_view/.test(action),
       autosave: /technical[._ ]measure[._ ]save|autosave/.test(action),
+      sourceRevision: metadata.source_revision == null ? null : String(metadata.source_revision),
       correlationId: textFrom(metadata.correlation_id,metadata.provider_event_id)
     }];
   });
@@ -358,7 +359,7 @@ export function operationalTimeline(feed: UnifiedActivityEvent[]) {
   const edits = new Map<string,UnifiedActivityEvent>();
   for (const event of feed) {
     if (event.telemetry) continue;
-    const correlation = event.correlationId ? `${event.correlationId}:${event.category}` : null;
+    const correlation = event.correlationId ? `${event.correlationId}:${event.category}:${event.sourceRevision || "unknown"}` : null;
     const related = correlation ? correlations.get(correlation) : undefined;
     if (related) { related.groupedSourceIds = [...(related.groupedSourceIds || [related.sourceId]),event.sourceId]; continue; }
     const key = `${event.entityType}:${event.entityId}:${event.actorEmail}`;

@@ -266,11 +266,11 @@ describe("dashboard summary metrics", () => {
     expect(summary.soldJobs).toBe(5);
   });
 
-  it("separates quoted pipeline from sold pipeline", () => {
+  it("uses the latest offered version and exact opportunity grouping, separately from sold pipeline", () => {
     const quotes = [
-      quote({ id: "group-low", quote_group_id: "group-1", quote_total: 1200 }),
-      quote({ id: "group-high", quote_group_id: "group-1", quote_total: 1800 }),
-      quote({ id: "standalone", quote_total: 700 }),
+      quote({ id: "group-low", quote_group_id: "group-1", quote_total: 1200, sent_at: "2026-06-12T18:00:00Z" }),
+      quote({ id: "group-high", quote_group_id: "group-1", quote_total: 1800, sent_at: "2026-06-10T18:00:00Z" }),
+      quote({ id: "standalone", job_id: "standalone-job", quote_total: 700 }),
       quote({ id: "live-sold", live_status: "sold", quote_total: 5000 }),
       quote({ id: "old", quote_total: 9000, sent_at: "2026-03-01T00:00:00.000Z" }),
       quote({ id: "sold", status: "sold", quote_total: 4000 })
@@ -282,7 +282,7 @@ describe("dashboard summary metrics", () => {
     ];
 
     expect(quotedPipelineQuotes(quotes, "2026-06-20T00:00:00.000Z").map((item) => item.id)).toEqual([
-      "group-high",
+      "group-low",
       "standalone"
     ]);
 
@@ -295,7 +295,7 @@ describe("dashboard summary metrics", () => {
       now: "2026-06-20T00:00:00.000Z"
     });
 
-    expect(summary.quotedPipeline).toBe(2500);
+    expect(summary.quotedPipeline).toBe(1900);
     expect(summary.soldPipeline).toBe(9500);
   });
 

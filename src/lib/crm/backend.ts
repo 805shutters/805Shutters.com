@@ -1531,7 +1531,7 @@ function projectLiveJobStatuses(jobs: CrmJob[], rows: CrmBookkeepingRow[]) {
 function jobStatusForBookkeepingRow(row: CrmBookkeepingRow): CrmJobStatus {
   const status = effectiveBookkeepingStatus(row);
   if (status === "closed") return "closed";
-  if (status === "paid") return row.isPaidInFull ? "closed" : "invoiced";
+  if (status === "paid") return "sold";
   if (status === "installed" || status === "invoiced") return "installed";
   if (status === "ordered" || status === "received") return "ordered";
   if (status === "lost") return "lost";
@@ -1675,22 +1675,9 @@ export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask 
 
 export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Promise<CrmActivitySnapshot> {
   const [activityResult, paymentsResult, signedContractsResult, businessEventsResult] = await Promise.all([
-    supabase
-      .from("crm_activity_events")
-      .select("id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata")
-      .order("created_at", { ascending: false })
-      .limit(1000),
-    supabase
-      .from("crm_quote_bookkeeping_payments")
-      .select("*")
-      .order("paid_at", { ascending: false, nullsFirst: false })
-      .limit(800),
-    supabase
-      .from("crm_quotes")
-      .select("id,job_id,signed_at,customer_printed_name,quote_number")
-      .not("signed_at", "is", null)
-      .order("signed_at", { ascending: false, nullsFirst: false })
-      .limit(1000),
+    loadCompleteCrmTable(supabase, "crm_activity_events", "created_at", "id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata"),
+    loadCompleteCrmTable(supabase, "crm_quote_bookkeeping_payments", "paid_at"),
+    loadCompleteCrmTable(supabase, "crm_quotes", "signed_at", "id,job_id,signed_at,customer_printed_name,quote_number"),
     loadCompleteCrmTable(supabase,"crm_business_events","occurred_at")
   ]);
 
@@ -1700,7 +1687,6 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
 
   const warnings: string[] = [];
   if (businessEventsResult.error) warnings.push("Durable business history is unavailable.");
-  if ((activityResult.data || []).length >= 1000) warnings.push("Raw audit is limited to the latest 1000 entries; older events are not included in this snapshot.");
   if (activityResult.error) warnings.push("CRM updates are temporarily unavailable.");
   if (paymentsResult.error) warnings.push("Payment activity is temporarily unavailable.");
   if (signedContractsResult.error) warnings.push("Signed contract activity is temporarily unavailable.");
@@ -1708,7 +1694,7 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
   return {
     activityEvents: [...((activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[]), ...(businessEventsResult.error ? [] : businessEventsResult.data || []).map(businessEventToActivity)],
     payments: (paymentsResult.error ? [] : paymentsResult.data || []) as CrmBookkeepingPayment[],
-    signedContracts: (signedContractsResult.error ? [] : signedContractsResult.data || []) as CrmActivitySnapshot["signedContracts"],
+    signedContracts: (signedContractsResult.error ? [] : signedContractsResult.data || []).filter(row=>row.signed_at) as CrmActivitySnapshot["signedContracts"],
     warnings
   };
 }
@@ -1743,12 +1729,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
     loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
     loadCompleteCrmTable(supabase, "crm_quotes", "created_at"),
-    supabase
-      .from("crm_calendar_events")
-      .select("*")
-      .gte("start_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 14).toISOString())
-      .order("start_at", { ascending: true })
-      .limit(120),
+    loadCompleteCrmTable(supabase, "crm_calendar_events", "start_at"),
     loadCompleteCrmTable(supabase, "crm_customers", "latest_sold_date"),
     loadCompleteCrmTable(supabase, "crm_customer_products", "created_at"),
     loadCompleteCrmTable(supabase, "crm_customer_contracts", "created_at"),
@@ -1760,26 +1741,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     loadCompleteCrmTable(supabase, "crm_ken_payments", "paid_on"),
     loadCompleteCrmTable(supabase, "crm_ken_payment_allocations", "created_at"),
     loadCompleteCrmTable(supabase, "crm_order_cogs_emails", "created_at"),
-    supabase
-      .from("crm_activity_events")
-      .select("id,created_at,after_data,metadata")
-      .eq("entity_type", "order_cogs_email")
-      .eq("action", "order_cogs_email_audit_fallback")
-      .order("created_at", { ascending: false })
-      .limit(100),
+    loadCompleteCrmTable(supabase, "crm_activity_events", "created_at", "id,created_at,after_data,metadata", "id", [{column:"entity_type",value:"order_cogs_email"},{column:"action",value:"order_cogs_email_audit_fallback"}]),
     loadCompleteCrmTable(supabase, "crm_commission_payments", "paid_on"),
     loadCompleteCrmTable(supabase, "crm_commission_payment_allocations", "created_at"),
-    supabase
-      .from("crm_vendor_order_drafts")
-      .select("id,external_task_id,technical_measure_form_id,crm_job_id,crm_quote_id,manufacturer,product_type,status,source_kind,requested_at,customer_snapshot,quote_snapshot,routing_keys,product_names,line_count,portal_url,order_packet_url,manufacturer_order_ref,message,error_message")
-      .order("requested_at", { ascending: false })
-      .limit(1000),
-    supabase
-      .from("crm_technical_measure_forms")
-      .select("id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot")
-      .eq("status", "submitted")
-      .order("submitted_at", { ascending: false })
-      .limit(1000),
+    loadCompleteCrmTable(supabase, "crm_vendor_order_drafts", "requested_at", "id,external_task_id,technical_measure_form_id,crm_job_id,crm_quote_id,manufacturer,product_type,status,source_kind,requested_at,customer_snapshot,quote_snapshot,routing_keys,product_names,line_count,portal_url,order_packet_url,manufacturer_order_ref,message,error_message"),
+    loadCompleteCrmTable(supabase, "crm_technical_measure_forms", "submitted_at", "id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot", "id", [{column:"status",value:"submitted"}]),
     supabase.from("crm_settings").select("*"),
     loadCompleteCrmTable(supabase, "crm_installer_forms", "updated_at", "id,job_id,quote_id,status,signed_at,updated_at,created_at,issues,meta"),
     loadCompleteCrmTable(supabase, "crm_accountability_tasks", "created_at"),
@@ -2033,6 +1999,10 @@ export async function updateCrmJob(
     throw new CrmAuthError(400, "No supported CRM job fields provided.");
   }
 
+  if (patch.status === "closed") {
+    const {verifyOperationalCloseout}=await import("./closeout-readiness");
+    await verifyOperationalCloseout(supabase,{jobId:id},actor.email);
+  }
   const installationTransition = patch.status === "installed" && existing.status !== "installed";
   if (installationTransition && payload.installation_confirmed !== true) {
     throw new CrmAuthError(409, installationConfirmationError);
@@ -3313,6 +3283,10 @@ export async function updateCrmQuote(
     .maybeSingle();
   if (existingError || !existing) throw new CrmAuthError(404, "Quote was not found.");
 
+  if (["archived","lost"].includes(String(payload.status)) && (existing.signed_at || existing.sold_at || saleOwnerSyncQuoteStatuses.includes(existing.status))) {
+    const {verifyOperationalCloseout}=await import("./closeout-readiness");
+    await verifyOperationalCloseout(supabase,{quoteId:id},actor.email);
+  }
   // A quote with line items is priced by the engine (recalcQuoteTotals is the
   // authority). The legacy ledger endpoint must NOT overwrite those
   // server-computed customer-facing totals with a client-supplied number — that
@@ -4022,9 +3996,7 @@ export async function updateCrmBookkeepingEntry(
     );
   }
 
-  if (markBalancePaid && entry.job_id) {
-    await closeBookkeepingJobAfterBalancePaid(supabase, String(entry.job_id), actor);
-  }
+  // A received balance payment does not close or advance the parent job.
 
   if (
     entry.quote_id &&
@@ -4054,26 +4026,6 @@ export async function updateCrmBookkeepingEntry(
   });
 
   return entry as CrmBookkeepingEntry;
-}
-
-async function closeBookkeepingJobAfterBalancePaid(
-  supabase: CrmSupabaseClient,
-  jobId: string,
-  actor: CrmActor
-) {
-  const { data: existingJob, error } = await supabase
-    .from("crm_jobs")
-    .select("id,status")
-    .eq("id", jobId)
-    .maybeSingle();
-
-  if (error) throw new CrmAuthError(502, "Balance was marked paid, but the linked job could not be checked.");
-  if (!existingJob) return;
-
-  const status = String((existingJob as { status?: unknown }).status || "");
-  if (status === "closed" || status === "lost") return;
-
-  await updateCrmJob(supabase, jobId, { status: "closed" }, actor);
 }
 
 // --- Ledger line-item CRUD (payments, credits, expenses) -------------------
