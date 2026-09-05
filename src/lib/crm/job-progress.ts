@@ -79,7 +79,7 @@ export function deriveJobProgress(input: Input): JobProgress {
   const cleanComplete = complete && !serviceOpen && payment === "settled" && missingSources.length === 0 && measure.status !== "needed";
   if (recordedStage && terminal.has(recordedStage) && input.isSale && !cleanComplete) conflicts.push(`Recorded ${recordedStage}; purchased work, service or settlement still needs verification`);
   let stage: JobProgress["stage"];
-  if (partial || serviceOpen || conflicts.length) stage = "attention";
+  if (partial || serviceOpen || conflicts.length || (input.isSale && payment === "unknown")) stage = "attention";
   else if (status === "lost" || status === "archived") stage = status;
   else if (cleanComplete) stage = "complete";
   else if (complete) stage = payment === "balance_open" || payment === "deposit_needed" ? "balance_needed" : "attention";

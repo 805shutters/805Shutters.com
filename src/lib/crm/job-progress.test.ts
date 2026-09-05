@@ -5,6 +5,7 @@ const base = { isSale: true, installedAt: null, orderedAt: null, balanceOutstand
 const report = (outcome: string, extra: Partial<InstallerOutcomeEvidence> = {}): InstallerOutcomeEvidence => ({ id: "f1", quote_id: "q1", job_id: "j1", status: "completed", signed_at: "2026-09-02T12:00:00Z", issues: [], meta: { workflow: { outcome, updatedAt: "2026-09-02T12:00:00Z" } }, ...extra });
 describe("shared evidence-derived progress", () => {
   it("keeps fully prepaid work active before ordering", () => { expect(deriveJobProgress(base)).toMatchObject({ active: true, payment: "settled", product: "unprepared", installation: "unverified", stage: "need_to_order" }); });
+  it("routes a sold record with no payment authority to evidence review", () => { expect(deriveJobProgress({ ...base, balanceOutstanding: null, depositOutstanding: null })).toMatchObject({ active: true, payment: "unknown", stage: "attention" }); });
   it("never infers receipt from ordering or payment", () => { expect(deriveJobProgress({ ...base, orderedAt: "2026-09-02" }).product).toBe("ordered"); });
   it("latest partial report defeats an older completed date", () => {
     const result = deriveJobProgress({ ...base, installedAt: "2026-08-01", installerOutcomes: [report("partially_completed")], recordedStage: "complete" });
