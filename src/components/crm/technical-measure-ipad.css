@@ -119,6 +119,16 @@ body:has(.tm805-split) > .mobile-workspace-exit, body:has(.tm805-split) .mobile-
 .tm805-contract-options dt { margin: 0 0 3px; font-size: 10px; color: #777972; font-weight: 500; }
 .tm805-contract-options dd { margin: 0; color: #292c27; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .tm805-contract-note { grid-column: 1 / -1; }
+.tm805-extra-details { grid-column: 1 / -1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: #f8f8f6; overflow: hidden; }
+.tm805-extra-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 12px; color: var(--ink); font-size: 12px; font-weight: 600; list-style: none; cursor: pointer; }
+.tm805-extra-details > summary::-webkit-details-marker { display: none; }
+.tm805-extra-details > summary svg { width: 16px; height: 16px; flex: none; }
+.tm805-extra-details > summary .tm805-collapse-icon, .tm805-extra-details[open] > summary .tm805-expand-icon { display: none; }
+.tm805-extra-details[open] > summary .tm805-collapse-icon { display: block; }
+.tm805-extra-details[open] > summary { border-bottom: 1px solid var(--line); }
+.tm805-extra-details > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.tm805-split.technical-measure-shell .tm805-extra-details > .technical-measure-vendor-fields { margin: 12px 0 0; border: 0; border-radius: 0; }
+.tm805-extra-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
 @media (hover: hover) {
   .tm805-split.technical-measure-shell button:not(:disabled):hover { filter: brightness(.97); }
 }

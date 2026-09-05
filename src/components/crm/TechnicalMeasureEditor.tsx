@@ -4,7 +4,7 @@ import { PointerEvent, useEffect, useRef, useState } from "react";
 import "./technical-measure-ipad.css";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import type { Session } from "@supabase/supabase-js";
-import { Archive, ArrowLeft, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
+import { Archive, ArrowLeft, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Minus, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type {
@@ -1295,20 +1295,26 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   {detailChoice?.lineId === line.id && detailChoice.key === "__material" ? <div className="technical-measure-choice-grid technical-measure-detail-options">{(onyxShutter ? ONYX_STANDARD_MATERIALS : SHUTTER_MATERIALS).map((option) => <button type="button" aria-pressed={current.fabric === option} key={option} onClick={() => { updateLine(line.id, { fabric: option }); updateDetail(line.id, "material", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
                 </div> : <label className={changed(baseline.fabric, current.fabric) ? "changed" : ""}><span>Color / Fabric</span><input disabled={readOnly} value={current.fabric || ""} onChange={(event) => updateLine(line.id, { fabric: event.target.value || null })} /></label>}
                 {normanRoller ? (
+                  <details className="tm805-extra-details">
+                    <summary><span>Norman ordering details</span><Plus className="tm805-expand-icon" /><Minus className="tm805-collapse-icon" /></summary>
                   <NormanRollerMeasureFields
                     details={current.details}
                     disabled={readOnly}
                     onDetail={(key, value) => updateDetail(line.id, key, value)}
                     onFabric={({ fabric, programId }) => updateLine(line.id, { fabric, program_id: programId })}
                   />
+                  </details>
                 ) : null}
                 {!onyxShutter && !normanRoller && measureSchema ? (
+                  <details className="tm805-extra-details">
+                    <summary><span>{measureSchema.manufacturer} ordering details</span><Plus className="tm805-expand-icon" /><Minus className="tm805-collapse-icon" /></summary>
                   <ManufacturerTechnicalMeasureFields
                     schema={measureSchema}
                     values={current}
                     disabled={readOnly}
                     onDetail={(key, value) => updateDetail(line.id, key, value)}
                   />
+                  </details>
                 ) : null}
                 {!onyxShutter && !normanRoller && !measureSchema ? (
                   <div className="technical-measure-schema-blocked" role="alert">
@@ -1316,7 +1322,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                     <span>The manufacturer and exact product/program must be resolved before this line can be measured for ordering.</span>
                   </div>
                 ) : null}
-                {(onyxShutter || normanRoller || !measureSchema) ? detailKeys.map((key) => {
+                {(onyxShutter || normanRoller || !measureSchema) && detailKeys.length > 0 ? <details className="tm805-extra-details">
+                  <summary><span>Additional product details</span><Plus className="tm805-expand-icon" /><Minus className="tm805-collapse-icon" /></summary>
+                  <div className="tm805-extra-grid">{detailKeys.map((key) => {
                   const value = current.details[key];
                   const isBoolean = typeof value === "boolean" || typeof baseline.details[key] === "boolean";
                   const options = shutterProduct ? shutterDetailOptions(key, onyxShutter) : null;
@@ -1332,7 +1340,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   ) : (
                     <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} onBlur={(event) => updateDetail(line.id, key, event.target.value)} /></label>
                   );
-                }) : null}
+                })}</div></details> : null}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} onBlur={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>
