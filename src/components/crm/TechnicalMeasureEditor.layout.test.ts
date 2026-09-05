@@ -235,7 +235,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain('FIELD_MEASURE_FRACTIONS = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"]');
     expect(component).toContain("wholeEnd={125}");
     expect(styles).toContain(".technical-measure-ledger-list");
-    expect(styles).toContain('button[data-complete="true"]');
+    expect(styles).toContain('.technical-measure-ledger-item[data-complete="true"]');
   });
 
 });
