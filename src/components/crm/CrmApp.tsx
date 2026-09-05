@@ -3820,6 +3820,12 @@ function Metric({
   ariaExpanded?: boolean;
   ariaControls?: string;
 }) {
+  const detailControl = detail ? (
+    <details className="crm-metric-info">
+      <summary aria-label={`About ${label}`}>i</summary>
+      <small>{detail}</small>
+    </details>
+  ) : null;
   const className = ["crm-metric", variant ? `crm-metric--${variant}` : "", tone ? `crm-metric--${tone}` : "", onClick ? "crm-metric-button" : ""].filter(Boolean).join(" ");
 
   if (onClick) {
@@ -3841,7 +3847,7 @@ function Metric({
     <div className={className}>
       <span>{label}</span>
       <strong>{value}</strong>
-      {detail ? <small>{detail}</small> : null}
+      {detailControl}
     </div>
   );
 }

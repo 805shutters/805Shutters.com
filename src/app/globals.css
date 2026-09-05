@@ -5365,26 +5365,36 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-topbar .crm-metric {
+  position: relative;
   width: auto;
   max-width: none;
   min-width: 0;
-  min-height: 82px;
-  padding: 11px 12px;
-  gap: 6px;
+  min-height: 0;
+  padding: 6px 10px;
+  gap: 3px;
   align-content: start;
   border-radius: 4px;
   box-shadow: none;
 }
 
 .crm-topbar .crm-metric > span:not(.crm-measure-metric-value) {
-  min-height: 26px;
+  min-height: 0;
   font-size: 10px;
   line-height: 1.3;
   letter-spacing: 0.06em;
 }
 
+.crm-topbar .crm-metric--performance > span { min-height: 26px; }
+
+.crm-topbar .crm-measure-metric-value {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .crm-topbar .crm-metric strong {
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.05;
   overflow-wrap: normal;
   font-variant-numeric: tabular-nums;
@@ -5393,6 +5403,50 @@ body.qb-fullscreen .crm-app-shell {
 .crm-topbar .crm-metric small {
   font-size: 10px;
   line-height: 1.3;
+}
+
+.crm-topbar .crm-measure-metric-value small {
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.crm-metric-info {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  z-index: 1;
+}
+
+.crm-metric-info[open] { z-index: 5; }
+
+.crm-metric-info summary {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-family: sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.crm-metric-info summary::-webkit-details-marker { display: none; }
+
+.crm-topbar .crm-metric-info small {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .crm-topbar .crm-metric--warning,
