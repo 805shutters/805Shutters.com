@@ -102,6 +102,8 @@ export function measureFilter(form: Record<string, any>): MeasureFilter {
   const meta = orderObject(form.meta);
   if (meta.archived_at) return "archive";
   const orders = form.productOrders as MeasureOrderSummary | undefined;
+  // Existing complete order evidence belongs in Archive without rewriting customer history.
+  if (orders && !orders.error && orders.totalCount > 0 && orders.orderedCount === orders.totalCount) return "archive";
   if (form.status === "submitted" || (orders?.orderedCount || 0) > 0)
     return "needs_order";
   if (orderObject(meta.measure_scheduling).status === "scheduled")

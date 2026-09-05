@@ -46,3 +46,9 @@ it("assigns each record to exactly one filter with archive and partial-order pre
     measureFilter({ status: "submitted", meta: { archived_at: "2026-09-01" } }),
   ).toBe("archive");
 });
+
+it("archives complete existing order evidence but keeps incomplete mappings actionable", () => {
+  const ordered = measureOrderSummary([line("a")], {status: "ordered", ordered_at: "2026-09-01"});
+  expect(measureFilter({status: "submitted", productOrders: ordered})).toBe("archive");
+  expect(measureFilter({status: "submitted", productOrders: {...ordered, error: "Missing product"}})).toBe("needs_order");
+});
