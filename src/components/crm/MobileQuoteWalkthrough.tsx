@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, CloudOff, FileImage, Grid3X3, List, Plus, Search } from "lucide-react";
 import type { QuoteLabCatalogProduct } from "@/lib/quote-lab/types";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
+import { buildMobileQuoteAppointmentQuery, mobileQuoteLosAngelesDate } from "@/lib/crm/mobile-quote-appointments";
 import {
   addMobileQuoteWindow, appendMobileQuotePhoto, assignMobileQuoteProductBatch, beginMobileQuoteGridSelection, beginMobileQuoteMeasureMore, chooseMobileQuoteGridWhole, commitMobileQuoteGridSelection, createMobileQuoteDraft, emptyMobileQuoteDesign, isManualQuoteEditorHandoffReady,
   isMobileQuoteDraftAccessible, isQuoteEditorHandoffReady, mobileQuoteFingerprint, mobileQuoteLine, mobileQuotePreflightOutcome, removeMobileQuoteWindow,
@@ -29,12 +30,6 @@ import styles from "./MobileQuoteWalkthrough.module.css";
 type Tab = "scheduled" | "today" | "add" | "sold";
 type ExistingCustomer = { jobId: string; name: string; phone: string; email: string; address: string };
 type PreviewResponse = { backend: "authoritative_v2"; verifiedAt: string; status: "authoritative" | "partial"; total: number | null; authoritativeSubtotal: number; lines: Array<{ lineItemId: string; status: "authoritative" | "blocked" | "unpriceable"; price: { total?: number }; blockedReason?: string | null; requiresManualPricing: boolean }> };
-
-function laDate(offset = 0) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const part = (name: string) => Number(parts.find((item) => item.type === name)?.value);
-  return new Date(Date.UTC(part("year"), part("month") - 1, part("day") + offset, 12)).toISOString().slice(0, 10);
-}
 
 function laDateForInstant(value: string) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
@@ -136,6 +131,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   const [tab, setTab] = useState<Tab>("today");
   const [query, setQuery] = useState("");
   const [appointments, setAppointments] = useState<CrmCalendarEvent[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [appointmentsError, setAppointmentsError] = useState("");
   const [customers, setCustomers] = useState<ExistingCustomer[]>([]);
   const [customerNextCursor, setCustomerNextCursor] = useState<string | null>(null);
   const [contracts, setContracts] = useState<Array<{ id: string; name: string; address: string | null; contracts: Array<{ id: string; status: string; number: string | null; label: string | null }> }>>([]);
@@ -240,11 +237,23 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   useEffect(() => {
     if (screen !== "home" || (tab !== "today" && tab !== "scheduled")) return;
-    const start = laDate(tab === "today" ? 0 : 1);
-    const end = laDate(tab === "today" ? 1 : 15);
-    api<{ appointments: CrmCalendarEvent[] }>(`/api/crm/mobile/appointments?event_type=sales_consult&start=${start}&end=${end}&scope=my`)
-      .then((result) => setAppointments(result.appointments.filter((event) => event.event_type === "sales_consult")))
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Appointments unavailable."));
+    let cancelled = false;
+    const controller = new AbortController();
+    setAppointments([]);
+    setAppointmentsLoading(true);
+    setAppointmentsError("");
+    api<{ appointments: CrmCalendarEvent[] }>(buildMobileQuoteAppointmentQuery(tab), { signal: controller.signal })
+      .then((result) => {
+        if (cancelled) return;
+        setAppointments(result.appointments.filter((event) => event.event_type === "sales_consult"));
+        setAppointmentsLoading(false);
+      })
+      .catch((reason) => {
+        if (cancelled) return;
+        setAppointmentsError(reason instanceof Error ? reason.message : "Appointments unavailable.");
+        setAppointmentsLoading(false);
+      });
+    return () => { cancelled = true; controller.abort(); };
   }, [tab, screen, session.access_token]);
 
   useEffect(() => {
@@ -631,9 +640,9 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       <section className={styles.homeContent}>
         {drafts.some((item) => isMobileQuoteDraftAccessible(item)) && <div className={styles.resume}><div className={styles.sectionTitle}><small>SAVED ON THIS DEVICE</small><h2>Resume a draft</h2></div>{drafts.filter((item) => isMobileQuoteDraftAccessible(item)).map((item) => <button className={styles.customer} key={item.id} onClick={() => { setDraft(item); setScreen(item.submission.snapshot ? "review" : "build"); setError(""); }}><span><strong>{item.customer.name}</strong><small>{item.windows.length} window{item.windows.length === 1 ? "" : "s"} · saved {new Date(item.updatedAt).toLocaleString()}</small></span><ChevronRight /></button>)}</div>}
         {(tab === "today" || tab === "scheduled") && <>
-          <div className={styles.sectionTitle}><small>{tab === "today" ? `${laDate()} · Pacific time` : "Next 14 days · Pacific time"}</small><h2>{tab === "today" ? "Today’s sales consultations" : "Scheduled consultations"}</h2></div>
+          <div className={styles.sectionTitle}><small>{tab === "today" ? `${mobileQuoteLosAngelesDate()} · Pacific time` : "Next 14 days · Pacific time"}</small><h2>{tab === "today" ? "Today’s sales consultations" : "Scheduled consultations"}</h2></div>
           {query.trim().length >= 2 && <div className={styles.searchResults}><small>Customer search results</small>{customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} onClick={() => void loadMoreCustomers()}>Load more customers</button>}</div>}
-          {appointments.length ? appointments.map((event) => <article className={styles.visit} key={event.id}><div><span>{tab === "scheduled" ? dateAndTime(event.start_at) : time(event.start_at)}</span><span className={styles.badge}>{event.status}</span></div><h3>{event.customer_name || event.title}</h3><p>{event.customer_address || event.location || "Address unavailable"}</p>{event.product_interest && <p>{event.product_interest}</p>}<button onClick={() => start({ kind: "existing", jobId: event.job_id, sourceId: event.id, name: event.customer_name || event.title, phone: event.customer_phone || "", email: event.customer_email || "", address: event.customer_address || event.location || "", appointmentDate: laDateForInstant(event.start_at) })}>{drafts.some((item) => isMobileQuoteDraftAccessible(item) && ((event.job_id && item.customer.jobId === event.job_id) || item.customer.sourceId === event.id)) ? "Resume quote" : "Start quote"}<ChevronRight /></button></article>) : <p>No scheduled sales consultations in this period.</p>}
+          {appointmentsLoading ? <p role="status">Loading scheduled sales consultations…</p> : appointmentsError ? <p className={styles.error} role="alert">{appointmentsError}</p> : appointments.length ? appointments.map((event) => <article className={styles.visit} key={event.id}><div><span>{tab === "scheduled" ? dateAndTime(event.start_at) : time(event.start_at)}</span><span className={styles.badge}>{event.status}</span></div><h3>{event.customer_name || event.title}</h3><p>{event.customer_address || event.location || "Address unavailable"}</p>{event.product_interest && <p>{event.product_interest}</p>}<button onClick={() => start({ kind: "existing", jobId: event.job_id, sourceId: event.id, name: event.customer_name || event.title, phone: event.customer_phone || "", email: event.customer_email || "", address: event.customer_address || event.location || "", appointmentDate: laDateForInstant(event.start_at) })}>{drafts.some((item) => isMobileQuoteDraftAccessible(item) && ((event.job_id && item.customer.jobId === event.job_id) || item.customer.sourceId === event.id)) ? "Resume quote" : "Start quote"}<ChevronRight /></button></article>) : <p>No scheduled sales consultations in this period.</p>}
         </>}
         {tab === "add" && <>
           <div className={styles.sectionTitle}><small>Start a quote</small><h2>Choose a verified customer or enter a new contact.</h2></div>

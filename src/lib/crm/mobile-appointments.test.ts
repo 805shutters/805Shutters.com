@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
+import { buildMobileQuoteAppointmentQuery, mobileQuoteLosAngelesDate } from "./mobile-quote-appointments";
 import {
   assertEtaCoordinates,
   buildMobileEtaSms,
@@ -69,18 +70,38 @@ describe("805 mobile appointment helpers", () => {
     expect(() => parseMobileAppointmentRange("2026-01-01", "2026-05-01")).toThrow("93 days");
   });
 
+  it("builds all-scope sales consultation queries from the Los Angeles calendar date", () => {
+    const afterLosAngelesMidnight = new Date("2026-09-05T07:00:00.000Z");
+
+    expect(buildMobileQuoteAppointmentQuery("today", afterLosAngelesMidnight)).toBe(
+      "/api/crm/mobile/appointments?event_type=sales_consult&start=2026-09-05&end=2026-09-06&scope=all"
+    );
+    expect(buildMobileQuoteAppointmentQuery("scheduled", afterLosAngelesMidnight)).toBe(
+      "/api/crm/mobile/appointments?event_type=sales_consult&start=2026-09-06&end=2026-09-20&scope=all"
+    );
+  });
+
+  it("keeps date offsets on the Los Angeles side of midnight", () => {
+    expect(mobileQuoteLosAngelesDate(0, new Date("2026-09-05T06:59:59.000Z"))).toBe("2026-09-04");
+    expect(mobileQuoteLosAngelesDate(1, new Date("2026-09-05T06:59:59.000Z"))).toBe("2026-09-05");
+    expect(mobileQuoteLosAngelesDate(0, new Date("2026-09-05T07:00:00.000Z"))).toBe("2026-09-05");
+    expect(mobileQuoteLosAngelesDate(15, new Date("2026-12-20T08:00:00.000Z"))).toBe("2027-01-04");
+  });
+
   it("filters my appointments by mapped owner and keeps all active appointments for all scope", () => {
     const jessica = event({ id: "jessica", assigned_to: "Jessica" });
     const mike = event({ id: "mike", assigned_to: "Mike" });
+    const unassigned = event({ id: "unassigned", assigned_to: "" });
     const canceled = event({ id: "canceled", assigned_to: "Jessica", status: "canceled" });
 
-    expect(filterMobileAppointments([jessica, mike, canceled], "jessica@805shutters.com", "my").map((row) => row.id)).toEqual([
+    expect(filterMobileAppointments([jessica, mike, unassigned, canceled], "jessica@805shutters.com", "my").map((row) => row.id)).toEqual([
       "jessica"
     ]);
-    expect(filterMobileAppointments([jessica, mike, canceled], "khill31@msn.com", "my")).toEqual([]);
-    expect(filterMobileAppointments([jessica, mike, canceled], "khill31@msn.com", "all").map((row) => row.id)).toEqual([
+    expect(filterMobileAppointments([jessica, mike, unassigned, canceled], "khill31@msn.com", "my")).toEqual([]);
+    expect(filterMobileAppointments([jessica, mike, unassigned, canceled], "khill31@msn.com", "all").map((row) => row.id)).toEqual([
       "jessica",
-      "mike"
+      "mike",
+      "unassigned"
     ]);
     expect(
       filterMobileAppointments(
