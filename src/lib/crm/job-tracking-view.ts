@@ -129,7 +129,7 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
     const signedAt = validDate(contractMarker.signed_at) || (quoteExtra && Object.hasOwn(quoteExtra, "source_signed_at") ? validDate(quoteSignedAt) : validDate(quoteSignedAt) || validDate(contracts.find((contract) => contract.signed_at)?.signed_at));
     const explicitRowDate = rowExtra && Object.hasOwn(rowExtra, "sourceSoldDate");
     const soldDate = explicitRowDate ? validDate(rowExtra.sourceSoldDate) : quote ? validDate(quoteSoldAt) || validDate(quoteSignedAt) || validDate(quote.approved_at) : row ? (row.source === "crm_quote" ? null : validDate(row.soldDate)) : validDate(objectMeta(job?.meta).sold_at);
-    const isSale = Boolean(row || (quote && quoteIsTrackingSale(quote)) || (job && SOLD_STATUSES.has(job.status)));
+    const isSale = Boolean(row || (quote && quoteIsTrackingSale(quote)) || (!quote && job && SOLD_STATUSES.has(job.status)));
     const total = finiteMoney(row?.total ?? quote?.quote_total ?? job?.estimated_total);
     const depositRequired = finiteMoney(row?.depositDue ?? quote?.deposit_required);
     const depositReceived = finiteMoney(row?.depositPaid ?? (unambiguousJob ? job?.deposit_paid : null));

@@ -20,6 +20,12 @@ function orderEmail(overrides: Partial<CrmOrderCogsEmail> = {}): CrmOrderCogsEma
 }
 
 describe("job tracking projection", () => {
+  it("does not turn an unsold quote into a purchased order from the parent label", () => {
+    const item = view({ jobs: [job()], quotes: [quote({ status: "sent", sold_at: null, signed_at: null })] })[0];
+    expect(item.isSale).toBe(false);
+    expect(item.progress.commercial).toBe("open");
+    expect(item.stageId).toBe("need_follow_up");
+  });
   it("combines an exact linked job, quote, and ledger into one operational row", () => {
     const items = view({ jobs: [job()], quotes: [quote()], rows: [row()] });
     expect(items).toHaveLength(1);
