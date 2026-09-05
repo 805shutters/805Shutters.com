@@ -94,7 +94,9 @@ function isCrmSessionFetchError(error: unknown) {
   return error instanceof CrmFetchError && error.status === 401;
 }
 
-export function CrmMobileQuotesApp() {
+export function CrmMobileQuotesApp({ workspace = "quotes" }: { workspace?: "quotes" | "contracts" }) {
+  const title = workspace === "contracts" ? "Contracts" : "Quotes";
+  const workspacePath = `/crm/mobile/${workspace}`;
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
   const [, setUser] = useState<CrmUser | null>(null);
@@ -171,7 +173,7 @@ export function CrmMobileQuotesApp() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: crmRedirectUrl(),
+          emailRedirectTo: crmRedirectUrl(workspacePath),
           shouldCreateUser: true
         }
       });
@@ -300,8 +302,8 @@ export function CrmMobileQuotesApp() {
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">805 Quotes</p>
-          <h1>Loading quotes.</h1>
+          <p className="eyebrow">805 {title}</p>
+          <h1>Loading {title.toLowerCase()}.</h1>
         </section>
       </div>
     );
@@ -312,7 +314,7 @@ export function CrmMobileQuotesApp() {
       <div className="crm-app-shell">
         <section className="crm-login-panel">
           <p className="eyebrow">Private CRM</p>
-          <h1>Quote login.</h1>
+          <h1>{workspace === "contracts" ? "Contract" : "Quote"} login.</h1>
           <p>Use an approved 805 Shutters email to view, send, and sign contracts.</p>
           {emailLoginMessage ? <p className="crm-alert">{emailLoginMessage}</p> : null}
           <form className="crm-email-login" onSubmit={sendEmailLogin}>
@@ -324,7 +326,7 @@ export function CrmMobileQuotesApp() {
               {emailLoginBusy ? "Sending link..." : "Email Login Link"}
             </button>
           </form>
-          <a className="button secondary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/mobile/quotes")}`}>
+          <a className="button secondary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(workspacePath)}`}>
             Continue with Google
           </a>
         </section>
@@ -336,7 +338,7 @@ export function CrmMobileQuotesApp() {
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">805 Quotes</p>
+          <p className="eyebrow">805 {title}</p>
           <h1>Contracts could not be loaded.</h1>
           <p>{message}</p>
           <div className="crm-form-actions">
@@ -352,5 +354,5 @@ export function CrmMobileQuotesApp() {
     );
   }
 
-  return <MobileQuotesWorkspace key={session.user.id} session={session} onSessionExpired={() => void clearCrmSession("Your CRM login expired. Sign in again.")} />;
+  return <MobileQuotesWorkspace title={title} key={session.user.id} session={session} onSessionExpired={() => void clearCrmSession("Your CRM login expired. Sign in again.")} />;
 }

@@ -39,9 +39,11 @@ const date = (value: string | null) =>
 
 export function MobileQuotesWorkspace({
   session,
+  title = "Quotes",
   onSessionExpired,
 }: {
   session: Session;
+  title?: "Quotes" | "Contracts";
   onSessionExpired: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -527,7 +529,7 @@ export function MobileQuotesWorkspace({
         </a>
         <div>
           <small>805 SHUTTERS CRM</small>
-          <h1>Quotes</h1>
+          <h1>{title}</h1>
         </div>
       </header>
       <label className="mobile-customer-search">

@@ -94,7 +94,7 @@ const customers: MobileQuoteCustomer[] = [
     contracts: [contract("single", "sent")],
   },
 ];
-async function setup(page: Page) {
+async function setup(page: Page, workspace: "quotes" | "contracts" = "quotes") {
   const writes: { path: string; body: Record<string, unknown> }[] = [];
   const flags = {
     signed: false,
@@ -252,9 +252,9 @@ async function setup(page: Page) {
       json: { message: `Unexpected test request: ${path}` },
     });
   });
-  await page.goto("/crm/mobile/quotes/", { waitUntil: "domcontentloaded" });
+  await page.goto(`/crm/mobile/${workspace}/`, { waitUntil: "domcontentloaded" });
   await expect(
-    page.getByRole("heading", { name: "Quotes", exact: true }),
+    page.getByRole("heading", { name: workspace === "contracts" ? "Contracts" : "Quotes", exact: true }),
   ).toBeVisible();
   return { writes, flags };
 }
@@ -510,3 +510,23 @@ test("pagination, search retry, incomplete and archived documents, missing recip
   ).toBeFocused();
   expect(writes).toHaveLength(0);
 });
+
+for (const width of [390, 820]) {
+  test(`Contracts tab uses customer search and contract actions at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1180 });
+    const { writes } = await setup(page, "contracts");
+    await page.getByRole("searchbox").fill("jam");
+    await expect(page.getByRole("button", { name: /Draft.*805-one/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Archived.*805-old/ })).toBeVisible();
+    await page.getByRole("button", { name: /Draft.*805-one/ }).click();
+    await expect(page.getByText("Living Room", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Sign", exact: true })).toBeEnabled();
+    expect(writes).toHaveLength(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: `reports/mobile-qa/mobile-quotes/contracts-tab-${width}.png` });
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "Contracts", exact: true })).toBeVisible();
+    await expect(page.getByRole("searchbox")).toHaveValue("jam");
+  });
+}

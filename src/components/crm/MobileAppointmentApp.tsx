@@ -121,7 +121,7 @@ export function MobileWorkspaceMenu({
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/contracts">
             <span className="mobile-crm-action-icon"><Files /></span>
-            <div><strong>Contracts</strong><span>Open signed documents</span></div>
+            <div><strong>Contracts</strong><span>Find, send, and sign contracts</span></div>
             <ArrowRight />
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/search">
