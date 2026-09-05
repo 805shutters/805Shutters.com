@@ -42,7 +42,8 @@ describe("MobileRoomSelector", () => {
     expect(pendingMarkup).not.toContain("Window letter");
 
     const selectedMarkup = renderRoomSelector({ ...bedroom, room: "Bedroom 2" });
-    expect(selectedMarkup).toMatch(/aria-pressed="true">Bedroom 2<\/button>/);
+    expect(selectedMarkup).toMatch(/aria-pressed="true"[^>]*>Bedroom 2<\/button>/);
+    expect(selectedMarkup).not.toContain(">Bedroom 1</button>");
     expect(selectedMarkup).toContain("Window letter");
     expect(selectedMarkup).not.toMatch(/<select|combobox/i);
   });
@@ -50,13 +51,16 @@ describe("MobileRoomSelector", () => {
   it("renders Custom input and letters only for a concrete name, including selected-letter markup", () => {
     const custom = { ...newMobileQuoteWindow(), roomChoice: "Custom" as const };
     const emptyMarkup = renderRoomSelector(custom);
+    expect(emptyMarkup).toMatch(/<label[^>]*for="custom-room-[^"]+"[^>]*>Room name<\/label><input[^>]*id="custom-room-[^"]+"/);
     expect(emptyMarkup).toMatch(/<input[^>]*placeholder="Enter room name"/);
+    expect(emptyMarkup).toContain(">Done</button>");
     expect(emptyMarkup).not.toContain("Window letter");
 
     const namedMarkup = renderRoomSelector({ ...custom, room: "Sunroom", position: "C" });
-    expect(namedMarkup).toMatch(/<input[^>]*value="Sunroom"/);
+    expect(namedMarkup).not.toMatch(/<input/);
+    expect(namedMarkup).toContain(">Sunroom</button>");
     expect(namedMarkup).toContain("Window letter");
-    expect(namedMarkup).toMatch(/aria-pressed="true">C<\/button>/);
+    expect(namedMarkup).toMatch(/aria-pressed="true"[^>]*>C<\/button>/);
     expect(namedMarkup).not.toMatch(/<select|combobox/i);
   });
 });

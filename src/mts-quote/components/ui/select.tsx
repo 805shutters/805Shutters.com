@@ -5,6 +5,27 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { usePortalContainer } from "@mts/lib/portal-container";
 
+export type QuickSelectInteractionState = { expanded: boolean; query: string };
+export type QuickSelectInteractionAction =
+  | { type: "sync"; collapseSelected: boolean; validValue: boolean }
+  | { type: "open" }
+  | { type: "collapse" }
+  | { type: "query"; query: string };
+
+export function quickSelectInteraction(state: QuickSelectInteractionState, action: QuickSelectInteractionAction): QuickSelectInteractionState {
+  if (action.type === "query") return { ...state, query: action.query };
+  if (action.type === "open") return { expanded: true, query: "" };
+  if (action.type === "collapse") return { expanded: false, query: "" };
+  if (!action.collapseSelected || !action.validValue) return state.expanded && !state.query ? state : { expanded: true, query: "" };
+  return state;
+}
+
+export function quickSelectChoice(state: QuickSelectInteractionState, selected: boolean, collapseSelected: boolean) {
+  if (!collapseSelected) return { state, notifyChange: true };
+  if (selected && !state.expanded) return { state: quickSelectInteraction(state, { type: "open" }), notifyChange: false };
+  return { state: quickSelectInteraction(state, { type: "collapse" }), notifyChange: !selected };
+}
+
 type QuickSelectState = {
   value?: string;
   disabled?: boolean;
@@ -14,11 +35,14 @@ type QuickSelectState = {
   triggerLabel?: string;
   setTriggerId: (id?: string) => void;
   query: string;
-  setQuery: (query: string) => void;
+  dispatch: React.Dispatch<QuickSelectInteractionAction>;
+  collapseSelected: boolean;
+  expanded: boolean;
   onValueChange?: (value: string) => void;
 };
 
-const QuickSelectPresentationContext = React.createContext(false);
+type QuickSelectPresentation = { enabled: boolean; collapseSelected: boolean };
+const QuickSelectPresentationContext = React.createContext<QuickSelectPresentation>({ enabled: false, collapseSelected: false });
 const QuickSelectStateContext = React.createContext<QuickSelectState | null>(null);
 
 function optionCount(node: React.ReactNode): number {
@@ -26,6 +50,14 @@ function optionCount(node: React.ReactNode): number {
     if (!React.isValidElement<{ children?: React.ReactNode }>(child)) return count;
     return count + ((child.type as { displayName?: string }).displayName === SelectPrimitive.Item.displayName ? 1 : optionCount(child.props.children));
   }, 0);
+}
+
+function optionValues(node: React.ReactNode): string[] {
+  return React.Children.toArray(node).flatMap((child) => {
+    if (!React.isValidElement<{ children?: React.ReactNode; value?: string }>(child)) return [];
+    if ((child.type as { displayName?: string }).displayName === SelectPrimitive.Item.displayName && child.props.value) return [child.props.value];
+    return optionValues(child.props.children);
+  });
 }
 
 function nodeText(node: React.ReactNode): string {
@@ -42,19 +74,30 @@ function triggerProps(node: React.ReactNode): { disabled?: boolean; id?: string;
   return null;
 }
 
-export function SelectQuickButtonsProvider({ children }: { children: React.ReactNode }) {
-  return <QuickSelectPresentationContext.Provider value>{children}</QuickSelectPresentationContext.Provider>;
+export function SelectQuickButtonsProvider({ children, collapseSelected = false }: { children?: React.ReactNode; collapseSelected?: boolean }) {
+  return <QuickSelectPresentationContext.Provider value={{ enabled: true, collapseSelected }}>{children}</QuickSelectPresentationContext.Provider>;
 }
 
 function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const presentation = React.useContext(QuickSelectPresentationContext);
+  const quick = presentation.enabled;
   const [uncontrolled, setUncontrolled] = React.useState(props.defaultValue);
   const [triggerDisabled, setTriggerDisabled] = React.useState(false);
   const [triggerId, setTriggerId] = React.useState<string>();
-  const [query, setQuery] = React.useState("");
-  if (!quick) return <SelectPrimitive.Root {...props} />;
   const value = props.value ?? uncontrolled;
+  const validValue = Boolean(value && optionValues(props.children).includes(value));
+  const [interaction, dispatch] = React.useReducer(quickSelectInteraction, {
+    expanded: !(presentation.collapseSelected && validValue),
+    query: "",
+  });
+  React.useEffect(() => {
+    if (!quick) return;
+    dispatch({ type: "sync", collapseSelected: presentation.collapseSelected, validValue });
+  }, [presentation.collapseSelected, quick, validValue, value]);
+  if (!quick) return <SelectPrimitive.Root {...props} />;
   const declaredTrigger = triggerProps(props.children);
+  const expanded = !presentation.collapseSelected || !validValue || interaction.expanded;
+  const query = validValue ? interaction.query : "";
   return (
     <QuickSelectStateContext.Provider value={{
       value,
@@ -65,25 +108,27 @@ function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
       triggerLabel: declaredTrigger?.["aria-label"],
       setTriggerId,
       query,
-      setQuery,
+      dispatch,
+      collapseSelected: presentation.collapseSelected,
+      expanded,
       onValueChange: (next) => {
         if (props.disabled || triggerDisabled) return;
         if (props.value === undefined) setUncontrolled(next);
         props.onValueChange?.(next);
       },
     }}>
-      <div className="quote-quick-select" data-mobile-quick-select>{props.children}</div>
+      <div className="quote-quick-select" data-mobile-quick-select data-collapsed={presentation.collapseSelected && validValue && !expanded || undefined}>{props.children}</div>
     </QuickSelectStateContext.Provider>
   );
 }
 
 function SelectGroup(props: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Group>) {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? <div className="contents">{props.children}</div> : <SelectPrimitive.Group {...props} />;
 }
 
 function SelectValue(props: React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>) {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? null : <SelectPrimitive.Value {...props} />;
 }
 
@@ -91,7 +136,7 @@ const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
 >(({ className, children, disabled, id, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   const state = React.useContext(QuickSelectStateContext);
   const setTriggerDisabled = state?.setTriggerDisabled;
   const setTriggerId = state?.setTriggerId;
@@ -118,7 +163,7 @@ const SelectScrollUpButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollUpButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollUpButton>
 >(({ className, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? null : <SelectPrimitive.ScrollUpButton ref={ref} className={cn("flex cursor-default items-center justify-center py-1", className)} {...props}><ChevronUp className="h-4 w-4" /></SelectPrimitive.ScrollUpButton>;
 });
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -127,7 +172,7 @@ const SelectScrollDownButton = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.ScrollDownButton>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.ScrollDownButton>
 >(({ className, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? null : <SelectPrimitive.ScrollDownButton ref={ref} className={cn("flex cursor-default items-center justify-center py-1", className)} {...props}><ChevronDown className="h-4 w-4" /></SelectPrimitive.ScrollDownButton>;
 });
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
@@ -136,11 +181,11 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
 >(({ className, children, position = "popper", ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   const state = React.useContext(QuickSelectStateContext);
   const portalContainer = usePortalContainer();
   if (quick) return <div role="group" aria-label={state?.triggerLabel} aria-labelledby={state?.triggerLabel ? undefined : state?.triggerId} className={cn("flex flex-wrap gap-1.5", className)} data-mobile-quick-options>
-    {optionCount(children) > 12 && <input type="search" value={state?.query || ""} onChange={(event) => state?.setQuery(event.target.value)} placeholder="Filter choices" aria-label="Filter choices" className="mb-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm" />}
+    {state?.expanded && optionCount(children) > 12 && <input type="search" value={state.query} onChange={(event) => state.dispatch({ type: "query", query: event.target.value })} placeholder="Filter choices" aria-label="Filter choices" className="mb-1 min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm" />}
     {children}
   </div>;
   return (
@@ -159,7 +204,7 @@ const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
 >(({ className, children, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? <div className={cn("w-full py-1 text-xs font-bold", className)}>{children}</div> : <SelectPrimitive.Label ref={ref} className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props}>{children}</SelectPrimitive.Label>;
 });
 SelectLabel.displayName = SelectPrimitive.Label.displayName;
@@ -168,14 +213,27 @@ const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
 >(({ className, children, value, disabled, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   const state = React.useContext(QuickSelectStateContext);
   if (quick && state) {
     const selected = state.value === value;
     const unavailable = Boolean(disabled || state.disabled || state.triggerDisabled);
     const label = `${props.textValue || ""} ${nodeText(children)}`.trim();
-    if (state.query && !label.toLocaleLowerCase().includes(state.query.toLocaleLowerCase())) return null;
-    return <button type="button" disabled={unavailable} aria-pressed={selected} onClick={() => state.onValueChange?.(value)} className={cn("min-h-11 rounded-lg border px-3 py-2 text-left text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40", selected ? "border-black bg-black text-white" : "border-zinc-300 bg-white text-zinc-900", className)}>{children}</button>;
+    if (state.collapseSelected && !state.expanded && !selected) return null;
+    if (state.expanded && state.query && !label.toLocaleLowerCase().includes(state.query.toLocaleLowerCase())) return null;
+    return <button
+      type="button"
+      disabled={unavailable}
+      aria-pressed={selected}
+      aria-expanded={state.collapseSelected && selected ? state.expanded : undefined}
+      aria-label={state.collapseSelected && selected ? `${label} selected. ${state.expanded ? "Choose an option" : "Show choices"}` : undefined}
+      onClick={() => {
+        const action = quickSelectChoice({ expanded: state.expanded, query: state.query }, selected, state.collapseSelected);
+        if (state.collapseSelected) state.dispatch({ type: action.state.expanded ? "open" : "collapse" });
+        if (action.notifyChange) state.onValueChange?.(value);
+      }}
+      className={cn("min-h-11 rounded-lg border px-3 py-2 text-left text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40", selected ? "border-black bg-black text-white" : "border-zinc-300 bg-white text-zinc-900", className)}
+    >{children}</button>;
   }
   return (
     <SelectPrimitive.Item ref={ref} value={value} disabled={disabled} className={cn("relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground", className)} {...props}>
@@ -190,7 +248,7 @@ const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>
 >(({ className, ...props }, ref) => {
-  const quick = React.useContext(QuickSelectPresentationContext);
+  const quick = React.useContext(QuickSelectPresentationContext).enabled;
   return quick ? <hr className={cn("w-full border-0 border-t", className)} /> : <SelectPrimitive.Separator ref={ref} className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />;
 });
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName;
