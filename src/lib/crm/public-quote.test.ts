@@ -76,13 +76,15 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
 
 describe("describeDesign (customer-readable, no internal data leaked)", () => {
   it("projects the valance drawing before removing manufacturer attribution", () => {
-    const d = describeDesign(design({ product_id: "roller", details: { quote_v2_customer_configuration: { manufacturerId: "norman", selections: { valance: "Square Fascia*", lift_system: "Motorized" } } } }));
+    // V2 stores a nested JSON configuration; the legacy detail type only models scalar values.
+    const details = { quote_v2_customer_configuration: { manufacturerId: "norman", selections: { valance: "Square Fascia*", lift_system: "Motorized" } } } as unknown as CrmQuoteDesign["details"];
+    const d = describeDesign(design({ product_id: "roller", details }));
     expect(d.valanceArtId).toBe("norman-square-fascia");
     expect(d.options.join(" ")).not.toContain("Norman");
     expect(d.options).toContain("Valance: Square Fascia*");
   });
   it("uses a Polar catalog fascia surcharge on the public contract", () => {
-    const d = describeDesign(design({ product_id: "polar_interior_roller", surcharges: [{id: "fascia_4", quantity: 1}] }));
+    const d = describeDesign(design({ product_id: "polar_interior_roller", surcharges: [{id: "fascia_4", units: 1}] }));
     expect(d.valanceArtId).toBe("polar-fascia");
   });
 
