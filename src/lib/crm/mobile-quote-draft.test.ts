@@ -11,10 +11,16 @@ import {
   isManualQuoteEditorHandoffReady,
   isMobileQuoteDraftAccessible,
   isQuoteEditorHandoffReady,
+  hasConcreteMobileQuoteRoom,
   mobileQuotePreflightOutcome,
+  mobileQuoteRoomChoice,
   normalizeMobileQuoteDraft,
   removeMobileQuoteWindow,
+  selectMobileQuoteBedroomNumber,
   selectMobileQuoteProduct,
+  selectMobileQuoteRoom,
+  selectMobileQuoteWindowLetter,
+  updateMobileQuoteCustomRoom,
   updateMobileQuoteDesign,
   validateMobileQuoteWindow,
   type MobileQuoteCustomer,
@@ -282,5 +288,94 @@ describe("mobile quote first-line defaults", () => {
     draft = selectMobileQuoteProduct(draft, first.id, product(first.id, "roller", "Roller Shades"));
     Object.assign(draft.windows[0], { room: "Office", widthWhole: 20, heightWhole: 30, widthFraction: "2/3" });
     expect(validateMobileQuoteWindow(draft.windows[0])).toBe("Choose a supported measurement fraction.");
+  });
+});
+
+
+describe("mobile quote room and window letter transitions", () => {
+  it("starts blank and requires a numbered bedroom after a deliberate Bedroom choice", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    const id = draft.windows[0].id;
+    expect(mobileQuoteRoomChoice(draft.windows[0])).toBeNull();
+    expect(hasConcreteMobileQuoteRoom(draft.windows[0])).toBe(false);
+    expect(selectMobileQuoteWindowLetter(draft, id, "A")).toBe(draft);
+    expect(draft.windows[0].position).toBe("");
+    draft = selectMobileQuoteRoom(draft, id, "Bedroom", "2026-09-05T01:00:00.000Z");
+    expect(draft.windows[0]).toMatchObject({ room: "Bedroom", roomChoice: "Bedroom", position: "" });
+    expect(validateMobileQuoteWindow({ ...draft.windows[0], activeProductId: "product", families: { product: { ...product(id, "product", "Shutters"), overriddenPaths: [] } } })).toBe("Choose Bedroom 1 through Bedroom 5.");
+    draft = selectMobileQuoteBedroomNumber(draft, id, "Bedroom 3");
+    expect(draft.windows[0]).toMatchObject({ room: "Bedroom 3", roomChoice: "Bedroom" });
+    expect(hasConcreteMobileQuoteRoom(draft.windows[0])).toBe(true);
+    draft = selectMobileQuoteWindowLetter(draft, id, "C");
+    const selectedBedroom = draft;
+    expect(selectMobileQuoteRoom(draft, id, "Bedroom")).toBe(selectedBedroom);
+    expect(selectMobileQuoteBedroomNumber(draft, id, "Bedroom 3")).toBe(selectedBedroom);
+    expect(draft.windows[0]).toMatchObject({ room: "Bedroom 3", roomChoice: "Bedroom", position: "C" });
+  });
+
+  it("infers historical rooms without data loss and keeps a custom preset-like name custom", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    const id = draft.windows[0].id;
+    Object.assign(draft.windows[0], { room: "Library", position: "Left of fireplace" });
+    expect(mobileQuoteRoomChoice(draft.windows[0])).toBe("Custom");
+    draft = updateMobileQuoteCustomRoom(draft, id, "Kitchen");
+    expect(draft.windows[0]).toMatchObject({ room: "Kitchen", roomChoice: "Custom", position: "Left of fireplace" });
+    expect(mobileQuoteRoomChoice(draft.windows[0])).toBe("Custom");
+    const historicalBedroom = { ...draft.windows[0], room: "Bedroom", roomChoice: undefined };
+    expect(hasConcreteMobileQuoteRoom(historicalBedroom)).toBe(true);
+  });
+
+  it("retains descriptive positions, resets letters on room changes, and isolates windows", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    draft = addMobileQuoteWindow(draft);
+    const [first, second] = draft.windows;
+    Object.assign(first, { room: "Living room", roomChoice: "Living room", position: "B" });
+    Object.assign(second, { room: "Office", roomChoice: "Office", position: "Bay left" });
+    draft = selectMobileQuoteRoom(draft, first.id, "Kitchen");
+    expect(draft.windows[0]).toMatchObject({ room: "Kitchen", position: "" });
+    expect(draft.windows[1]).toMatchObject({ room: "Office", position: "Bay left" });
+    draft = selectMobileQuoteRoom(draft, second.id, "Den");
+    expect(draft.windows[1]).toMatchObject({ room: "Den", position: "Bay left" });
+    draft = selectMobileQuoteWindowLetter(draft, second.id, "F");
+    expect(draft.windows[1].position).toBe("F");
+    expect(draft.windows[0].position).toBe("");
+    const selectedDen = draft;
+    expect(selectMobileQuoteRoom(draft, second.id, "Den")).toBe(selectedDen);
+    expect(draft.windows[1]).toMatchObject({ room: "Den", position: "F" });
+  });
+
+  it("persists room intent and keeps rooms and letters out of copied first-line defaults", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    const first = draft.windows[0];
+    draft = selectMobileQuoteRoom(draft, first.id, "Custom");
+    draft = updateMobileQuoteCustomRoom(draft, first.id, "Sun room");
+    draft = selectMobileQuoteWindowLetter(draft, first.id, "A");
+    draft = selectMobileQuoteProduct(draft, first.id, product(first.id, "roller", "Roller Shades"));
+    draft = addMobileQuoteWindow(draft);
+    expect(draft.windows[0]).toMatchObject({ room: "Sun room", roomChoice: "Custom", position: "A" });
+    expect(draft.windows[1]).toMatchObject({ room: "", roomChoice: null, position: "", activeProductId: "roller" });
+    expect(normalizeMobileQuoteDraft(structuredClone(draft)).windows[0].roomChoice).toBe("Custom");
+  });
+
+  it("retains letters through custom name edits and locks all room transitions with a snapshot", () => {
+    let draft = createMobileQuoteDraft("owner", customer);
+    const id = draft.windows[0].id;
+    draft = selectMobileQuoteRoom(draft, id, "Custom");
+    draft = updateMobileQuoteCustomRoom(draft, id, "Sunroom");
+    draft = selectMobileQuoteWindowLetter(draft, id, "B");
+    draft = updateMobileQuoteCustomRoom(draft, id, "Garden room");
+    expect(draft.windows[0]).toMatchObject({ room: "Garden room", roomChoice: "Custom", position: "B" });
+
+    draft.submission.snapshot = {
+      customer: structuredClone(draft.customer),
+      windows: structuredClone(draft.windows),
+      createdAt: "2026-09-05T02:00:00.000Z",
+      requiresManualPricing: false,
+    };
+    expect(selectMobileQuoteRoom(draft, id, "Office")).toBe(draft);
+    expect(selectMobileQuoteBedroomNumber(draft, id, "Bedroom 2")).toBe(draft);
+    expect(updateMobileQuoteCustomRoom(draft, id, "Changed")).toBe(draft);
+    expect(selectMobileQuoteWindowLetter(draft, id, "F")).toBe(draft);
+    expect(draft.windows[0]).toMatchObject({ room: "Garden room", roomChoice: "Custom", position: "B" });
   });
 });

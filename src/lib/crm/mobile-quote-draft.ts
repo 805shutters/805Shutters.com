@@ -2,6 +2,13 @@ import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 
 export const MOBILE_QUOTE_ACCOUNT_ID = ACCOUNT_IDS.SHUTTERS_805;
+export const MOBILE_QUOTE_ROOM_PRESETS = [
+  "Living room", "Family room", "Dining room", "Kitchen", "Bathroom", "Bedroom",
+  "Primary", "Primary bath", "Den", "Office", "Entry", "Door", "Garage", "Gym", "Custom",
+] as const;
+export const MOBILE_QUOTE_WINDOW_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
+export type MobileQuoteRoomChoice = (typeof MOBILE_QUOTE_ROOM_PRESETS)[number];
+
 export const MOBILE_QUOTE_FRACTIONS = [
   "0", "1/16", "1/8", "3/16", "1/4", "5/16", "3/8", "7/16",
   "1/2", "9/16", "5/8", "11/16", "3/4", "13/16", "7/8", "15/16",
@@ -51,6 +58,8 @@ export type MobileQuoteWindow = {
   id: string;
   room: string;
   position: string;
+  /** Local-only selection intent; absent on historical drafts. */
+  roomChoice?: MobileQuoteRoomChoice | null;
   widthWhole: number;
   widthFraction: string;
   heightWhole: number;
@@ -165,7 +174,7 @@ export function normalizeMobileQuoteDraft(draft: MobileQuoteDraft): MobileQuoteD
       priceStatus: draft.submission.priceStatus || null,
       finalTotal: draft.submission.finalTotal ?? null,
       snapshot: draft.submission.snapshot
-        ? {
+          ? {
             ...draft.submission.snapshot,
             requiresManualPricing: draft.submission.snapshot.requiresManualPricing === true,
           }
@@ -221,7 +230,7 @@ export function newMobileQuoteWindow(defaults: MobileQuoteFamilyConfiguration | 
     family.overriddenPaths = [];
   }
   return {
-    id: windowId, room: "", position: "", widthWhole: 0, widthFraction: "0",
+    id: windowId, room: "", position: "", roomChoice: null, widthWhole: 0, widthFraction: "0",
     heightWhole: 0, heightFraction: "0", notes: "", activeProductId: family?.productId ?? null,
     families: family ? { [family.productId]: family } : {}, photos: [], price: null, saved: false,
   };
@@ -480,9 +489,119 @@ export function mobileQuoteFingerprint(window: MobileQuoteWindow) {
   });
 }
 
+
+const MOBILE_QUOTE_PRESET_ROOM_SET = new Set<string>(
+  MOBILE_QUOTE_ROOM_PRESETS.filter((room) => room !== "Custom"),
+);
+const MOBILE_QUOTE_BEDROOM_PATTERN = /^Bedroom [1-5]$/;
+
+export function mobileQuoteRoomChoice(window: Pick<MobileQuoteWindow, "room" | "roomChoice">): MobileQuoteRoomChoice | null {
+  if (window.roomChoice) return window.roomChoice;
+  const room = window.room.trim();
+  if (!room) return null;
+  if (MOBILE_QUOTE_BEDROOM_PATTERN.test(room)) return "Bedroom";
+  if (MOBILE_QUOTE_PRESET_ROOM_SET.has(room)) return room as MobileQuoteRoomChoice;
+  return "Custom";
+}
+
+export function hasConcreteMobileQuoteRoom(window: Pick<MobileQuoteWindow, "room" | "roomChoice">) {
+  const choice = mobileQuoteRoomChoice(window);
+  if (!choice) return false;
+  if (choice === "Custom") return Boolean(window.room.trim());
+  if (choice === "Bedroom") {
+    return MOBILE_QUOTE_BEDROOM_PATTERN.test(window.room.trim()) ||
+      (window.roomChoice === undefined && window.room.trim() === "Bedroom");
+  }
+  return true;
+}
+
+function retainLegacyPositionOnRoomChange(position: string) {
+  return MOBILE_QUOTE_WINDOW_LETTERS.includes(position as (typeof MOBILE_QUOTE_WINDOW_LETTERS)[number]) ? "" : position;
+}
+
+function updateRoomWindow(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  update: (window: MobileQuoteWindow) => void,
+  updatedAt = new Date().toISOString(),
+) {
+  if (draft.submission.snapshot) return draft;
+  const index = draft.windows.findIndex((window) => window.id === windowId);
+  if (index < 0) return draft;
+  const next = structuredClone(draft);
+  const window = next.windows[index];
+  update(window);
+  window.saved = false;
+  window.price = null;
+  next.quotePrice = null;
+  next.updatedAt = updatedAt;
+  return next;
+}
+
+export function selectMobileQuoteRoom(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  choice: MobileQuoteRoomChoice,
+  updatedAt?: string,
+) {
+  const window = draft.windows.find((candidate) => candidate.id === windowId);
+  if (!window || mobileQuoteRoomChoice(window) === choice) return draft;
+  return updateRoomWindow(draft, windowId, (window) => {
+    const previousChoice = mobileQuoteRoomChoice(window);
+    window.position = retainLegacyPositionOnRoomChange(window.position);
+    window.roomChoice = choice;
+    if (choice === "Custom") {
+      if (previousChoice !== "Custom") window.room = "";
+    } else {
+      window.room = choice;
+    }
+  }, updatedAt);
+}
+
+export function selectMobileQuoteBedroomNumber(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  bedroom: string,
+  updatedAt?: string,
+) {
+  if (!MOBILE_QUOTE_BEDROOM_PATTERN.test(bedroom)) return draft;
+  const window = draft.windows.find((candidate) => candidate.id === windowId);
+  if (!window || (mobileQuoteRoomChoice(window) === "Bedroom" && window.room === bedroom)) return draft;
+  return updateRoomWindow(draft, windowId, (window) => {
+    window.position = retainLegacyPositionOnRoomChange(window.position);
+    window.roomChoice = "Bedroom";
+    window.room = bedroom;
+  }, updatedAt);
+}
+
+export function updateMobileQuoteCustomRoom(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  room: string,
+  updatedAt?: string,
+) {
+  return updateRoomWindow(draft, windowId, (window) => {
+    window.roomChoice = "Custom";
+    window.room = room;
+  }, updatedAt);
+}
+
+export function selectMobileQuoteWindowLetter(
+  draft: MobileQuoteDraft,
+  windowId: string,
+  letter: string,
+  updatedAt?: string,
+) {
+  if (!MOBILE_QUOTE_WINDOW_LETTERS.includes(letter as (typeof MOBILE_QUOTE_WINDOW_LETTERS)[number])) return draft;
+  const window = draft.windows.find((candidate) => candidate.id === windowId);
+  if (!window || !hasConcreteMobileQuoteRoom(window)) return draft;
+  return updateRoomWindow(draft, windowId, (window) => { window.position = letter; }, updatedAt);
+}
+
 export function validateMobileQuoteWindow(window: MobileQuoteWindow) {
   if (!window.activeProductId || !window.families[window.activeProductId]) return "Choose a product.";
-  if (!window.room.trim()) return "Enter a room name.";
+  if (!window.room.trim()) return "Choose a room.";
+  if (window.roomChoice === "Bedroom" && !MOBILE_QUOTE_BEDROOM_PATTERN.test(window.room.trim())) return "Choose Bedroom 1 through Bedroom 5.";
   if (!Number.isInteger(window.widthWhole) || !Number.isInteger(window.heightWhole)) return "Measurements must use whole inches plus a fraction.";
   if (!MOBILE_QUOTE_FRACTIONS.includes(window.widthFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number]) ||
       !MOBILE_QUOTE_FRACTIONS.includes(window.heightFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number])) {
