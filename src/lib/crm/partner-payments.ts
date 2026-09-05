@@ -43,6 +43,24 @@ const partnerLabels: Record<CrmPaymentPerson, string> = {
   jessica: "Jessica"
 };
 
+/** Present the canonical net balance; advances and allocations are already included in owed. */
+export function partnerBalanceDisplay(
+  person: CrmPaymentPerson,
+  ledger: Pick<CrmPartnerPaymentLedger["people"][CrmPaymentPerson], "owed" | "earningsAccess"> | undefined
+) {
+  const label = `${partnerLabels[person]} Due`;
+  if (ledger?.earningsAccess === "restricted") {
+    return { label: `${partnerLabels[person]} Payables`, amount: null, state: "restricted" as const };
+  }
+  if (!ledger || !Number.isFinite(ledger.owed)) {
+    return { label, amount: null, state: "unavailable" as const };
+  }
+  const owed = roundCents(ledger.owed);
+  return owed < 0
+    ? { label: `${partnerLabels[person]} Advance Credit`, amount: Math.abs(owed), state: "credit" as const }
+    : { label, amount: owed, state: "due" as const };
+}
+
 const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
   "sold",
   "approved",

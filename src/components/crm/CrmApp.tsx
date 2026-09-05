@@ -21,6 +21,7 @@ import {
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isCrmOwnerAdminEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
   buildMikeSoldProfitAllocationSummary,
+  partnerBalanceDisplay,
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
@@ -3274,6 +3275,7 @@ export function CrmApp({
             activityRefreshError={activityRefreshError}
             installationInvoiceEmails={installationInvoiceEmails}
             partnerPaymentLedger={data?.partnerPaymentLedger}
+            onOpenPayables={openPaymentLedger}
             activeDrill={commandDrill}
             busy={busy}
             onProcessEmails={(target) => processEmails(target)}
@@ -5230,18 +5232,6 @@ function jessicaNetDrillEntries(rows: CrmBookkeepingRow[], jobs: CrmJob[], files
   return [...reviewEntries, ...finalEntries];
 }
 
-function partnerRemainingForRows(
-  rows: CrmBookkeepingRow[],
-  person: CrmPaymentPerson,
-  ledger: CrmPartnerPaymentLedger | undefined
-) {
-  if (!ledger) return null;
-  const itemKeys = new Set(rows.map((row) => partnerPaymentItemKeyForRow(person, row)));
-  return ledger.people[person].activeItems
-    .filter((item) => itemKeys.has(item.itemKey))
-    .reduce((sum, item) => sum + item.remainingAmount, 0);
-}
-
 // Builds the drill payloads for the global summary band, mirroring backend.ts summary logic.
 function buildSummaryDrill(
   metric: string,
@@ -6006,6 +5996,7 @@ function CommandDashboard({
   activityRefreshError,
   installationInvoiceEmails,
   partnerPaymentLedger,
+  onOpenPayables,
   activeDrill,
   busy,
   onProcessEmails,
@@ -6033,6 +6024,7 @@ function CommandDashboard({
   activityRefreshError: string | null;
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   partnerPaymentLedger?: CrmPartnerPaymentLedger;
+  onOpenPayables: (person: CrmPaymentPerson) => void;
   activeDrill: DrillPayload | null;
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
@@ -6051,17 +6043,13 @@ function CommandDashboard({
 }) {
   const canViewMikeFinancials = rows.some((row) => Object.hasOwn(row, "mikeProfit"));
   const mikeSoldProfitAllocation = useMemo(() => buildMikeSoldProfitAllocationSummary(rows), [rows]);
+  const jessicaBalance = partnerBalanceDisplay("jessica", partnerPaymentLedger?.people.jessica);
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
     const collected = rows.reduce((sum, row) => sum + (row.paidTotal || 0), 0);
     const collectedRows = rows.filter((row) => (row.paidTotal || 0) > 0);
     const outstandingRows = rows.filter((row) => row.balance > 0);
     const outstanding = outstandingRows.reduce((sum, row) => sum + row.balance, 0);
-    const jessicaNetRows = rows.filter(hasJessicaNet);
-    const jessicaFinalRows = jessicaNetRows.filter(isFinalJessicaNetRow);
-    const jessicaReviewRows = jessicaNetRows.filter((row) => !isFinalJessicaNetRow(row));
-    const jessicaDueFromLedger = partnerRemainingForRows(jessicaFinalRows, "jessica", partnerPaymentLedger);
-    const jessicaDue = jessicaDueFromLedger ?? jessicaFinalRows.reduce((sum, row) => sum + (row.jessicaCommissionOwed || 0), 0);
     const installationLedger = buildInstallationInvoiceLedger(rows, installationInvoiceEmails);
     return {
       bookedRevenue,
@@ -6069,13 +6057,9 @@ function CommandDashboard({
       collectedRows,
       outstanding,
       outstandingRows,
-      jessicaNetRows,
-      jessicaFinalRows,
-      jessicaReviewRows,
-      jessicaDue,
       installationLedger
     };
-  }, [rows, installationInvoiceEmails, partnerPaymentLedger]);
+  }, [rows, installationInvoiceEmails]);
 
   const productMixReport = useMemo(() => {
     const map = new Map<string, CrmJob[]>();
@@ -6253,13 +6237,13 @@ function CommandDashboard({
         />
         {canViewMikeFinancials ? (
           <StatTile
-            label="Sold-Order Profit Allocation"
-            value={toCurrency(mikeSoldProfitAllocation.sold.total)}
-            sub={`${mikeSoldProfitAllocation.sold.count} sold · all-time · Mike 100% / Jessica sales 50%`}
+            label="Mike Allocation Estimate"
+            value={toLedgerCurrency(mikeSoldProfitAllocation.sold.total)}
+            sub={`${mikeSoldProfitAllocation.sold.count} sold jobs · ${mikeSoldProfitAllocation.missingCogsCount} missing COGS · ${mikeSoldProfitAllocation.missingInstallerInvoiceCount} missing install costs`}
             onClick={() =>
               onDrill({
-                title: "Sold-Order Profit Allocation",
-                subtitle: "Deduplicated sold orders · Mike 100% / Jessica sales 50% · projected, not cash earnings",
+                title: "Mike Allocation Estimate",
+                subtitle: "All-time sold jobs · recorded costs only · missing costs reduce the estimate when entered · not cash earnings",
                 placement: "numbers",
                 entries: rowsToEntries(mikeSoldProfitAllocation.rows, (row) => row.mikeProfit, { jobs, files })
               })
@@ -6267,39 +6251,16 @@ function CommandDashboard({
           />
         ) : null}
         <StatTile
-          label="Jessica Due"
-          value={toCurrency(numbers.jessicaDue)}
-          sub={
-            numbers.jessicaReviewRows.length
-              ? `${numbers.jessicaReviewRows.length} need review`
-              : `${numbers.jessicaFinalRows.length} final`
-          }
-          tone={numbers.jessicaReviewRows.length ? "warn" : undefined}
-          onClick={() =>
-            onDrill(
-              buildSummaryDrill("jessicaNet", jobs, quotes, rows, files, installationInvoiceEmails) || {
-                title: "Jessica Net Review",
-                subtitle: `${numbers.jessicaFinalRows.length} final / ${numbers.jessicaReviewRows.length} need review`,
-                metric: "jessicaNet",
-                placement: "numbers",
-                entries: jessicaNetDrillEntries(numbers.jessicaNetRows, jobs, files)
-              }
-            )
-          }
+          label={jessicaBalance.label}
+          value={jessicaBalance.amount === null ? (jessicaBalance.state === "restricted" ? "Restricted" : "Unavailable") : toLedgerCurrency(jessicaBalance.amount)}
+          sub={jessicaBalance.state === "credit" ? "No payment due · advances exceed earnings" : jessicaBalance.state === "due" ? "After recorded payments and advances" : "Payables ledger unavailable"}
+          onClick={() => onOpenPayables("jessica")}
         />
       </div>
 
       {canViewMikeFinancials ? (
         <p className="crm-payables-summary-definition">
-          All-time sold-order allocation: {toCurrency(mikeSoldProfitAllocation.active.total)} across {mikeSoldProfitAllocation.active.count} active sold orders + {toCurrency(mikeSoldProfitAllocation.closed.total)} across {mikeSoldProfitAllocation.closed.count} closed sold orders. This is projected profit allocation, not cash earnings.
-        </p>
-      ) : null}
-
-      {canViewMikeFinancials &&
-      (mikeSoldProfitAllocation.missingCogsCount || mikeSoldProfitAllocation.missingInstallerInvoiceCount) ? (
-        <p className="crm-bookkeeping-alert">
-          Sold-order allocation is projected, not cash earnings: {mikeSoldProfitAllocation.missingCogsCount} sold order
-          {mikeSoldProfitAllocation.missingCogsCount === 1 ? " is" : "s are"} missing COGS and {mikeSoldProfitAllocation.missingInstallerInvoiceCount} have incomplete installer costs.
+          Mike’s estimate includes all-time sold work: {toLedgerCurrency(mikeSoldProfitAllocation.active.total)} active + {toLedgerCurrency(mikeSoldProfitAllocation.closed.total)} closed. Unrecorded costs are excluded; this is not cash earned or payable.
         </p>
       ) : null}
 
@@ -11837,6 +11798,7 @@ function PartnerPaymentsView({
                 </button>
               );
             }
+            const balance = partnerBalanceDisplay(person, personLedger);
             const soldEarningDetail =
               person === "mike" || person === "jessica"
                 ? `${personLedger?.soldJobCount || 0} sold / ${toLedgerCurrency(personLedger?.soldEarned)} earning`
@@ -11850,10 +11812,11 @@ function PartnerPaymentsView({
                 key={person}
                 onClick={() => onPersonChange(person)}
               >
-                <span>{paymentPersonDisplayName(person)} Due</span>
-                <strong>{toLedgerCurrency(personLedger?.owed)}</strong>
+                <span>{balance.label}</span>
+                <strong>{balance.amount === null ? "Unavailable" : toLedgerCurrency(balance.amount)}</strong>
+                {balance.state === "credit" ? <em>No payment due · advances exceed earnings</em> : null}
                 <em>
-                  {personLedger?.activeJobCount || 0} currently unpaid / {toLedgerCurrency(personLedger?.earned)} payable earned
+                  {personLedger ? `${personLedger.activeJobCount} currently unpaid / ${toLedgerCurrency(personLedger.earned)} payable earned` : "Payables ledger unavailable"}
                 </em>
                 {soldEarningDetail ? <em className="crm-payment-person-sold-earning">{soldEarningDetail}</em> : null}
                 {personLedger?.advanceBalance ? <em>{toLedgerCurrency(personLedger.advanceBalance)} advances recorded</em> : null}

@@ -500,3 +500,37 @@ test("activity rows remain readable at desktop and narrow widths with raw proces
   await expect(feed.getByRole("button", { name: /Order cogs failed/ })).toBeVisible();
   expect(writes).toHaveLength(0);
 });
+
+
+test("dashboard net payables match the Jessica ledger including advances and missing data", async ({ page }) => {
+  const { records, writes } = await setup(page);
+  let balance: number | undefined = -12391.63;
+  await page.route("**/api/crm/jobs{,/,?*}", route => {
+    const data = buildDashboardData({ ...records, events: [], customers: [], products: [], contracts: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 });
+    if (balance === undefined) return route.fulfill({ json: { ...data, partnerPaymentLedger: undefined } });
+    Object.assign(data.partnerPaymentLedger.people.jessica, { owed: balance, earned: 5608.37, advanceBalance: 18000 });
+    return route.fulfill({ json: data });
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Command Center", exact: true }).click();
+  const credit = page.getByRole("button", { name: /Jessica Advance Credit/ });
+  await expect(credit).toContainText("$12,391.63");
+  await expect(credit).toContainText("No payment due");
+  const estimate = page.getByRole("button", { name: /Mike Allocation Estimate/ });
+  await expect(estimate).toContainText("missing COGS");
+  await expect(estimate).toContainText("missing install costs");
+  await estimate.locator("..").screenshot({ path: "/tmp/805-financial-cards-corrected.png" });
+  await credit.click();
+  await expect(page).toHaveURL(/\/crm\/payables\/?\?person=jessica/);
+  await expect(page.locator(".crm-payment-person-grid").getByRole("button", { name: /Jessica Advance Credit/ })).toContainText("$12,391.63");
+
+  balance = 300.25;
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Command Center", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Jessica Due/ })).toContainText("$300.25");
+  balance = undefined;
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Command Center", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Jessica Due/ })).toContainText("Unavailable");
+  expect(writes).toHaveLength(0);
+});

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPartnerPaymentLedger,
+  partnerBalanceDisplay,
   buildMikeSoldProfitAllocationSummary,
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
@@ -294,6 +295,9 @@ describe("buildPartnerPaymentLedger", () => {
 
     expect(ledger.people.jessica.advanceBalance).toBe(8000);
     expect(ledger.people.jessica.owed).toBe(-5979.14);
+    expect(partnerBalanceDisplay("jessica", ledger.people.jessica)).toEqual({
+      label: "Jessica Advance Credit", amount: 5979.14, state: "credit"
+    });
     expect(ledger.people.jessica.activeItems).toHaveLength(1);
     expect(ledger.people.jessica.activeItems[0]).toMatchObject({
       itemKey: "jessica:manual:row-1",
@@ -344,6 +348,9 @@ describe("buildPartnerPaymentLedger", () => {
       advanceBalance: 0,
       owed: 0,
       paid: 500
+    });
+    expect(partnerBalanceDisplay("jessica", ledger.people.jessica)).toEqual({
+      label: "Jessica Due", amount: 0, state: "due"
     });
     expect(ledger.history.find((batch) => batch.id === "batch-1")).toMatchObject({
       amount: 300,
@@ -957,5 +964,23 @@ describe("buildPartnerPaymentLedger", () => {
       runningPaid: 3778,
       remainingBalance: 496222
     });
+  });
+});
+
+
+describe("canonical payable balance presentation", () => {
+  it("shows only the remaining amount after a partial advance", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row({ salesOwner: "jessica", mikeProfit: 0, jessicaCommission: 500 })],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ recipient: "jessica", amount: 200, meta: { advancePayment: true } })]
+    });
+    expect(partnerBalanceDisplay("jessica", ledger.people.jessica)).toEqual({ label: "Jessica Due", amount: 300, state: "due" });
+  });
+
+  it("withholds missing, invalid, and restricted balances instead of substituting gross earnings", () => {
+    expect(partnerBalanceDisplay("jessica", undefined)).toMatchObject({ amount: null, state: "unavailable" });
+    expect(partnerBalanceDisplay("jessica", { owed: NaN, earningsAccess: "visible" })).toMatchObject({ amount: null, state: "unavailable" });
+    expect(partnerBalanceDisplay("jessica", { owed: 1234, earningsAccess: "restricted" })).toEqual({ label: "Jessica Payables", amount: null, state: "restricted" });
   });
 });
