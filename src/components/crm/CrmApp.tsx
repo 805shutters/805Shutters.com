@@ -1,5 +1,7 @@
 "use client";
 
+import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
+
 import { OperationsReports } from "@/components/crm/OperationsReports";
 import { JobTrackingWorkspace, type JobTrackingViewItem, type JobTrackingSavePatch, type JobTrackingStageId as WorkspaceStageId } from "@/components/crm/JobTrackingWorkspace";
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
@@ -10423,6 +10425,7 @@ function CustomerFilesView({
                   <span className="crm-cf-text" title={productSummary || undefined}>
                     {productSummary || "Pending"}
                   </span>
+                  {file.quotes.filter(quote => customerProductOrderLabel(quote.meta)).map(quote => <small key={quote.id} style={{ display: "block" }}>{quote.quote_number}: {customerProductOrderLabel(quote.meta)}</small>)}
                 </td>
                 <td className={`crm-cf-td${fileMissingSoldDate ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
@@ -13776,6 +13779,7 @@ function OrderBoard({
                 Contract
               </button>
             </div>
+            {customerProductOrderLabel(quote.meta) ? <p>{customerProductOrderLabel(quote.meta)}</p> : null}
             <form className="crm-order-form" onSubmit={(event) => onUpdate(event, quote)}>
               <div className="crm-field-row">
                 <label>

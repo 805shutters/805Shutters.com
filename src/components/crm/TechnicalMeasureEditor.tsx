@@ -1,5 +1,6 @@
 "use client";
 
+import { measureFilters, measureFilterLabels, measureFilter, type MeasureFilter, type MeasureOrderSummary } from "@/lib/crm/technical-measure-orders";
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import "./technical-measure-ipad.css";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
@@ -1510,6 +1511,21 @@ export function TechnicalMeasureList() {
   const [schedulingFormId, setSchedulingFormId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   const [archivingFormId, setArchivingFormId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<MeasureFilter>("need_measure");
+  const [orderingKey, setOrderingKey] = useState<string | null>(null);
+  useEffect(() => {
+    const selected = new URLSearchParams(window.location.search).get("status");
+    if (measureFilters.includes(selected as MeasureFilter)) setActiveFilter(selected as MeasureFilter);
+  }, []);
+  function selectFilter(filter: MeasureFilter) {
+    setActiveFilter(filter);
+    const url = new URL(window.location.href);
+    url.searchParams.set("status", filter);
+    window.history.replaceState(null, "", url);
+  }
+  useEffect(() => {
+    if (!loading && session) void cacheTechnicalMeasureList(rememberOfflineMeasureOwner(session.user.email || lastOfflineMeasureOwner()), forms);
+  }, [forms, loading, session]);
   useEffect(() => {
     if (!supabase) {
       void (async () => {
@@ -1535,7 +1551,7 @@ export function TechnicalMeasureList() {
         return;
       }
       const jobId = new URLSearchParams(window.location.search).get("jobId");
-      const path = jobId ? `/api/crm/technical-measures?jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures";
+      const path = jobId ? `/api/crm/technical-measures?includeArchived=true&jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures?includeArchived=true";
       try {
         setLoadError(null);
         if (navigator.onLine) {
@@ -1552,7 +1568,7 @@ export function TechnicalMeasureList() {
         const nextForms = (await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms;
         setForms(nextForms);
         await cacheTechnicalMeasureList(activeOwner, nextForms);
-        await downloadTechnicalMeasureForms(data.session, activeOwner, nextForms);
+        await downloadTechnicalMeasureForms(data.session, activeOwner, nextForms.filter(form => measureFilter(form) !== "archive"));
         setDownloadedCount(nextForms.length);
         navigator.serviceWorker?.controller?.postMessage({
           type: "CACHE_MEASURE_ROUTES",
@@ -1583,18 +1599,22 @@ export function TechnicalMeasureList() {
   }, []);
   if (loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /></main>;
   if (!session && !forms.length) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><p>Sign in once while connected to download measures for offline use.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
-  const pendingForms = forms.filter((form) => form.status !== "submitted");
-  const unscheduledForms = pendingForms.filter((form) => {
-    const meta = form.meta as Record<string, unknown> | null;
-    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
-    return scheduling?.status !== "scheduled";
-  });
-  const scheduledForms = pendingForms.filter((form) => {
-    const meta = form.meta as Record<string, unknown> | null;
-    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
-    return scheduling?.status === "scheduled";
-  });
-  const completedForms = forms.filter((form) => form.status === "submitted");
+  const filteredForms = forms.filter(form => measureFilter(form) === activeFilter);
+  const counts = Object.fromEntries(measureFilters.map(filter => [filter, forms.filter(form => measureFilter(form) === filter).length]));
+  async function orderProduct(formId: string, groupKey: string) {
+    if (!session || offlineMode || !navigator.onLine || orderingKey) return;
+    setOrderingKey(`${formId}:${groupKey}`);
+    setQueueMessage(null);
+    try {
+      const result = await crmFetch<{ form: Record<string, unknown> }>(session, `/api/crm/technical-measures/${formId}/ordered`, {
+        method: "POST", body: JSON.stringify({ groupKey }),
+      });
+      setForms(current => current.map(form => String(form.id) === formId ? { ...form, ...result.form } : form));
+      setQueueMessage(measureFilter(result.form) === "archive" ? "All products ordered. The customer file is updated and the technical measure is archived." : "Product marked ordered. The customer file now shows partial order progress.");
+    } catch (error) {
+      setQueueMessage(error instanceof Error ? error.message : "The order could not be saved.");
+    } finally { setOrderingKey(null); }
+  }
   async function updateScheduling(formId: string, scheduled: boolean, startAt?: string, endAt?: string) {
     if (!session) return;
     setSchedulingFormId(formId);
@@ -1605,7 +1625,7 @@ export function TechnicalMeasureList() {
         `/api/crm/technical-measures/${formId}/schedule`,
         { method: "POST", body: JSON.stringify({ scheduled, startAt, endAt }) },
       );
-      setForms((current) => current.map((form) => String(form.id) === formId ? result.form : form));
+      setForms((current) => current.map((form) => String(form.id) === formId ? { ...form, ...result.form } : form));
       setScheduleDraft(null);
       setQueueMessage(scheduled ? "Technical measure scheduled for Mike and added to the CRM calendar." : "Technical measure moved back to Needs Scheduling and removed from the calendar.");
     } catch (error) {
@@ -1619,11 +1639,11 @@ export function TechnicalMeasureList() {
     setArchivingFormId(formId);
     setQueueMessage(null);
     try {
-      await crmFetch(session, `/api/crm/technical-measures/${formId}/archive`, {
+      const result = await crmFetch<{ form: Record<string, unknown> }>(session, `/api/crm/technical-measures/${formId}/archive`, {
         method: "POST",
         body: JSON.stringify({ archived: true }),
       });
-      setForms((current) => current.filter((form) => String(form.id) !== formId));
+      setForms(current => current.map(form => String(form.id) === formId ? { ...form, ...result.form } : form));
       setQueueMessage("Technical measure archived. It remains available in the customer file.");
     } catch (error) {
       setQueueMessage(error instanceof Error ? error.message : "The technical measure could not be archived.");
@@ -1681,6 +1701,8 @@ export function TechnicalMeasureList() {
     const phone = String(customer?.phone || "").trim();
     const mapUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
     const formId = String(form.id);
+    const archived = measureFilter(form) === "archive";
+    const orders = form.productOrders as MeasureOrderSummary | undefined;
     return (
       <article className="technical-measure-queue-card" key={formId}>
         <a className="technical-measure-queue-main" href={`/crm/technical-measures/${form.id}`}>
@@ -1695,26 +1717,38 @@ export function TechnicalMeasureList() {
             <MapPin /><span>{address}</span>
           </a>
         ) : <div className="technical-measure-address technical-measure-address--disabled"><MapPin /><span>Address not provided</span></div>}
-        {status !== "submitted" ? (
+        {!archived && status !== "submitted" ? (
           <div className="technical-measure-queue-actions">
             {phone ? <a href={`tel:${phone}`}><Phone />Call</a> : null}
             {phone ? <a href={`sms:${phone}`}><MessageSquare />Text</a> : null}
             <button
               type="button"
               data-scheduled={isScheduled}
-              disabled={schedulingFormId === formId}
+              disabled={offlineMode || !session || schedulingFormId === formId}
               onClick={() => openScheduleDraft(form)}
             >
               {schedulingFormId === formId ? <Loader2 className="spin" /> : <Check />}
               {isScheduled ? "Change Schedule" : "Mark Scheduled"}
             </button>
-            <button type="button" disabled={archivingFormId === formId} onClick={() => void archiveForm(formId)}>
+            <button type="button" className="technical-measure-archive-action" disabled={offlineMode || !session || archivingFormId === formId} onClick={() => void archiveForm(formId)}>
               {archivingFormId === formId ? <Loader2 className="spin" /> : <Archive />}
               Archive
             </button>
           </div>
-        ) : <div className="technical-measure-queue-actions"><button type="button" disabled={archivingFormId === formId} onClick={() => void archiveForm(formId)}>{archivingFormId === formId ? <Loader2 className="spin" /> : <Archive />}Archive</button></div>}
-        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : isScheduled ? measureScheduleLabel(scheduling) : "Needs scheduling"}</em>
+        ) : !archived ? <div className="technical-measure-queue-actions"><button type="button" className="technical-measure-archive-action" disabled={offlineMode || !session || archivingFormId === formId} onClick={() => void archiveForm(formId)}>{archivingFormId === formId ? <Loader2 className="spin" /> : <Archive />}Archive</button></div> : null}
+        {orders ? <section className="technical-measure-products" aria-label="Product orders">
+          <div className="technical-measure-products-heading"><strong>Products</strong><span>{orders.label}</span></div>
+          {orders.groups.map(group => <div className="technical-measure-product-row" key={group.key}>
+            <div><strong>{group.label}</strong><small>{group.manufacturer} · {group.openingCount} {group.openingCount === 1 ? "opening" : "openings"}</small></div>
+            {group.ordered ? <span className="technical-measure-product-ordered"><Check size={15} />Ordered{group.orderedAt ? <small>{new Date(group.orderedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</small> : null}</span> : !archived ? <button type="button" disabled={offlineMode || !session || Boolean(orderingKey) || Boolean(orders.error)} onClick={() => void orderProduct(formId, group.key)} aria-label={`Mark ${group.label} ordered`}>
+              {orderingKey === `${formId}:${group.key}` ? <Loader2 className="spin" size={15} /> : <Check size={15} />}Ordered
+            </button> : <span>Not ordered</span>}
+          </div>)}
+          {orders.error ? <p role="status">{orders.error}</p> : null}
+          {offlineMode && !archived ? <p>Connect to record product orders.</p> : null}
+        </section> : null}
+        <em data-status={status}>{archived ? "Archived" : orders && orders.orderedCount > 0 ? orders.label : status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Needs Order" : isScheduled ? measureScheduleLabel(scheduling) : "Need Measure"}</em>
+
       </article>
     );
   };
@@ -1726,7 +1760,7 @@ export function TechnicalMeasureList() {
           <strong>{!session ? `${downloadedCount} saved · sign in when connected to sync` : `${downloadedCount} measure${downloadedCount === 1 ? "" : "s"} saved on this phone`}</strong>
         </div>
       ) : null}
-      <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{unscheduledForms.length} need scheduling · {scheduledForms.length} scheduled</p></div></header>
+      <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{counts.need_measure} need measure · {counts.needs_order} need order</p></div></header>
       <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
         <a href="/crm/mobile"><CalendarDays />Appointments</a>
         <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
@@ -1734,12 +1768,13 @@ export function TechnicalMeasureList() {
       </nav>
       {loadError ? <div className="technical-measure-alert" role="alert">{loadError}</div> : null}
       {queueMessage ? <div className="technical-measure-alert" role="status">{queueMessage}</div> : null}
+      <nav className="technical-measure-status-filters" aria-label="Measure status filters">
+        {measureFilters.map(filter => <button type="button" key={filter} aria-pressed={activeFilter === filter} onClick={() => selectFilter(filter)}><span>{measureFilterLabels[filter]}</span><strong>{counts[filter]}</strong></button>)}
+      </nav>
       <section className="technical-measure-list-section">
-        <div className="technical-measure-list-heading"><div><span>Action required</span><h2>Needs Scheduling</h2></div><strong>{unscheduledForms.length}</strong></div>
-        <div className="technical-measure-list">{unscheduledForms.map(formLink)}{!unscheduledForms.length ? <p>Every open technical measure has been scheduled.</p> : null}</div>
+        <div className="technical-measure-list-heading"><h2>{measureFilterLabels[activeFilter]}</h2><strong>{filteredForms.length}</strong></div>
+        <div className="technical-measure-list">{filteredForms.map(formLink)}{!filteredForms.length ? <p>No measures in {measureFilterLabels[activeFilter]}.</p> : null}</div>
       </section>
-      {scheduledForms.length ? <section className="technical-measure-list-section technical-measure-list-section--scheduled"><div className="technical-measure-list-heading"><div><span>Upcoming work</span><h2>Scheduled</h2></div><strong>{scheduledForms.length}</strong></div><div className="technical-measure-list">{scheduledForms.map(formLink)}</div></section> : null}
-      {completedForms.length ? <section className="technical-measure-list-section technical-measure-list-section--completed"><div className="technical-measure-list-heading"><div><span>Customer file</span><h2>Completed</h2></div><strong>{completedForms.length}</strong></div><div className="technical-measure-list">{completedForms.map(formLink)}</div></section> : null}
       {scheduleDraft ? (
         <div className="technical-measure-schedule-backdrop" role="presentation" onClick={() => setScheduleDraft(null)}>
           <section className="technical-measure-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="technical-measure-schedule-title" onClick={(event) => event.stopPropagation()}>

@@ -202,8 +202,8 @@ describe("technical measure mobile controls", () => {
     );
     const styles = readFileSync("src/app/globals.css", "utf8");
 
-    expect(component).toContain("<h2>Needs Scheduling</h2>");
-    expect(component).toContain("<h2>Scheduled</h2>");
+    expect(component).toContain('aria-label="Measure status filters"');
+    expect(component).toContain("measureFilterLabels[activeFilter]");
     expect(component).toContain("https://www.google.com/maps/search/?api=1&query=");
     expect(component).toContain('href={`tel:${phone}`}');
     expect(component).toContain('href={`sms:${phone}`}');

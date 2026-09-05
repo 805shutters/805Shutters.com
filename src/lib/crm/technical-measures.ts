@@ -1,3 +1,5 @@
+import { enrichMeasureOrders } from "./technical-measure-orders-server";
+import { collectCrmPages } from "./pagination";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
@@ -804,11 +806,13 @@ export async function loadTechnicalMeasureForm(supabase: SupabaseClient, formId:
 }
 
 export async function listTechnicalMeasureForms(supabase: SupabaseClient, jobId?: string | null, includeArchived = false) {
-  let query = supabase.from("crm_technical_measure_forms").select("*").order("updated_at", { ascending: false }).limit(250);
-  if (jobId) query = query.eq("job_id", jobId);
-  const { data, error } = await query;
+  const { data, error } = await collectCrmPages<Record<string, any>>(async (from, to) => {
+    let query = supabase.from("crm_technical_measure_forms").select("*").order("updated_at", { ascending: false }).order("id").range(from, to);
+    if (jobId) query = query.eq("job_id", jobId);
+    return query;
+  });
   if (error) throw new CrmAuthError(502, "Technical measure forms could not be loaded.");
-  return (data || []).filter((form) => includeArchived || !technicalMeasureIsArchived(form));
+  return enrichMeasureOrders(supabase, (data || []).filter(form => includeArchived || !technicalMeasureIsArchived(form)));
 }
 
 export async function setTechnicalMeasureArchived(

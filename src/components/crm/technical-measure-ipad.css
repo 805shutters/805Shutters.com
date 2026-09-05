@@ -198,3 +198,31 @@ body:has(.tm805-split) > .mobile-workspace-exit, body:has(.tm805-split) .mobile-
   .tm805-split .technical-measure-line-submit { grid-template-columns: 1fr; }
   .tm805-split .technical-measure-line-submit span { display: none; }
 }
+
+/* Compact measure queue, with independent product-order progress. */
+.mts-quote-scope .technical-measure-status-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:14px 12px 4px; }
+.mts-quote-scope .technical-measure-status-filters button { display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:8px 10px; border:1px solid #cececa; border-radius:10px; background:linear-gradient(#fff,#f0f0ee); color:#555853; font-size:13px; font-weight:600; box-shadow:0 1px 2px #00000008; }
+.mts-quote-scope .technical-measure-status-filters button[aria-pressed="true"] { background:linear-gradient(#454744,#232522); color:white; border-color:#373a35; }
+.mts-quote-scope .technical-measure-status-filters strong { font-size:11px; border-radius:5px; padding:2px 5px; background:#88888820; }
+.mts-quote-scope .technical-measure-products { margin:12px 0 8px; border:1px solid #e0e1dd; border-radius:12px; overflow:hidden; background:#fafaf9; }
+.mts-quote-scope .technical-measure-products-heading { display:flex; justify-content:space-between; gap:8px; padding:10px 12px; font-size:12px; border-bottom:1px solid #e4e5e1; color:#686b64; }
+.mts-quote-scope .technical-measure-products-heading strong { font-size:12px; }
+.mts-quote-scope .technical-measure-product-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-bottom:1px solid #e9e9e5; }
+.mts-quote-scope .technical-measure-product-row:last-child { border-bottom:0; }
+.mts-quote-scope .technical-measure-product-row > div { min-width:0; }
+.mts-quote-scope .technical-measure-product-row strong { display:block; font-size:14px; line-height:1.35; }
+.mts-quote-scope .technical-measure-product-row small { display:block; margin-top:3px; font-size:11px; color:#74776f; text-transform:capitalize; }
+.mts-quote-scope .technical-measure-product-row button { flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; min-height:44px; padding:7px 12px; border:1px solid #bfc1ba; border-radius:9px; background:linear-gradient(#fff,#e8e9e4); color:#30352c; box-shadow:0 1px 2px #0000000d; font-size:13px; font-weight:600; }
+.mts-quote-scope .technical-measure-product-row button:disabled { opacity:.5; cursor:default; }
+.mts-quote-scope .technical-measure-product-ordered { flex-shrink:0; color:#386144; font-size:12px; text-align:right; }
+.mts-quote-scope .technical-measure-product-ordered svg { display:inline; vertical-align:middle; margin-right:4px; }
+.mts-quote-scope .technical-measure-products p { padding:8px 12px; font-size:12px; color:#696d63; }
+.mts-quote-scope .technical-measure-queue-actions .technical-measure-archive-action { min-height:36px; padding:6px 10px; background:transparent; color:#6c7067; box-shadow:none; border:0; font-size:12px; }
+.mts-quote-scope .technical-measure-queue-actions .technical-measure-archive-action svg { width:15px; height:15px; }
+@media(max-width:480px) { .mts-quote-scope .technical-measure-status-filters button { flex-direction:column; gap:3px; padding:7px 3px; font-size:12px; } }
+.mts-quote-scope.technical-measure-queue .technical-measure-product-row > div { flex:1 1 0; }
+.mts-quote-scope.technical-measure-queue .technical-measure-product-row button { width:auto; min-width:92px; max-width:120px; flex:0 0 auto; }
+.mts-quote-scope.technical-measure-queue .technical-measure-status-filters button { width:auto; line-height:1.2; }
+.mts-quote-scope.technical-measure-queue .technical-measure-status-filters button span { white-space:nowrap; }
+.mts-quote-scope.technical-measure-queue .technical-measure-list-section { padding-top:14px; }
+@media(max-width:480px) { .mts-quote-scope.technical-measure-queue .technical-measure-status-filters { padding:12px 0 0; } .mts-quote-scope.technical-measure-queue .technical-measure-status-filters button { font-size:11px; min-height:50px; } }
