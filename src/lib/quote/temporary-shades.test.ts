@@ -12,11 +12,14 @@ import { customerQuoteOptions } from '@/lib/crm/customer-quote-branding';
 import { buildCleanCatalogSelectionOptions } from '@mts/components/crm/quote-builder/DesignCard';
 
 describe('temporary shade companion', () => {
+  it.each(['Temporary Shade: Yes', 'Complimentary temporary shade: Free', 'Complementary temporary paper shade: Free'])('retains included shades across label revisions: %s', option => {
+    expect(temporaryShadeSelected([option])).toBe(true);
+  });
   it.each(['Shutters','Roller Shades','Honeycomb Shades','Roman Shades','Sheer Shades','Faux Wood Blinds','Wood Blinds','Mini Blinds','Vertical Blinds','Smart Drapes','Specialty Product'])('is available even without approved primary art for %s', productType => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType,options:['Temporary Shade: Yes']}));
     expect(html).toContain('data-temporary-shade="included"');
     expect(html).toContain('temporary-shade.webp');
-    expect(html).toContain('Complimentary temporary shade');
+    expect(html).toContain('Complementary temporary paper shade');
     expect(html).toContain('Free');
   });
   it.each([[], ['Temporary Shade: No'], ['Temporary Shade: false'], ['Temporary Shade: Maybe'], ['Temporary Shade: Yes','Temporary Shade: No']])('never infers an included item from missing/negative/conflicting selections %j', (...values) => {
@@ -37,7 +40,7 @@ describe('temporary shade companion', () => {
     const configuration=customerConfigurationFromSelection(selection);
     const publicOptions=customerQuoteOptions(v2CustomerConfigurationOptions(configuration));
     expect(temporaryShadeSelected(publicOptions)).toBe(true);
-    expect(publicOptions).toContain('Complimentary temporary shade: Free');
+    expect(publicOptions).toContain('Complementary temporary paper shade: Free');
     expect(design.unit_price).toBe(500);
     expect(selection.options).not.toHaveProperty('temporary_shade');
   });

@@ -9,7 +9,7 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
-  ["temporary_shade", "Complimentary temporary shade"],
+  ["temporary_shade", "Complementary temporary paper shade"],
   ["shutter_type", "Shutter type"],
   ["track_type", "Track type"],
   ["track_system", "Track system"],
@@ -303,7 +303,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
     ...V2_CUSTOMER_CONFIGURATION_FIELDS.flatMap(([key, fallbackLabel]) => {
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
-      if (key === "temporary_shade") return selected === true ? ["Complimentary temporary shade: Free"] : [];
+      if (key === "temporary_shade") return selected === true ? ["Complementary temporary paper shade: Free"] : [];
       if ((key === "control_side" || key === "chain_location") && (selected === null || selected === "")) return [];
       return [`${LABELS.get(key) ?? fallbackLabel}: ${displayValue(key, selected)}`];
     }),
