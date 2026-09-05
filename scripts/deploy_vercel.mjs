@@ -94,7 +94,7 @@ async function waitForVercelDeployment(sha) {
         deployment = (payload.deployments || []).find((item) => item.target === "production");
       } else {
         const errorOutput = `${result.stdout || ""}\n${result.stderr || ""}`;
-        if (!/No existing credentials found|Project not found|not authorized|not authenticated/i.test(errorOutput)) {
+        if (!/No existing credentials found|Project not found|specified scope does not exist|not authorized|not authenticated/i.test(errorOutput)) {
           process.stderr.write(errorOutput);
           process.exit(result.status || 1);
         }
