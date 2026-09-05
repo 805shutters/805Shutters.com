@@ -1,5 +1,6 @@
 "use client";
 import { VALANCE_ARTWORK, valanceIllustration } from "@/lib/quote/valance-illustrations";
+import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import { useState } from "react";
 import { CustomerContractDocument } from "../[token]/CustomerContractDocument";
 import type { PublicQuote, PublicQuoteLine } from "@/lib/crm/public-quote";
@@ -23,13 +24,15 @@ export function ArtworkPreview() {
   const [valance,setValance]=useState("");
   const valances=VALANCE_ARTWORK.filter(a=>a.manufacturer===manufacturer && (a.products as readonly string[]).includes(product.toLowerCase()));
   const selectedValance=valances.find(a=>a.id===valance);
+  const [temporary,setTemporary]=useState(false);
+  const [track,setTrack]=useState("");
   const [panels,setPanels]=useState(2);
   const [tilt,setTilt]=useState("Standard Tilt");
   const [split,setSplit]=useState(false);
   const [divider,setDivider]=useState(false);
-  const shutterOptions = [`Panel Config: ${"L".repeat(panels)}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
+  const shutterOptions = [...(track ? [`Shutter Type: Tracked Shutter`, `Track System: ${track}`] : []),`Panel Config: ${"L".repeat(panels)}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
   const productOptions = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
-  const options = [...productOptions, `Manufacturer: ${manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
+  const options = [...productOptions, ...(temporary ? ["Temporary Shade: Yes"] : []), `Manufacturer: ${manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
   const lines: PublicQuoteLine[] = [[product, options] as [string,string[]], ...examples].map(([productName,opts],i)=>({
     id:`sample-${i}`,lineItemId:`sample-${i}`,room:i===0?"Interactive sample":`Product ${i}`,productName,styleName:"",options:opts.filter(o=>!o.startsWith("Manufacturer:")),
     valanceArtId:valanceIllustration(productName,opts),designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
@@ -52,12 +55,15 @@ export function ArtworkPreview() {
         <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
       </> : null}
       {product === "Shutters" ? <>
+        <label>System <select aria-label="Preview shutter system" value={track} onChange={e=>setTrack(e.target.value)}>{["","Bypass Track","Bifold 180"].map(t=><option key={t} value={t}>{t||"Hinged"}</option>)}</select></label>
         <label>Panels <select aria-label="Preview shutter panels" value={panels} onChange={e=>setPanels(Number(e.target.value))}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></label>
         <label>Tilt <select aria-label="Preview shutter tilt" value={tilt} onChange={e=>setTilt(e.target.value)}>{["Standard Tilt","Invisible Tilt"].map(t=><option key={t}>{t}</option>)}</select></label>
         <label><input type="checkbox" checked={split} onChange={e=>setSplit(e.target.checked)} /> Split tilt</label>
         <label><input type="checkbox" checked={divider} onChange={e=>setDivider(e.target.checked)} /> Divider rail</label>
       </> : null}
     </div>
+    <div className="no-print" style={{padding:20}}><TemporaryShadeOption selected={temporary} onChange={setTemporary} /></div>
+    <details className="no-print" style={{padding:20}} open><summary>New sketches · tracked shutters and temporary shades</summary><div style={{display:"flex",gap:32,flexWrap:"wrap",padding:20}}><ContractProductIllustration productType="Shutters" options={["Track System: Bypass Track"]} /><ContractProductIllustration productType="Shutters" options={["Track System: Bifold 180"]} /><ContractProductIllustration productType="Roller Shades" options={["Lift System: Cordless","Temporary Shade: Yes"]} /></div></details>
     {product === "Shutters" ? <details className="no-print" style={{padding:20}}><summary>Shutter sketch catalog · {panels} panels</summary><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",gap:20,paddingTop:20}}>{["Standard Tilt","Invisible Tilt"].flatMap(t=>[false,true].flatMap(s=>[false,true].map(d=><div key={`${t}-${s}-${d}`}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${"L".repeat(panels)}`,`Tilt Type: ${t}`,`Split Tilt: ${s?"Yes":"No"}`,`Divider Rail: ${d?"Yes":"No"}`]} /><p>{t} · {s?"Split tilt":"Full tilt"}{d?" · Divider rail":""}</p></div>)))}</div></details> : null}
     <details className="no-print" style={{padding:20}}><summary>Manufacturer valance sketch catalog · {VALANCE_ARTWORK.length} profiles</summary><p>Visual references for existing order selections. Manufacturer names stay off customer contracts.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:24}}>{VALANCE_ARTWORK.map(a=><div key={a.id}><strong style={{textTransform:"capitalize"}}>{a.manufacturer}</strong><ContractProductIllustration productType={a.products[0]} valanceArtId={a.id} /></div>)}</div><p>Onyx profiles, ambiguous “Interior Cassette” selections, and unverified specialty valances await manufacturer confirmation.</p></details>
     <CustomerContractDocument quote={quote} previewOnly previewLabel="Development sample — no customer record" />

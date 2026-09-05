@@ -251,6 +251,28 @@
       },
       "file": "public/images/contract-illustrations/c-v1/shutter-hidden-split-divider.webp",
       "bytes": 22624
+    },
+    {
+      "id": "shutter-bypass",
+      "source": "exec-c375b31b-77de-42c2-9584-03414b07ad09.png",
+      "sourceSha256": "1d0c84690e47372c8e1d15750648f1cdd62cdcbc18ec5e63dbbae9f34cc7b550",
+      "file": "public/images/contract-illustrations/c-v1/shutter-bypass.webp",
+      "bytes": 83994
+    },
+    {
+      "id": "shutter-bifold-180",
+      "source": "exec-26155dca-1510-4e63-aab9-5f35c3658677.png",
+      "sourceSha256": "d6b22f952fb39db470fb9703f24678a37433ebac740fd04e7d28f4f49ded55ae",
+      "file": "public/images/contract-illustrations/c-v1/shutter-bifold-180.webp",
+      "bytes": 78122
+    },
+    {
+      "id": "temporary-shade",
+      "source": "exec-8d7f9ef4-da6a-4e1c-a144-e3e00a45ca00.png",
+      "sourceSha256": "bdac6be60cc0948d43bfbb85fb60178857bd3f37a6b82165505503629c85e581",
+      "file": "public/images/contract-illustrations/c-v1/temporary-shade.webp",
+      "bytes": 23468,
+      "description": "Single sheet of accordion-pleated paper. No hardware, top rail, bottom rail, clips or brackets."
     }
   ]
 }

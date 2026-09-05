@@ -9,6 +9,12 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
+  ["temporary_shade", "Temporary shade"],
+  ["shutter_type", "Shutter type"],
+  ["track_type", "Track type"],
+  ["track_system", "Track system"],
+  ["bypass_type", "Bypass type"],
+  ["folding_direction", "Folding direction"],
   ["supplier", "Manufacturer selection"],
   ["material", "Material"],
   ["color", "Color"],

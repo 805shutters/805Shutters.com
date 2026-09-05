@@ -39,3 +39,23 @@ describe("configured shutter pencil catalog", () => {
     expect(contractIllustration("Shutters",options)).toBeNull();
   });
 });
+
+describe('tracked shutter operation references',()=>{
+  it.each([['Bypass Track','shutter-bypass'],['Bifold 180','shutter-bifold-180'],['Bi-fold 180','shutter-bifold-180']])('uses explicit %s selection', (system,asset)=>{
+    const art=contractIllustration('Shutters',['Shutter Type: Tracked Shutter',`Track System: ${system}`,'Panel Config: LLRR','Tilt Type: Standard Tilt','Split Tilt: Yes','Divider Rail: Yes']);
+    expect(art?.operationReference?.src).toContain(asset+'.webp');
+    expect(existsSync('public'+art?.operationReference?.src)).toBe(true);
+    expect(art?.panels).toBe(4);
+    expect(art?.src).toContain('center-split-divider-angled');
+  });
+  it('shows an operation reference when panel details are not yet chosen',()=>{
+    expect(contractIllustration('Shutters',['Track Type: Bypass'])?.src).toContain('shutter-bypass.webp');
+  });
+  it.each(['Bifold','Floating 90 Bifold','Bifold 90'])('does not mislabel %s as bifold 180',system=>{
+    expect(contractIllustration('Shutters',[`Track System: ${system}`])?.operationReference).toBeUndefined();
+  });
+  it('preserves tracked selection through public V2 configuration',()=>{
+    const options=customerQuoteOptions(v2CustomerConfigurationOptions({manufacturerId:'norman',selections:{track_system:'Bifold 180',shutter_type:'Tracked Shutter',panel_config:'LLRR',tilt_type:'Invisible Tilt'}}));
+    expect(contractIllustration('Shutters',options)?.operationReference?.src).toContain('bifold-180');
+  });
+});

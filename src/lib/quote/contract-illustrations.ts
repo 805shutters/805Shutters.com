@@ -9,6 +9,7 @@ export type ContractIllustration = {
   remote: boolean;
   mirror: boolean;
   panels?: number;
+  operationReference?: { src: string; label: string };
 };
 
 const PRODUCTS: Record<string, string> = {
@@ -48,7 +49,8 @@ export function contractIllustration(productType: string, options: readonly stri
     return value.replace(tdbuPattern, "").trim();
   });
   const operation = operationValues.join(" ");
-  const specialConfiguration = tdbu ? special.replace(tdbuPattern, "") : special;
+  const track = product === "shutters" ? shutterOperationReference(fields) : null;
+  const specialConfiguration = (tdbu ? special.replace(tdbuPattern, "") : special).replace(track ? /tracked/g : /$^/, "");
   // These need their own approved drawings, rather than an ordinary rectangular shade.
   if (/specialty|arched|arch top|skylight|vertical|day.*night|top.*down|\btdbu\b|\btd\b|coupled|dual|common valance|french door|tracked|lightguard|light guard/.test(specialConfiguration + " " + operation)) return null;
   if (values("faux blind count", "lotus blind count", "blind count").some((count) => Number(count) > 1)) return null;
@@ -69,7 +71,7 @@ export function contractIllustration(productType: string, options: readonly stri
   if (product === "shutters") {
     if (operation) return null;
     const shutter = shutterIllustration(fields);
-    return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels } : null;
+    return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels, ...(track ? { operationReference: track } : {}) } : track ? { src: track.src, alt: `${track.label} — pencil illustration`, remote: false, mirror: false, operationReference: track } : null;
   }
   let asset = tdbu ? "honeycomb-tdbu" : product;
   let mirror = false;
@@ -99,4 +101,15 @@ export function contractIllustration(productType: string, options: readonly stri
   } else if (motorized || loop) return null;
   if (tdbu) detail = `Top-down/bottom-up · ${detail}`;
   return { src: `${CONTRACT_ART_ROOT}/${asset}.webp`, alt: `${productType}${detail ? ` · ${detail}` : ""} — pencil illustration`, remote, mirror };
+}
+
+/** Explicit 180 selection only: a generic bifold may be a different mechanism. */
+function shutterOperationReference(fields: readonly string[][]) {
+  const values = fields.filter(([key]) => ["track system", "track type", "shutter type", "application"].includes(key)).map(([, value]) => value);
+  const bypass = values.some(value => /\bby ?pass\b/.test(value));
+  const bifold180 = values.some(value => /bi ?fold.*180|180.*bi ?fold/.test(value));
+  const otherBifold = values.some(value => /bi ?fold/.test(value) && !/180/.test(value));
+  if (otherBifold || (bypass && bifold180)) return null;
+  const asset = bypass ? "shutter-bypass" : bifold180 ? "shutter-bifold-180" : null;
+  return asset ? { src: `${CONTRACT_ART_ROOT}/${asset}.webp`, label: bypass ? "Bypass operation reference" : "Bifold 180 operation reference · left folding, right closed" } : null;
 }

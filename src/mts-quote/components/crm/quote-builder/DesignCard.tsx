@@ -1,4 +1,5 @@
 import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
+import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import {
@@ -2160,6 +2161,7 @@ export function buildCleanCatalogSelectionOptions(
     "quote_v2_catalog_version",
     "quote_v2_catalog_as_of",
     "discount_percent",
+    "temporary_shade",
   ] as const;
   const preserved = Object.fromEntries(
     preservedKeys.flatMap((key) =>
@@ -5626,6 +5628,7 @@ export function DesignCard({
             <ContractProductIllustration productType={lineItem.product_type} options={getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`)} valanceArtId={valanceIllustration(lineItem.product_type, getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`), undefined, valanceSurchargeIds(currentDesign.options_json?.surcharges))} />
           </div>
         )}
+        <TemporaryShadeOption selected={currentOptions.temporary_shade === true} onChange={selected => updateField("options_json", { ...currentOptions, temporary_shade: selected })} />
         {/* Variant tabs */}
         {variants.length > 1 && (
           <Tabs value={activeVariant} onValueChange={handleVariantChange}>
