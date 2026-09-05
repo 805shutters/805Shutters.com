@@ -4,7 +4,7 @@ import "@/mts-quote/mts-quote.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ArrowLeft, Camera, Check, ChevronLeft, ChevronRight, CloudOff, FileImage, Grid3X3, List, Plus, Search } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronRight, CloudOff, FileImage, Grid3X3, List, Plus, Search } from "lucide-react";
 import type { QuoteLabCatalogProduct } from "@/lib/quote-lab/types";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 import { buildMobileQuoteAppointmentQuery, mobileQuoteLosAngelesDate } from "@/lib/crm/mobile-quote-appointments";
@@ -72,18 +72,15 @@ export function MobileMeasurementGrid({
   onClose: () => void;
   onCloseAutoFocus?: () => void;
 }) {
-  const [page, setPage] = useState(() => Math.min(10, Math.max(0, Math.floor(selection.whole / 100))));
   const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
   const selectedButton = useRef<HTMLButtonElement>(null);
   const label = selection.side === "width" ? "Width" : "Height";
-  const pageStart = page * 100;
-  const pageEnd = Math.min(1000, pageStart + 99);
-  const wholeNumbers = Array.from({ length: pageEnd - pageStart + 1 }, (_, index) => pageStart + index);
+  const wholeNumbers = Array.from({ length: 151 }, (_, index) => index);
   const fractions = selection.whole === 1000 ? MOBILE_QUOTE_FRACTIONS.slice(0, 1) : MOBILE_QUOTE_FRACTIONS;
 
   useEffect(() => {
     selectedButton.current?.focus();
-  }, [selection.step, page, portalContainer]);
+  }, [selection.step, portalContainer]);
 
   return <div className="mts-quote-scope" ref={setPortalContainer}>
     <PortalContainerContext.Provider value={portalContainer}>
@@ -94,11 +91,6 @@ export function MobileMeasurementGrid({
         <DialogDescription>{selection.step === "whole" ? `Select whole inches for ${label.toLowerCase()}.` : `Select a fraction for ${selection.whole} inches.`}</DialogDescription>
       </DialogHeader>
       {selection.step === "whole" ? <>
-        <div className={styles.gridRange} aria-label="Whole-inch range">
-          <button type="button" onClick={() => setPage((value) => Math.max(0, value - 1))} disabled={page === 0}><ChevronLeft />Previous</button>
-          <strong>{pageStart}–{pageEnd} inches</strong>
-          <button type="button" onClick={() => setPage((value) => Math.min(10, value + 1))} disabled={page === 10}>Next<ChevronRight /></button>
-        </div>
         <div className={styles.wholeGrid} role="group" aria-label={`${label} whole inches`}>
           {wholeNumbers.map((whole) => <button
             type="button"
