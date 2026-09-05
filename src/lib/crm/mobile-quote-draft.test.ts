@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   addMobileQuoteWindow,
+  assignMobileQuoteProductBatch,
   allowsNeedsPricingDraft,
   appendMobileQuotePhoto,
   beginMobileQuoteGridSelection,
+  beginMobileQuoteMeasureMore,
   chooseMobileQuoteGridWhole,
   commitMobileQuoteGridSelection,
   createMobileQuoteDraft,
@@ -13,15 +15,23 @@ import {
   isQuoteEditorHandoffReady,
   hasConcreteMobileQuoteRoom,
   mobileQuotePreflightOutcome,
+  mobileQuoteDesignsMixed,
   mobileQuoteRoomChoice,
+  mobileQuoteWorkflowMode,
   normalizeMobileQuoteDraft,
+  omitTrailingUntouchedMobileQuoteWindow,
   removeMobileQuoteWindow,
   selectMobileQuoteBedroomNumber,
   selectMobileQuoteProduct,
   selectMobileQuoteRoom,
   selectMobileQuoteWindowLetter,
+  setMobileQuoteWorkflow,
+  setMobileQuoteWorkflowPhase,
   updateMobileQuoteCustomRoom,
   updateMobileQuoteDesign,
+  updateMobileQuoteDesignBatch,
+  validMobileQuoteSelectionIds,
+  validateMobileQuoteMeasurement,
   validateMobileQuoteWindow,
   type MobileQuoteCustomer,
 } from "./mobile-quote-draft";
@@ -66,6 +76,188 @@ describe("mobile quote optional measurement grid", () => {
     expect(draft.quotePrice).toBeNull();
     expect(draft.updatedAt).toBe("2026-09-05T12:00:00.000Z");
   });
+});
+
+describe("mobile quote measure-first workflow", () => {
+  function measured(draft: ReturnType<typeof createMobileQuoteDraft>, index: number, room: string) {
+    Object.assign(draft.windows[index], { room, widthWhole: 36 + index, heightWhole: 60, saved: true });
+  }
+
+  it("defaults historical drafts to full design and persists explicit workflow phase", () => {
+    const historical = createMobileQuoteDraft("owner", customer);
+    delete historical.workflowMode;
+    delete historical.workflowPhase;
+    expect(mobileQuoteWorkflowMode(historical)).toBe("full-design");
+    expect(normalizeMobileQuoteDraft(historical)).toMatchObject({ workflowMode: "full-design", workflowPhase: "measure" });
+    const measureFirst = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first", "assign", "2026-09-05T03:00:00.000Z");
+    expect(normalizeMobileQuoteDraft(measureFirst)).toMatchObject({ workflowMode: "measure-first", workflowPhase: "assign" });
+  });
+
+  it("saves valid measurements without a product but full validation still rejects them", () => {
+    const draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(draft, 0, "Office");
+    expect(validateMobileQuoteMeasurement(draft.windows[0])).toBeNull();
+    expect(validateMobileQuoteWindow(draft.windows[0])).toBe("Choose a product.");
+    expect(validateMobileQuoteMeasurement({ ...draft.windows[0], room: "" })).toBe("Choose a room.");
+    expect(validateMobileQuoteMeasurement({ ...draft.windows[0], widthWhole: 0 })).toMatch(/width and height/);
+  });
+
+  it("creates blank measure-first openings without old defaults and keeps full-design inheritance", () => {
+    let full = createMobileQuoteDraft("owner", customer);
+    full = selectMobileQuoteProduct(full, full.windows[0].id, product(full.windows[0].id, "roller", "Roller Shades"));
+    expect(addMobileQuoteWindow(full).windows[1].activeProductId).toBe("roller");
+    const measureFirst = addMobileQuoteWindow(setMobileQuoteWorkflow(full, "measure-first"));
+    expect(measureFirst.windows[1]).toMatchObject({ activeProductId: null, families: {} });
+  });
+
+  it("omits only a truly untouched trailing placeholder and keeps the active id valid", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(draft, 0, "Kitchen");
+    draft = addMobileQuoteWindow(draft);
+    const keptId = draft.windows[0].id;
+    const omitted = omitTrailingUntouchedMobileQuoteWindow(draft);
+    expect(omitted.windows).toHaveLength(1);
+    expect(omitted.activeWindowId).toBe(keptId);
+    expect(omitted.windows.some((line) => line.id === omitted.activeWindowId)).toBe(true);
+  });
+
+  it("retains trailing product/configuration-only and explicit Custom-intent openings", () => {
+    let productOnly = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(productOnly, 0, "Kitchen");
+    productOnly = addMobileQuoteWindow(productOnly);
+    const productOnlyId = productOnly.windows[1].id;
+    productOnly = selectMobileQuoteProduct(productOnly, productOnlyId, product(productOnlyId, "roller", "Roller Shades"));
+    expect(omitTrailingUntouchedMobileQuoteWindow(productOnly)).toBe(productOnly);
+
+    const rememberedConfiguration = structuredClone(productOnly);
+    rememberedConfiguration.windows[1].activeProductId = null;
+    expect(omitTrailingUntouchedMobileQuoteWindow(rememberedConfiguration)).toBe(rememberedConfiguration);
+
+    let customOnly = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(customOnly, 0, "Kitchen");
+    customOnly = addMobileQuoteWindow(customOnly);
+    customOnly = updateMobileQuoteCustomRoom(customOnly, customOnly.windows[1].id, "");
+    expect(customOnly.windows[1]).toMatchObject({ room: "", roomChoice: "Custom" });
+    expect(omitTrailingUntouchedMobileQuoteWindow(customOnly)).toBe(customOnly);
+  });
+
+  it("batch assigns only checked openings and preserves metadata, photos, and inactive configurations", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    draft = addMobileQuoteWindow(draft);
+    draft.windows.forEach((_, index) => measured(draft, index, `Room ${index + 1}`));
+    const photo = { id: "p", name: "p.jpg", type: "image/jpeg", blob: new Blob(["p"]) };
+    draft.windows[0].photos = [photo];
+    draft.windows[0].notes = "trim";
+    draft.windows[0].families.old = { ...product(draft.windows[0].id, "old", "Shutters"), overriddenPaths: ["material"] };
+    const untouched = structuredClone(draft.windows[1]);
+    draft = assignMobileQuoteProductBatch(draft, [draft.windows[0].id, draft.windows[2].id], product(draft.windows[0].id, "roller", "Roller Shades"), "2026-09-05T04:00:00.000Z");
+    expect(draft.windows.map((line) => line.activeProductId)).toEqual(["roller", null, "roller"]);
+    expect(draft.windows[1]).toEqual(untouched);
+    expect(draft.windows[0]).toMatchObject({ room: "Room 1", notes: "trim", photos: [photo] });
+    expect(draft.windows[0].families.old.overriddenPaths).toEqual(["material"]);
+    expect(draft.firstLineDefaults).not.toMatchObject({ productId: "roller" });
+  });
+
+  it("applies only changed paths to checked same-product lines with identity isolation", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    draft = addMobileQuoteWindow(draft);
+    const ids = draft.windows.map((line) => line.id);
+    draft = assignMobileQuoteProductBatch(draft, ids, product(ids[0], "roller", "Roller Shades"));
+    draft.windows[1].families.roller.design.options_json = { color: "charcoal", mount: "inside" };
+    draft.windows[2].families.roller.design.options_json = { color: "linen", mount: "inside" };
+    const excludedBefore = structuredClone(draft.windows[2]);
+    const reference = structuredClone(draft.windows[0].families.roller.design);
+    const identities = draft.windows.map((line) => [line.families.roller.design.id, line.families.roller.design.line_item_id]);
+    draft = updateMobileQuoteDesignBatch(draft, "roller", ids.slice(0, 2), reference, { options_json: { ...reference.options_json, mount: "outside" } });
+    expect(draft.windows[0].families.roller.design.options_json).toEqual({ color: "white", mount: "outside" });
+    expect(draft.windows[1].families.roller.design.options_json).toEqual({ color: "charcoal", mount: "outside" });
+    expect(draft.windows[2]).toEqual(excludedBefore);
+    expect(draft.windows.map((line) => [line.families.roller.design.id, line.families.roller.design.line_item_id])).toEqual(identities);
+    expect(draft.windows.slice(0, 2).every((line) => line.families.roller.overriddenPaths.includes("options_json.mount"))).toBe(true);
+  });
+
+  it("never broadcasts individual measure-first edits and locks all new mutations after snapshot", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    const ids = draft.windows.map((line) => line.id);
+    draft = selectMobileQuoteProduct(draft, ids[0], product(ids[0], "roller", "Roller Shades"));
+    expect(draft.windows[1].activeProductId).toBeNull();
+    draft = assignMobileQuoteProductBatch(draft, ids, product(ids[0], "roller", "Roller Shades"));
+    draft = updateMobileQuoteDesign(draft, ids[0], { options_json: { color: "white", mount: "outside" } });
+    expect(draft.windows[1].families.roller.design.options_json.mount).toBe("inside");
+    draft.submission.snapshot = { customer: structuredClone(draft.customer), windows: structuredClone(draft.windows), createdAt: "locked", requiresManualPricing: false };
+    expect(setMobileQuoteWorkflow(draft, "full-design")).toBe(draft);
+    expect(setMobileQuoteWorkflowPhase(draft, "groups")).toBe(draft);
+    expect(assignMobileQuoteProductBatch(draft, [ids[0]], product(ids[0], "shutter", "Shutters"))).toBe(draft);
+    expect(updateMobileQuoteDesignBatch(draft, "roller", [ids[0]], draft.windows[0].families.roller.design, { material: "new" })).toBe(draft);
+  });
+
+  it("detects mixed values across top-level design fields while ignoring identity and timestamps", () => {
+    const draft = createMobileQuoteDraft("owner", customer);
+    const base = product(draft.windows[0].id, "roller", "Roller Shades").design;
+    expect(mobileQuoteDesignsMixed([base, { ...base, material: "different" }])).toBe(true);
+    expect(mobileQuoteDesignsMixed([base, { ...base, id: "other", line_item_id: "other-line", unit_price: 999, created_at: "later" }])).toBe(false);
+  });
+
+  it("clones nested changed option values independently for every batch target", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    const ids = draft.windows.map((line) => line.id);
+    draft = assignMobileQuoteProductBatch(draft, ids, product(ids[0], "roller", "Roller Shades"));
+    const before = structuredClone(draft.windows[0].families.roller.design);
+    const nested = { slats: [{ color: "white" }] };
+    draft = updateMobileQuoteDesignBatch(draft, "roller", ids, before, { options_json: { ...before.options_json, nested } });
+    const firstNested = draft.windows[0].families.roller.design.options_json.nested as typeof nested;
+    const secondNested = draft.windows[1].families.roller.design.options_json.nested as typeof nested;
+    expect(firstNested).not.toBe(nested);
+    expect(secondNested).not.toBe(nested);
+    expect(firstNested).not.toBe(secondNested);
+    firstNested.slats[0].color = "black";
+    expect(secondNested.slats[0].color).toBe("white");
+  });
+
+  it("seeds full-design future defaults from the current first-line family without changing existing lines", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    const ids = draft.windows.map((line) => line.id);
+    draft = assignMobileQuoteProductBatch(draft, ids, product(ids[0], "roller", "Roller Shades"));
+    draft.windows[0].families.roller.design.material = "Current first material";
+    draft.windows[1].families.roller.design.material = "Existing second material";
+    const existing = structuredClone(draft.windows);
+    draft = setMobileQuoteWorkflow(draft, "full-design", "measure", "2026-09-05T05:00:00.000Z");
+    expect(draft.windows).toEqual(existing);
+    expect(draft.firstLineDefaults?.design.material).toBe("Current first material");
+    const added = addMobileQuoteWindow(draft).windows[2];
+    expect(added.families.roller.design.material).toBe("Current first material");
+    expect(setMobileQuoteWorkflow(draft, "full-design")).toBe(draft);
+  });
+
+  it("starts measure-more on a new unassigned row and keeps prior opening data", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    measured(draft, 0, "Kitchen");
+    draft = assignMobileQuoteProductBatch(draft, [draft.windows[0].id], product(draft.windows[0].id, "roller", "Roller Shades"));
+    draft = setMobileQuoteWorkflowPhase(draft, "groups");
+    const existing = structuredClone(draft.windows[0]);
+    draft = beginMobileQuoteMeasureMore(draft, "2026-09-05T06:00:00.000Z");
+    expect(draft.windows[0]).toEqual(existing);
+    expect(draft.windows).toHaveLength(2);
+    expect(draft.windows[1]).toMatchObject({ id: draft.activeWindowId, activeProductId: null, families: {} });
+    measured(draft, 1, "Office");
+    const afterSaveAndNext = addMobileQuoteWindow(draft);
+    expect(afterSaveAndNext.windows.slice(0, 2).map((line) => line.room)).toEqual(["Kitchen", "Office"]);
+    expect(afterSaveAndNext.windows[2]).toMatchObject({ id: afterSaveAndNext.activeWindowId, activeProductId: null, families: {} });
+  });
+
+  it("derives only current same-product selection ids", () => {
+    let draft = setMobileQuoteWorkflow(createMobileQuoteDraft("owner", customer), "measure-first");
+    draft = addMobileQuoteWindow(draft);
+    const ids = draft.windows.map((line) => line.id);
+    draft = assignMobileQuoteProductBatch(draft, [ids[0]], product(ids[0], "roller", "Roller Shades"));
+    expect(validMobileQuoteSelectionIds(draft, [ids[0], ids[1], "stale"], "roller")).toEqual([ids[0]]);
+  });
+
 });
 
 describe("mobile quote first-line defaults", () => {
