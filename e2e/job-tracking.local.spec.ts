@@ -524,6 +524,19 @@ test("dashboard net payables match the Jessica ledger including advances and mis
   await expect(page).toHaveURL(/\/crm\/payables\/?\?person=jessica/);
   await expect(page.locator(".crm-payment-person-grid").getByRole("button", { name: /Jessica Advance Credit/ })).toContainText("$12,391.63");
 
+  for (const width of [1728, 1456, 1024, 600]) {
+    await page.setViewportSize({ width, height: 1117 });
+    const fits = await page.locator(".crm-payments-workspace").evaluate(el => {
+      const bounds = el.getBoundingClientRect();
+      return Array.from(el.querySelectorAll(".crm-payment-person-grid button")).every(card => {
+        const rect = card.getBoundingClientRect();
+        return rect.left >= bounds.left && rect.right <= bounds.right && rect.right <= window.innerWidth;
+      });
+    });
+    expect(fits, `Payables cards stay visible at ${width}px`).toBe(true);
+  }
+  await page.setViewportSize({ width: 1456, height: 1117 });
+  await page.locator(".crm-payment-person-grid").screenshot({ path: "/tmp/805-payables-cards-fit.png" });
   balance = 300.25;
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Command Center", exact: true }).click();

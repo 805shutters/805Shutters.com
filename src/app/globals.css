@@ -13915,9 +13915,19 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   text-transform: uppercase;
 }
 
+/* Payables has one content column, including when a nested payment form is collapsed. */
+.crm-workspace.crm-workspace-wide.crm-payments-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .crm-payments-workspace .crm-ledger {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
+}
+
+.crm-payments-workspace .crm-ledger > * {
+  min-width: 0;
 }
 
 .crm-payment-person-grid {
