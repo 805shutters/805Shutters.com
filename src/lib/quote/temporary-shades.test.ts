@@ -16,7 +16,8 @@ describe('temporary shade companion', () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType,options:['Temporary Shade: Yes']}));
     expect(html).toContain('data-temporary-shade="included"');
     expect(html).toContain('temporary-shade.webp');
-    expect(html).toContain('Included');
+    expect(html).toContain('Complimentary temporary shade');
+    expect(html).toContain('Free');
   });
   it.each([[], ['Temporary Shade: No'], ['Temporary Shade: false'], ['Temporary Shade: Maybe'], ['Temporary Shade: Yes','Temporary Shade: No']])('never infers an included item from missing/negative/conflicting selections %j', (...values) => {
     expect(temporaryShadeSelected(values as string[])).toBe(false);
@@ -36,6 +37,7 @@ describe('temporary shade companion', () => {
     const configuration=customerConfigurationFromSelection(selection);
     const publicOptions=customerQuoteOptions(v2CustomerConfigurationOptions(configuration));
     expect(temporaryShadeSelected(publicOptions)).toBe(true);
+    expect(publicOptions).toContain('Complimentary temporary shade: Free');
     expect(design.unit_price).toBe(500);
     expect(selection.options).not.toHaveProperty('temporary_shade');
   });

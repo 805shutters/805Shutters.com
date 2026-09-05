@@ -6,7 +6,7 @@ export function TemporaryShadeOption({ selected, onChange, disabled = false }: {
   const id = useId();
   return <section className={styles.section} aria-label="Temporary shades">
     <div><h3 className={styles.title}>Temporary shades</h3><p className={styles.description}>Optional privacy coverage while your custom product is being made.</p>
-      <label className={styles.control} htmlFor={id}><input id={id} type="checkbox" checked={selected} disabled={disabled} onChange={event => onChange(event.target.checked)} /><span>Add temporary shade <small>Included · no added charge</small></span></label>
+      <label className={styles.control} htmlFor={id}><input id={id} type="checkbox" checked={selected} disabled={disabled} onChange={event => onChange(event.target.checked)} /><span>Complimentary temporary shade <small>Free</small></span></label>
     </div>
     {selected ? <img src={`${CONTRACT_ART_ROOT}/temporary-shade.webp`} alt="Temporary pleated paper shade — pencil illustration" width={54} height={96} /> : null}
   </section>;

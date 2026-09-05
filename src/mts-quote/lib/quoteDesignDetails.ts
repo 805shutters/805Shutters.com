@@ -103,6 +103,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
       return;
     }
 
+    if (key === "temporary_shade") {
+      if (value === true) details.push({ label: "Complimentary temporary shade", value: "Free" });
+      return;
+    }
     details.push({ label: humanizeKey(key), value: formatOptionValue(value) });
   });
 
