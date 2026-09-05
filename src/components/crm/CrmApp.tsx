@@ -3079,7 +3079,6 @@ export function CrmApp({
           />
         )
       ) : null}
-      {data?.integrationHealth?.filter((source) => source.state !== "succeeded").map((source) => <p role="status" className="crm-feedback-banner" key={source.processor}>{source.processor.replaceAll("-", " ")}: {source.state === "unknown" ? "No processing history recorded" : source.state}. Last successful processing: {source.lastSuccessAt ? new Date(source.lastSuccessAt).toLocaleString("en-US", { timeZone: "America/Los_Angeles" }) : "Unknown"}. Refreshing the dashboard does not rerun this integration.</p>)}
       {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
       {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
       <header className="crm-topbar">

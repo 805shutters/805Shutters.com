@@ -63,14 +63,6 @@ export function OperationsReports({
           Snapshot is stale. Refresh is pending; these figures are not current.
         </p>
       ) : null}
-      {(data.integrationHealth || [])
-        .filter((h) => h.state !== "succeeded")
-        .map((h) => (
-          <p role="status" key={h.processor}>
-            {h.processor}: {h.state} — integration freshness is separate from
-            this page refresh.
-          </p>
-        ))}
       {data.loadWarnings?.length ? (
         <p role="alert">{data.loadWarnings.join(" ")}</p>
       ) : null}

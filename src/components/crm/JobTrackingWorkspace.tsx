@@ -252,7 +252,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       })}
       {!visible.length && <p className={styles.cardEmpty}>{props.busy ? "Loading job records…" : items.length ? "No jobs match this status and search." : "No job records are available in the loaded CRM data."}</p>}
     </div>
-    {props.integrationHealth && <details><summary>Integration freshness</summary>{props.integrationHealth.map((source) => <p key={source.processor}>{source.processor.replaceAll("-", " ")}: {source.state} · Last attempt {date(source.lastAttemptAt)} · Last success {date(source.lastSuccessAt)}</p>)}</details>}
+    {props.integrationHealth && <details><summary>Email sync details</summary>{props.integrationHealth.map((source) => <p key={source.processor}>{source.processor.replaceAll("-", " ")}: {source.state} · Last attempt {date(source.lastAttemptAt)} · Last success {date(source.lastSuccessAt)}</p>)}</details>}
     <p className={styles.footer}>Missing sold dates are listed last. Open job details for the full record. Stage changes do not record a signature or payment.</p>
     <Dialog.Root open={Boolean(editor)} onOpenChange={(isOpen) => { if (!isOpen) close(); }}>
       <Dialog.Portal><Dialog.Overlay className={styles.overlay} /><Dialog.Content className={styles.modal} onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus({ preventScroll: true }); }} onEscapeKeyDown={(event) => { if (running) event.preventDefault(); }} onPointerDownOutside={(event) => event.preventDefault()}>
