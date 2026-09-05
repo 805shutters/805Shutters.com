@@ -425,7 +425,9 @@ test("report totals and filtered contributing records agree without external cal
  const {writes}=await setup(page);
  await page.getByRole('button',{name:'Operations Reports',exact:true}).click();
  const reports=page.getByRole('region',{name:'Operations reports',exact:true});
+ await expect(reports.getByRole('button',{name:/Collected receipts/})).toHaveCSS('color','rgb(23, 45, 42)');
  await reports.getByRole('button',{name:/Collected receipts/}).click();
+ await expect(reports.getByRole('button',{name:/Collected receipts/})).toHaveCSS('color','rgb(23, 45, 42)');
  const contributors=page.getByRole('region',{name:'Collected receipts contributing records'});
  await expect(contributors.getByText('4 contributing records · $10,000.00',{exact:true})).toBeVisible();
  await expect(reports.getByRole('button',{name:/Collected receipts/})).toContainText('$10,000.00');

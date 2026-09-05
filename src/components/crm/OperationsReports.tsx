@@ -143,6 +143,7 @@ export function OperationsReports({
                 setStatus("all");
               }}
               style={{
+                color: "#172d2a",
                 textAlign: "left",
                 padding: 14,
                 border: `2px solid ${selected === r.id ? "#236c77" : "#d8dedb"}`,
