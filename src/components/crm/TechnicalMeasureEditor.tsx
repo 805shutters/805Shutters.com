@@ -1343,9 +1343,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   <div><dt>Product</dt><dd>{productLabel(baseline.product_id)}</dd></div>
                   {detailText(baseline.details, "supplier", "manufacturer") ? <div><dt>Manufacturer</dt><dd>{detailText(baseline.details, "supplier", "manufacturer")}</dd></div> : null}
                   {baseline.program_id ? <div><dt>Program</dt><dd>{baseline.program_id}</dd></div> : null}
-                  {baseline.fabric ? <div><dt>Material / Fabric</dt><dd>{baseline.fabric}</dd></div> : null}
+                  {baseline.fabric && !contractOptions.some((option) => option.value === baseline.fabric) ? <div><dt>Material / Fabric</dt><dd>{baseline.fabric}</dd></div> : null}
                   {contractOptions.map((option) => <div key={option.label}><dt>{option.label}</dt><dd>{option.value}</dd></div>)}
-                  {baseline.notes ? <div className="tm805-contract-note"><dt>Contract notes</dt><dd>{baseline.notes}</dd></div> : null}
+                  {baseline.notes && baseline.notes.trim() !== productLabel(baseline.product_id) ? <div className="tm805-contract-note"><dt>Contract notes</dt><dd>{baseline.notes}</dd></div> : null}
                 </dl>
               </section>
               <div className="technical-measure-line-navigation technical-measure-line-submit">
