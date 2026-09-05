@@ -3228,6 +3228,8 @@ export function CrmApp({
 
       {activeTab === "tracking" ? (
         <JobTrackingWorkspace
+          ownedActions={data?.ownedActions}
+          onSaveOwnedAction={async change => { if (!session) throw new Error("CRM session required."); setBusy(true); try { await crmFetch(session,"/api/crm/operations/tasks",{method:"POST",body:JSON.stringify(change)}); await refresh(); } finally { setBusy(false); } }}
           warnings={data?.loadWarnings}
           integrationHealth={data?.integrationHealth}
           installerOutcomes={data?.installerOutcomes}
@@ -6398,6 +6400,7 @@ function CommandDashboard({
           )}
         </section>
         <UnifiedActivityFeed
+          events={events}
           snapshot={activitySnapshot}
           jobs={jobs}
           quotes={quotes}

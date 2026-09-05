@@ -22,3 +22,9 @@ describe("shared evidence-derived progress", () => {
   });
   it("a payment request does not satisfy the deposit", () => { expect(deriveJobProgress({ ...base, balanceOutstanding: 1000, depositOutstanding: 500 }).stage).toBe("sold_need_deposit"); });
 });
+
+it("requires office service resolution even after a completed return report",()=>{
+ const task={id:'service1',quote_id:'q1',task_type:'service_issue',status:'open'} as import('./owned-actions').OwnedAction;
+ expect(deriveJobProgress({...base,installerOutcomes:[report('completed')],ownedActions:[task]})).toMatchObject({service:'open',stage:'attention',active:true});
+ expect(deriveJobProgress({...base,installerOutcomes:[report('completed')],ownedActions:[{...task,status:'done'}]})).toMatchObject({service:'none_known',stage:'complete',active:false});
+});

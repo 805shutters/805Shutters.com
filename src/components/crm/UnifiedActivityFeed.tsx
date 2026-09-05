@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   CrmActivitySnapshot,
+  CrmCalendarEvent,
   CrmBookkeepingRow,
   CrmCustomer,
   CrmCustomerFile,
@@ -18,7 +19,8 @@ import {
 } from "@/lib/crm/unified-activity";
 
 const activityTabs: Array<{ value: UnifiedActivityFilter; label: string }> = [
-  { value: "all", label: "All activity" },
+  { value: "operations", label: "Operational timeline" },
+  { value: "all", label: "Raw audit" },
   { value: "payments", label: "Payments" },
   { value: "updates", label: "Updates" },
   { value: "notes", label: "Notes" },
@@ -32,7 +34,8 @@ const timestamp = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
   hour: "numeric",
-  minute: "2-digit"
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles"
 });
 const dateOnlyTimestamp = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -62,6 +65,7 @@ function customerMatches(event: UnifiedActivityEvent, customerName: string) {
 
 export function UnifiedActivityFeed({
   snapshot,
+  events = [],
   jobs,
   quotes,
   rows,
@@ -72,6 +76,7 @@ export function UnifiedActivityFeed({
   onOpenCustomer
 }: {
   snapshot: CrmActivitySnapshot | null;
+  events?: CrmCalendarEvent[];
   jobs: CrmJob[];
   quotes: CrmQuote[];
   rows: CrmBookkeepingRow[];
@@ -83,7 +88,7 @@ export function UnifiedActivityFeed({
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const latestFeedRef = useRef<UnifiedActivityEvent[]>([]);
-  const [activeFilter, setActiveFilter] = useState<UnifiedActivityFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<UnifiedActivityFilter>("operations");
   const [displayedFeed, setDisplayedFeed] = useState<UnifiedActivityEvent[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
@@ -159,6 +164,7 @@ export function UnifiedActivityFeed({
         <strong>{displayedFeed.length} events</strong>
       </div>
 
+      <details style={{marginBottom:16}}><summary>Planned appointments · {events.filter(e => ["scheduled","rescheduled"].includes(e.status) && Date.parse(e.start_at) >= Date.now()).length}</summary><p>Future commitments are separate from completed events. Dates are Pacific time.</p>{events.filter(e => ["scheduled","rescheduled"].includes(e.status) && Date.parse(e.start_at) >= Date.now()).sort((a,b)=>a.start_at.localeCompare(b.start_at)).map(e=><p key={e.id}>{e.title} · {e.event_type.replaceAll('_',' ')} · {displayTimestamp(e.start_at)} · {e.assigned_to || 'Unassigned'}</p>)}</details>
       <div className="crm-activity-tabs" role="tablist" aria-label="Activity filters">
         {activityTabs.map((tab) => (
           <button

@@ -64,6 +64,7 @@
     "postcss": "8.5.15"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.61.0",
     "@types/node": "24.10.2",
     "@types/react": "19.2.7",

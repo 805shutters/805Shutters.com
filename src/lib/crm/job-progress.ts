@@ -27,6 +27,7 @@ type Input = {
   installedAt: string | null; orderedAt: string | null; balanceOutstanding: number | null;
   depositOutstanding: number | null; signedAt: string | null; signatureRecorded: boolean;
   recordedStage?: string; unambiguousJob: boolean;
+  ownedActions?: import("./owned-actions").OwnedAction[];
   installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[];
 };
 const terminal = new Set(["complete", "closed", "lost", "archived"]);
@@ -55,7 +56,8 @@ export function deriveJobProgress(input: Input): JobProgress {
   const workflow = objectMeta(latest?.meta?.workflow);
   const outcome = workflow.outcome || latest?.status;
   const partial = Boolean(latest && (["partially_completed", "partially_installed", "incomplete"].includes(String(outcome)) || latest.issues?.some((issue) => issue.notInstalled)));
-  const serviceOpen = Boolean(latest?.issues?.some((issue) => issue.notInstalled || issue.details?.trim()));
+  const openServiceTasks = (input.ownedActions || []).filter(a => a.task_type === "service_issue" && ["open","blocked"].includes(a.status) && (a.quote_id ? a.quote_id === quoteId : a.bookkeeping_entry_id ? a.bookkeeping_entry_id === row?.id && row?.source !== "crm_quote" : input.unambiguousJob && a.job_id === jobId && Boolean(jobId)));
+  const serviceOpen = openServiceTasks.length > 0 || Boolean(latest?.issues?.some((issue) => issue.notInstalled || issue.details?.trim()));
   // A historical date / explicit installed status is weaker than an exact submitted report.
   // isInstallationComplete may be inferred from an installer invoice and is not sufficient.
   const explicitCompletion = Boolean(input.installedAt || quote?.status === "installed" || (!quote && row?.status === "installed"));
@@ -71,6 +73,7 @@ export function deriveJobProgress(input: Input): JobProgress {
   for (const source of missingSources) blockers.push(`${source.source} unavailable`);
   if (partial) blockers.push("Installation is partial or incomplete");
   if (serviceOpen) blockers.push("Installer reported an unresolved issue");
+  openServiceTasks.forEach(a => evidence.push({source: "service_action",id:a.id,occurredAt:a.waiting_since || a.created_at}));
   if (input.isSale && !input.signatureRecorded) blockers.push("Signed scope needs verification");
   if (input.isSale && payment === "deposit_needed") blockers.push("Deposit prerequisite outstanding");
   if (input.isSale && payment === "unknown") blockers.push("Payment evidence unavailable");

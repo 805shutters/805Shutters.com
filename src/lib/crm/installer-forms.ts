@@ -476,6 +476,7 @@ export async function submitInstallerForm(
     signerName?: unknown;
     issues?: unknown;
     outcome?: unknown;
+    expectedRevision?: unknown;
     reasonCode?: unknown;
     notes?: unknown;
   },
@@ -518,6 +519,7 @@ export async function submitInstallerForm(
   const signedAt = new Date().toISOString();
   const status = outcome === "completed" ? "completed" : "partially_installed";
   const previousWorkflow = installerWorkflowFromMeta(form);
+  if (input.expectedRevision !== undefined && input.expectedRevision !== previousWorkflow.revision) throw new CrmAuthError(409, "This report changed. Reload and review the latest revision; your current entries have not been submitted.");
   const revision = previousWorkflow.revision + 1;
   const previousMeta = form.meta && typeof form.meta === "object" ? form.meta : {};
   const previousHistory = Array.isArray(previousMeta.report_history)
@@ -556,7 +558,7 @@ export async function submitInstallerForm(
     signed_at: signedAt,
     meta,
   }).eq("id", form.id);
-  if (error) throw new CrmAuthError(502, "The installation report could not be saved.");
+  if (error) throw new CrmAuthError(error.message?.includes("REPORT_CONFLICT") ? 409 : 502, error.message?.includes("REPORT_CONFLICT") ? "This report changed. Reload and review the latest revision." : "The installation report could not be saved.");
 
   const issueText = issues.length
     ? issues.map((issue) => {
@@ -573,7 +575,7 @@ export async function submitInstallerForm(
     subject,
     text,
     html: `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>${html(subject)}</h1><p><strong>Installer:</strong> ${html(signerName)}<br><strong>Contract:</strong> ${html(form.customer_snapshot.quoteNumber || form.quote_id)}<br><strong>Revision:</strong> ${revision}</p><pre style="font:14px/1.5 Arial,sans-serif;white-space:pre-wrap">${html(workflowText)}\n\n${html(issueText)}</pre><p><a href="${html(installerUrl(token))}">Open installation form</a></p></div>`,
-  });
+  }).catch(() => ({ sent: false }));
   return {
     status,
     outcome,

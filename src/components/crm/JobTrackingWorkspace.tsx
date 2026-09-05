@@ -1,4 +1,6 @@
 "use client";
+import {OwnedActionsWorkspace} from "./OwnedActionsWorkspace";
+import type {OwnedAction,OwnedActionChange} from "@/lib/crm/owned-actions";
 import type { IntegrationHealth } from "@/lib/crm/integration-health";
 import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "@/lib/crm/job-progress";
 
@@ -11,6 +13,7 @@ import styles from "./JobTrackingWorkspace.module.css";
 
 export type { JobTrackingSavePatch, JobTrackingStageId, JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 export type JobTrackingWorkspaceProps = {
+  ownedActions?: OwnedAction[]; onSaveOwnedAction?: (c:OwnedActionChange)=>Promise<void>;
   integrationHealth?: IntegrationHealth[];
   installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[]; asOf?: string;
   jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[];
@@ -36,7 +39,7 @@ function SafeLink({ url, children }: { url?: string | null; children: React.Reac
 }
 
 export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
-  const items = useMemo(() => buildJobTrackingView(props), [props.jobs, props.quotes, props.rows, props.files, props.orderCogsEmails, props.installationInvoiceEmails, props.installerOutcomes, props.sourceHealth]);
+  const items = useMemo(() => buildJobTrackingView(props), [props.jobs, props.quotes, props.rows, props.files, props.orderCogsEmails, props.installationInvoiceEmails, props.installerOutcomes, props.sourceHealth, props.ownedActions]);
   const [filter, setFilter] = useState<JobTrackingFilter>("active");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -153,6 +156,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
     {props.warnings?.map((warning, index) => <p key={`${index}:${warning}`} role="status" className={styles.warning}>{warning}</p>)}
     {props.asOf && <p role="status">Snapshot: {new Date(props.asOf).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })} Pacific · Source load time; importer freshness is separate.</p>}
     {props.busy && <p role="status" className={styles.loading}>Refreshing job records…</p>}
+    {props.onSaveOwnedAction && <OwnedActionsWorkspace items={items} actions={props.ownedActions || []} busy={disabled} onSave={props.onSaveOwnedAction} onFocus={item=>{setFilter(item.progress.active ? "active" : "archive");setSearch(item.quote?.quote_number || item.customerName);setExpanded(new Set([item.id]));}}/>}
     <div className={styles.tableShell} tabIndex={0} role="region" aria-label="Job tracking table; scroll horizontally for all columns">
       <table className={styles.table}>
         <caption className={styles.srOnly}>All job records, sorted by actual sold date newest to oldest. Missing sold dates follow dated sales. Customer and column headings stay visible as you scroll.</caption>
@@ -160,6 +164,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
         <tbody>
           {visible.map((item) => {
             const stage = JOB_TRACKING_STAGES.find((candidate) => candidate.id === item.stageId)!;
+            const assigned = (props.ownedActions || []).filter(a => ["open","blocked"].includes(a.status) && (a.quote_id ? a.quote_id === item.progress.identity.quoteId : a.bookkeeping_entry_id ? a.bookkeeping_entry_id === item.progress.identity.bookkeepingId : Boolean(a.job_id) && a.job_id === item.progress.identity.jobId));
             const canEditMoney = financialSource(item);
             const paymentReason = canEditMoney ? "" : "A sold quote or bookkeeping sale is required.";
             const squareReason = !item.quote && !item.row ? "A sold quote or bookkeeping sale is required." : !item.isSale ? "Record the sale first." : !item.email ? "Add a verified customer email to this sale first." : "";
@@ -176,7 +181,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
                 <td><strong>{item.vendor || "Vendor not recorded"}</strong><span>{item.orderReference || "No order reference"}</span><small>{item.orderedAt ? `Ordered ${date(item.orderedAt)}` : "Order date not recorded"}</small><button type="button" className={styles.textButton} disabled={disabled || !canEditMoney} onClick={() => open(item, "order")}>Record order</button><SafeLink url={item.row?.manufacturerOrderUrl || item.quote?.manufacturer_order_url}>Order link</SafeLink></td>
                 <td><span className={item.measureStatus === "Needed" ? styles.due : styles.muted}>{item.measureStatus}</span><small>{item.job?.appointment_start && !item.isSale ? `Consult ${date(item.job.appointment_start)}` : "Technical measure"}</small></td>
                 <td><span>{item.progress.installation === "partial" ? "Partial / incomplete" : item.progress.installation === "complete" ? "Completion recorded" : "Needs verification"}</span>{item.row && item.row.installationInvoiceAmount > 0 && <small>Installer {money(item.row.installationInvoiceAmount)}</small>}<SafeLink url={item.row?.installationInvoiceUrl}>Install invoice</SafeLink><button type="button" className={styles.textButton} disabled={disabled || !canEditMoney} onClick={() => open(item, "install")} aria-label={`Record completed installation for ${item.customerName}`}>Record installed</button></td>
-                <td><span className={styles.notePreview}>{item.nextAction}</span><small>Owner: unassigned legacy action</small>{item.progress.blockers.map((blocker) => <small key={blocker} className={styles.due}>{blocker}</small>)}{item.job?.next_action_due && <small>Due {date(item.job.next_action_due)}</small>}<button type="button" className={styles.textButton} onClick={() => open(item, "notes")} disabled={disabled}>Edit notes / next action</button></td>
+                <td><span className={styles.notePreview}>{item.nextAction}</span>{assigned.length ? assigned.map(a => <small key={a.id}>{a.title} · {a.owner || "Unassigned"}{a.due_on ? ` · Due ${date(a.due_on)}` : " · Due date unknown"}</small>) : <small>Owner: unassigned legacy action</small>}{item.progress.blockers.map((blocker) => <small key={blocker} className={styles.due}>{blocker}</small>)}{item.job?.next_action_due && <small>Due {date(item.job.next_action_due)}</small>}<button type="button" className={styles.textButton} onClick={() => open(item, "notes")} disabled={disabled}>Edit notes / next action</button></td>
                 <td><div className={styles.actions}><button type="button" className={styles.primarySmall} disabled={disabled || !canEditMoney} title={paymentReason} onClick={() => open(item, "payment", item.depositOutstanding && item.depositOutstanding > 0 ? "deposit" : "balance")}>Record payment</button><button type="button" className={styles.secondarySmall} disabled={disabled || Boolean(squareReason) || !item.depositOutstanding || item.depositOutstanding <= 0} title={squareReason || "Review and send the deposit link"} onClick={() => open(item, "square", "deposit")}>Send deposit link</button><button type="button" className={styles.secondarySmall} disabled={disabled || Boolean(squareReason) || !item.squareBalanceOutstanding || item.squareBalanceOutstanding <= 0} title={squareReason || "Review and send the outstanding balance link"} onClick={() => open(item, "square", "balance")}>Send balance link</button>{(squareReason || paymentReason) && <small>{squareReason || paymentReason}</small>}</div></td>
               </tr>
               {expanded.has(item.id) && <tr className={styles.detailRow}><td colSpan={13}><div id={`tracking-detail-${item.id.replace(/[^\w-]/g, "-")}`} className={styles.details}>
@@ -194,7 +199,8 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
     <div className={styles.cardList} role="region" aria-label="Job tracking cards">
       {visible.map((item) => {
         const stage = JOB_TRACKING_STAGES.find((candidate) => candidate.id === item.stageId)!;
-        const canEditMoney = financialSource(item);
+        const assigned = (props.ownedActions || []).filter(a => ["open","blocked"].includes(a.status) && (a.quote_id ? a.quote_id === item.progress.identity.quoteId : a.bookkeeping_entry_id ? a.bookkeeping_entry_id === item.progress.identity.bookkeepingId : Boolean(a.job_id) && a.job_id === item.progress.identity.jobId));
+            const canEditMoney = financialSource(item);
         const paymentReason = canEditMoney ? "" : "A sold quote or bookkeeping sale is required.";
         const squareReason = !item.quote && !item.row ? "A sold quote or bookkeeping sale is required." : !item.isSale ? "Record the sale first." : !item.email ? "Add a verified customer email to this sale first." : "";
         const cardId = item.id.replace(/[^\w-]/g, "-");

@@ -913,6 +913,7 @@ export type CrmDashboardData = {
   commissionPaymentAllocations: CrmCommissionPaymentAllocation[];
   commissionSummary: CrmCommissionSummary;
   partnerPaymentLedger: CrmPartnerPaymentLedger;
+  ownedActions?: import("./owned-actions").OwnedAction[];
   accountability: CrmAccountabilityItem[];
   vendorOrderTasks: CrmVendorOrderTask[];
   summary: CrmSummary;

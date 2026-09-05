@@ -23,6 +23,7 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
     revision: number;
     savedAt: string;
     status: string;
+    reportEmail?: {sent:boolean};
   }>(null);
   const [error, setError] = useState("");
 
@@ -42,6 +43,7 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          expectedRevision: result?.revision ?? form.workflow.revision,
           accepted,
           signerName,
           issues,
@@ -68,6 +70,7 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
           <p style={savedBanner}>
             Current saved report: {outcomeLabel(result?.outcome || form.workflow.outcome)}
             {" · "}Revision {result?.revision || form.workflow.revision}
+            {result && <><br/>Submitted and saved by the server. Office notification: {result.reportEmail?.sent ? "accepted by email provider; delivery not confirmed" : "not confirmed — report is saved for office review"}.</>}
           </p>
         ) : (
           <p style={muted}>Choose the overall outcome for this installation.</p>

@@ -23,6 +23,8 @@ class SnapshotQuery {
     return this;
   }
 
+  range(from: number, to: number) { return Promise.resolve({...this.result,data:this.result.data?.slice(from,to+1) || null}); }
+
   limit(limit: number) {
     this.calls.push(`limit:${limit}`);
     return Promise.resolve(this.result);
@@ -39,7 +41,7 @@ describe("CRM activity snapshot loader", () => {
     const signedContractsQuery = new SnapshotQuery({ data: signedContracts, error: null });
     const supabase = {
       from(table: string) {
-        return table === "crm_activity_events" ? eventQuery : table === "crm_quotes" ? signedContractsQuery : paymentQuery;
+        return table === "crm_business_events" ? new SnapshotQuery({data:[],error:null}) : table === "crm_activity_events" ? eventQuery : table === "crm_quotes" ? signedContractsQuery : paymentQuery;
       }
     };
 
@@ -57,7 +59,7 @@ describe("CRM activity snapshot loader", () => {
   it("preserves the available stream when one source fails", async () => {
     const supabase = {
       from(table: string) {
-        return table === "crm_activity_events"
+        return table === "crm_business_events" ? new SnapshotQuery({data:[],error:null}) : table === "crm_activity_events"
           ? new SnapshotQuery({ data: null, error: { message: "audit unavailable" } })
           : table === "crm_quotes"
             ? new SnapshotQuery({ data: [], error: null })

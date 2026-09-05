@@ -9,7 +9,7 @@ import type {
 } from "@/lib/crm/types";
 
 export type UnifiedActivityCategory = "payment" | "update" | "note" | "follow_up" | "signed_contract";
-export type UnifiedActivityFilter = "all" | "payments" | "updates" | "notes" | "follow_ups" | "signed_contracts";
+export type UnifiedActivityFilter = "operations" | "all" | "payments" | "updates" | "notes" | "follow_ups" | "signed_contracts";
 
 export type UnifiedActivityEvent = {
   id: string;
@@ -26,6 +26,7 @@ export type UnifiedActivityEvent = {
   entityType: string;
   entityId: string | null;
   sortAt: string;
+  telemetry?: boolean; autosave?: boolean; correlationId?: string | null; groupedSourceIds?: string[];
 };
 
 type UnifiedActivityInput = {
@@ -110,8 +111,8 @@ function paymentTimestamp(payment: CrmBookkeepingPayment) {
 function paymentSortAt(payment: CrmBookkeepingPayment) {
   const paidAt = paymentTimestamp(payment);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(paidAt)) return paidAt;
-  const createdTime = /^\d{4}-\d{2}-\d{2}T(.+)$/.exec(payment.created_at)?.[1];
-  return `${paidAt}T${createdTime || "12:00:00.000Z"}`;
+  // Date-only receipts are grouped by business date, without borrowing an entry time.
+  return paidAt;
 }
 
 function sortTimestamp(value: string) {
@@ -142,6 +143,8 @@ function activityDescription(event: CrmActivityEvent, category: UnifiedActivityC
   const before = record(event.before_data);
   const after = record(event.after_data);
   const metadata = record(event.metadata);
+
+  if (metadata.business_event_id && metadata.description) return String(metadata.description);
 
   if (category === "follow_up") {
     const action = textFrom(after.next_action, metadata.next_action, metadata.follow_up, metadata.description);
@@ -297,6 +300,8 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
       ["create", "created", "reconcile", "reconciled"].includes(event.action.toLowerCase())
     ) return [];
     const category = classifyActivity(event);
+    const metadata = record(event.metadata);
+    const action = event.action.toLowerCase();
     return [{
       id: `crm:${event.id}`,
       sourceId: event.id,
@@ -311,7 +316,10 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
       actorEmail: event.actor_email,
       entityType: event.entity_type,
       entityId: event.entity_id,
-      sortAt: event.created_at
+      sortAt: event.created_at,
+      telemetry: /visitor|telemetry|page_view/.test(action),
+      autosave: /technical[._ ]measure[._ ]save|autosave/.test(action),
+      correlationId: textFrom(metadata.correlation_id,metadata.provider_event_id)
     }];
   });
 
@@ -322,6 +330,7 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
 
 export function filterUnifiedActivity(feed: UnifiedActivityEvent[], filter: UnifiedActivityFilter) {
   if (filter === "all") return feed;
+  if (filter === "operations") return operationalTimeline(feed);
   const category: UnifiedActivityCategory =
     filter === "payments" ? "payment" :
     filter === "notes" ? "note" :
@@ -340,4 +349,28 @@ export function reconcileDisplayedActivity(
   const pendingCount = latest.reduce((count, event) => count + (displayedIds.has(event.id) ? 0 : 1), 0);
   if (pendingCount && scrollTop > 24) return { feed: displayed, pendingCount };
   return { feed: latest, pendingCount: 0 };
+}
+
+/** Keeps raw entries intact; groups only explicit correlations and exact-record editing sessions. */
+export function operationalTimeline(feed: UnifiedActivityEvent[]) {
+  const output: UnifiedActivityEvent[] = [];
+  const correlations = new Map<string,UnifiedActivityEvent>();
+  const edits = new Map<string,UnifiedActivityEvent>();
+  for (const event of feed) {
+    if (event.telemetry) continue;
+    const correlation = event.correlationId ? `${event.correlationId}:${event.category}` : null;
+    const related = correlation ? correlations.get(correlation) : undefined;
+    if (related) { related.groupedSourceIds = [...(related.groupedSourceIds || [related.sourceId]),event.sourceId]; continue; }
+    const key = `${event.entityType}:${event.entityId}:${event.actorEmail}`;
+    const session = event.autosave && event.entityId ? edits.get(key) : undefined;
+    if (session && Math.abs(Date.parse(session.timestamp)-Date.parse(event.timestamp)) <= 30*60*1000) {
+      session.groupedSourceIds = [...(session.groupedSourceIds || [session.sourceId]),event.sourceId];
+      session.description = `Editing session · ${session.groupedSourceIds.length} saves (open customer timeline for raw entries)`;
+      continue;
+    }
+    const copy = {...event}; output.push(copy);
+    if (correlation) correlations.set(correlation,copy);
+    if (event.autosave && event.entityId) edits.set(key,copy);
+  }
+  return output;
 }

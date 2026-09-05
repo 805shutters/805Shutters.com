@@ -1,3 +1,4 @@
+import type {OwnedAction,OwnedActionChange} from "../src/lib/crm/owned-actions";
 import type { InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
 import { test, expect, devices, type Page } from "@playwright/test";
 import { buildDashboardData } from "../src/lib/crm/backend";
@@ -16,7 +17,7 @@ function fixture() {
   const credits: CrmBookkeepingCredit[] = [];
   quotes.push({ ...quotes[0], id: id(90), job_id: jobs[6].id, customer_name: jobs[6].customer_name, customer_email: jobs[6].email, status: "sent", sold_at: null, signed_at: null, quote_total: 20000, balance_due: 20000 });
   const entries: CrmBookkeepingEntry[] = [];
-  return { jobs, quotes, payments, credits, entries, installerOutcomes: [] as InstallerOutcomeEvidence[] };
+  return { jobs, quotes, payments, credits, entries, ownedActions: [] as OwnedAction[], installerOutcomes: [] as InstallerOutcomeEvidence[] };
 }
 async function setup(page: Page, includeLegacy = false) {
   const records = fixture();
@@ -44,6 +45,14 @@ async function setup(page: Page, includeLegacy = false) {
     if (route.request().method() === "GET") return route.fulfill({ status: 503, json: { message: "Activity is outside this synthetic fixture." } });
     const body = route.request().postDataJSON() as Record<string, unknown>;
     writes.push({ url: url.pathname, body });
+    if (url.pathname === "/api/crm/operations/tasks") {
+      const change=body as unknown as OwnedActionChange;
+      const previous=records.ownedActions.find(a=>a.id===change.id);
+      if(previous && previous.revision!==change.expectedRevision) return route.fulfill({status:409,json:{message:"This action changed. Refresh and review the latest revision before saving."}});
+      const action={...change.action,id:change.id,revision:(previous?.revision||0)+1,created_at:stamp,updated_at:stamp,waiting_since:stamp} as OwnedAction;
+      records.ownedActions=records.ownedActions.filter(a=>a.id!==action.id).concat(action);
+      return route.fulfill({json:{action}});
+    }
     if (url.pathname.endsWith("/square-payment-link")) return route.fulfill({ json: { amount: body.expectedAmount, recipient: body.expectedRecipient, url: "https://square.link/test-only", email: { sent: true } } });
     if (url.pathname === "/api/crm/job-tracking/stage") {
       if (body.stage === "ordered" && body.jobId === records.jobs[1].id) return route.fulfill({ status: 409, json: { message: "Submit the required technical measure before marking this job ordered." } });
@@ -123,7 +132,7 @@ test("full local tracking workflow: filters, sorting, edits, receipts and Square
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(writes.filter((item) => item.url.endsWith("square-payment-link"))).toHaveLength(0);
   await table.getByRole("button", { name: "Send deposit link", exact: true }).click();
-  await page.getByRole("checkbox").check();
+  await page.getByRole("dialog").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Confirm & send Square link" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.body).toMatchObject({ paymentType: "deposit", expectedAmount: 1000, expectedRecipient: "avery@example.com" });
@@ -153,7 +162,7 @@ test("imported job uses its own Square ledger and editable verified contact", as
   await table.getByRole("button", { name: "Send balance link", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("legacy@example.com");
   await expect(page.getByRole("dialog")).toContainText("$1,000.00");
-  await page.getByRole("checkbox").check();
+  await page.getByRole("dialog").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Confirm & send Square link" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.url).toBe(`/api/crm/bookkeeping/${id(300)}/square-payment-link`);
@@ -161,7 +170,7 @@ test("imported job uses its own Square ledger and editable verified contact", as
   await page.getByRole("button", { name: "Record signed contract for Legacy Sample", exact: true }).click();
   await page.getByLabel("Actual date signed", { exact: true }).fill("2026-08-31");
   await page.getByRole("textbox", { name: "Signed document URL (optional)" }).fill("https://example.com/signed.pdf");
-  await page.getByRole("checkbox").check();
+  await page.getByRole("dialog").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.body).toMatchObject({ contract_signed_at: "2026-08-31T12:00:00Z", contract_url: "https://example.com/signed.pdf" });
@@ -204,7 +213,7 @@ test("actual sold date reorders jobs and quote evidence edits preserve unrelated
   // contract metadata key should be sent, never an old full metadata snapshot.
   records.quotes[5].meta = { job_tracking: { stage: "ordered" }, preserved: true };
   await page.getByLabel("Actual date signed", { exact: true }).fill("2026-09-03");
-  await page.getByRole("checkbox").check();
+  await page.getByRole("dialog").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(Object.keys(writes.at(-1)?.body.meta as object)).toEqual(["job_tracking_contract"]);
@@ -297,7 +306,7 @@ test("mobile card records received money separately from confirmed Square reques
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(writes.filter((write) => write.url.endsWith("square-payment-link"))).toHaveLength(0);
   await card.getByRole("button", { name: "Send deposit link", exact: true }).click();
-  await page.getByRole("checkbox").check();
+  await page.getByRole("dialog").getByRole("checkbox").check();
   await page.getByRole("button", { name: "Confirm & send Square link" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(writes.at(-1)?.body).toMatchObject({ expectedAmount: 1500, expectedRecipient: "avery@example.com" });
@@ -340,4 +349,29 @@ test("failed refresh retains the last snapshot and recovery clears the warning",
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await expect(page.getByRole("alert").filter({ hasText: "Refresh failed" })).toHaveCount(0);
   expect(writes).toHaveLength(0);
+});
+
+
+test("owned actions retain conflicting edits and show assigned commitments", async ({page}) => {
+ const {records,writes}=await setup(page);
+ await page.getByRole('button',{name:'Add internal action',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ await expect(dialog.getByRole('textbox',{name:'Owner',exact:true})).toHaveValue('Mike');
+ await dialog.getByRole('combobox',{name:'Exact job / order'}).selectOption({index:1});
+ await dialog.getByRole('textbox',{name:'Next action',exact:true}).fill('Confirm product receipt');
+ await dialog.getByLabel('Due date',{exact:true}).fill('2026-09-10');
+ await dialog.getByRole('button',{name:'Save action',exact:true}).click();
+ await expect(dialog).toHaveCount(0);
+ const queue=page.getByRole('region',{name:'Owned next actions'});
+ await expect(queue).toContainText('Confirm product receipt');
+ await expect(queue).toContainText('Mike');
+ await queue.getByRole('button',{name:'Review action'}).click();
+ records.ownedActions[0].revision+=1;
+ await dialog.getByRole('textbox',{name:'Next action',exact:true}).fill('Arrange return visit');
+ await dialog.getByRole('textbox',{name:'Reason for this change'}).fill('Vendor changed delivery');
+ await dialog.getByRole('button',{name:'Save action',exact:true}).click();
+ await expect(dialog.getByRole('alert')).toContainText('This action changed');
+ await expect(dialog.getByRole('textbox',{name:'Next action',exact:true})).toHaveValue('Arrange return visit');
+ expect(records.ownedActions[0].title).toBe('Confirm product receipt');
+ expect(writes.filter(w=>w.url==='/api/crm/operations/tasks')).toHaveLength(2);
 });

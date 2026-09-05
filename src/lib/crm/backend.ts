@@ -1,3 +1,4 @@
+import {businessEventToActivity} from "./business-events";
 import { loadIntegrationHealth } from "./integration-health";
 import { buildJobTrackingView } from "./job-tracking-view";
 import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "./job-progress";
@@ -1180,6 +1181,7 @@ export function buildDashboardData({
   expenses,
   installationInvoiceEmails = [],
   installerOutcomes = [],
+  ownedActions = [],
   sourceHealth = [],
   kenPayments,
   kenPaymentAllocations = [],
@@ -1203,6 +1205,7 @@ export function buildDashboardData({
   expenses: CrmJobExpense[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   installerOutcomes?: InstallerOutcomeEvidence[];
+  ownedActions?: import("./owned-actions").OwnedAction[];
   sourceHealth?: ProgressSourceHealth[];
   kenPayments: CrmKenPayment[];
   kenPaymentAllocations?: CrmKenPaymentAllocation[];
@@ -1274,11 +1277,11 @@ export function buildDashboardData({
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
   const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts);
-  const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
+  const progressItems = buildJobTrackingView({ jobs: jobsWithQuotes, quotes: liveQuotes, rows: bookkeepingRows, files: customerFiles, ownedActions, installerOutcomes, sourceHealth, orderCogsEmails, installationInvoiceEmails });
   for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
   return {
-    installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
+    ownedActions, installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
     jobs: jobsWithQuotes,
     quotes: liveQuotes,
     events: calendarEvents,
@@ -1668,7 +1671,7 @@ export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask 
 }
 
 export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Promise<CrmActivitySnapshot> {
-  const [activityResult, paymentsResult, signedContractsResult] = await Promise.all([
+  const [activityResult, paymentsResult, signedContractsResult, businessEventsResult] = await Promise.all([
     supabase
       .from("crm_activity_events")
       .select("id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata")
@@ -1684,7 +1687,8 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
       .select("id,job_id,signed_at,customer_printed_name,quote_number")
       .not("signed_at", "is", null)
       .order("signed_at", { ascending: false, nullsFirst: false })
-      .limit(1000)
+      .limit(1000),
+    loadCompleteCrmTable(supabase,"crm_business_events","occurred_at")
   ]);
 
   if (activityResult.error && paymentsResult.error && signedContractsResult.error) {
@@ -1692,12 +1696,14 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
   }
 
   const warnings: string[] = [];
+  if (businessEventsResult.error) warnings.push("Durable business history is unavailable.");
+  if ((activityResult.data || []).length >= 1000) warnings.push("Raw audit is limited to the latest 1000 entries; older events are not included in this snapshot.");
   if (activityResult.error) warnings.push("CRM updates are temporarily unavailable.");
   if (paymentsResult.error) warnings.push("Payment activity is temporarily unavailable.");
   if (signedContractsResult.error) warnings.push("Signed contract activity is temporarily unavailable.");
 
   return {
-    activityEvents: (activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[],
+    activityEvents: [...((activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[]), ...(businessEventsResult.error ? [] : businessEventsResult.data || []).map(businessEventToActivity)],
     payments: (paymentsResult.error ? [] : paymentsResult.data || []) as CrmBookkeepingPayment[],
     signedContracts: (signedContractsResult.error ? [] : signedContractsResult.data || []) as CrmActivitySnapshot["signedContracts"],
     warnings
@@ -1727,6 +1733,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     vendorOrderTasksResult,
     settingsResult,
     installerOutcomesResult,
+    ownedActionsResult,
     integrationHealth
   ] = await Promise.all([
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
@@ -1771,6 +1778,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .limit(1000),
     supabase.from("crm_settings").select("*"),
     loadCompleteCrmTable(supabase, "crm_installer_forms", "updated_at", "id,job_id,quote_id,status,signed_at,updated_at,created_at,issues,meta"),
+    loadCompleteCrmTable(supabase, "crm_accountability_tasks", "created_at"),
     loadIntegrationHealth(supabase)
   ]);
 
@@ -1891,14 +1899,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
-  const optionalEvidence = [["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
+  const optionalEvidence = [["owned actions", ownedActionsResult], ["job expenses", expensesResult], ["installation invoices", installationInvoiceEmailsResult], ["order emails", orderCogsEmailsResult], ["installer outcomes", installerOutcomesResult], ["Ken payments", kenPaymentsResult], ["Ken allocations", kenPaymentAllocationsResult], ["commission payments", commissionPaymentsResult], ["commission allocations", commissionPaymentAllocationsResult], ["vendor drafts", vendorOrderDraftsResult], ["measure forms", vendorOrderTasksResult], ["settings", settingsResult]] as const;
   const loadedAt = new Date().toISOString();
   const sourceHealth: ProgressSourceHealth[] = optionalEvidence.map(([source, result]) => ({ source, state: result.error ? "unavailable" : "complete", loadedAt, ...(result.error ? { message: `Could not load ${source}. Related conclusions are incomplete.` } : {}) }));
   // Never send the public installer bearer token or signed/customer snapshots to dashboard consumers.
   const installerOutcomes = (installerOutcomesResult.error ? [] : installerOutcomesResult.data || []) as InstallerOutcomeEvidence[];
   const safeInstallerOutcomes = installerOutcomes.map((report) => ({ ...report, meta: { workflow: report.meta?.workflow } }));
   const dashboard = buildDashboardData({
-    installerOutcomes: safeInstallerOutcomes, sourceHealth,
+    installerOutcomes: safeInstallerOutcomes, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], sourceHealth,
     jobs,
     quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
     events,
@@ -1919,7 +1927,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     openingBalance,
     payoffTarget
   });
-  return { ...dashboard, integrationHealth, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
+  return { ...dashboard, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], integrationHealth, loadWarnings: optionalEvidence.filter(([, result]) => result.error).map(([label]) => `Could not load ${label}. Related details may be incomplete.`) };
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
