@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { quoteProductDetails } from "./quoteLinePresentation";
 
 describe("quoteProductDetails", () => {
+  it.each(["Temporary Shade: Yes", "Complimentary temporary shade: Free", "Complementary temporary paper shade: Free"])("omits the duplicate companion caption only on illustrated contracts: %s", (option) => {
+    const options = ["Mount Type: Inside Mount", option];
+    expect(quoteProductDetails("", options, { illustrated: true })).toEqual([
+      { label: "Mount Type", value: "Inside Mount" },
+    ]);
+    expect(quoteProductDetails("", options)).toHaveLength(2);
+    expect(options).toEqual(["Mount Type: Inside Mount", option]);
+  });
+
   it("turns saved honeycomb metadata into one customer-facing row per category", () => {
     const details = quoteProductDetails("C4305T - Morning Blush RD | Room Darkening", [
       "Mount Type: Inside Mount",

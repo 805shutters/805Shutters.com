@@ -986,7 +986,7 @@ export function QuoteContract({
                         {itemDesigns.map((design) => {
                           const details = quoteProductDetails("", getQuoteDesignDetails(design).map(
                             (detail) => `${detail.label}: ${detail.value}`,
-                          ));
+                          ), { illustrated: true });
                           return (
                             <div key={design.id} className="rounded-lg border bg-background p-3">
                               <div className="flex items-center justify-between gap-3">

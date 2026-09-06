@@ -485,7 +485,7 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
 }
 
 function ProductConfiguration({ productName, styleName, options, valanceArtId }: { productName: string; styleName: string; options: string[]; valanceArtId?: string | null }) {
-  const details = quoteProductDetails(styleName, options);
+  const details = quoteProductDetails(styleName, options, { illustrated: true });
   return (
     <div className={styles.illustratedConfiguration}>
       <ContractProductIllustration productType={productName} options={options} valanceArtId={valanceArtId} />

@@ -1,4 +1,5 @@
 import { customerQuoteOptions, customerQuoteText } from "./customer-quote-branding";
+import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 
 export type QuoteProductDetail = {
   label: string;
@@ -84,7 +85,8 @@ function stripRepeatedLightControl(value: string, lightControl: string | undefin
  * quote-builder selection. Internal catalog and pricing identifiers remain in
  * the source record but never render on the contract or in customer email.
  */
-export function quoteProductDetails(styleName: string, options: string[]): QuoteProductDetail[] {
+export function quoteProductDetails(styleName: string, options: string[], presentation: { illustrated?: boolean } = {}): QuoteProductDetail[] {
+  const hasTemporaryShadeCaption = presentation.illustrated && temporaryShadeSelected(options);
   styleName = customerQuoteText(styleName, true);
   const parsed = customerQuoteOptions(options)
     .map(splitDetail)
@@ -98,6 +100,8 @@ export function quoteProductDetails(styleName: string, options: string[]): Quote
   const visibleValues: string[] = [];
 
   for (const detail of parsed) {
+    // The companion sketch already includes this label and its Free caption.
+    if (hasTemporaryShadeCaption && temporaryShadeSelected([`${detail.label}: ${detail.value}`])) continue;
     const labelKey = normalized(detail.label);
     if (isInternalDetailLabel(detail.label)) continue;
     if (["fabric color code", "fabric color name", "fabric color type"].includes(labelKey)) continue;
