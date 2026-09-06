@@ -34,7 +34,6 @@ import {
   DollarSign,
   Plus,
   Send,
-  Trash2,
   X,
 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
@@ -486,73 +485,6 @@ export function QuoteContract({
     },
   });
 
-  const deleteContractLineItem = useMutation({
-    mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
-      const { error } = await (supabase as any)
-        .from("sales_quote_line_items")
-        .delete()
-        .eq("id", lineItemId);
-      if (error) throw error;
-
-      const sourceLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
-      const sourceDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
-      const remainingLineItems = sourceLineItems.filter(
-        (item) => item.quote_id === quoteId && item.id !== lineItemId
-      );
-      const remainingDesigns = sourceDesigns.filter((design) =>
-        remainingLineItems.some((item) => item.id === design.line_item_id)
-      );
-      const nextTotal = calculateControlledTotal(
-        remainingLineItems,
-        remainingDesigns,
-        adminControls
-      );
-      const { error: quoteError } = await (supabase as any)
-        .from("sales_quotes")
-        .update({ total_amount: nextTotal })
-        .eq("id", quoteId);
-      if (quoteError) throw quoteError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
-      });
-      toast.success("Line item deleted");
-    },
-  });
-
-  const deleteContractDesign = useMutation({
-    mutationFn: async ({ quoteId, designId }: { quoteId: string; designId: string }) => {
-      const { error } = await (supabase as any)
-        .from("sales_quote_designs")
-        .delete()
-        .eq("id", designId);
-      if (error) throw error;
-
-      const quoteLineItems = (hasMultipleQuotes ? allGroupLineItems : lineItems).filter(
-        (item) => item.quote_id === quoteId
-      );
-      const remainingDesigns = (hasMultipleQuotes ? allGroupDesigns : designs).filter(
-        (design) =>
-          design.id !== designId && quoteLineItems.some((item) => item.id === design.line_item_id)
-      );
-      const nextTotal = calculateControlledTotal(quoteLineItems, remainingDesigns, adminControls);
-      const { error: quoteError } = await (supabase as any)
-        .from("sales_quotes")
-        .update({ total_amount: nextTotal })
-        .eq("id", quoteId);
-      if (quoteError) throw quoteError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
-      });
-      toast.success("Option deleted");
-    },
-  });
-
   // Calculate totals with admin controls
   const effectiveActiveDesigns = effectiveContractDesigns(lineItems, displayDesigns);
   const subtotal = calculateQuoteDesignSubtotal(lineItems, effectiveActiveDesigns.designs, {
@@ -936,25 +868,12 @@ export function QuoteContract({
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
                 });
                 const itemDimensions = formatDimensionsOrNull(item);
-                const deleteItemButton = (
-                  <Button
-                    type="button" variant="ghost" size="icon"
-                    className="text-destructive hover:text-destructive"
-                    title="Delete line item" aria-label={`Delete line item ${itemIndex + 1}: ${item.room_name}`}
-                    disabled={deleteContractLineItem.isPending}
-                    onClick={() => {
-                      if (!window.confirm(`Delete ${item.room_name || "this line item"}?`)) return;
-                      deleteContractLineItem.mutate({ quoteId: gq.id, lineItemId: item.id });
-                    }}
-                  ><Trash2 className="h-4 w-4" /></Button>
-                );
                 return (
                   <div key={item.id} className="space-y-3">
                     {itemDesigns.length === 0 ? <QuoteLineItemCard
                       lineNumber={itemIndex + 1} room={item.room_name} productType={item.product_type}
                       price={formatCurrency(itemTotal)} quantity={item.quantity} dimensions={itemDimensions}
                       notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
-                      actions={deleteItemButton}
                     /> : itemDesigns.map((design) => {
                       const options = getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`);
                       return <QuoteLineItemCard
@@ -973,30 +892,17 @@ export function QuoteContract({
                             <span>Unit price</span>
                             <EditableContractPrice
                               value={design.unit_price}
-                              disabled={updateDesignPrice.isPending || deleteContractDesign.isPending}
+                              disabled={updateDesignPrice.isPending}
                               onSave={(unitPrice) => updateDesignPrice.mutate({
                                 quoteId: gq.id, designId: design.id, unitPrice, optionsJson: design.options_json || {},
                               })}
                             />
                           </div>
-                          <Button
-                            type="button" variant="ghost" size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            title={`Delete option ${design.variant || "A"}`}
-                            aria-label={`Delete option ${design.variant || "A"}`}
-                            disabled={deleteContractDesign.isPending}
-                            onClick={() => {
-                              const label = `Option ${design.variant || "A"}`;
-                              if (!window.confirm(`Delete ${label} from this contract?`)) return;
-                              deleteContractDesign.mutate({ quoteId: gq.id, designId: design.id });
-                            }}
-                          ><Trash2 className="h-4 w-4" /></Button>
                         </>}
                       />;
                     })}
                     {itemDesigns.length > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 px-2 text-xs text-muted-foreground">
                       <span>{itemDesigns.length > 1 ? `Item ${String(itemIndex + 1).padStart(2, "0")} total: ${formatCurrency(itemTotal)}` : `Item ${String(itemIndex + 1).padStart(2, "0")}`}</span>
-                      <div className="flex items-center gap-1"><span>Delete entire item</span>{deleteItemButton}</div>
                     </div> : null}
                   </div>
                 );
