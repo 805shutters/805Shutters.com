@@ -313,141 +313,57 @@
   backdrop-filter: blur(14px);
 }
 
-.mts-quote-scope .quote-command-menu {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 6;
+/* Always-visible quote commands; no hover reveal or overlay. */
+.mts-quote-scope .quote-builder-command-bar { background: #fff; border-bottom: 1px solid #d8d8d2; padding: 10px 14px 8px; }
+.mts-quote-scope .quote-header-main,
+.mts-quote-scope .quote-header-navigation,
+.mts-quote-scope .quote-header-identity,
+.mts-quote-scope .quote-header-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mts-quote-scope .quote-header-main { justify-content: space-between; flex-wrap: wrap; }
+.mts-quote-scope .quote-header-brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 800; white-space: nowrap; }
+.mts-quote-scope .quote-header-customer { width: 250px; padding: 5px 10px; border: 0; border-left: 1px solid #d8d8d2; border-radius: 0; box-shadow: none; gap: 2px 8px; }
+.mts-quote-scope .quote-add-controls .quote-room-option { width: auto; }
+.mts-quote-scope .quote-header-customer-editor { width: 280px; }
+.mts-quote-scope .quote-header-actions { flex-wrap: wrap; gap: 6px; }
+.mts-quote-scope .quote-header-actions > button { width: auto; min-height: 34px; height: 34px; padding: 0 11px; border-radius: 7px; box-shadow: none; font-size: 12px; white-space: nowrap; }
+.mts-quote-scope .quote-header-navigation { flex-wrap: wrap; gap: 8px 16px; border-top: 1px solid #e8e7e2; margin-top: 8px; padding-top: 8px; }
+.mts-quote-scope .quote-alternative-bar { min-width: 0; }
+.mts-quote-scope .quote-alternative-bar > div { gap: 6px; }
+.mts-quote-scope .quote-alternative-bar button { width: auto; min-height: 32px; padding: 4px 9px; font-size: 12px; box-shadow: none; }
+.mts-quote-scope .quote-alternative-bar button > span { width: 20px; height: 20px; font-size: 10px; }
+.mts-quote-scope .quote-header-navigation .quote-view-toggle { margin: 0; }
+.mts-quote-scope .quote-header-navigation .quote-view-toggle__button { min-height: 32px; padding: 5px 13px; font-size: 12px; }
+.mts-quote-scope .quote-command-project-discounts { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.mts-quote-scope .quote-command-project-discounts button { width: auto; min-height: 30px; height: 30px; padding: 0 9px; border-radius: 6px; font-size: 11px; box-shadow: none; }
+.mts-quote-scope .quote-command-project-discounts > div { gap: 4px; }
+.mts-quote-scope .quote-command-note { display: flex; align-items: start; gap: 12px; padding: 8px 12px; border: 1px solid #deddd7; border-radius: 8px; background: #fff; }
+.mts-quote-scope .quote-command-note-label { flex: 0 0 auto; display: grid; gap: 4px; padding-top: 8px; }
+.mts-quote-scope .quote-command-note-input { min-height: 34px; max-height: 112px; resize: vertical; padding: 7px 10px; border-color: #e5e4df; background: #fff; font-size: 13px; }
+.mts-quote-scope .quote-add-controls [aria-label="Choose manufacturer and exact product"] { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: start; gap: 16px; padding: 6px 0; border: 0; border-radius: 0; background: #fff; box-shadow: none; }
+.mts-quote-scope .quote-add-controls [aria-label="Choose manufacturer and exact product"] > div { margin: 0; }
+.mts-quote-scope .quote-add-controls [aria-label="Choose manufacturer and exact product"] > div > div:first-child { margin-bottom: 4px; }
+.mts-quote-scope .quote-add-controls .quote-product-option { width: auto; min-height: 30px; padding: 5px 10px; font-size: 12px; border-radius: 6px; box-shadow: none; }
+@media (max-width: 1100px) {
+  .mts-quote-scope .quote-header-main { gap: 8px; }
+  .mts-quote-scope .quote-header-actions { margin-left: auto; }
+  .mts-quote-scope .quote-command-project-discounts { margin-left: 0; }
 }
-
-.mts-quote-scope .quote-command-reveal-zone {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 2;
-  height: 16px;
-  cursor: ns-resize;
-}
-
-.mts-quote-scope .quote-command-reveal-zone:focus-visible {
-  outline: 2px solid #1c1c1a;
-  outline-offset: -2px;
-}
-
-.mts-quote-scope .quote-command-toggle {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  z-index: 4;
-  display: none;
-  height: 28px;
-  width: 54px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #d8d8d2;
-  border-top: 0;
-  border-radius: 0 0 999px 999px;
-  background: rgb(255 255 255 / 0.96);
-  color: #0b0b0b;
-  box-shadow: 0 10px 22px rgb(15 35 70 / 0.16);
-  transform: translateX(-50%);
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.mts-quote-scope .quote-command-toggle svg {
-  transition: transform 160ms ease;
-}
-
-.mts-quote-scope .quote-command-toggle:hover,
-.mts-quote-scope .quote-command-toggle:focus-visible {
-  border-color: #0b0b0b;
-  background: #0b0b0b;
-  color: #ffffff;
-  outline: none;
-}
-
-.mts-quote-scope .quote-command-toggle--open svg {
-  transform: rotate(180deg);
-}
-
-.mts-quote-scope .quote-builder-command-bar {
-  position: relative;
-  z-index: 1;
-  max-height: 0;
-  overflow: hidden;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-bottom-color: transparent;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-18px);
-  visibility: hidden;
-  box-shadow: 0 18px 34px rgb(15 35 70 / 0.16);
-  transition:
-    max-height 180ms ease,
-    padding-top 180ms ease,
-    padding-bottom 180ms ease,
-    opacity 160ms ease,
-    transform 180ms ease,
-    border-color 180ms ease,
-    visibility 0s linear 180ms;
-}
-
-.mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
-.mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar,
-.mts-quote-scope .quote-command-menu--open .quote-builder-command-bar {
-  max-height: 540px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  border-bottom-color: #d8d8d2;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-  visibility: visible;
-  transition:
-    max-height 180ms ease,
-    padding-top 180ms ease,
-    padding-bottom 180ms ease,
-    opacity 160ms ease,
-    transform 180ms ease,
-    border-color 180ms ease,
-    visibility 0s;
-}
-
-.mts-quote-scope .quote-command-menu:hover .quote-command-reveal-zone,
-.mts-quote-scope .quote-command-menu:focus-within .quote-command-reveal-zone,
-.mts-quote-scope .quote-command-menu--open .quote-command-reveal-zone {
-  pointer-events: none;
-}
-
-@media (hover: none), (pointer: coarse), (max-width: 1366px) {
-  .mts-quote-scope .quote-command-toggle {
-    display: inline-flex;
-  }
-
-  .mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
-  .mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar,
-  .mts-quote-scope .quote-command-menu--open .quote-builder-command-bar {
-    padding-top: 34px;
-  }
-}
-
-.mts-quote-scope .quote-command-tabs {
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.mts-quote-scope .quote-alternative-bar {
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.mts-quote-scope .quote-alternative-bar > div {
-  min-width: max-content;
+@media (max-width: 720px) {
+  .mts-quote-scope .quote-builder-sticky-shell { position: static; }
+  .mts-quote-scope .quote-builder-command-bar { padding: 10px; }
+  .mts-quote-scope .quote-header-identity { width: 100%; flex-wrap: wrap; }
+  .mts-quote-scope .quote-header-customer { width: auto; flex: 1; min-width: 180px; }
+  .mts-quote-scope .quote-header-actions { margin: 0; }
+  .mts-quote-scope .quote-header-actions > button { min-height: 40px; order: 1; }
+  .mts-quote-scope .quote-header-actions > button:first-child { order: 3; }
+  .mts-quote-scope .quote-header-actions > div { order: 4; }
+  .mts-quote-scope .quote-header-actions > button:last-child { order: 5; }
+  .mts-quote-scope .quote-header-navigation { gap: 10px; }
+  .mts-quote-scope .quote-header-navigation .quote-view-toggle { width: 100%; }
+  .mts-quote-scope .quote-header-navigation .quote-view-toggle__button { flex: 1; min-height: 40px; }
+  .mts-quote-scope .quote-command-note { display: grid; gap: 6px; }
+  .mts-quote-scope .quote-command-note-label { padding: 0; }
+  .mts-quote-scope .quote-add-controls [aria-label="Choose manufacturer and exact product"] { grid-template-columns: 1fr; gap: 8px; }
 }
 
 .mts-quote-scope .quote-add-controls {

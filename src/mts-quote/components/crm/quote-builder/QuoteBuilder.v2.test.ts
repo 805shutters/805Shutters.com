@@ -55,14 +55,6 @@ describe("V2 quote builder load integrity", () => {
     );
   });
 
-  it("keeps A/B/C quote alternatives visible when the actions drawer is collapsed", () => {
-    expect(quoteBuilderSource).toMatch(
-      /quote-alternative-bar[\s\S]*<QuoteGroupTabs \/>[\s\S]*quote-command-menu/,
-    );
-    expect(quoteBuilderSource).not.toMatch(
-      /quote-command-tabs[\s\S]*<QuoteGroupTabs \/>/,
-    );
-  });
 
   it("keeps the selected catalog identity on a newly created line and refreshes its design", () => {
     expect(quoteBuilderSource).toMatch(

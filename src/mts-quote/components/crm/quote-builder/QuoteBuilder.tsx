@@ -31,7 +31,6 @@ import { Textarea } from "@mts/components/ui/textarea";
 import {
   AlertTriangle,
   Archive,
-  ChevronDown,
   Loader2,
   RotateCcw,
   Pencil,
@@ -602,7 +601,6 @@ export function QuoteBuilder({
   const [copyAllTargetsBySource, setCopyAllTargetsBySource] = useState<Record<string, string[]>>({});
   const [stackedLineItemIds, setStackedLineItemIds] = useState<string[]>([]);
   const [quoteNoteDraft, setQuoteNoteDraft] = useState("");
-  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<QuoteLabCatalogProduct[]>([]);
   const [isCatalogLoading, setIsCatalogLoading] = useState(true);
   const [selectedManufacturer, setSelectedManufacturer] = useState<string | null>(null);
@@ -1996,45 +1994,10 @@ export function QuoteBuilder({
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
-        <nav
-          className="quote-alternative-bar border-b border-[#d8d8d2] bg-white/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/85"
-          aria-label="Quote alternatives"
-        >
-          <QuoteGroupTabs />
-        </nav>
-        <div className={cn("quote-command-menu", isCommandMenuOpen && "quote-command-menu--open")}>
-          <button
-            type="button"
-            className={cn("quote-command-toggle", isCommandMenuOpen && "quote-command-toggle--open")}
-            aria-controls="quote-builder-command-bar"
-            aria-expanded={isCommandMenuOpen}
-            aria-label={isCommandMenuOpen ? "Hide quote actions menu" : "Show quote actions menu"}
-            title={isCommandMenuOpen ? "Hide quote actions" : "Show quote actions"}
-            onClick={() => setIsCommandMenuOpen((open) => !open)}
-          >
-            <ChevronDown className="h-4 w-4" aria-hidden />
-          </button>
-          <div
-            className="quote-command-reveal-zone"
-            aria-label="Show quote actions menu"
-            role="button"
-            tabIndex={0}
-            onClick={() => setIsCommandMenuOpen(true)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                setIsCommandMenuOpen(true);
-              }
-            }}
-          />
-          {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
-          <div
-            id="quote-builder-command-bar"
-            className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-white/85"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
+        <header id="quote-builder-command-bar" className="quote-builder-command-bar" aria-label="Quote workspace header">
+          <div className="quote-header-main">
+            <div className="quote-header-identity">
+                <h1 className="quote-header-brand">
                   {quoteLetterColor && (
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
@@ -2044,11 +2007,101 @@ export function QuoteBuilder({
                   )}
                   <span className="leading-none">
                     Quote Builder
-                    <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
-                      Window treatment studio
-                    </span>
                   </span>
                 </h1>
+                {editingName ? (
+                  <div className="quote-header-customer-editor grid gap-1.5 rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
+                    <Input
+                      defaultValue={quote?.customer_name || ""}
+                      placeholder="Customer Name"
+                      aria-label="Customer name"
+                      className="h-8"
+                      autoFocus
+                      onBlur={(e) => {
+                        updateQuote.mutate({ customer_name: e.target.value });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_name: (e.target as HTMLInputElement).value,
+                          });
+                          setEditingName(false);
+                        }
+                      }}
+                    />
+                    <Input
+                      type="tel"
+                      defaultValue={quote?.customer_phone || ""}
+                      placeholder="Phone Number"
+                      aria-label="Customer phone number"
+                      className="h-8"
+                      onBlur={(e) =>
+                        updateQuote.mutate({ customer_phone: e.target.value.trim() || null })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_phone: (e.target as HTMLInputElement).value.trim() || null,
+                          });
+                          setEditingName(false);
+                        }
+                      }}
+                    />
+                    <AddressAutocomplete
+                      inputAs={Input}
+                      defaultValue={quote?.customer_address || ""}
+                      placeholder="City / Address"
+                      aria-label="Customer address"
+                      className="h-8"
+                      onBlur={(e) =>
+                        updateQuote.mutate({ customer_address: e.target.value.trim() || null })
+                      }
+                      onResolved={(address) =>
+                        updateQuote.mutate({ customer_address: address.fullAddress })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_address:
+                              (e.target as HTMLInputElement).value.trim() || null,
+                          });
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(false)}
+                      className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-700"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="quote-header-customer group grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-500 hover:shadow-md"
+                    onClick={() => setEditingName(true)}
+                    aria-label={`Customer ${quote?.customer_name || "not named"}. Phone ${
+                      quote?.customer_phone || "not provided"
+                    }. Address ${quote?.customer_address || "not provided"}. Click to edit.`}
+                    title="Customer details — click to edit"
+                  >
+                    <span className="min-w-0 truncate text-sm font-black text-slate-950">
+                      {quote?.customer_name || "Add Customer"}
+                    </span>
+                    <Pencil className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-slate-700" />
+                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{formatCustomerPhone(quote?.customer_phone)}</span>
+                    </span>
+                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{quote?.customer_address || "No address"}</span>
+                    </span>
+                  </button>
+                )}
+            </div>
+            <div className="quote-header-actions" role="group" aria-label="Quote actions">
                 <Button
                   variant="outline"
                   size="sm"
@@ -2138,100 +2191,19 @@ export function QuoteBuilder({
                     size="md"
                   />
                 )}
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {editingName ? (
-                  <div className="grid w-72 gap-1.5 rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
-                    <Input
-                      defaultValue={quote?.customer_name || ""}
-                      placeholder="Customer Name"
-                      aria-label="Customer name"
-                      className="h-8"
-                      autoFocus
-                      onBlur={(e) => {
-                        updateQuote.mutate({ customer_name: e.target.value });
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          updateQuote.mutate({
-                            customer_name: (e.target as HTMLInputElement).value,
-                          });
-                          setEditingName(false);
-                        }
-                      }}
-                    />
-                    <Input
-                      type="tel"
-                      defaultValue={quote?.customer_phone || ""}
-                      placeholder="Phone Number"
-                      aria-label="Customer phone number"
-                      className="h-8"
-                      onBlur={(e) =>
-                        updateQuote.mutate({ customer_phone: e.target.value.trim() || null })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          updateQuote.mutate({
-                            customer_phone: (e.target as HTMLInputElement).value.trim() || null,
-                          });
-                          setEditingName(false);
-                        }
-                      }}
-                    />
-                    <AddressAutocomplete
-                      inputAs={Input}
-                      defaultValue={quote?.customer_address || ""}
-                      placeholder="City / Address"
-                      aria-label="Customer address"
-                      className="h-8"
-                      onBlur={(e) =>
-                        updateQuote.mutate({ customer_address: e.target.value.trim() || null })
-                      }
-                      onResolved={(address) =>
-                        updateQuote.mutate({ customer_address: address.fullAddress })
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          updateQuote.mutate({
-                            customer_address:
-                              (e.target as HTMLInputElement).value.trim() || null,
-                          });
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setEditingName(false)}
-                      className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-700"
-                    >
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="group grid w-72 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-500 hover:shadow-md"
-                    onClick={() => setEditingName(true)}
-                    aria-label={`Customer ${quote?.customer_name || "not named"}. Phone ${
-                      quote?.customer_phone || "not provided"
-                    }. Address ${quote?.customer_address || "not provided"}. Click to edit.`}
-                    title="Customer details — click to edit"
-                  >
-                    <span className="min-w-0 truncate text-sm font-black text-slate-950">
-                      {quote?.customer_name || "Add Customer"}
-                    </span>
-                    <Pencil className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-slate-700" />
-                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
-                      <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span className="truncate">{formatCustomerPhone(quote?.customer_phone)}</span>
-                    </span>
-                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
-                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span className="truncate">{quote?.customer_address || "No address"}</span>
-                    </span>
-                  </button>
-                )}
-                {/* Builder / Pricing Grids / Contract toggle */}
+                {/* X - exit full-screen back to the Quotes dashboard */}
+                <button
+                  onClick={() => setActiveTab("dashboard")}
+                  aria-label="Close builder - back to dashboard"
+                  title="Close - back to dashboard"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+            </div>
+          </div>
+          <div className="quote-header-navigation">
+            <nav className="quote-alternative-bar" aria-label="Quote alternatives"><QuoteGroupTabs /></nav>
                 <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
                   <button
                     type="button"
@@ -2258,19 +2230,7 @@ export function QuoteBuilder({
                     Contract
                   </button>
                 </div>
-                <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
-                {/* X - exit full-screen back to the Quotes dashboard */}
-                <button
-                  onClick={() => setActiveTab("dashboard")}
-                  aria-label="Close builder - back to dashboard"
-                  title="Close - back to dashboard"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="quote-command-project-discounts mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#d8d8d2] pt-3">
+            <div className="quote-command-project-discounts">
               <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800">
                 <Percent className="h-4 w-4" />
                 Project Discount
@@ -2291,31 +2251,8 @@ export function QuoteBuilder({
                 ))}
               </div>
             </div>
-            {quote && (
-              <div className="quote-command-note mt-3 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <label
-                    htmlFor="quote-builder-note"
-                    className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
-                  >
-                    General Job Notes
-                  </label>
-                  {updateQuote.isPending && (
-                    <span className="text-xs font-semibold text-amber-700">Saving...</span>
-                  )}
-                </div>
-                <Textarea
-                  id="quote-builder-note"
-                  value={quoteNoteDraft}
-                  onChange={(event) => setQuoteNoteDraft(event.target.value)}
-                  onBlur={saveQuoteBuilderNote}
-                  placeholder="Internal sales or ordering notes..."
-                  className="min-h-16 max-h-28 resize-y border-slate-200 bg-white text-sm"
-                />
-              </div>
-            )}
           </div>
-        </div>
+        </header>
 
         <div className="quote-add-controls" aria-label="Add quote line item">
           <ManufacturerProductButtons
@@ -2372,6 +2309,30 @@ export function QuoteBuilder({
       </div>
 
       <div className="quote-builder-scroll-flow space-y-3">
+            {quote && (
+              <div className="quote-command-note">
+                <div className="quote-command-note-label">
+                  <label
+                    htmlFor="quote-builder-note"
+                    className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                  >
+                    General Job Notes
+                  </label>
+                  {updateQuote.isPending && (
+                    <span className="text-xs font-semibold text-amber-700">Saving...</span>
+                  )}
+                </div>
+                <Textarea
+                  id="quote-builder-note"
+                  value={quoteNoteDraft}
+                  onChange={(event) => setQuoteNoteDraft(event.target.value)}
+                  onBlur={saveQuoteBuilderNote}
+                  placeholder="Internal sales or ordering notes..."
+                  rows={1}
+                  className="quote-command-note-input"
+                />
+              </div>
+            )}
         {polarQuoteOnlyHold && (
           <div
             className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-amber-950 shadow-sm"
