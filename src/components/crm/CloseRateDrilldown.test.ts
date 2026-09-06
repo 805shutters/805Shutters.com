@@ -1,7 +1,7 @@
-import { createElement } from "react";
+import { createElement, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { CloseRateDrilldown } from "@/components/crm/CloseRateDrilldown";
+import { CloseRateDeleteAction, CloseRateDrilldown } from "@/components/crm/CloseRateDrilldown";
 import type { CloseRateCohortCustomer } from "@/lib/crm/command-performance";
 import type { CrmJob } from "@/lib/crm/types";
 
@@ -41,7 +41,9 @@ describe("CloseRateDrilldown", () => {
     const markup = renderToStaticMarkup(createElement(CloseRateDrilldown, {
       periodDays: 30,
       customers,
-      onClose: vi.fn()
+      onClose: vi.fn(),
+      onDelete: vi.fn(),
+      busy: false
     }));
 
     expect(markup).toContain('role="region"');
@@ -53,13 +55,48 @@ describe("CloseRateDrilldown", () => {
     expect(markup).toContain("Unsold Customer");
     expect(markup).toContain("Shades");
     expect(markup).toContain('aria-label="Close close-rate job details"');
+    expect(markup).toContain('aria-label="Delete unsold Shades opportunity for Unsold Customer"');
+    expect(markup.match(/>Delete<\/button>/g)).toHaveLength(1);
+    expect(markup).not.toContain("Delete unsold Shutters opportunity for Sold Customer");
+  });
+
+  it("disables unsold delete actions while another CRM action is busy", () => {
+    const markup = renderToStaticMarkup(createElement(CloseRateDrilldown, {
+      periodDays: 30,
+      customers: [
+        { id: "unsold", outcome: "unsold", jobs: [job("unsold-job", "Busy Customer", "follow_up", "Roller Shades")] }
+      ],
+      onClose: vi.fn(),
+      onDelete: vi.fn(),
+      busy: true
+    }));
+
+    expect(markup).toContain('aria-label="Delete unsold Roller Shades opportunity for Busy Customer"');
+    expect(markup).toContain("disabled");
+  });
+
+  it("passes the selected unsold job to the delete callback", () => {
+    const selectedJob = job("unsold-job", "Callback Customer", "follow_up", "Shades");
+    const onDelete = vi.fn();
+    const action = CloseRateDeleteAction({
+      job: selectedJob,
+      onDelete,
+      busy: false
+    }) as ReactElement<{ onClick: () => void }>;
+
+    action.props.onClick();
+
+    expect(onDelete).toHaveBeenCalledOnce();
+    expect(onDelete).toHaveBeenCalledWith(selectedJob);
   });
 
   it("shows clear empty states for either outcome", () => {
     const markup = renderToStaticMarkup(createElement(CloseRateDrilldown, {
       periodDays: 60,
       customers: [],
-      onClose: vi.fn()
+      onClose: vi.fn(),
+      onDelete: vi.fn(),
+      busy: false
     }));
 
     expect(markup).toContain("No sold jobs are included in this period.");

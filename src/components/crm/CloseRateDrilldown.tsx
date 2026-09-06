@@ -16,12 +16,34 @@ function opportunityDate(job: CrmJob) {
   }).format(date);
 }
 
+export function CloseRateDeleteAction({ job, onDelete, busy }: {
+  job: CrmJob;
+  onDelete: (job: CrmJob) => void;
+  busy: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="crm-close-rate-delete-button"
+      onClick={() => onDelete(job)}
+      disabled={busy}
+      aria-label={`Delete unsold ${job.product_interest || "opportunity"} opportunity for ${job.customer_name || "customer"}`}
+    >
+      Delete
+    </button>
+  );
+}
+
 function CloseRateOutcomeGroup({
   outcome,
-  customers
+  customers,
+  onDelete,
+  busy
 }: {
   outcome: "sold" | "unsold";
   customers: CloseRateCohortCustomer[];
+  onDelete: (job: CrmJob) => void;
+  busy: boolean;
 }) {
   const sold = outcome === "sold";
   const label = sold ? "Sold" : "Unsold";
@@ -45,8 +67,13 @@ function CloseRateOutcomeGroup({
                 <ul className="crm-close-rate-job-list" aria-label={`${primaryJob?.customer_name || "Customer"} jobs in period`}>
                   {customer.jobs.map((job) => (
                     <li key={job.id}>
-                      <span>{job.product_interest || "Product not listed"}</span>
-                      <small>{opportunityDate(job)} · {titleCase(job.status)}</small>
+                      <div className="crm-close-rate-job-details">
+                        <span>{job.product_interest || "Product not listed"}</span>
+                        <small>{opportunityDate(job)} · {titleCase(job.status)}</small>
+                      </div>
+                      {!sold ? (
+                        <CloseRateDeleteAction job={job} onDelete={onDelete} busy={busy} />
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -64,11 +91,15 @@ function CloseRateOutcomeGroup({
 export function CloseRateDrilldown({
   periodDays,
   customers,
-  onClose
+  onClose,
+  onDelete,
+  busy
 }: {
   periodDays: 30 | 60;
   customers: CloseRateCohortCustomer[];
   onClose: () => void;
+  onDelete: (job: CrmJob) => void;
+  busy: boolean;
 }) {
   const soldCustomers = customers.filter((customer) => customer.outcome === "sold");
   const unsoldCustomers = customers.filter((customer) => customer.outcome === "unsold");
@@ -91,8 +122,8 @@ export function CloseRateDrilldown({
         </button>
       </div>
       <div className="crm-close-rate-groups">
-        <CloseRateOutcomeGroup outcome="sold" customers={soldCustomers} />
-        <CloseRateOutcomeGroup outcome="unsold" customers={unsoldCustomers} />
+        <CloseRateOutcomeGroup outcome="sold" customers={soldCustomers} onDelete={onDelete} busy={busy} />
+        <CloseRateOutcomeGroup outcome="unsold" customers={unsoldCustomers} onDelete={onDelete} busy={busy} />
       </div>
     </section>
   );

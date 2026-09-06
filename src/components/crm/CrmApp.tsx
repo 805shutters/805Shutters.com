@@ -2908,7 +2908,11 @@ export function CrmApp({
 
   async function deleteJob(job: CrmJob) {
     if (!session) return;
-    if (typeof window !== "undefined" && !window.confirm(`Delete "${job.customer_name}"? This removes the job from your list.`)) {
+    const customerName = job.customer_name || "Customer name unavailable";
+    const productName = job.product_interest || "Product not listed";
+    if (typeof window !== "undefined" && !window.confirm(
+      `Delete the ${productName} opportunity for ${customerName}? This removes the opportunity from the job list and close-rate reporting. Linked customer records are retained.`
+    )) {
       return;
     }
 
@@ -2918,7 +2922,7 @@ export function CrmApp({
     try {
       await crmFetch(session, `/api/crm/jobs/${job.id}`, { method: "DELETE" });
       await refresh();
-      setMessage(`Deleted "${job.customer_name}".`);
+      setMessage(`Deleted the ${productName} opportunity for ${customerName}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Job could not be deleted.");
       await refresh();
@@ -3144,6 +3148,8 @@ export function CrmApp({
             ? commandPerformance.closeRate30DaysCustomers
             : commandPerformance.closeRate60DaysCustomers}
           onClose={() => setCloseRatePeriod(null)}
+          onDelete={deleteJob}
+          busy={busy}
         />
       ) : null}
 

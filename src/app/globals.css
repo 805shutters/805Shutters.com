@@ -5298,10 +5298,36 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-close-rate-job-list li {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding-top: 7px;
   border-top: 1px solid currentColor;
+}
+
+.crm-close-rate-job-details {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.crm-close-rate-delete-button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 11px;
+  border-color: #dc2626;
+  background: #fff;
+  color: #991b1b;
+}
+
+.crm-close-rate-delete-button:hover:not(:disabled),
+.crm-close-rate-delete-button:focus-visible:not(:disabled) {
+  background: #fee2e2;
+}
+
+.crm-close-rate-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .crm-close-rate-job-list span {
@@ -6112,6 +6138,10 @@ body.qb-fullscreen .crm-app-shell {
   .crm-close-rate-job-list li,
   .crm-close-rate-customer-head {
     display: grid;
+  }
+
+  .crm-close-rate-delete-button {
+    justify-self: start;
   }
 
   .crm-close-rate-job-list small {
