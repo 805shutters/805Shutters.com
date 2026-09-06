@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/ken-payment-review",
       "schedule": "43 17 * * *"
+    },
+    {
+      "path": "/api/cron/booking-outbox",
+      "schedule": "* * * * *"
     }
   ]
 }

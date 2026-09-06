@@ -1,331 +1,157 @@
 import { describe, expect, it } from "vitest";
 import {
+  baseSlotReason,
   bookingDurationForWindowCount,
-  bookingSlotDurationMinutes,
   bookingSlotTimes,
   buildBookingAvailability,
   freeRepsForSlot,
-  zonedTimeToUtc
+  losAngelesDateString,
+  monthRangeUtc,
+  zonedTimeToUtc,
 } from "./availability";
-import { sales805AppointmentsToCalendarEvents } from "./sales-805-appointments";
-import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
-
-function eventAt(
-  date: string,
-  time: string,
-  overrides: Partial<CrmCalendarEvent> = {}
-): CrmCalendarEvent {
-  const start = zonedTimeToUtc(date, time);
-  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
-
-  return {
-    id: "event-1",
-    created_at: start.toISOString(),
-    updated_at: start.toISOString(),
-    job_id: null,
-    title: "Existing appointment",
-    event_type: "sales_consult",
-    status: "scheduled",
-    assigned_to: "Jessica",
-    start_at: start.toISOString(),
-    end_at: end.toISOString(),
-    location: null,
-    notes: null,
-    ...overrides
-  };
-}
-
-function publishedSlot(date: string, time: string, owner = "Jessica"): CrmAvailabilitySlot {
-  const start = zonedTimeToUtc(date, time);
-  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
-
-  return {
-    id: "slot-1",
-    created_at: start.toISOString(),
-    updated_at: start.toISOString(),
-    owner,
-    start_at: start.toISOString(),
-    end_at: end.toISOString(),
+import type { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
+const date = "2035-10-01",
+  now = new Date("2035-09-30T12:00:00Z");
+const at = (time: string) => zonedTimeToUtc(date, time).toISOString();
+const range = (
+  start = "08:00",
+  end = "17:00",
+  extra: Partial<CrmAvailabilitySlot> = {},
+) =>
+  ({
+    id: "range",
+    owner: "Jessica",
+    start_at: at(start),
+    end_at: at(end),
     status: "available",
-    source: "test",
-    created_by_email: null,
-    meta: {}
-  };
-}
-
-const venturaPoint = { lat: 34.2746, lng: -119.229 };
-const simiValleyPoint = { lat: 34.2694, lng: -118.7815 };
-
-describe("buildBookingAvailability", () => {
-  it("sizes appointment duration from the approximate number of window coverings", () => {
-    expect(bookingDurationForWindowCount(1)).toBe(60);
-    expect(bookingDurationForWindowCount(5)).toBe(60);
-    expect(bookingDurationForWindowCount(6)).toBe(120);
-    expect(bookingDurationForWindowCount(10)).toBe(120);
-    expect(bookingDurationForWindowCount(15)).toBe(120);
-    expect(bookingDurationForWindowCount(20)).toBe(120);
-    expect(bookingDurationForWindowCount(21)).toBe(180);
-    expect(bookingDurationForWindowCount(31)).toBe(180);
+    source: "crm_working_ranges",
+    meta: {},
+    ...extra,
+  }) as CrmAvailabilitySlot;
+const event = (
+  start = "10:00",
+  end = "11:00",
+  extra: Partial<CrmCalendarEvent> = {},
+) =>
+  ({
+    id: "event",
+    start_at: at(start),
+    end_at: at(end),
+    status: "scheduled",
+    event_type: "sales_consult",
+    assigned_to: "Jessica",
+    ...extra,
+  }) as CrmCalendarEvent;
+const reason = (
+  time: string,
+  events: CrmCalendarEvent[] = [],
+  ranges = [range()],
+  minutes = 60,
+) =>
+  baseSlotReason(date, time, events, ranges, {
+    now,
+    appointmentDurationMinutes: minutes,
   });
-
-  it("offers appointment starts on the hour and half hour", () => {
+describe("Jessica published availability", () => {
+  it("keeps every start closed for an empty October, missing configuration, and draft legacy hours", () => {
+    for (const slots of [
+      undefined,
+      [],
+      [range("08:00", "17:00", { status: "draft" })],
+      [range("08:00", "17:00", { source: "crm_click_availability" })],
+    ]) {
+      expect(
+        buildBookingAvailability("2035-10", [], slots, { now })
+          .days.flatMap((d) => d.slots)
+          .filter((s) => s.available),
+      ).toHaveLength(0);
+      expect(freeRepsForSlot(date, "10:00", slots, [], { now })).toEqual([]);
+    }
+  });
+  it("only offers Jessica even when Mike publishes", () => {
+    expect(
+      reason("10:00", [], [range("08:00", "17:00", { owner: "Mike" })]),
+    ).toBe("closed_hours");
+    expect(freeRepsForSlot(date, "10:00", [range()], [], { now })).toEqual([
+      "Jessica",
+    ]);
+  });
+  it("requires full coverage, merges adjacent ranges and rejects a gap", () => {
+    expect(reason("09:00", [], [range("09:00", "10:00")])).toBeNull();
+    expect(reason("09:30", [], [range("09:00", "10:00")])).toBe("closed_hours");
+    expect(
+      reason("09:30", [], [range("09:00", "10:00"), range("10:00", "11:00")]),
+    ).toBeNull();
+    expect(
+      reason("09:30", [], [range("09:00", "10:00"), range("10:30", "12:00")]),
+    ).toBe("closed_hours");
+  });
+  it("blocks Jessica, unassigned, and office busy time but excludes explicit Mike visits", () => {
+    for (const assigned_to of ["Jessica", "Unassigned", ""])
+      expect(reason("10:30", [event("10:00", "11:00", { assigned_to })])).toBe(
+        "appointment_conflict",
+      );
+    expect(
+      reason("10:30", [event("10:00", "11:00", { assigned_to: "Mike" })]),
+    ).toBeNull();
+    expect(
+      reason("10:30", [
+        event("10:00", "11:00", { assigned_to: "Mike", event_type: "block" }),
+      ]),
+    ).toBe("appointment_conflict");
+    expect(
+      reason("10:30", [event("10:00", "11:00", { status: "canceled" })]),
+    ).toBeNull();
+  });
+  it("rejects malformed appointments instead of ignoring them", () =>
+    expect(reason("10:30", [event("10:00", "09:00")])).toBe(
+      "missing_information",
+    ));
+  it("retains the daily cap and duration tiers", () => {
+    expect([1, 5, 6, 20, 21, 500].map(bookingDurationForWindowCount)).toEqual([
+      60, 60, 120, 120, 180, 180,
+    ]);
+    expect(
+      reason(
+        "15:00",
+        Array.from({ length: 4 }, (_, i) =>
+          event(`0${i + 8}:00`, `0${i + 9}:00`, {
+            id: String(i),
+            assigned_to: "Mike",
+          }),
+        ).map((e, i) => ({
+          ...e,
+          start_at: at(`${i + 8}:00`),
+          end_at: at(`${i + 9}:00`),
+        })),
+      ),
+    ).toBe("daily_limit");
+    expect(reason("15:00", [], [range()], 180)).toBe("closed_hours");
+  });
+  it("keeps half-hour start increments", () => {
     expect(bookingSlotTimes).toHaveLength(17);
-    expect(bookingSlotTimes.slice(0, 5)).toEqual(["08:00", "08:30", "09:00", "09:30", "10:00"]);
-    expect(bookingSlotTimes.at(-1)).toBe("16:00");
+    expect(bookingSlotTimes[1]).toBe("08:30");
   });
-
-  it("falls back to weekday slots when the availability table is unavailable", () => {
-    const availability = buildBookingAvailability("2030-06", []);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.available).toBe(true);
-    expect(monday?.slots.some((slot) => slot.available)).toBe(true);
-    expect(monday?.slots.map((slot) => slot.time)).toEqual(bookingSlotTimes);
+  it("enforces the four-hour same-day boundary", () => {
+    const options = { now: zonedTimeToUtc(date, "08:00") };
+    expect(baseSlotReason(date, "11:30", [], [range()], options)).toBe(
+      "notice",
+    );
+    expect(baseSlotReason(date, "12:00", [], [range()], options)).toBeNull();
   });
-
-  it("keeps Sundays unavailable in legacy fallback mode", () => {
-    const availability = buildBookingAvailability("2030-06", []);
-    const sunday = availability.days.find((day) => day.date === "2030-06-02");
-
-    expect(sunday?.available).toBe(false);
-  });
-
-  it("uses published CRM availability slots when they are provided", () => {
-    const availability = buildBookingAvailability("2030-06", [], [publishedSlot("2030-06-03", "09:00")]);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(true);
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
-  });
-
-  it("uses published half-hour CRM availability slots", () => {
-    const availability = buildBookingAvailability("2030-06", [], [publishedSlot("2030-06-03", "09:30")]);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:30")?.available).toBe(true);
-    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(false);
-  });
-
-  it("falls back to working-hours slots when published availability is empty for the month", () => {
-    const availability = buildBookingAvailability("2030-06", [], []);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-    const sunday = availability.days.find((day) => day.date === "2030-06-02");
-
-    expect(monday?.available).toBe(true);
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
-    expect(sunday?.available).toBe(false);
-  });
-
-  it("requires four hours of lead time for same-day fallback slots", () => {
-    const availability = buildBookingAvailability("2030-06", [], undefined, {
-      now: zonedTimeToUtc("2030-06-03", "08:00")
+  it("handles Los Angeles midnight and daylight saving boundaries", () => {
+    expect(losAngelesDateString(new Date("2035-10-01T02:00Z"))).toBe(
+      "2035-09-30",
+    );
+    expect(zonedTimeToUtc("2026-03-08", "00:00").toISOString()).toBe(
+      "2026-03-08T08:00:00.000Z",
+    );
+    expect(zonedTimeToUtc("2026-03-08", "08:00").toISOString()).toBe(
+      "2026-03-08T15:00:00.000Z",
+    );
+    expect(monthRangeUtc("2026-11")).toEqual({
+      start: "2026-11-01T07:00:00.000Z",
+      end: "2026-12-01T08:00:00.000Z",
     });
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-    const tuesday = availability.days.find((day) => day.date === "2030-06-04");
-
-    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "11:30")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
-    expect(tuesday?.slots.find((slot) => slot.time === "08:00")?.available).toBe(true);
-  });
-
-  it("requires four hours of lead time for same-day published CRM availability", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [],
-      [publishedSlot("2030-06-03", "10:00"), publishedSlot("2030-06-03", "12:00")],
-      { now: zonedTimeToUtc("2030-06-03", "08:00") }
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
-  });
-
-  it("treats the four-hour cutoff at customer-visible minute precision", () => {
-    const now = new Date(zonedTimeToUtc("2030-06-03", "08:00").getTime() + 59_000);
-    const availability = buildBookingAvailability("2030-06", [], undefined, { now });
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
-  });
-
-  it("requires a continuous open window for longer appointments", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [],
-      [
-        publishedSlot("2030-06-03", "09:00"),
-        publishedSlot("2030-06-03", "10:00"),
-        publishedSlot("2030-06-03", "11:00")
-      ],
-      { appointmentDurationMinutes: 180 }
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(true);
-    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
-  });
-
-  it("blocks shorter openings when the requested appointment duration would overlap an event", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [eventAt("2030-06-03", "11:00")],
-      undefined,
-      { appointmentDurationMinutes: 180 }
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
-  });
-
-  it("does not offer longer fallback appointments that would run past the workday", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [],
-      undefined,
-      { appointmentDurationMinutes: 180 }
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "14:00")?.available).toBe(true);
-    expect(monday?.slots.find((slot) => slot.time === "14:30")?.available).toBe(false);
-  });
-
-  it("blocks overlapping events in fallback mode", () => {
-    const availability = buildBookingAvailability("2030-06", [eventAt("2030-06-03", "09:00")]);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
-  });
-
-  it("blocks public booking slots from mirrored 805 sales appointments", () => {
-    const events = sales805AppointmentsToCalendarEvents([
-      {
-        id: "appointment-1",
-        quote_id: "quote-1",
-        customer_name: "Gina Hardy",
-        customer_phone: "805-857-5196",
-        customer_address: "5050 Alta St, Simi Valley, CA 93063",
-        appointment_date: "2030-06-03",
-        start_time: "09:30",
-        end_time: "10:30",
-        assigned_to: "Jessica",
-        status: "scheduled",
-        notes: null,
-        source: "manual_calendar",
-        metadata: {}
-      }
-    ]);
-    const availability = buildBookingAvailability("2030-06", events);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "09:30")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "10:30")?.available).toBe(true);
-  });
-
-  it("allows a fitting fourth self-booking when three short appointments are already on the day", () => {
-    const availability = buildBookingAvailability("2030-06", [
-      eventAt("2030-06-03", "08:00"),
-      eventAt("2030-06-03", "09:00"),
-      eventAt("2030-06-03", "10:00")
-    ]);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
-  });
-
-  it("blocks public self-booking once four appointments already exist on the day", () => {
-    const availability = buildBookingAvailability("2030-06", [
-      eventAt("2030-06-03", "08:00"),
-      eventAt("2030-06-03", "09:00"),
-      eventAt("2030-06-03", "10:00"),
-      eventAt("2030-06-03", "12:00")
-    ]);
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
-  });
-
-  it("applies the four-appointment self-booking cap to published CRM availability", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [
-        eventAt("2030-06-03", "08:00"),
-        eventAt("2030-06-03", "09:00"),
-        eventAt("2030-06-03", "10:00"),
-        eventAt("2030-06-03", "12:00")
-      ],
-      [publishedSlot("2030-06-03", "11:00")]
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
-  });
-
-  it("blocks same-day fallback slots when another appointment is more than 20 miles away", () => {
-    const availability = buildBookingAvailability(
-      "2030-06",
-      [
-        eventAt("2030-06-03", "09:00", {
-          meta: { bookingGeo: venturaPoint }
-        })
-      ],
-      undefined,
-      { travelPoint: simiValleyPoint }
-    );
-    const monday = availability.days.find((day) => day.date === "2030-06-03");
-
-    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
-  });
-});
-
-describe("freeRepsForSlot", () => {
-  it("returns an unassigned fallback owner when legacy availability is open", () => {
-    expect(freeRepsForSlot("2030-06-03", "09:00", undefined, [])).toEqual(["Unassigned"]);
-  });
-
-  it("treats an empty published-slots month like the working-hours fallback", () => {
-    expect(freeRepsForSlot("2030-06-03", "09:00", [], [])).toEqual(["Unassigned"]);
-    expect(freeRepsForSlot("2030-06-02", "09:00", [], [])).toEqual([]);
-  });
-
-  it("does not return reps for same-day slots inside the four-hour lead time", () => {
-    const now = zonedTimeToUtc("2030-06-03", "08:00");
-    const slots = [publishedSlot("2030-06-03", "10:00"), publishedSlot("2030-06-03", "12:00")];
-
-    expect(freeRepsForSlot("2030-06-03", "10:00", slots, [], { now })).toEqual([]);
-    expect(freeRepsForSlot("2030-06-03", "12:00", slots, [], { now })).toEqual(["Jessica"]);
-  });
-
-  it("does not return reps after the public self-booking daily cap is reached", () => {
-    const events = [
-      eventAt("2030-06-03", "08:00"),
-      eventAt("2030-06-03", "09:00"),
-      eventAt("2030-06-03", "10:00"),
-      eventAt("2030-06-03", "12:00")
-    ];
-    const slots = [publishedSlot("2030-06-03", "11:00")];
-
-    expect(freeRepsForSlot("2030-06-03", "11:00", slots, events)).toEqual([]);
-  });
-
-  it("filters out only the rep whose same-day route would exceed 20 miles", () => {
-    const slots = [
-      publishedSlot("2030-06-03", "11:00", "Jessica"),
-      publishedSlot("2030-06-03", "11:00", "Mike")
-    ];
-    const events = [
-      eventAt("2030-06-03", "09:00", {
-        assigned_to: "Jessica",
-        meta: { bookingGeo: venturaPoint }
-      })
-    ];
-
-    expect(freeRepsForSlot("2030-06-03", "11:00", slots, events, { travelPoint: simiValleyPoint })).toEqual(["Mike"]);
   });
 });

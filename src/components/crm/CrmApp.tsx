@@ -1,5 +1,6 @@
 "use client";
 
+import { JessicaWorkingRanges } from "@/components/crm/JessicaWorkingRanges";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
 
 import { OperationsReports } from "@/components/crm/OperationsReports";
@@ -13923,19 +13924,12 @@ function availabilityMonthValue(date: string) {
 function buildAvailabilityLookup(slots: AvailabilitySlotRow[]) {
   const lookup = new Map<string, string[]>();
 
-  slots.forEach((slot) => {
-    if ((slot.status || "available") !== "available") return;
-    const key = availabilitySlotKey(slot.date, slot.time);
-    const owners = lookup.get(key) || [];
-    if (!owners.includes(slot.owner)) owners.push(slot.owner);
-    lookup.set(
-      key,
-      owners.sort((first, second) => {
-        const firstIndex = AVAILABILITY_REPS.indexOf(first);
-        const secondIndex = AVAILABILITY_REPS.indexOf(second);
-        return (firstIndex < 0 ? 99 : firstIndex) - (secondIndex < 0 ? 99 : secondIndex);
-      })
-    );
+  slots.forEach(slot=>{
+    if(slot.status!=="available" || slot.source!=="crm_working_ranges" || slot.owner!=="Jessica")return;
+    for(let cursor=Math.ceil(Date.parse(slot.start_at)/(30*60000))*30*60000;cursor<Date.parse(slot.end_at);cursor+=30*60000){
+      const date=new Date(cursor);
+      lookup.set(availabilitySlotKey(losAngelesDateString(date),losAngelesTimeString(date)),["Jessica"]);
+    }
   });
 
   return lookup;
@@ -13943,7 +13937,7 @@ function buildAvailabilityLookup(slots: AvailabilitySlotRow[]) {
 
 function availabilityOwnersLabel(owners: string[]) {
   if (!owners.length) return "No open time";
-  return `Open for ${owners.join(", ")}`;
+  return `Published working time for ${owners.join(", ")} — customer availability also requires an address and driving check`;
 }
 
 function isSlotOpenForCalendarEvent(owners: string[], event: CrmCalendarEvent) {
@@ -14003,210 +13997,8 @@ function isSlotBooked(owner: string, date: string, time: string, events: CrmCale
   );
 }
 
-function AvailabilityBoard({
-  session,
-  events,
-  embedded = false
-}: {
-  session: Session;
-  events: CrmCalendarEvent[];
-  embedded?: boolean;
-}) {
-  const [owner, setOwner] = useState("Jessica");
-  const [month, setMonth] = useState(currentMonthValue());
-  const [slots, setSlots] = useState<AvailabilitySlotRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`)
-      .then((result) => {
-        if (active) setSlots(result.slots || []);
-      })
-      .catch((loadError) => {
-        if (active) setError(loadError instanceof Error ? loadError.message : "Could not load open times.");
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [session, month]);
-
-  const openKeys = useMemo(() => {
-    const keys = new Set<string>();
-    slots.filter((slot) => slot.owner === owner).forEach((slot) => keys.add(`${slot.date} ${slot.time}`));
-    return keys;
-  }, [slots, owner]);
-
-  const today = losAngelesDateString();
-  const days = useMemo(() => availabilityMonthDays(month).filter((date) => date >= today), [month, today]);
-
-  async function reloadSlots() {
-    const result = await crmFetch<{ slots: AvailabilitySlotRow[] }>(
-      session,
-      `/api/crm/availability?month=${month}`
-    );
-    setSlots(result.slots || []);
-  }
-
-  async function setAvailability(date: string, time: string, open: boolean) {
-    await crmFetch(session, "/api/crm/availability", {
-      method: open ? "POST" : "DELETE",
-      body: JSON.stringify({ owner, date, time })
-    });
-  }
-
-  async function toggle(date: string, time: string) {
-    const key = `${date} ${time}`;
-    const isOpen = openKeys.has(key);
-    setBusyKey(key);
-    setError(null);
-    try {
-      await setAvailability(date, time, !isOpen);
-      await reloadSlots();
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : "Could not update open times.");
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
-  async function toggleDay(date: string) {
-    const openableSlots = AVAILABILITY_SLOTS.filter((slot) => !isSlotBooked(owner, date, slot.time, events));
-    const shouldOpen = openableSlots.some((slot) => !openKeys.has(`${date} ${slot.time}`));
-    const targetSlots = openableSlots.filter((slot) =>
-      shouldOpen ? !openKeys.has(`${date} ${slot.time}`) : openKeys.has(`${date} ${slot.time}`)
-    );
-
-    if (!targetSlots.length) return;
-
-    setBusyKey(`${date} all`);
-    setError(null);
-    try {
-      for (const slot of targetSlots) {
-        await setAvailability(date, slot.time, shouldOpen);
-      }
-      await reloadSlots();
-    } catch (toggleError) {
-      setError(toggleError instanceof Error ? toggleError.message : "Could not update the full day.");
-    } finally {
-      setBusyKey(null);
-    }
-  }
-
-  return (
-    <section className={`crm-workspace crm-workspace-wide crm-availability-workspace${embedded ? " crm-availability-workspace--embedded" : ""}`}>
-      <aside className="crm-panel">
-        <h2>Open Times</h2>
-        <p className="crm-help">
-          Turn on the appointment slots each rep is available for. Customers can only book slots a rep has opened —
-          every slot is closed by default.
-        </p>
-        <label>
-          Rep
-          <select value={owner} onChange={(event) => setOwner(event.target.value)}>
-            {AVAILABILITY_REPS.map((rep) => (
-              <option key={rep}>{rep}</option>
-            ))}
-          </select>
-        </label>
-        <div className="crm-availability-month-controls">
-          <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, -1))}>
-            Prev
-          </button>
-          <strong>{availabilityMonthLabel(month)}</strong>
-          <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, 1))}>
-            Next
-          </button>
-        </div>
-        {error ? <p className="crm-alert">{error}</p> : null}
-      </aside>
-
-      <div className="crm-availability-panel">
-        {loading ? (
-          <p className="crm-empty">Loading open times...</p>
-        ) : days.length === 0 ? (
-          <p className="crm-empty">No upcoming days this month.</p>
-        ) : (
-          <div className="crm-availability-grid-wrap">
-            <table className="crm-availability-grid">
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>All Day</th>
-                {AVAILABILITY_SLOTS.map((slot) => (
-                    <th key={slot.time}>{slot.label}</th>
-                ))}
-                </tr>
-              </thead>
-              <tbody>
-              {days.map((date) => (
-                <tr key={date}>
-                    <th scope="row">
-                    {availabilityDayLabel(date)}
-                  </th>
-                    {(() => {
-                      const openableSlots = AVAILABILITY_SLOTS.filter(
-                        (slot) => !isSlotBooked(owner, date, slot.time, events)
-                      );
-                      const allOpen =
-                        openableSlots.length > 0 &&
-                        openableSlots.every((slot) => openKeys.has(`${date} ${slot.time}`));
-                      const someOpen = openableSlots.some((slot) => openKeys.has(`${date} ${slot.time}`));
-                      const dayBusy = busyKey === `${date} all`;
-
-                      return (
-                        <td>
-                          <button
-                            type="button"
-                            className={`crm-availability-day-button${allOpen ? " crm-availability-day-button--open" : ""}${
-                              someOpen && !allOpen ? " crm-availability-day-button--partial" : ""
-                            }`}
-                            onClick={() => toggleDay(date)}
-                            disabled={!openableSlots.length || dayBusy}
-                          >
-                            {allOpen ? "Clear Day" : "All Day"}
-                          </button>
-                        </td>
-                      );
-                    })()}
-                  {AVAILABILITY_SLOTS.map((slot) => {
-                    const key = `${date} ${slot.time}`;
-                    const open = openKeys.has(key);
-                    const booked = isSlotBooked(owner, date, slot.time, events);
-                      const busy = busyKey === key || busyKey === `${date} all`;
-                      const label = booked ? "Booked" : open ? "Available" : "Closed";
-                    return (
-                        <td key={slot.time}>
-                        <button
-                          type="button"
-                            className={`crm-availability-slot${open ? " crm-availability-slot--open" : ""}${
-                              booked ? " crm-availability-slot--booked" : ""
-                            }`}
-                          onClick={() => toggle(date, slot.time)}
-                            disabled={booked || busy}
-                            title={booked ? "Already booked" : open ? "Available - click to close" : "Closed - click to open"}
-                        >
-                          {label}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </section>
-  );
+function AvailabilityBoard({session}: {session:Session;events:CrmCalendarEvent[];embedded?:boolean}) {
+  return <JessicaWorkingRanges session={session}/>;
 }
 
 function CalendarPlanner({
@@ -14242,7 +14034,6 @@ function CalendarPlanner({
   const rangeEnd = view === "month" ? addCalendarDays(monthDays[monthDays.length - 1], 1) : addCalendarDays(timelineDays[timelineDays.length - 1], 1);
   const visibleEvents = calendarEventsForRange(events, rangeStart, rangeEnd);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlotRow[]>([]);
-  const [customerBookableSlots, setCustomerBookableSlots] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const availabilityMonths = useMemo(
@@ -14263,7 +14054,6 @@ function CalendarPlanner({
 
     if (!months.length) {
       setAvailabilitySlots([]);
-      setCustomerBookableSlots([]);
       setAvailabilityLoading(false);
       setAvailabilityError(null);
       return () => {
@@ -14276,33 +14066,18 @@ function CalendarPlanner({
 
     Promise.all(
       months.map(async (month) => {
-        const [managedAvailability, bookingResponse] = await Promise.all([
-          crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`),
-          fetch(`/api/booking/availability?month=${month}`, { cache: "no-store" })
-        ]);
-        const bookingAvailability = (await bookingResponse.json().catch(() => ({}))) as BookingAvailabilityResponse & {
-          message?: string;
-        };
-
-        if (!bookingResponse.ok) {
-          throw new Error(bookingAvailability.message || "Customer booking times could not be loaded.");
-        }
-
-        return { managedAvailability, bookingAvailability };
+        const managedAvailability=await crmFetch<{slots:AvailabilitySlotRow[]}>(session,`/api/crm/availability?month=${month}`);
+        return { slots: managedAvailability.slots || [] };
       })
     )
       .then((results) => {
         if (!active) return;
-        setAvailabilitySlots(results.flatMap((result) => result.managedAvailability.slots || []));
-        setCustomerBookableSlots([
-          ...customerBookableSlotKeys(results.map((result) => result.bookingAvailability))
-        ]);
+        setAvailabilitySlots(results.flatMap((result) => result.slots || []));
       })
       .catch((error) => {
         if (!active) return;
         setAvailabilitySlots([]);
-        setCustomerBookableSlots([]);
-        setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
+          setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
       })
       .finally(() => {
         if (active) setAvailabilityLoading(false);
@@ -14387,7 +14162,6 @@ function CalendarPlanner({
           days={timelineDays}
           events={visibleEvents}
           availabilitySlots={availabilitySlots}
-          customerBookableSlots={customerBookableSlots}
           availabilityLoading={availabilityLoading}
           canOverrideAvailability={canOverrideAvailability}
           onSelectSlot={onSelectSlot}
@@ -14404,7 +14178,6 @@ function CalendarTimelineGrid({
   days,
   events,
   availabilitySlots,
-  customerBookableSlots,
   availabilityLoading,
   canOverrideAvailability,
   onSelectSlot,
@@ -14415,7 +14188,6 @@ function CalendarTimelineGrid({
   days: string[];
   events: CrmCalendarEvent[];
   availabilitySlots: AvailabilitySlotRow[];
-  customerBookableSlots: string[];
   availabilityLoading: boolean;
   canOverrideAvailability: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
@@ -14425,7 +14197,6 @@ function CalendarTimelineGrid({
 }) {
   const overlapLayout = useMemo(() => buildCalendarOverlapLayout(events), [events]);
   const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
-  const customerBookableLookup = useMemo(() => new Set(customerBookableSlots), [customerBookableSlots]);
 
   function availabilityOwnersForSlot(date: string, time: string) {
     return availabilityLookup.get(availabilitySlotKey(date, time)) || [];
@@ -14521,12 +14292,12 @@ function CalendarTimelineGrid({
               const event = findCalendarEventForSlot(events, day, time);
               const past = isPastCalendarSlot(day, time);
               const openOwners = availabilityOwnersForSlot(day, time);
-              const available = customerBookableLookup.has(availabilitySlotKey(day, time));
+              const available = openOwners.includes("Jessica");
               const pending = availabilityLoading && !available;
               const slot = calendarSlotSelection(day, time);
               const overridable = canOverrideAvailability && !event && !past && !pending && !available && !availabilityLoading;
               const selectable = (!event && !past && available && !availabilityLoading) || overridable;
-              const slotLabel = event ? "Booked" : past ? "Past" : pending ? "Checking" : available ? "Available" : "Blocked";
+              const slotLabel = event ? "Booked" : past ? "Past" : pending ? "Checking" : available ? "Working time" : "Closed";
               const slotDetail = event
                 ? "Scheduled"
                 : past
@@ -14536,9 +14307,9 @@ function CalendarTimelineGrid({
                     : available
                       ? openOwners.length
                         ? availabilityOwnersLabel(openOwners)
-                        : "Open for online booking"
+                        : "Check address and driving time before booking"
                       : overridable
-                        ? "Admin: book anyway"
+                        ? "Staff scheduling — driving checks apply"
                         : "No open time";
 
               return (

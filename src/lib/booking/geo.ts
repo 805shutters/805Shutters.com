@@ -43,13 +43,14 @@ export async function geocodeBookingAddress(address: string): Promise<BookingGeo
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.formattedAddress,places.location"
+      "X-Goog-FieldMask": "places.formattedAddress,places.location,places.addressComponents"
     },
     body: JSON.stringify({
       textQuery: query,
       regionCode: "US",
       languageCode: "en"
     }),
+    signal: AbortSignal.timeout(8000),
     cache: "no-store"
   });
 
@@ -61,6 +62,7 @@ export async function geocodeBookingAddress(address: string): Promise<BookingGeo
   const data = (await response.json()) as {
     places?: Array<{
       formattedAddress?: string;
+      addressComponents?: Array<{ types: string[] }>;
       location?: {
         latitude?: number;
         longitude?: number;
@@ -68,6 +70,8 @@ export async function geocodeBookingAddress(address: string): Promise<BookingGeo
     }>;
   };
   const place = data.places?.[0];
+  const types = new Set(place?.addressComponents?.flatMap(c => c.types));
+  if (data.places?.length !== 1 || !types.has("street_number") || !types.has("route")) return { configured: true, point: null };
   const lat = Number(place?.location?.latitude);
   const lng = Number(place?.location?.longitude);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {

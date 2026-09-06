@@ -1,3 +1,4 @@
+import { BookingError, writeCalendarWithRoutes } from "@/lib/booking/scheduling";
 import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
 import {businessEventToActivity} from "./business-events";
 import { loadIntegrationHealth } from "./integration-health";
@@ -2524,6 +2525,11 @@ async function syncTechnicalMeasureCalendarState(
   }
 }
 
+async function guardedCalendarWrite(supabase: CrmSupabaseClient, operation: "insert" | "update", record: Record<string, unknown>, existing?: CrmCalendarEvent) {
+  try { return await writeCalendarWithRoutes(supabase, operation, record, existing); }
+  catch(error) { if(error instanceof BookingError) throw new CrmAuthError(error.status,error.message); throw error; }
+}
+
 export async function createCrmCalendarEvent(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -2556,8 +2562,7 @@ export async function createCrmCalendarEvent(
     meta: metadataWithActor(payload, actor, "createdBy")
   };
 
-  const { data, error } = await supabase.from("crm_calendar_events").insert(record).select("*").single();
-  if (error || !data) throw new CrmAuthError(502, "Calendar event could not be saved.");
+  const data = await guardedCalendarWrite(supabase,"insert",record);
 
   let linkedJob: CrmJob | null = null;
   if (payload.job_id) {
@@ -2675,14 +2680,7 @@ export async function rescheduleCrmCalendarEvent(
     meta: metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy")
   };
 
-  const { data, error } = await supabase
-    .from("crm_calendar_events")
-    .update(update)
-    .eq("id", eventId)
-    .select("*")
-    .single();
-
-  if (error || !data) throw new CrmAuthError(502, "Calendar event could not be rescheduled.");
+  const data = await guardedCalendarWrite(supabase,"update",{...update,id:eventId},existing as CrmCalendarEvent);
 
   await syncTechnicalMeasureCalendarState(supabase, data, {
     status: "scheduled",
@@ -2762,17 +2760,7 @@ export async function cancelCrmCalendarEvent(
   const cancelReason = optionalText(payload.reason);
   if (cancelReason) cancelMeta.canceledReason = cancelReason;
 
-  const { data, error } = await supabase
-    .from("crm_calendar_events")
-    .update({
-      status: "canceled",
-      meta: cancelMeta
-    })
-    .eq("id", eventId)
-    .select("*")
-    .single();
-
-  if (error || !data) throw new CrmAuthError(502, "Calendar event could not be canceled.");
+  const data = await guardedCalendarWrite(supabase,"update",{id:eventId,status:"canceled",meta:cancelMeta},existing as CrmCalendarEvent);
 
   await syncTechnicalMeasureCalendarState(supabase, data, {
     status: "unscheduled",

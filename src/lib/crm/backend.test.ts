@@ -2011,6 +2011,15 @@ function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | 
   }
 
   const supabase = {
+    async rpc(name: string, args: Record<string, unknown>) {
+      if(name === "booking_schedule_snapshot") return {data:{revision:"1",events:[opts.event],slots:[],protectedIds:[]},error:null};
+      if(name === "booking_calendar_write") {
+        const payload=args.p_event as Record<string,unknown>;
+        updates.push({table:"crm_calendar_events",filters:{id:payload.id},payload});
+        return {data:{...opts.event,...payload},error:null};
+      }
+      throw new Error(`Unexpected RPC ${name}`);
+    },
     from(table: string) {
       return new QueryRecorder(table);
     }

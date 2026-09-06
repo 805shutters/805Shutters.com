@@ -561,7 +561,7 @@ export type CrmAvailabilitySlot = {
   owner: string;
   start_at: string;
   end_at: string;
-  status: "available" | "canceled";
+  status: "available" | "canceled" | "draft";
   source: string;
   created_by_email: string | null;
   meta: Record<string, unknown>;

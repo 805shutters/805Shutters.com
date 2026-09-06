@@ -1,9 +1,3 @@
-import {
-  buildBookingAvailability,
-  losAngelesDateString,
-  monthRangeUtc
-} from "@/lib/booking/availability";
-import type { CrmCalendarEvent } from "@/lib/crm/types";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { allPages, normalizePath, services, site, type SitePage } from "@/lib/site-data";
 
@@ -270,92 +264,10 @@ function uniqueLinks(links: AssistantLink[]) {
   return unique;
 }
 
-function shiftMonth(month: string, delta: number) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1 + delta, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
 async function getSchedulingContext(): Promise<SchedulingContext> {
-  const supabase = getSupabaseServiceClient();
-  const bookingLink = { label: "Book a consultation", href: "/book-consultation/" };
-
-  if (!supabase) {
-    return {
-      configured: false,
-      links: [bookingLink],
-      text:
-        "The booking calendar is connected to 805's CRM availability, but live appointment slots are not available in this environment. The scheduling process is still simple: choose a published slot on the booking page, then enter contact and address details there so the appointment can be confirmed."
-    };
-  }
-
-  const months = [losAngelesDateString().slice(0, 7), shiftMonth(losAngelesDateString().slice(0, 7), 1)];
-  const slotSummaries: string[] = [];
-  let configured = true;
-
-  for (const month of months) {
-    const range = monthRangeUtc(month);
-    const eventsResult = await supabase
-      .from("crm_calendar_events")
-      .select("*")
-      .lt("start_at", range.end)
-      .gt("end_at", range.start)
-      .neq("status", "canceled")
-      .order("start_at", { ascending: true });
-
-    if (eventsResult.error) {
-      return {
-        configured: false,
-        links: [bookingLink],
-        text:
-          "The live booking calendar could not be checked right now. The safest next step is to open the booking page or call/text 805-806-9344 for available consultation times."
-      };
-    }
-
-    const availability = buildBookingAvailability(
-      month,
-      (eventsResult.data || []) as CrmCalendarEvent[]
-    );
-
-    for (const day of availability.days) {
-      for (const slot of day.slots) {
-        if (slot.available) {
-          slotSummaries.push(`${formatDate(day.date)} ${slot.label}`);
-        }
-      }
-    }
-  }
-
-  if (!configured) {
-    return {
-      configured: false,
-      links: [bookingLink],
-      text:
-        "Appointment availability is controlled from the CRM, but no live availability slots are published yet. Visitors can still use the booking page or call/text 805-806-9344 for help finding a consultation time."
-    };
-  }
-
-  if (slotSummaries.length === 0) {
-    return {
-      configured: true,
-      links: [bookingLink],
-      text:
-        "The live calendar is connected, but there are no open consultation slots showing in the next two months. Visitors should use the booking page if it shows updated openings, or call/text 805-806-9344 for scheduling help."
-    };
-  }
-
   return {
-    configured: true,
-    links: [bookingLink],
-    text: `The live calendar is showing appointment openings. Earliest options include ${slotSummaries.slice(0, 6).join("; ")}. Availability can change, so the booking page is the source of truth before a customer enters contact details.`
+    configured: Boolean(getSupabaseServiceClient()),
+    links: [{label:"Check Jessica's consultation availability",href:"/book-consultation/"}],
+    text: "Consultations are assigned to Jessica. Availability requires a complete service address and window count so the booking page can check Jessica's published working ranges, existing appointments, and Google driving time plus 15 minutes between visits. Do not suggest specific dates or times without that live check. Direct customers to the booking page; no appointment is reserved until it confirms the booking."
   };
-}
-
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    timeZone: "America/Los_Angeles"
-  }).format(new Date(`${date}T12:00:00`));
 }
