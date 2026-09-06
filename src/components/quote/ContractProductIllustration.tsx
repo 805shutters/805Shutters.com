@@ -14,6 +14,7 @@ export function ContractProductIllustration({ productType, options = [], valance
     <div className={temporary ? styles.companions : undefined}>
     <figure className={styles.figure} data-contract-illustration="c-v1">
       {art ? panels ? <ShutterAssembly src={art.src} alt={art.alt} panels={panels} layout={art.shutterLayout || ""} /> : <img src={art.src} alt={art.alt} width={160} height={160} className={styles.product} style={art.mirror ? { transform: "scaleX(-1)" } : undefined} /> : null}
+      {art?.referenceNote ? <figcaption className={styles.reference}><strong>Product reference</strong><span>{art.referenceNote}</span></figcaption> : null}
       {art?.operationReference ? <figcaption className={styles.operation}>
         {art.panels ? <img src={art.operationReference.src} alt={art.operationReference.label} width={160} height={140} /> : null}
         <span>{art.operationReference.label}</span>

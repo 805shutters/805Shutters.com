@@ -1,0 +1,24 @@
+{
+  "tool": "Built-in image_gen",
+  "prompt": "Edit this approved option C graphite pencil product sketch. Preserve the product, all slats, proportions, slight perspective, soft graphite texture and white product-only background exactly. Remove ONLY the vertical control wand and its small attachment from the left side, reconstructing the slats behind it. No strings, cords, tapes, route holes or new hardware. This is a neutral product-reference image for old quotes where wand side was not recorded; no operating control should appear on either side. No text, labels, window or room. One product only, centered with same margins.",
+  "assets": [
+    {
+      "product": "wood",
+      "source": "/Users/michaelshepard/.codex/generated_images/01a0725e-592c-7c63-892d-f4b2a44218e8/exec-23d7d2d2-9613-421a-ac12-21ea5b3fea4f.png",
+      "output": "public/images/contract-illustrations/c-v1/wood-reference.webp",
+      "sha256": "29957906dea9330dbec2aa420767968c4c14e85853a3e72e81c9668604f9c6e1"
+    },
+    {
+      "product": "faux-wood",
+      "source": "/Users/michaelshepard/.codex/generated_images/01a0725e-592c-7c63-892d-f4b2a44218e8/exec-6fc4021e-da96-427f-97fd-1e965e3f1131.png",
+      "output": "public/images/contract-illustrations/c-v1/faux-wood-reference.webp",
+      "sha256": "142df5961963af572a8831d0267a3ff1c60a527a34d2f66b69f4daf3b7a7aea3"
+    },
+    {
+      "product": "mini",
+      "source": "/Users/michaelshepard/.codex/generated_images/01a0725e-592c-7c63-892d-f4b2a44218e8/exec-197d2016-1b62-49f9-854f-259929d210b2.png",
+      "output": "public/images/contract-illustrations/c-v1/mini-reference.webp",
+      "sha256": "ac3497d7ea469697c2320b5fba327b46833bc69f09b95d582fa46ca3e54ed7e0"
+    }
+  ]
+}

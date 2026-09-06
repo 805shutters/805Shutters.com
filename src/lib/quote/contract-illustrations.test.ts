@@ -46,13 +46,10 @@ describe("approved C contract illustrations", () => {
   });
 
   it.each([
-    ["Roller Shades", []],
     ["Roller Shades", ["Lift System: Not motorized"]],
     ["Roller Shades", ["Lift System: Unsupported cordless system"]],
     ["Shutters", ["Specialty Shape: Triangle"]],
-    ["Roller Shades", ["Lift System: Continuous Cord Loop"]],
     ["Roller Shades", ["Lift System: Continuous Cord Loop", "Control Side: Left", "Chain Location: Right"]],
-    ["Faux Wood Blinds", []],
     ["Faux Wood Blinds", ["Control Side: Both"]],
     ["Faux Wood Blinds", ["Control Side: Left", "Lotus Blind Count: 3"]],
     ["Roller Shades", ["Lift System: Cordless", "Operating System: Motorized"]],
@@ -64,6 +61,44 @@ describe("approved C contract illustrations", () => {
     ["Unknown product", ["Lift System: Cordless"]],
   ] as const)("does not invent artwork for %s with %j", (product, options) => {
     expect(contractIllustration(product, options)).toBeNull();
+  });
+
+  it.each(["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"])("shows a neutral sketch for an older %s quote without inventing a wand side", (product) => {
+    const options = ["Material: 2 inch slats", "Mount Type: Inside Mount", "Color: 1502 - Teak", "Slat Size: 2.5 inch"];
+    const before = [...options];
+    const art = contractIllustration(product, options);
+    expect(art?.src).toMatch(/-reference\.webp$/);
+    expect(art?.referenceNote).toBe("Wand side not recorded");
+    expect(art?.remote).toBe(false);
+    expect(art?.mirror).toBe(false);
+    expect(existsSync(`public${art?.src}`)).toBe(true);
+    expect(options).toEqual(before);
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: product, options }));
+    expect(html).toContain('data-contract-illustration="c-v1"');
+    expect(html).toContain("Product reference");
+    expect(html).toContain("Wand side not recorded");
+    expect(html).not.toContain("Product image:");
+    expect(contractIllustration(product, [...options, "Wand Side: Right"])?.referenceNote).toBeUndefined();
+  });
+
+  it.each(["Roller Shades", "Honeycomb Shades", "Roman Shades", "Sheer Shades"])("uses labeled product reference art for older %s records without an operating selection", (product) => {
+    const art = contractIllustration(product);
+    expect(art?.referenceNote).toBe("Operating system not recorded");
+    expect(art?.alt).not.toContain("Cordless");
+    expect(art?.remote).toBe(false);
+    expect(existsSync(`public${art?.src}`)).toBe(true);
+  });
+
+  it.each(["Roller Shades", "Honeycomb Shades"])("does not choose a cord-loop side for older %s records", (product) => {
+    const art = contractIllustration(product, ["Lift System: Continuous Cord Loop"]);
+    expect(art?.referenceNote).toBe("Cord loop side not recorded");
+    expect(art?.src).not.toContain("loop-");
+    expect(art?.remote).toBe(false);
+  });
+
+  it("treats empty legacy operating fields as unrecorded", () => {
+    expect(contractIllustration("Wood Blinds", ["Wand Side: "])?.referenceNote).toBe("Wand side not recorded");
+    expect(contractIllustration("Roller Shades", ["Lift System: "])?.referenceNote).toBe("Operating system not recorded");
   });
 
   it("preserves chain side through the authoritative public configuration boundary", () => {

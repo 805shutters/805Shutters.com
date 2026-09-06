@@ -980,6 +980,7 @@ export function QuoteContract({
                         </Button>
                       </div>
                     </div>
+                    {itemDesigns.length === 0 && <div className="mt-3"><ContractProductIllustration productType={customerQuoteProductName(item.product_type)} /></div>}
                     {itemDesigns.length > 0 && (
                       <div className="mt-4 space-y-3">
                         {itemDesigns.map((design) => {

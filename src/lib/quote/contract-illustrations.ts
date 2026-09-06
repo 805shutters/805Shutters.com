@@ -8,6 +8,7 @@ export type ContractIllustration = {
   alt: string;
   remote: boolean;
   mirror: boolean;
+  referenceNote?: string;
   panels?: number;
   shutterLayout?: string;
   operationReference?: { src: string; label: string };
@@ -35,7 +36,8 @@ export function contractIllustration(productType: string, options: readonly stri
   if (!product) return null;
   const fields = options.flatMap((option) => {
     const colon = option.indexOf(":");
-    return colon < 0 ? [] : [[normalize(option.slice(0, colon)), normalize(option.slice(colon + 1))]];
+    const value = colon < 0 ? "" : normalize(option.slice(colon + 1));
+    return !value ? [] : [[normalize(option.slice(0, colon)), value]];
   });
   const values = (...keys: string[]) => fields.filter(([key]) => keys.includes(key)).map(([, value]) => value);
   const savedOperations = values("lift system", "operating system", "control type", "honeycomb operating system");
@@ -67,7 +69,7 @@ export function contractIllustration(productType: string, options: readonly stri
   const cordless = operationValues.some((value) => cordlessSystem.test(value));
   if (["roller", "honeycomb", "roman", "sheer"].includes(product) && operationValues.some((value) => !motorSystem.test(value) && !loopSystem.test(value) && !cordlessSystem.test(value))) return null;
   if ([motorized, loop, cordless].filter(Boolean).length > 1) return null;
-  if (tdbu && (!motorized && !cordless || loop)) return null;
+  if (tdbu && (operationValues.length > 0 && !motorized && !cordless || loop)) return null;
   if (/auto ?wand|motorized wand/.test(operation + " " + values("motor type", "motor", "power source", "power configuration", "motorization components").join(" "))) return null;
   if (product === "shutters") {
     if (operation) return null;
@@ -78,8 +80,16 @@ export function contractIllustration(productType: string, options: readonly stri
   let mirror = false;
   let detail = "";
   let remote = false;
+  // Older quotes did not collect every operating detail. A labeled product-only
+  // reference keeps their layout complete without supplying an order selection.
+  const reference = (assetName: string, note: string): ContractIllustration => ({
+    src: `${CONTRACT_ART_ROOT}/${assetName}.webp`,
+    alt: `${productType} — pencil product reference; ${note.toLowerCase()}`,
+    remote: false, mirror: false, referenceNote: note,
+  });
   if (["faux-wood", "wood", "mini"].includes(product)) {
-    if (!side || motorized || loop || (operation && !cordless && !/^wand( tilt)?$/.test(operation))) return null;
+    if (motorized || loop || (operation && !cordless && !/^wand( tilt)?$/.test(operation))) return null;
+    if (!side) return sideValues.length === 0 ? reference(`${product}-reference`, "Wand side not recorded") : null;
     if (side === "right") {
       if (product === "faux-wood") asset = "faux-wood-wand-right";
       else mirror = true;
@@ -87,7 +97,8 @@ export function contractIllustration(productType: string, options: readonly stri
     detail = `Wand tilt · ${side}`;
   } else if (["roller", "honeycomb", "roman", "sheer"].includes(product)) {
     if (loop) {
-      if (!side || !["roller", "honeycomb"].includes(product)) return null;
+      if (!["roller", "honeycomb"].includes(product)) return null;
+      if (!side) return sideValues.length === 0 ? reference(asset, "Cord loop side not recorded") : null;
       asset = `${product}-loop-${side}`;
       detail = `Continuous cord loop · ${side}`;
     } else if (motorized) {
@@ -95,7 +106,7 @@ export function contractIllustration(productType: string, options: readonly stri
       detail = "Motorized";
     } else if (cordless) {
       detail = "Cordless";
-    } else return null;
+    } else return reference(asset, "Operating system not recorded");
   } else if (product === "smart-drapes" && motorized) {
     remote = true;
     detail = "Motorized";
