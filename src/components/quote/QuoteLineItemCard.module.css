@@ -52,9 +52,8 @@
 .includedCopy > span { font-size: 11px; line-height: 1.5; color: #67645e; }
 .noCharge { display: inline-flex; gap: 6px; align-items: center; margin-left: auto; white-space: nowrap; font-size: 12px; color: #4c4b46; }
 @container (max-width: 580px) {
-  .summary { grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); gap: 16px; padding: 20px 18px; }
-  .identity { grid-column: 1 / -1; }
-  .artwork { grid-column: 2; width: 120px; }
+  .summary { grid-template-columns: minmax(0, 1fr) minmax(90px, 108px); gap: 12px; padding: 20px 18px; }
+  .artwork { grid-column: 2; width: 108px; align-self: start; }
   .cost { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; text-align: left; border-top: 1px solid #e7e6e2; padding-top: 15px; }
   .actions { margin: 0; }
   .card .room { font-size: 28px; }
