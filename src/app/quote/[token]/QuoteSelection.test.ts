@@ -127,7 +127,9 @@ describe("QuoteSelection", () => {
     const roomIndex = html.indexOf("Kitchen");
     const linePriceIndex = html.indexOf("$509.40", roomIndex);
     expect(roomIndex).toBeGreaterThan(-1);
-    expect(linePriceIndex - roomIndex).toBeLessThan(500);
+    const artworkIndex = html.indexOf('data-contract-illustration="c-v1"', roomIndex);
+    expect(artworkIndex).toBeGreaterThan(roomIndex);
+    expect(linePriceIndex).toBeGreaterThan(artworkIndex);
     expect(html).not.toContain('48&quot; W');
   });
 

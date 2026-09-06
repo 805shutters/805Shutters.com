@@ -41,8 +41,7 @@ import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import { formatDimensionsOrNull } from "@mts/types/quote";
 import { formatCurrency, getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
-import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
-import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
+import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import {
   calculateLineItemDesignTotal,
   calculateQuoteDesignSubtotal,
@@ -61,7 +60,7 @@ import {
 } from "@/lib/quote-v2/selected-design";
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
-import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
+import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
@@ -931,130 +930,74 @@ export function QuoteContract({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {gqLineItems.map((item) => {
+              {gqLineItems.map((item, itemIndex) => {
                 const itemDesigns = gqDesigns.filter((d) => d.line_item_id === item.id);
                 const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
                 });
                 const itemDimensions = formatDimensionsOrNull(item);
+                const deleteItemButton = (
+                  <Button
+                    type="button" variant="ghost" size="icon"
+                    className="text-destructive hover:text-destructive"
+                    title="Delete line item" aria-label={`Delete line item ${itemIndex + 1}: ${item.room_name}`}
+                    disabled={deleteContractLineItem.isPending}
+                    onClick={() => {
+                      if (!window.confirm(`Delete ${item.room_name || "this line item"}?`)) return;
+                      deleteContractLineItem.mutate({ quoteId: gq.id, lineItemId: item.id });
+                    }}
+                  ><Trash2 className="h-4 w-4" /></Button>
+                );
                 return (
-                  <div key={item.id} className="p-4 bg-muted/30 rounded-lg border">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex min-w-0 gap-4">
-                        <div className="min-w-0">
-                          <h4 className="font-bold">{item.room_name}</h4>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-foreground text-sm font-semibold">
-                              {customerQuoteProductName(item.product_type)}
-                            </span>
-                            {itemDimensions ? (
-                              <span className="font-mono">{itemDimensions}</span>
-                            ) : (
-                              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-                                Size missing - add in Builder
-                              </span>
-                            )}
-                            {item.quantity > 1 && <span>x{item.quantity}</span>}
+                  <div key={item.id} className="space-y-3">
+                    {itemDesigns.length === 0 ? <QuoteLineItemCard
+                      lineNumber={itemIndex + 1} room={item.room_name} productType={item.product_type}
+                      price={formatCurrency(itemTotal)} quantity={item.quantity} dimensions={itemDimensions}
+                      notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
+                      actions={deleteItemButton}
+                    /> : itemDesigns.map((design) => {
+                      const options = getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`);
+                      return <QuoteLineItemCard
+                        key={design.id}
+                        lineNumber={itemIndex + 1} room={item.room_name}
+                        productType={design.product_type || item.product_type}
+                        optionLabel={design.variant || "A"}
+                        options={options}
+                        valanceArtId={valanceIllustration(design.product_type || item.product_type, options, undefined, valanceSurchargeIds(design.options_json?.surcharges))}
+                        price={itemDesigns.length === 1 ? formatCurrency(itemTotal) : formatCurrency(design.unit_price)}
+                        priceLabel={itemDesigns.length === 1 ? "Item total" : "Option unit price"}
+                        quantity={item.quantity} dimensions={itemDimensions}
+                        notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
+                        actions={<>
+                          <div className="flex flex-wrap items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <span>Unit price</span>
+                            <EditableContractPrice
+                              value={design.unit_price}
+                              disabled={updateDesignPrice.isPending || deleteContractDesign.isPending}
+                              onSave={(unitPrice) => updateDesignPrice.mutate({
+                                quoteId: gq.id, designId: design.id, unitPrice, optionsJson: design.options_json || {},
+                              })}
+                            />
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-lg font-bold">
-                          ${itemTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          title="Delete line item"
-                          disabled={deleteContractLineItem.isPending}
-                          onClick={() => {
-                            if (!window.confirm(`Delete ${item.room_name || "this line item"}?`)) {
-                              return;
-                            }
-                            deleteContractLineItem.mutate({ quoteId: gq.id, lineItemId: item.id });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    {itemDesigns.length === 0 && <div className="mt-3"><ContractProductIllustration productType={customerQuoteProductName(item.product_type)} /></div>}
-                    {itemDesigns.length > 0 && (
-                      <div className="mt-4 space-y-3">
-                        {itemDesigns.map((design) => {
-                          const details = quoteProductDetails("", getQuoteDesignDetails(design).map(
-                            (detail) => `${detail.label}: ${detail.value}`,
-                          ), { illustrated: true });
-                          return (
-                            <div key={design.id} className="rounded-lg border bg-background p-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Option {customerQuoteText(design.variant) || "A"}
-                                </p>
-                                <div className="flex items-center gap-1">
-                                  <EditableContractPrice
-                                    value={design.unit_price}
-                                    disabled={
-                                      updateDesignPrice.isPending || deleteContractDesign.isPending
-                                    }
-                                    onSave={(unitPrice) =>
-                                      updateDesignPrice.mutate({
-                                        quoteId: gq.id,
-                                        designId: design.id,
-                                        unitPrice,
-                                        optionsJson: design.options_json || {},
-                                      })
-                                    }
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                    title={`Delete option ${design.variant || "A"}`}
-                                    aria-label={`Delete option ${design.variant || "A"}`}
-                                    disabled={deleteContractDesign.isPending}
-                                    onClick={() => {
-                                      const label = `Option ${design.variant || "A"}`;
-                                      if (!window.confirm(`Delete ${label} from this contract?`)) {
-                                        return;
-                                      }
-                                      deleteContractDesign.mutate({
-                                        quoteId: gq.id,
-                                        designId: design.id,
-                                      });
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                              <div className="mt-3 flex flex-wrap items-start gap-4">
-                                <ContractProductIllustration
-                                  productType={customerQuoteProductName(design.product_type || item.product_type)}
-                                  options={getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`)}
-                                  valanceArtId={valanceIllustration(design.product_type || item.product_type, getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`), undefined, valanceSurchargeIds(design.options_json?.surcharges))}
-                                />
-                              {details.length > 0 && (
-                                <dl className="grid min-w-0 flex-1 basis-48 grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-2">
-                                  {details.map((detail) => (
-                                    <div key={`${design.id}-${detail.label}`} className="min-w-0">
-                                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                        {detail.label}
-                                      </dt>
-                                      <dd className="text-xs break-words">{detail.value}</dd>
-                                    </div>
-                                  ))}
-                                </dl>
-                              )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                          <Button
+                            type="button" variant="ghost" size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            title={`Delete option ${design.variant || "A"}`}
+                            aria-label={`Delete option ${design.variant || "A"}`}
+                            disabled={deleteContractDesign.isPending}
+                            onClick={() => {
+                              const label = `Option ${design.variant || "A"}`;
+                              if (!window.confirm(`Delete ${label} from this contract?`)) return;
+                              deleteContractDesign.mutate({ quoteId: gq.id, designId: design.id });
+                            }}
+                          ><Trash2 className="h-4 w-4" /></Button>
+                        </>}
+                      />;
+                    })}
+                    {itemDesigns.length > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 px-2 text-xs text-muted-foreground">
+                      <span>{itemDesigns.length > 1 ? `Item ${String(itemIndex + 1).padStart(2, "0")} total: ${formatCurrency(itemTotal)}` : `Item ${String(itemIndex + 1).padStart(2, "0")}`}</span>
+                      <div className="flex items-center gap-1"><span>Delete entire item</span>{deleteItemButton}</div>
+                    </div> : null}
                   </div>
                 );
               })}

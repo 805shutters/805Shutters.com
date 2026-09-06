@@ -4,10 +4,10 @@ import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 import styles from "./ContractProductIllustration.module.css";
 import { ShutterAssembly } from "./ShutterAssembly";
 
-export function ContractProductIllustration({ productType, options = [], valanceArtId }: { productType: string; options?: readonly string[]; valanceArtId?: string | null }) {
+export function ContractProductIllustration({ productType, options = [], valanceArtId, showTemporaryShade = true }: { productType: string; options?: readonly string[]; valanceArtId?: string | null; showTemporaryShade?: boolean }) {
   const art = contractIllustration(productType, options);
   const valance = valanceArtwork(valanceArtId === undefined ? valanceIllustration(productType, options) : valanceArtId);
-  const temporary = temporaryShadeSelected(options);
+  const temporary = showTemporaryShade && temporaryShadeSelected(options);
   if (!art && !valance && !temporary) return null;
   const panels = art?.panels || 0;
   return (

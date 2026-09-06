@@ -1,9 +1,9 @@
 "use client";
 
-import { customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
+import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 
 import { useEffect, useRef, useState } from "react";
-import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
+import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import type { QuotePaymentState, QuotePaymentType } from "@/lib/crm/quote-payment-state";
@@ -11,7 +11,6 @@ import { SignQuote } from "./SignQuote";
 import { QuoteWalletButtons, type QuoteWalletConfig } from "./QuoteWalletButtons";
 import styles from "./QuoteSelection.module.css";
 import { copyPaymentText } from "./copyPaymentText";
-import { quoteProductDetails } from "./quoteLinePresentation";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -226,49 +225,41 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
           <p style={{ margin: "0 0 10px", fontSize: 11, color: "#5b5b58" }}>Left and right are viewed from inside the room.</p>
           <div className={styles.orderLines}>
-            {quote.lines.map((line) => {
+            {quote.lines.map((line, lineIndex) => {
               const isChecked = selected.has(line.id);
               const dimmed = mode === "some" && !isChecked;
+              const configurations = line.priceReady && line.showDesignOptions && line.designOptions.length
+                ? line.designOptions
+                : [{ id: line.id, label: "", productName: line.productName, styleName: line.styleName, options: line.priceReady ? line.options : [], valanceArtId: line.valanceArtId, lineTotal: line.lineTotal, priceReady: line.priceReady }];
               return (
-                <article key={line.id} className={styles.orderLine} style={{ opacity: dimmed ? 0.4 : 1 }}>
-                  <div className={styles.orderLineHeader}>
-                    <div>
-                      {mode === "some" ? (
+                <div key={line.id} style={{ opacity: dimmed ? 0.4 : 1, display: "grid", gap: 12 }}>
+                  {configurations.map((configuration, configurationIndex) => (
+                    <QuoteLineItemCard
+                      key={configuration.id}
+                      lineNumber={lineIndex + 1}
+                      room={line.room}
+                      productType={configuration.productName}
+                      optionLabel={configuration.label || undefined}
+                      styleName={configuration.styleName}
+                      options={configuration.options}
+                      valanceArtId={configuration.valanceArtId}
+                      price={configuration.priceReady ? money(configurations.length > 1 ? configuration.lineTotal : line.lineTotal) : "Pricing in progress"}
+                      priceLabel={configurations.length > 1 ? "Option total" : "Item total"}
+                      quantity={line.quantity}
+                      notice={line.discountPercent > 0 ? `${line.discountPercent}% off applied` : undefined}
+                      selection={mode === "some" && configurationIndex === 0 ? (
                         <label className={styles.lineSelect}>
-                          <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} />
-                          <span>Select</span>
+                          <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} aria-label={`Select item ${lineIndex + 1}: ${line.room}`} />
+                          <span>Select item</span>
                         </label>
-                      ) : null}
-                      <strong className={styles.roomName}>{line.room}</strong>
-                      <span className={styles.lineQuantity}>Quantity {line.quantity}</span>
-                    </div>
+                      ) : undefined}
+                    />
+                  ))}
+                  {configurations.length > 1 ? <div className={styles.orderLineHeader}>
+                    <span>Item {String(lineIndex + 1).padStart(2, "0")} total · {line.room}</span>
                     <strong className={styles.linePrice}>{line.priceReady ? money(line.lineTotal) : "Pricing in progress"}</strong>
-                  </div>
-                  {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
-                  <div className={styles.orderLineDetails}>
-                    {line.priceReady ? (
-                      line.showDesignOptions && line.designOptions.length ? (
-                        <div className={styles.designOptions}>
-                          {line.designOptions.map((option) => (
-                            <div key={option.id} className={line.designOptions.length > 1 ? styles.designOption : undefined}>
-                              {line.designOptions.length > 1 ? (
-                                <div className={styles.designOptionHeading}>
-                                  <strong>Option {customerQuoteText(option.label) || "A"}</strong>
-                                  <span>{money(option.lineTotal)}</span>
-                                </div>
-                              ) : null}
-                              <ProductConfiguration productName={option.productName} styleName={option.styleName} options={option.options} valanceArtId={option.valanceArtId} />
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <ProductConfiguration productName={line.productName} styleName={line.styleName} options={line.options} valanceArtId={line.valanceArtId} />
-                      )
-                    ) : (
-                      <em style={{ opacity: 0.6 }}>Pricing in progress</em>
-                    )}
-                  </div>
-                </article>
+                  </div> : null}
+                </div>
               );
             })}
             {quote.lines.length === 0 ? <p className={styles.emptyDetails}><em>This contract is still being prepared.</em></p> : null}
@@ -482,28 +473,6 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
     {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
     {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
   </div>;
-}
-
-function ProductConfiguration({ productName, styleName, options, valanceArtId }: { productName: string; styleName: string; options: string[]; valanceArtId?: string | null }) {
-  const details = quoteProductDetails(styleName, options, { illustrated: true });
-  return (
-    <div className={styles.illustratedConfiguration}>
-      <ContractProductIllustration productType={productName} options={options} valanceArtId={valanceArtId} />
-      <div className={styles.productConfiguration}>
-      <strong className={styles.productName}>{customerQuoteProductName(productName)}</strong>
-      {details.length ? (
-        <dl className={styles.productDetails}>
-          {details.map((detail) => (
-            <div className={styles.productDetail} key={`${detail.label}:${detail.value}`}>
-              <dt>{detail.label}</dt>
-              <dd>{detail.value}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-      </div>
-    </div>
-  );
 }
 
 function Row({ label, value, strong, highlight }: { label: string; value: string; strong?: boolean; highlight?: boolean }) {
