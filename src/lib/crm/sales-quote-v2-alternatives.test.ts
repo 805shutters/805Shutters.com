@@ -69,7 +69,11 @@ function database(results: unknown[]) {
         "order",
       ])
         query[name] = () => query;
-      query.update = (value: unknown) => {
+      query.is = (column: string) => {
+      if (column === "deleted_at") throw new Error("column sales_quotes.deleted_at does not exist");
+      return query;
+    };
+    query.update = (value: unknown) => {
         writes.push({ table, value });
         return query;
       };

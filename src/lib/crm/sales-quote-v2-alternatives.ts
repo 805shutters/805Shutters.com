@@ -113,9 +113,9 @@ export async function createSalesQuoteAlternative(
       .select("*")
       .eq("id", sourceId)
       .eq("account_id", ACCOUNT_IDS.SHUTTERS_805)
-      .is("deleted_at", null)
       .single(),
   ) as SalesQuote;
+  if (source?.deleted_at) throw new CrmAuthError(404, "Quote was not found.");
   if (!source?.quote_v2_backend)
     throw new CrmAuthError(
       409,
