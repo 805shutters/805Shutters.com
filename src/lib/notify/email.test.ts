@@ -91,7 +91,7 @@ describe("buildQuoteEmail", () => {
     expect(html).toContain("Honeycomb Shades");
     // No product thumbnails inside the line-item table (the only images in the
     // email are the header logo and the financing-section logos).
-    const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("Two Financing Options"));
+    const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("In-House Payment Plan"));
     expect(lineItemTable).not.toContain("<img");
     expect(lineItemTable).toContain("Honeycomb Shades");
     expect(lineItemTable).toContain(">Style</td>");
@@ -197,27 +197,27 @@ describe("buildQuoteEmail", () => {
 });
 
 describe("financing options section", () => {
-  it("appears in the quote email with both options and the customer's monthly example", () => {
+  it("appears in the quote email with only the in-house plan and the customer's monthly example", () => {
     const mail = buildQuoteEmail("Susan Milani", "https://example.com/q/abc", 6174, {
       quoteNumber: "Q-1042",
       depositDue: 3087,
       balanceDue: 3087,
       logoUrl: "https://www.805shutters.com/brand/805-shutters-logo-exact-transparent.png"
     });
-    expect(mail.html).toContain("Two Financing Options Available!");
-    expect(mail.html).toContain("Wisetack Financing");
+    expect(mail.html).toContain("In-House Payment Plan");
+    expect(mail.html).not.toMatch(/wisetack|application link|Option [12]/i);
+    expect(mail.text).not.toMatch(/wisetack|application link|Option [12]/i);
     expect(mail.html).toContain("805 In-House Plan");
     // 3087 / 3 * 1.03 = 1059.87 -> $1,059.87/mo
     expect(mail.html).toContain("$1,059.87");
     expect(mail.html).toContain("3 payments");
     expect(mail.html).not.toContain("6 payments");
     expect(mail.html).not.toContain("6 monthly");
-    expect(mail.html).toContain("/images/wisetack-logo.png");
     expect(mail.html).toContain("/brand/805-shutters-logo-exact-transparent.png");
     expect(mail.html).toContain("sms:+18058069344");
     expect(mail.html).toContain("Q-1042");
-    expect(mail.html).toContain("subject to credit approval");
-    expect(mail.text).toContain("TWO FINANCING OPTIONS AVAILABLE!");
+    expect(mail.html).not.toContain("subject to credit approval");
+    expect(mail.text).toContain("IN-HOUSE PAYMENT PLAN");
     expect(mail.text).toContain("$1,059.87");
     expect(mail.text).toContain("3 monthly payments");
   });
@@ -228,12 +228,13 @@ describe("financing options section", () => {
       total: 6174,
       depositDue: 3087
     });
-    expect(withAmounts.html).toContain("Two Financing Options Available!");
+    expect(withAmounts.html).toContain("In-House Payment Plan");
     expect(withAmounts.html).toContain("$1,059.87");
     expect(withAmounts.html).toContain("3 payments");
+    expect(withAmounts.html + withAmounts.text).not.toMatch(/wisetack|Option [12]/i);
 
     const noAmounts = buildQuoteEmail("Susan", "https://example.com/q/abc", 0, {});
-    expect(noAmounts.html).toContain("Two Financing Options Available!");
+    expect(noAmounts.html).toContain("In-House Payment Plan");
     expect(noAmounts.html).toContain("0% Interest");
     expect(noAmounts.html).toContain("up to 3 monthly payments");
     expect(noAmounts.html).not.toContain("/mo</span>");

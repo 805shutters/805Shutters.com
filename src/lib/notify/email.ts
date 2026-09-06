@@ -183,13 +183,7 @@ function smsHref(body: string) {
   return `sms:${FINANCING_SMS_NUMBER}?&body=${encodeURIComponent(body)}`;
 }
 
-/**
- * "Two Financing Options Available!" section appended to customer quote and
- * payment-link emails: Wisetack financing + the 805 in-house plan (0%
- * interest, Square autopay, first payment on install day). Fluid-hybrid
- * two-column layout: side-by-side on desktop, stacks on phones without media
- * queries.
- */
+/** 805 in-house payment plan included in customer quote and payment-link emails. */
 export function buildFinancingOptionsSection(details: {
   quoteNumber?: string | null;
   total?: number;
@@ -205,13 +199,12 @@ export function buildFinancingOptionsSection(details: {
   const monthly = financeAmount > 0 ? Math.round((financeAmount / 3) * 1.03 * 100) / 100 : 0;
   const quoteRef = details.quoteNumber ? ` for quote ${details.quoteNumber}` : "";
   const origin = siteOriginFromLogo(details.logoUrl);
-  const wisetackSms = smsHref(`Hi! I'd like the Wisetack financing application link${quoteRef}.`);
   const housePlanSms = smsHref(`Hi! I'd like to set up the 805 in-house payment plan${quoteRef}.`);
 
   const check = (line: string) =>
     `<div style="padding:3px 0 3px 0;font-size:13px;line-height:1.55;color:#0b0b0b"><strong>&#10003;</strong>&nbsp; ${line}</div>`;
 
-  const card = (input: { bar: string; logo: string; big: string; bigsub: string; checks: string[]; ctaLabel: string; ctaHref: string }) => `<div style="display:inline-block;width:100%;max-width:301px;vertical-align:top;text-align:left;margin:0 0 14px 0">
+  const card = (input: { bar: string; logo: string; big: string; bigsub: string; checks: string[]; ctaLabel: string; ctaHref: string }) => `<div style="display:inline-block;width:100%;max-width:608px;vertical-align:top;text-align:left;margin:0 0 14px 0">
   <div style="border:2px solid #0b0b0b;margin:0 3px">
     <div style="background:#0b0b0b;color:#ffffff;padding:10px 14px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700">${input.bar}</div>
     <div style="padding:16px 14px 14px">
@@ -225,25 +218,11 @@ export function buildFinancingOptionsSection(details: {
 </div>`;
 
   const html = `<div style="margin:28px 0 6px 0;border-top:2px solid #0b0b0b;padding-top:18px">
-  <div style="text-align:center;font-size:13px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:#0b0b0b">Two Financing Options Available!</div>
-  <p style="text-align:center;font-size:13.5px;line-height:1.55;color:#6b6b66;margin:6px 0 16px 0">You don't have to pay it all at once &mdash; choose the option that fits.</p>
+  <div style="text-align:center;font-size:13px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;color:#0b0b0b">In-House Payment Plan</div>
+  <p style="text-align:center;font-size:13.5px;line-height:1.55;color:#6b6b66;margin:6px 0 16px 0">Ask about spreading your remaining balance over monthly payments.</p>
   <div style="text-align:center;font-size:0">
     ${card({
-      bar: "Option 1 &middot; Wisetack Financing",
-      logo: `<img src="${escapeAttr(`${origin}/images/wisetack-logo.png`)}" alt="Wisetack" height="26" style="height:26px;width:auto;vertical-align:middle;border:0">`,
-      big: "0% APR",
-      bigsub: "available for qualified customers*",
-      checks: [
-        "Apply from your phone in about a minute",
-        "Checking options won't affect your credit score",
-        "Multiple monthly plans to choose from",
-        "No prepayment penalties or hidden fees"
-      ],
-      ctaLabel: "Text us for your application link",
-      ctaHref: wisetackSms
-    })}
-    ${card({
-      bar: "Option 2 &middot; 805 In-House Plan",
+      bar: "805 In-House Plan",
       logo: `<img src="${escapeAttr(`${origin}/brand/805-shutters-logo-exact-transparent.png`)}" alt="805 Shutters" height="78" style="height:78px;width:auto;vertical-align:middle;border:0">`,
       big: monthly > 0 ? `${money(monthly)}<span style="font-size:13px;font-weight:400">/mo</span>` : "0% Interest",
       bigsub: monthly > 0 ? "on this quote &middot; 3 payments &middot; 0% interest" : "up to 3 monthly payments",
@@ -257,10 +236,10 @@ export function buildFinancingOptionsSection(details: {
       ctaHref: housePlanSms
     })}
   </div>
-  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">*All financing is subject to credit approval. Your terms may vary. Payment options through Wisetack are provided by Wisetack's lending partners. Offers range from 0&ndash;35.9% APR based on amount requested and creditworthiness. Not all merchants and lending partners participate in 0% interest programs. See additional terms at wisetack.com/faqs. In-house plan collected by automatic card payment through Square; 3 monthly payments shown include a 3% card processing fee (credit cards).</p>
+  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">In-house plan collected by automatic card payment through Square; 3 monthly payments shown include a 3% card processing fee (credit cards).</p>
 </div>`;
 
-  const text = `\n\nTWO FINANCING OPTIONS AVAILABLE!\n\nOption 1 - Wisetack Financing: 0% APR available for qualified customers*. Apply from your phone in about a minute; checking options won't affect your credit score. Text ${FINANCING_SMS_NUMBER} for your application link.\n\nOption 2 - 805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\n*Financing subject to credit approval; terms vary. Provided by Wisetack's lending partners. See wisetack.com/faqs. In-house monthly amount includes a 3% card processing fee.`;
+  const text = `\n\nIN-HOUSE PAYMENT PLAN\n\n805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\nIn-house monthly amount includes a 3% card processing fee.`;
 
   return { html, text };
 }

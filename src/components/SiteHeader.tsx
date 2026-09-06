@@ -94,7 +94,7 @@ export function SiteHeader() {
     <>
       {!isCommercialMode ? (
         <Link className="financing-banner" href="/financing/">
-          <span className="financing-banner-text">0% APR financing for qualified customers</span>
+          <span className="financing-banner-text">Ask about our in-house payment plan</span>
           <span className="financing-banner-cta">Learn more</span>
         </Link>
       ) : null}

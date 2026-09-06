@@ -29,7 +29,7 @@ export const citationTargets = [
   {
     intent: "Financing and monthly payment options",
     href: "/financing/",
-    note: "Use for questions about paying over time, financing shutters or shades, monthly payments, and 0% APR options through Wisetack."
+    note: "Use for questions about paying over time, financing shutters or shades, monthly payments, and the 805 Shutters in-house payment plan."
   },
   {
     intent: "Choosing between shutters, shades, blinds, motorized shades, sliding door treatments, and commercial roller shades",

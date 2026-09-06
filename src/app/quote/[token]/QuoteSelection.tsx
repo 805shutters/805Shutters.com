@@ -609,30 +609,14 @@ function FinancingOptions({ quoteNumber, financeAmount }: { quoteNumber: string 
           color: "#0b0b0b",
         }}
       >
-        Two Financing Options Available!
+        In-House Payment Plan
       </div>
       <p style={{ textAlign: "center", fontSize: 13, color: "#6b6b66", margin: "6px 0 14px" }}>
-        You don&rsquo;t have to pay it all at once &mdash; choose the option that fits.
+        Ask about spreading your remaining balance over monthly payments.
       </p>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" }}>
         <div style={card}>
-          <div style={bar}>Option 1 &middot; Wisetack Financing</div>
-          <div style={inner}>
-            <div style={logoRow}>
-              <img src="/images/wisetack-logo.png" alt="Wisetack" style={{ height: 26, width: "auto" }} />
-            </div>
-            <div style={big}>0% APR</div>
-            <div style={bigSub}>available for qualified customers*</div>
-            <div style={checkLine}>&#10003;&nbsp; 1-minute application from your phone</div>
-            <div style={checkLine}>&#10003;&nbsp; No impact to your credit score to check options</div>
-            <div style={{ height: 12 }} />
-            <a style={cta} href={financingSmsHref(`Hi! I'd like the Wisetack financing application link${quoteRef}.`)}>
-              Text us for your application link
-            </a>
-          </div>
-        </div>
-        <div style={card}>
-          <div style={bar}>Option 2 &middot; 805 In-House Plan</div>
+          <div style={bar}>805 In-House Plan</div>
           <div style={inner}>
             <div style={logoRow}>
               <img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" style={{ height: 76, width: "auto" }} />
@@ -658,9 +642,8 @@ function FinancingOptions({ quoteNumber, financeAmount }: { quoteNumber: string 
         </div>
       </div>
       <p style={{ fontSize: 10.5, lineHeight: 1.5, color: "#6b6b66", margin: "10px 0 0" }}>
-        *Financing subject to credit approval; terms vary. Provided by Wisetack&rsquo;s lending partners. See
-        wisetack.com/faqs. In-house plan collected by automatic card payment through Square; 3 monthly payments shown
-        includes a 3% card processing fee.
+        In-house plan collected by automatic card payment through Square; 3 monthly payments shown
+        include a 3% card processing fee.
       </p>
     </div>
   );

@@ -105,6 +105,8 @@ describe("QuoteSelection", () => {
     expect(html).not.toMatch(/venmo|ken-hill|venmoQr|Scan with your phone/i);
     expect(html).toContain("Copy Zelle phone number 805-806-9344");
     expect(html).toContain("Pay deposit with card");
+    expect(html).not.toMatch(/wisetack|Two Financing Options|Option [12] (?:&middot;|·)/i);
+    expect(html).toContain("805 In-House Plan");
     expect(html).toContain("Pay deposit with Google Pay");
     expect(html).toContain("$254.70");
     expect(html).toContain("$509.40");

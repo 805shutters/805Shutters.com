@@ -1281,7 +1281,7 @@ const supportPages: SitePage[] = [
           "Over 30 years of local experience",
           "Custom measuring and professional installation",
           "Shutters, shades, blinds, and commercial coverings in one place",
-          "Monthly payment options through Wisetack, including 0% APR plans for qualified customers",
+          "In-house monthly payment plans available with written approval from 805 Shutters",
           "Service across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby cities"
         ]
       },
@@ -1294,65 +1294,60 @@ const supportPages: SitePage[] = [
   },
   {
     path: "/financing/",
-    title: "Window Treatment Financing in Ventura County | 0% APR Options | 805 Shutters",
+    title: "Window Treatment Payment Plans in Ventura County | 805 Shutters",
     description:
-      "Finance custom shutters, shades, blinds, and drapery in Ventura County with monthly payment options through Wisetack, including 0% APR plans for qualified customers.",
-    h1: "Flexible Financing For Shutters, Shades & Blinds",
+      "Ask about the 805 Shutters in-house payment plan for custom shutters, shades, blinds, and drapery in Ventura County.",
+    h1: "In-House Payment Plans For Shutters, Shades & Blinds",
     eyebrow: "Pay over time",
     intro:
-      "Get the custom window treatments your home needs now and pay over time with monthly payment options through Wisetack, including 0% APR plans for qualified customers.",
+      "Ask about spreading your remaining balance over monthly payments with the 805 Shutters in-house plan. Plans require written approval from 805 Shutters.",
     image: images.hero,
     imageAlt: "Custom plantation shutters in a bright Ventura County living room",
     sections: [
       {
-        heading: "Monthly Payments Through Wisetack",
+        heading: "The 805 In-House Plan",
         body:
-          "805 Shutters partners with Wisetack, a consumer financing platform built for home services, so Ventura County homeowners can split a window treatment project into predictable monthly payments instead of paying everything up front.",
+          "Our approved in-house plan lets you pay a 50% deposit and split the remaining balance into 3 monthly card payments, starting the day of installation.",
         bullets: [
-          "Check your options in about a minute from your phone",
-          "Checking eligibility does not impact your credit score",
-          "Choose from multiple monthly payment plans",
-          "No prepayment penalties, origination fees, or late fees",
-          "0% APR plans available for qualified customers"
+          "0% interest",
+          "No credit application",
+          "3 monthly payments for the remaining balance",
+          "Automatic card payments through Square",
+          "Monthly card payments include a 3% card processing fee"
         ]
       },
       {
-        heading: "How Financing Works",
+        heading: "How To Request A Payment Plan",
         body:
-          "Request a free in-home consultation and we will measure your windows and build your custom quote. If you want to pay over time, we text or email you a secure Wisetack link for your project. You pick the monthly plan that fits your budget, and we get to work - Wisetack pays us directly, and you simply make your monthly payments.",
+          "Request a free in-home consultation and we will measure your windows and build your custom quote. Ask our team about the in-house plan so we can confirm your payment amounts and schedule in writing before it applies.",
         links: [{ label: "Book a free in-home consultation", href: "/book-consultation/" }]
       },
       {
-        heading: "Why Homeowners Like Paying Over Time",
+        heading: "Payment Plan Terms",
         body:
-          "Custom shutters, shades, and drapery are a long-term upgrade to your home. Financing lets you do the whole project at once - every room, matching treatments, motorization if you want it - instead of phasing it over years. Ask about financing during your consultation and we will walk you through the options with no pressure and no obligation."
-      },
-      {
-        heading: "Financing Disclosure",
-        body:
-          "All financing is subject to credit approval. Your terms may vary. Payment options through Wisetack are provided by Wisetack's lending partners. For example, a $5,500 purchase could cost $253.54 per month for 24 months, based on a 9.9% APR, or $1,833.33 per month for 3 months, based on a 0% APR. Offers range from 0 to 35.9% APR based on amount requested and creditworthiness. Not all merchants and lending partners participate in 0% interest programs. Terms range from 3 to 120 months and may vary based on merchant, lending partner, or transaction size. State interest rate caps may apply. No prepaid finance charges or participation fees. See additional terms at wisetack.com/faqs."
+          "In-house plans must be approved by 805 Shutters in writing. Approved plans use automatic card payments through Square, with the first monthly payment due on installation day. Monthly amounts include a 3% card processing fee. Your written agreement confirms your payment schedule."
       }
     ],
     faqs: [
       {
-        question: "Can I finance shutters, shades, or blinds in Ventura County?",
+        question: "Can I pay for shutters, shades, or blinds over time?",
         answer:
-          "Yes. 805 Shutters offers monthly payment options through Wisetack on custom shutters, shades, blinds, and drapery projects, including 0% APR plans for qualified customers. Ask about financing during your free in-home consultation."
+          "Ask about the 805 Shutters in-house plan during your consultation. With written approval, you can pay a 50% deposit and split the remaining balance into 3 monthly card payments starting on installation day."
       },
       {
-        question: "Does checking my financing options affect my credit score?",
+        question: "Does the in-house plan require a credit application?",
         answer:
-          "No. Checking your options through Wisetack is a soft credit inquiry and does not impact your credit score. A quick application from your phone shows the monthly payment plans you qualify for."
+          "No credit application is required. The plan must be approved by 805 Shutters in writing."
       },
       {
-        question: "Is there a fee or penalty for paying off financing early?",
+        question: "Does the in-house plan include interest or fees?",
         answer:
-          "No. Wisetack financing has no prepayment penalties, no origination fees, and no late fees. You can pay off your plan early at any time."
+          "The in-house plan has 0% interest. Monthly card payments include a 3% card processing fee. We confirm your payment amounts and schedule in writing."
       },
       {
-        question: "How do I apply for window treatment financing?",
+        question: "How do I request an in-house payment plan?",
         answer:
-          "Schedule a free in-home consultation with 805 Shutters. After we build your custom quote, we send you a secure Wisetack link by text or email. You check your options in about a minute and pick the monthly plan that works for you."
+          "Ask during your free in-home consultation or contact 805 Shutters at 805-806-9344. Our team will review the request and confirm any approved plan in writing."
       }
     ],
     cta: "Request a free consultation"
@@ -1471,7 +1466,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Do you offer financing?",
         body:
-          "Yes. 805 Shutters offers monthly payment options through Wisetack, including 0% APR plans for qualified customers. Checking your options takes about a minute from your phone and does not impact your credit score.",
+          "Ask about our in-house payment plan: a 50% deposit followed by 3 monthly card payments starting on installation day. Plans require written approval from 805 Shutters. Monthly card payments include a 3% processing fee.",
         links: [{ label: "Learn about financing", href: "/financing/" }]
       },
       {
@@ -2907,7 +2902,7 @@ export const homePage: SitePage = withSearchDepth({
     {
       heading: "Flexible Monthly Payments",
       body:
-        "Pay over time with monthly payment options through Wisetack, including 0% APR plans for qualified customers. Checking your options takes about a minute and does not impact your credit score.",
+        "Ask about the 805 Shutters in-house payment plan. With written approval, pay a 50% deposit and spread the remaining balance over 3 monthly card payments starting on installation day. Monthly card payments include a 3% processing fee.",
       links: [{ label: "Learn about financing", href: "/financing/" }]
     },
     {
