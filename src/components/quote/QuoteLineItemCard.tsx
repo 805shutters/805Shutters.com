@@ -49,7 +49,7 @@ export function QuoteLineItemCard({
             {optionLabel ? <span className={styles.option}>Option {customerQuoteText(optionLabel) || "A"}</span> : null}
           </div>
           <h3 id={headingId} className={styles.room}>{room || "Room not specified"}</h3>
-          <p className={styles.product}>{customerQuoteProductName(productType)}</p>
+          <p className={styles.product}><span>{customerQuoteProductName(productType)}</span></p>
           <div className={styles.measurements}>
             {dimensions ? <span>{dimensions}</span> : null}
             <span>Quantity {quantity}</span>
