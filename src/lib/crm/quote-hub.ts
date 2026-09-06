@@ -357,6 +357,16 @@ export async function prepareHubEmail(
   check(insertError);
   return data as HubMessage;
 }
+// Literal paths keep Next's file tracer from bundling the entire public library.
+async function builtinHubPhoto(id: string): Promise<Buffer> {
+  switch (id) {
+    case "shutters": return readFile(path.join(process.cwd(), "public/images/homepage-flow/mobile-hero-plantation-shutters.jpg"));
+    case "roller": return readFile(path.join(process.cwd(), "public/images/homepage-flow/roller-shades.jpg"));
+    case "roman": return readFile(path.join(process.cwd(), "public/images/homepage-flow/mobile-hero-roman-shades.jpg"));
+    default: throw new CrmAuthError(400, "Unknown inspiration photo.");
+  }
+}
+
 async function hubAttachments(
   db: SupabaseClient,
   quoteId: string,
@@ -367,9 +377,7 @@ async function hubAttachments(
     const builtin = HUB_PHOTOS.find((p) => p.id === id);
     if (builtin) {
       attachments.push({
-        content: await readFile(
-          path.join(process.cwd(), "public", builtin.url),
-        ),
+        content: await builtinHubPhoto(builtin.id),
         contentType: "image/jpeg",
         filename: id + ".jpg",
       });
