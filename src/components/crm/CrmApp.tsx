@@ -3145,6 +3145,7 @@ export function CrmApp({
       {closeRatePeriod ? (
         <CloseRateDrilldown
           periodDays={closeRatePeriod}
+          quotes={quotes}
           customers={closeRatePeriod === 30
             ? commandPerformance.closeRate30DaysCustomers
             : commandPerformance.closeRate60DaysCustomers}

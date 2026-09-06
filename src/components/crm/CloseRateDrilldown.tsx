@@ -1,6 +1,11 @@
 import type { CloseRateCohortCustomer } from "@/lib/crm/command-performance";
-import type { CrmJob } from "@/lib/crm/types";
+import type { CrmJob, CrmQuote } from "@/lib/crm/types";
 import { DeletedOpportunities, type DeletedOpportunity } from "./DeletedOpportunities";
+
+const currency = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD"
+});
 
 function titleCase(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -15,6 +20,37 @@ function opportunityDate(job: CrmJob) {
     day: "numeric",
     year: "numeric"
   }).format(date);
+}
+
+function dateSortValue(value: string | null | undefined) {
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function latestActiveQuoteByJob(quotes: CrmQuote[]) {
+  const quoteByJobId = new Map<string, CrmQuote>();
+
+  for (const quote of quotes) {
+    if (quote.status === "archived" || quote.archived_at) continue;
+    const existing = quoteByJobId.get(quote.job_id);
+    if (!existing || dateSortValue(quote.updated_at || quote.created_at) > dateSortValue(existing.updated_at || existing.created_at)) {
+      quoteByJobId.set(quote.job_id, quote);
+    }
+  }
+
+  return quoteByJobId;
+}
+
+function opportunityAmount(job: CrmJob, quote: CrmQuote | undefined) {
+  if (quote) {
+    return Number.isFinite(quote.quote_total)
+      ? `Quote: ${currency.format(quote.quote_total)}`
+      : "Quote: Not available";
+  }
+  return Number.isFinite(job.estimated_total) && job.estimated_total > 0
+    ? `Estimate: ${currency.format(job.estimated_total)}`
+    : "Quote: Not available";
 }
 
 export function CloseRateDeleteAction({ job, onDelete, busy }: {
@@ -38,11 +74,13 @@ export function CloseRateDeleteAction({ job, onDelete, busy }: {
 function CloseRateOutcomeGroup({
   outcome,
   customers,
+  quoteByJobId,
   onDelete,
   busy
 }: {
   outcome: "sold" | "unsold";
   customers: CloseRateCohortCustomer[];
+  quoteByJobId: Map<string, CrmQuote>;
   onDelete: (job: CrmJob) => void;
   busy: boolean;
 }) {
@@ -71,6 +109,7 @@ function CloseRateOutcomeGroup({
                       <div className="crm-close-rate-job-details">
                         <span>{job.product_interest || "Product not listed"}</span>
                         <small>{opportunityDate(job)} · {titleCase(job.status)}</small>
+                        <small className="crm-close-rate-job-amount">{opportunityAmount(job, quoteByJobId.get(job.id))}</small>
                       </div>
                       {!sold ? (
                         <CloseRateDeleteAction job={job} onDelete={onDelete} busy={busy} />
@@ -92,6 +131,7 @@ function CloseRateOutcomeGroup({
 export function CloseRateDrilldown({
   periodDays,
   customers,
+  quotes = [],
   onClose,
   onDelete,
   busy,
@@ -100,6 +140,7 @@ export function CloseRateDrilldown({
 }: {
   periodDays: 30 | 60;
   customers: CloseRateCohortCustomer[];
+  quotes?: CrmQuote[];
   onClose: () => void;
   onDelete: (job: CrmJob) => void;
   busy: boolean;
@@ -108,6 +149,7 @@ export function CloseRateDrilldown({
 }) {
   const soldCustomers = customers.filter((customer) => customer.outcome === "sold");
   const unsoldCustomers = customers.filter((customer) => customer.outcome === "unsold");
+  const quoteByJobId = latestActiveQuoteByJob(quotes);
 
   return (
     <section
@@ -128,8 +170,8 @@ export function CloseRateDrilldown({
       </div>
       {onLoadDeleted && onRestore ? <DeletedOpportunities load={onLoadDeleted} restore={onRestore} busy={busy} /> : null}
       <div className="crm-close-rate-groups">
-        <CloseRateOutcomeGroup outcome="sold" customers={soldCustomers} onDelete={onDelete} busy={busy} />
-        <CloseRateOutcomeGroup outcome="unsold" customers={unsoldCustomers} onDelete={onDelete} busy={busy} />
+        <CloseRateOutcomeGroup outcome="sold" customers={soldCustomers} quoteByJobId={quoteByJobId} onDelete={onDelete} busy={busy} />
+        <CloseRateOutcomeGroup outcome="unsold" customers={unsoldCustomers} quoteByJobId={quoteByJobId} onDelete={onDelete} busy={busy} />
       </div>
     </section>
   );

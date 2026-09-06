@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { buildDashboardData } from "../src/lib/crm/backend";
-import type { CrmJob } from "../src/lib/crm/types";
+import type { CrmJob, CrmQuote } from "../src/lib/crm/types";
 
 // Synthetic browser fixture: all API and external traffic is intercepted.
 // Run against a local dev server with the jobtracking-test Supabase URL/key.
@@ -42,7 +42,13 @@ async function setup(page: Page) {
       return route.fulfill({ json: { id: job.id } });
     }
     if (path === "/api/crm/jobs" && route.request().method() === "GET") {
-      return route.fulfill({ json: buildDashboardData({ jobs: jobs.filter((job) => !job.meta?.deleted_at), quotes: [], events: [], customers: [], products: [], contracts: [], expenses: [], payments: [], credits: [], entries: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 }) });
+      const dashboard = buildDashboardData({ jobs: jobs.filter((job) => !job.meta?.deleted_at), quotes: [], events: [], customers: [], products: [], contracts: [], expenses: [], payments: [], credits: [], entries: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 });
+      dashboard.quotes = [0, 2].map((index) => ({
+        id: `quote-${index}`, job_id: jobs[index].id, created_at: stamp, updated_at: stamp,
+        status: index === 2 ? "sold" : "draft", quote_total: index === 2 ? 9876 : 12345.67,
+        archived_at: null, meta: {},
+      } as CrmQuote));
+      return route.fulfill({ json: dashboard });
     }
     if (route.request().method() === "DELETE") {
       writes.push(path);
@@ -124,9 +130,12 @@ test("recently deleted restores the selected opportunity and handles a failed re
 });
 
 for (const width of [1440, 820, 375]) {
-  test(`deletion controls fit at ${width}px`, async ({ page }) => {
+  test(`quote amounts and deletion controls fit at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const { view } = await setup(page);
+    await expect(view.locator(".crm-close-rate-group--unsold")).toContainText("Quote: $12,345.67");
+    await expect(view.locator(".crm-close-rate-group--unsold")).toContainText("Quote: Not available");
+    await expect(view.locator(".crm-close-rate-group--sold")).toContainText("Quote: $9,876.00");
     const button = view.getByRole("button", { name: /Delete.*Shutters/ });
     await button.scrollIntoViewIfNeeded();
     await expect(button).toBeVisible();
@@ -134,6 +143,11 @@ for (const width of [1440, 820, 375]) {
     expect(box).toBeTruthy();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(width);
-    await page.screenshot({ path: `reports/screenshots/close-rate-delete-${width}.png` });
+    const amount = view.getByText("Quote: $12,345.67", { exact: true });
+    await expect(amount).toBeVisible();
+    const amountBox = await amount.boundingBox();
+    expect(amountBox!.x).toBeGreaterThanOrEqual(0);
+    expect(amountBox!.x + amountBox!.width).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: `reports/screenshots/close-rate-amount-${width}.png` });
   });
 }

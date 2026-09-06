@@ -5341,6 +5341,11 @@ body.qb-fullscreen .crm-app-shell {
   font-size: 12px;
 }
 
+.crm-close-rate-job-list .crm-close-rate-job-amount {
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .crm-close-rate-empty {
   margin: 14px 0 0;
   padding: 14px;
