@@ -18,7 +18,7 @@
 .card .room { font-family: Didot, "Bodoni 72", Georgia, serif; font-size: 30px; font-weight: 400; line-height: 1.15; letter-spacing: -.5px; color: #0b0b0b; margin: 0 0 8px; overflow-wrap: anywhere; }
 .card .product { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; font-size: 22px; font-weight: 500; line-height: 1.3; letter-spacing: .1px; color: #343330; margin: 0 0 10px; overflow-wrap: anywhere; }
 .product > span { min-width: 0; }
-.product::before, .product::after { content: ""; flex: 0 0 7px; width: 7px; height: 7px; border: 2px solid #fff; border-radius: 50%; background: #898680; box-shadow: 0 0 0 1px #c5c2bb; }
+.product::before, .product::after { content: ""; flex: 0 0 4px; width: 4px; height: 4px; border-radius: 50%; background: #a6a29b; }
 .measurements { display: flex; flex-wrap: wrap; gap: 4px 12px; color: #67645e; font-size: 11px; line-height: 1.5; }
 .selection { margin-bottom: 10px; }
 .notice { font-size: 12px; line-height: 1.5; color: #67645e; margin-top: 8px; }
