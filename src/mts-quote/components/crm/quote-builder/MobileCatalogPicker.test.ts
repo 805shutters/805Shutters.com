@@ -51,7 +51,7 @@ describe("MobileCatalogPicker", () => {
     expect(state).toEqual({ isOpen: true, query: "", visibleCount: 24 });
   });
 
-  it("renders a compact selected button and an accessible two-column picker shell", () => {
+  it("renders a compact selected button and keeps an empty search query search-only", () => {
     const selectedHtml = renderToStaticMarkup(createElement(MobileCatalogPicker, {
       label: "Color", selectedItem: rows[0], items: rows, onSelect: () => undefined, onClear: () => undefined,
       noResultsLabel: "No colors match.",
@@ -65,15 +65,23 @@ describe("MobileCatalogPicker", () => {
       noResultsLabel: "No fabrics match.",
     }));
     expect(openHtml).toContain("Search colors or codes");
-    expect(openHtml).toContain('aria-label="Fabric choices"');
-    expect(openHtml).toContain("Light Filtering");
-    expect(openHtml).toContain("disabled");
+    expect(openHtml).not.toContain('aria-label="Fabric choices"');
+    expect(openHtml).not.toContain("Light Filtering");
+    expect(openHtml).not.toContain("choices");
+    expect(openHtml).not.toContain("Show more");
 
     const emptyHtml = renderToStaticMarkup(createElement(MobileCatalogPicker, {
       label: "Color", selectedItem: null, items: [], onSelect: () => undefined, onClear: () => undefined,
       noResultsLabel: "No colors match this search.",
     }));
-    expect(emptyHtml).toContain('role="status"');
-    expect(emptyHtml).toContain("No colors match this search.");
+    expect(emptyHtml).not.toContain('role="status"');
+    expect(emptyHtml).not.toContain("No colors match this search.");
+
+    const browseHtml = renderToStaticMarkup(createElement(MobileCatalogPicker, {
+      label: "Browsable color", selectedItem: null, items: rows, onSelect: () => undefined, onClear: () => undefined,
+      noResultsLabel: "No colors match this search.", browseOnEmptyQuery: true,
+    }));
+    expect(browseHtml).toContain('aria-label="Browsable color choices"');
+    expect(browseHtml).toContain("Platinum White");
   });
 });

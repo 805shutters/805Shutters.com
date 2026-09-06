@@ -93,6 +93,7 @@ type MobileCatalogPickerProps<T extends MobileCatalogPickerItem> = {
   onSelect: (selected: T) => void;
   onClear: () => void;
   noResultsLabel: string;
+  browseOnEmptyQuery?: boolean;
 };
 
 function Swatch({ item }: { item: MobileCatalogPickerItem }) {
@@ -120,6 +121,7 @@ export function MobileCatalogPicker<T extends MobileCatalogPickerItem>({
   onSelect,
   onClear,
   noResultsLabel,
+  browseOnEmptyQuery = false,
 }: MobileCatalogPickerProps<T>) {
   const inputId = useId();
   const [state, dispatch] = useReducer(
@@ -156,9 +158,11 @@ export function MobileCatalogPicker<T extends MobileCatalogPickerItem>({
     );
   }
 
-  const filteredItems = filterMobileCatalogPickerItems(items, state.query);
+  const hasQuery = Boolean(state.query.trim());
+  const showResults = browseOnEmptyQuery || hasQuery;
+  const filteredItems = showResults ? filterMobileCatalogPickerItems(items, state.query) : [];
   const visibleItems = filteredItems.slice(0, state.visibleCount);
-  const hasMore = visibleItems.length < filteredItems.length;
+  const hasMore = showResults && visibleItems.length < filteredItems.length;
 
   return (
     <div className={styles.root} data-mobile-catalog-picker={label}>
@@ -185,19 +189,23 @@ export function MobileCatalogPicker<T extends MobileCatalogPickerItem>({
         ) : <span className={styles.clearSpacer} />}
       </div>
 
-      <div className={styles.toolbar}>
-        <span>{filteredItems.length} {filteredItems.length === 1 ? "choice" : "choices"}</span>
-        {selectedItem ? (
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "cancel", hasSelection: true })}
-          >
-            Cancel
-          </button>
-        ) : null}
-      </div>
+      {showResults || selectedItem ? (
+        <div className={styles.toolbar}>
+          {showResults ? (
+            <span>{filteredItems.length} {filteredItems.length === 1 ? "choice" : "choices"}</span>
+          ) : <span />}
+          {selectedItem ? (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: "cancel", hasSelection: true })}
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-      {visibleItems.length ? (
+      {showResults && visibleItems.length ? (
         <div className={styles.grid} role="group" aria-label={`${label} choices`}>
           {visibleItems.map((item) => (
             <button
@@ -223,9 +231,9 @@ export function MobileCatalogPicker<T extends MobileCatalogPickerItem>({
             </button>
           ))}
         </div>
-      ) : (
+      ) : showResults ? (
         <p className={styles.empty} role="status">{noResultsLabel}</p>
-      )}
+      ) : null}
 
       {hasMore ? (
         <button type="button" className={styles.showMore} onClick={() => dispatch({ type: "show-more" })}>

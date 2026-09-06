@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { MobileCatalogPicker, type MobileCatalogPickerItem } from "./MobileCatalogPicker";
+import { MOBILE_INSTALL_LABELS, MobileInstallOptions } from "./MobileInstallOptions";
 import { formatDimensions } from "@mts/types/quote";
 import {
   SHUTTER_LOUVER_SIZES,
@@ -6755,6 +6756,21 @@ function ShutterDesignOptions({
     }
 
     if (opt.type === "select") {
+      if (mobilePresentation && opt.field === "json:color") {
+        return (
+          <GridButtonGroup
+            label={opt.label}
+            options={opt.options}
+            value={value}
+            hideLabel
+            onChange={(v) => {
+              handleUpdate(opt.field, v);
+              setOpenOptionField(null);
+            }}
+          />
+        );
+      }
+
       return (
         <GridSelect
           label={opt.label}
@@ -6865,15 +6881,26 @@ function ShutterDesignOptions({
 
           {showMoreOptions && (
             <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
-              {INSTALL_MORE_OPTIONS.map((opt) => (
-                <GridYesNo
-                  key={opt.key}
-                  label={opt.label}
-                  value={getFieldValue(workingDesign, opt.field)}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                  noFirst={opt.noFirst}
+              {mobilePresentation ? (
+                <MobileInstallOptions
+                  options={INSTALL_MORE_OPTIONS.map((opt) => ({
+                    field: opt.field,
+                    label: MOBILE_INSTALL_LABELS[opt.field as keyof typeof MOBILE_INSTALL_LABELS],
+                    value: getFieldValue(workingDesign, opt.field),
+                  }))}
+                  onChange={handleUpdate}
                 />
-              ))}
+              ) : (
+                INSTALL_MORE_OPTIONS.map((opt) => (
+                  <GridYesNo
+                    key={opt.key}
+                    label={opt.label}
+                    value={getFieldValue(workingDesign, opt.field)}
+                    onChange={(v) => handleUpdate(opt.field, v)}
+                    noFirst={opt.noFirst}
+                  />
+                ))
+              )}
               <GridYesNo
                 label="Divider Rail"
                 value={getFieldValue(workingDesign, "json:divider_rail")}
@@ -11984,15 +12011,26 @@ function ShadesAndBlindsOptions({
                   />
                 )}
               <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
-                {INSTALL_MORE_OPTIONS.map((opt) => (
-                  <GridYesNo
-                    key={opt.key}
-                    label={opt.label}
-                    value={getFieldValue(design, opt.field)}
-                    onChange={(v) => handleUpdate(opt.field, v)}
-                    noFirst={opt.noFirst}
+                {mobilePresentation ? (
+                  <MobileInstallOptions
+                    options={INSTALL_MORE_OPTIONS.map((opt) => ({
+                      field: opt.field,
+                      label: MOBILE_INSTALL_LABELS[opt.field as keyof typeof MOBILE_INSTALL_LABELS],
+                      value: getFieldValue(design, opt.field),
+                    }))}
+                    onChange={handleUpdate}
                   />
-                ))}
+                ) : (
+                  INSTALL_MORE_OPTIONS.map((opt) => (
+                    <GridYesNo
+                      key={opt.key}
+                      label={opt.label}
+                      value={getFieldValue(design, opt.field)}
+                      onChange={(v) => handleUpdate(opt.field, v)}
+                      noFirst={opt.noFirst}
+                    />
+                  ))
+                )}
               </div>
             </div>
           )}
