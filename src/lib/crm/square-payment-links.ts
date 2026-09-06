@@ -16,7 +16,21 @@ import {
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 export type SquareOrderPaymentType = "deposit" | "balance";
-export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string };
+export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number };
+
+/** A partial request keeps its original deposit/balance ledger classification. */
+export function squarePaymentRequestAmount(amountDue: number, customAmount?: number) {
+  if (customAmount === undefined) return amountDue;
+  if (typeof customAmount !== "number" || !Number.isFinite(customAmount) || customAmount <= 0 ||
+      !Number.isSafeInteger(Math.round(customAmount * 100)) ||
+      Math.abs(customAmount * 100 - Math.round(customAmount * 100)) > 0.000001) {
+    throw new CrmAuthError(400, "Enter a positive payment amount with no more than two decimal places.");
+  }
+  if (dollarsToCents(customAmount) > dollarsToCents(amountDue)) {
+    throw new CrmAuthError(409, "The custom amount exceeds the current amount due. Refresh the job and review the payment request.");
+  }
+  return dollarsToCents(customAmount) / 100;
+}
 
 export function verifySquarePaymentConfirmation(
   amount: number,
@@ -110,7 +124,7 @@ export async function sendSquareOrderPaymentLink(
     creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
     creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
   });
-  const amount = amounts[paymentType];
+  const amount = squarePaymentRequestAmount(amounts[paymentType], confirmation?.customAmount);
   if (!(amount > 0)) {
     throw new CrmAuthError(400, paymentType === "deposit" ? "No deposit is currently due." : "No remaining balance is currently due.");
   }
@@ -122,7 +136,7 @@ export async function sendSquareOrderPaymentLink(
 
   if (confirmation) verifySquarePaymentConfirmation(amount, customerEmail || "", confirmation);
 
-  const label = paymentType === "deposit" ? "Deposit" : "Order balance";
+  const label = confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
   const { data: quoteIdentity, error: quoteIdentityError } = await supabase
     .from("crm_quotes")
     .select("id,job_id")
@@ -144,6 +158,7 @@ export async function sendSquareOrderPaymentLink(
     paymentType,
     amount,
     quoteNumber: publicQuote.quoteNumber,
+    customAmount: confirmation?.customAmount !== undefined,
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
   const email = delivery?.channel === "text" ? null : await sendEmail({
@@ -162,6 +177,7 @@ export async function sendSquareOrderPaymentLink(
     action: `square_${paymentType}_link.send`,
     metadata: {
       amount,
+      customAmount: confirmation?.customAmount !== undefined,
       recipient: delivery?.channel === "text" ? phone : customerEmail,
       channel: delivery?.channel || "email",
       idempotencyKey: delivery?.idempotencyKey || null,

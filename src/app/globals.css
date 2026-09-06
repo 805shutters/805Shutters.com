@@ -5829,7 +5829,7 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-square-payment-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -5913,7 +5913,8 @@ body.qb-fullscreen .crm-app-shell {
   font-weight: 700;
 }
 
-.crm-square-payment-recipient input {
+.crm-square-payment-recipient input,
+.crm-square-payment-recipient select {
   width: 100%;
   min-height: 40px;
   padding: 9px 10px;

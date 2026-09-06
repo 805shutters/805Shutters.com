@@ -129,6 +129,7 @@ export type PaymentLinkEmailDetails = {
 export type SquareOrderPaymentEmailDetails = {
   paymentType: "deposit" | "balance";
   amount: number;
+  customAmount?: boolean;
   quoteNumber?: string | null;
   logoUrl?: string;
 };
@@ -140,26 +141,32 @@ export function buildSquareOrderPaymentEmail(
 ): { subject: string; html: string; text: string } {
   const name = customerName && customerName !== "Valued customer" ? customerName : "there";
   const isDeposit = details.paymentType === "deposit";
+  const isCustom = details.customAmount === true;
+  const label = isCustom ? "Payment" : isDeposit ? "Deposit" : "Balance";
   const amount = money(details.amount);
-  const subject = isDeposit
+  const subject = isCustom
+    ? `Your 805 Shutters payment link - ${amount}`
+    : isDeposit
     ? `Your 805 Shutters deposit link - ${amount}`
     : `Your 805 Shutters balance link - ${amount}`;
-  const intro = isDeposit
+  const intro = isCustom
+    ? "Thank you for your order. Please use the secure Square link below to make your scheduled payment."
+    : isDeposit
     ? "Here is your deposit information to start your order. Please use the secure Square link below to pay your deposit."
     : "Thank you so much for your order. Please use the secure Square link below to pay your remaining balance.";
-  const action = isDeposit ? "Pay deposit through Square" : "Pay balance through Square";
+  const action = isCustom ? "Make payment through Square" : isDeposit ? "Pay deposit through Square" : "Pay balance through Square";
   const quoteLabel = details.quoteNumber ? `Order ${details.quoteNumber}` : "805 Shutters order";
-  const text = `Hello ${name},\n\n${intro}\n\n${isDeposit ? "Deposit" : "Balance"} due: ${amount}\n\n${action}: ${url}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
+  const text = `Hello ${name},\n\n${intro}\n\n${label} due: ${amount}\n\n${action}: ${url}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
       ${details.logoUrl ? `<img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:60%;height:auto;margin:0 0 16px 0;border:0">` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px">805 SHUTTERS</div>`}
       <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#333333">${escapeHtml(quoteLabel)}</div>
-      <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">${isDeposit ? "Deposit payment" : "Balance payment"}</h1>
+      <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">${isCustom ? "Order payment" : `${label} payment`}</h1>
       <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#1f1f1f">Hello ${escapeHtml(name)},</p>
       <p style="margin:8px 0 0 0;font-size:15px;line-height:1.55;color:#1f1f1f">${escapeHtml(intro)}</p>
     </div>
-    <div style="border:2px solid #0b0b0b;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#333333">${isDeposit ? "Deposit due" : "Balance due"}</div><div style="font-size:28px;line-height:1.2;font-weight:700;color:#0b0b0b">${amount}</div></div>
+    <div style="border:2px solid #0b0b0b;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#333333">${label} due</div><div style="font-size:28px;line-height:1.2;font-weight:700;color:#0b0b0b">${amount}</div></div>
     <div style="margin:26px 0 18px 0"><a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">${escapeHtml(action)}</a></div>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#555555">Or paste this secure Square link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${officialContactFooterHtml()}

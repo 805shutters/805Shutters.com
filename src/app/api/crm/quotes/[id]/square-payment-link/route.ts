@@ -13,14 +13,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       recipientEmail?: string;
       expectedAmount?: number;
       expectedRecipient?: string;
+      customAmount?: number;
     };
     if (body.paymentType !== "deposit" && body.paymentType !== "balance") {
       throw new CrmAuthError(400, "Choose either a deposit or balance payment link.");
     }
+    if (body.customAmount !== undefined && (typeof body.expectedAmount !== "number" || typeof body.expectedRecipient !== "string")) {
+      throw new CrmAuthError(400, "Confirm the payment amount and recipient before sending.");
+    }
     return NextResponse.json(
       await sendSquareOrderPaymentLink(supabase, id, body.paymentType, { email, userId: user.id }, body.recipientEmail, undefined,
         body.expectedAmount !== undefined || body.expectedRecipient !== undefined
-          ? { expectedAmount: body.expectedAmount as number, expectedRecipient: body.expectedRecipient as string } : undefined),
+          ? { expectedAmount: body.expectedAmount as number, expectedRecipient: body.expectedRecipient as string, customAmount: body.customAmount } : undefined),
     );
   } catch (error) {
     return crmAuthErrorResponse(error);

@@ -13,7 +13,7 @@ vi.mock("@/lib/finance/square", () => ({
 }));
 vi.mock("@/lib/notify/email", () => ({ buildSquareOrderPaymentEmail: vi.fn(), sendEmail: vi.fn() }));
 
-const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "deposit" | "balance", actor: { email: string; userId?: string }, confirmation?: { expectedAmount: number; expectedRecipient: string }) => sendCurrentSquareOrderPaymentLink(client, id, type, actor, undefined, undefined, confirmation);
+const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "deposit" | "balance", actor: { email: string; userId?: string }, confirmation?: { expectedAmount: number; expectedRecipient: string; customAmount?: number }) => sendCurrentSquareOrderPaymentLink(client, id, type, actor, undefined, undefined, confirmation);
 
 const quoteId = "22222222-2222-4222-8222-222222222222";
 const actor = { email: "staff@example.test", userId: "11111111-1111-4111-8111-111111111111" };
@@ -189,5 +189,57 @@ describe("Square payment send service safeguards", () => {
     expect(result.warning).toContain("before retrying");
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(createSquarePaymentLink).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+describe("custom Square payment requests", () => {
+  it("requests exactly the chosen installment and keeps the quote reconciliation identity", async () => {
+    vi.mocked(loadPublicQuoteByToken).mockResolvedValue(quote({ total: 2811.05, depositDue: 937 }));
+    const db = ledger({ payments: [{ amount: 937, payment_label: "Deposit" }] });
+    const result = await sendSquareOrderPaymentLink(db.client, quoteId, "balance", actor, {
+      expectedAmount: 937, expectedRecipient: customerEmail, customAmount: 937,
+    });
+    expect(result.amount).toBe(937);
+    expect(createSquarePaymentLink).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      amountCents: 93700, quoteId, jobId: "job-1", paymentType: "balance", buyerEmail: customerEmail,
+      title: "Order payment — 805 Shutters (Q-TEST)",
+    }));
+    expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith("Test customer", link.url,
+      expect.objectContaining({ amount: 937, customAmount: true }));
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: customerEmail, from: "805 Shutters <805@805shutters.com>" }));
+    expect(recordCrmActivity).toHaveBeenCalledWith(db.client, actor, expect.objectContaining({
+      metadata: expect.objectContaining({ amount: 937, customAmount: true }),
+    }));
+  });
+
+  it.each([0, -1, 500.01, 1.001, NaN, Infinity, "25", null])("rejects invalid custom amount %j before external effects", async (amount) => {
+    await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "balance", actor, {
+      customAmount: amount as number, expectedAmount: Number(amount), expectedRecipient: customerEmail,
+    })).rejects.toBeInstanceOf(Error);
+    expectNoExternalRequest();
+  });
+
+  it("rejects an installment that a newly recorded payment makes too large", async () => {
+    const db = ledger({ payments: [{ amount: 750, payment_label: "Deposit" }] });
+    await expect(sendSquareOrderPaymentLink(db.client, quoteId, "balance", actor, {
+      customAmount: 300, expectedAmount: 300, expectedRecipient: customerEmail,
+    })).rejects.toMatchObject({ status: 409 });
+    expectNoExternalRequest();
+  });
+
+  it.each([
+    { customAmount: 250, expectedAmount: 251, expectedRecipient: customerEmail },
+    { customAmount: 250, expectedAmount: 250, expectedRecipient: "changed@example.test" },
+  ])("requires the custom amount and recipient to match the reviewed request", async (confirmation) => {
+    await expect(sendSquareOrderPaymentLink(ledger().client, quoteId, "balance", actor, confirmation)).rejects.toMatchObject({ status: 409 });
+    expectNoExternalRequest();
+  });
+
+  it("accepts cents and retains deposit classification for a partial deposit", async () => {
+    await sendSquareOrderPaymentLink(ledger().client, quoteId, "deposit", actor, {
+      customAmount: 123.45, expectedAmount: 123.45, expectedRecipient: customerEmail,
+    });
+    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 12345, paymentType: "deposit" }));
   });
 });

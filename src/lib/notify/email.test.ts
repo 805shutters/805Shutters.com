@@ -2,6 +2,17 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { buildPaymentLinkEmail, buildQuoteEmail, buildSignedQuoteShopEmail, buildSquareOrderPaymentEmail, isResendConfigured, sendEmail } from "./email";
 
 describe("buildSquareOrderPaymentEmail", () => {
+  it("describes a custom installment without calling it the full remaining balance", () => {
+    const mail = buildSquareOrderPaymentEmail("Lior", "https://square.example.test/installment", {
+      paymentType: "balance", amount: 937, customAmount: true, quoteNumber: "805-0152",
+    });
+    expect(mail.subject).toBe("Your 805 Shutters payment link - $937.00");
+    expect(mail.text).toContain("Payment due: $937.00");
+    expect(mail.text).toContain("scheduled payment");
+    expect(mail.text).not.toContain("remaining balance");
+    expect(mail.html).not.toContain("Balance due");
+    expect(mail.html).toContain("805-0152");
+  });
   it("uses deposit-specific order-start language and the Square link", () => {
     const mail = buildSquareOrderPaymentEmail("Jane Smith", "https://square.link/deposit", {
       paymentType: "deposit",

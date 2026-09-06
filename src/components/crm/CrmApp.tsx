@@ -1025,7 +1025,7 @@ export function CrmApp({
     }
   }
 
-  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: { expectedAmount: number; expectedRecipient: string }) {
+  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: SquarePaymentRequestConfirmation) {
     if (!session) throw new Error("Sign in again before sending a payment link.");
     setBusy(true);
     setMessage(null);
@@ -4070,6 +4070,7 @@ type CustomerSearchResult = {
 };
 type MeasureNeededAction = "request" | "measured";
 type SquareOrderPaymentType = "deposit" | "balance";
+type SquarePaymentRequestConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number };
 type SquarePaymentLinkResult = {
   warning?: string | null;
   paymentType: SquareOrderPaymentType;
@@ -6036,7 +6037,7 @@ function CommandDashboard({
   activeDrill: DrillPayload | null;
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
-  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: SquarePaymentRequestConfirmation) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
@@ -7001,10 +7002,12 @@ function SquarePaymentLinkPanel({
   entry: DrillEntry;
   quote?: CrmQuote | null;
   busy: boolean;
-  onSend: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
+  onSend: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: SquarePaymentRequestConfirmation) => Promise<SquarePaymentLinkResult>;
 }) {
   const [sending, setSending] = useState<SquareOrderPaymentType | null>(null);
-  const [confirming, setConfirming] = useState<SquareOrderPaymentType | null>(null);
+  const [confirming, setConfirming] = useState<SquareOrderPaymentType | "custom" | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customPaymentType, setCustomPaymentType] = useState<SquareOrderPaymentType>("balance");
   const [alternateEmail, setAlternateEmail] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const row = entry.row;
@@ -7015,28 +7018,43 @@ function SquarePaymentLinkPanel({
   const savedEmail = quote?.customer_email?.trim() || "";
   const recipientEmail = alternateEmail.trim() || savedEmail;
 
+  const requestType = confirming === "custom" ? customPaymentType : confirming;
+  const maximumAmount = requestType === "deposit" ? depositRemaining : balanceRemaining;
+  const requestAmount = confirming === "custom" ? Number(customAmount) : maximumAmount;
+  const validAmount = Number.isFinite(requestAmount) && requestAmount > 0 &&
+    Math.round(requestAmount * 100) <= Math.round(maximumAmount * 100) &&
+    (confirming !== "custom" || /^\d+(?:\.\d{1,2})?$/.test(customAmount));
+  const exactMoney = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+
   useEffect(() => {
     setConfirming(null);
+    setCustomAmount("");
     setAlternateEmail("");
     setResult(null);
   }, [quote?.id]);
 
-  function confirm(paymentType: SquareOrderPaymentType) {
+  function confirm(paymentType: SquareOrderPaymentType | "custom") {
     setConfirming(paymentType);
+    setCustomAmount("");
+    setCustomPaymentType(balanceRemaining > 0 ? "balance" : "deposit");
     setAlternateEmail("");
     setResult(null);
   }
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const paymentType = confirming;
-    if (!paymentType) return;
+    const paymentType = requestType;
+    if (!paymentType || !validAmount || sending) return;
     if (!quote?.id) return;
     setSending(paymentType);
     setResult(null);
     try {
-      const sent = await onSend(quote.id, paymentType, alternateEmail.trim() || undefined);
-      setResult(`${paymentType === "deposit" ? "Deposit" : "Balance"} link sent to ${sent.recipient}.`);
+      const sent = await onSend(quote.id, paymentType, alternateEmail.trim() || undefined, {
+        expectedAmount: requestAmount,
+        expectedRecipient: recipientEmail,
+        ...(confirming === "custom" ? { customAmount: requestAmount } : {}),
+      });
+      setResult(`Payment link for ${exactMoney(sent.amount)} emailed to ${sent.recipient}.`);
       setConfirming(null);
       setAlternateEmail("");
     } catch (error) {
@@ -7055,11 +7073,15 @@ function SquarePaymentLinkPanel({
       <div className="crm-square-payment-actions">
         <button type="button" disabled={busy || sending !== null || !quote?.id || depositRemaining <= 0} onClick={() => confirm("deposit")}>
           <span>Send Deposit Link</span>
-          <strong>{toCurrency(depositRemaining)}</strong>
+          <strong>{exactMoney(depositRemaining)}</strong>
         </button>
         <button type="button" disabled={busy || sending !== null || !quote?.id || balanceRemaining <= 0} onClick={() => confirm("balance")}>
           <span>Send Balance Link</span>
-          <strong>{toCurrency(balanceRemaining)}</strong>
+          <strong>{exactMoney(balanceRemaining)}</strong>
+        </button>
+        <button type="button" disabled={busy || sending !== null || !quote?.id || outstanding <= 0} onClick={() => confirm("custom")}>
+          <span>Custom Amount</span>
+          <strong>Choose amount</strong>
         </button>
       </div>
       {confirming ? (
@@ -7070,9 +7092,28 @@ function SquarePaymentLinkPanel({
               Customer email: <b>{savedEmail || "No customer email saved"}</b>
             </span>
           </div>
+          {confirming === "custom" ? (
+            <>
+              <label>
+                Apply payment to
+                <select value={customPaymentType} disabled={busy || sending !== null} onChange={(event) => setCustomPaymentType(event.target.value as SquareOrderPaymentType)}>
+                  <option value="balance" disabled={balanceRemaining <= 0}>Balance</option>
+                  <option value="deposit" disabled={depositRemaining <= 0}>Deposit</option>
+                </select>
+              </label>
+              <label>
+                Payment amount (USD)
+                <input type="number" inputMode="decimal" min="0.01" max={maximumAmount.toFixed(2)} step="0.01" required
+                  value={customAmount} placeholder="0.00" disabled={busy || sending !== null}
+                  onChange={(event) => setCustomAmount(event.target.value)} />
+                <span>Available {requestType}: {exactMoney(maximumAmount)}</span>
+              </label>
+            </>
+          ) : null}
           <label>
             Different email address <span>(optional)</span>
             <input
+              disabled={busy || sending !== null}
               type="email"
               value={alternateEmail}
               onChange={(event) => setAlternateEmail(event.target.value)}
@@ -7081,11 +7122,12 @@ function SquarePaymentLinkPanel({
             />
           </label>
           <p>
-            This {confirming} link will be sent to <strong>{recipientEmail || "an email address entered above"}</strong>.
+            Email a {validAmount ? <strong>{exactMoney(requestAmount)}</strong> : "custom amount"} payment link to <strong>{recipientEmail || "an email address entered above"}</strong>.
+            {confirming === "custom" && validAmount ? <> Remaining after payment: <strong>{exactMoney(outstanding - requestAmount)}</strong>.</> : null}
           </p>
           <div className="crm-square-payment-confirm-actions">
-            <button type="submit" disabled={busy || sending !== null || !recipientEmail}>
-              Send {confirming === "deposit" ? "Deposit" : "Balance"} Link
+            <button type="submit" disabled={busy || sending !== null || !recipientEmail || !validAmount}>
+              Send {confirming === "custom" ? "Custom" : confirming === "deposit" ? "Deposit" : "Balance"} Link
             </button>
             <button
               type="button"
@@ -7132,7 +7174,7 @@ function GlobalCustomerSearchPanel({
   events: CrmCalendarEvent[];
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
-  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string, confirmation?: SquarePaymentRequestConfirmation) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
@@ -7305,7 +7347,7 @@ function GlobalCustomerSearchPanel({
                       onClick={() => setPaymentPanelResultId((current) => current === selectedResult.id ? null : selectedResult.id)}
                     >
                       Square Payments
-                      <span>Deposit + Balance</span>
+                      <span>Deposit · Balance · Custom</span>
                     </button>
                   ) : null}
                 </div>
