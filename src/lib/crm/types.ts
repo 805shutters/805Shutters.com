@@ -65,6 +65,10 @@ export type CrmJob = {
   quote_total?: number;
 };
 
+export type CrmDeletedJob = Pick<CrmJob, "id" | "customer_name" | "product_interest"> & {
+  deleted_at: string;
+};
+
 export type CrmQuote = {
   id: string;
   created_at: string;

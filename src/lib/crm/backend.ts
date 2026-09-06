@@ -64,6 +64,7 @@ import {
   CrmCustomerContract,
   CrmCustomerProduct,
   CrmDashboardData,
+  CrmDeletedJob,
   CrmInstallationInvoiceEmail,
   CrmJob,
   CrmJobExpense,
@@ -2151,6 +2152,78 @@ export async function deleteCrmJob(supabase: CrmSupabaseClient, id: string, acto
   });
 
   return { id };
+}
+
+export async function listDeletedCrmJobs(supabase: CrmSupabaseClient): Promise<CrmDeletedJob[]> {
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("crm_jobs")
+    .select("id,customer_name,product_interest,meta")
+    .eq("meta->>delete_source", "job_delete")
+    .gte("meta->>deleted_at", cutoff)
+    .order("meta->>deleted_at", { ascending: false });
+  if (error) throw new CrmAuthError(502, "Deleted CRM jobs could not be loaded.");
+
+  return ((data || []) as Array<Pick<CrmJob, "id" | "customer_name" | "product_interest"> & { meta?: unknown }>)
+    .flatMap((row) => {
+      const deletedAt = objectMeta(row.meta).deleted_at;
+      return typeof deletedAt === "string"
+        ? [{ id: row.id, customer_name: row.customer_name, product_interest: row.product_interest, deleted_at: deletedAt }]
+        : [];
+    });
+}
+
+export async function restoreDeletedCrmJob(
+  supabase: CrmSupabaseClient,
+  id: string,
+  knownDeletedAt: string,
+  actor: CrmActor
+) {
+  if (!knownDeletedAt) throw new CrmAuthError(400, "The deletion timestamp is required.");
+
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_jobs")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Deleted CRM job was not found.");
+
+  const existingMeta = objectMeta((existing as { meta?: unknown }).meta);
+  if (existingMeta.delete_source !== "job_delete" || typeof existingMeta.deleted_at !== "string") {
+    throw new CrmAuthError(409, "This record was not deleted through the CRM job delete action and cannot be restored here.");
+  }
+  if (existingMeta.deleted_at !== knownDeletedAt) {
+    throw new CrmAuthError(409, "This deleted job changed after the recovery list was loaded. Refresh and try again.");
+  }
+
+  const restoredMeta = { ...existingMeta };
+  delete restoredMeta.deleted_at;
+  delete restoredMeta.deleted_by;
+  delete restoredMeta.deleted_by_user_id;
+  delete restoredMeta.delete_source;
+
+  const { data: restored, error: restoreError } = await supabase
+    .from("crm_jobs")
+    .update({ meta: restoredMeta })
+    .eq("id", id)
+    .eq("meta->>delete_source", "job_delete")
+    .eq("meta->>deleted_at", knownDeletedAt)
+    .eq("meta", JSON.stringify(existingMeta))
+    .select("*")
+    .maybeSingle();
+  if (restoreError) throw new CrmAuthError(502, "Deleted CRM job could not be restored.");
+  if (!restored) throw new CrmAuthError(409, "This deleted job changed before it could be restored. Refresh and try again.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: id,
+    action: "restore",
+    before: existing,
+    after: restored,
+    metadata: { source: "job_delete" }
+  });
+
+  return { job: restored as CrmJob };
 }
 
 async function selectIdsByColumn(

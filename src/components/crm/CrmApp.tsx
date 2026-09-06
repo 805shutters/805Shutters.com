@@ -50,6 +50,7 @@ import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
 import { DashboardRecordCard, dashboardRecordContactFromJob } from "@/components/crm/DashboardRecordCard";
 import { CloseRateDrilldown } from "@/components/crm/CloseRateDrilldown";
+import type { DeletedOpportunity } from "@/components/crm/DeletedOpportunities";
 import { UnifiedActivityFeed } from "@/components/crm/UnifiedActivityFeed";
 import {
   awaitingProductRows,
@@ -3150,6 +3151,21 @@ export function CrmApp({
           onClose={() => setCloseRatePeriod(null)}
           onDelete={deleteJob}
           busy={busy}
+          onLoadDeleted={async () => {
+            if (!session) throw new Error("Sign in again to view deleted opportunities.");
+            const result = await crmFetch<{ jobs: DeletedOpportunity[] }>(session, "/api/crm/jobs/deleted");
+            return result.jobs;
+          }}
+          onRestore={async (id, deletedAt) => {
+            if (!session) throw new Error("Sign in again to restore an opportunity.");
+            setBusy(true);
+            setMessage(null);
+            try {
+              await crmFetch(session, `/api/crm/jobs/${id}/restore`, { method: "POST", body: JSON.stringify({ deleted_at: deletedAt }) });
+              await refresh();
+              setMessage("Opportunity restored.");
+            } finally { setBusy(false); }
+          }}
         />
       ) : null}
 

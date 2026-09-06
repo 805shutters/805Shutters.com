@@ -1,5 +1,6 @@
 import type { CloseRateCohortCustomer } from "@/lib/crm/command-performance";
 import type { CrmJob } from "@/lib/crm/types";
+import { DeletedOpportunities, type DeletedOpportunity } from "./DeletedOpportunities";
 
 function titleCase(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -93,13 +94,17 @@ export function CloseRateDrilldown({
   customers,
   onClose,
   onDelete,
-  busy
+  busy,
+  onLoadDeleted,
+  onRestore
 }: {
   periodDays: 30 | 60;
   customers: CloseRateCohortCustomer[];
   onClose: () => void;
   onDelete: (job: CrmJob) => void;
   busy: boolean;
+  onLoadDeleted?: () => Promise<DeletedOpportunity[]>;
+  onRestore?: (id: string, deletedAt: string) => Promise<void>;
 }) {
   const soldCustomers = customers.filter((customer) => customer.outcome === "sold");
   const unsoldCustomers = customers.filter((customer) => customer.outcome === "unsold");
@@ -121,6 +126,7 @@ export function CloseRateDrilldown({
           Close
         </button>
       </div>
+      {onLoadDeleted && onRestore ? <DeletedOpportunities load={onLoadDeleted} restore={onRestore} busy={busy} /> : null}
       <div className="crm-close-rate-groups">
         <CloseRateOutcomeGroup outcome="sold" customers={soldCustomers} onDelete={onDelete} busy={busy} />
         <CloseRateOutcomeGroup outcome="unsold" customers={unsoldCustomers} onDelete={onDelete} busy={busy} />
