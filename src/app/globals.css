@@ -5898,6 +5898,15 @@ body.qb-fullscreen .crm-app-shell {
   color: var(--ink);
 }
 
+.crm-square-payment-panel .crm-square-payment-recipient p strong {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 700;
+  line-height: inherit;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
 .crm-square-payment-recipient label {
   display: grid;
   gap: 5px;
