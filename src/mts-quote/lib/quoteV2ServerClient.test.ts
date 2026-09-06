@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import {
   createQuoteV2Draft,
+  createQuoteV2Alternative,
   customerSafeQuoteV2Options,
   isQuoteV2FullyAuthoritative,
   mutateQuoteV2Structure,
@@ -218,6 +219,22 @@ describe("Quote V2 authenticated client boundary", () => {
       },
     ]);
     expect(JSON.stringify(body)).not.toMatch(/unitPrice|cost|margin|totalAmount/);
+    fetchMock.mockRestore();
+  });
+});
+
+
+describe("V2 alternative client", () => {
+  it.each(["blank", "copy"] as const)("routes %s through the authenticated server and retains the request key", async mode => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ quote: { id: "new-id" } }), { status: 201 }));
+    const input = { mode, expectedRevision: 4, idempotencyKey: "alternative:retry:1" };
+    expect(await createQuoteV2Alternative(databaseWithToken(), "source-id", input)).toEqual({ quote: { id: "new-id" } });
+    expect(fetchMock).toHaveBeenCalledWith("/api/crm/sales-quotes/source-id/v2/alternatives", expect.objectContaining({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer crm-token" }), body: JSON.stringify(input) }));
+    fetchMock.mockRestore();
+  });
+  it("shows the server explanation when creation fails", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ message: "Refresh the source quote." }), { status: 409 }));
+    await expect(createQuoteV2Alternative(databaseWithToken(), "source-id", { mode: "blank", expectedRevision: 4, idempotencyKey: "alternative:retry:1" })).rejects.toThrow("Refresh the source quote.");
     fetchMock.mockRestore();
   });
 });

@@ -392,6 +392,14 @@ export function createQuoteV2Draft(
   );
 }
 
+export function createQuoteV2Alternative(
+  database: QuoteBuilderDatabase,
+  quoteId: string,
+  input: Readonly<{ mode: "blank" | "copy"; expectedRevision: number; idempotencyKey: string }>,
+): Promise<{ quote: SalesQuote }> {
+  return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/alternatives`, input);
+}
+
 export function mutateQuoteV2Structure(
   database: QuoteBuilderDatabase,
   quoteId: string,

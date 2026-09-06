@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useRef } from "react";
+import { createQuoteV2Alternative, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -18,6 +20,17 @@ import type { SalesQuote } from "@mts/types/quote";
 export function QuoteGroupTabs() {
   const { activeQuoteId, setActiveQuote } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
+  const alternativeRequests = useRef(new Map<string, string>());
+  const createV2Alternative = async (quote: SalesQuote, mode: "blank" | "copy") => {
+    const scope = `${quote.id}:${mode}`;
+    const idempotencyKey = alternativeRequests.current.get(scope) || quoteV2RequestKey("alternative");
+    alternativeRequests.current.set(scope, idempotencyKey);
+    const result = await createQuoteV2Alternative(supabase, quote.id, {
+      mode, expectedRevision: Number(quote.quote_v2_revision), idempotencyKey,
+    });
+    alternativeRequests.current.delete(scope);
+    return result.quote;
+  };
 
   // Fetch the active quote to get its group
   const { data: activeQuote } = useQuery({
@@ -106,6 +119,7 @@ export function QuoteGroupTabs() {
   const addBlankQuote = useMutation({
     mutationFn: async () => {
       if (!activeQuote) throw new Error("No active quote");
+      if (activeQuote.quote_v2_backend) return createV2Alternative(activeQuote, "blank");
       const ensuredGroupId = await ensureActiveQuoteGroup();
       const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
       const account =
@@ -155,6 +169,7 @@ export function QuoteGroupTabs() {
   const copyToGroup = useMutation({
     mutationFn: async () => {
       if (!activeQuote) throw new Error("No active quote");
+      if (activeQuote.quote_v2_backend) return createV2Alternative(activeQuote, "copy");
       const ensuredGroupId = await ensureActiveQuoteGroup();
       const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
       const account =
