@@ -1,7 +1,4 @@
-import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
-import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
-import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import {
   useState,
   useEffect,
@@ -5729,11 +5726,6 @@ export function DesignCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {currentDesign && (
-          <div className="flex items-start gap-3" aria-label="Contract product illustration">
-            <ContractProductIllustration productType={lineItem.product_type} options={getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`)} valanceArtId={valanceIllustration(lineItem.product_type, getQuoteDesignDetails(currentDesign).map((detail) => `${detail.label}: ${detail.value}`), undefined, valanceSurchargeIds(currentDesign.options_json?.surcharges))} />
-          </div>
-        )}
         <TemporaryShadeOption selected={currentOptions.temporary_shade === true} onChange={selected => updateField("options_json", { ...currentOptions, temporary_shade: selected })} />
         {/* Variant tabs */}
         {variants.length > 1 && (
