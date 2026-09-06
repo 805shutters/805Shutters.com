@@ -35,7 +35,7 @@ import type {
   SalesQuoteWithItems,
 } from "@mts/types/quote";
 import type { ProductLineOrderState } from "@/lib/crm/product-line-ordering";
-import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
@@ -45,6 +45,7 @@ interface QuoteDashboardProps {
   crmQuotes?: CrmQuote[];
   crmBookkeepingRows?: CrmBookkeepingRow[];
   crmCalendarEvents?: CrmCalendarEvent[];
+  crmCustomers?: CrmCustomer[];
   onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
@@ -146,6 +147,7 @@ export function QuoteDashboard({
   crmQuotes = [],
   crmBookkeepingRows = [],
   crmCalendarEvents = [],
+  crmCustomers,
   onChanged,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
@@ -845,6 +847,7 @@ export function QuoteDashboard({
       {/* New Quote Dialog */}
       <NewQuoteDialog
         open={showNewQuoteDialog}
+        customers={crmCustomers}
         onClose={() => setShowNewQuoteDialog(false)}
         onSubmit={(data) => createQuote.mutate(data)}
         isPending={createQuote.isPending}

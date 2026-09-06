@@ -3230,6 +3230,7 @@ export function CrmApp({
           jobs={jobs}
           quotes={quotes}
           bookkeepingRows={rows}
+          customers={customers}
           events={events}
           onChanged={refresh}
           onOpenCalendarDate={(date) => {

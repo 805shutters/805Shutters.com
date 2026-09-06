@@ -23,7 +23,7 @@ import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
 import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
 import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
-import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { HistoricalQuotePriceLock } from "@/lib/crm/historical-quote-price-lock";
 
 const tabs = [
@@ -38,6 +38,7 @@ type QuoteWorkspaceProps = {
   crmQuotes?: CrmQuote[];
   crmBookkeepingRows?: CrmBookkeepingRow[];
   crmCalendarEvents?: CrmCalendarEvent[];
+  crmCustomers?: CrmCustomer[];
   openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
@@ -57,6 +58,7 @@ export function QuoteWorkspace({
   crmQuotes = [],
   crmBookkeepingRows = [],
   crmCalendarEvents = [],
+  crmCustomers,
   openRequest,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
@@ -145,6 +147,7 @@ export function QuoteWorkspace({
                 crmQuotes={crmQuotes}
                 crmBookkeepingRows={crmBookkeepingRows}
                 crmCalendarEvents={crmCalendarEvents}
+                crmCustomers={crmCustomers}
                 onChanged={onChanged}
                 onOpenCrmCalendarDate={onOpenCrmCalendarDate}
                 onOpenCrmQuote={onOpenCrmQuote}

@@ -23,6 +23,7 @@ export function QuotesWorkspace({
   quotes,
   bookkeepingRows = [],
   events,
+  customers,
   openRequest,
   onOpenCalendarDate,
   onOpenCrmQuote,
@@ -34,6 +35,7 @@ export function QuotesWorkspace({
       crmQuotes={quotes}
       crmBookkeepingRows={bookkeepingRows}
       crmCalendarEvents={events}
+      crmCustomers={customers}
       onChanged={onChanged}
       openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}

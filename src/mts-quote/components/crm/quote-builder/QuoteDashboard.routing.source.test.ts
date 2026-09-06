@@ -20,6 +20,18 @@ const crmQuotesWorkspaceSource = readFileSync(
 );
 
 describe("quote dashboard routing", () => {
+  it("passes the loaded CRM customer list all the way to New Quote", () => {
+    const crmSource = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
+    const dashboardSource = quoteWorkspaceVersions[0].dashboardSource;
+    expect(crmSource).toMatch(/<QuotesWorkspace\b[^>]*customers=\{customers\}/);
+    expect(crmQuotesWorkspaceSource).toMatch(/export function QuotesWorkspace\(\{[^}]*\bcustomers\b/);
+    expect(crmQuotesWorkspaceSource).toMatch(/<QuoteWorkspace\b[^>]*crmCustomers=\{customers\}/);
+    expect(quoteWorkspaceSource).toMatch(/export function QuoteWorkspace\(\{[^}]*\bcrmCustomers\b/);
+    expect(quoteWorkspaceSource).toMatch(/<QuoteDashboard\b[^>]*crmCustomers=\{crmCustomers\}/);
+    expect(dashboardSource).toMatch(/export function QuoteDashboard\(\{[^}]*\bcrmCustomers\b/);
+    expect(dashboardSource).toMatch(/<NewQuoteDialog\b[^>]*customers=\{crmCustomers\}/);
+  });
+
   for (const { version, dashboardSource, tableSource } of quoteWorkspaceVersions) {
     it(`opens ${version} CRM rows through the standard quote editor route`, () => {
       expect(dashboardSource).toMatch(
