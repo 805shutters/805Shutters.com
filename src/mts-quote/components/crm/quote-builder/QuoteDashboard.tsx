@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { QuoteCommunicationHub } from "@/components/crm/quote-hub/QuoteCommunicationHub";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
@@ -787,6 +788,22 @@ export function QuoteDashboard({
     createQuoteFromAppointment.mutate(appointment);
   };
 
+  const showCommunicationHub = !isSearching && activeFilter === "sent" && activeAccountId === ACCOUNT_IDS.SHUTTERS_805;
+  const hubReadiness = useQuery({
+    queryKey: ["quote-hub-readiness", activeAccountId],
+    enabled: showCommunicationHub,
+    staleTime: 30_000,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch("/api/crm/quote-hub/status", {
+        headers: { Authorization: `Bearer ${data.session?.access_token || ""}` },
+      });
+      if (!response.ok) throw new Error("Communication hub readiness could not be checked.");
+      return await response.json() as { ready: boolean };
+    },
+  });
+
   const statsBar = (
     <QuoteStatsBar
       quotes={dashboardQuotes}
@@ -869,6 +886,15 @@ export function QuoteDashboard({
       ) : (
         <>
           {/* Quotes Table — secondary view: all quotes including drafts/sent/archived */}
+          {showCommunicationHub && !hubReadiness.isPending && !hubReadiness.data?.ready && (
+            <p role="status" className="mb-3 text-sm text-muted-foreground">
+              Communication hub setup is pending. Your sent quotes are available below.
+              <Button variant="ghost" size="sm" disabled={hubReadiness.isFetching} onClick={() => void hubReadiness.refetch()}>Check again</Button>
+            </p>
+          )}
+          {showCommunicationHub && hubReadiness.data?.ready ? (
+            <QuoteCommunicationHub quotes={filteredQuotes} isLoading={isLoading} onOpenQuote={handleOpenQuote} onChanged={onChanged} />
+          ) : (
           <QuotesTable
             quotes={filteredQuotes}
             isLoading={isLoading}
@@ -885,6 +911,7 @@ export function QuoteDashboard({
                 : undefined
             }
           />
+          )}
 
           {/* Contracts Section */}
           <ContractsSection

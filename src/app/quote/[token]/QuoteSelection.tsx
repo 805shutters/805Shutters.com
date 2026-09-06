@@ -108,7 +108,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   }, [mode, previewOnly, selected, quote.token]);
 
   const contractSigned = quote.signed || signedNow;
-  const allowSelection = !previewOnly && !contractSigned && quote.lines.length > 1;
+  const allowSelection = !previewOnly && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
@@ -175,6 +175,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
   return (
     <>
+      {quote.wholeQuoteOffer && !quote.signed ? <p className={styles.purchaseHelp}>Your savings offer applies to this complete quote. Contact us if you would like to change the project.</p> : null}
       {allowSelection ? (
         <div className={styles.purchaseSelector}>
           <span className={styles.purchaseHeading}>Purchase:</span>

@@ -546,6 +546,15 @@ async function loadSalesQuote(supabase: CrmSupabaseClient, salesQuoteId: string)
   return data as AnyRow;
 }
 
+/** Materialize the existing 805 contract for the communication hub; sends nothing. */
+export async function prepareSalesQuoteForCommunication(supabase: CrmSupabaseClient, id: string): Promise<string> {
+  const quote = await loadSalesQuote(supabase, id);
+  if (quote.account_id !== DEFAULT_805_ACCOUNT_ID || quote.status !== "sent" || quote.signed_at || quote.customer_signature) {
+    throw new CrmAuthError(409, "Only unsigned sent 805 quotes can open a new conversation.");
+  }
+  return mirrorSalesQuoteForCustomerSend(supabase, quote);
+}
+
 async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quote: AnyRow): Promise<string> {
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")

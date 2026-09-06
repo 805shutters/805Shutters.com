@@ -215,6 +215,9 @@ const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingIncludes: {
+    "/api/crm/quote-hub/**/*": ["./public/images/homepage-flow/*.jpg"],
+  },
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   poweredByHeader: false,
   reactStrictMode: true,

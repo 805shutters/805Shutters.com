@@ -149,6 +149,8 @@ export type PublicQuote = {
   total: number;
   allPriced: boolean;
   hasOnyxShutters: boolean;
+  /** Savings offers apply to the complete quoted project. */
+  wholeQuoteOffer?: boolean;
   /** Quote-level adjustments (discount/tax/deposit/fees) so a customer subset
    *  selection can recompute its total with the same engine. */
   adjustments: QuoteAdjustments;
@@ -1056,6 +1058,7 @@ async function projectPublicQuote(
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     hasOnyxShutters,
+    wholeQuoteOffer: typeof record(quote.meta).communication_offer_of === "string",
     adjustments: { ...adj, fees: adj.fees.map((fee) => ({ ...fee, name: customerQuoteText(fee.name) || "Additional fee" })) },
     business: {
       name: BUSINESS_NAME,
@@ -1124,6 +1127,7 @@ export async function computeSelectionTotal(
     lineTotal: l.lineTotal,
     priceReady: l.priceReady,
   }));
+  if (pub.wholeQuoteOffer && lines.length !== pub.lines.length) throw new CrmAuthError(409, "This savings offer applies to the complete quote. Contact us to revise the project.");
   const selectedPublicLines = pub.lines.filter((line) => lines.some((item) => item.id === line.id));
   const money = computePublicSelectionMoney(pub, selectedPublicLines);
   const payment = await loadQuotePaymentState(supabase, pub.id, {
@@ -1706,6 +1710,16 @@ export async function acceptPublicQuote(
   }
   if (!chosenLines.every((l) => l.priceReady)) {
     throw new CrmAuthError(409, "One or more selected items isn't finalized yet — please contact us before signing.");
+  }
+  if (pub.wholeQuoteOffer) {
+    if (chosenLines.length !== pub.lines.length) throw new CrmAuthError(409, "This savings offer applies to the complete quote. Contact us to revise the project.");
+    if (quote.quote_group_id) {
+      const { data: siblings, error: siblingError } = await supabase.from("crm_quotes").select("id,signed_at,status").eq("quote_group_id", quote.quote_group_id).neq("id", quote.id);
+      if (siblingError) throw new CrmAuthError(502, "Offer availability could not be checked.");
+      if (siblings?.some((s) => s.signed_at || ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"].includes(s.status))) {
+        throw new CrmAuthError(409, "Another quote for this project has already been accepted. Please contact us.");
+      }
+    }
   }
   const selectedMoney = computePublicSelectionMoney(pub, chosenLines);
   const soldTotal = selectedMoney.total;

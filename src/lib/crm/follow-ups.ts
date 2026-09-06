@@ -165,6 +165,7 @@ export async function runStaleQuoteNudges(supabase: SupabaseClient, now: Date = 
 
   for (const quote of quotes) {
     const meta = (quote.meta ?? {}) as Record<string, unknown>;
+    if (meta.communication_hub_managed === true) continue;
     const q: FollowUpQuote = {
       status: quote.status,
       sentAt: quote.sent_at,
