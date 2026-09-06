@@ -100,7 +100,7 @@ export function quoteProductDetails(styleName: string, options: string[], presen
   const visibleValues: string[] = [];
 
   for (const detail of parsed) {
-    // The companion sketch already includes this label and its Free caption.
+    // The companion sketch already identifies the included temporary shade.
     if (hasTemporaryShadeCaption && temporaryShadeSelected([`${detail.label}: ${detail.value}`])) continue;
     const labelKey = normalized(detail.label);
     if (isInternalDetailLabel(detail.label)) continue;

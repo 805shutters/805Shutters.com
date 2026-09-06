@@ -20,7 +20,7 @@ describe('temporary shade companion', () => {
     expect(html).toContain('data-temporary-shade="included"');
     expect(html).toContain('temporary-shade.webp');
     expect(html).toContain('Complementary temporary paper shade');
-    expect(html).toContain('Free');
+    expect(html).not.toContain('Free');
   });
   it.each([[], ['Temporary Shade: No'], ['Temporary Shade: false'], ['Temporary Shade: Maybe'], ['Temporary Shade: Yes','Temporary Shade: No']])('never infers an included item from missing/negative/conflicting selections %j', (...values) => {
     expect(temporaryShadeSelected(values as string[])).toBe(false);
