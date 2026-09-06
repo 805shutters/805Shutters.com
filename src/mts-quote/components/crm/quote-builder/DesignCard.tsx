@@ -47,6 +47,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
+import { MobileCatalogPicker, type MobileCatalogPickerItem } from "./MobileCatalogPicker";
 import { formatDimensions } from "@mts/types/quote";
 import {
   SHUTTER_LOUVER_SIZES,
@@ -4162,6 +4163,7 @@ function RollerFabricAutocomplete({
   metadataKeys = FRONT_FABRIC_METADATA_KEYS,
   allowedCollections,
   hideLabel = false,
+  mobilePresentation = false,
 }: {
   value: string | null;
   optionsJson: Record<string, unknown>;
@@ -4170,6 +4172,7 @@ function RollerFabricAutocomplete({
   metadataKeys?: FabricMetadataKeys;
   allowedCollections?: readonly string[];
   hideLabel?: boolean;
+  mobilePresentation?: boolean;
 }) {
   const selectedColor = findMtsRollerFabricColorBySelection(
     stringOption(optionsJson, metadataKeys.collection) || value,
@@ -4217,6 +4220,55 @@ function RollerFabricAutocomplete({
     setHasDraft(false);
     onClear();
   };
+
+  if (mobilePresentation) {
+    const mobileRows = searchMtsRollerFabricColors("", {
+      includeUnavailable: true,
+      limit: Number.MAX_SAFE_INTEGER,
+    }).filter((row) =>
+      isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+    );
+    const toMobileItem = (fabricColor: MtsRollerFabricColor): MobileCatalogPickerItem & { source: MtsRollerFabricColor } => ({
+      id: fabricColor.id,
+      name: fabricColor.colorName,
+      code: fabricColor.colorCode,
+      collection: fabricColor.collection,
+      detail: `${fabricColor.fabricType} · ${getMtsRollerProgramLabel(fabricColor.programId)}`,
+      searchText: fabricColor.searchText,
+      imageUrl: fabricColor.imageUrl || undefined,
+      disabled: !fabricColor.available || !fabricColor.programId,
+      disabledReason: !fabricColor.available
+        ? "Unavailable"
+        : !fabricColor.programId
+          ? "Choose a compatible type first"
+          : undefined,
+      source: fabricColor,
+    });
+    const selectedItem = selectedColor
+      ? toMobileItem(selectedColor)
+      : value
+        ? {
+            id: `saved:${value}`,
+            name: stringOption(optionsJson, metadataKeys.name) || value,
+            code: stringOption(optionsJson, metadataKeys.code) || undefined,
+            collection: stringOption(optionsJson, metadataKeys.collection) || undefined,
+            source: null,
+          }
+        : null;
+
+    return (
+      <MobileCatalogPicker
+        label="Fabric"
+        selectedItem={selectedItem}
+        items={mobileRows.map(toMobileItem)}
+        noResultsLabel="No Norman roller fabrics match this search."
+        onSelect={(item) => {
+          if (item.source) onSelect(item.source);
+        }}
+        onClear={onClear}
+      />
+    );
+  }
 
   return (
     <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
@@ -4293,6 +4345,7 @@ function ProductColorAutocomplete({
   metadataKeys = FRONT_FABRIC_METADATA_KEYS,
   allowedCollections,
   hideLabel = false,
+  mobilePresentation = false,
 }: {
   productType: string;
   field: string;
@@ -4303,6 +4356,7 @@ function ProductColorAutocomplete({
   metadataKeys?: FabricMetadataKeys;
   allowedCollections?: readonly string[];
   hideLabel?: boolean;
+  mobilePresentation?: boolean;
 }) {
   const lookupOptions = useMemo(
     () => optionsForFabricMetadataLookup(optionsJson, metadataKeys),
@@ -4366,6 +4420,58 @@ function ProductColorAutocomplete({
 
   const label = getMtsProductColorFieldLabel(productType, field);
   const noResultsLabel = label === "Color Search" ? "No Norman color matches." : "No Norman fabric matches.";
+
+  if (mobilePresentation) {
+    const mobileRows = searchMtsProductColors(productType, lookupOptions, "", {
+      includeUnavailable: true,
+      limit: Number.MAX_SAFE_INTEGER,
+    }).filter((row) =>
+      isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+    );
+    const toMobileItem = (fabricColor: ProductColorOption): MobileCatalogPickerItem & { source: ProductColorOption } => {
+      const disabled = !fabricColor.available || fabricColor.requiresProgram || !fabricColor.programId;
+      return {
+        id: fabricColor.id,
+        name: fabricColor.colorName,
+        code: fabricColor.colorCode,
+        collection: fabricColor.collection,
+        detail: fabricColor.fabricType || getMtsProductColorProgramLabel(productType, fabricColor.programId),
+        searchText: fabricColor.searchText,
+        imageUrl: fabricColor.imageUrl || undefined,
+        disabled,
+        disabledReason: !fabricColor.available
+          ? "Unavailable"
+          : fabricColor.requiresProgram || !fabricColor.programId
+            ? "Choose a compatible type first"
+            : undefined,
+        source: fabricColor,
+      };
+    };
+    const selectedItem = selectedColor
+      ? toMobileItem(selectedColor)
+      : value
+        ? {
+            id: `saved:${value}`,
+            name: stringOption(optionsJson, metadataKeys.name) || value,
+            code: stringOption(optionsJson, metadataKeys.code) || undefined,
+            collection: stringOption(optionsJson, metadataKeys.collection) || undefined,
+            source: null,
+          }
+        : null;
+
+    return (
+      <MobileCatalogPicker
+        label={label.replace(" Search", "")}
+        selectedItem={selectedItem}
+        items={mobileRows.map(toMobileItem)}
+        noResultsLabel={noResultsLabel}
+        onSelect={(item) => {
+          if (item.source) onSelect(item.source);
+        }}
+        onClear={onClear}
+      />
+    );
+  }
 
   return (
     <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
@@ -11608,6 +11714,7 @@ function ShadesAndBlindsOptions({
             metadataKeys={BACK_FABRIC_METADATA_KEYS}
             allowedCollections={backFabric ? [backFabric] : ROMAN_BACK_SHADE_FABRICS}
             hideLabel
+            mobilePresentation={mobilePresentation}
             onSelect={handleBackRollerFabricSelect}
             onClear={handleBackFabricColorClear}
           />
@@ -11628,6 +11735,7 @@ function ShadesAndBlindsOptions({
             metadataKeys={BACK_FABRIC_METADATA_KEYS}
             allowedCollections={backFabric ? [backFabric] : undefined}
             hideLabel
+            mobilePresentation={mobilePresentation}
             onSelect={handleBackProductColorSelect}
             onClear={handleBackFabricColorClear}
           />
@@ -11642,6 +11750,7 @@ function ShadesAndBlindsOptions({
             value={value}
             optionsJson={productColorLookupOptions}
             hideLabel
+            mobilePresentation={mobilePresentation}
             onSelect={(fabricColor) => {
               handleProductColorSelect(opt.field, fabricColor);
               setOpenOptionField(null);
@@ -11660,6 +11769,7 @@ function ShadesAndBlindsOptions({
             value={value}
             optionsJson={optionsJson}
             hideLabel
+            mobilePresentation={mobilePresentation}
             onSelect={(fabricColor) => {
               handleRollerFabricSelect(fabricColor);
               setOpenOptionField(null);
