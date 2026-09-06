@@ -14,6 +14,7 @@ const quoteWorkspaceVersions = ["mts-quote", "mts-quote-v1"].map((version) => ({
 }));
 
 const quoteWorkspaceSource = readFileSync("src/mts-quote/QuoteWorkspace.tsx", "utf8");
+const quoteSearchSource = readFileSync("src/mts-quote/lib/quoteSearch.ts", "utf8");
 const crmQuotesWorkspaceSource = readFileSync(
   "src/components/crm/quotes/QuotesWorkspace.tsx",
   "utf8"
@@ -72,12 +73,11 @@ describe("quote dashboard routing", () => {
     )!.dashboardSource;
 
     expect(currentDashboardSource).toContain('.is("deleted_at", null)');
-    expect(currentDashboardSource).toContain(
-      "excludeDeletedSalesQuotes((result.data || []) as SalesQuote[])",
-    );
-    expect(currentDashboardSource).toContain(
-      "isMissingSalesQuoteDeletedAtColumn(result.error)",
-    );
+    expect(currentDashboardSource).toContain("loadAllSalesQuotes<SalesQuote>");
+    expect(currentDashboardSource).toContain('.order("id", { ascending: true })');
+    expect(currentDashboardSource).toContain(".range(from, to)");
+    expect(quoteSearchSource).toContain("excludeDeletedSalesQuotes(result.data || [])");
+    expect(quoteSearchSource).toContain("isMissingSalesQuoteDeletedAtColumn(result.error)");
     expect(currentDashboardSource).toContain("onChanged?.();");
     expect(quoteWorkspaceSource).toContain("onChanged={onChanged}");
     expect(crmQuotesWorkspaceSource).toContain("onChanged={onChanged}");

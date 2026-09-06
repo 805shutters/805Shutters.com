@@ -11,10 +11,10 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
+import { LayoutDashboard, Hammer, FileSignature, Plus, Search, TableProperties, X } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
@@ -67,6 +67,8 @@ export function QuoteWorkspace({
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
   const [newQuoteRequest, setNewQuoteRequest] = useState(0);
+  const [quoteSearch, setQuoteSearch] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { activeTab, setActiveTab, activeQuoteId, setActiveQuote, setAccountId } = useQuoteBuilderStore();
 
   useEffect(() => {
@@ -133,6 +135,48 @@ export function QuoteWorkspace({
                     </Fragment>
                   );
                 })}
+                <div
+                  role="search"
+                  aria-label="Quote search"
+                  className="flex w-full min-w-0 items-center gap-2 rounded-md border border-[#b9b7b0] bg-white px-3 focus-within:border-[#0b0b0b] focus-within:ring-2 focus-within:ring-[#0b0b0b]/20 xl:ml-auto xl:w-auto xl:flex-1 xl:max-w-md"
+                >
+                  <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-[#595953]" />
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    aria-label="Search all quotes"
+                    placeholder="Search all quotes…"
+                    value={quoteSearch}
+                    onChange={(event) => {
+                      setQuoteSearch(event.target.value);
+                      setActiveTab("dashboard");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setQuoteSearch("");
+                        setActiveTab("dashboard");
+                      } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        setActiveTab("dashboard");
+                      }
+                    }}
+                    className="min-w-0 flex-1 border-0 bg-transparent py-2.5 text-base text-[#1c1c1a] outline-none placeholder:text-[#595953] [&::-webkit-search-cancel-button]:appearance-none"
+                  />
+                  {quoteSearch && (
+                    <button
+                      type="button"
+                      aria-label="Clear quote search"
+                      onClick={() => {
+                        setQuoteSearch("");
+                        setActiveTab("dashboard");
+                        searchInputRef.current?.focus();
+                      }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#595953] hover:bg-[#f3f3f0] focus-visible:outline focus-visible:outline-2"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -148,6 +192,8 @@ export function QuoteWorkspace({
                 crmBookkeepingRows={crmBookkeepingRows}
                 crmCalendarEvents={crmCalendarEvents}
                 crmCustomers={crmCustomers}
+                searchQuery={quoteSearch}
+                onClearSearch={() => setQuoteSearch("")}
                 onChanged={onChanged}
                 onOpenCrmCalendarDate={onOpenCrmCalendarDate}
                 onOpenCrmQuote={onOpenCrmQuote}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -18,6 +18,8 @@ export type QuoteTableRow = QuoteStatsSource & {
   quote_number?: string | null;
   customer_name?: string | null;
   customer_address?: string | null;
+  customer_phone?: string | null;
+  customer_email?: string | null;
   total_amount?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -34,6 +36,7 @@ interface QuotesTableProps {
   onCopy: (id: string) => void;
   onDelete: (quote: QuoteTableRow) => void;
   title?: string;
+  emptyMessage?: string;
 }
 
 export function QuotesTable({
@@ -44,8 +47,16 @@ export function QuotesTable({
   onCopy,
   onDelete,
   title = "Quotes",
+  emptyMessage = "No quotes in this view.",
 }: QuotesTableProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [quotes]);
+
+  const visibleQuotes = useMemo(() => quotes.slice(0, visibleCount), [quotes, visibleCount]);
 
   if (isLoading) {
     return (
@@ -58,7 +69,7 @@ export function QuotesTable({
   if (quotes.length === 0) {
     return (
       <div className="bg-card border rounded-xl p-8 text-center text-muted-foreground">
-        No quotes in this view.
+        {emptyMessage}
       </div>
     );
   }
@@ -83,7 +94,7 @@ export function QuotesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {quotes.map((quote) => {
+          {visibleQuotes.map((quote) => {
             const isHovered = hoveredId === quote.id;
             const isCrmQuote = quote.source === "crm";
             const salesQuoteId = quote.sourceQuoteId || quote.id;
@@ -97,7 +108,19 @@ export function QuotesTable({
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => onOpen(quote)}
               >
-                <TableCell className="font-mono text-sm">{quote.quote_number}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  <button
+                    type="button"
+                    aria-label={`Open quote ${quote.quote_number || quote.customer_name || ""}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onOpen(quote);
+                    }}
+                    className="rounded-sm text-left hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    {quote.quote_number || "Open quote"}
+                  </button>
+                </TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium">{quote.customer_name || "—"}</p>
@@ -176,6 +199,17 @@ export function QuotesTable({
           })}
         </TableBody>
       </Table>
+      {visibleCount < quotes.length && (
+        <div className="border-t p-4 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setVisibleCount((count) => Math.min(count + 25, quotes.length))}
+          >
+            Show 25 more ({quotes.length - visibleCount} remaining)
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

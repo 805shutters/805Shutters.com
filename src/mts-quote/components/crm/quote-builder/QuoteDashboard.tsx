@@ -17,13 +17,12 @@ import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
+import { loadAllSalesQuotes, searchQuotes } from "@mts/lib/quoteSearch";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
-  excludeDeletedSalesQuotes,
   filterCalendarAppointmentsForStatsTile,
   filterOrderPanelQuotesForStatsTile,
   filterQuotesForStatsTile,
-  isMissingSalesQuoteDeletedAtColumn,
 } from "@mts/lib/quoteDashboardFilters";
 import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
 import { withInstallationConfirmation } from "@/lib/crm/installation-confirmation";
@@ -41,6 +40,8 @@ import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
   newQuoteRequest?: number;
+  searchQuery?: string;
+  onClearSearch?: () => void;
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmBookkeepingRows?: CrmBookkeepingRow[];
@@ -143,6 +144,8 @@ function appointmentSortKey(appointment: DashboardCalendarAppointment): string {
 export function QuoteDashboard({
   quoteOperatorMode = false,
   newQuoteRequest = 0,
+  searchQuery = "",
+  onClearSearch,
   crmJobs = [],
   crmQuotes = [],
   crmBookkeepingRows = [],
@@ -155,6 +158,12 @@ export function QuoteDashboard({
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
+  const isSearching = Boolean(searchQuery.trim());
+  const effectiveFilter = isSearching ? "all" : activeFilter;
+
+  useEffect(() => {
+    if (isSearching) setActiveFilter("all");
+  }, [isSearching]);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [portfolioQuote, setPortfolioQuote] = useState<SalesQuote | null>(null);
   const [appointmentQuoteIds, setAppointmentQuoteIds] = useState<Record<string, string>>({});
@@ -170,24 +179,22 @@ export function QuoteDashboard({
   }, [newQuoteRequest]);
 
   // Fetch quotes for active account
-  const { data: quotes = [], isLoading } = useQuery({
+  const { data: quotes = [], isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: queryKeys.salesQuotes.byAccount(activeAccountId),
     queryFn: async () => {
-      let result = await (supabase as any)
-        .from("sales_quotes")
-        .select("*")
-        .eq("account_id", activeAccountId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
-      if (isMissingSalesQuoteDeletedAtColumn(result.error)) {
-        result = await (supabase as any)
+      const result = await loadAllSalesQuotes<SalesQuote>((from, to, excludeDeleted) => {
+        let query = (supabase as any)
           .from("sales_quotes")
           .select("*")
-          .eq("account_id", activeAccountId)
-          .order("created_at", { ascending: false });
-      }
-      if (result.error) throw result.error;
-      return excludeDeletedSalesQuotes((result.data || []) as SalesQuote[]);
+          .eq("account_id", activeAccountId);
+        if (excludeDeleted) query = query.is("deleted_at", null);
+        return query
+          .order("created_at", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: true })
+          .range(from, to);
+      });
+      if (result.error) throw new Error(result.error.message);
+      return result.data || [];
     },
   });
 
@@ -319,6 +326,8 @@ export function QuoteDashboard({
         quote_number: quote.quote_number || quote.quote_label || quote.id.slice(0, 8),
         customer_name: crmQuoteCustomerName(quote, job),
         customer_address: quote.customer_address || job?.address || null,
+        customer_phone: quote.customer_phone || job?.phone || null,
+        customer_email: quote.customer_email || job?.email || null,
         appointment_date: dateOnly(job?.appointment_start),
         total_amount: quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
         sent_at: quote.sent_at,
@@ -419,8 +428,10 @@ export function QuoteDashboard({
   }, [appointmentQuoteIds, crmCalendarEvents, crmQuotes, sales805Appointments]);
 
   const filteredQuotes = useMemo(
-    () => filterQuotesForStatsTile(dashboardQuotes, activeFilter, dashboardCalendarAppointments),
-    [dashboardCalendarAppointments, dashboardQuotes, activeFilter]
+    () => isSearching
+      ? searchQuotes(dashboardQuotes, searchQuery)
+      : filterQuotesForStatsTile(dashboardQuotes, activeFilter, dashboardCalendarAppointments),
+    [dashboardCalendarAppointments, dashboardQuotes, activeFilter, isSearching, searchQuery]
   );
   const filteredQuoteIds = useMemo(
     () =>
@@ -432,19 +443,19 @@ export function QuoteDashboard({
     [filteredQuotes]
   );
   const filteredOrderPanelQuotes = useMemo(
-    () => filterOrderPanelQuotesForStatsTile(orderPanelQuotes, activeFilter, filteredQuoteIds),
-    [activeFilter, filteredQuoteIds, orderPanelQuotes]
+    () => filterOrderPanelQuotesForStatsTile(orderPanelQuotes, effectiveFilter, filteredQuoteIds),
+    [effectiveFilter, filteredQuoteIds, orderPanelQuotes]
   );
   const filteredDashboardCalendarAppointments = useMemo(
     () =>
       activeAccountId === ACCOUNT_IDS.SHUTTERS_805
         ? filterCalendarAppointmentsForStatsTile(
             dashboardCalendarAppointments,
-            activeFilter,
+            effectiveFilter,
             filteredQuoteIds
           )
         : [],
-    [activeAccountId, activeFilter, dashboardCalendarAppointments, filteredQuoteIds]
+    [activeAccountId, effectiveFilter, dashboardCalendarAppointments, filteredQuoteIds]
   );
   // Create new quote
   const createQuote = useMutation({
@@ -776,20 +787,27 @@ export function QuoteDashboard({
     createQuoteFromAppointment.mutate(appointment);
   };
 
+  const statsBar = (
+    <QuoteStatsBar
+      quotes={dashboardQuotes}
+      calendarAppointments={
+        activeAccountId === ACCOUNT_IDS.SHUTTERS_805 ? dashboardCalendarAppointments : []
+      }
+      activeFilter={effectiveFilter}
+      onFilterChange={(filter) => {
+        onClearSearch?.();
+        setActiveFilter(filter);
+      }}
+      theme={activeAccount.prefix === "805" ? "bw" : "blue"}
+    />
+  );
+
   return (
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
       {/* Stats Bar — status filter tabs */}
-      <QuoteStatsBar
-        quotes={dashboardQuotes}
-        calendarAppointments={
-          activeAccountId === ACCOUNT_IDS.SHUTTERS_805 ? dashboardCalendarAppointments : []
-        }
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        theme={activeAccount.prefix === "805" ? "bw" : "blue"}
-      />
+      {!isSearching && statsBar}
 
-      {activeAccountId === ACCOUNT_IDS.SHUTTERS_805 &&
+      {!isSearching && activeAccountId === ACCOUNT_IDS.SHUTTERS_805 &&
         (activeFilter === "all" || filteredOrderPanelQuotes.length > 0) && (
         <QuoteOrderStatusPanel
           quotes={filteredOrderPanelQuotes}
@@ -809,7 +827,7 @@ export function QuoteDashboard({
         />
       )}
 
-      {filteredDashboardCalendarAppointments.length > 0 && (
+      {!isSearching && filteredDashboardCalendarAppointments.length > 0 && (
         <Sales805AppointmentMatches
           appointments={filteredDashboardCalendarAppointments}
           isOpening={createQuoteFromAppointment.isPending}
@@ -825,24 +843,58 @@ export function QuoteDashboard({
         />
       )}
 
-      {/* Quotes Table — secondary view: all quotes including drafts/sent/archived */}
-      <QuotesTable
-        quotes={filteredQuotes}
-        isLoading={isLoading}
-        onOpen={handleOpenQuote}
-        onPortfolio={(quote) => {
-          if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
-        }}
-        onCopy={(id) => copyQuote.mutate(id)}
-        onDelete={(quote) => deleteQuote.mutate(quote)}
-        title={FILTER_LABELS[activeFilter]}
-      />
+      {isSearching && (
+        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+          {isLoading || isFetching
+            ? "Searching all quotes…"
+            : isError
+              ? "Search is incomplete. Retry loading all quotes below."
+              : `${filteredQuotes.length} matching quote${filteredQuotes.length === 1 ? "" : "s"} across all statuses`}
+        </p>
+      )}
 
-      {/* Contracts Section */}
-      <ContractsSection
-        quotes={filteredQuotes}
-        onOpenContract={openQuoteRowInBuilder}
-      />
+      {isError ? (
+        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950">
+          <p>Could not load all quotes. Please retry to search the complete quote history.</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "Retrying…" : "Retry loading quotes"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* Quotes Table — secondary view: all quotes including drafts/sent/archived */}
+          <QuotesTable
+            quotes={filteredQuotes}
+            isLoading={isLoading}
+            onOpen={handleOpenQuote}
+            onPortfolio={(quote) => {
+              if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
+            }}
+            onCopy={(id) => copyQuote.mutate(id)}
+            onDelete={(quote) => deleteQuote.mutate(quote)}
+            title={isSearching ? "Search Results" : FILTER_LABELS[activeFilter]}
+            emptyMessage={
+              isSearching
+                ? "No matching quotes. Try a name, quote number, phone, email, or address."
+                : undefined
+            }
+          />
+
+          {/* Contracts Section */}
+          <ContractsSection
+            quotes={filteredQuotes}
+            onOpenContract={openQuoteRowInBuilder}
+          />
+        </>
+      )}
+
+      {isSearching && statsBar}
 
       {/* New Quote Dialog */}
       <NewQuoteDialog
