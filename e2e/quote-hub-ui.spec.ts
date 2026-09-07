@@ -155,3 +155,53 @@ test("hub APIs reject requests without a CRM session", async ({ request }) => {
   ).toBe(401);
   expect((await request.post("/api/crm/quote-hub/photos/")).status()).toBe(401);
 });
+
+test("customer rows keep their spacing inside the real CRM styles and search preserves the composer", async ({
+  page,
+}) => {
+  const sidebar = page.getByRole("complementary", {
+    name: "Customer conversations",
+  });
+  const customer = sidebar.getByRole("button", { name: /Avery Sample/ });
+  for (const width of [1440, 820, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    const inset = await customer.evaluate((button) => {
+      const row = button.getBoundingClientRect();
+      const name = button.querySelector("strong")!.getBoundingClientRect();
+      return {
+        left: name.left - row.left,
+        top: name.top - row.top,
+        right: row.right - name.right,
+      };
+    });
+    expect(inset.left).toBeGreaterThanOrEqual(12);
+    expect(inset.top).toBeGreaterThanOrEqual(12);
+    expect(inset.right).toBeGreaterThan(12);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+  }
+  await page
+    .getByRole("button", { name: "Personal message", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Email message" })
+    .fill("Keep this message while I search.");
+  const search = page.getByRole("searchbox", { name: "Search sent customers" });
+  await expect(
+    page.getByRole("button", { name: "Preview email", exact: true }),
+  ).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(search).toHaveCSS("border-top-width", "0px");
+  await search.fill("881 Sample");
+  await expect(
+    sidebar.getByRole("button", { name: /Jordan Example/ }),
+  ).toBeVisible();
+  await expect(customer).toHaveCount(0);
+  await search.fill("no matching quote");
+  await expect(sidebar.getByText(/No matching customers/)).toBeVisible();
+  await search.fill("");
+  await expect(
+    page.getByRole("textbox", { name: "Email message" }),
+  ).toHaveValue("Keep this message while I search.");
+  await expect(customer).toHaveAttribute("aria-pressed", "true");
+});

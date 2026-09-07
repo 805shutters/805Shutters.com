@@ -1,4 +1,5 @@
 "use client";
+import "@/mts-quote/mts-quote.css";
 import { useState } from "react";
 import {
   QuoteCommunicationHub,
@@ -24,6 +25,11 @@ const quotes: QuoteTableRow[] = names.map((name, n) => ({
   customer_name: name,
   customer_email: `sample${n}@example.com`,
   quote_number: `805-DEMO-${n + 1}`,
+  customer_address: [
+    "179 Example Lane, Ventura, CA",
+    "881 Sample Avenue, Camarillo, CA 93010, USA",
+    "2071 Demo Glenbrook Avenue, Thousand Oaks, CA 91362, USA",
+  ][n],
   total_amount: [3698.18, 4922.4, 1202.4][n],
   sent_at: "2026-09-01T16:00:00Z",
 }));
@@ -158,7 +164,10 @@ export function QuoteHubPreview() {
     }) as HubRequest;
   });
   return (
-    <div style={{ maxWidth: 1320, margin: "24px auto", padding: 16 }}>
+    <div
+      className="mts-quote-scope"
+      style={{ maxWidth: 1320, margin: "24px auto", padding: 16 }}
+    >
       <p style={{ fontSize: 13, marginBottom: 12 }}>
         Local UI test · sample records · sending is simulated
       </p>

@@ -12,6 +12,7 @@ import {
   SquarePen,
   Upload,
   ExternalLink,
+  Search,
 } from "lucide-react";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
 import { supabase } from "@mts/integrations/supabase/client";
@@ -77,6 +78,18 @@ function stamp(value: string) {
     timeZone: "America/Los_Angeles",
   });
 }
+function sentDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+}
+function customerName(value?: string | null) {
+  return value?.trim() && value.trim() !== "—"
+    ? value.trim()
+    : "Unnamed customer";
+}
 function newDraft(action: HubAction, name: string): HubDraft {
   return {
     action,
@@ -110,6 +123,15 @@ export function QuoteCommunicationHub({
     [note, setNote] = useState("");
   const [historyExpanded, setHistoryExpanded] = useState(false),
     [visibleCount, setVisibleCount] = useState(25);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const searchTerm = customerSearch.trim().toLowerCase();
+  const filteredQuotes = quotes.filter(
+    (q) =>
+      !searchTerm ||
+      [q.customer_name, q.quote_number, q.customer_address].some((value) =>
+        value?.toLowerCase().includes(searchTerm),
+      ),
+  );
   const [activity, setActivity] = useState<Record<string, string>>({});
   const drafts = useRef(new Map<string, HubDraft>()),
     generation = useRef(0),
@@ -285,43 +307,77 @@ export function QuoteCommunicationHub({
       </header>
       <div className={styles.workspace}>
         <aside className={styles.customers} aria-label="Customer conversations">
-          <div className={styles.listHeading}>Customer conversations</div>
-          {quotes.slice(0, visibleCount).map((q) => (
-            <button
-              type="button"
-              className={styles.customer}
-              key={q.id}
-              disabled={busy}
-              aria-pressed={q.id === quote.id}
-              onClick={() => {
-                drafts.current.set(key(draft.action), draft);
-                setSelectedId(q.id);
-              }}
-            >
-              <div>
-                <strong>{q.customer_name || "Customer name missing"}</strong>
-                <span>{hubMoney(Number(q.total_amount) || 0)}</span>
-              </div>
-              <p>
-                {q.quote_number || "Quote"}
-                {q.customer_address ? ` · ${q.customer_address}` : ""}
+          <div className={styles.listHeading}>
+            <div className={styles.row}>
+              <h3>Customers</h3>
+              <span className={styles.listCount}>{filteredQuotes.length}</span>
+            </div>
+            <label className={styles.customerSearch}>
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="Search sent customers"
+                placeholder="Name, quote or address"
+                value={customerSearch}
+                onChange={(event) => {
+                  setCustomerSearch(event.target.value);
+                  setVisibleCount(25);
+                }}
+              />
+            </label>
+          </div>
+          <div className={styles.customerList}>
+            {filteredQuotes.slice(0, visibleCount).map((q) => (
+              <button
+                type="button"
+                className={styles.customer}
+                key={q.id}
+                disabled={busy}
+                aria-pressed={q.id === quote.id}
+                onClick={() => {
+                  drafts.current.set(key(draft.action), draft);
+                  setSelectedId(q.id);
+                }}
+              >
+                <div className={styles.customerTop}>
+                  <strong>{customerName(q.customer_name)}</strong>
+                  <span className={styles.customerAmount}>
+                    {hubMoney(Number(q.total_amount) || 0)}
+                  </span>
+                </div>
+                {q.customer_address && (
+                  <p
+                    className={styles.customerAddress}
+                    title={q.customer_address}
+                  >
+                    {q.customer_address}
+                  </p>
+                )}
+                <div className={styles.customerMeta}>
+                  <span>{q.quote_number || "Quote"}</span>
+                  <span>
+                    {activity[q.id] ||
+                      (q.sent_at
+                        ? `Sent ${sentDate(q.sent_at)}`
+                        : "No sent date")}
+                  </span>
+                </div>
+              </button>
+            ))}
+            {filteredQuotes.length === 0 && (
+              <p className={styles.emptySearch}>
+                No matching customers. Try a name, quote number or address.
               </p>
-              <small>
-                {activity[q.id] ||
-                  (q.sent_at
-                    ? `Sent ${stamp(q.sent_at)}`
-                    : "Sent date not recorded")}
-              </small>
-            </button>
-          ))}
-          {visibleCount < quotes.length && (
-            <button
-              className={styles.textButton}
-              onClick={() => setVisibleCount((n) => n + 25)}
-            >
-              Show more customers
-            </button>
-          )}
+            )}
+            {visibleCount < filteredQuotes.length && (
+              <button
+                className={styles.moreCustomers}
+                onClick={() => setVisibleCount((n) => n + 25)}
+              >
+                Show more customers
+              </button>
+            )}
+          </div>
         </aside>
         <div className={styles.detail}>
           <header className={styles.contactHead}>
