@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { nextQuoteLetter } from "@mts/lib/quoteGroupLabels";
+import { saveSalesQuoteV2AuthoritativePrice } from "./sales-quote-v2-price-save";
 import {
   quoteV2DesignPatch,
   quoteV2LinePatch,
@@ -142,7 +143,7 @@ export async function createSalesQuoteAlternative(
       ? checked(
           await db
             .from("sales_quote_v2_events")
-            .select("id")
+            .select("id,event_payload")
             .eq("quote_id", previousId)
             .eq("idempotency_key", `${key}:copy`)
             .maybeSingle(),
@@ -225,8 +226,9 @@ export async function createSalesQuoteAlternative(
     );
     quoteId = created.quoteId;
   }
+  let copiedStructure = completed?.event_payload?.result;
   if (operations.length && !completed) {
-    await mutateSalesQuoteV2Structure(
+    copiedStructure = await mutateSalesQuoteV2Structure(
       db,
       quoteId,
       actorId,
@@ -237,7 +239,7 @@ export async function createSalesQuoteAlternative(
       }),
     );
   }
-  const quote = checked(
+  let quote = checked(
     await db
       .from("sales_quotes")
       .update({
@@ -250,5 +252,26 @@ export async function createSalesQuoteAlternative(
       .select("*")
       .single(),
   ) as SalesQuote;
+  // A structural copy intentionally strips every price snapshot. Initialize
+  // the new quote through the same trusted, quote-wide pricing path as edits.
+  // On retry, only finish an unchanged copy: never reprice later user edits.
+  if (copiedStructure && quote.quote_v2_revision === copiedStructure.revision) {
+    const selected = Object.entries(copiedStructure.selectedDesigns || {}).find(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    );
+    if (selected) {
+      await saveSalesQuoteV2AuthoritativePrice(db, {
+        quoteId,
+        actorId,
+        lineItemId: selected[0],
+        designId: selected[1],
+        expectedRevision: copiedStructure.revision,
+        idempotencyKey: `${key}:price`,
+      });
+      quote = checked(
+        await db.from("sales_quotes").select("*").eq("id", quoteId).single(),
+      ) as SalesQuote;
+    }
+  }
   return { quote };
 }

@@ -34,6 +34,7 @@ interface QuotesTableProps {
   onOpen: (quote: QuoteTableRow) => void;
   onPortfolio: (quote: QuoteTableRow) => void;
   onCopy: (id: string) => void;
+  copyingQuoteId?: string | null;
   onDelete: (quote: QuoteTableRow) => void;
   title?: string;
   emptyMessage?: string;
@@ -45,6 +46,7 @@ export function QuotesTable({
   onOpen,
   onPortfolio,
   onCopy,
+  copyingQuoteId = null,
   onDelete,
   title = "Quotes",
   emptyMessage = "No quotes in this view.",
@@ -181,11 +183,15 @@ export function QuotesTable({
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={copyingQuoteId === salesQuoteId}
                           onClick={(e) => {
                             e.stopPropagation();
                             onCopy(salesQuoteId);
                           }}
                           title="Copy quote"
+                          aria-label={
+                            copyingQuoteId === salesQuoteId ? "Copying quote" : "Copy quote"
+                          }
                         >
                           <Copy className="h-4 w-4" />
                         </Button>

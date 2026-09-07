@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
-const calls = vi.hoisted(() => ({ create: vi.fn(), mutate: vi.fn() }));
+const calls = vi.hoisted(() => ({ create: vi.fn(), mutate: vi.fn(), price: vi.fn() }));
+vi.mock("./sales-quote-v2-price-save", () => ({
+  saveSalesQuoteV2AuthoritativePrice: calls.price,
+}));
 vi.mock("./sales-quote-v2-structure", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./sales-quote-v2-structure")>()),
   createSalesQuoteV2Draft: calls.create,
@@ -253,5 +256,45 @@ describe("V2 quote alternatives", () => {
     ).rejects.toThrow(/changed/);
     expect(fixture.writes).toEqual([]);
     expect(calls.create).not.toHaveBeenCalled();
+  });
+  it("prices an exact structural copy using persisted selected identities, including blocked selections", async () => {
+    const selectedDesigns = { [line.id]: design.id };
+    calls.mutate.mockResolvedValue({ quoteId, revision: 2, selectedDesigns });
+    calls.price.mockResolvedValue({ quoteStatus: "blocked", quoteTotal: 400 });
+    const fixture = database([
+      ok({ ...source, quote_group_id: sourceId }), ok(null),
+      ok([line]), ok([design]), ok([{ quote_letter: "A" }]),
+      ok({ id: quoteId, quote_v2_revision: 2 }),
+      ok({ id: quoteId, quote_v2_revision: 3, quote_v2_status: "blocked", total_amount: 400 }),
+    ]);
+    const result = await createSalesQuoteAlternative(fixture.db, actorId, sourceId, input("copy"));
+    expect(calls.price).toHaveBeenCalledWith(fixture.db, {
+      quoteId, actorId, lineItemId: line.id, designId: design.id,
+      expectedRevision: 2, idempotencyKey: `alternative:${sourceId}:copy:alternative:test:1:price`,
+    });
+    expect(result.quote).toMatchObject({ quote_v2_revision: 3, quote_v2_status: "blocked", total_amount: 400 });
+  });
+  it("resumes pricing after an interrupted response without recopying or creating another draft", async () => {
+    const fixture = database([
+      ok({ ...source, quote_v2_revision: 99, quote_group_id: sourceId }),
+      ok({ actor_id: actorId, result: { quoteId } }),
+      ok({ id: "copy-event", event_payload: { result: { revision: 2, selectedDesigns: { [line.id]: design.id } } } }),
+      ok({ id: quoteId, quote_v2_revision: 2 }),
+      ok({ id: quoteId, quote_v2_revision: 3 }),
+    ]);
+    await createSalesQuoteAlternative(fixture.db, actorId, sourceId, input("copy"));
+    expect(calls.price).toHaveBeenCalledOnce();
+    expect(calls.create).not.toHaveBeenCalled();
+    expect(calls.mutate).not.toHaveBeenCalled();
+  });
+  it("does not reprice a completed copy after the alternative has been edited", async () => {
+    const fixture = database([
+      ok({ ...source, quote_group_id: sourceId }),
+      ok({ actor_id: actorId, result: { quoteId } }),
+      ok({ id: "copy-event", event_payload: { result: { revision: 2, selectedDesigns: { [line.id]: design.id } } } }),
+      ok({ id: quoteId, quote_v2_revision: 4 }),
+    ]);
+    await createSalesQuoteAlternative(fixture.db, actorId, sourceId, input("copy"));
+    expect(calls.price).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QuoteCommunicationHub } from "@/components/crm/quote-hub/QuoteCommunicationHub";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -19,6 +19,7 @@ import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import { loadAllSalesQuotes, searchQuotes } from "@mts/lib/quoteSearch";
+import { createQuoteV2Alternative, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
@@ -168,6 +169,7 @@ export function QuoteDashboard({
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [portfolioQuote, setPortfolioQuote] = useState<SalesQuote | null>(null);
   const [appointmentQuoteIds, setAppointmentQuoteIds] = useState<Record<string, string>>({});
+  const copyQuoteRequests = useRef(new Map<string, string>());
 
   const visibleAccounts = quoteOperatorMode
     ? QUOTE_ACCOUNTS.filter((account) => account.id === ACCOUNT_IDS.SHUTTERS_805)
@@ -587,6 +589,18 @@ export function QuoteDashboard({
         .single();
       if (fetchErr) throw fetchErr;
 
+      if (original.quote_v2_backend === true) {
+        const idempotencyKey =
+          copyQuoteRequests.current.get(quoteId) || quoteV2RequestKey("dashboard-copy");
+        copyQuoteRequests.current.set(quoteId, idempotencyKey);
+        const result = await createQuoteV2Alternative(supabase, quoteId, {
+          mode: "copy",
+          expectedRevision: Number(original.quote_v2_revision),
+          idempotencyKey,
+        });
+        return { quote: result.quote, serverOwnedV2: true };
+      }
+
       const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
         "next_quote_number",
         {
@@ -640,11 +654,20 @@ export function QuoteDashboard({
         await (supabase as any).from("sales_quote_line_items").insert(newItems);
       }
 
-      return newQuote;
+      return { quote: newQuote, serverOwnedV2: false };
     },
-    onSuccess: () => {
+    onSuccess: ({ quote, serverOwnedV2 }, quoteId) => {
+      copyQuoteRequests.current.delete(quoteId);
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      if (serverOwnedV2) {
+        setAccountId(quote.account_id);
+        setActiveQuote(quote.id);
+        setActiveTab("builder");
+      }
       toast.success("Quote copied");
+    },
+    onError: (error) => {
+      toast.error("Failed to copy quote: " + error.message);
     },
   });
 
@@ -903,6 +926,7 @@ export function QuoteDashboard({
               if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
             }}
             onCopy={(id) => copyQuote.mutate(id)}
+            copyingQuoteId={copyQuote.isPending ? copyQuote.variables : null}
             onDelete={(quote) => deleteQuote.mutate(quote)}
             title={isSearching ? "Search Results" : FILTER_LABELS[activeFilter]}
             emptyMessage={
