@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { execFile, execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { bookingDatabaseFixture } from "./database-fixture";
 import { candidateVisit } from "./scheduling";
 import { eventSignature } from "./travel";
@@ -89,6 +90,7 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
       }
     }
     sql(bookingDatabaseFixture());
+    sql(readFileSync("supabase/migrations/20260908193000_booking_expired_legacy_commitments.sql", "utf8"));
   }, 30000);
   beforeEach(() => {
     sql(
@@ -153,5 +155,19 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
     await expect(parallelSql(request("16:00", fresh))).rejects.toThrow(
       /BOOKING_FULL/,
     );
+  });
+  it("preserves expired legacy records without letting invalid end times block future dates", () => {
+    sql(`insert into sales_805_appointments(customer_name,customer_address,appointment_date,start_time,end_time,assigned_to)
+      select 'Legacy test','123 Main St',
+        (now() at time zone 'America/Los_Angeles')::date + day_offset,'11:00'::time,end_time::time,'Jessica'
+      from (values (-1,'00:00'),(0,'00:00'),(1,'00:00'),(-2,'12:00')) as cases(day_offset,end_time);`);
+    expect(sql("select count(*) from sales_805_appointments;")).toBe("4");
+    expect(sql("select count(*) from crm_calendar_events;")).toBe("4");
+    expect(sql("select count(*) from booking_commitments;")).toBe("3");
+    expect(sql("select count(*) from booking_commitments where end_at is null;")).toBe("2");
+    // The same guarantee applies when the optional legacy mirror is absent.
+    sql("delete from crm_calendar_events;");
+    expect(sql("select count(*) from booking_commitments;")).toBe("3");
+    expect(sql("select count(*) from booking_commitments where end_at is null;")).toBe("2");
   });
 });
