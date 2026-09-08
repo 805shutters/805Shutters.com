@@ -63,6 +63,7 @@ export function JessicaWorkingRanges({ session }: { session: Session }) {
     [dirty, setDirty] = useState(false),
     [loading, setLoading] = useState(true),
     [saving, setSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [message, setMessage] = useState(""),
     [address, setAddress] = useState(""),
     [count, setCount] = useState("5"),
@@ -90,6 +91,7 @@ export function JessicaWorkingRanges({ session }: { session: Session }) {
   useEffect(() => {
     let current = true;
     setLoading(true);
+    setLoadFailed(false);
     setMessage("");
     setPreview(null);
     generation.current++;
@@ -106,6 +108,7 @@ export function JessicaWorkingRanges({ session }: { session: Session }) {
       })
       .catch((e) => {
         if (current) {
+          setLoadFailed(true);
           setMessage(e.message);
           setRevision("");
           setRanges([]);
@@ -249,6 +252,11 @@ export function JessicaWorkingRanges({ session }: { session: Session }) {
       )}
       {loading ? (
         <p>Loading working ranges…</p>
+      ) : loadFailed ? (
+        <div role="alert">
+          <p>Working hours could not be loaded. Retry to see the saved ranges.</p>
+          <button type="button" onClick={() => setReload((n) => n + 1)}>Retry working hours</button>
+        </div>
       ) : (
         <>
           {!ranges.length && (
@@ -402,7 +410,7 @@ export function JessicaWorkingRanges({ session }: { session: Session }) {
         <button
           type="button"
           disabled={
-            !address.trim() || loading || previewLoading || dirty || draft
+            !address.trim() || loading || loadFailed || !revision || previewLoading || dirty || draft
           }
           onClick={showPreview}
         >

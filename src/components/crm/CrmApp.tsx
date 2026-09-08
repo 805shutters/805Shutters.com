@@ -1,5 +1,6 @@
 "use client";
 
+import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
 import { JessicaWorkingRanges } from "@/components/crm/JessicaWorkingRanges";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
 
@@ -14058,7 +14059,8 @@ function CalendarPlanner({
   const rangeEnd = view === "month" ? addCalendarDays(monthDays[monthDays.length - 1], 1) : addCalendarDays(timelineDays[timelineDays.length - 1], 1);
   const visibleEvents = calendarEventsForRange(events, rangeStart, rangeEnd);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlotRow[]>([]);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityReload, setAvailabilityReload] = useState(0);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const availabilityMonths = useMemo(
     () => (view === "month" ? [] : Array.from(new Set(timelineDays.map(availabilityMonthValue)))),
@@ -14101,7 +14103,7 @@ function CalendarPlanner({
       .catch((error) => {
         if (!active) return;
         setAvailabilitySlots([]);
-          setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
+        setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
       })
       .finally(() => {
         if (active) setAvailabilityLoading(false);
@@ -14110,7 +14112,7 @@ function CalendarPlanner({
     return () => {
       active = false;
     };
-  }, [availabilityMonthKey, session]);
+  }, [availabilityMonthKey, session, availabilityReload]);
 
   function moveCalendar(direction: -1 | 1) {
     if (view === "day") {
@@ -14170,7 +14172,14 @@ function CalendarPlanner({
         <strong>{rangeLabel}</strong>
         <span>{visibleEvents.length} scheduled</span>
       </div>
-      {availabilityError && view !== "month" ? <p className="crm-calendar-open-times-error">{availabilityError}</p> : null}
+      {availabilityError && view !== "month" ? (
+        <div className="crm-calendar-open-times-error" role="alert">
+          <p>Working hours could not be loaded. Availability is unknown; existing appointments are still shown.</p>
+          <button type="button" className="crm-ghost-button" onClick={() => setAvailabilityReload((n) => n + 1)}>
+            Retry availability
+          </button>
+        </div>
+      ) : null}
 
       {view === "month" ? (
         <CalendarMonthGrid
@@ -14187,6 +14196,7 @@ function CalendarPlanner({
           events={visibleEvents}
           availabilitySlots={availabilitySlots}
           availabilityLoading={availabilityLoading}
+          availabilityFailed={Boolean(availabilityError)}
           canOverrideAvailability={canOverrideAvailability}
           onSelectSlot={onSelectSlot}
           onRescheduleEvent={onRescheduleEvent}
@@ -14203,6 +14213,7 @@ function CalendarTimelineGrid({
   events,
   availabilitySlots,
   availabilityLoading,
+  availabilityFailed,
   canOverrideAvailability,
   onSelectSlot,
   onRescheduleEvent,
@@ -14213,6 +14224,7 @@ function CalendarTimelineGrid({
   events: CrmCalendarEvent[];
   availabilitySlots: AvailabilitySlotRow[];
   availabilityLoading: boolean;
+  availabilityFailed: boolean;
   canOverrideAvailability: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
   onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
@@ -14255,6 +14267,7 @@ function CalendarTimelineGrid({
   }
 
   function handleGridDragOver(dragEvent: DragEvent<HTMLDivElement>) {
+    if (availabilityLoading || availabilityFailed) return;
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
@@ -14267,6 +14280,7 @@ function CalendarTimelineGrid({
   }
 
   function handleGridDrop(dragEvent: DragEvent<HTMLDivElement>) {
+    if (availabilityLoading || availabilityFailed) return;
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
@@ -14317,17 +14331,20 @@ function CalendarTimelineGrid({
               const past = isPastCalendarSlot(day, time);
               const openOwners = availabilityOwnersForSlot(day, time);
               const available = openOwners.includes("Jessica");
-              const pending = availabilityLoading && !available;
+              const pending = availabilityLoading;
               const slot = calendarSlotSelection(day, time);
-              const overridable = canOverrideAvailability && !event && !past && !pending && !available && !availabilityLoading;
-              const selectable = (!event && !past && available && !availabilityLoading) || overridable;
-              const slotLabel = event ? "Booked" : past ? "Past" : pending ? "Checking" : available ? "Working time" : "Closed";
+              const { overridable, selectable, label: slotLabel } = calendarSlotState({
+                booked: Boolean(event), past, loading: availabilityLoading,
+                failed: availabilityFailed, available, canOverride: canOverrideAvailability,
+              });
               const slotDetail = event
                 ? "Scheduled"
                 : past
                   ? "Unavailable"
                   : pending
                     ? "Open times"
+                    : availabilityFailed
+                      ? "Availability could not be checked"
                     : available
                       ? openOwners.length
                         ? availabilityOwnersLabel(openOwners)
@@ -14341,7 +14358,7 @@ function CalendarTimelineGrid({
                   type="button"
                   aria-label={`${slotLabel} ${formatCalendarLongDay(day)} ${formatCalendarSlotTime(time)}`}
                   className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}${
-                    !event && !past && !pending && available ? " crm-calendar-slot--available" : ""
+                    !event && !past && !pending && !availabilityFailed && available ? " crm-calendar-slot--available" : ""
                   }${!event && !past && !pending && !available ? " crm-calendar-slot--blocked" : ""}${
                     overridable ? " crm-calendar-slot--override" : ""
                   }${pending ? " crm-calendar-slot--pending" : ""}`}

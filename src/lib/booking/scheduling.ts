@@ -64,8 +64,14 @@ export async function readSchedule(
     !Array.isArray(data.slots) ||
     !Array.isArray(data.protectedIds) ||
     typeof data.revision !== "string"
-  )
+  ) {
+    console.error("booking_schedule_snapshot failed", {
+      month,
+      code: error?.code || "INVALID_SNAPSHOT",
+      message: error?.message || "Schedule snapshot is incomplete",
+    });
     scheduleError(error);
+  }
   return data as ScheduleSnapshot;
 }
 export async function validateServiceAddress(address: string) {
