@@ -2598,8 +2598,18 @@ async function syncTechnicalMeasureCalendarState(
   }
 }
 
-async function guardedCalendarWrite(supabase: CrmSupabaseClient, operation: "insert" | "update", record: Record<string, unknown>, existing?: CrmCalendarEvent) {
-  try { return await writeCalendarWithRoutes(supabase, operation, record, existing); }
+async function guardedCalendarWrite(
+  supabase: CrmSupabaseClient,
+  operation: "insert" | "update",
+  record: Record<string, unknown>,
+  existing?: CrmCalendarEvent,
+  bufferOverride?: {
+    actorId: string;
+    actorEmail: string;
+    reason: "staff_reschedule_extra_buffer_override";
+  },
+) {
+  try { return await writeCalendarWithRoutes(supabase, operation, record, existing, bufferOverride); }
   catch(error) { if(error instanceof BookingError) throw new CrmAuthError(error.status,error.message); throw error; }
 }
 
@@ -2725,6 +2735,16 @@ export async function rescheduleCrmCalendarEvent(
   const eventId = requiredText(payload.id, "Calendar event is required.");
   const startAt = requiredText(payload.start_at, "Start and end are required.");
   const endAt = requiredText(payload.end_at, "Start and end are required.");
+  if (
+    Object.prototype.hasOwnProperty.call(payload, "override_travel_buffer") &&
+    typeof payload.override_travel_buffer !== "boolean"
+  ) {
+    throw new CrmAuthError(400, "Travel buffer override must be a boolean.");
+  }
+  const overrideTravelBuffer = payload.override_travel_buffer === true;
+  if (overrideTravelBuffer && !actor.userId) {
+    throw new CrmAuthError(403, "Travel buffer override requires an authenticated staff account.");
+  }
   const startDate = new Date(startAt);
   const endDate = new Date(endAt);
 
@@ -2743,17 +2763,53 @@ export async function rescheduleCrmCalendarEvent(
   if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
     throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
   }
+  if (
+    overrideTravelBuffer &&
+    (existing.assigned_to !== "Jessica" || existing.event_type === "block")
+  ) {
+    throw new CrmAuthError(
+      400,
+      "Travel buffer override is limited to Jessica appointments.",
+    );
+  }
 
   if (existing.event_type !== "measure") await assertCalendarWindowAvailable(supabase, startAt, endAt, eventId);
 
+  const rescheduleMeta: Record<string, unknown> = {
+    ...metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy"),
+    ...(overrideTravelBuffer
+      ? {
+          travelBufferOverride: {
+            actorEmail: actor.email,
+            actorUserId: actor.userId,
+            reason: "staff_reschedule_extra_buffer_override",
+            affectedStartAt: startAt,
+            affectedEndAt: endAt,
+            requestedAt: new Date().toISOString(),
+          },
+        }
+      : {}),
+  };
   const update = {
     start_at: startAt,
     end_at: endAt,
     status: "rescheduled",
-    meta: metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy")
+    meta: rescheduleMeta
   };
 
-  const data = await guardedCalendarWrite(supabase,"update",{...update,id:eventId},existing as CrmCalendarEvent);
+  const data = await guardedCalendarWrite(
+    supabase,
+    "update",
+    { ...update, id: eventId },
+    existing as CrmCalendarEvent,
+    overrideTravelBuffer
+      ? {
+          actorId: actor.userId!,
+          actorEmail: actor.email,
+          reason: "staff_reschedule_extra_buffer_override",
+        }
+      : undefined,
+  );
 
   await syncTechnicalMeasureCalendarState(supabase, data, {
     status: "scheduled",
@@ -2803,7 +2859,11 @@ export async function rescheduleCrmCalendarEvent(
     after: data,
     metadata: {
       jobId: existing.job_id || null,
-      rescheduledSalespersonSms
+      rescheduledSalespersonSms,
+      travelBufferOverride: overrideTravelBuffer,
+      travelBufferOverrideReason: overrideTravelBuffer
+        ? "staff_reschedule_extra_buffer_override"
+        : null,
     }
   });
 

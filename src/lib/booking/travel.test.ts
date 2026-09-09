@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkVisitTravel, googleDriveEstimator } from "./travel";
+import { checkVisitTravel, eventSignature, googleDriveEstimator } from "./travel";
 import { candidateVisit } from "./scheduling";
 const date = "2035-10-01",
   now = new Date("2035-09-30T12:00Z");
@@ -39,6 +39,64 @@ describe("Google route eligibility", () => {
       ).reason,
     ).toBe("driving_time");
   });
+  it("waives only the extra buffer for an exact trusted adjacent leg", async () => {
+    const current = visit("10:30", "B", "current");
+    const next = visit("12:00", "C", "next");
+    const exception = {
+      fromSignature: eventSignature(current),
+      toSignature: eventSignature(next),
+    };
+
+    expect(
+      (
+        await checkVisitTravel(current, [next], async () => 16 * 60, now, {
+          allowBufferOverrideForEventId: current.id,
+        })
+      ).reason,
+    ).toBeNull();
+    expect(
+      (
+        await checkVisitTravel(current, [next], async () => 16 * 60, now, {
+          bufferExceptions: [exception],
+        })
+      ).reason,
+    ).toBeNull();
+    expect(
+      (
+        await checkVisitTravel(current, [next], async () => 60 * 60 + 1, now, {
+          bufferExceptions: [exception],
+        })
+      ).reason,
+    ).toBe("driving_time");
+
+    next.location = "Changed";
+    expect(
+      (
+        await checkVisitTravel(current, [next], async () => 16 * 60, now, {
+          bufferExceptions: [exception],
+        })
+      ).reason,
+    ).toBe("driving_time");
+  });
+
+  it("does not let a new public candidate inherit another pair's exception", async () => {
+    const protectedVisit = visit("10:30", "B", "protected");
+    const next = visit("12:00", "C", "next");
+    const candidate = visit("10:30", "B", "new-public-candidate");
+    expect(
+      (
+        await checkVisitTravel(candidate, [next], async () => 16 * 60, now, {
+          bufferExceptions: [
+            {
+              fromSignature: eventSignature(protectedVisit),
+              toSignature: eventSignature(next),
+            },
+          ],
+        })
+      ).reason,
+    ).toBe("driving_time");
+  });
+
   it("rejects the zero-gap Moorpark/Camarillo pattern before calling Google", async () => {
     const drive = vi.fn();
     expect(

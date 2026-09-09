@@ -22,6 +22,14 @@ export type RouteProof = {
   previous: TravelLeg | null;
   next: TravelLeg | null;
 };
+export type BufferException = {
+  fromSignature: EventSignature;
+  toSignature: EventSignature;
+};
+export type TravelCheckOptions = {
+  bufferExceptions?: BufferException[];
+  allowBufferOverrideForEventId?: string;
+};
 export type DriveEstimator = (
   from: string,
   to: string,
@@ -123,6 +131,7 @@ export async function checkVisitTravel(
   events: CrmCalendarEvent[],
   drive: DriveEstimator,
   now = new Date(),
+  options: TravelCheckOptions = {},
 ): Promise<{ reason: UnavailableReason | null; proof?: RouteProof }> {
   const start = Date.parse(event.start_at),
     end = Date.parse(event.end_at);
@@ -190,8 +199,21 @@ export async function checkVisitTravel(
     const deadline = Date.parse(
       side === "previous" ? event.start_at : neighbor.start_at,
     );
-    // Insufficient even before routing; no API call needed.
-    if (deadline - departure < travelBufferMinutes * 60000)
+    const fromSignature = eventSignature(side === "previous" ? neighbor : event);
+    const toSignature = eventSignature(side === "previous" ? event : neighbor);
+    const sameSignature = (a: EventSignature, b: EventSignature) =>
+      JSON.stringify(a) === JSON.stringify(b);
+    const bufferException =
+      options.bufferExceptions?.some(
+        (exception) =>
+          sameSignature(exception.fromSignature, fromSignature) &&
+          sameSignature(exception.toSignature, toSignature),
+      ) ||
+      (Boolean(options.allowBufferOverrideForEventId) &&
+        (fromSignature[0] === options.allowBufferOverrideForEventId ||
+          toSignature[0] === options.allowBufferOverrideForEventId));
+    // Without a trusted exact exception, a sub-buffer gap cannot be routed safely.
+    if (!bufferException && deadline - departure < travelBufferMinutes * 60000)
       return { reason: "driving_time" };
     const seconds = await drive(
       side === "previous" ? neighbor.location : event.location,
@@ -199,13 +221,16 @@ export async function checkVisitTravel(
       new Date(departure),
     );
     if (seconds === null) return { reason: "missing_information" };
-    const arrival = departure + seconds * 1000 + travelBufferMinutes * 60000;
+    const actualArrival = departure + seconds * 1000;
+    const guardedArrival =
+      actualArrival + (bufferException ? 0 : travelBufferMinutes * 60000);
     if (
-      arrival > deadline ||
+      actualArrival > deadline ||
+      guardedArrival > deadline ||
       active.some(
         (e) =>
           e.event_type === "block" &&
-          Date.parse(e.start_at) < arrival &&
+          Date.parse(e.start_at) < guardedArrival &&
           Date.parse(e.end_at) > departure,
       )
     )

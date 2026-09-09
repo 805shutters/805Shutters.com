@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { bookingDatabaseFixture } from "./database-fixture";
 import { candidateVisit } from "./scheduling";
 import { eventSignature } from "./travel";
+import type { CrmCalendarEvent } from "@/lib/crm/types";
 const db = new PGlite();
 const date = "2035-10-01",
   month = date.slice(0, 7);
@@ -21,10 +22,73 @@ const job = {
   product_interest: "shutters",
   meta: {},
 };
+const staffActorId = "11111111-1111-4111-8111-111111111111";
+async function protectedPair() {
+  await publish();
+  const next = candidateVisit(date, "12:00", "Next Test Address", 5);
+  await db.query(
+    "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'neighbor',$2,$3,'Jessica','sales_consult',$4)",
+    [next.id, next.start_at, next.end_at, next.location],
+  );
+  const event = candidateVisit(date, "10:00", "Current Test Address", 5);
+  const proof = {
+    eventId: event.id,
+    signature: eventSignature(event),
+    checkedAt: new Date().toISOString(),
+    previous: null,
+    next: {
+      id: next.id,
+      signature: eventSignature(next),
+      departureAt: event.end_at,
+      seconds: 45 * 60,
+    },
+  };
+  await commit("10:00", randomUUID(), { event, proofs: [proof] });
+  return { event, next };
+}
+function movedProof(
+  event: CrmCalendarEvent,
+  next: CrmCalendarEvent,
+  seconds = 16 * 60,
+) {
+  return {
+    eventId: event.id,
+    signature: eventSignature(event),
+    checkedAt: new Date().toISOString(),
+    previous: null,
+    next: {
+      id: next.id,
+      signature: eventSignature(next),
+      departureAt: event.end_at,
+      seconds,
+    },
+  };
+}
+async function staffReschedule(
+  event: CrmCalendarEvent,
+  proofs: unknown[],
+  override = true,
+  actorEmail = "staff@local.invalid",
+) {
+  return db.query("select booking_calendar_reschedule($1,$2,$3,$4,$5,$6,$7)", [
+    (await snapshot()).revision,
+    JSON.stringify(event),
+    JSON.stringify(proofs),
+    override,
+    staffActorId,
+    actorEmail,
+    "staff_reschedule_extra_buffer_override",
+  ]);
+}
 const snapshot = async () =>
   (
     await db.query<{
-      snapshot: { revision: string; events: unknown[]; slots: unknown[] };
+      snapshot: {
+        revision: string;
+        events: unknown[];
+        slots: unknown[];
+        bufferExceptions?: unknown[];
+      };
     }>("select public.booking_schedule_snapshot($1) snapshot", [month])
   ).rows[0].snapshot;
 async function publish(
@@ -90,7 +154,7 @@ beforeAll(async () => {
 }, 30000);
 beforeEach(async () => {
   await db.exec(
-    "truncate booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
+    "truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
   );
 });
 afterAll(() => db.close());
@@ -348,5 +412,231 @@ describe("booking database authority", () => {
         ]),
       ]),
     ).rejects.toThrow(/BOOKING_CLOSED/);
+  });
+
+  it("keeps the staff buffer override explicit and rejects the strict write", async () => {
+    const { event, next } = await protectedPair();
+    const moved = {
+      ...candidateVisit(date, "10:30", String(event.location), 5, event.id),
+      status: "rescheduled" as const,
+    };
+    await expect(
+      db.query("select booking_calendar_write($1,'update',$2,$3)", [
+        (await snapshot()).revision,
+        JSON.stringify(moved),
+        JSON.stringify([movedProof(moved, next)]),
+      ]),
+    ).rejects.toThrow(/BOOKING_TRAVEL/);
+    await staffReschedule(moved, [movedProof(moved, next)]);
+    expect((await snapshot()).bufferExceptions).toHaveLength(1);
+  });
+
+  it("requires proof for an initially unprotected Jessica visit and keeps it unprotected", async () => {
+    await publish();
+    const current = candidateVisit(date, "10:00", "Current Test Address", 5);
+    const next = candidateVisit(date, "12:00", "Next Test Address", 5);
+    for (const visit of [current, next]) {
+      await db.query(
+        "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location,status) values($1,'staff visit',$2,$3,'Jessica','sales_consult',$4,'scheduled')",
+        [visit.id, visit.start_at, visit.end_at, visit.location],
+      );
+    }
+    const moved = {
+      ...candidateVisit(date, "10:30", String(current.location), 5, current.id),
+      status: "rescheduled" as const,
+    };
+
+    await expect(staffReschedule(moved, [])).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    await expect(
+      staffReschedule(moved, [
+        {
+          eventId: moved.id,
+          signature: eventSignature(moved),
+          checkedAt: new Date().toISOString(),
+          previous: null,
+          next: null,
+        },
+      ]),
+    ).rejects.toThrow(/BOOKING_ROUTE_RECHECK/);
+    await expect(
+      staffReschedule(moved, [movedProof(moved, next, 30 * 60 + 1)]),
+    ).rejects.toThrow(/BOOKING_TRAVEL/);
+    await staffReschedule(moved, [movedProof(moved, next)]);
+
+    expect(
+      (
+        await db.query<{ counts: number[] }>(
+          "select array[(select count(*)::int from booking_route_protections),(select count(*)::int from booking_travel_buffer_exceptions)] counts",
+        )
+      ).rows[0].counts,
+    ).toEqual([0, 1]);
+  });
+
+  it("rejects buffer overrides for non-Jessica assignments and blocks", async () => {
+    await publish();
+    for (const variant of [
+      { assigned_to: "Mike", event_type: "sales_consult" as const },
+      { assigned_to: "Jessica", event_type: "block" as const },
+    ]) {
+      const event = {
+        ...candidateVisit(date, "10:00", "Current Test Address", 5),
+        ...variant,
+      };
+      await db.query(
+        "insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location,status) values($1,'unsupported',$2,$3,$4,$5,$6,'scheduled')",
+        [event.id, event.start_at, event.end_at, event.assigned_to, event.event_type, event.location],
+      );
+      const moved = { ...event, status: "rescheduled" as const };
+      await expect(staffReschedule(moved, [])).rejects.toThrow(/BOOKING_OVERRIDE/);
+      await db.query("delete from crm_calendar_events where id=$1", [event.id]);
+    }
+  });
+
+  it("denies override RPC and exception-table writes to anon and authenticated roles", async () => {
+    const permissions = await db.query<{
+      role_name: string;
+      can_execute: boolean;
+      can_insert: boolean;
+    }>(`
+      select role_name,
+        has_function_privilege(role_name,'public.booking_calendar_reschedule(text,jsonb,jsonb,boolean,uuid,text,text)','EXECUTE') can_execute,
+        has_table_privilege(role_name,'public.booking_travel_buffer_exceptions','INSERT') can_insert
+      from (values ('anon'),('authenticated')) roles(role_name)
+    `);
+    expect(permissions.rows).toEqual([
+      { role_name: "anon", can_execute: false, can_insert: false },
+      { role_name: "authenticated", can_execute: false, can_insert: false },
+    ]);
+
+    for (const role of ["anon", "authenticated"]) {
+      await db.exec(`set role ${role}`);
+      try {
+        await expect(
+          db.exec(
+            "select booking_calendar_reschedule('0','{}','[]',true,'11111111-1111-4111-8111-111111111111','staff@local.invalid','staff_reschedule_extra_buffer_override')",
+          ),
+        ).rejects.toThrow(/permission denied/i);
+        await expect(
+          db.exec(
+            "insert into booking_travel_buffer_exceptions(from_event_id) values('forbidden')",
+          ),
+        ).rejects.toThrow(/permission denied/i);
+      } finally {
+        await db.exec("reset role");
+      }
+    }
+  });
+
+  it("never overrides actual driving time or appointment overlap", async () => {
+    let pair = await protectedPair();
+    let moved = {
+      ...candidateVisit(date, "10:30", String(pair.event.location), 5, pair.event.id),
+      status: "rescheduled" as const,
+    };
+    await expect(
+      staffReschedule(moved, [movedProof(moved, pair.next, 30 * 60 + 1)]),
+    ).rejects.toThrow(/BOOKING_TRAVEL/);
+
+    await db.exec(
+      "truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade;",
+    );
+    pair = await protectedPair();
+    moved = {
+      ...candidateVisit(date, "11:30", String(pair.event.location), 5, pair.event.id),
+      status: "rescheduled" as const,
+    };
+    await expect(
+      staffReschedule(moved, [movedProof(moved, pair.next, 1)]),
+    ).rejects.toThrow(/BOOKING_CONFLICT/);
+  });
+
+  it("retains an exact approved leg through later route-proof refreshes", async () => {
+    const { event, next } = await protectedPair();
+    const moved = {
+      ...candidateVisit(date, "10:30", String(event.location), 5, event.id),
+      status: "rescheduled" as const,
+    };
+    await staffReschedule(moved, [movedProof(moved, next)]);
+    const refreshed = movedProof(moved, next);
+    await db.query("select booking_calendar_write($1,'update',$2,$3)", [
+      (await snapshot()).revision,
+      JSON.stringify({ id: moved.id, meta: { proofRefresh: true } }),
+      JSON.stringify([refreshed]),
+    ]);
+    expect((await snapshot()).bufferExceptions).toHaveLength(1);
+  });
+
+  it("permanently invalidates an approved leg when either adjacent signature changes", async () => {
+    const { event, next } = await protectedPair();
+    const moved = {
+      ...candidateVisit(date, "10:30", String(event.location), 5, event.id),
+      status: "rescheduled" as const,
+    };
+    await staffReschedule(moved, [movedProof(moved, next)]);
+
+    const changedNext = candidateVisit(
+      date,
+      "12:30",
+      "Changed Address",
+      5,
+      next.id,
+    );
+    await db.query("select booking_calendar_write($1,'update',$2,$3)", [
+      (await snapshot()).revision,
+      JSON.stringify(changedNext),
+      JSON.stringify([movedProof(moved, changedNext)]),
+    ]);
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_travel_buffer_exceptions",
+        )
+      ).rows[0].n,
+    ).toBe(0);
+
+    const restoredNext = candidateVisit(
+      date,
+      "12:00",
+      String(next.location),
+      5,
+      next.id,
+    );
+    await expect(
+      db.query("select booking_calendar_write($1,'update',$2,$3)", [
+        (await snapshot()).revision,
+        JSON.stringify(restoredNext),
+        JSON.stringify([movedProof(moved, restoredNext)]),
+      ]),
+    ).rejects.toThrow(/BOOKING_TRAVEL/);
+  });
+
+  it("rejects stale proofs and untrusted override attribution", async () => {
+    const { event, next } = await protectedPair();
+    const moved = {
+      ...candidateVisit(date, "10:30", String(event.location), 5, event.id),
+      status: "rescheduled" as const,
+    };
+    const stale = {
+      ...movedProof(moved, next),
+      checkedAt: new Date(Date.now() - 180_000).toISOString(),
+    };
+    await expect(staffReschedule(moved, [stale])).rejects.toThrow(/BOOKING_STALE/);
+    await expect(
+      staffReschedule(moved, [movedProof(moved, next)], true, ""),
+    ).rejects.toThrow(/BOOKING_ACTOR/);
+  });
+
+  it("does not let public booking payloads self-authorize buffer exceptions", async () => {
+    await publish();
+    await commit("10:00", randomUUID(), {
+      event: { bufferOverride: true, bufferExceptions: [{ forged: true }] },
+    });
+    expect(
+      (
+        await db.query<{ n: number }>(
+          "select count(*)::int n from booking_travel_buffer_exceptions",
+        )
+      ).rows[0].n,
+    ).toBe(0);
   });
 });

@@ -2407,7 +2407,11 @@ export function CrmApp({
     }
   }
 
-  async function rescheduleCalendarEvent(calendarEvent: CrmCalendarEvent, slot: CalendarSlotSelection) {
+  async function rescheduleCalendarEvent(
+    calendarEvent: CrmCalendarEvent,
+    slot: CalendarSlotSelection,
+    overrideTravelBuffer = false,
+  ) {
     if (!session) return;
 
     if (isPastCalendarSlot(slot.date, slot.time)) {
@@ -2424,7 +2428,8 @@ export function CrmApp({
         body: JSON.stringify({
           id: calendarEvent.id,
           start_at: slot.startAt,
-          end_at: slot.endAt
+          end_at: slot.endAt,
+          override_travel_buffer: overrideTravelBuffer
         })
       });
       setReschedulingCalendarEvent(null);
@@ -2446,8 +2451,9 @@ export function CrmApp({
     const time = formString(formData, "time");
     const currentDurationMinutes = calendarEventDurationMinutes(reschedulingCalendarEvent);
     const durationMinutes = calendarAppointmentDurationMinutes(formData.get("duration"), currentDurationMinutes);
+    const overrideTravelBuffer = formData.get("override_travel_buffer") === "on";
     const slot = calendarSlotSelection(date, time, durationMinutes);
-    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot);
+    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot, overrideTravelBuffer);
   }
 
   async function cancelCalendarEvent(calendarEvent: CrmCalendarEvent) {
@@ -3682,6 +3688,7 @@ export function CrmApp({
               ) : null}
               {reschedulingCalendarEvent ? (
                 <CalendarRescheduleModal
+                  key={reschedulingCalendarEvent.id}
                   busy={busy}
                   event={reschedulingCalendarEvent}
                   onClose={() => setReschedulingCalendarEvent(null)}
@@ -14854,6 +14861,10 @@ function CalendarRescheduleModal({
   const date = calendarEventDateValue(event);
   const time = calendarEventTimeValue(event);
   const durationMinutes = calendarEventDurationMinutes(event);
+  const canOverrideTravelBuffer =
+    event.assigned_to === "Jessica" && event.event_type !== "block";
+  const [overrideTravelBuffer, setOverrideTravelBuffer] = useState(false);
+  const clearTravelBufferOverride = () => setOverrideTravelBuffer(false);
 
   return (
     <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
@@ -14876,11 +14887,22 @@ function CalendarRescheduleModal({
           <div className="crm-field-row">
             <label>
               Date
-              <input name="date" type="date" required defaultValue={date} />
+              <input
+                name="date"
+                type="date"
+                required
+                defaultValue={date}
+                onChange={clearTravelBufferOverride}
+              />
             </label>
             <label>
               Time
-              <select name="time" required defaultValue={time}>
+              <select
+                name="time"
+                required
+                defaultValue={time}
+                onChange={clearTravelBufferOverride}
+              >
                 {calendarEventTimeOptions(event).map((option) => (
                   <option value={option} key={option}>
                     {formatCalendarSlotTime(option)}
@@ -14890,7 +14912,12 @@ function CalendarRescheduleModal({
             </label>
             <label>
               Duration
-              <select name="duration" required defaultValue={String(durationMinutes)}>
+              <select
+                name="duration"
+                required
+                defaultValue={String(durationMinutes)}
+                onChange={clearTravelBufferOverride}
+              >
                 {calendarAppointmentDurationChoices(durationMinutes).map((minutes) => (
                   <option value={minutes} key={minutes}>
                     {calendarAppointmentDurationLabel(minutes)}
@@ -14899,6 +14926,24 @@ function CalendarRescheduleModal({
               </select>
             </label>
           </div>
+          {canOverrideTravelBuffer ? (
+            <label className="crm-reschedule-buffer-override">
+              <input
+                name="override_travel_buffer"
+                type="checkbox"
+                checked={overrideTravelBuffer}
+                onChange={(changeEvent) =>
+                  setOverrideTravelBuffer(changeEvent.target.checked)
+                }
+              />
+              <span>
+                <strong>Override extra 15-minute travel buffer</strong>
+                <small>
+                  Actual drive time, appointment conflicts, and missing route or address checks still apply.
+                </small>
+              </span>
+            </label>
+          ) : null}
           <div className="crm-slot-actions">
             <button type="button" className="crm-ghost-button" onClick={onClose}>
               Cancel

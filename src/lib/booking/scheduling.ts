@@ -16,6 +16,7 @@ import {
   checkVisitTravel,
   eventSignature,
   googleDriveEstimator,
+  type BufferException,
   type DriveEstimator,
   type RouteProof,
 } from "./travel";
@@ -33,6 +34,7 @@ export type ScheduleSnapshot = {
   events: CrmCalendarEvent[];
   slots: CrmAvailabilitySlot[];
   protectedIds: string[];
+  bufferExceptions: BufferException[];
 };
 export function scheduleError(error: { message?: string } | null): never {
   if (/BOOKING_/.test(error?.message || ""))
@@ -72,7 +74,12 @@ export async function readSchedule(
     });
     scheduleError(error);
   }
-  return data as ScheduleSnapshot;
+  return {
+    ...data,
+    bufferExceptions: Array.isArray(data.bufferExceptions)
+      ? data.bufferExceptions
+      : [],
+  } as ScheduleSnapshot;
 }
 export async function validateServiceAddress(address: string) {
   if (!address.trim() || address.length > 512)
@@ -136,6 +143,7 @@ export async function projectedProofs(
   newId: string | null,
   drive: DriveEstimator,
   now: Date,
+  allowBufferOverrideForEventId?: string,
 ): Promise<{ reason: UnavailableReason | null; proofs: RouteProof[] }> {
   const ids = new Set(snapshot.protectedIds.concat(newId ? [newId] : []));
   const targets = projected.filter(
@@ -147,7 +155,10 @@ export async function projectedProofs(
   );
   const proofs: RouteProof[] = [];
   for (const event of targets) {
-    const result = await checkVisitTravel(event, projected, drive, now);
+    const result = await checkVisitTravel(event, projected, drive, now, {
+      bufferExceptions: snapshot.bufferExceptions,
+      allowBufferOverrideForEventId,
+    });
     if (result.reason || !result.proof)
       return { reason: result.reason || "missing_information", proofs: [] };
     proofs.push(result.proof);
@@ -262,12 +273,34 @@ export async function customerAvailability(
   };
 }
 
+export type CalendarBufferOverride = {
+  actorId: string;
+  actorEmail: string;
+  reason: "staff_reschedule_extra_buffer_override";
+};
+
 export async function writeCalendarWithRoutes(
   supabase: SupabaseClient,
   operation: "insert" | "update",
   record: Record<string, unknown>,
   existing?: CrmCalendarEvent,
+  bufferOverride?: CalendarBufferOverride,
 ) {
+  if (bufferOverride && (operation !== "update" || !existing)) {
+    throw new BookingError(
+      400,
+      "Travel buffer override is only available for rescheduling an existing appointment.",
+    );
+  }
+  if (
+    bufferOverride &&
+    (existing?.assigned_to !== "Jessica" || existing.event_type === "block")
+  ) {
+    throw new BookingError(
+      400,
+      "Travel buffer override is limited to Jessica appointments.",
+    );
+  }
   const merged = {
     ...existing,
     ...record,
@@ -289,6 +322,13 @@ export async function writeCalendarWithRoutes(
     revision: snapshots[0].revision,
     slots: snapshots.flatMap((s) => s.slots),
     protectedIds: [...new Set(snapshots.flatMap((s) => s.protectedIds))],
+    bufferExceptions: [
+      ...new Map(
+        snapshots
+          .flatMap((s) => s.bufferExceptions)
+          .map((exception) => [JSON.stringify(exception), exception]),
+      ).values(),
+    ],
     events: [
       ...new Map(
         snapshots.flatMap((s) => s.events).map((e) => [e.id, e]),
@@ -323,21 +363,39 @@ export async function writeCalendarWithRoutes(
     snapshot,
     projected,
     days,
-    null,
+    bufferOverride ? merged.id : null,
     googleDriveEstimator(now),
     now,
+    bufferOverride ? merged.id : undefined,
   );
   if (checked.reason)
     throw new BookingError(
       409,
       `Appointment cannot be saved: ${checked.reason.replaceAll("_", " ")}. Check Jessica's calendar and addresses.`,
     );
-  const { data, error } = await supabase.rpc("booking_calendar_write", {
-    p_revision: snapshot.revision,
-    p_operation: operation,
-    p_event: merged,
-    p_proofs: checked.proofs,
-  });
+  const rpc = bufferOverride
+    ? {
+        name: "booking_calendar_reschedule",
+        args: {
+          p_revision: snapshot.revision,
+          p_event: merged,
+          p_proofs: checked.proofs,
+          p_allow_buffer_override: true,
+          p_actor_id: bufferOverride.actorId,
+          p_actor_email: bufferOverride.actorEmail,
+          p_reason: bufferOverride.reason,
+        },
+      }
+    : {
+        name: "booking_calendar_write",
+        args: {
+          p_revision: snapshot.revision,
+          p_operation: operation,
+          p_event: merged,
+          p_proofs: checked.proofs,
+        },
+      };
+  const { data, error } = await supabase.rpc(rpc.name, rpc.args);
   if (error) scheduleError(error);
   return data as CrmCalendarEvent;
 }
