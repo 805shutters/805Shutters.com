@@ -3,6 +3,7 @@ import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
+import { isBookingDeliveryEnabled } from "./delivery-config";
 type BookingAutomationDetails = {
   leadId: string;
   jobId: string;
@@ -495,7 +496,7 @@ export async function processBookingOutbox(
   supabase: SupabaseClient,
   bookingKey?: string,
 ) {
-  if (process.env.BOOKING_DELIVERY_ENABLED !== "true") return { paused: true };
+  if (!isBookingDeliveryEnabled()) return { paused: true };
   // Ambiguous in-flight deliveries are not automatically replayed: staff must
   // verify the provider before any retry that could contact a customer twice.
   await supabase
@@ -523,6 +524,29 @@ export async function processBookingOutbox(
     if (claimError) throw claimError;
     if (!effect) continue;
     try {
+      // A paused worker may have accumulated confirmations for visits that
+      // have since happened, moved, or been canceled. Never send those to a
+      // customer or recreate an obsolete calendar entry during recovery.
+      if (["customer_sms", "customer_email", "google_calendar", "webhook", "customer_snapshot"].includes(effect.kind)) {
+        const { data: event, error: eventError } = await supabase
+          .from("crm_calendar_events")
+          .select("start_at,end_at,status")
+          .eq("id", effect.payload.calendarEventId)
+          .maybeSingle();
+        if (eventError) throw eventError;
+        const obsolete = !event ||
+          ["canceled", "cancelled"].includes(event.status?.toLowerCase()) ||
+          Date.parse(event.start_at) !== Date.parse(effect.payload.startAt) ||
+          Date.parse(event.end_at) !== Date.parse(effect.payload.endAt) ||
+          Date.parse(event.start_at) <= Date.now();
+        if (obsolete) {
+          const { error: skipError } = await supabase.from("booking_outbox")
+            .update({ status: "skipped", completed_at: new Date().toISOString(), last_error: "Original appointment is past, canceled, moved, or missing" })
+            .eq("id", item.id).eq("status", "processing");
+          if (skipError) throw skipError;
+          continue;
+        }
+      }
       const status = await deliverBookingEffect(
         supabase,
         effect.kind,

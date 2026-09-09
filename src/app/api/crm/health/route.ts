@@ -3,6 +3,7 @@ import { getAllowedCrmEmails } from "@/lib/crm/auth";
 import { getCrmGoogleOAuthStatus } from "@/lib/crm/oauth";
 import { isGoogleCalendarSyncConfigured } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { isBookingDeliveryEnabled } from "@/lib/booking/delivery-config";
 
 export const runtime = "nodejs";
 
@@ -107,6 +108,16 @@ export async function GET(request: NextRequest) {
       (process.env.TWILIO_FROM_PHONE || process.env.TWILIO_MESSAGING_SERVICE_SID)
   );
   const googleCalendarSyncConfigured = isGoogleCalendarSyncConfigured();
+  const bookingDeliveryEnabled = isBookingDeliveryEnabled();
+  // Aggregate status only: no customer data or message content in health output.
+  const bookingDeliveryQueue: Record<string, number | null> = {};
+  if (supabase) {
+    for (const status of ["pending", "processing", "sent", "skipped", "uncertain", "failed"]) {
+      const { count, error } = await supabase.from("booking_outbox")
+        .select("id", { count: "exact", head: true }).eq("status", status);
+      bookingDeliveryQueue[status] = error ? null : count;
+    }
+  }
 
   return NextResponse.json({
     ready: authConfigured && databaseConfigured && migrationsReady && googleOAuth.enabled && installationInvoicePullerReady,
@@ -123,6 +134,8 @@ export async function GET(request: NextRequest) {
     installationInvoicePullerReady,
     bookingEmailConfigured,
     bookingSmsConfigured,
+    bookingDeliveryEnabled,
+    bookingDeliveryQueue,
     googleCalendarSyncConfigured,
     supabaseHost: supabaseUrl ? new URL(supabaseUrl).hostname : null,
     allowedEmailsConfigured: getAllowedCrmEmails().length > 0,
