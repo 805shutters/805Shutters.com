@@ -14,7 +14,7 @@ export function calendarSlotState({
   if (loading) return { label: "Checking", selectable: false, overridable: false };
   if (failed) return { label: "Unavailable", selectable: false, overridable: false };
   return {
-    label: available ? "Working time" : "Closed",
+    label: available ? "Available" : "Unavailable",
     selectable: available || canOverride,
     overridable: !available && canOverride,
   };

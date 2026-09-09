@@ -13960,11 +13960,6 @@ function buildAvailabilityLookup(slots: AvailabilitySlotRow[]) {
   return lookup;
 }
 
-function availabilityOwnersLabel(owners: string[]) {
-  if (!owners.length) return "No open time";
-  return `Published working time for ${owners.join(", ")} — customer availability also requires an address and driving check`;
-}
-
 function isSlotOpenForCalendarEvent(owners: string[], event: CrmCalendarEvent) {
   if (!owners.length) return false;
   const assignedTo = cleanCalendarText(event.assigned_to);
@@ -14337,21 +14332,6 @@ function CalendarTimelineGrid({
                 booked: Boolean(event), past, loading: availabilityLoading,
                 failed: availabilityFailed, available, canOverride: canOverrideAvailability,
               });
-              const slotDetail = event
-                ? "Scheduled"
-                : past
-                  ? "Unavailable"
-                  : pending
-                    ? "Open times"
-                    : availabilityFailed
-                      ? "Availability could not be checked"
-                    : available
-                      ? openOwners.length
-                        ? availabilityOwnersLabel(openOwners)
-                        : "Check address and driving time before booking"
-                      : overridable
-                        ? "Staff scheduling — driving checks apply"
-                        : "No open time";
 
               return (
                 <button
@@ -14367,8 +14347,7 @@ function CalendarTimelineGrid({
                   onClick={() => onSelectSlot({ ...slot, availableOwners: openOwners })}
                   style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
                 >
-                  <span>{slotLabel}</span>
-                  <small>{slotDetail}</small>
+                  <span className="crm-calendar-slot-badge">{slotLabel}</span>
                 </button>
               );
             })}

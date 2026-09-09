@@ -12,8 +12,8 @@ describe("calendar availability failure", () => {
     expect(calendarSlotState({ ...empty, loading: true, available: true, canOverride: true })).toEqual({ label: "Checking", selectable: false, overridable: false });
   });
   it("recovers working times and distinguishes confirmed closed hours", () => {
-    expect(calendarSlotState({ ...empty, available: true }).label).toBe("Working time");
-    expect(calendarSlotState({ ...empty }).label).toBe("Closed");
+    expect(calendarSlotState({ ...empty, available: true }).label).toBe("Available");
+    expect(calendarSlotState({ ...empty }).label).toBe("Unavailable");
     expect(calendarSlotState({ ...empty, canOverride: true }).overridable).toBe(true);
   });
   it("preserves booked and past slots during an outage", () => {
