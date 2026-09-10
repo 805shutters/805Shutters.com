@@ -1,3 +1,20 @@
+export type AcceptedQuoteSelection = {
+  lineQuantities: {
+    lineItemId: string;
+    selectedQuantity: number;
+    remainingQuantity: number;
+    sortOrder: number;
+    acceptedTotal: number;
+    originalTotal: number;
+  }[];
+  selectedLineIds: string[];
+  acceptedTotal: number;
+  originalTotal: number;
+  crmQuoteId: string;
+  futureQuoteId: string | null;
+  futureJobId: string | null;
+};
+
 export type QuoteStatus =
   | "draft"
   | "sent"
@@ -71,6 +88,7 @@ export interface SalesQuote {
    * historical/legacy query fixtures remain backwards compatible.
    */
   quote_v2_backend?: boolean;
+  quote_v2_accepted_selection?: AcceptedQuoteSelection | null;
   quote_v2_status?: "legacy" | "draft" | "stale" | "priced" | "blocked" | "sent";
   quote_v2_catalog_version?: string | null;
   quote_v2_revision?: number;

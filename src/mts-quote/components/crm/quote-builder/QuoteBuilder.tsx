@@ -77,6 +77,9 @@ import {
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
+import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
+import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
+import { formatCurrency, getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { getQuoteV2DeliveryCapability } from "@mts/lib/quoteV2DeliveryCapability";
 import {
   mutateQuoteV2Structure,
@@ -764,6 +767,7 @@ export function QuoteBuilder({
   });
 
   // Fetch all designs for this quote's line items
+  const acceptedProjection = projectAcceptedQuote(quote, lineItems);
   const lineItemIds = lineItems.map((i) => i.id);
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
   const isActiveQuotePriceLocked = isQuotePriceLocked(quote);
@@ -955,7 +959,7 @@ export function QuoteBuilder({
 
   useEffect(() => {
     // A pending or failed read is not an authoritative empty set of saved lines.
-    if (!quote || areLineItemsLoading || isLineItemsLoadError || stackedLineItemIds.length === 0) return;
+    if (!quote || quote.quote_v2_accepted_selection != null || areLineItemsLoading || isLineItemsLoadError || stackedLineItemIds.length === 0) return;
 
     const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
     const changed =
@@ -2002,6 +2006,32 @@ export function QuoteBuilder({
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (acceptedProjection.accepted) {
+    return (
+      <div className="mx-auto max-w-5xl space-y-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h1 className="text-xl font-bold">Accepted quote</h1><p>{quote.customer_name}</p></div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setActiveQuote(null); setActiveTab("dashboard"); }}>All saved quotes</Button>
+            <Button onClick={() => setActiveTab("contract")}>View Contract</Button>
+          </div>
+        </div>
+        {acceptedProjection.error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">{acceptedProjection.error}</p> : <>
+          <p className="text-sm text-muted-foreground">Accepted windows and quantities. The original quote is preserved.</p>
+          {acceptedProjection.lineItems.map((item, index) => {
+            const design = resolveSelectedQuoteDesign(designs.filter((design) => design.line_item_id === item.id));
+            return <QuoteLineItemCard key={item.id} lineNumber={index + 1} room={item.room_name}
+              productType={design?.product_type || item.product_type} quantity={item.quantity}
+              dimensions={formatDimensionsOrNull(item)}
+              options={design ? getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`) : []}
+              price={formatCurrency(acceptedProjection.lineTotals.get(item.id)!)} priceLabel="Accepted item total" />;
+          })}
+          <p className="text-right text-lg font-bold">Accepted total: {formatCurrency(acceptedProjection.acceptedTotal!)}</p>
+        </>}
       </div>
     );
   }

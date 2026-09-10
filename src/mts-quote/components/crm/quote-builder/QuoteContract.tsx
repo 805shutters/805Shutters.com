@@ -3,6 +3,7 @@ import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-il
 import { useState, useEffect } from "react";
 import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
+import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@mts/components/ui/card";
@@ -83,6 +84,7 @@ function hasOnyxShutterProducts(
 ): boolean {
   return designs.some((design) => {
     const lineItem = lineItems.find((item) => item.id === design.line_item_id);
+    if (!lineItem) return false;
     const supplier = design.supplier?.trim().toLowerCase();
     const productType = (design.product_type || lineItem?.product_type || "").trim().toLowerCase();
 
@@ -207,7 +209,7 @@ export function QuoteContract({
   });
 
   // Fetch line items
-  const { data: lineItems = [] } = useQuery({
+  const { data: lineItems = [], isPending: linesPending, isError: linesError } = useQuery({
     queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -255,7 +257,7 @@ export function QuoteContract({
 
   // Fetch line items + designs for all sibling quotes (for contract display)
   const siblingQuoteIds = groupQuotes.map((q) => q.id);
-  const { data: allGroupLineItems = [] } = useQuery({
+  const { data: allGroupLineItems = [], isPending: groupLinesPending, isError: groupLinesError } = useQuery({
     queryKey: [...queryKeys.salesQuotes.all, "group-line-items", groupId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -285,6 +287,17 @@ export function QuoteContract({
   });
 
   const hasMultipleQuotes = groupQuotes.length > 1;
+  const acceptedProjection = projectAcceptedQuote(quote, lineItems);
+  const displayLineItems = acceptedProjection.lineItems;
+  // Prefer the active record's newest acceptance over an older group-list cache.
+  const displayGroupQuotes = groupQuotes.map((sibling) => sibling.id === quote?.id ? quote : sibling);
+  const groupProjections = new Map(displayGroupQuotes.map((sibling) => [sibling.id,
+    projectAcceptedQuote(sibling, allGroupLineItems.filter((line) => line.quote_id === sibling.id)),
+  ]));
+  const displayGroupLineItems = [...groupProjections.values()].flatMap((projection) => projection.lineItems);
+  const hasAcceptedQuote = acceptedProjection.accepted || [...groupProjections.values()].some((projection) => projection.accepted);
+  const acceptanceError = acceptedProjection.error || (hasMultipleQuotes && [...groupProjections.values()].find((projection) => projection.error)?.error);
+
   const displayDesigns = projectHistoricalContractDesigns({
     quote,
     activeQuoteId,
@@ -373,6 +386,7 @@ export function QuoteContract({
 
   // Admin controls functions
   const saveAdminControls = async (controls: QuoteAdminControls) => {
+    if (hasAcceptedQuote) throw new Error("Accepted contract pricing is immutable.");
     const updates: Partial<SalesQuote> = {
       installer_notes: buildQuoteInstallerNotesMeta(quote ?? { installer_notes: null }, {
         __adminControls: controls,
@@ -444,6 +458,9 @@ export function QuoteContract({
       unitPrice: number;
       optionsJson: Record<string, unknown>;
     }) => {
+      if ((quoteId === quote?.id && acceptedProjection.accepted) || groupProjections.get(quoteId)?.accepted) {
+        throw new Error("Accepted contract pricing is immutable.");
+      }
       const roundedPrice = Math.round(unitPrice * 100) / 100;
       const { error } = await (supabase as any)
         .from("sales_quote_designs")
@@ -486,12 +503,12 @@ export function QuoteContract({
   });
 
   // Calculate totals with admin controls
-  const effectiveActiveDesigns = effectiveContractDesigns(lineItems, displayDesigns);
-  const subtotal = calculateQuoteDesignSubtotal(lineItems, effectiveActiveDesigns.designs, {
+  const effectiveActiveDesigns = effectiveContractDesigns(displayLineItems, displayDesigns);
+  const subtotal = acceptedProjection.acceptedTotal ?? calculateQuoteDesignSubtotal(displayLineItems, effectiveActiveDesigns.designs, {
     mode: effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy",
   });
   const totals = calculateQuoteTotalBreakdown(subtotal, adminControls);
-  const totalAmount = totals.total;
+  const totalAmount = acceptedProjection.acceptedTotal ?? totals.total;
 
   // Payment schedule
   const depositPercent = 50;
@@ -502,7 +519,7 @@ export function QuoteContract({
 
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
-  const contractLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
+  const contractLineItems = hasMultipleQuotes ? displayGroupLineItems : displayLineItems;
   const contractDesigns = hasMultipleQuotes
     ? displayGroupDesigns
     : effectiveActiveDesigns.designs;
@@ -520,6 +537,13 @@ export function QuoteContract({
     );
   }
 
+  if (hasAcceptedQuote && (linesPending || (hasMultipleQuotes && groupLinesPending))) {
+    return <p className="p-6">Loading accepted windows...</p>;
+  }
+  if (acceptanceError || (hasAcceptedQuote && (linesError || (hasMultipleQuotes && groupLinesError)))) {
+    return <p role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">{acceptanceError || "Accepted window selection could not be verified. The original quote has been preserved."}</p>;
+  }
+
   if (designWritesPending) {
     return (
       <div className="p-6 text-center text-muted-foreground">
@@ -534,6 +558,7 @@ export function QuoteContract({
       <Button
         variant="outline"
         size="sm"
+        disabled={hasAcceptedQuote}
         onClick={() => setAdminPanelOpen(!adminPanelOpen)}
         className="sticky top-16 z-30 ml-auto flex shadow-lg"
       >
@@ -542,7 +567,7 @@ export function QuoteContract({
       </Button>
 
       {/* Admin Panel Sidebar */}
-      {adminPanelOpen && (
+      {adminPanelOpen && !hasAcceptedQuote && (
         <div className="rounded-2xl border bg-background p-6 shadow-2xl space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-bold flex items-center gap-2">
@@ -824,23 +849,24 @@ export function QuoteContract({
       )}
 
       {/* Quote Summary — show each grouped quote */}
-      {(hasMultipleQuotes ? groupQuotes : [quote]).map((gq) => {
+      {(hasMultipleQuotes ? displayGroupQuotes : [quote]).map((gq) => {
+        const accepted = hasMultipleQuotes ? groupProjections.get(gq.id)! : acceptedProjection;
         const color = getQuoteColor(gq.quote_letter || "A");
         const gqLineItems = hasMultipleQuotes
-          ? allGroupLineItems.filter((li) => li.quote_id === gq.id)
-          : lineItems;
+          ? displayGroupLineItems.filter((li) => li.quote_id === gq.id)
+          : displayLineItems;
         const rawGqDesigns = hasMultipleQuotes
           ? displayGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
           : displayDesigns;
         const effectiveGqDesigns = effectiveContractDesigns(gqLineItems, rawGqDesigns);
         const gqDesigns = effectiveGqDesigns.designs;
-        const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
+        const gqSubtotal = accepted.acceptedTotal ?? calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
           mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
         });
         const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls);
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
-        const gqTotal = gqTotals.total;
+        const gqTotal = accepted.acceptedTotal ?? gqTotals.total;
 
         return (
           <Card
@@ -864,7 +890,7 @@ export function QuoteContract({
             <CardContent className="space-y-3">
               {gqLineItems.map((item, itemIndex) => {
                 const itemDesigns = gqDesigns.filter((d) => d.line_item_id === item.id);
-                const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
+                const itemTotal = accepted.lineTotals.get(item.id) ?? calculateLineItemDesignTotal(item, itemDesigns, {
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
                 });
                 const itemDimensions = formatDimensionsOrNull(item);
@@ -892,7 +918,7 @@ export function QuoteContract({
                             <span>Unit price</span>
                             <EditableContractPrice
                               value={design.unit_price}
-                              disabled={updateDesignPrice.isPending}
+                              disabled={accepted.accepted || updateDesignPrice.isPending}
                               onSave={(unitPrice) => updateDesignPrice.mutate({
                                 quoteId: gq.id, designId: design.id, unitPrice, optionsJson: design.options_json || {},
                               })}
@@ -923,7 +949,7 @@ export function QuoteContract({
                   </span>
                 </div>
 
-                {adminControls.showExtras &&
+                {!accepted.accepted && adminControls.showExtras &&
                   adminControls.extraFees.map((fee) => (
                     <div key={fee.id} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{customerQuoteText(fee.name) || "Additional fee"}</span>
@@ -933,7 +959,7 @@ export function QuoteContract({
                     </div>
                   ))}
 
-                {adminControls.showDiscount && (
+                {!accepted.accepted && adminControls.showDiscount && (
                   <div className="flex justify-between text-sm text-emerald-600">
                     <span>Discount ({adminControls.discountPercent}%)</span>
                     <span className="font-medium">
@@ -942,7 +968,7 @@ export function QuoteContract({
                   </div>
                 )}
 
-                {adminControls.showTax && (
+                {!accepted.accepted && adminControls.showTax && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax ({adminControls.taxPercent}%)</span>
                     <span className="font-medium">
