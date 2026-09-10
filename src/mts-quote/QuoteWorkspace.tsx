@@ -206,6 +206,7 @@ export function QuoteWorkspace({
                     ? openRequest.historicalPriceLock
                     : null
                 }
+                key={activeQuoteId}
               />
             )}
             {effectiveTab === "pricing" && <PricingGrids />}
@@ -216,6 +217,7 @@ export function QuoteWorkspace({
                     ? openRequest.historicalPriceLock
                     : null
                 }
+                key={activeQuoteId}
               />
             )}
           </div>

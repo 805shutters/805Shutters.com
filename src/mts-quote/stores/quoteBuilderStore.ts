@@ -78,7 +78,13 @@ const initialState = {
 export const useQuoteBuilderStore = create<QuoteBuilderStore>((set, _get) => ({
   ...initialState,
 
-  setActiveQuote: (id) => set({ activeQuoteId: id }),
+  // Measurements and copy selections belong to one quote, including alternatives.
+  setActiveQuote: (id) => set((state) => state.activeQuoteId === id ? state : ({
+    ...initialState,
+    activeAccountId: state.activeAccountId,
+    activeTab: state.activeTab,
+    activeQuoteId: id,
+  })),
   setAccountId: (id) => set({ activeAccountId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
 

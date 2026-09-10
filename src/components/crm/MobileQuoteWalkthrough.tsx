@@ -129,6 +129,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   const [appointmentsError, setAppointmentsError] = useState("");
   const [customers, setCustomers] = useState<ExistingCustomer[]>([]);
   const [customerNextCursor, setCustomerNextCursor] = useState<string | null>(null);
+  const customerPageRequest = useRef<AbortController | null>(null);
+  const [customersLoadingMore, setCustomersLoadingMore] = useState(false);
   const [contracts, setContracts] = useState<Array<{ id: string; name: string; address: string | null; contracts: Array<{ id: string; status: string; number: string | null; label: string | null }> }>>([]);
   const [catalog, setCatalog] = useState<QuoteLabCatalogProduct[]>([]);
   const [drafts, setDrafts] = useState<MobileQuoteDraft[]>([]);
@@ -250,6 +252,9 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   }, [tab, screen, session.access_token]);
 
   useEffect(() => {
+    customerPageRequest.current?.abort();
+    customerPageRequest.current = null;
+    setCustomersLoadingMore(false);
     if (screen !== "home" || query.trim().length < 2) { setCustomers([]); setCustomerNextCursor(null); setContracts([]); return; }
     let cancelled = false;
     const controller = new AbortController();
@@ -261,7 +266,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       else api<{ results: ExistingCustomer[]; nextCursor: string | null }>(`/api/crm/mobile/quote-customers?q=${encodeURIComponent(query)}`, { signal: controller.signal })
         .then((result) => { if (!cancelled) { setCustomers(result.results); setCustomerNextCursor(result.nextCursor); } }).catch(onError);
     }, 250);
-    return () => { cancelled = true; controller.abort(); window.clearTimeout(timer); };
+    return () => { cancelled = true; controller.abort(); customerPageRequest.current?.abort(); window.clearTimeout(timer); };
   }, [query, tab, screen, session.access_token]);
 
   const active = draft?.windows.find((line) => line.id === draft.activeWindowId) || draft?.windows[0] || null;
@@ -276,13 +281,22 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   }, [active?.activeProductId, catalog]);
 
   async function loadMoreCustomers() {
-    if (!customerNextCursor || query.trim().length < 2) return;
+    if (!customerNextCursor || query.trim().length < 2 || screen !== "home" || tab === "sold" || customerPageRequest.current) return;
+    const controller = new AbortController();
+    customerPageRequest.current = controller;
+    setCustomersLoadingMore(true);
     try {
-      const result = await api<{ results: ExistingCustomer[]; nextCursor: string | null }>(`/api/crm/mobile/quote-customers?q=${encodeURIComponent(query)}&cursor=${encodeURIComponent(customerNextCursor)}`);
+      const result = await api<{ results: ExistingCustomer[]; nextCursor: string | null }>(`/api/crm/mobile/quote-customers?q=${encodeURIComponent(query)}&cursor=${encodeURIComponent(customerNextCursor)}`, { signal: controller.signal });
+      if (controller.signal.aborted) return;
       setCustomers((current) => [...current, ...result.results.filter((candidate) => !current.some((item) => item.jobId === candidate.jobId))]);
       setCustomerNextCursor(result.nextCursor);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "More customers could not be loaded.");
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "More customers could not be loaded.");
+    } finally {
+      if (customerPageRequest.current === controller) {
+        customerPageRequest.current = null;
+        setCustomersLoadingMore(false);
+      }
     }
   }
 
@@ -613,14 +627,14 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
         {drafts.some((item) => isMobileQuoteDraftAccessible(item)) && <div className={styles.resume}><div className={styles.sectionTitle}><small>SAVED ON THIS DEVICE</small><h2>Resume a draft</h2></div>{drafts.filter((item) => isMobileQuoteDraftAccessible(item)).map((item) => <button className={styles.customer} key={item.id} onClick={() => { setDraft(item); setScreen(item.submission.snapshot ? "review" : "build"); setError(""); }}><span><strong>{item.customer.name}</strong><small>{item.windows.length} window{item.windows.length === 1 ? "" : "s"} · saved {new Date(item.updatedAt).toLocaleString()}</small></span><ChevronRight /></button>)}</div>}
         {(tab === "today" || tab === "scheduled") && <>
           <div className={styles.sectionTitle}><small>{tab === "today" ? `${mobileQuoteLosAngelesDate()} · Pacific time` : "Next 14 days · Pacific time"}</small><h2>{tab === "today" ? "Today’s sales consultations" : "Scheduled consultations"}</h2></div>
-          {query.trim().length >= 2 && <div className={styles.searchResults}><small>Customer search results</small>{customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} onClick={() => void loadMoreCustomers()}>Load more customers</button>}</div>}
+          {query.trim().length >= 2 && <div className={styles.searchResults}><small>Customer search results</small>{customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} disabled={customersLoadingMore} onClick={() => void loadMoreCustomers()}>{customersLoadingMore ? "Loading more customers…" : "Load more customers"}</button>}</div>}
           {appointmentsLoading ? <p role="status">Loading scheduled sales consultations…</p> : appointmentsError ? <p className={styles.error} role="alert">{appointmentsError}</p> : appointments.length ? appointments.map((event) => <article className={styles.visit} key={event.id}><div><span>{tab === "scheduled" ? dateAndTime(event.start_at) : time(event.start_at)}</span><span className={styles.badge}>{event.status}</span></div><h3>{event.customer_name || event.title}</h3><p>{event.customer_address || event.location || "Address unavailable"}</p>{event.product_interest && <p>{event.product_interest}</p>}<button onClick={() => start({ kind: "existing", jobId: event.job_id, sourceId: event.id, name: event.customer_name || event.title, phone: event.customer_phone || "", email: event.customer_email || "", address: event.customer_address || event.location || "", appointmentDate: laDateForInstant(event.start_at) })}>{drafts.some((item) => isMobileQuoteDraftAccessible(item) && ((event.job_id && item.customer.jobId === event.job_id) || item.customer.sourceId === event.id)) ? "Resume quote" : "Start quote"}<ChevronRight /></button></article>) : <p>No scheduled sales consultations in this period.</p>}
         </>}
         {tab === "add" && <>
           <div className={styles.sectionTitle}><small>Start a quote</small><h2>Choose a verified customer or enter a new contact.</h2></div>
           {!newContact ? <>
             <p>Search above by customer name, phone, email, or address.</p>
-            {customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} onClick={() => void loadMoreCustomers()}>Load more customers</button>}
+            {customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} disabled={customersLoadingMore} onClick={() => void loadMoreCustomers()}>{customersLoadingMore ? "Loading more customers…" : "Load more customers"}</button>}
             <button className={styles.outline} onClick={() => setNewContact(true)}><Plus />Enter a new contact</button>
           </> : <form onSubmit={(event) => { event.preventDefault(); if (!contact.name.trim()) return setError("Enter the customer name."); start({ kind: "new", jobId: null, ...contact, name: contact.name.trim(), appointmentDate: null }); }} className={styles.contactForm}>
             {(["name", "address", "phone", "email"] as const).map((field) => <label key={field}>{field[0].toUpperCase() + field.slice(1)}<input required={field === "name"} type={field === "email" ? "email" : field === "phone" ? "tel" : "text"} value={contact[field]} onChange={(event) => setContact({ ...contact, [field]: event.target.value })} /></label>)}

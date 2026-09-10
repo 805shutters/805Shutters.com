@@ -881,6 +881,8 @@ export function CrmApp({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const dashboardRequestVersion = useRef(0);
+  const quoteOpenRequestVersion = useRef(0);
+  useEffect(() => () => { quoteOpenRequestVersion.current += 1; }, []);
   const activityPollAbortRef = useRef<AbortController | null>(null);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
@@ -938,7 +940,10 @@ export function CrmApp({
   }
 
   async function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
+    const requestVersion = ++quoteOpenRequestVersion.current;
+    const isCurrentRequest = () => requestVersion === quoteOpenRequestVersion.current;
     if (tab === "contract") {
+      setBusy(false);
       openQuoteContract(quoteId);
       return;
     }
@@ -953,6 +958,7 @@ export function CrmApp({
         `/api/crm/quotes/${quoteId}/v2-route`
       );
 
+      if (!isCurrentRequest()) return;
       if (route.status === "legacy_import_required" || route.status === "crm_native_unsupported") {
         const imported = await crmFetch<{ route: SalesQuoteV2RouteResolution }>(
           session,
@@ -965,6 +971,7 @@ export function CrmApp({
         route = imported.route;
       }
 
+      if (!isCurrentRequest()) return;
       if (route.status !== "ready") {
         throw new Error("This quote cannot be opened safely in the standard quote builder.");
       }
@@ -978,9 +985,9 @@ export function CrmApp({
         historicalPriceLock: route.historicalPriceLock
       }));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The quote builder could not be opened.");
+      if (isCurrentRequest()) setMessage(error instanceof Error ? error.message : "The quote builder could not be opened.");
     } finally {
-      setBusy(false);
+      if (isCurrentRequest()) setBusy(false);
     }
   }
 
