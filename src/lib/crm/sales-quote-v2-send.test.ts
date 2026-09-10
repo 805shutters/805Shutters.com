@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
 import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "@/lib/quote-v2/catalog";
 import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
+import { prepareSalesQuoteV2PricingBatch } from "./sales-quote-v2-price-save";
 import type {
   SalesQuoteDesign,
   SalesQuoteLineItem,
@@ -21,6 +22,40 @@ import {
 } from "./sales-quote-v2-send";
 
 describe("send catalog effective dates", () => {
+  it("prepares a newly priced September quote for customer delivery", () => {
+    const line = rollerLine();
+    const original = unpricedRollerDesign();
+    const { prepared } = prepareSalesQuoteV2PricingBatch({
+      lines: [line], selectedDesigns: [original], serverDate: "2026-09-10",
+    });
+    const priced = prepared[0].rpcResult;
+    expect(priced.priceStatus).toBe("authoritative");
+    const snapshot = priced.authoritativeSnapshot!;
+    const design = {
+      ...original,
+      unit_price: snapshot.retail.unitPrice,
+      quote_v2_selection: priced.selection as unknown as Record<string, unknown>,
+      quote_v2_price_status: "authoritative",
+      quote_v2_selection_fingerprint: priced.selectionFingerprint,
+      quote_v2_priced_catalog_version: priced.catalogVersion,
+      current_v2_snapshot_id: SNAPSHOT_ID,
+    };
+    const payload = prepareV2CustomerSendPayload({
+      quote: authoritativeQuote(snapshot.retail.total, { quote_v2_catalog_version: priced.catalogVersion }),
+      lineItems: [line], designs: [design], serverDate: "2026-09-10",
+      snapshots: [{
+        id: SNAPSHOT_ID, quote_id: line.quote_id, line_item_id: line.id,
+        design_id: design.id, quote_revision: QUOTE_REVISION,
+        selection_fingerprint: priced.selectionFingerprint, catalog_version: priced.catalogVersion,
+        retail_total: snapshot.retail.total, retail_snapshot: snapshot,
+        internal_cost_snapshot: priced.internalCostSnapshot,
+        provenance_snapshot: priced.provenanceSnapshot,
+      }],
+    });
+    expect(payload.total).toBe(768);
+    expect(payload.lines[0].quantity).toBe(2);
+  });
+
   it.each([
     ["roller", "2026-09-01", "805-v2-norman-roller-2026-08-01-msrp-r1-pg4-2026-09-r1"],
     ["roman", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-assortment-2026-09-r1"],
