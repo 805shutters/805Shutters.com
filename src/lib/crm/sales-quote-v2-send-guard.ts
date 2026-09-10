@@ -53,11 +53,11 @@ export async function guardV2SalesQuoteBeforeLegacySend(
  * never enter the historical all-design mirror, even through a legacy URL.
  * Historical rows without a native receipt retain their existing workflow.
  */
-export async function assertHistoricalSalesQuoteMutationAllowed(
+export async function isNativeV2SalesQuote(
   supabase: SupabaseClient,
   quote: AnyRow,
-): Promise<void> {
-  if (!isServerMarkedV2SalesQuote(quote)) return;
+): Promise<boolean> {
+  if (!isServerMarkedV2SalesQuote(quote)) return false;
   if (typeof quote.id !== "string" || !quote.id.trim()) {
     throw new CrmAuthError(409, "Quote origin could not be verified before preparing the customer contract.");
   }
@@ -72,7 +72,11 @@ export async function assertHistoricalSalesQuoteMutationAllowed(
       "Quote origin could not be checked. Customer contract preparation was stopped before changing quote records.",
     );
   }
-  if (data) {
+  return Boolean(data);
+}
+
+export async function assertHistoricalSalesQuoteMutationAllowed(db: SupabaseClient, quote: AnyRow): Promise<void> {
+  if (await isNativeV2SalesQuote(db, quote)) {
     throw new CrmAuthError(
       409,
       "This quote was created in the authoritative quote builder. Customer delivery is not connected yet; it cannot be sent, marked sold, or rebuilt through the historical contract workflow.",

@@ -101,7 +101,7 @@ export async function sendSms(input: {
     };
     if (!res.ok) {
       console.warn("Twilio send failed:", data.message || res.status);
-      return { sent: false, error: data.message || `Twilio error ${res.status}` };
+      return { sent: false, error: data.message || `Twilio error ${res.status}`, uncertain: res.status >= 500 };
     }
     if (!data.sid) {
       console.warn("Twilio accepted SMS without returning a Message SID.");

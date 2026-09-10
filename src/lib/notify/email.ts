@@ -64,7 +64,7 @@ export async function sendEmail(input: {
     const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
     if (!res.ok) {
       console.warn("Resend send failed:", data.message || res.status);
-      return { sent: false, error: data.message || `Resend error ${res.status}` };
+      return { sent: false, error: data.message || `Resend error ${res.status}`, uncertain: res.status >= 500 };
     }
     return { sent: true, id: data.id };
   } catch (e) {

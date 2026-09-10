@@ -49,6 +49,7 @@ export function CustomerContractDocument({
   const reserveCustomerActionRail =
     !embedded &&
     !previewOnly &&
+    !quote.superseded &&
     ((!quote.signed && quote.allPriced) || Boolean(paymentOptions));
 
   return (

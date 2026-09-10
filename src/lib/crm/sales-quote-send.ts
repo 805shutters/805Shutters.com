@@ -17,6 +17,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import {
   isServerMarkedV2SalesQuote,
   assertHistoricalSalesQuoteMutationAllowed,
+  isNativeV2SalesQuote,
   guardV2SalesQuoteBeforeLegacySend,
 } from "@/lib/crm/sales-quote-v2-send-guard";
 import {
@@ -39,6 +40,8 @@ type AnyRow = Record<string, any>;
 type CrmActor = { email: string; userId?: string };
 
 export type SendSalesQuoteOptions = {
+  expectedRevision?: number;
+  idempotencyKey?: string;
   channels?: { email?: boolean; sms?: boolean };
   emails?: string[];
   phone?: string | null;
@@ -201,6 +204,10 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  if (await isNativeV2SalesQuote(supabase, quote)) {
+    const { sendNativeSalesQuote } = await import("./native-quote-delivery");
+    return sendNativeSalesQuote(supabase, quote, actor, options);
+  }
   const groupQuotes = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
   for (const groupQuote of groupQuotes) {
     await assertHistoricalSalesQuoteMutationAllowed(supabase, groupQuote);
@@ -534,6 +541,16 @@ export async function sendSalesQuotePaymentLinkToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  if (await isNativeV2SalesQuote(supabase, quote)) {
+    if (!quote.signed_at || !quote.quote_v2_accepted_selection) throw new CrmAuthError(409, "The customer must sign the frozen contract before a payment link is sent.");
+    const { data: receipt, error } = await supabase.from("sales_quote_v2_deliveries").select("crm_quote_id").eq("quote_id", salesQuoteId).maybeSingle();
+    if (error) throw new CrmAuthError(502, "Native contract could not be checked.");
+    if (!receipt?.crm_quote_id || !quote.signed_at || !quote.quote_v2_accepted_selection) throw new CrmAuthError(409, "The customer must sign the frozen contract before a payment link is sent.");
+    return sendQuotePaymentLinkToCustomer(supabase, receipt.crm_quote_id, actor, {
+      email: options.channels?.email, sms: options.channels?.sms, emailRecipients: options.emails,
+      phone: options.phone, note: options.note,
+    });
+  }
   await assertHistoricalSalesQuoteMutationAllowed(supabase, quote);
   if (resolveSalesQuoteCustomerWorkflow(quote) === "v2") {
     await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
@@ -573,6 +590,13 @@ export async function prepareSalesQuoteForCommunication(supabase: CrmSupabaseCli
   const quote = await loadSalesQuote(supabase, id);
   if (quote.account_id !== DEFAULT_805_ACCOUNT_ID || quote.status !== "sent" || quote.signed_at || quote.customer_signature) {
     throw new CrmAuthError(409, "Only unsigned sent 805 quotes can open a new conversation.");
+  }
+  if (await isNativeV2SalesQuote(supabase, quote)) {
+    const { data: receipt, error } = await supabase.from("sales_quote_v2_deliveries").select("crm_quote_id,share_token").eq("quote_id", id).maybeSingle();
+    if (error || !receipt?.crm_quote_id || receipt.share_token !== quote.share_token) throw new CrmAuthError(502, "The native customer contract receipt could not be verified.");
+    const { data: contract, error: contractError } = await supabase.from("crm_quotes").select("id,share_token,meta").eq("id", receipt.crm_quote_id).maybeSingle();
+    if (contractError || !contract || contract.share_token !== receipt.share_token || !contract.meta?.native_delivery_id) throw new CrmAuthError(502, "The frozen customer contract could not be verified.");
+    return contract.id;
   }
   return mirrorSalesQuoteForCustomerSend(supabase, quote);
 }

@@ -180,6 +180,23 @@ export async function loadHubConversation(
     name ||= job?.customer_name || "";
     email ||= job?.email || null;
   }
+  const nativeMessages: HubMessage[] = [];
+  if (quote.meta?.native_delivery_id) {
+    const { data: attempts, error: attemptsError } = await db.from("sales_quote_v2_delivery_attempts")
+      .select("id,channel,recipient,state,claimed_at,completed_at,result")
+      .eq("delivery_id", quote.meta.native_delivery_id);
+    check(attemptsError, "Native delivery receipts could not be loaded.");
+    for (const attempt of attempts || []) {
+      const providerId = typeof attempt.result?.providerId === "string" ? attempt.result.providerId : null;
+      nativeMessages.push({
+        id: `native:${attempt.id}`, quote_id: quote.id, action: "note", status: "note",
+        subject: "Original quote delivery", recipient: attempt.recipient,
+        body: `Original quote ${attempt.channel} to ${attempt.recipient}: ${attempt.state === "sent" ? "accepted by provider" : attempt.state === "sending" || attempt.state === "uncertain" ? "provider outcome needs reconciliation; no automatic resend" : attempt.state}.${providerId ? ` Receipt: ${providerId}.` : ""}`,
+        created_at: attempt.completed_at || attempt.claimed_at || quote.sent_at || quote.created_at,
+        actor_email: "Native quote delivery ledger", provider_id: providerId, payload: {},
+      });
+    }
+  }
   return {
     quoteId: quote.id,
     name: name || "Customer",
@@ -207,7 +224,7 @@ export async function loadHubConversation(
           allPriced: pub.allPriced,
         }
       : null,
-    messages: result.data as HubMessage[],
+    messages: [...(result.data as HubMessage[]), ...nativeMessages].sort((a, b) => a.created_at.localeCompare(b.created_at)),
     photos,
   };
 }

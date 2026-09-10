@@ -96,6 +96,16 @@ describe("QuoteSelection", () => {
     sdkUrl: "https://web.squarecdn.com/v1/square.js",
   };
 
+  it("retains a superseded native proposal without signature or payment actions", () => {
+    const quote = { ...quoteWithLegacyDetails(false), superseded: true };
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, paymentOptions, walletConfig }));
+    expect(html).toContain("Pending Quote");
+    expect(html).toContain("$509.40");
+    expect(html).not.toContain('id="sign-contract"');
+    expect(html).not.toContain("Pay deposit with card");
+    expect(html).not.toContain("Copy Zelle phone number");
+  });
+
   it.each([false, true])("keeps contract payments and details without Venmo (signed=%s)", (signed) => {
     const html = renderToStaticMarkup(createElement(CustomerContractDocument, {
       quote: quoteWithLegacyDetails(signed),

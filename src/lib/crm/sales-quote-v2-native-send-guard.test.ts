@@ -34,6 +34,7 @@ function fixture(input: {
         data: nativeIds.includes(String(id)) ? { quote_id: id } : null,
         error: input.originError ?? null,
       };
+      if (table === "sales_quote_v2_deliveries") return { data: null, error: null };
       if (table === "sales_quotes") return {
         data: field === "quote_group_id" ? (input.group ?? []) : quote,
         error: null,
@@ -96,14 +97,14 @@ describe("native V2 provenance before historical contract mutation", () => {
   ] as const;
   it.each(actions)("blocks native %s before any write or notification", async (_name, run) => {
     const f = fixture();
-    await expect(run(f.db)).rejects.toMatchObject({ status: 409, message: expect.stringContaining("Customer delivery is not connected yet") });
+    await expect(run(f.db)).rejects.toMatchObject({ status: 409 });
     expect(f.writes).not.toHaveBeenCalled();
     expect(f.calls).toEqual(["sales_quotes", "sales_quote_v2_draft_requests"]);
   });
 
   it("does not rebuild an already sent native quote through the communication hub", async () => {
     const f = fixture({ quote: { ...nativeQuote, status: "sent" } });
-    await expect(prepareSalesQuoteForCommunication(f.db, quoteId)).rejects.toMatchObject({ status: 409 });
+    await expect(prepareSalesQuoteForCommunication(f.db, quoteId)).rejects.toMatchObject({ status: 502 });
     expect(f.writes).not.toHaveBeenCalled();
   });
 

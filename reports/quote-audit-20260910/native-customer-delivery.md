@@ -2,7 +2,7 @@
 
 Inspected against origin/main `039b8f5e`, September 10, 2026. This report does not claim native quote delivery is complete.
 
-## Implemented repair
+## Initial containment (before integration below)
 
 `assertHistoricalSalesQuoteMutationAllowed` checks `sales_quote_v2_draft_requests` for a server-marked V2 quote before historical contract mutation. The receipt table is service-role-only, append-only, and has a unique quote ID. `create_quote_v2_draft` creates the quote and receipt in the same transaction; the mobile creation wrapper uses that function. The marker alone is deliberately insufficient because historical restores also carry it.
 
@@ -10,7 +10,7 @@ A native creation receipt stops the historical send, send-as-is, payment-link, m
 
 This closes a server-side bypass that UI-disabled send buttons did not protect. It deliberately does not enable native delivery, reprice a quote, change workflow markers, migrate records, or alter a saved customer contract. Historical mutations now depend on receipt-table availability only for marked rows, so verify that migration/table with the production service role before release.
 
-## Proven source gaps
+## Original source findings
 
 1. `resolveSalesQuoteCustomerWorkflow` always chooses historical V1. The historical mirror sorts designs, selects the first, projects all saved designs as `price_status: ok`, and may reconcile the source total. It does not use native `selected_design_id` and immutable selected pricing snapshots. A native draft reaching it could lose its authoritative selection and pricing meaning.
 2. `prepareSalesQuoteV2CustomerSend` and `prepare_quote_v2_customer_send` provide revision/catalog validation, customer-safe projection, locked snapshot comparison, and atomic preparation. They require source `draft` + `priced`; they persist a draft mirror and immutable preparation, but leave source lifecycle editable and deliver nothing. Sending a mirror afterward without a lifecycle reservation permits source edits while the provider call is in progress.
@@ -19,7 +19,7 @@ This closes a server-side bypass that UI-disabled send buttons did not protect. 
 5. Preparation metadata uses `source_sales_quote_id`; historical public selection/total paths commonly use `mts_quote_id` and legacy metadata. These formats cannot simply be relabeled without tracing their behavior. The existing source-signature resolver separately recognizes the `quote:<UUID>` external ID.
 6. JavaScript preparation supports the `custom-override-v1` snapshot shape, while the atomic SQL preparation checks authoritative engine selections/status. Verify and reconcile Custom Mode support in the transaction before advertising it as deliverable.
 
-## Finite remaining work
+## Original integration worklist (implemented below; production audit remains)
 
 - Read-only production audit: classify marked sales quotes by immutable draft receipts, historical typed `crm_quotes.meta.target_sales_quote_id`, existing mirrors, preparation receipts, share tokens, signatures, group membership, and current selected snapshot identity. Ambiguous or overlapping provenance must remain protected. Verify applied migrations, receipt access, and runtime gate independently; an unavailable query is not an empty audit.
 - Implement a native-only transactional delivery reservation tied to actor, expected revision, immutable preparation, recipients, channels, and idempotency key. Preserve existing mirror identity and customer token; reject historical signed/sent mirrors. Prevent source structural/pricing edits during delivery and make retry/provider uncertainty explicit.
@@ -33,3 +33,20 @@ Credentials alone do not complete this work: both source integration and databas
 ## Local validation
 
 Focused guard, historical mirror, public quote, selected snapshot, atomic preparation, and Custom Mode tests: 6 files / 122 tests passed. TypeScript and production build passed (262 generated pages). No live database, customer delivery, signature, or payment mutation was performed. The build emitted the existing multiple-lockfile workspace-root warning.
+
+## Native delivery integration (local implementation, not activated)
+
+The follow-up implementation adds four native-only migrations (20260910185900 through 20260910190200). Historical resolver routing, prepared snapshots, customer links and signed records are not backfilled or rewritten. Native provenance still requires the append-only draft creation receipt.
+
+- Preparation validates immutable ownership, fingerprints and selected configurations; custom overrides retain their separate unit-cost provenance. Unchanged snapshots may precede the current quote revision, matching the source preparation validator. Customer projection contains only retail fields.
+- Group reservation locks the offered alternatives and atomically freezes source structure, customer mirror, exact retail totals, internal product/landed costs, recipient list and links. Archived/deleted source alternatives are excluded; active historical/native mixtures fail. One group creates one recipient dispatch. Reopening any alternative with identical immutable details resumes its original receipt, even if the browser has generated a new request key.
+- Each email/SMS recipient must claim an attempt before its provider call. Successful recipients never repeat during retry. Missing provider IDs, transport uncertainty and process interruption remain unresolved rather than automatically retrying. An append-only event ledger preserves every attempt transition. A service-only reconciliation RPC requires a provider identity and evidence reference; it sends nothing.
+- Native public display uses frozen line totals, including once charges, and ignores legacy price/selection metadata. The native acceptance RPC derives physical selections and cent allocations itself, checks acknowledged total, atomically signs and partitions the customer contract, and records the accepted source selection. Original source windows and snapshots remain intact. Future items receive a separate frozen CRM contract and receipt, so accepting them later cannot overwrite the original sale. Retained competing alternatives are labelled Pending Quote; group acceptance/dispatch guards supersede their old delivered version without deleting or voiding it.
+- Source manufacturer cost and CRM/bookkeeping landed cost follow the purchased quantities. Per-line accepted/original totals are recorded for the staff display projection. Metadata and direct financial edits cannot reprice a delivered or signed native contract.
+- The communication hub resolves the frozen mirror and shows native provider receipts as read-only notes. Signed-source payment links use that same mirror without rebuilding it.
+
+API: authenticated `GET /api/crm/sales-quotes/{id}/v2/delivery` returns `{enabled,native,canSend,reserved,schemaVersion:1,reservation}`. Existing reservations contain `{requestKey,revision,request:{email,sms,note,measureDecision},state}`. `POST /api/crm/sales-quotes/{id}/send` accepts the existing channel/contact body plus `expectedRevision` and `idempotencyKey`; the dialog restores frozen details when reopened. The capability remains disabled unless `QUOTE_V2_NATIVE_CUSTOMER_DELIVERY=enabled-after-native-delivery-migration` and the complete acceptance/reconciliation schema exists.
+
+Local proof: 196 focused tests and TypeScript pass; the production build generated 262 pages before the final pending-proposal UI additions, which have focused render-test coverage. All original 76 repository migrations replayed into isolated PostgreSQL 16 container `805-astra-delivery-test`. The new functions compiled and synthetic rollback fixtures exercised real-engine pricing persistence, stale revision rejection, native reservation, immutable retail DTOs, single-dispatch groups, archived exclusions, retry identity, mutation locks, unknown provider outcomes, exact partial quantities/cents, source and landed cost allocation, repeated signatures and nested future acceptance. The custom fixture uses the actual custom-override RPC with quantity two plus an unchanged older standard snapshot. Reproducible SQL is under `scripts/tests/native-quote-*.sql`; run with `docker exec -i 805-astra-delivery-test psql -U postgres -v ON_ERROR_STOP=1 < path/to/fixture.sql` only against an isolated migrated database.
+
+Remaining release gates: production Supabase administrative access, verification/application of all four migrations, deployed source verification, runtime activation and authenticated browser checks. No production rows, customer messages, signatures or payments were created by this work. Native original delivery intentionally cannot be replayed after acceptance; signed contract copies remain accessible through the frozen contract. A distinct repeat signed-contract dispatch is not represented by the original unsigned-delivery attempt ledger. Native in-home mark-sold without an actual customer acceptance remains guarded.

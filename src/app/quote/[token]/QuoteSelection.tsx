@@ -108,12 +108,12 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   }, [mode, previewOnly, selected, quote.token]);
 
   const contractSigned = quote.signed || signedNow;
-  const allowSelection = !previewOnly && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
+  const allowSelection = !previewOnly && !quote.superseded && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
-  const canSign = !contractSigned && quote.allPriced;
-  const showActionPanel = !previewOnly && (canSign || Boolean(paymentOptions));
+  const canSign = !quote.superseded && !contractSigned && quote.allPriced;
+  const showActionPanel = !previewOnly && !quote.superseded && (canSign || Boolean(paymentOptions));
   const paymentType = live.payment.available ? live.payment.dueType : null;
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
   const depositReady = contractSigned && paymentType === "deposit";
@@ -175,6 +175,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
   return (
     <>
+      {quote.superseded ? <p className={styles.purchaseHelp}>Another option was accepted for this project. This proposal is retained as a Pending Quote. Contact us to revisit it.</p> : null}
       {quote.wholeQuoteOffer && !quote.signed ? <p className={styles.purchaseHelp}>Your savings offer applies to this complete quote. Contact us if you would like to change the project.</p> : null}
       {allowSelection ? (
         <div className={styles.purchaseSelector}>
@@ -196,7 +197,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
       {showActionPanel ? (
         <nav className={`${styles.mobileActionBar} no-print`} aria-label="Contract actions">
           {canSign ? <a className={styles.mobileActionButton} href="#sign-contract">Sign contract here</a> : null}
-          {paymentOptions && paymentType ? (
+          {!quote.superseded && paymentOptions && paymentType ? (
             <a
               className={`${styles.mobileActionButton} ${styles.mobileActionButtonSecondary} ${depositReady ? styles.mobileActionButtonPaymentReady : ""}`}
               href="#payment"
@@ -382,7 +383,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
         ) : null}
 
         <div className={styles.contractContent}>
-          {!previewOnly && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
+          {!previewOnly && !quote.superseded && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
             <div className="no-print" style={financingBox}>
               <FinancingOptions
                 quoteNumber={quote.quoteNumber}

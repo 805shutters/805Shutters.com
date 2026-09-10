@@ -134,6 +134,7 @@ export type PublicQuote = {
   customerEmail: string | null;
   status: string;
   signed: boolean;
+  superseded?: boolean;
   signedAt: string | null;
   lines: PublicQuoteLine[];
   subtotal: number;
@@ -716,6 +717,17 @@ function splitLineTotal(lineTotal: number, quantity: number, index: number): num
   return round2((baseCents + (index < remainder ? 1 : 0)) / 100);
 }
 
+/** Native delivery prices are immutable totals, including once-only charges. */
+export function projectNativeFrozenLine(quote: Pick<CrmQuote, "meta">, item: Pick<CrmQuoteLineItem, "id" | "quantity">, projected: PublicQuoteLine): PublicQuoteLine {
+  const meta = record(quote.meta);
+  if (!meta.native_delivery_id) return projected;
+  const frozen = record(record(meta.native_frozen_line_totals)[item.id]);
+  const valid = frozen.quantity === item.quantity && typeof frozen.total === "number" && Number.isFinite(frozen.total) && frozen.total >= 0;
+  const total = valid ? Number(frozen.total) : 0;
+  return { ...projected, lineTotal: total, priceReady: projected.priceReady && valid,
+    designOptions: projected.designOptions.map(option => ({ ...option, lineTotal: total, priceReady: option.priceReady && valid })) };
+}
+
 export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] {
   const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
   if (quantity === 1) return [line];
@@ -978,7 +990,8 @@ async function projectPublicQuote(
   let lineItems = ((items as CrmQuoteLineItem[]) ?? [])
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
-  const historicalPricing = await loadHistoricalCrmMirrorPricing(
+  const nativeContract = Boolean(record(quote.meta).native_delivery_id);
+  const historicalPricing = nativeContract ? null : await loadHistoricalCrmMirrorPricing(
     supabase,
     quote,
     lineItems,
@@ -990,11 +1003,11 @@ async function projectPublicQuote(
       designs: historicalPricing.designsByLineItemId.get(lineItem.id) as CrmQuoteDesign[],
     }));
   }
-  const legacyMts = isLegacyMtsQuote(quote);
+  const legacyMts = !nativeContract && isLegacyMtsQuote(quote);
   const projectedLines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
-    expandPublicQuoteLine(projectLine(lineItem, legacyMts))
+    expandPublicQuoteLine(projectNativeFrozenLine(quote, lineItem, projectLine(lineItem, legacyMts)))
   ));
-  const lines = applyStoredSignedSelection(quote, projectedLines);
+  const lines = nativeContract ? projectedLines : applyStoredSignedSelection(quote, projectedLines);
   const hasOnyxShutters =
     quoteHasOnyxManufacturer(quote) ||
     lineItems.some((lineItem) => lineItemHasOnyxShutters(lineItem, legacyMts));
@@ -1002,7 +1015,7 @@ async function projectPublicQuote(
   // Rebuild the full money breakdown from line items + adjustments (same engine
   // the builder uses), so Subtotal − discount + tax + fees = Total exactly. This
   // also self-heals a stale stored quote_total.
-  const adj = parseAdjustments(quote.meta);
+  const adj = record(quote.meta).native_delivery_id ? { ...parseAdjustments(null), depositPercent: 50 } : parseAdjustments(quote.meta);
   const money = computeQuoteMoney(subtotal, adj);
   const sourceTotalAdjustment = legacyMts ? await legacySourceTotalAdjustment(supabase, quote, money.total) : 0;
   const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
@@ -1031,7 +1044,7 @@ async function projectPublicQuote(
   if (quote.quote_group_id) {
     const siblings = await listQuoteVersions(supabase, quote.id);
     versions = siblings
-      .filter((s) => s.share_token)
+      .filter((s) => s.share_token && (!nativeContract || s.status !== "archived" && (!siblings.some(version => version.signed) || s.signed)))
       .map((s, index) => ({ token: s.share_token as string, label: customerQuoteText(s.label) || String(index + 1), total: s.quote_total, signed: s.signed, current: s.share_token === token }));
   }
 
@@ -1045,6 +1058,7 @@ async function projectPublicQuote(
     customerEmail,
     status: quote.status,
     signed: Boolean(quote.signed_at),
+    superseded: nativeContract && Boolean(record(quote.meta).native_superseded_by_quote_id),
     signedAt: quote.signed_at,
     lines,
     subtotal: money.subtotal,
@@ -1190,7 +1204,7 @@ export function buildQuoteShareSms(url: string): string {
   return `805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: ${url}\n\nOfficial contact: ${brandIdentity.domain} | ${brandIdentity.phone}`;
 }
 
-function publicQuoteUrl(token: string): string {
+export function publicQuoteUrl(token: string): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || brandIdentity.website).replace(/\/+$/, "");
   return `${base}/quote/${token}`;
 }
@@ -1246,6 +1260,7 @@ async function syncLinkedSalesQuoteSignature(
   quote: CrmQuote,
   input: { signedAt: string; printedName: string; signature: string; soldTotal: number },
 ) {
+  if (record(quote.meta).native_delivery_id) return; // Native acceptance synchronizes source atomically.
   const salesQuoteId = linkedSalesQuoteIdForPublicQuote(quote);
   if (!salesQuoteId) return;
 
@@ -1750,7 +1765,15 @@ export async function acceptPublicQuote(
 
   // Atomic claim: only the first request that flips signed_at from null wins
   // (guards against double-submit / concurrent sign of the same link).
-  const partialResult = partialPlan
+  const native = Boolean(record(quote.meta).native_delivery_id);
+  const partialResult = native
+    ? await supabase.rpc("accept_native_quote_delivery", {
+        p_quote_id: quote.id, p_share_token: claimToken,
+        p_selected_line_ids: chosenLines.map(line => line.id),
+        p_acknowledged_total: input.acknowledgedTotal ?? soldTotal,
+        p_signed_at: now, p_signature: signature, p_printed_name: printedName,
+      })
+    : partialPlan
     ? await supabase.rpc("partition_crm_partial_quote_acceptance", {
         p_quote_id: quote.id,
         p_share_token: claimToken,
@@ -1800,6 +1823,7 @@ export async function acceptPublicQuote(
     // rejects a second concurrent sign in the same group — treat that as a
     // graceful "already decided", not a server error.
     if ((error as { code?: string }).code === "23505") return { ok: true, alreadySigned: true };
+    if (native && ["40001", "55000", "22023"].includes((error as { code?: string }).code || "")) throw new CrmAuthError(409, "This contract changed or was already accepted. Refresh and review it before signing.");
     throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
   }
   if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
@@ -1810,7 +1834,7 @@ export async function acceptPublicQuote(
   // Within a group, the chosen version wins — supersede the unsigned alternatives
   // so they can't also be signed and never get their own bookkeeping entry.
   const effectiveGroupId = quote.quote_group_id;
-  if (effectiveGroupId) {
+  if (effectiveGroupId && !native) {
     // Concurrency guard (M6): if a sibling link was signed at nearly the same
     // moment, both per-row claims can succeed. Resolve to a single winner — the
     // earliest signature (tiebreak: lowest id). If THIS request lost, revert our
@@ -1846,6 +1870,8 @@ export async function acceptPublicQuote(
     await archiveSiblings;
   }
 
+  const nativeSigned = native ? await supabase.from("crm_quotes").select("*").eq("id", quote.id).single() : null;
+  if (nativeSigned?.error) throw new CrmAuthError(502, "The signed native contract could not be loaded.");
   const signedQuote: CrmQuote = {
     ...quote,
     status: "sold",
@@ -1863,12 +1889,14 @@ export async function acceptPublicQuote(
     } : {}),
   };
 
+  if (nativeSigned?.data) Object.assign(signedQuote, nativeSigned.data);
+
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
   const soldSync = await syncSoldBookkeeping(
     supabase,
     signedQuote,
     soldTotal,
-    partialPlan?.currentMoney.materialsCost ?? (Number(quote.materials_cost) || 0),
+    native ? Number(signedQuote.materials_cost) : partialPlan?.currentMoney.materialsCost ?? (Number(quote.materials_cost) || 0),
   );
   const customerPhone = soldSync.customerPhone;
   const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
@@ -2099,6 +2127,20 @@ export async function sendQuoteToCustomer(
     expectedRecipients?: { email?: string | null; sms?: string | null };
   } = {},
 ): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
+  const { data: sourceContract, error: contractError } = await supabase.from("crm_quotes").select("id,meta").eq("id", quoteId).maybeSingle();
+  if (contractError) throw new CrmAuthError(502, "Customer delivery provenance could not be checked.");
+  if (record(sourceContract?.meta).native_delivery_id) {
+    const { data: nativeReceipt, error: nativeReadError } = await supabase.from("sales_quote_v2_deliveries").select("*").eq("crm_quote_id", quoteId).maybeSingle();
+    if (nativeReadError || !nativeReceipt) throw new CrmAuthError(502, "Frozen native delivery receipt could not be checked.");
+    const { deliverFrozenNativeQuote, nativeDeliveryRequest } = await import("./native-quote-delivery");
+    const requested = nativeDeliveryRequest({ customer_email: nativeReceipt.request.email[0], customer_phone: nativeReceipt.request.sms[0] }, {
+      channels: { email: options.email, sms: options.sms }, emails: options.emailRecipients,
+      phone: options.phone, note: options.note ?? nativeReceipt.request.note, measureDecision: options.measureDecision ?? nativeReceipt.request.measureDecision,
+    });
+    if (requested.email.join() !== nativeReceipt.request.email.join() || requested.sms.join() !== nativeReceipt.request.sms.join() || requested.note !== nativeReceipt.request.note) throw new CrmAuthError(409, "Resume delivery using its saved recipients and note.");
+    if (!actor.userId) throw new CrmAuthError(403, "A signed-in quote actor is required.");
+    return deliverFrozenNativeQuote(supabase, nativeReceipt, actor.userId);
+  }
   const wantSms = options.sms !== false;
   const wantEmail = options.email !== false;
   const { token, url } = await ensureShareToken(supabase, quoteId, actor);

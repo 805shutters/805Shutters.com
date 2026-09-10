@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useRef, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { supabase } from "@mts/integrations/supabase/client";
@@ -55,6 +55,7 @@ interface SendQuoteDialogProps {
 }
 
 export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) {
+  const deliveryKey = useRef<string | null>(null);
   const queryClient = useQueryClient();
 
   const [channel, setChannel] = useState<Channel>(() => getDefaultChannel(quote));
@@ -76,6 +77,27 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     setBypassHours(false);
     setLinkCopied(false);
   }, [open, quote]);
+
+  useEffect(() => {
+    if (!open || !quote.quote_v2_backend) return;
+    let current = true;
+    deliveryKey.current = null;
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const token = data.session?.access_token;
+      if (!token) return;
+      const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/v2/delivery`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const capability = await response.json();
+      const saved = capability.reservation;
+      if (!current || !saved?.requestKey || !Array.isArray(saved.request?.email) || !Array.isArray(saved.request?.sms)) return;
+      deliveryKey.current = saved.requestKey;
+      setEmails(saved.request.email.length ? saved.request.email : [""]);
+      setPhone(saved.request.sms[0] || "");
+      setCustomMessage(saved.request.note || "");
+      setChannel(saved.request.email.length ? saved.request.sms.length ? "both" : "email" : "sms");
+    }).catch(() => { /* Send endpoint still requires and verifies the frozen request. */ });
+    return () => { current = false; };
+  }, [open, quote.id, quote.quote_v2_backend]);
 
   const shareLink = `${window.location.origin}/quote/${quote.share_token}`;
   const needsEmail = channel === "email" || channel === "both";
@@ -102,6 +124,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          expectedRevision: quote.quote_v2_revision,
+          idempotencyKey: deliveryKey.current ?? (deliveryKey.current = `quote-delivery:${crypto.randomUUID()}`),
           channels: { email: needsEmail, sms: needsPhone },
           emails: needsEmail ? cleanedEmails : [],
           phone: needsPhone ? phone.trim() : null,
