@@ -1727,7 +1727,7 @@ export function TechnicalMeasureList() {
           <div className="technical-measure-products-heading"><strong>Products</strong><span>{orders.label}</span></div>
           {orders.groups.map(group => <div className="technical-measure-product-row" key={group.key}>
             <div><strong>{group.label}</strong><small>{group.manufacturer} · {group.openingCount} {group.openingCount === 1 ? "opening" : "openings"}</small></div>
-            {group.ordered ? <span className="technical-measure-product-ordered"><Check size={15} />Ordered{group.orderedAt ? <small>{new Date(group.orderedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</small> : null}</span> : !archived ? <button type="button" disabled={offlineMode || !session || Boolean(orderingKey) || Boolean(orders.error)} onClick={() => void orderProduct(formId, group.key)} aria-label={`Mark ${group.label} ordered`}>
+            {group.ordered ? <button type="button" className="technical-measure-product-ordered" aria-label={`${group.label} ordered`} aria-pressed="true" disabled title={group.orderedAt ? `Ordered ${new Date(group.orderedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "Ordered"}><Check size={15} />Ordered</button> : !archived ? <button type="button" aria-pressed="false" disabled={offlineMode || !session || Boolean(orderingKey) || Boolean(orders.error)} onClick={() => void orderProduct(formId, group.key)} aria-label={`Mark ${group.label} ordered`}>
               {orderingKey === `${formId}:${group.key}` ? <Loader2 className="spin" size={15} /> : <Check size={15} />}Ordered
             </button> : <span>Not ordered</span>}
           </div>)}

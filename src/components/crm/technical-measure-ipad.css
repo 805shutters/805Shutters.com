@@ -220,8 +220,9 @@ body:has(.tm805-split) > .mobile-workspace-exit, body:has(.tm805-split) .mobile-
 .mts-quote-scope .technical-measure-product-row small { display:block; margin-top:3px; font-size:11px; color:#74776f; text-transform:capitalize; }
 .mts-quote-scope .technical-measure-product-row button { flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:5px; min-height:44px; padding:7px 12px; border:1px solid #bfc1ba; border-radius:9px; background:linear-gradient(#fff,#e8e9e4); color:#30352c; box-shadow:0 1px 2px #0000000d; font-size:13px; font-weight:600; }
 .mts-quote-scope .technical-measure-product-row button:disabled { opacity:.5; cursor:default; }
-.mts-quote-scope .technical-measure-product-ordered { flex-shrink:0; color:#386144; font-size:12px; text-align:right; }
-.mts-quote-scope .technical-measure-product-ordered svg { display:inline; vertical-align:middle; margin-right:4px; }
+.mts-quote-scope .technical-measure-product-row button.technical-measure-product-ordered {
+  background:#166534; border-color:#166534; color:#fff; opacity:1; box-shadow:none;
+}
 .mts-quote-scope .technical-measure-products p { padding:8px 12px; font-size:12px; color:#696d63; }
 .mts-quote-scope .technical-measure-queue-actions .technical-measure-archive-action { min-height:36px; padding:6px 10px; background:transparent; color:#6c7067; box-shadow:none; border:0; font-size:12px; }
 .mts-quote-scope .technical-measure-queue-actions .technical-measure-archive-action svg { width:15px; height:15px; }

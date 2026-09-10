@@ -193,6 +193,8 @@ test("filters, partial ordering, archive, persistence, and failures", async ({
   await expect(
     page.getByRole("button", { name: "Mark Faux Wood Blinds ordered" }),
   ).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Mark Faux Wood Blinds ordered" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Faux Wood Blinds ordered", exact: true })).toHaveCount(0);
   fail = false;
   await page
     .getByRole("button", { name: "Mark Faux Wood Blinds ordered" })
@@ -206,10 +208,20 @@ test("filters, partial ordering, archive, persistence, and failures", async ({
   await expect(
     page.getByText("Partially ordered · 1 of 2").first(),
   ).toBeVisible();
+  const orderedBlinds = page.getByRole("button", { name: "Faux Wood Blinds ordered", exact: true });
+  await expect(orderedBlinds).toHaveAttribute("aria-pressed", "true");
+  await expect(orderedBlinds).toBeDisabled();
+  await expect(orderedBlinds).toHaveCSS("background-color", "rgb(22, 101, 52)");
+  await expect(orderedBlinds).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(orderedBlinds).toHaveCSS("opacity", "1");
+  await expect(page.getByRole("button", { name: "Mark Shutters ordered" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Mark Shutters ordered" })).not.toHaveCSS("background-color", "rgb(22, 101, 52)");
+  await page.screenshot({ path: `test-results/measure-orders/${info.project.name}-ordered-green.png`, fullPage: true });
   await page.reload();
   await expect(
     filters.getByRole("button", { name: "Needs Order 2", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
+  await expect(orderedBlinds).toHaveCSS("background-color", "rgb(22, 101, 52)");
   // The editor return link uses the bare queue URL; retain the selected filter there too.
   await page.goto("/crm/technical-measures/");
   await expect(filters.getByRole("button", { name: "Needs Order 2", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -220,6 +232,7 @@ test("filters, partial ordering, archive, persistence, and failures", async ({
   await filters.getByRole("button", { name: "Archive 2", exact: true }).click();
   await expect(page.getByText("Taylor Example", { exact: true })).toBeVisible();
   await expect(page.getByText("Ordered · 2 of 2").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Shutters ordered", exact: true })).toHaveCSS("background-color", "rgb(22, 101, 52)");
   await expect(
     page.getByRole("button", { name: "Mark Shutters ordered" }),
   ).toHaveCount(0);
