@@ -320,6 +320,7 @@ import {
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
+import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
 import {
   manufacturerStampFromLabel,
   resolveManufacturerStamp,
@@ -4663,10 +4664,9 @@ export function DesignCard({
       );
   const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const manufacturerStamp = resolveManufacturerStamp(currentDesign);
-  const authoritativePriceError =
-    authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
-      ? currentOptions.authoritative_price_error.trim()
-      : "";
+  const authoritativePriceError = authoritativeV2 && !displayedPrice.fromHistoricalLock && !isPriceLocked
+    ? authoritativeDesignPriceIssue(currentDesign)
+    : null;
   const legacyPricingBlockReason =
     !authoritativeV2 && typeof currentOptions.pricing_block_reason === "string"
       ? currentOptions.pricing_block_reason.trim()
@@ -5643,12 +5643,12 @@ export function DesignCard({
               <Lock className="h-3.5 w-3.5 text-muted-foreground" />
               <div className="quote-line-price-readout">
                 <span className="text-lg font-bold">
-                  {formatMoney(displayedLineTotal)}
+                  {authoritativePriceError ? "Price unavailable" : formatMoney(displayedLineTotal)}
                 </span>
-                <div className="text-[11px] text-muted-foreground">
+                {!authoritativePriceError && <div className="text-[11px] text-muted-foreground">
                   {quantity > 1 ? `${formatMoney(displayedUnitPrice)} ea · ` : ""}
                   {displayedPrice.fromHistoricalLock ? "original quote · " : ""}excl. tax
-                </div>
+                </div>}
               </div>
             </div>}
             <label className="quote-line-quantity-control" title="Line item quantity">

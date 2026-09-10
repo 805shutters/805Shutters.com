@@ -1,4 +1,5 @@
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
+import { authoritativeDesignPriceIssue } from "./quotePricingDisplay";
 
 export interface QuoteTotalLineItem {
   id: string;
@@ -158,9 +159,7 @@ export function calculateQuoteDesignSubtotal(
 export function unpricedQuoteLineIds(lineItems: QuoteTotalLineItem[], designs: QuoteTotalDesign[]): string[] {
   return lineItems.filter(line => {
     const selected = resolveQuoteTotalDesign(designs.filter(design => design.line_item_id === line.id));
-    const status = selected?.options_json?.authoritative_price_status;
-    return !selected || status !== "authoritative" || selected.unit_price == null ||
-      !Number.isFinite(Number(selected.unit_price)) || Number(selected.unit_price) < 0;
+    return authoritativeDesignPriceIssue(selected) !== null;
   }).map(line => line.id);
 }
 

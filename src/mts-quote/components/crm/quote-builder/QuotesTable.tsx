@@ -13,6 +13,7 @@ import type { SalesQuote } from "@mts/types/quote";
 import { format } from "date-fns";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashboardFilters";
+import { isSavedQuotePricingIncomplete } from "@mts/lib/quotePricingDisplay";
 
 export type QuoteTableRow = QuoteStatsSource & {
   quote_number?: string | null;
@@ -101,6 +102,7 @@ export function QuotesTable({
             const isCrmQuote = quote.source === "crm";
             const salesQuoteId = quote.sourceQuoteId || quote.id;
             const totalAmount = Number(quote.total_amount) || 0;
+            const pricingIncomplete = isSavedQuotePricingIncomplete(quote.salesQuote);
             const status = getQuoteStatsStatus(quote);
             return (
               <TableRow
@@ -137,7 +139,7 @@ export function QuotesTable({
                     : "—"}
                 </TableCell>
                 <TableCell className="font-medium tabular-nums">
-                  {totalAmount > 0
+                  {pricingIncomplete ? <span className="text-amber-800">Pricing incomplete</span> : totalAmount > 0
                     ? `$${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                     : "—"}
                 </TableCell>
