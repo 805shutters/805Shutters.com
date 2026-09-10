@@ -30,26 +30,24 @@ describe("send catalog effective dates", () => {
     });
     const priced = prepared[0].rpcResult;
     expect(priced.priceStatus).toBe("authoritative");
-    const snapshot = priced.authoritativeSnapshot!;
+    const snapshot = priced.authoritativeSnapshot as ReturnType<typeof createImmutablePriceSnapshot>;
     const design = {
       ...original,
-      unit_price: snapshot.retail.unitPrice,
+      unit_price: Number(snapshot.retail.unitPrice),
       quote_v2_selection: priced.selection as unknown as Record<string, unknown>,
-      quote_v2_price_status: "authoritative",
-      quote_v2_selection_fingerprint: priced.selectionFingerprint,
-      quote_v2_priced_catalog_version: priced.catalogVersion,
+      quote_v2_price_status: "authoritative" as const,
+      quote_v2_selection_fingerprint: String(priced.selectionFingerprint),
+      quote_v2_priced_catalog_version: String(priced.catalogVersion),
       current_v2_snapshot_id: SNAPSHOT_ID,
     };
     const payload = prepareV2CustomerSendPayload({
-      quote: authoritativeQuote(snapshot.retail.total, { quote_v2_catalog_version: priced.catalogVersion }),
+      quote: authoritativeQuote(Number(snapshot.retail.total), { quote_v2_catalog_version: priced.catalogVersion }),
       lineItems: [line], designs: [design], serverDate: "2026-09-10",
       snapshots: [{
         id: SNAPSHOT_ID, quote_id: line.quote_id, line_item_id: line.id,
         design_id: design.id, quote_revision: QUOTE_REVISION,
         selection_fingerprint: priced.selectionFingerprint, catalog_version: priced.catalogVersion,
         retail_total: snapshot.retail.total, retail_snapshot: snapshot,
-        internal_cost_snapshot: priced.internalCostSnapshot,
-        provenance_snapshot: priced.provenanceSnapshot,
       }],
     });
     expect(payload.total).toBe(768);
