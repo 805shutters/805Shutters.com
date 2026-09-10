@@ -16,6 +16,7 @@ import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import {
   isServerMarkedV2SalesQuote,
+  assertHistoricalSalesQuoteMutationAllowed,
   guardV2SalesQuoteBeforeLegacySend,
 } from "@/lib/crm/sales-quote-v2-send-guard";
 import {
@@ -53,8 +54,9 @@ export type SalesQuoteCustomerWorkflow = "v1" | "v2";
 /**
  * Customer-facing quotes and contracts are intentionally routed through the
  * historical V1 records. Keep the V2 implementation and stored data intact,
- * but do not select it for any sales quote, including rows previously marked
- * with quote_v2_backend.
+ * but do not select it based on quote_v2_backend: historical restores also
+ * carry that marker. Native V2 creation receipts are checked separately before
+ * any historical mutation; a V1 route choice is not permission to mirror V2.
  */
 export function resolveSalesQuoteCustomerWorkflow(
   _quote: AnyRow,
@@ -70,6 +72,7 @@ export async function markSalesQuoteSold(
 ) {
   const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
+  await assertHistoricalSalesQuoteMutationAllowed(supabase, original);
   if (resolveSalesQuoteCustomerWorkflow(original) === "v2") {
     await guardV2SalesQuoteBeforeLegacySend(supabase, original);
   }
@@ -198,6 +201,10 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  const groupQuotes = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
+  for (const groupQuote of groupQuotes) {
+    await assertHistoricalSalesQuoteMutationAllowed(supabase, groupQuote);
+  }
   if (
     options.sendAsIs !== undefined &&
     typeof options.sendAsIs !== "boolean"
@@ -240,7 +247,7 @@ export async function sendSalesQuoteToCustomer(
 
   const crmQuoteId = preparedV2
     ? await mirrorSalesQuoteV2ForCustomerSend(supabase, quoteForMirror, preparedV2)
-    : await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror);
+    : await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror, groupQuotes);
   const result = await sendQuoteToCustomer(supabase, crmQuoteId, actor, {
     email: options.channels?.email,
     sms: options.channels?.sms,
@@ -461,10 +468,10 @@ async function upsertPreparedV2QuoteStructure(
   }
 }
 
-async function mirrorSalesQuoteGroupForCustomerSend(
+async function loadSalesQuoteGroupForCustomerMirror(
   supabase: CrmSupabaseClient,
   activeQuote: AnyRow,
-): Promise<string> {
+): Promise<AnyRow[]> {
   let groupQuotes: AnyRow[] = [];
   if (activeQuote.quote_group_id) {
     const { data, error } = await supabase
@@ -475,6 +482,15 @@ async function mirrorSalesQuoteGroupForCustomerSend(
     groupQuotes = (data || []) as AnyRow[];
   }
 
+  return salesQuotesToMirror(activeQuote, groupQuotes);
+}
+
+async function mirrorSalesQuoteGroupForCustomerSend(
+  supabase: CrmSupabaseClient,
+  activeQuote: AnyRow,
+  loadedGroup?: AnyRow[],
+): Promise<string> {
+  const groupQuotes = loadedGroup ?? await loadSalesQuoteGroupForCustomerMirror(supabase, activeQuote);
   const decision = technicalMeasureDecisionFromSource(activeQuote);
   const quotes = salesQuotesToMirror(activeQuote, groupQuotes).map((quote) =>
     decision
@@ -486,6 +502,11 @@ async function mirrorSalesQuoteGroupForCustomerSend(
         }
       : quote
   );
+  // Check every sibling before writing any customer mirror. A historical
+  // option must not partially replace its group before a native sibling fails.
+  for (const quote of quotes) {
+    await assertHistoricalSalesQuoteMutationAllowed(supabase, quote);
+  }
   let activeCrmQuoteId = "";
   for (const quote of quotes) {
     const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quote);
@@ -513,6 +534,7 @@ export async function sendSalesQuotePaymentLinkToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  await assertHistoricalSalesQuoteMutationAllowed(supabase, quote);
   if (resolveSalesQuoteCustomerWorkflow(quote) === "v2") {
     await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
   }
@@ -556,6 +578,7 @@ export async function prepareSalesQuoteForCommunication(supabase: CrmSupabaseCli
 }
 
 async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quote: AnyRow): Promise<string> {
+  await assertHistoricalSalesQuoteMutationAllowed(supabase, quote);
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")
     .select("*")

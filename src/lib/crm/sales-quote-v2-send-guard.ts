@@ -45,3 +45,37 @@ export async function guardV2SalesQuoteBeforeLegacySend(
     "This legacy quote mutation is not available for V2. Use the dedicated V2 customer-send path.",
   );
 }
+
+/**
+ * The V2 marker also exists on restored historical quotes, so it cannot select
+ * a customer workflow. Only the append-only draft-creation receipt proves a
+ * quote was born in V2. Until delivery cutover is complete, such quotes must
+ * never enter the historical all-design mirror, even through a legacy URL.
+ * Historical rows without a native receipt retain their existing workflow.
+ */
+export async function assertHistoricalSalesQuoteMutationAllowed(
+  supabase: SupabaseClient,
+  quote: AnyRow,
+): Promise<void> {
+  if (!isServerMarkedV2SalesQuote(quote)) return;
+  if (typeof quote.id !== "string" || !quote.id.trim()) {
+    throw new CrmAuthError(409, "Quote origin could not be verified before preparing the customer contract.");
+  }
+  const { data, error } = await supabase
+    .from("sales_quote_v2_draft_requests")
+    .select("quote_id")
+    .eq("quote_id", quote.id)
+    .maybeSingle();
+  if (error) {
+    throw new CrmAuthError(
+      502,
+      "Quote origin could not be checked. Customer contract preparation was stopped before changing quote records.",
+    );
+  }
+  if (data) {
+    throw new CrmAuthError(
+      409,
+      "This quote was created in the authoritative quote builder. Customer delivery is not connected yet; it cannot be sent, marked sold, or rebuilt through the historical contract workflow.",
+    );
+  }
+}
