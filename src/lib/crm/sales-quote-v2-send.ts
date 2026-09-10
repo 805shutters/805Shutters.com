@@ -4,8 +4,7 @@ import { isServerMarkedV2SalesQuote } from "@/lib/crm/sales-quote-v2-send-guard"
 import { quoteV2ServerCatalogDate } from "@/lib/crm/sales-quote-v2-price-save";
 import { repriceExactQuoteBuilderForServerDate } from "@/lib/quote-lab/exact-backend";
 import {
-  QUOTE_V2_CATALOG_VERSION,
-  QUOTE_V2_ROLLER_PREVIEW_VERSION,
+  quoteV2CatalogVersionFor,
 } from "@/lib/quote-v2/catalog";
 import type {
   SalesQuoteDesign,
@@ -166,10 +165,7 @@ export function serverCatalogVersionForV2Product(
   serverDate: string,
 ): string {
   if (!validIsoDate(serverDate)) fail("The server catalog date is invalid.");
-  if (productId === "roller" && serverDate >= "2026-08-01") {
-    return QUOTE_V2_ROLLER_PREVIEW_VERSION;
-  }
-  return QUOTE_V2_CATALOG_VERSION;
+  return quoteV2CatalogVersionFor(productId, serverDate);
 }
 
 function projectSurchargeLines(value: unknown): V2CustomerRetailPrice["surchargeLines"] {

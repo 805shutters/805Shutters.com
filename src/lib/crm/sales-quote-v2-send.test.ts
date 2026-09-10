@@ -16,8 +16,22 @@ import {
 import {
   prepareV2CustomerSendPayload,
   prepareV2CustomerSendPayloadFromDatabase,
+  serverCatalogVersionForV2Product,
   projectV2CustomerRetailPrice,
 } from "./sales-quote-v2-send";
+
+describe("send catalog effective dates", () => {
+  it.each([
+    ["roller", "2026-09-01", "805-v2-norman-roller-2026-08-01-msrp-r1-pg4-2026-09-r1"],
+    ["roman", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-assortment-2026-09-r1"],
+    ["citylights_aluminum", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-assortment-2026-09-r1"],
+    ["perfectsheer", "2026-08-11", "805-v2-norman-2026-07-msrp-r1-assortment-2026-08-11-r1"],
+    ["roller", "2026-08-31", "805-v2-norman-roller-2026-08-01-msrp-r1"],
+    ["polar_all_seasons_screen", "2026-09-10", "805-v2-polar-all-seasons-2026-07-retail-cost-freight-r2"],
+  ])("accepts the current server catalog for %s on %s", (product, date, expected) => {
+    expect(serverCatalogVersionForV2Product(product, date)).toBe(expected);
+  });
+});
 
 const SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
 const QUOTE_REVISION = 7;
