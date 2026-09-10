@@ -79,12 +79,12 @@ describe("technical measure mobile controls", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
 
-    expect(component).toContain("Complete this opening");
+    expect(component).not.toContain("Complete this opening");
     expect(component).not.toContain("Incomplete fields do not prevent submission.");
     expect(component).not.toContain("You can still complete and submit this measure.");
     expect(component).toContain("setMessage(compactTechnicalMeasureCompletionSummary(issues));\n        return;");
-    expect(component).toContain("Submit every opening before completing the order.");
-    expect(component).toContain("handleSubmitLine");
+    expect(component).toContain("Complete and save every opening before completing the order.");
+    expect(component).toContain("handleNextLine");
     expect(service).not.toContain("validateNormanRollerMeasureForSubmission(form)");
     expect(service).toContain("technicalMeasureCompletionIssues(form)");
   });
@@ -229,7 +229,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain('aria-label="Technical measure line items"');
     expect(component).toContain("Needs measure");
     expect(component).toContain("Back to line items");
-    expect(component).toContain("Submit line item");
+    expect(component).toContain("Next line item");
     expect(component).toContain("Confirm width");
     expect(component).toContain("Confirm height");
     expect(component).toContain('FIELD_MEASURE_FRACTIONS = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"]');

@@ -6,7 +6,7 @@ import "./technical-measure-ipad.css";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
 import { catalog, getProduct } from "@/lib/quote/catalog";
 import type { Session } from "@supabase/supabase-js";
-import { Archive, ArrowLeft, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Minus, Phone, Plus, Ruler, Save, X } from "lucide-react";
+import { Archive, ArrowLeft, ArrowRight, CalendarDays, Check, ChevronRight, ExternalLink, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Minus, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type {
@@ -40,7 +40,6 @@ import { ManufacturerTechnicalMeasureFields } from "@/components/crm/Manufacture
 import {
   compactTechnicalMeasureCompletionSummary,
   technicalMeasureCompletionIssues,
-  type TechnicalMeasureCompletionIssue,
 } from "@/lib/crm/technical-measure-completion";
 import {
   applyOfflineTechnicalMeasureDraft,
@@ -465,7 +464,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [futurePicker, setFuturePicker] = useState<MeasurementStep | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
   const [pendingSync, setPendingSync] = useState(false);
-  const [completionIssues, setCompletionIssues] = useState<TechnicalMeasureCompletionIssue[]>([]);
   const [installationDurationMinutes, setInstallationDurationMinutes] = useState<number | null>(null);
   const hydratedRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -558,7 +556,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     setPendingSync(true);
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
-      void flushLatestDraft();
+      void flushLatestDraft().catch((error) => {
+        setMessage(error instanceof Error ? error.message : "Technical measure could not be saved.");
+      });
     }, 700);
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -637,7 +637,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
     markTechnicalMeasureSelection();
     setMessage(null);
-    setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
       const next = current.map((line) => line.id === lineId ? {
         ...line,
@@ -657,7 +656,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   function updateDetail(lineId: string, key: string, value: string | boolean) {
     markTechnicalMeasureSelection();
     setMessage(null);
-    setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
       const next = current.map((line) => {
         if (line.id !== lineId) return line;
@@ -798,34 +796,35 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     finally { setBusy(false); }
   }
 
-  async function handleSubmitLine(index: number) {
-    if (!form) return;
+  async function handleNextLine(index: number) {
+    if (!form || busy) return;
     const currentLines = linesRef.current;
     const line = currentLines[index];
     if (!line) return;
     const issues = technicalMeasureCompletionIssues({ ...form, lines: currentLines });
     const lineIssues = issues.filter((issue) => issue.lineId === line.id);
-    setCompletionIssues(lineIssues);
-    if (lineIssues.length) {
-      setMessage(compactTechnicalMeasureCompletionSummary(lineIssues));
-      return;
-    }
 
     markTechnicalMeasureSelection();
     const nextLines = currentLines.map((candidate) => candidate.id === line.id
-      ? { ...candidate, current_values: { ...candidate.current_values, measure_complete: true } }
+      ? { ...candidate, current_values: { ...candidate.current_values, measure_complete: lineIssues.length === 0 } }
       : candidate);
     linesRef.current = nextLines;
     setLines(nextLines);
     setBusy(true);
     setMessage(null);
     try {
-      const saved = await persistDraftOnce(nextLines);
-      setMeasureView("ledger");
-      setCompletionIssues([]);
+      // Share the autosave pipeline so an older in-flight response cannot
+      // overwrite this line or race the save that precedes navigation.
+      const saved = await flushLatestDraft();
+      if (index + 1 < linesRef.current.length) {
+        setActiveLineIndex(index + 1);
+        setMeasureView("line");
+      } else {
+        setMeasureView("ledger");
+      }
       setMessage(saved.queued
-        ? `Opening ${index + 1} saved on this iPad.`
-        : `Opening ${index + 1} submitted.`);
+        ? `Line item ${index + 1} saved on this device · waiting to upload.`
+        : `Line item ${index + 1} saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "This opening could not be saved.");
     } finally {
@@ -837,14 +836,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     if (!form) return;
     if (!linesRef.current.length || linesRef.current.some((line) => !line.current_values.measure_complete)) {
       setMeasureView("ledger");
-      setMessage("Submit every opening before completing the order.");
+      setMessage("Complete and save every opening before completing the order.");
       return;
     }
     setBusy(true); setMessage(null);
     try {
       const saved = await flushLatestDraft();
       const issues = technicalMeasureCompletionIssues(saved.form);
-      setCompletionIssues(issues);
       if (issues.length) {
         setActiveLineIndex(issues[0].lineIndex);
         setMeasureView("line");
@@ -1039,7 +1037,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   function showLine(index: number) {
     setActiveLineIndex(Math.min(Math.max(index, 0), Math.max(lines.length - 1, 0)));
     setMeasureView("line");
-    setCompletionIssues([]);
     setMessage(null);
   }
 
@@ -1145,7 +1142,6 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               && !priorityDetailKeys.includes(key)
               && !HEADER_DETAIL_KEYS.has(key)
               && !["frame_sides", "field_measure_custom_room", "field_measure_bedroom"].includes(key));
-          const lineCompletionIssues = completionIssues.filter((issue) => issue.lineId === line.id);
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
               <div className="technical-measure-line-top">
@@ -1157,22 +1153,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   </div>
                   <button type="button" aria-label="Back to line items" onClick={() => setMeasureView("ledger")}><ArrowLeft /></button>
                 </div>
-                {(message || lineCompletionIssues.length) ? (
-                  <div className="technical-measure-alert technical-measure-alert--active" role={lineCompletionIssues.length ? "alert" : "status"}>
-                    {lineCompletionIssues.length ? (
-                      <>
-                        <strong>Complete this opening</strong>
-                        <ul>
-                          {lineCompletionIssues.map((issue) => (
-                            <li key={`${issue.lineId}-${issue.field}`}>
-                              <b>{issue.label}:</b> {issue.instruction}
-                            </li>
-                          ))}
-                        </ul>
-                        {message ? <small>{message}</small> : null}
-                      </>
-                    ) : message}
-                  </div>
+                {message ? (
+                  <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div>
                 ) : null}
               </div>
               <button className="tm805-contract-jump" type="button" onClick={() => document.getElementById(`contract-options-${line.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}><FileText />View contract options<ChevronRight /></button>
@@ -1315,7 +1297,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               <div className="technical-measure-line-navigation technical-measure-line-submit">
                 <button type="button" onClick={() => setMeasureView("ledger")}><ArrowLeft />Back to line items</button>
                 <span>{current.measure_complete ? "Opening complete" : "Review every required field"}</span>
-                <button type="button" disabled={readOnly || busy} onClick={() => void handleSubmitLine(index)}>{busy ? <Loader2 className="spin" /> : <Check />}Submit line item</button>
+                <button type="button" disabled={readOnly || busy} onClick={() => void handleNextLine(index)}>{busy ? "Saving…" : index + 1 < lines.length ? "Next line item" : "Save line item"}{busy ? <Loader2 className="spin" /> : <ArrowRight />}</button>
               </div>
             </article>
           );

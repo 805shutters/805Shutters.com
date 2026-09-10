@@ -100,7 +100,7 @@ test("iPad retains split contract reference and submitted read-only lines", asyn
   await fits(page);
   await page.screenshot({ path: "test-results/measure-ipad.png", scale: "css" });
   await page.locator(".technical-measure-ledger-item > button").last().click();
-  await expect(page.locator(".technical-measure-line--active").getByRole("button", { name: "Submit line item" })).toBeDisabled();
+  await expect(page.locator(".technical-measure-line--active").getByRole("button", { name: "Save line item" })).toBeDisabled();
   await expect(page.locator(".technical-measure-line--active textarea")).toBeDisabled();
   expect(writes).toEqual([]);
 });
@@ -165,7 +165,7 @@ test("future window dimensions save from the collapsed tools", async ({ page }) 
   expect(writes).toContain("POST /api/crm/technical-measures/fixture/future-measures");
 });
 
-test("line validation, line submission, and measure completion retain their guards", async ({ page }) => {
+test("saving incomplete drafts retains final completion guards", async ({ page }) => {
   const form = fixture();
   form.lines = form.lines.slice(0, 1);
   form.lines[0].measure_schema = { schemaVersion: 1, routingKey: "test", manufacturer: "Norman", productKey: "roller", productName: "Roller Shades", productKind: "shade", orderSchemaPath: "", orderTemplateDocxUrl: "", orderTemplatePdfUrl: "", technicalMeasureDocxUrl: "", technicalMeasurePdfUrl: "", sourceReference: "fixture", verification: "test", fields: [] };
@@ -175,11 +175,14 @@ test("line validation, line submission, and measure completion retain their guar
   await expect(page.locator(".technical-measure-ledger-item")).toHaveCSS("background-color", "rgb(255, 241, 240)");
   await page.screenshot({ path: "test-results/measure-line-incomplete.png", scale: "css" });
   await page.locator(".technical-measure-ledger-item > button").click();
-  await page.getByRole("button", { name: "Submit line item", exact: true }).click();
-  await expect(page.locator(".technical-measure-line--active").getByRole("alert")).toContainText("Width confirmation");
-  expect(writes).toEqual([]);
+  await page.getByRole("button", { name: "Save line item", exact: true }).click();
+  await expect(page.getByText("0 of 1 complete", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Complete Measure", exact: true })).toBeDisabled();
+  expect(writes).toContain("PATCH /api/crm/technical-measures/fixture");
+  await page.locator(".technical-measure-ledger-item > button").click();
+  await expect(page.getByText("Complete this opening", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Confirm width", exact: true }).click();
-  await page.getByRole("button", { name: "Submit line item", exact: true }).click();
+  await page.getByRole("button", { name: "Save line item", exact: true }).click();
   await expect(page.getByText("1 of 1 complete", { exact: true })).toBeVisible();
   await expect(page.locator(".technical-measure-ledger-item")).toHaveCSS("background-color", "rgb(237, 247, 239)");
   await page.screenshot({ path: "test-results/measure-line-complete.png", scale: "css" });
@@ -187,4 +190,83 @@ test("line validation, line submission, and measure completion retain their guar
   await page.getByRole("button", { name: "Complete Measure", exact: true }).click();
   await expect.poll(() => writes.includes("POST /api/crm/technical-measures/fixture/submit")).toBe(true);
   await expect(page.locator(".tm805-status")).toHaveText("submitted");
+});
+
+
+test("Next line item saves the latest edits before advancing, survives reload, and has a right arrow", async ({ page }) => {
+  const form = fixture();
+  await setup(page, form);
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true }).fill("Keep this first-line note");
+  const next = page.getByRole("button", { name: "Next line item", exact: true });
+  await expect(next.locator("svg.lucide-arrow-right")).toBeVisible();
+  await next.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "test-results/measure-next-button-phone.png", scale: "css" });
+  await next.click();
+  await expect(page.locator(".technical-measure-line--active")).toContainText("Line 2 of 4");
+  expect(form.lines[0].current_values.notes).toBe("Keep this first-line note");
+  expect(form.lines[0].current_values.measure_complete).toBe(false);
+  await expect(page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true })).toHaveValue("");
+  await expect(page.getByText("Complete this opening", { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: "test-results/measure-next-line-phone.png", scale: "css" });
+  await page.reload();
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await expect(page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true })).toHaveValue("Keep this first-line note");
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await page.screenshot({ path: "test-results/measure-next-line-ipad.png", scale: "css" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: "test-results/measure-next-line-desktop.png", scale: "css" });
+});
+
+test("Next waits for an older autosave and persists newer edits before navigating", async ({ page }) => {
+  const form = fixture();
+  await setup(page, form);
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const safetyRelease = setTimeout(() => release(), 10_000);
+  let started = false;
+  await page.route("**/api/crm/technical-measures/fixture", async route => {
+    if (route.request().method() === "PATCH" && !started) {
+      started = true;
+      await held;
+    }
+    await route.fallback();
+  });
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true }).fill("Older autosave");
+  await expect.poll(() => started).toBe(true);
+  await page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true }).fill("Latest edit before Next");
+  await page.getByRole("button", { name: "Next line item", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
+  await expect(page.locator(".technical-measure-line--active")).toContainText("Line 1 of 4");
+  release();
+  clearTimeout(safetyRelease);
+  await expect(page.locator(".technical-measure-line--active")).toContainText("Line 2 of 4");
+  expect(form.lines[0].current_values.notes).toBe("Latest edit before Next");
+});
+
+test("a rejected save keeps the current line and edits visible", async ({ page }) => {
+  await setup(page, fixture());
+  await page.route("**/api/crm/technical-measures/fixture", route => route.request().method() === "PATCH"
+    ? route.fulfill({ status: 400, json: { message: "This draft could not be saved." } }) : route.fallback());
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true }).fill("Retain on failure");
+  await page.getByRole("button", { name: "Next line item", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Next line item", exact: true })).toBeEnabled();
+  await expect(page.locator(".technical-measure-line--active")).toContainText("Line 1 of 4");
+  await expect(page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true })).toHaveValue("Retain on failure");
+  await expect(page.locator(".technical-measure-line--active .technical-measure-alert--active")).toContainText("could not be saved");
+});
+
+test("network failure saves locally, advances, and retains the draft on reload", async ({ page }) => {
+  await setup(page, fixture());
+  await page.route("**/api/crm/technical-measures/fixture", route => route.abort());
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true }).fill("Offline first line");
+  await page.getByRole("button", { name: "Next line item", exact: true }).click();
+  await expect(page.locator(".technical-measure-line--active")).toContainText("Line 2 of 4");
+  await expect(page.locator(".technical-measure-line--active .technical-measure-alert--active")).toContainText("waiting to upload");
+  await page.reload();
+  await page.locator(".technical-measure-ledger-item > button").first().click();
+  await expect(page.locator(".technical-measure-line--active").getByRole("textbox", { name: "Technician Notes", exact: true })).toHaveValue("Offline first line");
 });
