@@ -1,3 +1,5 @@
+import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
+import { normanColorWithdrawal } from "@/lib/quote/norman-assortment-2026-09";
 import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { ACCOUNT_IDS } from "./accounts";
 
@@ -96,7 +98,7 @@ export type ProductType = (typeof PRODUCT_TYPES)[number];
 
 export const MINI_BLIND_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
 
-export const MINI_BLIND_SLAT_SIZES = ['1/2"', '1"', '2"'] as const;
+export const MINI_BLIND_SLAT_SIZES = ['1"', '2"'] as const;
 
 export const MINI_BLIND_FINISHES = [
   "Standard",
@@ -1556,7 +1558,9 @@ export function getRomanFabricCategoryNamesFor(
   if (shadeType === "Common Valance") {
     names = names.filter((name) => !ROMAN_COMMON_VALANCE_EXCLUDED_CATEGORIES.has(name));
   }
-  return names.filter((name) => ROMAN_FABRIC_CATEGORY_NAMES.includes(name));
+  return names.filter((name) => ROMAN_FABRIC_CATEGORY_NAMES.includes(name) &&
+    normanRomanDealerFabricRows.some((row) => row.collection === name && !row.discontinued &&
+      !normanColorWithdrawal("roman", row.colorCode) && (!foldStyle || row.styles.includes(foldStyle))));
 }
 
 export const ROMAN_ALL_FABRICS = ROMAN_FABRIC_CATEGORIES.flatMap((category) =>
@@ -2382,7 +2386,7 @@ export function getRomanFabricColorsForCategory(categoryName?: string | null): r
   const category = ROMAN_FABRIC_CATEGORIES.find(
     (candidate) => normalizeRomanOption(candidate.name) === normalizeRomanOption(categoryName)
   );
-  return category?.colors.map(formatRomanFabricColor) || [];
+  return category?.colors.filter((color) => !normanColorWithdrawal("roman", color.code)).map(formatRomanFabricColor) || [];
 }
 
 export function getRomanFabricCategoryName(categoryName?: string | null): string | undefined {

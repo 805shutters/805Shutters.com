@@ -13,9 +13,9 @@ import { getProductPriceBreakdown } from "./pricingEngine";
 
 describe("MTS Norman product color catalog adapter", () => {
   it("exposes the verified Norman color rows for every MTS fabric/color product", () => {
-    expect(getMtsProductColorRows("Roman Shades")).toHaveLength(202);
+    expect(getMtsProductColorRows("Roman Shades")).toHaveLength(201);
     expect(getMtsProductColorRows("Honeycomb Shades")).toHaveLength(191);
-    expect(getMtsProductColorRows("Sheer Shades")).toHaveLength(32);
+    expect(getMtsProductColorRows("Sheer Shades")).toHaveLength(31);
     expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(74);
     expect(getMtsProductColorRows("Vertical Blinds")).toHaveLength(42);
     expect(getMtsProductColorRows("Mini Blinds")).toHaveLength(33);

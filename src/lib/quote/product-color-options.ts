@@ -1,3 +1,4 @@
+import { normanColorWithdrawal } from "./norman-assortment-2026-09";
 import { getProduct } from "./catalog";
 import {
   NORMAN_ROLLER_COLOR_CODE_DETAIL,
@@ -273,7 +274,7 @@ const romanDealerColorOptions: ProductColorOption[] = normanRomanDealerFabricRow
       programId,
       selectionMode: "fabric",
       requiresProgram: !programId,
-      available: !row.discontinued,
+      available: !row.discontinued && !normanColorWithdrawal("roman", row.colorCode),
       automaticDetails: {},
       searchText,
       romanStyles: row.styles,
@@ -368,6 +369,7 @@ const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.m
     sourcePageModified: row.sourcePageModified,
     sourceNote: row.sourceNote,
     ...resolved,
+    available: resolved.available && !normanColorWithdrawal(row.productId, row.colorCode),
     automaticDetails: automaticDetails(row.productId, collection, row.fabricType || ""),
     searchText,
   };

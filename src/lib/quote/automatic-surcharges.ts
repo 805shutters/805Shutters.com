@@ -1,3 +1,4 @@
+import { NORMAN_MICRO_SLAT_SURCHARGE_ID } from "./norman-assortment-2026-09";
 import { findProductSurcharge, getProduct, type CatalogSurcharge } from "./catalog";
 
 export type AutomaticSurchargeSelection = { id: string; units?: number };
@@ -281,6 +282,7 @@ export function isPriceableCatalogSurcharge(surcharge: CatalogSurcharge): boolea
 }
 
 export function findPriceableProductSurcharge(productId: string, surchargeId: string): CatalogSurcharge | null {
+  if (productId === "citylights_aluminum" && surchargeId === NORMAN_MICRO_SLAT_SURCHARGE_ID) return null;
   const product = getProduct(productId);
   if (!product) return null;
   const surcharge = findProductSurcharge(product, surchargeId);

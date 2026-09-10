@@ -101,6 +101,24 @@
       "fileName": "Roller MinMax Appendix.xls",
       "byteLength": 696832,
       "sha256": "ba286767b6c4d760bf480434312678f6c35b229e9763ddd6fcda9f7cd18b9cc3"
+    },
+    {
+      "sourceId": "norman-roman-guide-2026-09",
+      "fileName": "Roman Shade Guide 2026-09.pdf",
+      "byteLength": 7134330,
+      "sha256": "d312848c45bf49ee3c06a6ae11f3f7b4cd7b53d88984f114598154c54628d151"
+    },
+    {
+      "sourceId": "norman-perfectsheer-smartdrape-guide-2026-09",
+      "fileName": "PS-SD Guide.pdf",
+      "byteLength": 3213569,
+      "sha256": "3d00375007c3afb0d8e1cf0e75a51f2395d27dace067074f01033b72f70461a3"
+    },
+    {
+      "sourceId": "norman-retail-guide-2026-09",
+      "fileName": "2026Sep Retail Price Guide.pdf",
+      "byteLength": 16321158,
+      "sha256": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd"
     }
   ],
   "derivedArtifacts": [

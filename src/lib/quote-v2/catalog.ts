@@ -35,6 +35,12 @@ export function quoteV2CatalogVersionFor(
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
   }
+  if ((productId === "roman" || productId === "citylights_aluminum") && asOf >= "2026-09-01") {
+    return `${QUOTE_V2_CATALOG_VERSION}-assortment-2026-09-r1`;
+  }
+  if (productId === "perfectsheer" && asOf >= "2026-08-11") {
+    return `${QUOTE_V2_CATALOG_VERSION}-assortment-2026-08-11-r1`;
+  }
   return productId === "roller" && asOf >= "2026-08-01"
     ? QUOTE_V2_ROLLER_PREVIEW_VERSION
     : QUOTE_V2_CATALOG_VERSION;

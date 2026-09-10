@@ -123,7 +123,8 @@ describe("catalog-backed surcharge detail fields", () => {
   });
 
   it("can derive every guide-priced product surcharge from a visible detail field", () => {
-    const ignoredCatalogHelpers = new Set(["valance_additional_foot", "additional_valance_foot"]);
+    // The retained July Micro surcharge is deliberately quarantined by the September guide.
+    const ignoredCatalogHelpers = new Set(["valance_additional_foot", "additional_valance_foot", "micro_1_2in_slats"]);
     for (const product of catalog.products) {
       const fields = getDetailFieldsForProduct(product.id);
       const reachable = new Set<string>();

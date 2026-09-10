@@ -1,3 +1,4 @@
+import { NORMAN_MICRO_SLAT_SURCHARGE_ID } from "./norman-assortment-2026-09";
 // Pure pricing engine for Norman window treatments.
 //
 // Design principles (every one is a fix for a real bug in the legacy MTS engine):
@@ -700,6 +701,9 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
 
 export function priceDesign(input: PriceInput): PriceResult {
   const warnings: string[] = [];
+  if (input.productId === "citylights_aluminum" && input.surcharges?.some((entry) => entry.id === NORMAN_MICRO_SLAT_SURCHARGE_ID)) {
+    return fail("SURCHARGE_NO_PRICE", "Norman's September 2026 guide no longer supplies a Micro 1/2-inch slat price. This option requires current manufacturer confirmation.", warnings);
+  }
 
   if (!input.productId) return fail("PRODUCT_SELECTION_REQUIRED", "Select a manufacturer and product before pricing this line.", warnings);
   const product = getProduct(input.productId);

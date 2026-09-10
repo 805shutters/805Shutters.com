@@ -1,3 +1,8 @@
+import {
+  isNormanMicroSlatSize,
+  normanColorWithdrawal,
+  NORMAN_MICRO_SLAT_SURCHARGE_ID,
+} from "@/lib/quote/norman-assortment-2026-09";
 import type {
   ProductRuleStatus,
   SelectionContext,
@@ -2316,6 +2321,37 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
+  const withdrawal = normanColorWithdrawal(
+    context.productId,
+    configValue(context, "fabric_color_code"),
+    context.catalogAsOf,
+  );
+  if (withdrawal) {
+    issues.push(issue(
+      "hard_block",
+      "norman.assortment.color_withdrawn",
+      withdrawal,
+      { fabric_color_code: withdrawal.colorCode },
+      withdrawal.explanation,
+    ));
+  }
+  const selectedSurcharges = context.options.surcharges;
+  const hasMicroSurcharge = Array.isArray(selectedSurcharges) && selectedSurcharges.some(
+    (entry: SelectionValue) => entry != null && typeof entry === "object" &&
+      !Array.isArray(entry) && "id" in entry && entry.id === NORMAN_MICRO_SLAT_SURCHARGE_ID,
+  );
+  if (
+    context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-09-01" &&
+    (isNormanMicroSlatSize(configValue(context, "slat_size")) || hasMicroSurcharge)
+  ) {
+    issues.push(issue(
+      "hard_block",
+      "norman.citylights.micro_slats.unverified",
+      { sourceId: "norman-retail-guide-2026-09", page: 35 },
+      { slat_size: text(configValue(context, "slat_size")) },
+      "Norman's September 2026 retail guide no longer supplies the Micro 1/2-inch slat surcharge. Current price and orderability require manufacturer confirmation; the option is not free.",
+    ));
+  }
   switch (context.productId) {
     case "roller":
       issues.push(...validateRoller(context));

@@ -957,7 +957,7 @@ const productDetails: Record<string, QuoteDetailField[]> = {
   ],
   citylights_aluminum: [
     ...mountFields,
-    { id: "slat_size", label: "Slat size", type: "select", options: [{ value: "1_2", label: "1/2 in" }, { value: "1", label: "1 in" }, { value: "2", label: "2 in" }] },
+    { id: "slat_size", label: "Slat size", type: "select", options: [{ value: "1", label: "1 in" }, { value: "2", label: "2 in" }] },
     { id: "slat_finish", label: "Slat finish", type: "select", options: [{ value: "standard", label: "Standard" }, { value: "metallic", label: "Metallic" }, { value: "matte", label: "Matte" }, { value: "perforated", label: "Perforated" }] },
     { id: "privacy", label: "Privacy*", type: "checkbox" },
     ...shadeControlFields,

@@ -52,7 +52,6 @@ describe("Roman Shades Norman-mirroring options", () => {
       "Alma",
       "Ella",
       "Francis",
-      "Taylor",
     ]);
     // No style selected → full catalog.
     expect(getRomanFabricCategoryNamesFor(null, "Single")).toEqual([
@@ -103,7 +102,7 @@ describe("Roman Shades dealer fabric catalog", () => {
       expect(row.needsPriceGroupReview, `${row.collection} ${row.colorCode}`).toBe(false);
     }
     const rows = getMtsProductColorRows("Roman Shades", {});
-    expect(rows.length).toBe(202);
+    expect(rows.length).toBe(201);
     for (const row of rows) {
       expect(row.programId, `${row.collection} ${row.colorCode} has no program`).toBeTruthy();
       expect(row.requiresProgram).toBe(false);
@@ -117,16 +116,16 @@ describe("Roman Shades dealer fabric catalog", () => {
   });
 
   it("filters colors by fold style like the Norman form", () => {
-    // Ribbon Banded offers only 1 Taylor color at Norman.
+    // The only Ribbon Banded Taylor color, F0210, was withdrawn September 1.
     const taylorRibbon = getMtsProductColorRows("Roman Shades", {
       roman_fabric_category: "Taylor",
       fold_style: "Ribbon Banded",
     });
-    expect(taylorRibbon.length).toBe(1);
+    expect(taylorRibbon.length).toBe(0);
     const taylorAll = getMtsProductColorRows("Roman Shades", {
       roman_fabric_category: "Taylor",
     });
-    expect(taylorAll.length).toBe(8);
+    expect(taylorAll.length).toBe(7);
   });
 
   it("every style×category combination offers at least one color", () => {

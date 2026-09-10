@@ -345,6 +345,66 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     sourceUrl:
       "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20MinMax%20Appendix.xls",
   },
+  {
+    "id": "norman-roman-guide-2026-09",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Roman Shade Guide 2026-09.pdf",
+    "title": "Centerpiece Roman Shades Guide",
+    "revision": "2026-09",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Page 2 explicitly dates the F0210 discontinuation September 1, 2026.",
+    "receivedDate": "2026-09-05",
+    "modifiedDate": null,
+    "sha256": "d312848c45bf49ee3c06a6ae11f3f7b4cd7b53d88984f114598154c54628d151",
+    "authorities": [
+      "assortment",
+      "options"
+    ],
+    "pageCount": 53,
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roman%20Shades/Roman%20Shade%20Guide.pdf"
+  },
+  {
+    "id": "norman-perfectsheer-smartdrape-guide-2026-09",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "PS-SD Guide.pdf",
+    "title": "PerfectSheer and SmartDrape Guide",
+    "revision": "2026-09",
+    "effectiveDate": "2026-08-11",
+    "effectiveDateEvidence": "Page 2 explicitly dates removal of PerfectSheer Silver F1364 August 11, 2026.",
+    "receivedDate": "2026-09-05",
+    "modifiedDate": null,
+    "sha256": "3d00375007c3afb0d8e1cf0e75a51f2395d27dace067074f01033b72f70461a3",
+    "authorities": [
+      "assortment",
+      "options"
+    ],
+    "pageCount": 51,
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Perfectsheer%20%26%20SmartDrape/PS-SD%20Guide.pdf"
+  },
+  {
+    "id": "norman-retail-guide-2026-09",
+    "manufacturer": "Norman",
+    "kind": "price_book",
+    "format": "pdf",
+    "fileName": "2026Sep Retail Price Guide.pdf",
+    "title": "2026 Retail Guide",
+    "revision": "2026-09",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Retail guide states effective September 1, 2026; page 35 no longer supplies the Micro 1/2-inch surcharge.",
+    "receivedDate": "2026-09-05",
+    "modifiedDate": null,
+    "sha256": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd",
+    "authorities": [
+      "assortment",
+      "options"
+    ],
+    "pageCount": 40,
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinder/PriceGuide/2026Sep%20Retail%20Price%20Guide.pdf"
+  },
 ] as const satisfies readonly SourceManifestEntry[];
 
 export type SourceManifestId =
