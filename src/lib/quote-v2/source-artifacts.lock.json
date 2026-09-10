@@ -119,6 +119,18 @@
       "fileName": "2026Sep Retail Price Guide.pdf",
       "byteLength": 16321158,
       "sha256": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd"
+    },
+    {
+      "sourceId": "norman-roller-guide-2026-09",
+      "fileName": "Roller Shade Guide 2026-09.pdf",
+      "byteLength": 6977111,
+      "sha256": "e9cc15ce95e5d0c2305b639df612af39e7f17fb316d001631e3c3cbff36e0b2e"
+    },
+    {
+      "sourceId": "norman-roller-minmax-appendix-2026-09",
+      "fileName": "Roller MinMax Appendix 2026-09.xlsx",
+      "byteLength": 422842,
+      "sha256": "754e924e4b3c4429b5452e3de0d0ed330d7b2a376613783c9659766f61a04629"
     }
   ],
   "derivedArtifacts": [

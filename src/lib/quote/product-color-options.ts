@@ -1,3 +1,4 @@
+import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
 import { normanColorWithdrawal } from "./norman-assortment-2026-09";
 import { getProduct } from "./catalog";
 import {
@@ -386,8 +387,10 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
   publicColorName: row.publicColorName,
   frStatus: row.frStatus,
   imageUrl: row.imageUrl,
-  sourcePage: "https://normanusa.com/product/soluna-roller-shades/",
-  sourcePageModified: "2026-06-03T16:31:34+00:00",
+  sourcePage: row.programId === NORMAN_ROLLER_PG4_PROGRAM_ID
+    ? "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20Shade%20Guide.pdf"
+    : "https://normanusa.com/product/soluna-roller-shades/",
+  sourcePageModified: row.programId === NORMAN_ROLLER_PG4_PROGRAM_ID ? null : "2026-06-03T16:31:34+00:00",
   sourceNote: row.sourceNote,
   programId: row.programId,
   selectionMode: "fabric",

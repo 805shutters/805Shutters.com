@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(19);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(21);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(19);
+    ).toBe(21);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(19);
+    ).toBe(21);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -70,6 +70,7 @@ describe("quote V2 source manifest", () => {
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({
+      "Roller Shade Guide 2026-09.pdf": "e9cc15ce95e5d0c2305b639df612af39e7f17fb316d001631e3c3cbff36e0b2e",
       "Roman Shade Guide 2026-09.pdf": "d312848c45bf49ee3c06a6ae11f3f7b4cd7b53d88984f114598154c54628d151",
       "PS-SD Guide.pdf": "3d00375007c3afb0d8e1cf0e75a51f2395d27dace067074f01033b72f70461a3",
       "2026Sep Retail Price Guide.pdf": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd",

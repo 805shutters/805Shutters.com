@@ -1,5 +1,5 @@
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
-import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
+import { normanRollerFabricColors, normanRollerJulyFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 
 /**
@@ -34,6 +34,9 @@ export function quoteV2CatalogVersionFor(
 ): string {
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
+  }
+  if (productId === "roller" && asOf >= "2026-09-01") {
+    return `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-pg4-2026-09-r1`;
   }
   if ((productId === "roman" || productId === "citylights_aluminum") && asOf >= "2026-09-01") {
     return `${QUOTE_V2_CATALOG_VERSION}-assortment-2026-09-r1`;
@@ -240,12 +243,14 @@ export const synchronyVerticalDiscontinuedColors: readonly CatalogColorOffering[
 
 const ROMAN_REAR_EXCLUDED_COLLECTIONS = new Set(["Aruba", "Bali", "Cove", "Maui", "Samoa"]);
 
-export const romanRearExcludedColors = normanRollerFabricColors.filter(
+// Roman rear-roller eligibility remains the separately verified July assortment.
+// New Soluna colors need their own Roman rear-shade approval before activation.
+export const romanRearExcludedColors = normanRollerJulyFabricColors.filter(
   (row) =>
     ROMAN_REAR_EXCLUDED_COLLECTIONS.has(row.collection) || row.collection === "NA400 (1%)",
 );
 
-export const romanRearEligibleColors = normanRollerFabricColors.filter(
+export const romanRearEligibleColors = normanRollerJulyFabricColors.filter(
   (row) => !romanRearExcludedColors.some((excluded) => excluded.collection === row.collection && excluded.colorCode === row.colorCode),
 );
 

@@ -1160,7 +1160,9 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
       issue(
         "hard_block",
         "roller.program.fabric_mismatch",
-        { sourceId: "norman-retail-guide-2026-07", page: 14 },
+        { sourceId: fabric.programId === "roller_cordless_fabric_price_group_4_pg4"
+          ? "norman-retail-guide-2026-09" : "norman-retail-guide-2026-07",
+          page: fabric.programId === "roller_cordless_fabric_price_group_4_pg4" ? 19 : 14 },
         {
           fabric_collection: collection,
           fabric_color_code: colorCode,

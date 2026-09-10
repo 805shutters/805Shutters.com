@@ -405,6 +405,46 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     "pageCount": 40,
     "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinder/PriceGuide/2026Sep%20Retail%20Price%20Guide.pdf"
   },
+  {
+    "id": "norman-roller-guide-2026-09",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Roller Shade Guide 2026-09.pdf",
+    "title": "Norman September Roller Shade Guide",
+    "revision": "September 1, 2026",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Guide revision log p2 effective 9/1/2026",
+    "receivedDate": "2026-09-05",
+    "modifiedDate": null,
+    "sha256": "e9cc15ce95e5d0c2305b639df612af39e7f17fb316d001631e3c3cbff36e0b2e",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 77,
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20Shade%20Guide.pdf"
+  },
+  {
+    "id": "norman-roller-minmax-appendix-2026-09",
+    "manufacturer": "Norman",
+    "kind": "restriction_workbook",
+    "format": "xlsx",
+    "fileName": "Roller MinMax Appendix 2026-09.xlsx",
+    "title": "Norman September Roller MinMax Appendix",
+    "revision": "September 1, 2026",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Revision Log worksheet A43:C43, effective date B43: 9/1/2026",
+    "receivedDate": "2026-09-05",
+    "modifiedDate": null,
+    "sha256": "754e924e4b3c4429b5452e3de0d0ed330d7b2a376613783c9659766f61a04629",
+    "authorities": [
+      "assortment",
+      "restrictions"
+    ],
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20MinMax%20Appendix.xlsx"
+  },
 ] as const satisfies readonly SourceManifestEntry[];
 
 export type SourceManifestId =

@@ -1,3 +1,4 @@
+import { normanRollerPg4Program } from "@/lib/quote/norman-roller-pg4-2026-09.generated";
 // Pricing data for all products — extracted from 818 Shutters pricing structure
 // Heights and widths are in inches, prices are in USD
 
@@ -280,6 +281,14 @@ export const VERTICAL_HONEYCOMB_PRICING: Record<string, PriceGrid> = {
 
 // ========== ROLLER SHADES PRICING ==========
 export const ROLLER_PRICING: Record<string, PriceGrid> = {
+  group4September2026: {
+    name: normanRollerPg4Program.name,
+    fabrics: normanRollerPg4Program.fabricCollections.flatMap((row) => row.fabrics),
+    maxWidth: 120, maxHeight: 144,
+    widths: normanRollerPg4Program.grid.widths,
+    heights: normanRollerPg4Program.grid.heights,
+    prices: normanRollerPg4Program.grid.prices,
+  },
   group1: {
     name: "Cordless Fabric - Price Group 1",
     fabrics: [

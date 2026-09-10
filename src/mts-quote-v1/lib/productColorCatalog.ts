@@ -396,6 +396,7 @@ export function getMtsGridKeyForCatalogProgram(
     if (programId.includes("fabric_price_group_1")) return "group1";
     if (programId.includes("fabric_price_group_2")) return "group2";
     if (programId.includes("fabric_price_group_3")) return "group3";
+    if (programId.includes("fabric_price_group_4")) return "group4September2026";
     // Catalog ids use "solar_screen_price_group_N"; accept both spellings.
     if (programId.includes("solar_screen_price_group_1") || programId.includes("solar_price_group_1")) {
       return "solarCordlessGroup1";

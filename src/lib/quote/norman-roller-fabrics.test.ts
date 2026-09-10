@@ -9,15 +9,15 @@ describe("Norman roller fabric color catalog", () => {
   const roller = getProduct("roller")!;
 
   it("contains the verified Norman Soluna roller fabric color rows", () => {
-    expect(normanRollerFabricColors).toHaveLength(350);
-    expect(new Set(normanRollerFabricColors.map((row) => row.collection)).size).toBe(73);
-    expect(new Set(normanRollerFabricColors.map((row) => row.colorCode)).size).toBe(350);
+    expect(normanRollerFabricColors).toHaveLength(364);
+    expect(new Set(normanRollerFabricColors.map((row) => row.collection)).size).toBe(76);
+    expect(new Set(normanRollerFabricColors.map((row) => row.colorCode)).size).toBe(364);
     expect(normanRollerFabricColors.every((row) => row.collection && row.colorCode && row.colorName)).toBe(true);
   });
 
   it("maps every selectable collection to a valid roller price program", () => {
     const collections = new Set(normanRollerFabricColors.filter((row) => row.available).map((row) => row.collection));
-    expect(collections.size).toBe(73);
+    expect(collections.size).toBe(76);
     for (const collection of collections) {
       const programId = roller.fabricRouting?.[collection];
       expect(programId, collection).toBeTruthy();
@@ -25,7 +25,7 @@ describe("Norman roller fabric color catalog", () => {
     }
   });
 
-  it("only exposes current July 2026 guide rows", () => {
+  it("exposes verified July rows and the September PG4 supplement", () => {
     const unavailable = normanRollerFabricColors.filter((row) => !row.available);
     const collections: string[] = normanRollerFabricColors.map((row) => row.collection);
     const colorCodes: string[] = normanRollerFabricColors.map((row) => row.colorCode);

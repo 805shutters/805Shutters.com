@@ -65,7 +65,7 @@ EXPECTED_REGION_COUNTS = {
     "ca_ma": 23,
 }
 
-FABRIC_TOKEN = re.compile(r"(?:[A-Z]\d{5}|[A-Z]{2}\d{4}(?:-[A-Z])?)")
+FABRIC_TOKEN = re.compile(r"(?<![A-Z0-9])(?:[A-Z]\d{5}|[A-Z]{2}\d{4,5}(?:-[A-Z])?)(?![A-Z0-9])")
 REQUIRED_LIMIT_METRICS = ("minWidth", "minHeight", "maxWidth", "maxHeight")
 
 METRIC_NAMES = {
@@ -166,11 +166,17 @@ def normalize_region(source_note: str) -> str:
 
 
 def source_release(workbook: Any) -> dict[str, Any]:
-    sheet = workbook["Revision Log"]
+    sheet = next(sheet for sheet in workbook if sheet.title.strip() == "Revision Log")
     dated_rows: list[tuple[date, date, int]] = []
     for row in range(1, sheet.max_row + 1):
         revised = sheet.cell(row, 1).value
         effective = sheet.cell(row, 2).value
+        # September's effective date is authored as text rather than an Excel date.
+        if isinstance(effective, str):
+            try:
+                effective = datetime.strptime(effective.strip(), "%m/%d/%Y")
+            except ValueError:
+                pass
         if isinstance(revised, (date, datetime)) and isinstance(effective, (date, datetime)):
             revised_date = revised.date() if isinstance(revised, datetime) else revised
             effective_date = effective.date() if isinstance(effective, datetime) else effective
@@ -187,7 +193,7 @@ def source_release(workbook: Any) -> dict[str, Any]:
         "activationPolicy": "inactive before effectiveFrom; active on or after effectiveFrom",
         "sourceSummary": exact_text(sheet.cell(row, 3).value),
         "sourceRef": {
-            "sheet": "Revision Log",
+            "sheet": sheet.title,
             "row": row,
             "range": f"A{row}:C{row}",
         },

@@ -1146,7 +1146,7 @@ function priceComponentSource(
     ? program.sourcePages
     : product.pages;
   return sourceProvenance(
-    contractSourceId(product.id),
+    (program?.sourceId as SourceManifestId | undefined) ?? contractSourceId(product.id),
     pages.length > 0 ? { pages } : {},
   );
 }

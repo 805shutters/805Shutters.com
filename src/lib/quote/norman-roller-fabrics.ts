@@ -23,7 +23,9 @@ export type NormanRollerFabricColor = {
   searchText: string;
 };
 
-export const normanRollerFabricColors = [
+import { normanRollerPg4Colors } from "./norman-roller-pg4-2026-09.generated";
+
+export const normanRollerJulyFabricColors = [
   {
     "collection": "Amelia",
     "fabricType": "Light Filtering",
@@ -4575,6 +4577,10 @@ export const normanRollerFabricColors = [
     "searchText": "windsong 5 solar screens f1265 raven black raven black"
   }
 ] as const satisfies readonly NormanRollerFabricColor[];
+
+export const normanRollerFabricColors: readonly NormanRollerFabricColor[] = [
+  ...normanRollerJulyFabricColors, ...normanRollerPg4Colors,
+];
 
 export function normalizeNormanRollerFabricSearch(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

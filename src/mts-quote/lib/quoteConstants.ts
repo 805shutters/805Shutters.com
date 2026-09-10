@@ -2301,6 +2301,7 @@ export const ROLLER_PROGRAM_TO_PRICING_GRID: Record<string, string> = {
   roller_cordless_fabric_price_group_1_pg1: "group1",
   roller_cordless_fabric_price_group_2_pg2: "group2",
   roller_cordless_fabric_price_group_3_pg3: "group3",
+  roller_cordless_fabric_price_group_4_pg4: "group4September2026",
   roller_cordless_solar_screen_price_group_1_pg1: "solarCordlessGroup1",
   roller_cordless_solar_screen_price_group_2_pg2: "solarCordlessGroup2",
   roller_cordless_solar_screen_price_group_3_pg3: "solarCordlessGroup3",

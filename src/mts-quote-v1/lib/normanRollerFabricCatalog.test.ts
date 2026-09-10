@@ -14,9 +14,9 @@ import { getProductPriceBreakdown } from "./pricingEngine";
 
 describe("MTS Norman roller fabric catalog", () => {
   it("loads the full verified roller color catalog", () => {
-    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(350);
-    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(350);
-    expect(new Set(MTS_ROLLER_FABRIC_COLORS.map((row) => row.collection))).toHaveLength(73);
+    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(364);
+    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(364);
+    expect(new Set(MTS_ROLLER_FABRIC_COLORS.map((row) => row.collection))).toHaveLength(76);
     expect(
       MTS_ROLLER_FABRIC_COLORS.every(
         (row) => row.collection && row.colorCode && row.colorName

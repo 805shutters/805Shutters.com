@@ -8,6 +8,8 @@ import {
   type NormanRollerV2ProfileAssignment,
   type NormanRollerV2ProfileDefinition,
 } from "./generated/norman-roller-v2.generated";
+import { normanRollerPg4Source } from "./generated/norman-roller-pg4-2026-09.generated";
+import { NORMAN_ROLLER_PG4_EFFECTIVE_FROM } from "@/lib/quote/norman-roller-pg4-2026-09.generated";
 import { rollerUiSheetForSelection } from "./roller-ui-facets";
 
 export type RollerMatrixResolution =
@@ -61,12 +63,25 @@ export type RollerOfferingResolution =
       candidates?: readonly string[];
     };
 
-const definitionById = new Map(
-  normanRollerV2Source.profileDefinitions.map((definition) => [definition.id, definition]),
-);
-const profileById = new Map(
-  normanRollerV2Source.limitProfiles.map((profile) => [profile.id, profile]),
-);
+const sourceIndexes = new Map([normanRollerV2Source, normanRollerPg4Source].map((source) => [source, {
+  definitions: new Map(source.profileDefinitions.map((row) => [row.id, row])),
+  profiles: new Map(source.limitProfiles.map((row) => [row.id, row])),
+}]));
+
+function isPg4Selection(context: SelectionContext): boolean {
+  const code = compact(stringConfig(context, "fabric_color_code"));
+  return normanRollerPg4Source.offerings.some((offering) => compact(offering.colorCode) === code);
+}
+
+function rollerSource(context: SelectionContext) {
+  return isPg4Selection(context) ? normanRollerPg4Source : normanRollerV2Source;
+}
+
+function rollerSourceId(context: SelectionContext) {
+  return isPg4Selection(context)
+    ? "norman-roller-minmax-appendix-2026-09"
+    : "norman-roller-minmax-appendix-2026-08";
+}
 
 function compact(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase().replace(/[^a-z0-9]+/g, "") : "";
@@ -238,9 +253,12 @@ export function normalizeRollerRegionScope(
 export function resolveRollerOffering(
   context: SelectionContext,
 ): RollerOfferingResolution {
+  if (isPg4Selection(context) && context.catalogAsOf < NORMAN_ROLLER_PG4_EFFECTIVE_FROM) {
+    return { ok: false, code: "OFFERING_NOT_FOUND", message: "September PG4 fabrics are not effective before September 1, 2026." };
+  }
   const collection = normalizeIdentity(stringConfig(context, "fabric_collection"));
   const colorCode = compact(stringConfig(context, "fabric_color_code"));
-  const matches = normanRollerV2Source.offerings.filter(
+  const matches = rollerSource(context).offerings.filter(
     (offering) =>
       normalizeIdentity(offering.collection) === collection && compact(offering.colorCode) === colorCode,
   );
@@ -330,7 +348,7 @@ export function resolveRollerMatrixProfile(context: SelectionContext): RollerMat
       message: "The Roller application, coupling arrangement, and physical shade count do not resolve to one source matrix.",
     };
   }
-  const rows = normanRollerV2Source.limitRows.filter(
+  const rows = rollerSource(context).limitRows.filter(
     (row) => row.sheet === sheet && row.fabricCodes.includes(offering.fabricCode),
   );
   if (rows.length === 0) {
@@ -351,7 +369,7 @@ export function resolveRollerMatrixProfile(context: SelectionContext): RollerMat
   const selectedTube = stringConfig(context, "roller_tube", "tube_class");
   const selectedOrientation = stringConfig(context, "fabric_orientation");
   const orientation = selectedOrientation ? compact(selectedOrientation) : "normalfabricorientation";
-  const definitions = normanRollerV2Source.profileDefinitions.filter(
+  const definitions = rollerSource(context).profileDefinitions.filter(
     (definition) =>
       definition.sheet === sheet &&
       compact(definition.operatingSystem) === operatingSystem &&
@@ -378,7 +396,7 @@ export function resolveRollerMatrixProfile(context: SelectionContext): RollerMat
 
   const rowIds = new Set(rows.map((row) => row.id));
   const definitionIds = new Set(usable.map((definition) => definition.id));
-  const assignments = normanRollerV2Source.profileAssignments.filter(
+  const assignments = rollerSource(context).profileAssignments.filter(
     (assignment) =>
       rowIds.has(assignment.limitRowId) &&
       definitionIds.has(assignment.profileDefinitionId),
@@ -396,8 +414,8 @@ export function resolveRollerMatrixProfile(context: SelectionContext): RollerMat
     };
   }
   const assignment = assignments[0];
-  const definition = definitionById.get(assignment.profileDefinitionId);
-  const profile = profileById.get(assignment.profileId);
+  const definition = sourceIndexes.get(rollerSource(context))!.definitions.get(assignment.profileDefinitionId);
+  const profile = sourceIndexes.get(rollerSource(context))!.profiles.get(assignment.profileId);
   if (!definition || !profile) {
     return {
       ok: false,
@@ -446,7 +464,7 @@ export function validateRollerMatrix(context: SelectionContext): readonly Valida
       {
         severity: "hard_block",
         ruleId: `roller.matrix.${resolved.code.toLowerCase()}`,
-        source: sourceProvenance("norman-roller-minmax-appendix-2026-08", {
+        source: sourceProvenance(rollerSourceId(context), {
           ...(resolved.sheet ? { sheet: resolved.sheet } : { sheet: "Revision Log" }),
           ...(resolved.sourceRange ? { range: resolved.sourceRange } : {}),
         }),
@@ -457,7 +475,7 @@ export function validateRollerMatrix(context: SelectionContext): readonly Valida
   }
 
   const issues: ValidationIssue[] = [];
-  const source = sourceProvenance("norman-roller-minmax-appendix-2026-08", {
+  const source = sourceProvenance(rollerSourceId(context), {
     sheet: resolved.sheet,
     range: Object.values(resolved.assignment.sourceCells).join(","),
   });
