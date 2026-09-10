@@ -286,11 +286,13 @@ export function QuoteContract({
     enabled: allGroupLineItemIds.length > 0 && !designWritesPending,
   });
 
-  const hasMultipleQuotes = groupQuotes.length > 1;
   const acceptedProjection = projectAcceptedQuote(quote, lineItems);
   const displayLineItems = acceptedProjection.lineItems;
   // Prefer the active record's newest acceptance over an older group-list cache.
-  const displayGroupQuotes = groupQuotes.map((sibling) => sibling.id === quote?.id ? quote : sibling);
+  const displayGroupQuotes = acceptedProjection.accepted && quote
+    ? [quote]
+    : groupQuotes.map((sibling) => sibling.id === quote?.id ? quote : sibling);
+  const hasMultipleQuotes = displayGroupQuotes.length > 1;
   const groupProjections = new Map(displayGroupQuotes.map((sibling) => [sibling.id,
     projectAcceptedQuote(sibling, allGroupLineItems.filter((line) => line.quote_id === sibling.id)),
   ]));
@@ -513,8 +515,10 @@ export function QuoteContract({
   // Payment schedule
   const depositPercent = 50;
   const balancePercent = 50;
-  const depositAmount = totalAmount * 0.5;
-  const balanceAmount = totalAmount - depositAmount;
+  const totalCents = Math.round(totalAmount * 100);
+  const depositCents = Math.round(totalCents * 0.5);
+  const depositAmount = depositCents / 100;
+  const balanceAmount = (totalCents - depositCents) / 100;
   const customerEmailNote = quote ? getQuoteEmailNote(quote) : "";
 
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
@@ -915,7 +919,7 @@ export function QuoteContract({
                         notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
                         actions={<>
                           <div className="flex flex-wrap items-center justify-end gap-1 text-xs text-muted-foreground">
-                            <span>Unit price</span>
+                            <span>{accepted.accepted ? "Base unit price" : "Unit price"}</span>
                             <EditableContractPrice
                               value={design.unit_price}
                               disabled={accepted.accepted || updateDesignPrice.isPending}

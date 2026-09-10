@@ -27,6 +27,16 @@ function render(patch: Partial<CrmQuote> = {}) {
 }
 
 describe("mirrored CRM quote pricing in the actual dashboard", () => {
+  it("labels a mirrored retained alternative Pending Quote without changing its status", () => {
+    const original = fixtures.sales.map((quote) => ({ ...quote }));
+    try {
+      Object.assign(fixtures.sales[0], { quote_group_id: "group" });
+      fixtures.sales.push({ ...fixtures.sales[1], id: "sold-a", status: "sold", quote_group_id: "group" } as typeof fixtures.sales[number]);
+      expect(render()).toContain("Pending Quote");
+      expect(fixtures.sales[0].status).toBe("draft");
+      expect(render({ signed_at: "2026-09-10" })).not.toContain("Pending Quote");
+    } finally { fixtures.sales.splice(0, fixtures.sales.length, ...original); }
+  });
   it("uses the exact linked sales pricing state after deduplicating its sales row", () => {
     const html = render();
     expect(html).toContain("Customer C"); expect(html).toContain("Pricing incomplete");

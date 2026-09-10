@@ -16,7 +16,7 @@ export function projectAcceptedQuote(
   }
   const selection = quote.quote_v2_accepted_selection;
   if (!selection || !Array.isArray(selection.lineQuantities) || !Array.isArray(selection.selectedLineIds) ||
-      !money(selection.acceptedTotal) || !money(selection.originalTotal) || !selection.crmQuoteId ||
+      !money(selection.acceptedTotal) || selection.acceptedTotal <= 0 || !money(selection.originalTotal) || !selection.crmQuoteId ||
       selection.lineQuantities.length !== sourceLines.length || sourceLines.length === 0) return failure();
   const physicalIds = new Set(selection.selectedLineIds);
   if (physicalIds.size !== selection.selectedLineIds.length) return failure();

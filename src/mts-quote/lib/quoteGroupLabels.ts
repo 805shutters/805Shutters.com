@@ -3,7 +3,23 @@ const QUOTE_LETTERS = "ABCDEFGHIJ".split("");
 export type QuoteGroupTabQuote = {
   id: string;
   quote_letter?: string | null;
+  quote_group_id?: string | null;
+  status?: string | null;
+  signed_at?: string | null;
+  customer_signature?: string | null;
 };
+
+function groupQuoteAccepted(quote: QuoteGroupTabQuote): boolean {
+  return Boolean(quote.signed_at || quote.customer_signature) ||
+    ["sold", "ordered", "received", "installed"].includes(quote.status || "");
+}
+
+/** Display-only label: retained unsigned alternatives keep their stored lifecycle. */
+export function isPendingQuoteAlternative(quote: QuoteGroupTabQuote | undefined, groupQuotes: QuoteGroupTabQuote[]): boolean {
+  return !!quote?.quote_group_id && ["draft", "sent"].includes(quote.status || "") &&
+    !groupQuoteAccepted(quote) && groupQuotes.some((sibling) => sibling.id !== quote.id &&
+      sibling.quote_group_id === quote.quote_group_id && groupQuoteAccepted(sibling));
+}
 
 function normalizedQuoteLetter(letter: string | null | undefined): string {
   return (letter || "A").trim().toUpperCase() || "A";

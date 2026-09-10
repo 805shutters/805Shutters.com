@@ -10,7 +10,7 @@ import type { SalesQuote, SalesQuoteLineItem } from "@mts/types/quote";
 
 const state = vi.hoisted(() => ({
   quote: {} as SalesQuote, lines: [] as SalesQuoteLineItem[], group: [] as SalesQuote[], groupLines: [] as SalesQuoteLineItem[],
-  pending: false, mutate: vi.fn(),
+  pending: false, isolated: false, mutate: vi.fn(),
   designs: [{ id: "design-living", line_item_id: "living", variant: "A", unit_price: 90,
     product_type: "Shutters", options_json: { authoritative_once_total: 30.02, authoritative_price_status: "authoritative" } }],
 }));
@@ -25,11 +25,12 @@ vi.mock("@tanstack/react-query", () => ({
   },
   useMutation: () => ({ mutate: state.mutate, mutateAsync: state.mutate, isPending: false }), useQueryClient: () => ({}), useIsMutating: () => 0,
 }));
-vi.mock("@mts/integrations/supabase/quoteBuilderDatabase", () => ({ useQuoteBuilderDatabase: () => ({ database: {} }) }));
+vi.mock("@mts/integrations/supabase/quoteBuilderDatabase", () => ({ useQuoteBuilderDatabase: () => ({ database: {}, isolated: state.isolated }) }));
 vi.mock("@mts/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("./DesignCard", () => ({ DesignCard: () => "Editable design must not render", loadQuoteBuilderCatalog: async () => ({ products: [] }), buildCatalogSelectionPatch: () => ({}) }));
 vi.mock("./QuoteGroupTabs", () => ({ QuoteGroupTabs: () => null }));
 vi.mock("./SendQuoteDialog", () => ({ SendQuoteDialog: () => null }));
+vi.mock("./SendPaymentLinkDialog", () => ({ SendPaymentLinkDialog: ({ open }: { open: boolean }) => open ? "Accepted payment dialog" : null }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot>; let container: HTMLDivElement;
 beforeEach(() => {
@@ -38,7 +39,7 @@ beforeEach(() => {
     customer_signature: "signed", signed_at: "2026-09-10", total_amount: 350.02,
     installer_notes: JSON.stringify({ __stackedLineItemIds: ["living", "kitchen"], __adminControls: { showExtras: true, extraFees: [{ id: "fee", name: "Original fee", amount: 200 }], showTax: true, taxPercent: 10 } }),
   } as SalesQuote;
-  state.group = []; state.groupLines = []; state.pending = false; state.mutate.mockClear();
+  state.group = []; state.groupLines = []; state.pending = false; state.isolated = false; state.mutate.mockClear();
   useQuoteBuilderStore.getState().setActiveQuote("source");
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
@@ -53,6 +54,9 @@ describe("accepted native quote in actual Builder and Contract", () => {
     expect(container.textContent).toContain("Quantity 1"); expect(container.textContent).not.toContain("Quantity 3");
     expect(container.textContent).toContain("$100.01"); expect(container.textContent).not.toContain("$350.02");
     expect(container.textContent).not.toContain("Original fee");
+    expect(container.textContent).not.toContain("Authoritative Once Total");
+    expect(container.textContent).not.toContain("$50.005");
+    if (component === QuoteContract) { expect(container.textContent).toContain("$50.01"); expect(container.textContent).toContain("$50.00"); }
     expect(container.textContent).not.toContain("Editable design must not render");
     expect(JSON.stringify({ quote: state.quote, lines: state.lines, designs: state.designs })).toBe(before);
     expect(state.mutate).not.toHaveBeenCalled();
@@ -69,12 +73,12 @@ describe("accepted native quote in actual Builder and Contract", () => {
     state.lines = saved; state.pending = false; await render(QuoteBuilder);
     expect(state.mutate).not.toHaveBeenCalled(); expect(container.textContent).not.toContain("Kitchen");
   });
-  it("projects each accepted sibling in the group while retaining unrelated original lines", async () => {
-    const sibling = { ...state.quote, id: "sibling", quote_letter: "B", quote_v2_accepted_selection: null } as SalesQuote;
+  it("excludes archived and unaccepted alternatives from an accepted native contract", async () => {
+    const sibling = { ...state.quote, id: "sibling", quote_letter: "B", status: "archived", quote_v2_accepted_selection: null } as SalesQuote;
     state.quote.quote_group_id = "group"; state.group = [state.quote, sibling];
     state.groupLines = [...state.lines, { ...state.lines[1], id: "bedroom", quote_id: "sibling", room_name: "Bedroom" }];
     await render(QuoteContract);
-    expect(container.textContent).toContain("Living room"); expect(container.textContent).toContain("Bedroom");
+    expect(container.textContent).toContain("Living room"); expect(container.textContent).not.toContain("Bedroom");
     expect(container.textContent).not.toContain("Kitchen"); expect(container.textContent).toContain("$100.01");
     expect(state.mutate).not.toHaveBeenCalled();
   });
@@ -88,6 +92,21 @@ describe("accepted native quote in actual Builder and Contract", () => {
     expect(container.textContent).toContain("Bedroom"); expect(container.textContent).toContain("Living room");
     expect(container.textContent).not.toContain("Kitchen"); expect(container.textContent).toContain("$100.01");
     expect(state.mutate).not.toHaveBeenCalled();
+  });
+
+  it("opens the payment dialog only for a verified signed native acceptance", async () => {
+    await render(QuoteBuilder);
+    const button = [...container.querySelectorAll("button")].find((button) => button.textContent === "Send Payment Link")!;
+    expect(button.disabled).toBe(false); await act(() => button.click());
+    expect(container.textContent).toContain("Accepted payment dialog"); expect(state.mutate).not.toHaveBeenCalled();
+  });
+  it.each(["unsigned", "invalid", "isolated"])("keeps accepted payment disabled for %s", async (reason) => {
+    if (reason === "unsigned") state.quote.signed_at = null;
+    if (reason === "invalid") state.quote.quote_v2_accepted_selection!.selectedLineIds = ["missing"];
+    if (reason === "isolated") state.isolated = true;
+    await render(QuoteBuilder);
+    const button = [...container.querySelectorAll("button")].find((button) => button.textContent === "Send Payment Link")!;
+    expect(button.disabled).toBe(true); expect(container.textContent).not.toContain("Accepted payment dialog");
   });
 
 });

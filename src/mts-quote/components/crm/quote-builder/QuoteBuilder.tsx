@@ -2018,6 +2018,8 @@ export function QuoteBuilder({
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => { setActiveQuote(null); setActiveTab("dashboard"); }}>All saved quotes</Button>
             <Button onClick={() => setActiveTab("contract")}>View Contract</Button>
+            <Button variant="outline" disabled={isolated || !quote.signed_at || !!acceptedProjection.error}
+              onClick={() => setShowPaymentLinkDialog(true)}>Send Payment Link</Button>
           </div>
         </div>
         {acceptedProjection.error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">{acceptedProjection.error}</p> : <>
@@ -2031,6 +2033,8 @@ export function QuoteBuilder({
               price={formatCurrency(acceptedProjection.lineTotals.get(item.id)!)} priceLabel="Accepted item total" />;
           })}
           <p className="text-right text-lg font-bold">Accepted total: {formatCurrency(acceptedProjection.acceptedTotal!)}</p>
+          {!isolated && quote.signed_at && <SendPaymentLinkDialog open={showPaymentLinkDialog}
+            onClose={() => setShowPaymentLinkDialog(false)} quote={quote} />}
         </>}
       </div>
     );

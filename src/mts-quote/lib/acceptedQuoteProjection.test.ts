@@ -5,6 +5,14 @@ import { acceptanceFixture } from "./acceptedQuoteProjection.test-fixtures";
 
 
 describe("accepted native quote display projection", () => {
+  it("retains a selected free line alongside a positive accepted contract", () => {
+    const { lines, quote, selection } = acceptanceFixture();
+    Object.assign(selection.lineQuantities[1], { selectedQuantity: 1, remainingQuantity: 0, originalTotal: 0 });
+    selection.selectedLineIds.push("kitchen"); selection.originalTotal = 300.02;
+    const result = projectAcceptedQuote(quote, lines);
+    expect(result.error).toBeNull(); expect(result.lineItems.map((line) => line.id)).toEqual(["living", "kitchen"]);
+    expect(result.lineTotals.get("kitchen")).toBe(0); expect(result.acceptedTotal).toBe(100.01);
+  });
   it("clones partial quantities, excludes unaccepted lines, and leaves cached sources immutable", () => {
     const { lines, quote } = acceptanceFixture();
     const before = JSON.stringify({ lines, quote });

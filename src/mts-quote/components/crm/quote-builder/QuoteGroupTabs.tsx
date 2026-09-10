@@ -8,6 +8,7 @@ import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { getQuoteColor, QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
 import {
   buildVisibleQuoteTabs,
+  isPendingQuoteAlternative,
   createQuoteGroupId,
   nextQuoteLetter,
 } from "@mts/lib/quoteGroupLabels";
@@ -337,7 +338,7 @@ export function QuoteGroupTabs() {
               >
                 {quoteLetter}
               </span>
-              Quote {quoteLetter}
+              {isPendingQuoteAlternative(q, visibleQuotes) ? "Pending Quote" : "Quote"} {quoteLetter}
             </button>
             {canDeleteQuote && (
               <button

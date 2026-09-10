@@ -1,3 +1,4 @@
+import { isPendingQuoteAlternative } from "@mts/lib/quoteGroupLabels";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QuoteCommunicationHub } from "@/components/crm/quote-hub/QuoteCommunicationHub";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -351,6 +352,7 @@ export function QuoteDashboard({
         source: "crm",
         sourceQuoteId,
         salesQuote: sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined,
+        pendingAlternative: isPendingQuoteAlternative(sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined, quotes),
       };
     });
 
@@ -361,6 +363,7 @@ export function QuoteDashboard({
         source: "sales" as const,
         sourceQuoteId: quote.id,
         salesQuote: quote,
+        pendingAlternative: isPendingQuoteAlternative(quote, quotes),
       }));
 
     return [...crmRows, ...salesRows].sort((a, b) => {

@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { buildVisibleQuoteTabs, createQuoteGroupId, nextQuoteLetter } from "./quoteGroupLabels";
+import { buildVisibleQuoteTabs, createQuoteGroupId, nextQuoteLetter, isPendingQuoteAlternative } from "./quoteGroupLabels";
 
 describe("quote group labels", () => {
+  it("labels only unsigned retained alternatives in a sold group without changing stored status", () => {
+    const sold = { id: "a", quote_group_id: "group", status: "sold" };
+    const pending = { id: "b", quote_group_id: "group", status: "sent" };
+    const original = JSON.stringify([sold, pending]);
+    expect(isPendingQuoteAlternative(pending, [sold, pending])).toBe(true);
+    expect(isPendingQuoteAlternative(sold, [sold, pending])).toBe(false);
+    expect(isPendingQuoteAlternative({ ...pending, signed_at: "2026-09-10" }, [sold])).toBe(false);
+    expect(isPendingQuoteAlternative({ ...pending, quote_group_id: "unrelated" }, [sold])).toBe(false);
+    expect(isPendingQuoteAlternative(pending, [{ ...sold, status: "draft" }])).toBe(false);
+    expect(JSON.stringify([sold, pending])).toBe(original);
+  });
   it("uses B for the first additional whole-quote option", () => {
     expect(nextQuoteLetter(["A"])).toBe("B");
   });

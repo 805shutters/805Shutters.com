@@ -27,6 +27,7 @@ export type QuoteTableRow = QuoteStatsSource & {
   source?: "sales" | "crm";
   sourceQuoteId?: string | null;
   salesQuote?: SalesQuote;
+  pendingAlternative?: boolean;
 };
 
 interface QuotesTableProps {
@@ -144,11 +145,13 @@ export function QuotesTable({
                     : "—"}
                 </TableCell>
                 <TableCell>
-                  <QuoteStatusPill
+                  {quote.pendingAlternative && ["draft", "sent"].includes(status) ? (
+                    <span className="rounded-full border px-2.5 py-0.5 text-xs font-medium">Pending Quote</span>
+                  ) : <QuoteStatusPill
                     status={status}
                     quoteId={salesQuoteId}
                     showAdvance={!isCrmQuote && isHovered}
-                  />
+                  />}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
