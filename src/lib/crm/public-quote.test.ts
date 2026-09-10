@@ -75,6 +75,33 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
 }
 
 describe("describeDesign (customer-readable, no internal data leaked)", () => {
+  it("removes imported dealer cost and option pricing from the public contract payload", () => {
+    const source = design({
+      product_id: "roller",
+      unit_price: 333.9,
+      wholesale_unit_price: 111.3,
+      price_breakdown: {
+        source: "mts_805_bookkeeping",
+        productType: "Roller Shades",
+        details: [
+          { label: "Fabric", value: "Callie - Natural Tan" },
+          { label: "Hem Bar", value: "Fabric Covered" },
+          { label: "Dealer Cost", value: "111.3" },
+          { label: "Quote B Source Price", value: "248" },
+          { label: "Quote B Uplift Percent", value: "10" },
+          { label: "Reverse Roll", value: "Yes" },
+        ],
+      },
+    });
+    const original = structuredClone(source);
+    const projected = describeDesign(source);
+    expect(projected.options).toEqual([
+      "Fabric: Callie - Natural Tan", "Hem Bar: Fabric Covered", "Reverse Roll: Yes",
+    ]);
+    expect(JSON.stringify(projected)).not.toMatch(/111\.3|Dealer Cost|Source Price|Uplift/);
+    expect(source).toEqual(original);
+  });
+
   it("projects the valance drawing before removing manufacturer attribution", () => {
     // V2 stores a nested JSON configuration; the legacy detail type only models scalar values.
     const details = { quote_v2_customer_configuration: { manufacturerId: "norman", selections: { valance: "Square Fascia*", lift_system: "Motorized" } } } as unknown as CrmQuoteDesign["details"];

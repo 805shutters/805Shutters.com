@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { acceptPublicQuote, loadPublicQuoteById } from "./public-quote";
+import { acceptPublicQuote, loadPublicQuoteById, loadPublicQuoteByToken } from "./public-quote";
 
 function fixture() {
   const mutate = vi.fn(() => {
@@ -81,6 +81,24 @@ function fixture() {
 }
 
 describe("authenticated mobile document and existing signing guard", () => {
+  it("excludes dealer cost from both staff preview and customer-link response data", async () => {
+    const { db, quote, design, mutate } = fixture();
+    design.price_breakdown = {
+      source: "mts_805_bookkeeping",
+      productType: "Roller Shades",
+      details: [
+        { label: "Dealer Cost", value: "111.3" },
+        { label: "Hem Bar", value: "Fabric Covered" },
+      ],
+    };
+    for (const document of [await loadPublicQuoteById(db, quote.id), await loadPublicQuoteByToken(db, quote.share_token)]) {
+      expect(document?.total).toBe(450);
+      expect(JSON.stringify(document)).not.toMatch(/Dealer Cost|111\.3/);
+      expect(JSON.stringify(document)).toContain("Fabric Covered");
+    }
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
   it("loads an unsigned document without a share token using only reads", async () => {
     const { db, quote, mutate } = fixture();
     Object.assign(quote, { share_token: null });

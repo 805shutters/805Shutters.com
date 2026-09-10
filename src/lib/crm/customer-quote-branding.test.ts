@@ -7,6 +7,23 @@ import type { SalesQuoteDesign } from "@mts/types/quote";
 
 describe("customer quote branding boundary", () => {
   it.each([
+    "Dealer Cost: 111.3", "dealer_cost: 111.3", "dealerCost: 111.3",
+    "DEALER-COST: 111.3", "Wholesale Unit Price: 111.3", "internalCost: 111.3",
+    "Landed Cost: 111.3", "Product Cost: 111.3", "Freight Cost: 25",
+    "Margin Percent: 30", "Profit Dollars: 222.6", "Markup: 3",
+    "Quote B Source Price: 248", "Quote B Uplift Percent: 10",
+    "Dealer Cost 111.3", "Commission: 10", "COGS: 111.3",
+  ])("excludes internal pricing from serialized options and rendered details: %s", (detail) => {
+    const options = ["Hem Bar: Fabric Covered", detail, "Reverse Roll: Yes"];
+    const original = [...options];
+    expect(customerQuoteOptions(options)).toEqual(["Hem Bar: Fabric Covered", "Reverse Roll: Yes"]);
+    expect(quoteProductDetails("", options)).toEqual([
+      { label: "Hem Bar", value: "Fabric Covered" }, { label: "Reverse Roll", value: "Yes" },
+    ]);
+    expect(options).toEqual(original);
+  });
+
+  it.each([
     ["Norman Soluna® Roller Shades", "Roller Shades"],
     ["ONYX Shutters", "Shutters"],
     ["Polar Roller Shades", "Roller Shades"],

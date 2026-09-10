@@ -42,12 +42,20 @@ export function isManufacturerDetail(label: string): boolean {
   return /\b(?:manufacturer|mfr|supplier|vendor|brand)\b/i.test(label.replace(/[_-]/g, " "));
 }
 
-/** Remove identifying fields entirely, including unknown/custom manufacturers. */
+/** Legacy imports can carry financial metadata as arbitrary display labels. */
+function isInternalPricingDetail(label: string): boolean {
+  const normalized = label
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[^a-zA-Z0-9]+/g, " ");
+  return /\b(?:costs?|wholesale|dealer|landed|margin|profit|markup|uplift|pricing|price|discount|commission|cogs)\b/i.test(normalized);
+}
+
+/** Remove supplier and internal pricing fields before customer serialization. */
 export function customerQuoteOptions(options: string[]): string[] {
   return options.flatMap((option) => {
     const separator = option.indexOf(":");
     const label = separator < 0 ? "" : option.slice(0, separator);
-    if (isManufacturerDetail(label) || /^(?:catalog|quote lab)\b/i.test(label)) return [];
+    if (isManufacturerDetail(label) || isInternalPricingDetail(label || option) || /^(?:catalog|quote lab)\b/i.test(label)) return [];
     if (separator < 0) {
       const cleaned = customerQuoteText(option);
       return cleaned ? [cleaned] : [];
