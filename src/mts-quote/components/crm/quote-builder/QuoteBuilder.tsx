@@ -77,6 +77,7 @@ import {
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
+import { getQuoteV2DeliveryCapability } from "@mts/lib/quoteV2DeliveryCapability";
 import {
   mutateQuoteV2Structure,
   priceQuoteV2,
@@ -712,6 +713,24 @@ export function QuoteBuilder({
   // runtime provider flag.
   const serverOwnedV2 = runtimeServerOwnedV2 || quote?.quote_v2_backend === true;
   const authoritativeV2 = runtimeAuthoritativeV2 || quote?.quote_v2_backend === true;
+  const deliveryCapability = useQuery({
+    queryKey: [
+      ...quoteQueryKey, "delivery-capability", quote?.quote_v2_revision,
+      quote?.quote_v2_status, quote?.status,
+    ],
+    queryFn: ({ signal }) => getQuoteV2DeliveryCapability(supabase, activeQuoteId!, signal),
+    enabled: !!activeQuoteId && authoritativeV2 && !isolated,
+    retry: false,
+    staleTime: 0,
+  });
+  const canSendNativeQuote =
+    !deliveryCapability.isError && !deliveryCapability.isFetching &&
+    deliveryCapability.data?.schemaVersion === 1 &&
+    deliveryCapability.data.enabled === true &&
+    deliveryCapability.data.native === true &&
+    deliveryCapability.data.canSend === true;
+  const sendDisabled = isolated || (authoritativeV2 && !canSendNativeQuote);
+
   const useHistoricalPriceLock = shouldUseHistoricalQuotePriceLock({
     quoteV2Backend: authoritativeV2,
     quoteV2Status: quote?.quote_v2_status,
@@ -2118,17 +2137,17 @@ export function QuoteBuilder({
                     onClick={() =>
                       isolated
                         ? toast.info("Testing mode: sending is safely disabled.")
-                        : authoritativeV2
-                          ? toast.info("Quote V2 customer delivery remains safely disabled.")
+                        : authoritativeV2 && !canSendNativeQuote
+                          ? toast.info("Customer delivery is not available for this quote yet.")
                         : setShowSendDialog(true)
                     }
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                    disabled={isolated || authoritativeV2}
+                    disabled={sendDisabled}
                     title={
                       isolated
                         ? "Disabled in isolated Quote Lab"
-                        : authoritativeV2
-                          ? "Quote V2 delivery is blocked until the protected customer-send cutover"
+                        : authoritativeV2 && !canSendNativeQuote
+                          ? "Customer delivery is not available for this quote yet"
                           : "Email or text the quote link to the customer"
                     }
                   >
