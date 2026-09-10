@@ -312,6 +312,7 @@ export function QuoteDashboard({
         .filter((quoteId): quoteId is string => Boolean(quoteId))
     );
 
+    const salesQuotesById = new Map(quotes.map((quote) => [quote.id, quote]));
     const crmRows: QuoteTableRow[] = crmQuotes.map((quote) => {
       const job = jobsById.get(quote.job_id);
       const sourceQuoteId = crmQuoteSourceSalesQuoteId(quote);
@@ -349,6 +350,7 @@ export function QuoteDashboard({
         updated_at: quote.updated_at,
         source: "crm",
         sourceQuoteId,
+        salesQuote: sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined,
       };
     });
 

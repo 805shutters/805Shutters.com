@@ -935,7 +935,8 @@ export function QuoteBuilder({
   };
 
   useEffect(() => {
-    if (!quote || stackedLineItemIds.length === 0) return;
+    // A pending or failed read is not an authoritative empty set of saved lines.
+    if (!quote || areLineItemsLoading || isLineItemsLoadError || stackedLineItemIds.length === 0) return;
 
     const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
     const changed =
@@ -944,7 +945,7 @@ export function QuoteBuilder({
 
     if (changed) saveStackedLineItemIds(orderedIds);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineItems]);
+  }, [lineItems, areLineItemsLoading, isLineItemsLoadError]);
 
   // Add line item (no measurements required initially)
   const addLineItem = useMutation({

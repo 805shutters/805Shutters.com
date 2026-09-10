@@ -102,8 +102,8 @@ export function QuotesTable({
             const isCrmQuote = quote.source === "crm";
             const salesQuoteId = quote.sourceQuoteId || quote.id;
             const totalAmount = Number(quote.total_amount) || 0;
-            const pricingIncomplete = isSavedQuotePricingIncomplete(quote.salesQuote);
             const status = getQuoteStatsStatus(quote);
+            const pricingIncomplete = status === "draft" && isSavedQuotePricingIncomplete(quote.salesQuote);
             return (
               <TableRow
                 key={quote.id}
