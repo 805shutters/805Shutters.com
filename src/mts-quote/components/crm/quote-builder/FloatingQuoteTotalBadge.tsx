@@ -1,5 +1,6 @@
 import {
   resolveQuoteDisplayTotal,
+  unpricedQuoteLineIds,
   type QuoteTotalDesign,
   type QuoteTotalLineItem,
 } from "@mts/lib/quoteTotals";
@@ -38,18 +39,25 @@ export function FloatingQuoteTotalBadge({
     useHistoricalTotal && Number.isFinite(lockedTotal) && lockedTotal > 0;
   const total = fromHistoricalLock ? lockedTotal : calculatedTotal;
 
+  const missingPrices = authoritativeV2 && !fromHistoricalLock ? unpricedQuoteLineIds(lineItems, designs).length : 0;
+  const incomplete = authoritativeV2 && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);
+  const label = fromHistoricalLock ? "Original Contract Total" : incomplete ? "Pricing incomplete" : "Contract Total";
+
   return (
     <aside
       className="fixed bottom-3 right-3 z-50 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-right shadow-[0_12px_32px_rgba(15,35,70,0.18)] backdrop-blur"
       aria-live="polite"
-      aria-label={`${fromHistoricalLock ? "Original Contract Total" : "Contract Total"} ${formatCurrency(total)}`}
+      aria-label={`${label}${incomplete ? "" : ` ${formatCurrency(total)}`}`}
     >
       <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-        {fromHistoricalLock ? "Original Contract Total" : "Contract Total"}
+        {label}
       </div>
       <div className="text-base font-black leading-tight text-slate-950 tabular-nums">
-        {formatCurrency(total)}
+        {incomplete ? "Total unavailable" : formatCurrency(total)}
       </div>
+      {incomplete && <p className="mt-1 text-xs font-semibold text-amber-800">
+        {missingPrices ? `${missingPrices} ${missingPrices === 1 ? "window needs" : "windows need"} pricing` : "Add a window to price this quote"}
+      </p>}
     </aside>
   );
 }

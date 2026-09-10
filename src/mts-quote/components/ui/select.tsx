@@ -97,7 +97,7 @@ function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
   if (!quick) return <SelectPrimitive.Root {...props} />;
   const declaredTrigger = triggerProps(props.children);
   const expanded = !presentation.collapseSelected || !validValue || interaction.expanded;
-  const query = validValue ? interaction.query : "";
+  const query = interaction.query;
   return (
     <QuickSelectStateContext.Provider value={{
       value,
@@ -218,9 +218,9 @@ const SelectItem = React.forwardRef<
   if (quick && state) {
     const selected = state.value === value;
     const unavailable = Boolean(disabled || state.disabled || state.triggerDisabled);
-    const label = `${props.textValue || ""} ${nodeText(children)}`.trim();
+    const label = `${props.textValue || ""} ${nodeText(children)}`.replace(/\s+/g, " ").trim();
     if (state.collapseSelected && !state.expanded && !selected) return null;
-    if (state.expanded && state.query && !label.toLocaleLowerCase().includes(state.query.toLocaleLowerCase())) return null;
+    if (state.expanded && state.query && !label.toLocaleLowerCase().includes(state.query.replace(/\s+/g, " ").trim().toLocaleLowerCase())) return null;
     return <button
       type="button"
       disabled={unavailable}

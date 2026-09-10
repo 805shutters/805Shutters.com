@@ -9,12 +9,13 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const view=(await searchParams).view;
   const tracking = view === "tracking";
   const reports = view === "reports";
+  const quotes = view === "quotes";
   const userAgent = (await headers()).get("user-agent") || "";
   const isIpad = /iPad/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mobile/i.test(userAgent));
 
-  if (isIpad && !tracking && !reports) {
+  if (isIpad && !tracking && !reports && !quotes) {
     redirect("/crm/mobile/quotes");
   }
 
-  return <CrmApp initialTab={tracking ? "tracking" : reports ? "reports" : "command"} />;
+  return <CrmApp initialTab={quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "command"} />;
 }

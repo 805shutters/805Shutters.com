@@ -14,6 +14,7 @@ import {
   mobileQuoteDesignsMixed, mobileQuoteWorkflowMode, omitTrailingUntouchedMobileQuoteWindow, saveMobileQuoteWindowAndAdvance, selectMobileQuoteBedroomNumber, selectMobileQuoteProduct, selectMobileQuoteRoom, selectMobileQuoteWindowLetter, setMobileQuoteWorkflow, setMobileQuoteWorkflowPhase, updateMobileQuoteCustomRoom, updateMobileQuoteDesign, updateMobileQuoteDesignBatch, validateMobileQuoteMeasurement, validateMobileQuoteWindow,
   validMobileQuoteSelectionIds, MOBILE_QUOTE_ACCOUNT_ID, MOBILE_QUOTE_FRACTIONS, type MobileQuoteCustomer, type MobileQuoteDraft, type MobileQuoteGridSelection, type MobileQuotePhoto, type MobileQuoteWindow,
 } from "@/lib/crm/mobile-quote-draft";
+import { applyMobileQuotePreview } from "@/lib/crm/mobile-quote-preview-state";
 import { loadMobileQuoteCatalog, loadMobileQuoteDrafts, saveMobileQuoteCatalog, saveMobileQuoteDraft } from "@/lib/crm/mobile-quote-storage";
 import { buildCatalogSelectionPatch, DesignCard, loadQuoteBuilderCatalog } from "@mts/components/crm/quote-builder/DesignCard";
 import { ManufacturerProductButtons } from "@mts/components/crm/quote-builder/ManufacturerProductButtons";
@@ -30,7 +31,7 @@ import styles from "./MobileQuoteWalkthrough.module.css";
 
 type Tab = "scheduled" | "today" | "add" | "sold";
 type ExistingCustomer = { jobId: string; name: string; phone: string; email: string; address: string };
-type PreviewResponse = { backend: "authoritative_v2"; verifiedAt: string; status: "authoritative" | "partial"; total: number | null; authoritativeSubtotal: number; lines: Array<{ lineItemId: string; status: "authoritative" | "blocked" | "unpriceable"; price: { total?: number }; blockedReason?: string | null; requiresManualPricing: boolean }> };
+type PreviewResponse = import("@/lib/crm/mobile-quote-preview-response").MobileQuotePreviewResponse;
 
 function laDateForInstant(value: string) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(value));
@@ -250,11 +251,17 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   useEffect(() => {
     if (screen !== "home" || query.trim().length < 2) { setCustomers([]); setCustomerNextCursor(null); setContracts([]); return; }
+    let cancelled = false;
+    const controller = new AbortController();
+    setCustomers([]); setCustomerNextCursor(null); setContracts([]);
     const timer = window.setTimeout(() => {
-      if (tab === "sold") api<{ results: typeof contracts }>(`/api/crm/mobile/quotes?q=${encodeURIComponent(query)}`).then((result) => setContracts(result.results)).catch((reason) => setError(reason.message));
-      else api<{ results: ExistingCustomer[]; nextCursor: string | null }>(`/api/crm/mobile/quote-customers?q=${encodeURIComponent(query)}`).then((result) => { setCustomers(result.results); setCustomerNextCursor(result.nextCursor); }).catch((reason) => setError(reason.message));
+      const onError = (reason: Error) => { if (!cancelled) setError(reason.message); };
+      if (tab === "sold") api<{ results: typeof contracts }>(`/api/crm/mobile/quotes?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then((result) => { if (!cancelled) setContracts(result.results); }).catch(onError);
+      else api<{ results: ExistingCustomer[]; nextCursor: string | null }>(`/api/crm/mobile/quote-customers?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then((result) => { if (!cancelled) { setCustomers(result.results); setCustomerNextCursor(result.nextCursor); } }).catch(onError);
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(timer); };
   }, [query, tab, screen, session.access_token]);
 
   const active = draft?.windows.find((line) => line.id === draft.activeWindowId) || draft?.windows[0] || null;
@@ -344,39 +351,13 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     if (!nextDraft || !online) return;
     const priceableWindows = nextDraft.windows.filter((line) => !validateMobileQuoteWindow(line));
     if (!priceableWindows.length) return;
-    const requestFingerprints = new Map(priceableWindows.map((line) => [line.id, mobileQuoteFingerprint(line)]));
-    const quoteFingerprint = JSON.stringify([...requestFingerprints]);
     try {
       const lines = priceableWindows.map((window) => {
         const line = mobileQuoteLine(nextDraft, window);
         return { line: quoteV2PreviewLine(line), design: quoteV2PreviewDesign(window.families[window.activeProductId!].design) };
       });
       const preview = await api<PreviewResponse>("/api/crm/mobile/quote-preview", { method: "POST", body: JSON.stringify({ lines }) });
-      setDraft((current) => {
-        if (!current || current.id !== nextDraft.id) return current;
-        const currentFingerprints = [...requestFingerprints].map(([id]) => {
-          const line = current.windows.find((candidate) => candidate.id === id);
-          return [id, line ? mobileQuoteFingerprint(line) : null];
-        });
-        if (JSON.stringify(currentFingerprints) !== quoteFingerprint) return current;
-        const result = structuredClone(current);
-        for (const linePrice of preview.lines) {
-          const line = result.windows.find((item) => item.id === linePrice.lineItemId);
-          const fingerprint = requestFingerprints.get(linePrice.lineItemId);
-          if (!line || !fingerprint) continue;
-          line.price = { amount: linePrice.status === "authoritative" ? Number(linePrice.price.total || 0) : 0, status: linePrice.status, fingerprint, verifiedAt: preview.verifiedAt, blockedReason: linePrice.blockedReason };
-        }
-        const statuses = preview.lines.map((line) => line.status);
-        const completeCoverage = priceableWindows.length === nextDraft.windows.length && preview.lines.length === priceableWindows.length;
-        const quoteAuthoritative = completeCoverage && preview.status === "authoritative" && preview.total !== null && statuses.every((status) => status === "authoritative");
-        result.quotePrice = {
-          amount: quoteAuthoritative ? preview.total! : preview.authoritativeSubtotal,
-          status: quoteAuthoritative ? "authoritative" : statuses.includes("blocked") || !completeCoverage ? "blocked" : "unpriceable",
-          fingerprint: quoteFingerprint,
-          verifiedAt: preview.verifiedAt,
-        };
-        return result;
-      });
+      setDraft((current) => applyMobileQuotePreview(current, nextDraft, preview));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Authoritative pricing is unavailable.");
     }
@@ -622,7 +603,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   if (screen === "home") return (
     <main className={`mts-quote-scope ${styles.shell}`}>
-      <header className={styles.header}><a href="/crm/mobile" aria-label="Back to mobile CRM"><ArrowLeft /></a><div><small>805 SHUTTERS CRM</small><h1>Quotes</h1></div></header>
+      <header className={styles.header}><a href="/crm/mobile" aria-label="Back to mobile CRM"><ArrowLeft /></a><div><small>805 SHUTTERS CRM</small><h1>Quotes</h1></div><a href="/crm/?view=quotes" className={styles.outline}>All saved quotes</a></header>
       <label className={styles.search}><Search /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customers" aria-label="Search customers" /></label>
       <nav className={styles.tabs} aria-label="Quotes">
         {(["scheduled", "today", "add", "sold"] as Tab[]).map((value) => <button key={value} aria-current={tab === value} onClick={() => { setTab(value); setQuery(""); setError(""); }}>{value === "today" ? "Today’s Quotes" : value === "add" ? "Add Quote" : value === "sold" ? "Sold Quote" : "Scheduled"}</button>)}

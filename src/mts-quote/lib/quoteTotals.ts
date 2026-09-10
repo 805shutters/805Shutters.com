@@ -154,6 +154,16 @@ export function calculateQuoteDesignSubtotal(
   return roundCurrency(total);
 }
 
+/** A partial or stale V2 subtotal must not be presented as a complete contract. */
+export function unpricedQuoteLineIds(lineItems: QuoteTotalLineItem[], designs: QuoteTotalDesign[]): string[] {
+  return lineItems.filter(line => {
+    const selected = resolveQuoteTotalDesign(designs.filter(design => design.line_item_id === line.id));
+    const status = selected?.options_json?.authoritative_price_status;
+    return !selected || status !== "authoritative" || selected.unit_price == null ||
+      !Number.isFinite(Number(selected.unit_price)) || Number(selected.unit_price) < 0;
+  }).map(line => line.id);
+}
+
 export function hasPricedQuoteDesigns(
   designs: QuoteTotalDesign[],
   options: QuoteTotalCalculationOptions = {},

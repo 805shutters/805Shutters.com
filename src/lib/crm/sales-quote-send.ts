@@ -250,7 +250,7 @@ export async function sendSalesQuoteToCustomer(
     measureDecision,
   });
 
-  await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
+  await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options, result);
   await persistSalesQuotePublicLink(supabase, salesQuoteId, result.url);
   if (sendAsIs && preparedV2) {
     await recordCrmActivity(supabase, actor, {
@@ -753,16 +753,16 @@ async function upsertImportedQuoteStructure(
   }
 }
 
-async function markSalesQuoteSent(
+export async function markSalesQuoteSent(
   supabase: CrmSupabaseClient,
   salesQuoteId: string,
   quote: AnyRow,
   options: SendSalesQuoteOptions,
+  delivery: { email: { sent: boolean }; sms: { sent: boolean } },
 ) {
   const now = new Date().toISOString();
-  const wantsEmail = options.channels?.email !== false;
-  const wantsSms = options.channels?.sms !== false;
-  const sentVia = wantsEmail && wantsSms ? "both" : wantsEmail ? "email" : wantsSms ? "sms" : null;
+  const sentVia = delivery.email.sent && delivery.sms.sent ? "both" : delivery.email.sent ? "email" : delivery.sms.sent ? "sms" : null;
+  if (!sentVia) return;
   const patch: AnyRow = {
     sent_at: now,
     sent_via: sentVia,
