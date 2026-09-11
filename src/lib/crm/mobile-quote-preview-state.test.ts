@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addMobileQuoteWindow, createMobileQuoteDraft, emptyMobileQuoteDesign, selectMobileQuoteProduct, type MobileQuoteDraft } from "./mobile-quote-draft";
-import { applyMobileQuotePreview } from "./mobile-quote-preview-state";
+import { withMobileManualPrices, applyMobileQuotePreview } from "./mobile-quote-preview-state";
 import type { MobileQuotePreviewResponse } from "./mobile-quote-preview-response";
 
 function draft() {
@@ -55,4 +55,14 @@ describe("mobile price response reconciliation", () => {
     const good = preview(requested);
     expect(applyMobileQuotePreview(current, requested, { ...good, lines: [{ ...good.lines[0], price: {} }] })).toBe(current);
   });
+});
+
+
+it("retains a free mobile line despite a blocked catalog preview", () => {
+ const original = draft(); const design=original.windows[0].families.roller.design;
+ design.unit_price=0; design.options_json={manual_price_override:true};
+ const source=preview(original); const blocked={...source,status:"partial" as const,total:null,lines:source.lines.map(line=>({...line,status:"blocked" as const,blockedReason:"Missing catalog"}))};
+ const overridden=withMobileManualPrices(original,blocked);
+ expect(overridden).toMatchObject({status:"authoritative",total:0});
+ expect(applyMobileQuotePreview(original,original,overridden)?.quotePrice).toMatchObject({amount:0,status:"authoritative"});
 });

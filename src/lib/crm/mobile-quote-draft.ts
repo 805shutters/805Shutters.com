@@ -809,3 +809,18 @@ export function updateMobileQuoteDesignBatch(
   next.updatedAt = updatedAt;
   return next;
 }
+
+
+/** A line price never becomes a default for the other openings. */
+export function setMobileQuoteLinePrice(draft: MobileQuoteDraft, lineId: string, price: number): MobileQuoteDraft {
+  if (draft.submission.snapshot || !Number.isFinite(price) || price < 0) return draft;
+  const next = structuredClone(draft);
+  const line = next.windows.find(line => line.id === lineId);
+  const family = line?.activeProductId ? line.families[line.activeProductId] : null;
+  if (!line || !family) return draft;
+  family.design.unit_price = Math.round((price + Number.EPSILON) * 100) / 100;
+  family.design.options_json = { ...family.design.options_json, manual_price_override: true };
+  line.saved = false; line.price = null; next.quotePrice = null;
+  next.updatedAt = new Date().toISOString();
+  return next;
+}

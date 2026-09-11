@@ -1375,6 +1375,34 @@ export function QuoteBuilder({
     },
   });
 
+  const saveLinePrice = (lineItemId: string, variant: string, unitPrice: number) => {
+    const execute = async () => {
+      if (!serverOwnedV2) {
+        const started = Date.now();
+        while (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 0) {
+          if (Date.now() - started > 10000) throw new Error("The previous edit is still saving. Try the price again in a moment.");
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+      const cachedQuote = queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session.session) throw new Error("Sign in again to save the price.");
+      const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/line-price/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
+        body: JSON.stringify({ lineItemId, variant, unitPrice,
+          expectedRevision: serverOwnedV2 ? Number(cachedQuote?.quote_v2_revision) : null,
+          requestId: crypto.randomUUID() }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.message || body.error || "Price could not be saved.");
+      await refreshServerOwnedV2Rows();
+    };
+    const queued = v2MutationQueueRef.current.then(execute, execute);
+    v2MutationQueueRef.current = queued.then(() => undefined, () => undefined);
+    return queued;
+  };
+
   // Upsert design
   const upsertDesign = useMutation({
     mutationKey: quoteDesignMutationKey,
@@ -2504,6 +2532,7 @@ export function QuoteBuilder({
                     ];
                   })}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
+                  onSaveLinePrice={(variant, price) => saveLinePrice(item.id, variant, price)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}
                   onStack={() => handleStackLineItem(item.id)}

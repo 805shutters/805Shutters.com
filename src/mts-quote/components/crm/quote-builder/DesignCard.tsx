@@ -1,3 +1,4 @@
+import { LineItemPriceInput } from "./LineItemPriceInput";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import {
   useState,
@@ -479,6 +480,7 @@ interface DesignCardProps {
   onApplyDiscount?: (percent: QuoteDiscountPercent) => void;
   isDiscountPending?: boolean;
   isPriceLocked?: boolean;
+  onSaveLinePrice: (variant: string, price: number) => Promise<void>;
   onOpenMeasurement?: () => void;
   onDelete?: () => void;
   onCopyItem?: () => void;
@@ -4606,6 +4608,7 @@ export function DesignCard({
   onApplyDiscount,
   isDiscountPending = false,
   isPriceLocked = false,
+  onSaveLinePrice,
   onOpenMeasurement,
   onDelete,
   onCopyItem,
@@ -4640,7 +4643,7 @@ export function DesignCard({
   const currentDesign = designs.find((d) => d.variant === activeVariant);
   const displayedPrice = historicalUnitPrice(
     currentDesign?.unit_price,
-    currentDesign ? historicalDesignUnitPrices?.[currentDesign.id] : null,
+    currentDesign && currentDesign.options_json?.manual_price_override !== true ? historicalDesignUnitPrices?.[currentDesign.id] : null,
   );
   const displayedUnitPrice = displayedPrice.amount;
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
@@ -5120,7 +5123,7 @@ export function DesignCard({
   // Locked contract lines stay frozen unless motorization totals are stale or missing.
   useEffect(() => {
     if (authoritativeV2) return;
-    if (!currentDesign || !isPriceLocked) return;
+    if (!currentDesign || !isPriceLocked || currentDesign.options_json?.manual_price_override === true) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
     const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
@@ -5639,18 +5642,20 @@ export function DesignCard({
                 )}
               </div>
             )}
-            {!mobilePresentation && <div className="flex items-center gap-1.5 text-right">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-              <div className="quote-line-price-readout">
-                <span className="text-lg font-bold">
-                  {authoritativePriceError ? "Price unavailable" : formatMoney(displayedLineTotal)}
-                </span>
-                {!authoritativePriceError && <div className="text-[11px] text-muted-foreground">
-                  {quantity > 1 ? `${formatMoney(displayedUnitPrice)} ea · ` : ""}
-                  {displayedPrice.fromHistoricalLock ? "original quote · " : ""}excl. tax
-                </div>}
+            <div className="quote-line-price-readout">
+              <LineItemPriceInput key={`${lineItem.id}-${activeVariant}`}
+                value={displayedUnitPrice} roomName={lineItem.room_name}
+                onSave={(price) => onSaveLinePrice(activeVariant, price)} />
+              <div className="text-[11px] text-muted-foreground">
+                {authoritativePriceError ? "Enter your price" : `${formatMoney(displayedLineTotal)} line total · excl. tax`}
               </div>
-            </div>}
+              {!mobilePresentation && !authoritativeV2 && isPriceLocked && (
+                <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
+                  className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">
+                  <Calculator className="mr-1 h-3.5 w-3.5" />Reprice
+                </Button>
+              )}
+            </div>
             <label className="quote-line-quantity-control" title="Line item quantity">
               <span>Qty</span>
               <input
@@ -5771,9 +5776,7 @@ export function DesignCard({
               productType={lineItem.product_type}
               onUpdate={updateField}
               onUpdateFields={updateFields}
-              onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
               authoritativeV2={authoritativeV2}
-              allowManualPriceEditing={!authoritativeV2}
             />
           ) : manufacturerOptionsRoute.productId &&
             POLAR_EXTERIOR_UI_PRODUCT_IDS.has(
@@ -5816,9 +5819,7 @@ export function DesignCard({
               lineItem={lineItem}
               onUpdate={updateField}
               onUpdateFields={updateFields}
-              onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
               authoritativeV2={authoritativeV2}
-              allowManualPriceEditing={!authoritativeV2}
               sideBySideLineOptions={sideBySideLineOptions}
               onSideBySidePairChange={handleSideBySidePairChange}
               onClearSideBySidePartner={handleClearSideBySidePartner}
@@ -6488,9 +6489,7 @@ function ShutterDesignOptions({
   productType,
   onUpdate,
   onUpdateFields,
-  onRecalculatePrice,
   authoritativeV2,
-  allowManualPriceEditing,
 }: {
   design: SalesQuoteDesign | undefined;
   displayedUnitPrice: number;
@@ -6498,9 +6497,7 @@ function ShutterDesignOptions({
   productType: string;
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
-  onRecalculatePrice?: () => void;
   authoritativeV2: boolean;
-  allowManualPriceEditing: boolean;
 }) {
   const mobilePresentation = useContext(MobileDesignCardContext);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -6690,12 +6687,6 @@ function ShutterDesignOptions({
     options: step.options,
   }));
 
-  const handleManualPriceChange = (price: number) => {
-    onUpdateFields({
-      unit_price: price,
-      options_json: { ...optionsJson, manual_price_override: true },
-    });
-  };
 
   const mobileMaterialOptions: GridOption[] = mobilePresentation && ["Norman", "Onyx"].includes(workingDesign.supplier || "")
     ? [{
@@ -6941,49 +6932,7 @@ function ShutterDesignOptions({
         </div>
       )}
 
-      {/* Price input */}
-      {!mobilePresentation && (standardComplete || useOldSteps) && (
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">Price:</Label>
-            <div className="relative w-32">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                $
-              </span>
-              {allowManualPriceEditing ? (
-                <DeferredNumberInput
-                  value={design?.unit_price || ""}
-                  onCommit={handleManualPriceChange}
-                  commitOnChange
-                  className="pl-5 h-8 text-sm"
-                  placeholder="0.00"
-                />
-              ) : (
-                <Input
-                  aria-label="Authoritative price"
-                  readOnly
-                  value={displayedUnitPrice || ""}
-                  className="pl-5 h-8 text-sm"
-                  placeholder="0.00"
-                />
-              )}
-            </div>
-            {onRecalculatePrice && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onRecalculatePrice}
-                className="h-8 rounded-lg text-xs"
-                title="Recalculate this locked contract line"
-              >
-                <Calculator className="mr-1 h-3.5 w-3.5" />
-                Reprice
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
@@ -8402,9 +8351,7 @@ function ShadesAndBlindsOptions({
   lineItem: _lineItem,
   onUpdate,
   onUpdateFields,
-  onRecalculatePrice,
   authoritativeV2,
-  allowManualPriceEditing,
   sideBySideLineOptions,
   onSideBySidePairChange,
   onClearSideBySidePartner,
@@ -8414,9 +8361,7 @@ function ShadesAndBlindsOptions({
   lineItem: SalesQuoteLineItem;
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
-  onRecalculatePrice?: () => void;
   authoritativeV2: boolean;
-  allowManualPriceEditing: boolean;
   sideBySideLineOptions: readonly SideBySideLineOption[];
   onSideBySidePairChange: (
     lineId: string | null,
@@ -8427,7 +8372,6 @@ function ShadesAndBlindsOptions({
   const mobilePresentation = useContext(MobileDesignCardContext);
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [priceOverrideMessage, setPriceOverrideMessage] = useState("");
   const requestedOpenOptionFieldRef = useRef<string | null | undefined>(undefined);
   const motorizationEligibility = resolveMotorizationUiEligibility(
     design,
@@ -11445,68 +11389,6 @@ function ShadesAndBlindsOptions({
   }
   const optionsJson = (design?.options_json as Record<string, unknown>) || {};
 
-  const handleManualPriceChange = async (price: number) => {
-    if (authoritativeV2 && design) {
-      setPriceOverrideMessage("Saving audited price override…");
-      try {
-        const supabase = getSupabaseBrowserClient();
-        if (!supabase) throw new Error("CRM connection is unavailable.");
-        const [{ data: sessionData }, { data: quote }] = await Promise.all([
-          supabase.auth.getSession(),
-          supabase
-            .from("sales_quotes")
-            .select("quote_v2_revision")
-            .eq("id", _lineItem.quote_id)
-            .single(),
-        ]);
-        const response = await fetch(
-          `/api/crm/sales-quotes/${_lineItem.quote_id}/v2/custom-mode`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${sessionData.session?.access_token || ""}`,
-            },
-            body: JSON.stringify({
-              lineItemId: _lineItem.id,
-              designId: design.id,
-              expectedRevision: Number(quote?.quote_v2_revision || 0),
-              idempotencyKey: `authoritative-price-${design.id}-${Date.now()}`,
-              useAuthoritativeCost: true,
-              freightCost: 0,
-              otherCost: 0,
-              profitMode: "dollar",
-              profitValue: 125,
-              finalSellPrice: price,
-              roomName: _lineItem.room_name || "",
-              designName: design.variant || "",
-              widthWhole: _lineItem.width_whole,
-              widthFraction: _lineItem.width_fraction,
-              heightWhole: _lineItem.height_whole,
-              heightFraction: _lineItem.height_fraction,
-            }),
-          },
-        );
-        const body = await response.json();
-        if (!response.ok) {
-          throw new Error(body.message || "The authoritative price override could not be saved.");
-        }
-        setPriceOverrideMessage("Audited override saved. Refreshing…");
-        window.location.reload();
-      } catch (error) {
-        setPriceOverrideMessage(
-          error instanceof Error
-            ? error.message
-            : "The authoritative price override could not be saved.",
-        );
-      }
-      return;
-    }
-    onUpdateFields({
-      unit_price: price,
-      options_json: { ...optionsJson, manual_price_override: true },
-    });
-  };
 
   const handleRollerFabricSelect = (fabricColor: MtsRollerFabricColor) => {
     setOpenOptionField(null);
@@ -12037,57 +11919,11 @@ function ShadesAndBlindsOptions({
         </div>
       )}
 
-      {/* Price input - always show when at least one option is confirmed */}
-      {!mobilePresentation && hasAnySelectedOption && (
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">Price:</Label>
-            <div className="relative w-32">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                $
-              </span>
-              {allowManualPriceEditing || authoritativeV2 ? (
-                <DeferredNumberInput
-                  value={design?.unit_price || ""}
-                  onCommit={handleManualPriceChange}
-                  commitOnChange
-                  className="pl-5 h-8 text-sm"
-                  placeholder="0.00"
-                />
-              ) : (
-                <Input
-                  aria-label="Authoritative price"
-                  readOnly
-                  value={design?.unit_price || ""}
-                  className="pl-5 h-8 text-sm"
-                  placeholder="0.00"
-                />
-              )}
-            </div>
-            {onRecalculatePrice && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onRecalculatePrice}
-                className="h-8 rounded-lg text-xs"
-                title="Recalculate this locked contract line"
-              >
-                <Calculator className="mr-1 h-3.5 w-3.5" />
-                Reprice
-              </Button>
-            )}
-          </div>
-          {priceOverrideMessage ? (
-            <p className="mt-1 text-xs font-semibold text-violet-900">
-              {priceOverrideMessage}
-            </p>
-          ) : null}
-        </div>
-      )}
       {!mobilePresentation && authoritativeV2 && design ? (
         <CustomModePanel lineItem={_lineItem} design={design} />
       ) : null}
+
+
     </div>
   );
 }

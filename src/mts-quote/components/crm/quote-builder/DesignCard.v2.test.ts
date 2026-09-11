@@ -835,13 +835,13 @@ describe("V2 exact-interface contract", () => {
     );
   });
 
-  it("keeps lab diagnostics hidden and makes only V2 prices authoritative", () => {
+  it("keeps lab diagnostics hidden while allowing staff price edits for every backend", () => {
     const source = readFileSync(fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)), "utf8");
     expect(source).toContain("{showLabCatalogControls && !authoritativeV2 && (");
     expect(source).not.toContain("{isolated && (");
-    expect(source).toContain("allowManualPriceEditing={!authoritativeV2}");
-    expect(source).toContain('aria-label="Authoritative price"');
-    expect(source).toContain('value={displayedUnitPrice || ""}');
+    expect(source).toContain("<LineItemPriceInput");
+    expect(source).toContain("onSaveLinePrice(activeVariant, price)");
+    expect(source).not.toContain('aria-label="Authoritative price"');
     expect(source).toContain("if (authoritativeV2) return;");
     expect(source).toContain("Authoritative pricing blocked");
     expect(source).toContain("if (designs.some((design) => design.variant === variant))");
@@ -1200,7 +1200,7 @@ describe("V2 exact-interface contract", () => {
     );
     expect(source).toContain('data-testid="lotus-faux-authority-status"');
     expect(source).toContain("Lotus pricing is draft-only.");
-    expect(source).toContain("authoritativeV2 && design");
+    expect(source).toContain("onSaveLinePrice(activeVariant, price)");
     expect(source).toContain("Sending remains blocked");
     expect(source).toContain(
       'options: ["Inside Mount", "Outside Mount", "Side Mount"] as const',

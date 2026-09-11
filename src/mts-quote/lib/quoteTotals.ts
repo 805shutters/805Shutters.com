@@ -174,6 +174,7 @@ export function hasPricedQuoteDesigns(
       : designs;
   return billableDesigns.some(
     (design) =>
+      (design.options_json?.manual_price_override === true && design.unit_price != null && Number.isFinite(Number(design.unit_price))) ||
       normalizeMoney(design.unit_price) > 0 ||
       (mode === "authoritative_v2" && authoritativeOnceTotal(design) > 0),
   );
@@ -193,7 +194,7 @@ export function resolveQuoteDisplayTotal(
   options: QuoteTotalCalculationOptions = {},
 ): number {
   const calculatedTotal = calculateQuoteDesignSubtotal(lineItems, designs, options);
-  if (calculatedTotal > 0) return calculatedTotal;
+  if (calculatedTotal > 0 || hasPricedQuoteDesigns(designs, options)) return calculatedTotal;
   return roundCurrency(normalizeMoney(storedTotal));
 }
 

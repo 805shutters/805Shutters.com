@@ -661,7 +661,13 @@ export async function saveSalesQuoteV2AuthoritativePrice(
   if (newRevision < revision) {
     throw databaseError("Authoritative V2 persistence returned an older revision.");
   }
-  const target = prepared.find(
+  // The persistence transaction retains staff prices after catalog recalculation.
+  const manualPrices = plainRecord(saved.manual_prices) ?? {};
+  const persistedPrices = prepared.map(entry => {
+    const manual = plainRecord(manualPrices[entry.designId]);
+    return manual ? { ...entry, priceStatus: "authoritative" as const, customerPrice: manual } : entry;
+  });
+  const target = persistedPrices.find(
     (entry) => entry.lineItemId === lineItemId && entry.designId === designId,
   );
   if (!target) {
@@ -689,7 +695,7 @@ export async function saveSalesQuoteV2AuthoritativePrice(
       saved.blocked_design_count,
       "V2 persistence blocked-design count",
     ),
-    lines: prepared.map((entry) => ({
+    lines: persistedPrices.map((entry) => ({
       lineItemId: entry.lineItemId,
       designId: entry.designId,
       priceStatus: entry.priceStatus,

@@ -31,3 +31,17 @@ export function applyMobileQuotePreview(current: MobileQuoteDraft | null, reques
   };
   return result;
 }
+
+/** Show staff prices in the local draft; the authenticated save validates them again. */
+export function withMobileManualPrices(draft: MobileQuoteDraft, preview: MobileQuotePreviewResponse): MobileQuotePreviewResponse {
+  const lines = preview.lines.map(line => {
+    const window = draft.windows.find(window => window.id === line.lineItemId);
+    const design = window?.activeProductId ? window.families[window.activeProductId]?.design : null;
+    if (design?.options_json?.manual_price_override !== true || !Number.isFinite(design.unit_price) || design.unit_price < 0) return line;
+    return { ...line, status: "authoritative" as const, requiresManualPricing: false, blockedReason: null,
+      price: { unitPrice: design.unit_price, quantity: 1, total: design.unit_price } };
+  });
+  const subtotal = Math.round(lines.reduce((sum,line)=>sum+(line.status === 'authoritative' ? Number(line.price.total) : 0),0)*100)/100;
+  const complete = lines.length === draft.windows.length && lines.every(line=>line.status === 'authoritative');
+  return { ...preview, lines, status: complete ? 'authoritative' : preview.status, total: complete ? subtotal : null, authoritativeSubtotal: subtotal };
+}

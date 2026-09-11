@@ -1908,3 +1908,10 @@
 .mts-quote-scope [hidden] {
   display: none;
 }
+
+.mts-quote-scope .quote-line-price-editor { width: 140px; text-align: left; }
+.mts-quote-scope .quote-line-price-editor label > span { font-size: 11px; font-weight: 700; }
+.mts-quote-scope .quote-line-price-input-wrap { display: flex; align-items: center; gap: 4px; border: 1px solid #b4b6b0; border-radius: 8px; padding: 0 8px; background: white; }
+.mts-quote-scope .quote-line-price-input-wrap input { width: 100%; min-width: 0; min-height: 40px; border: 0; background: transparent; color: #142d36; font-size: 16px; font-weight: 700; }
+.mts-quote-scope .quote-line-price-editor [role="alert"] { display: block; color: #b91c1c; font-size: 11px; max-width: 180px; }
+.mts-quote-scope .quote-line-price-editor [role="status"] { font-size: 11px; }
