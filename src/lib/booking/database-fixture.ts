@@ -24,5 +24,6 @@ export function bookingDatabaseFixture(beforeAuthority = "") {
     ${beforeAuthority}
     ${read("20260906145749_jessica_booking_authority.sql")}
     ${read("20260909120000_staff_reschedule_buffer_override.sql")}
+    ${read("20260911040000_admin_manual_reschedule.sql")}
     grant all on public.leads,public.crm_jobs,public.crm_quotes,public.crm_calendar_events,public.crm_availability_slots,public.sales_805_appointments to service_role;`;
 }

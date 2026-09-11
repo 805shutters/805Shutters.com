@@ -2735,15 +2735,8 @@ export async function rescheduleCrmCalendarEvent(
   const eventId = requiredText(payload.id, "Calendar event is required.");
   const startAt = requiredText(payload.start_at, "Start and end are required.");
   const endAt = requiredText(payload.end_at, "Start and end are required.");
-  if (
-    Object.prototype.hasOwnProperty.call(payload, "override_travel_buffer") &&
-    typeof payload.override_travel_buffer !== "boolean"
-  ) {
-    throw new CrmAuthError(400, "Travel buffer override must be a boolean.");
-  }
-  const overrideTravelBuffer = payload.override_travel_buffer === true;
-  if (overrideTravelBuffer && !actor.userId) {
-    throw new CrmAuthError(403, "Travel buffer override requires an authenticated staff account.");
+  if (!actor.userId) {
+    throw new CrmAuthError(403, "Manual rescheduling requires an authenticated staff account.");
   }
   const startDate = new Date(startAt);
   const endDate = new Date(endAt);
@@ -2763,53 +2756,34 @@ export async function rescheduleCrmCalendarEvent(
   if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
     throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
   }
-  if (
-    overrideTravelBuffer &&
-    (existing.assigned_to !== "Jessica" || existing.event_type === "block")
-  ) {
-    throw new CrmAuthError(
-      400,
-      "Travel buffer override is limited to Jessica appointments.",
-    );
-  }
-
-  if (existing.event_type !== "measure") await assertCalendarWindowAvailable(supabase, startAt, endAt, eventId);
-
-  const rescheduleMeta: Record<string, unknown> = {
+  const rescheduleMeta = {
     ...metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy"),
-    ...(overrideTravelBuffer
-      ? {
-          travelBufferOverride: {
-            actorEmail: actor.email,
-            actorUserId: actor.userId,
-            reason: "staff_reschedule_extra_buffer_override",
-            affectedStartAt: startAt,
-            affectedEndAt: endAt,
-            requestedAt: new Date().toISOString(),
-          },
-        }
-      : {}),
+    adminScheduleOverride: {
+      actorEmail: actor.email,
+      actorUserId: actor.userId,
+      reason: "staff_manual_reschedule",
+      affectedStartAt: startAt,
+      affectedEndAt: endAt,
+      requestedAt: new Date().toISOString(),
+    },
   };
-  const update = {
-    start_at: startAt,
-    end_at: endAt,
-    status: "rescheduled",
-    meta: rescheduleMeta
-  };
-
-  const data = await guardedCalendarWrite(
-    supabase,
-    "update",
-    { ...update, id: eventId },
-    existing as CrmCalendarEvent,
-    overrideTravelBuffer
-      ? {
-          actorId: actor.userId!,
-          actorEmail: actor.email,
-          reason: "staff_reschedule_extra_buffer_override",
-        }
-      : undefined,
-  );
+  // The authenticated staff route owns manual scheduling. Public booking checks
+  // must not prevent an administrator from choosing an overlapping time.
+  const { data, error } = await supabase.rpc("booking_admin_reschedule", {
+    p_event_id: eventId,
+    p_previous: existing,
+    p_start_at: startAt,
+    p_end_at: endAt,
+    p_meta: rescheduleMeta,
+    p_actor_id: actor.userId,
+    p_actor_email: actor.email,
+  });
+  if (error) {
+    if (/BOOKING_STALE/.test(error.message || "")) {
+      throw new CrmAuthError(409, "This appointment changed. Reload it before saving.");
+    }
+    throw new CrmAuthError(502, "Appointment could not be rescheduled. Please try again.");
+  }
 
   await syncTechnicalMeasureCalendarState(supabase, data, {
     status: "scheduled",
@@ -2860,10 +2834,8 @@ export async function rescheduleCrmCalendarEvent(
     metadata: {
       jobId: existing.job_id || null,
       rescheduledSalespersonSms,
-      travelBufferOverride: overrideTravelBuffer,
-      travelBufferOverrideReason: overrideTravelBuffer
-        ? "staff_reschedule_extra_buffer_override"
-        : null,
+      adminScheduleOverride: true,
+      adminScheduleOverrideReason: "staff_manual_reschedule",
     }
   });
 

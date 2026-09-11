@@ -640,3 +640,87 @@ describe("booking database authority", () => {
     ).toBe(0);
   });
 });
+
+async function adminReschedule(event: CrmCalendarEvent, time: string, newDate = date) {
+  const previous = (await db.query<{ e: unknown }>("select to_jsonb(e) e from crm_calendar_events e where id=$1", [event.id])).rows[0].e;
+  const moved = candidateVisit(newDate, time, String(event.location), 5, event.id);
+  return db.query("select booking_admin_reschedule($1,$2,$3,$4,$5,$6,$7)", [
+    event.id, JSON.stringify(previous), moved.start_at, moved.end_at, '{}', staffActorId, 'staff@local.invalid',
+  ]);
+}
+
+describe("authenticated manual rescheduling", () => {
+  it.each(['10:30', '11:30', '12:00', '04:00'])("allows drive conflicts, overlaps, and closed hours at %s", async time => {
+    const { event } = await protectedPair();
+    await adminReschedule(event, time);
+    const saved = (await db.query<{ start_at: string; meta: Record<string, unknown> }>("select start_at,meta from crm_calendar_events where id=$1", [event.id])).rows[0];
+    expect(new Date(saved.start_at).toISOString()).toBe(candidateVisit(date, time, '', 5).start_at);
+    expect(saved.meta).toMatchObject({ adminScheduleOverride: { actorUserId: staffActorId, reason: 'staff_manual_reschedule' } });
+    // A later metadata save must not undo or reject the authorized overlap.
+    await db.query("update crm_calendar_events set notes='Staff note after move' where id=$1", [event.id]);
+    await db.exec("select booking_private.validate_protections()");
+  });
+
+  it("allows a staff neighbor to overlap a protected public appointment", async () => {
+    const { event, next } = await protectedPair();
+    await adminReschedule(next, '10:30');
+    expect((await db.query("select * from booking_admin_schedule_overrides where event_id=$1", [event.id])).rows).toHaveLength(1);
+    // Public submission cannot reuse the exception for another overlapping visit.
+    await expect(commit('10:30')).rejects.toThrow(/BOOKING_CONFLICT/);
+  });
+
+  it("supports repeat and cross-month moves without published hours or Google", async () => {
+    const { event } = await protectedPair();
+    await adminReschedule(event, '11:30');
+    await adminReschedule(event, '05:00', '2035-11-01');
+    await adminReschedule(event, '12:00');
+    await db.exec("select booking_private.validate_protections()");
+  });
+
+  it("does not let changed public itineraries reuse an admin exception", async () => {
+    const { event } = await protectedPair();
+    await adminReschedule(event, '12:00');
+    await expect(commit('09:00')).rejects.toThrow(/BOOKING_/);
+    await expect(db.query("update crm_calendar_events set location='Changed address' where id=$1", [event.id])).rejects.toThrow(/BOOKING_/);
+  });
+
+  it("allows a missing-address visit beyond the public daily appointment limit", async () => {
+    await protectedPair();
+    // Four visits on the protected day is still valid; the fifth starts elsewhere.
+    for (const [day, time] of [[date, '08:00'], [date, '15:00'], ['2035-10-02', '09:00']]) {
+      const visit = candidateVisit(day, time, '', 5);
+      await db.query("insert into crm_calendar_events(id,title,start_at,end_at,assigned_to,event_type,location) values($1,'staff',$2,$3,'Mike','sales_consult',null)", [visit.id, visit.start_at, visit.end_at]);
+      if (day !== date) await adminReschedule(visit, '10:00');
+    }
+    await db.exec("select booking_private.validate_protections()");
+    await expect(commit('14:00')).rejects.toThrow(/BOOKING_FULL/);
+  });
+
+  it("retains public booking on unaffected days", async () => {
+    const { event } = await protectedPair();
+    await adminReschedule(event, '12:00');
+    await publish([
+      { start_at: '2035-10-01T15:00:00Z', end_at: '2035-10-02T00:00:00Z' },
+      { start_at: '2035-10-02T15:00:00Z', end_at: '2035-10-03T00:00:00Z' },
+    ]);
+    const fresh = candidateVisit('2035-10-02', '10:00', 'Test address', 5);
+    await commit('10:00', randomUUID(), { event: fresh });
+  });
+
+  it("rejects stale edits, invalid attribution, and public access", async () => {
+    const { event } = await protectedPair();
+    const previous = (await db.query<{ e: unknown }>("select to_jsonb(e) e from crm_calendar_events e where id=$1", [event.id])).rows[0].e;
+    await adminReschedule(event, '12:00');
+    const args = [event.id, JSON.stringify(previous), event.start_at, event.end_at, '{}', staffActorId, 'staff@local.invalid'];
+    await expect(db.query("select booking_admin_reschedule($1,$2,$3,$4,$5,$6,$7)", args)).rejects.toThrow(/BOOKING_STALE/);
+    args[5] = null as unknown as string;
+    await expect(db.query("select booking_admin_reschedule($1,$2,$3,$4,$5,$6,$7)", args)).rejects.toThrow(/BOOKING_ACTOR/);
+    for (const role of ['anon', 'authenticated']) {
+      await db.exec(`set role ${role}`);
+      try {
+        await expect(db.query("select booking_admin_reschedule($1,$2,$3,$4,$5,$6,$7)", args)).rejects.toThrow(/permission denied/);
+        await expect(db.exec("insert into booking_admin_schedule_overrides(event_id) values(gen_random_uuid())")).rejects.toThrow(/permission denied/);
+      } finally { await db.exec('reset role'); }
+    }
+  });
+});

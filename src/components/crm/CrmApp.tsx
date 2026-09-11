@@ -2417,14 +2417,8 @@ export function CrmApp({
   async function rescheduleCalendarEvent(
     calendarEvent: CrmCalendarEvent,
     slot: CalendarSlotSelection,
-    overrideTravelBuffer = false,
   ) {
     if (!session) return;
-
-    if (isPastCalendarSlot(slot.date, slot.time)) {
-      setMessage("Choose an upcoming appointment time.");
-      return;
-    }
 
     setBusy(true);
     setMessage(null);
@@ -2435,8 +2429,7 @@ export function CrmApp({
         body: JSON.stringify({
           id: calendarEvent.id,
           start_at: slot.startAt,
-          end_at: slot.endAt,
-          override_travel_buffer: overrideTravelBuffer
+          end_at: slot.endAt
         })
       });
       setReschedulingCalendarEvent(null);
@@ -2458,9 +2451,8 @@ export function CrmApp({
     const time = formString(formData, "time");
     const currentDurationMinutes = calendarEventDurationMinutes(reschedulingCalendarEvent);
     const durationMinutes = calendarAppointmentDurationMinutes(formData.get("duration"), currentDurationMinutes);
-    const overrideTravelBuffer = formData.get("override_travel_buffer") === "on";
     const slot = calendarSlotSelection(date, time, durationMinutes);
-    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot, overrideTravelBuffer);
+    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot);
   }
 
   async function cancelCalendarEvent(calendarEvent: CrmCalendarEvent) {
@@ -14241,6 +14233,7 @@ function CalendarTimelineGrid({
   view: "day" | "week";
 }) {
   const overlapLayout = useMemo(() => buildCalendarOverlapLayout(events), [events]);
+  const draggedEventId = useRef<string | null>(null);
   const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
 
   function availabilityOwnersForSlot(date: string, time: string) {
@@ -14249,6 +14242,7 @@ function CalendarTimelineGrid({
 
   function draggedEvent(dragEvent: DragEvent<HTMLElement>) {
     const eventId =
+      draggedEventId.current ||
       dragEvent.dataTransfer.getData("application/x-crm-calendar-event-id") ||
       dragEvent.dataTransfer.getData("text/plain");
     return events.find((calendarEvent) => calendarEvent.id === eventId && canRescheduleCalendarEvent(calendarEvent)) || null;
@@ -14276,28 +14270,23 @@ function CalendarTimelineGrid({
   }
 
   function handleGridDragOver(dragEvent: DragEvent<HTMLDivElement>) {
-    if (availabilityLoading || availabilityFailed) return;
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
-    const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
-    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
-    if (!canOverrideAvailability && !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
+    if (!slot) return;
 
     dragEvent.preventDefault();
     dragEvent.dataTransfer.dropEffect = "move";
   }
 
   function handleGridDrop(dragEvent: DragEvent<HTMLDivElement>) {
-    if (availabilityLoading || availabilityFailed) return;
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
-    const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
-    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
-    if (!canOverrideAvailability && !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
+    if (!slot) return;
 
     dragEvent.preventDefault();
+    draggedEventId.current = null;
     onRescheduleEvent(calendarEvent, slot);
   }
 
@@ -14307,6 +14296,8 @@ function CalendarTimelineGrid({
       return;
     }
 
+    // Browsers hide DataTransfer data during dragover; retain the local ID.
+    draggedEventId.current = calendarEvent.id;
     dragEvent.dataTransfer.effectAllowed = "move";
     dragEvent.dataTransfer.setData("application/x-crm-calendar-event-id", calendarEvent.id);
     dragEvent.dataTransfer.setData("text/plain", calendarEvent.id);
@@ -14386,6 +14377,7 @@ function CalendarTimelineGrid({
               key={event.id}
               onClick={canManage ? () => onOpenEvent(event) : undefined}
               onDragStart={(dragEvent) => handleEventDragStart(dragEvent, event)}
+              onDragEnd={() => { draggedEventId.current = null; }}
               onKeyDown={
                 canManage
                   ? (keyEvent) => {
@@ -14868,10 +14860,6 @@ function CalendarRescheduleModal({
   const date = calendarEventDateValue(event);
   const time = calendarEventTimeValue(event);
   const durationMinutes = calendarEventDurationMinutes(event);
-  const canOverrideTravelBuffer =
-    event.assigned_to === "Jessica" && event.event_type !== "block";
-  const [overrideTravelBuffer, setOverrideTravelBuffer] = useState(false);
-  const clearTravelBufferOverride = () => setOverrideTravelBuffer(false);
 
   return (
     <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
@@ -14899,7 +14887,6 @@ function CalendarRescheduleModal({
                 type="date"
                 required
                 defaultValue={date}
-                onChange={clearTravelBufferOverride}
               />
             </label>
             <label>
@@ -14908,7 +14895,6 @@ function CalendarRescheduleModal({
                 name="time"
                 required
                 defaultValue={time}
-                onChange={clearTravelBufferOverride}
               >
                 {calendarEventTimeOptions(event).map((option) => (
                   <option value={option} key={option}>
@@ -14923,7 +14909,6 @@ function CalendarRescheduleModal({
                 name="duration"
                 required
                 defaultValue={String(durationMinutes)}
-                onChange={clearTravelBufferOverride}
               >
                 {calendarAppointmentDurationChoices(durationMinutes).map((minutes) => (
                   <option value={minutes} key={minutes}>
@@ -14933,24 +14918,9 @@ function CalendarRescheduleModal({
               </select>
             </label>
           </div>
-          {canOverrideTravelBuffer ? (
-            <label className="crm-reschedule-buffer-override">
-              <input
-                name="override_travel_buffer"
-                type="checkbox"
-                checked={overrideTravelBuffer}
-                onChange={(changeEvent) =>
-                  setOverrideTravelBuffer(changeEvent.target.checked)
-                }
-              />
-              <span>
-                <strong>Override extra 15-minute travel buffer</strong>
-                <small>
-                  Actual drive time, appointment conflicts, and missing route or address checks still apply.
-                </small>
-              </span>
-            </label>
-          ) : null}
+          <p className="crm-muted">
+            Admin rescheduling allows overlapping appointments and overrides travel time and availability restrictions.
+          </p>
           <div className="crm-slot-actions">
             <button type="button" className="crm-ghost-button" onClick={onClose}>
               Cancel

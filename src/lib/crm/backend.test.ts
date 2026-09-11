@@ -2022,6 +2022,11 @@ function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | 
     async rpc(name: string, args: Record<string, unknown>) {
       rpcCalls.push({ name, args });
       if(name === "booking_schedule_snapshot") return {data:{revision:"1",events:[opts.event],slots:[],protectedIds:[],bufferExceptions:[]},error:null};
+      if (name === "booking_admin_reschedule") {
+        const payload = { id: args.p_event_id, start_at: args.p_start_at, end_at: args.p_end_at, meta: args.p_meta, status: "rescheduled" };
+        updates.push({table: "crm_calendar_events", filters: {id: payload.id}, payload});
+        return {data: {...opts.event, ...payload}, error: null};
+      }
       if(name === "booking_calendar_write" || name === "booking_calendar_reschedule") {
         const payload=args.p_event as Record<string,unknown>;
         updates.push({table:"crm_calendar_events",filters:{id:payload.id},payload});
@@ -2037,7 +2042,7 @@ function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | 
   return { inserts, rpcCalls, supabase, updates };
 }
 
-describe("rescheduleCrmCalendarEvent travel-buffer override", () => {
+describe("rescheduleCrmCalendarEvent admin override", () => {
   const event = {
     id: "22222222-2222-4222-8222-222222222222",
     created_at: "2035-09-01T00:00:00.000Z",
@@ -2054,20 +2059,12 @@ describe("rescheduleCrmCalendarEvent travel-buffer override", () => {
     meta: {},
   } as CrmCalendarEvent;
 
-  it("rejects non-boolean consent", async () => {
-    const { supabase } = calendarCancelRecorder({ event });
-    await expect(
-      rescheduleCrmCalendarEvent(
-        supabase,
-        {
-          id: event.id,
-          start_at: event.start_at,
-          end_at: event.end_at,
-          override_travel_buffer: "true",
-        },
-        actor,
-      ),
-    ).rejects.toThrow(/must be a boolean/i);
+  it("requires an authenticated staff actor without an opt-in flag", async () => {
+    const { supabase, rpcCalls } = calendarCancelRecorder({ event });
+    await expect(rescheduleCrmCalendarEvent(supabase, {
+      id: event.id, start_at: event.start_at, end_at: event.end_at,
+    }, { email: actor.email })).rejects.toThrow(/authenticated staff/);
+    expect(rpcCalls).toHaveLength(0);
   });
 
   it("uses only the authenticated actor and records the override audit", async () => {
@@ -2086,12 +2083,11 @@ describe("rescheduleCrmCalendarEvent travel-buffer override", () => {
       actor,
     );
 
-    const rpc = rpcCalls.find((call) => call.name === "booking_calendar_reschedule");
+    const rpc = rpcCalls.find((call) => call.name === "booking_admin_reschedule");
     expect(rpc?.args).toMatchObject({
       p_actor_id: actor.userId,
       p_actor_email: actor.email,
-      p_reason: "staff_reschedule_extra_buffer_override",
-      p_allow_buffer_override: true,
+      p_previous: event,
     });
     expect(JSON.stringify(rpc?.args)).not.toContain("forged");
     expect(inserts.at(-1)?.payload).toMatchObject({
@@ -2099,31 +2095,28 @@ describe("rescheduleCrmCalendarEvent travel-buffer override", () => {
       actor_email: actor.email,
       action: "reschedule",
       metadata: {
-        travelBufferOverride: true,
-        travelBufferOverrideReason: "staff_reschedule_extra_buffer_override",
+        adminScheduleOverride: true,
+        adminScheduleOverrideReason: "staff_manual_reschedule",
       },
     });
   });
 
-  it("rejects override consent for another assignee or a block", async () => {
-    for (const unsupported of [
-      { ...event, assigned_to: "Mike" },
-      { ...event, event_type: "block" as const },
-    ]) {
-      const { supabase } = calendarCancelRecorder({ event: unsupported });
-      await expect(
-        rescheduleCrmCalendarEvent(
-          supabase,
-          {
-            id: unsupported.id,
-            start_at: unsupported.start_at,
-            end_at: unsupported.end_at,
-            override_travel_buffer: true,
-          },
-          actor,
-        ),
-      ).rejects.toThrow(/limited to Jessica appointments/i);
+  it("reschedules every assignee and blocks without availability or route checks", async () => {
+    for (const appointment of [event, { ...event, assigned_to: "Mike" }, { ...event, event_type: "block" as const }]) {
+      const { supabase, rpcCalls } = calendarCancelRecorder({ event: appointment });
+      await rescheduleCrmCalendarEvent(supabase, {
+        id: appointment.id, start_at: appointment.start_at, end_at: appointment.end_at,
+      }, actor);
+      expect(rpcCalls.map(call => call.name)).toEqual(["booking_admin_reschedule"]);
     }
+  });
+
+  it("still rejects invalid time ranges", async () => {
+    const { supabase, rpcCalls } = calendarCancelRecorder({ event });
+    await expect(rescheduleCrmCalendarEvent(supabase, {
+      id: event.id, start_at: event.end_at, end_at: event.start_at,
+    }, actor)).rejects.toThrow(/end time must be after/);
+    expect(rpcCalls).toHaveLength(0);
   });
 });
 
