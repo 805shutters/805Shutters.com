@@ -14778,9 +14778,9 @@ function CalendarAppointmentModal({
           </button>
         </div>
         <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
-        {!selectedSlot.availableOwners?.length ? (
-          <p className="crm-slot-override-note">Admin override: this time is outside the open availability windows.</p>
-        ) : null}
+        <p className="crm-slot-override-note">
+          Manual scheduling overrides travel time, overlapping appointments, and public availability restrictions.
+        </p>
         <form className="crm-form" onSubmit={onSubmit}>
           <div className="crm-field-row">
             <label>

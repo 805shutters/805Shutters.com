@@ -724,3 +724,61 @@ describe("authenticated manual rescheduling", () => {
     }
   });
 });
+
+
+async function adminCreate(time: string, extra: Record<string, unknown> = {}) {
+  const event = { ...candidateVisit(date, time, "", 5), title: "Manual staff visit", meta: {}, ...extra };
+  return (await db.query<{ saved: CrmCalendarEvent }>("select booking_admin_create($1,$2,$3) saved", [JSON.stringify(event), staffActorId, 'staff@local.invalid'])).rows[0].saved;
+}
+
+describe("authenticated manual appointment creation", () => {
+  it.each(['10:30', '11:30', '12:00', '04:00'])("creates through overlap, drive conflicts, missing address and closed hours at %s", async time => {
+    const { event } = await protectedPair();
+    const saved = await adminCreate(time);
+    expect(new Date(saved.start_at).toISOString()).toBe(candidateVisit(date, time, '', 5).start_at);
+    expect(saved.meta).toMatchObject({ adminScheduleOverride: { actorUserId: staffActorId, reason: 'staff_manual_create' } });
+    expect((await db.query("select * from booking_admin_schedule_overrides where event_id=$1", [event.id])).rows).toHaveLength(1);
+    await db.query("update crm_calendar_events set notes='Staff note' where id=$1", [saved.id]);
+    await db.exec("select booking_private.validate_protections()");
+  });
+
+  it("allows repeated creation beyond public capacity and keeps public submissions strict", async () => {
+    await protectedPair();
+    await adminCreate('10:30');
+    await adminCreate('10:30');
+    await adminCreate('10:30', { assigned_to: 'Mike' });
+    await expect(commit('14:00')).rejects.toThrow(/BOOKING_FULL/);
+  });
+
+  it("does not authorize a later public itinerary or a forged metadata override", async () => {
+    await protectedPair();
+    await adminCreate('11:30');
+    await expect(commit('09:00', randomUUID(), { event: { meta: { windowCount: 5, adminScheduleOverride: { reason: 'staff_manual_create' } } } })).rejects.toThrow(/BOOKING_/);
+  });
+
+  it("supports manual visits on existing public jobs", async () => {
+    const { event } = await protectedPair();
+    const jobId = (await db.query<{ job_id: string }>("select job_id from crm_calendar_events where id=$1", [event.id])).rows[0].job_id;
+    const saved = await adminCreate('10:30', { job_id: jobId });
+    expect((await db.query("select * from booking_admin_schedule_overrides where event_id=$1", [saved.id])).rows).toHaveLength(1);
+    await db.exec("select booking_private.validate_protections()");
+  });
+
+  it("retains public booking on unaffected days", async () => {
+    await protectedPair();
+    await adminCreate('10:30');
+    await publish([{ start_at: '2035-10-02T15:00:00Z', end_at: '2035-10-03T00:00:00Z' }]);
+    await commit('10:00', randomUUID(), { event: candidateVisit('2035-10-02', '10:00', 'Test address', 5) });
+  });
+
+  it("rejects missing attribution, invalid ranges, and public access", async () => {
+    const event = { ...candidateVisit(date, '10:00', '', 5), title: 'Staff' };
+    await expect(db.query("select booking_admin_create($1,null,$2)", [JSON.stringify(event), 'staff@local.invalid'])).rejects.toThrow(/BOOKING_ACTOR/);
+    await expect(adminCreate('10:00', { end_at: event.start_at })).rejects.toThrow(/Invalid appointment time range/);
+    for (const role of ['anon', 'authenticated']) {
+      await db.exec(`set role ${role}`);
+      try { await expect(adminCreate('10:00')).rejects.toThrow(/permission denied/); }
+      finally { await db.exec('reset role'); }
+    }
+  });
+});

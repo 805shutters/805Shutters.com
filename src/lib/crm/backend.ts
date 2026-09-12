@@ -2514,29 +2514,6 @@ async function syncSaleOwnerForJob(
   });
 }
 
-async function assertCalendarWindowAvailable(
-  supabase: CrmSupabaseClient,
-  startAt: string,
-  endAt: string,
-  excludeEventId?: string
-) {
-  let query = supabase
-    .from("crm_calendar_events")
-    .select("id,title,start_at,end_at")
-    .in("status", ["scheduled", "rescheduled"])
-    .lt("start_at", endAt)
-    .gt("end_at", startAt);
-
-  if (excludeEventId) {
-    query = query.neq("id", excludeEventId);
-  }
-
-  const { data, error } = await query.limit(1);
-
-  if (error) throw new CrmAuthError(502, "Calendar availability could not be checked.");
-  if (data?.length) throw new CrmAuthError(409, "That CRM calendar window is already booked.");
-}
-
 async function syncTechnicalMeasureCalendarState(
   supabase: CrmSupabaseClient,
   event: Record<string, unknown>,
@@ -2630,7 +2607,9 @@ export async function createCrmCalendarEvent(
 
   const assignedTo = optionalText(payload.assigned_to) || "Unassigned";
   const eventType = normalizeEnum<string>(payload.event_type, calendarEventTypes, "sales_consult", "Invalid calendar event type.");
-  if (eventType !== "measure") await assertCalendarWindowAvailable(supabase, startAt, endAt);
+  if (!actor.userId) {
+    throw new CrmAuthError(403, "Manual scheduling requires an authenticated staff account.");
+  }
 
   const record = {
     job_id: payload.job_id || null,
@@ -2645,7 +2624,14 @@ export async function createCrmCalendarEvent(
     meta: metadataWithActor(payload, actor, "createdBy")
   };
 
-  const data = await guardedCalendarWrite(supabase,"insert",record);
+  // Manual CRM entry is staff-authoritative, just like manual rescheduling.
+  // The RPC records exact-day exceptions under the shared schedule lock.
+  const { data, error } = await supabase.rpc("booking_admin_create", {
+    p_event: record,
+    p_actor_id: actor.userId,
+    p_actor_email: actor.email,
+  });
+  if (error) throw new CrmAuthError(502, "Appointment could not be saved. Please try again.");
 
   let linkedJob: CrmJob | null = null;
   if (payload.job_id) {

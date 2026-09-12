@@ -8,6 +8,7 @@ import {
   buildDashboardData,
   cancelCrmCalendarEvent,
   createCrmJobExpense,
+  createCrmCalendarEvent,
   createCrmQuote,
   createManualKenPaymentBatchRpc,
   createPartnerPaymentBatch,
@@ -2022,6 +2023,9 @@ function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | 
     async rpc(name: string, args: Record<string, unknown>) {
       rpcCalls.push({ name, args });
       if(name === "booking_schedule_snapshot") return {data:{revision:"1",events:[opts.event],slots:[],protectedIds:[],bufferExceptions:[]},error:null};
+      if (name === "booking_admin_create") {
+        return { data: { ...opts.event, ...(args.p_event as object) }, error: null };
+      }
       if (name === "booking_admin_reschedule") {
         const payload = { id: args.p_event_id, start_at: args.p_start_at, end_at: args.p_end_at, meta: args.p_meta, status: "rescheduled" };
         updates.push({table: "crm_calendar_events", filters: {id: payload.id}, payload});
@@ -2058,6 +2062,30 @@ describe("rescheduleCrmCalendarEvent admin override", () => {
     notes: null,
     meta: {},
   } as CrmCalendarEvent;
+
+  it("creates manual appointments for every assignee without public checks or an opt-in flag", async () => {
+    for (const assigned_to of ["Jessica", "Mike", "Unassigned"]) {
+      const { supabase, rpcCalls, inserts } = calendarCancelRecorder({ event });
+      const saved = await createCrmCalendarEvent(supabase, {
+        ...event, assigned_to, location: null,
+        actor_id: "forged", actor_email: "forged@example.invalid",
+      }, actor);
+      expect(saved.assigned_to).toBe(assigned_to);
+      expect(rpcCalls).toEqual([{
+        name: "booking_admin_create",
+        args: { p_event: expect.objectContaining({ assigned_to, start_at: event.start_at, location: null }), p_actor_id: actor.userId, p_actor_email: actor.email },
+      }]);
+      expect(JSON.stringify(rpcCalls)).not.toContain("forged");
+      expect(inserts.at(-1)?.payload).toMatchObject({ action: "create", actor_email: actor.email });
+    }
+  });
+
+  it("rejects manual creation without a staff actor or a valid range", async () => {
+    const { supabase, rpcCalls } = calendarCancelRecorder({ event });
+    await expect(createCrmCalendarEvent(supabase, event, { email: actor.email })).rejects.toThrow(/authenticated staff/);
+    await expect(createCrmCalendarEvent(supabase, { ...event, end_at: event.start_at }, actor)).rejects.toThrow(/end time must be after/);
+    expect(rpcCalls).toHaveLength(0);
+  });
 
   it("requires an authenticated staff actor without an opt-in flag", async () => {
     const { supabase, rpcCalls } = calendarCancelRecorder({ event });
