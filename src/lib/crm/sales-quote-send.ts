@@ -745,7 +745,8 @@ async function upsertImportedQuoteStructure(
 
   for (const lineItem of quoteLineItems.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))) {
     const itemDesigns = [...(designsByLineItemId.get(lineItem.id) || [])].sort(compareLegacyDesigns);
-    selectedDesignByLineId.set(lineItem.id, itemDesigns[0]?.id || null);
+    const selectedDesign = itemDesigns.find((design) => design.id === lineItem.selected_design_id);
+    selectedDesignByLineId.set(lineItem.id, selectedDesign?.id || itemDesigns[0]?.id || null);
     await upsertOne(
       supabase,
       "crm_quote_line_items",
@@ -978,7 +979,9 @@ function computeLegacyTotal(subtotal: number, adjustments: AnyRow) {
 function legacyQuoteSubtotal(quoteLineItems: AnyRow[], designsByLineItemId: Map<string, AnyRow[]>) {
   return money(
     quoteLineItems.reduce((quoteSum, lineItem) => {
-      const designTotal = (designsByLineItemId.get(lineItem.id) || []).reduce((designSum, design) => designSum + money(design.unit_price), 0);
+      const designs = designsByLineItemId.get(lineItem.id) || [];
+      const selected = designs.find((design) => design.id === lineItem.selected_design_id);
+      const designTotal = (selected ? [selected] : designs).reduce((designSum, design) => designSum + money(design.unit_price), 0);
       return quoteSum + designTotal * normalizeQuantity(lineItem.quantity);
     }, 0),
   );

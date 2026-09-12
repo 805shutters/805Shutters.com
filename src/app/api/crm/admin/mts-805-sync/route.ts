@@ -688,7 +688,9 @@ function computeLegacyTotal(subtotal: number, adjustments: AnyRow) {
 function legacyQuoteSubtotal(quoteLineItems: AnyRow[], designsByLineItemId: Map<string, AnyRow[]>) {
   return money(
     quoteLineItems.reduce((quoteSum, lineItem) => {
-      const designTotal = (designsByLineItemId.get(lineItem.id) || []).reduce((designSum, design) => designSum + money(design.unit_price), 0);
+      const designs = designsByLineItemId.get(lineItem.id) || [];
+      const selected = designs.find((design) => design.id === lineItem.selected_design_id);
+      const designTotal = (selected ? [selected] : designs).reduce((designSum, design) => designSum + money(design.unit_price), 0);
       return quoteSum + designTotal * normalizeQuantity(lineItem.quantity);
     }, 0),
   );

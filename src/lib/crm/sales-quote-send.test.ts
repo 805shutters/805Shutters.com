@@ -57,6 +57,15 @@ describe("salesQuotesToMirror", () => {
 });
 
 describe("calculateSalesQuoteMirrorPricing", () => {
+  it("does not restore an inactive option when preparing a discounted quote for sending", () => {
+    const prices = [1300.5, 1022.4, 753.3, 603];
+    const lines = prices.map((_, i) => ({ id: `line-${i}`, quantity: 1, selected_design_id: `selected-${i}` }));
+    const designs = new Map(lines.map((line, i) => [line.id, [{ id: line.selected_design_id, unit_price: prices[i] }]]));
+    designs.get("line-2")!.push({ id: "inactive-A", unit_price: 641.7 });
+    expect(calculateSalesQuoteMirrorPricing({ total_amount: 3679.2 }, lines, designs)).toEqual({
+      subtotal: 3679.2, total: 3679.2, shouldSyncSourceTotal: false,
+    });
+  });
   it("uses current line-item math instead of a stale stored sales quote total", () => {
     const lineItems = [
       { id: "line-1", quantity: 2 },
