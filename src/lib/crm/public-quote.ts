@@ -445,6 +445,18 @@ function isLegacyMtsQuote(quote: CrmQuote): boolean {
   return meta.legacy_quote_system === "mts_sales_quote" || typeof meta.mts_quote_id === "string";
 }
 
+/** The source builder owns explicit selections; older mirrors may still select A. */
+export function projectLegacySelectedDesigns(
+  lineItems: CrmQuoteLineItem[],
+  sourceLines: { id: string; selected_design_id: string | null }[],
+): CrmQuoteLineItem[] {
+  const selections = new Map(sourceLines.map(line => [line.id, line.selected_design_id]));
+  return lineItems.map(line => {
+    const selected = line.designs?.find(design => design.id === selections.get(line.id));
+    return selected ? { ...line, selected_design_id: selected.id, designs: [selected] } : line;
+  });
+}
+
 async function legacySourceTotalAdjustment(
   supabase: CrmSupabaseClient,
   quote: CrmQuote,
@@ -1004,6 +1016,15 @@ async function projectPublicQuote(
     }));
   }
   const legacyMts = !nativeContract && isLegacyMtsQuote(quote);
+  const sourceQuoteId = linkedSalesQuoteIdForPublicQuote(quote);
+  if (legacyMts && !historicalPricing && !quote.signed_at && sourceQuoteId && record(record(quote.meta).partial_acceptance).role !== "future") {
+    const { data: sourceLines, error: selectionError } = await supabase
+      .from("sales_quote_line_items")
+      .select("id,selected_design_id")
+      .eq("quote_id", sourceQuoteId);
+    if (selectionError) throw new CrmAuthError(502, "The selected contract items could not be verified. Please try again.");
+    lineItems = projectLegacySelectedDesigns(lineItems, sourceLines ?? []);
+  }
   const projectedLines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
     expandPublicQuoteLine(projectNativeFrozenLine(quote, lineItem, projectLine(lineItem, legacyMts)))
   ));

@@ -472,7 +472,8 @@ async function upsertImportedQuoteStructure(
 
   for (const lineItem of quoteLineItems.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))) {
     const itemDesigns = [...(designsByLineItemId.get(lineItem.id) || [])].sort(compareLegacyDesigns);
-    selectedDesignByLineId.set(lineItem.id, itemDesigns[0]?.id || null);
+    selectedDesignByLineId.set(lineItem.id,
+      itemDesigns.find(design => design.id === lineItem.selected_design_id)?.id || itemDesigns[0]?.id || null);
     const importedLineItem = await upsertOne(
       supabase,
       "crm_quote_line_items",

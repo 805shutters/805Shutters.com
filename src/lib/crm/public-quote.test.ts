@@ -21,6 +21,7 @@ import {
   expandPublicQuoteLine,
   labelDuplicatePublicQuoteRooms,
   projectLine,
+  projectLegacySelectedDesigns,
   computeSelectionMoney,
   type PublicQuote,
 } from "./public-quote";
@@ -421,6 +422,18 @@ function lineItem(over: Partial<CrmQuoteLineItem> & { designs?: CrmQuoteDesign[]
 }
 
 describe("projectLine (per-line discount on the contract)", () => {
+  it("uses the source's selected shutter even when the legacy mirror still selects A", () => {
+    const old = { ...design({ unit_price: 641.7 }), id: "old-a", label: "A" };
+    const chosen = { ...design({ unit_price: 753.3 }), id: "chosen-c", label: "C" };
+    const mirror = lineItem({ id: "kitchen", designs: [old, chosen], selected_design_id: old.id });
+    const [selected] = projectLegacySelectedDesigns([mirror], [{ id: mirror.id, selected_design_id: chosen.id }]);
+    const publicLine = projectLine(selected, true);
+    expect(publicLine.lineTotal).toBe(753.3);
+    expect(publicLine.designOptions.map(option => option.id)).toEqual([chosen.id]);
+    expect(mirror.designs).toHaveLength(2);
+    expect(projectLegacySelectedDesigns([mirror], [{ id: mirror.id, selected_design_id: null }])[0]).toBe(mirror);
+    expect(projectLegacySelectedDesigns([mirror], [{ id: mirror.id, selected_design_id: "missing" }])[0]).toBe(mirror);
+  });
   it("surfaces the line's discount percent alongside the discounted price", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 190.8 });
     const line = projectLine(lineItem({ discount_percent: 10, designs: [d] }), false);
