@@ -27,6 +27,20 @@ function render(patch: Partial<CrmQuote> = {}) {
 }
 
 describe("mirrored CRM quote pricing in the actual dashboard", () => {
+  it("uses the editable legacy source total and preserves accepted or native mirror totals", () => {
+    const original = { ...fixtures.sales[0] };
+    try {
+      Object.assign(fixtures.sales[0], { status: "sent", quote_v2_backend: false, total_amount: 3679.2 });
+      const patch = { status: "sent", quote_total: 4320.9 } as Partial<CrmQuote>;
+      expect(render(patch)).toContain("$3,679.20");
+      expect(render(patch)).not.toContain("$4,320.90");
+      for (const frozen of [
+        { signed_at: "2026-09-11" }, { customer_signature: "Signed" },
+        { approved_at: "2026-09-11" }, { status: "sold" },
+        { meta: { mts_quote_id: "sales-c", native_delivery_id: "delivery" } },
+      ]) expect(render({ ...patch, ...frozen } as Partial<CrmQuote>)).toContain("$4,320.90");
+    } finally { fixtures.sales[0] = original; }
+  });
   it("labels a mirrored retained alternative Pending Quote without changing its status", () => {
     const original = fixtures.sales.map((quote) => ({ ...quote }));
     try {

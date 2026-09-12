@@ -317,6 +317,16 @@ export function QuoteDashboard({
     const crmRows: QuoteTableRow[] = crmQuotes.map((quote) => {
       const job = jobsById.get(quote.job_id);
       const sourceQuoteId = crmQuoteSourceSalesQuoteId(quote);
+      const sourceQuote = sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined;
+      // Editable legacy contracts use the builder's saved total. The CRM mirror
+      // can still contain prices from inactive design alternatives.
+      const useSourceTotal = sourceQuote && !sourceQuote.quote_v2_backend &&
+        !quote.meta?.native_delivery_id &&
+        ["draft", "sent"].includes(quote.status) &&
+        ["draft", "sent"].includes(sourceQuote.status) &&
+        !quote.signed_at && !quote.customer_signature && !quote.approved_at &&
+        !sourceQuote.signed_at && !sourceQuote.customer_signature &&
+        sourceQuote.total_amount != null && Number.isFinite(Number(sourceQuote.total_amount));
       const jobRows = bookkeepingByJobId.get(quote.job_id) || [];
       const bookkeepingRow =
         bookkeepingByQuoteId.get(quote.id) ||
@@ -334,7 +344,7 @@ export function QuoteDashboard({
         customer_phone: quote.customer_phone || job?.phone || null,
         customer_email: quote.customer_email || job?.email || null,
         appointment_date: dateOnly(job?.appointment_start),
-        total_amount: quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
+        total_amount: useSourceTotal ? sourceQuote.total_amount : quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
         sent_at: quote.sent_at,
         approved_at: quote.approved_at,
         sold_at: quote.sold_at,
@@ -351,8 +361,8 @@ export function QuoteDashboard({
         updated_at: quote.updated_at,
         source: "crm",
         sourceQuoteId,
-        salesQuote: sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined,
-        pendingAlternative: isPendingQuoteAlternative(sourceQuoteId ? salesQuotesById.get(sourceQuoteId) : undefined, quotes),
+        salesQuote: sourceQuote,
+        pendingAlternative: isPendingQuoteAlternative(sourceQuote, quotes),
       };
     });
 
