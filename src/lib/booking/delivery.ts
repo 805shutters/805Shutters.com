@@ -4,7 +4,7 @@ import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
 import { isBookingDeliveryEnabled } from "./delivery-config";
-type BookingAutomationDetails = {
+export type BookingAutomationDetails = {
   leadId: string;
   jobId: string;
   calendarEventId: string;
@@ -136,18 +136,16 @@ async function sendSmsMessage({ to, body }: { to: string; body: string }) {
   }
 }
 
-async function sendSmsConfirmation({
-  phone,
+export function buildCustomerConfirmationSms({
   startAt,
   productInterest,
   productTypes,
 }: {
-  phone: string;
   startAt: string;
   productInterest: string;
   productTypes: string[];
 }) {
-  const body = [
+  return [
     "805 Shutters appointment confirmation.",
     `Your free in-home consultation is confirmed for ${formatAppointmentForSms(startAt)}.`,
     productTypes.length ? `Product interest: ${productInterest}.` : null,
@@ -157,7 +155,10 @@ async function sendSmsConfirmation({
     .filter(Boolean)
     .join(" ");
 
-  return sendSmsMessage({ to: phone, body });
+}
+
+async function sendSmsConfirmation(details: BookingAutomationDetails) {
+  return sendSmsMessage({ to: details.phone, body: buildCustomerConfirmationSms(details) });
 }
 
 async function sendStaffSmsAlerts(details: BookingAutomationDetails) {
@@ -214,7 +215,7 @@ function formatDuration(minutes: number) {
     : `${minutes} minutes`;
 }
 
-function bookingPlainText(
+export function bookingPlainText(
   details: BookingAutomationDetails,
   customerFacing: boolean,
 ) {
@@ -271,7 +272,7 @@ function bookingPlainText(
     .join("\n");
 }
 
-function bookingHtml(
+export function bookingHtml(
   details: BookingAutomationDetails,
   customerFacing: boolean,
 ) {

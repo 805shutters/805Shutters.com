@@ -201,7 +201,9 @@ const canonicalHostRedirect = {
 };
 
 const publicVercelHostRedirect = {
-  source: "/:path*",
+  // Cron invocations do not follow host redirects. Keep only the reminder
+  // dispatcher/service and confirmation worker reachable on the deployment host.
+  source: "/:path((?!api/cron/(?:appointment-reminder(?:s|-dispatch)|booking-outbox)/?$).*)",
   has: [{ type: "host", value: "^805-one\\.vercel\\.app$" }],
   destination: "https://www.805shutters.com/:path*",
   permanent: true
