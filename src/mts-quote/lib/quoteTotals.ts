@@ -19,7 +19,7 @@ export type QuoteTotalMode = "legacy" | "authoritative_v2";
 export interface QuoteTotalCalculationOptions {
   /**
    * Legacy quotes intentionally retain the historical behavior of totaling
-   * every saved A/B/C design. The isolated V2 runtime explicitly opts into one
+   * every saved A/B/C design until a persisted selection exists. V2 opts into one
    * selected design per line plus any documented once-per-line retail charge.
    */
   mode?: QuoteTotalMode;
@@ -102,7 +102,7 @@ function quoteTotalDesignsForMode<T extends QuoteTotalDesign>(
   designs: readonly T[],
   mode: QuoteTotalMode,
 ): readonly T[] {
-  if (mode !== "authoritative_v2") return designs;
+  if (mode !== "authoritative_v2" && !designs.some(design => design[QUOTE_V2_SELECTED_DESIGN_MARKER] === true)) return designs;
   const selected = resolveQuoteTotalDesign(designs);
   return selected ? [selected] : [];
 }

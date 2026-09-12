@@ -27,18 +27,13 @@ export function calculateDiscountedPrice(
 
 export function getQuoteDesignDiscountSourcePrice(design: SalesQuoteDesign): number {
   const options = design.options_json || {};
-  const storedSource = normalizeMoney(options.discount_source_price);
-  if (storedSource > 0) return roundCurrency(storedSource);
-
-  if (options.manual_price_override === true) {
-    return roundCurrency(normalizeMoney(design.unit_price));
+  const storedSource = Number(options.discount_source_price);
+  if (Number(options.discount_percent) > 0 && Number.isFinite(storedSource) && storedSource >= 0) {
+    return roundCurrency(storedSource);
   }
 
-  const basePrice = normalizeMoney(options.base_price);
-  const surchargeTotal = normalizeMoney(options.surcharge_total);
-  const calculatedSource = basePrice + surchargeTotal;
-  if (calculatedSource > 0) return roundCurrency(calculatedSource);
-
+  // Discounts start from the saved selling price, including staff overrides and
+  // locked quotes. Catalog base/surcharges may describe an older configuration.
   return roundCurrency(normalizeMoney(design.unit_price));
 }
 

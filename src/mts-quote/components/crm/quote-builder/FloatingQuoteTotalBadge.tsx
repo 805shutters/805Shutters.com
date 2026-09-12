@@ -1,5 +1,7 @@
 import {
   resolveQuoteDisplayTotal,
+  calculateQuoteTotalBreakdown,
+  type QuoteAdminControls,
   unpricedQuoteLineIds,
   type QuoteTotalDesign,
   type QuoteTotalLineItem,
@@ -20,6 +22,7 @@ export function FloatingQuoteTotalBadge({
   authoritativeV2 = false,
   historicalTotal,
   useHistoricalTotal = false,
+  adminControls,
 }: {
   lineItems: QuoteTotalLineItem[];
   designs: QuoteTotalDesign[];
@@ -28,6 +31,7 @@ export function FloatingQuoteTotalBadge({
   authoritativeV2?: boolean;
   historicalTotal?: number | null;
   useHistoricalTotal?: boolean;
+  adminControls?: QuoteAdminControls;
 }) {
   const calculatedTotal = preferStoredTotal && Number.isFinite(Number(storedTotal))
     ? Number(storedTotal)
@@ -37,7 +41,7 @@ export function FloatingQuoteTotalBadge({
   const lockedTotal = Number(historicalTotal);
   const fromHistoricalLock =
     useHistoricalTotal && Number.isFinite(lockedTotal) && lockedTotal > 0;
-  const total = fromHistoricalLock ? lockedTotal : calculatedTotal;
+  const total = fromHistoricalLock ? lockedTotal : preferStoredTotal ? calculatedTotal : calculateQuoteTotalBreakdown(calculatedTotal, adminControls).total;
 
   const missingPrices = authoritativeV2 && !fromHistoricalLock ? unpricedQuoteLineIds(lineItems, designs).length : 0;
   const incomplete = authoritativeV2 && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);

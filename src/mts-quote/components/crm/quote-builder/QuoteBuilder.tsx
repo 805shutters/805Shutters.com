@@ -72,6 +72,9 @@ import {
   buildQuoteInstallerNotesMeta,
   calculateLineItemDesignTotal,
   calculateQuoteDesignSubtotal,
+  selectedQuoteTotalDesigns,
+  parseQuoteAdminControls,
+  calculateQuoteTotalBreakdown,
   getQuoteBuilderNote,
   parseQuoteMeta,
   shouldPersistQuoteDesignSubtotal,
@@ -679,9 +682,10 @@ export function QuoteBuilder({
       )
         ? "authoritative_v2"
         : "legacy";
-    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
+    const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
       mode: totalMode,
     });
+    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote)).total;
     if (!shouldPersistQuoteDesignSubtotal(projectedDesigns, { ...options, mode: totalMode })) return;
 
     const { error: quoteError } = await (supabase as any)
@@ -785,8 +789,9 @@ export function QuoteBuilder({
         .in("line_item_id", lineItemIds);
       if (error) throw error;
       const rows = (data || []) as SalesQuoteDesign[];
-      return projectPersistedDesignSelections(rows, lineItems);
+      return rows;
     },
+    select: (rows) => projectPersistedDesignSelections(rows, lineItems),
     enabled: lineItemIds.length > 0,
   });
 
@@ -1645,7 +1650,9 @@ export function QuoteBuilder({
       lineItemIds: string[];
     }) => {
       const targetIds = new Set(targetLineItemIds);
-      const targetDesigns = designs.filter((design) => targetIds.has(design.line_item_id));
+      const currentDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ?? designs;
+      const targetDesigns = selectedQuoteTotalDesigns(projectPersistedDesignSelections(currentDesigns, lineItems))
+        .filter((design) => targetIds.has(design.line_item_id));
       if (targetDesigns.length === 0) {
         throw new Error("No saved line item designs found for that discount.");
       }
@@ -1696,10 +1703,13 @@ export function QuoteBuilder({
         return { previousDesigns };
       }
       const targetIds = new Set(targetLineItemIds);
+      const targetDesignIds = new Set(selectedQuoteTotalDesigns(
+        projectPersistedDesignSelections(previousDesigns ?? designs, lineItems),
+      ).filter(design => targetIds.has(design.line_item_id)).map(design => design.id));
 
       queryClient.setQueryData<SalesQuoteDesign[]>(designsQueryKey, (current = []) =>
         current.map((design) =>
-          targetIds.has(design.line_item_id)
+          targetDesignIds.has(design.id)
             ? { ...design, ...applyQuoteDesignDiscount(design, percent) }
             : design
         )
@@ -2616,6 +2626,7 @@ export function QuoteBuilder({
           lineItems={lineItems}
           designs={designs}
           storedTotal={quote.total_amount}
+          adminControls={parseQuoteAdminControls(quote)}
           preferStoredTotal={preferStoredTotal}
           authoritativeV2={authoritativeV2}
           historicalTotal={historicalPriceLock?.total}

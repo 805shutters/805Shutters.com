@@ -16,3 +16,21 @@ it('keeps invalid blanks out of persistence',async()=>{await enter('');await blu
 it('shows failed saves and permits the same price to be retried',async()=>{save.mockRejectedValueOnce(new Error('Connection interrupted'));await enter('25.50');await blur();expect(host.textContent).toContain('Connection interrupted');await enter('25.50');await blur();expect(save).toHaveBeenCalledTimes(2);expect(host.querySelector('[role=alert]')).toBeNull();});
 
 it('pins an explicitly reentered price even when the displayed amount matches',async()=>{await enter('125');await blur();expect(save).toHaveBeenCalledExactlyOnceWith(125);});
+
+it('accepts pasted currency with cents and saves once via the visible button',async()=>{
+ await enter('$1,234.56');
+ await act(async()=>host.querySelector('button')!.click());
+ expect(save).toHaveBeenCalledExactlyOnceWith(1234.56);
+ expect(host.textContent).toContain('Price saved');
+ await blur();expect(save).toHaveBeenCalledTimes(1);
+});
+it('preserves a draft across incoming server updates while typing',async()=>{
+ await enter('827.45');
+ await act(()=>root.render(React.createElement(LineItemPriceInput,{value:200,roomName:'Kitchen',onSave:save})));
+ expect(host.querySelector('input')!.value).toBe('827.45');
+ await blur();expect(save).toHaveBeenCalledExactlyOnceWith(827.45);
+});
+it('rejects negative prices and accidental extra decimal places',async()=>{
+ await enter('-1');await blur();expect(save).not.toHaveBeenCalled();
+ await enter('12.345');await blur();expect(save).not.toHaveBeenCalled();
+});

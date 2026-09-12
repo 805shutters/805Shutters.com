@@ -28,3 +28,21 @@ describe("contract total completeness", () => {
     expect(render({ authoritativeV2: false })).toContain("Contract Total $726.78");
   });
 });
+
+const noelLines = ["living", "bed", "shutter", "roller"].map(id => ({ id, quantity: 1 }));
+const noelDesigns = [
+  { line_item_id: "living", variant: "A", unit_price: 1445 },
+  { line_item_id: "bed", variant: "A", unit_price: 1136 },
+  { line_item_id: "shutter", variant: "A", unit_price: 641.7 },
+  { line_item_id: "shutter", variant: "C", unit_price: 837, [QUOTE_V2_SELECTED_DESIGN_MARKER]: true },
+  { line_item_id: "roller", variant: "A", unit_price: 670 },
+];
+it("excludes the unselected $641.70 shutter from a legacy contract", () => {
+  expect(render({ authoritativeV2: false, lineItems: noelLines, designs: noelDesigns, storedTotal: 4729.7 }))
+    .toContain("Contract Total $4,088.00");
+});
+it("includes contract-level discounts, fees, and tax in the badge", () => {
+  expect(render({ authoritativeV2: false, lineItems: noelLines, designs: noelDesigns,
+    adminControls: { showDiscount: true, discountPercent: 10 } }))
+    .toContain("Contract Total $3,679.20");
+});

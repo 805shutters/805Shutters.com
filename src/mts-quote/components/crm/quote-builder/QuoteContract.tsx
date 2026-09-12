@@ -1,3 +1,4 @@
+import { LineItemPriceInput } from "./LineItemPriceInput";
 import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
@@ -453,53 +454,32 @@ export function QuoteContract({
       quoteId,
       designId,
       unitPrice,
-      optionsJson,
     }: {
       quoteId: string;
       designId: string;
       unitPrice: number;
-      optionsJson: Record<string, unknown>;
     }) => {
       if ((quoteId === quote?.id && acceptedProjection.accepted) || groupProjections.get(quoteId)?.accepted) {
         throw new Error("Accepted contract pricing is immutable.");
       }
-      const roundedPrice = Math.round(unitPrice * 100) / 100;
-      const { error } = await (supabase as any)
-        .from("sales_quote_designs")
-        .update({
-          unit_price: roundedPrice,
-          options_json: { ...optionsJson, manual_price_override: true },
-        })
-        .eq("id", designId);
-      if (error) throw error;
-
-      const quoteLineItems = (hasMultipleQuotes ? allGroupLineItems : lineItems).filter(
-        (item) => item.quote_id === quoteId
-      );
-      const quoteDesigns = (hasMultipleQuotes ? allGroupDesigns : designs)
-        .filter((design) => quoteLineItems.some((item) => item.id === design.line_item_id))
-        .map((design) =>
-          design.id === designId
-            ? {
-                ...design,
-                unit_price: roundedPrice,
-                options_json: { ...optionsJson, manual_price_override: true },
-              }
-            : design
-        );
-
-      const nextTotal = calculateControlledTotal(quoteLineItems, quoteDesigns, adminControls);
-      const { error: quoteError } = await (supabase as any)
-        .from("sales_quotes")
-        .update({ total_amount: nextTotal })
-        .eq("id", quoteId);
-      if (quoteError) throw quoteError;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+      const quoteDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
+      const design = quoteDesigns.find(row => row.id === designId);
+      const targetQuote = quoteId === quote?.id ? quote : groupQuotes.find(row => row.id === quoteId);
+      if (!design || !targetQuote) throw new Error("Reload the contract before editing this price.");
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !data.session) throw new Error("Sign in again to save the price.");
+      const response = await fetch(`/api/crm/sales-quotes/${quoteId}/line-price/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ lineItemId: design.line_item_id, variant: design.variant, unitPrice,
+          expectedRevision: targetQuote.quote_v2_backend ? targetQuote.quote_v2_revision : null,
+          requestId: crypto.randomUUID() }),
       });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Price could not be saved.");
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
       toast.success("Line item price updated");
     },
   });
@@ -920,13 +900,16 @@ export function QuoteContract({
                         actions={<>
                           <div className="flex flex-wrap items-center justify-end gap-1 text-xs text-muted-foreground">
                             <span>{accepted.accepted ? "Base unit price" : "Unit price"}</span>
-                            <EditableContractPrice
-                              value={design.unit_price}
-                              disabled={accepted.accepted || updateDesignPrice.isPending}
-                              onSave={(unitPrice) => updateDesignPrice.mutate({
-                                quoteId: gq.id, designId: design.id, unitPrice, optionsJson: design.options_json || {},
-                              })}
-                            />
+                            {accepted.accepted ? <span>{formatCurrency(design.unit_price)}</span> : (
+                              <LineItemPriceInput
+                                key={design.id}
+                                value={design.unit_price}
+                                roomName={item.room_name}
+                                onSave={async (unitPrice) => { await updateDesignPrice.mutateAsync({
+                                  quoteId: gq.id, designId: design.id, unitPrice,
+                                }); }}
+                              />
+                            )}
                           </div>
                         </>}
                       />;
@@ -1295,75 +1278,5 @@ export function QuoteContract({
         quote={quote}
       />
     </div>
-  );
-}
-
-function EditableContractPrice({
-  value,
-  disabled,
-  onSave,
-}: {
-  value: number;
-  disabled?: boolean;
-  onSave: (value: number) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value || 0));
-
-  useEffect(() => {
-    if (!editing) setDraft(String(value || 0));
-  }, [editing, value]);
-
-  const commit = () => {
-    const parsed = Number(draft);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setEditing(false);
-      setDraft(String(value || 0));
-      return;
-    }
-
-    const rounded = Math.round(parsed * 100) / 100;
-    if (rounded !== value) onSave(rounded);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1">
-        <span className="text-xs font-bold">$</span>
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          value={draft}
-          autoFocus
-          disabled={disabled}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              (event.target as HTMLInputElement).blur();
-            }
-            if (event.key === "Escape") {
-              setEditing(false);
-              setDraft(String(value || 0));
-            }
-          }}
-          className="h-8 w-28 text-right text-sm font-bold tabular-nums"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => setEditing(true)}
-      className="rounded-md px-2 py-1 text-sm font-bold tabular-nums hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-      title="Click to edit line item price"
-    >
-      {formatCurrency(value)}
-    </button>
   );
 }

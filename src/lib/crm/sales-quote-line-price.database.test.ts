@@ -6,7 +6,7 @@ const id = (n:number) => `10000000-0000-4000-8000-${String(n).padStart(12,'0')}`
 let request=100;
 beforeAll(async()=>{
  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
- create table sales_quotes(id uuid primary key,quote_v2_backend boolean default false,quote_v2_revision bigint default 1,quote_v2_status text,quote_v2_catalog_version text,status text default 'draft',total_amount numeric default 0);
+ create table sales_quotes(id uuid primary key,quote_v2_backend boolean default false,quote_v2_revision bigint default 1,quote_v2_status text,quote_v2_catalog_version text,status text default 'draft',installer_notes text,total_amount numeric default 0);
  create table sales_quote_line_items(id uuid primary key,quote_id uuid references sales_quotes,product_type text,quantity int default 1,selected_design_id uuid);
  create table sales_quote_designs(id uuid primary key default gen_random_uuid(),line_item_id uuid references sales_quote_line_items on delete cascade,variant text,product_type text,unit_price numeric default 0,options_json jsonb default '{}',quote_v2_price_status text,quote_v2_selection_fingerprint text,quote_v2_priced_catalog_version text,quote_v2_priced_at timestamptz,current_v2_snapshot_id uuid,unique(line_item_id,variant));
  create table sales_quote_v2_price_snapshots(id uuid primary key default gen_random_uuid(),quote_id uuid,line_item_id uuid,design_id uuid,quote_revision bigint,selection_fingerprint text,catalog_version text,retail_total numeric,internal_landed_cost_total numeric,retail_snapshot jsonb,internal_cost_snapshot jsonb,validation_snapshot jsonb,provenance_snapshot jsonb,created_by uuid);
@@ -16,6 +16,7 @@ beforeAll(async()=>{
  return query select $1,$2+1,'priced'::text,999::numeric,1,0;
  end $$;`);
  await db.exec(readFileSync('supabase/migrations/20260911173000_staff_line_price_overrides.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20260912002500_line_price_contract_totals.sql','utf8'));
  await db.query(`insert into sales_quotes(id,quote_v2_backend) values($1,false),($2,true)`,[id(1),id(2)]);
  await db.query(`insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Shutters',2),($3,$4,'Unsupported catalog',3)`,[id(11),id(1),id(12),id(2)]);
 },30000);
@@ -69,4 +70,10 @@ it('preserves contract product and cost evidence when changing an already priced
  expect(rows[0].selection_fingerprint).toMatch(/^sha256:[0-9a-f]{64}$/);
  expect(rows[0].catalog_version).toBe('norman-test');
  expect(rows[0].provenance_snapshot.originalSnapshotId).toBe(id(21));
+});
+
+it('retains contract discount, tax, and extras when setting an exact line price',async()=>{
+ await db.query('insert into sales_quotes(id,installer_notes) values($1,$2)',[id(4),JSON.stringify({__adminControls:{showExtras:true,extraFees:[{amount:100}],showDiscount:true,discountPercent:10,showTax:true,taxPercent:8}})]);
+ await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Roller Shades',2)",[id(14),id(4)]);
+ expect(await save(4,14,500)).toMatchObject({unitPrice:500,total:1069.2});
 });
