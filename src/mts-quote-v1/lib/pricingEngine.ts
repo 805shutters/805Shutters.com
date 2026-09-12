@@ -1,3 +1,5 @@
+import { FALL_2026_ROLLER_PROGRAM_TO_GRID, findFall2026RollerCollection, fall2026RollerProgramId } from "@/lib/quote/norman-roller-fall-2026";
+import { getRollerShadeSpecWarnings } from "./rollerShadeSpecs";
 // Pricing engine for quote builder
 // Handles price lookups and surcharge calculations
 
@@ -187,6 +189,7 @@ export interface PriceLookupOptions {
   productLine?: string;
   fabricGroup?: string;
   shadeType?: string;
+  liftSystem?: string;
   program?: string;
   catalogProgramId?: string;
   supplier?: string;
@@ -227,6 +230,7 @@ export function getHoneycombPrice(options: PriceLookupOptions): number | null {
  * Routes to correct grid based on fabric selection
  */
 export function getRollerPrice(options: PriceLookupOptions): number | null {
+  if (!isFall2026RollerConfigurationValid(options)) return null;
   const { priceGroup, fabric, width, height } = options;
   const gridKey = getCatalogGridKey("Roller Shades", options) ?? (fabric
     ? getRollerFabricPriceGroup(fabric)
@@ -238,6 +242,20 @@ export function getRollerPrice(options: PriceLookupOptions): number | null {
 
   return lookupGridPrice(grid, width, height);
 }
+
+function isFall2026RollerConfigurationValid(options: PriceLookupOptions): boolean {
+  const collection = findFall2026RollerCollection(options.fabric);
+  const isNewProgram = !!FALL_2026_ROLLER_PROGRAM_TO_GRID[options.catalogProgramId ?? ""];
+  if ((!collection && !isNewProgram) || (collection?.priceGroup === 4 && !isNewProgram)) return true;
+  if (isNewProgram && options.fabric?.trim() && !collection) return false;
+  if (!Number.isFinite(options.width) || !Number.isFinite(options.height) || options.width <= 0 || options.height <= 0) return false;
+  if (collection && options.catalogProgramId && options.catalogProgramId !== fall2026RollerProgramId(collection.priceGroup)) return false;
+  return getRollerShadeSpecWarnings({
+    productType: "Roller Shades", widthInches: options.width, heightInches: options.height,
+    fabricCollection: options.fabric, shadeType: options.shadeType, liftSystem: options.liftSystem,
+  }).length === 0;
+}
+
 
 /**
  * Roman Shades
@@ -450,6 +468,7 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
       );
     }
     case "Roller Shades": {
+      if (!isFall2026RollerConfigurationValid(options)) return { productType, price: null, pricingMethod: "none" };
       const gridKey = getCatalogGridKey(productType, options) ?? (options.fabric
         ? getRollerFabricPriceGroup(options.fabric)
         : options.priceGroup?.toLowerCase().replace(" ", "") || "group1");

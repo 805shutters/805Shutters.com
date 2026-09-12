@@ -4182,6 +4182,7 @@ function RollerFabricAutocomplete({
   );
   const selectedLabel = selectedColor?.label ?? value ?? "";
   const [query, setQuery] = useState(selectedLabel);
+  const [fabricCategory, setFabricCategory] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
 
@@ -4191,10 +4192,10 @@ function RollerFabricAutocomplete({
 
   const results = useMemo(
     () =>
-      searchMtsRollerFabricColors(query, { limit: 400 }).filter((row) =>
+      searchMtsRollerFabricColors(query, { category: fabricCategory }).filter((row) =>
         isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
       ),
-    [allowedCollections, query]
+    [allowedCollections, query, fabricCategory]
   );
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -4284,8 +4285,12 @@ function RollerFabricAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
-          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
+          onBlur={(event) => {
+            if (event.relatedTarget?.getAttribute("aria-label") === "Fabric category") return;
+            window.setTimeout(() => setIsOpen(false), 120);
+          }}
           placeholder="Search collection, color, or code..."
+          aria-label="Fabric search"
           autoComplete="off"
           className="quote-style-input h-6 min-h-0 pl-7 pr-7 text-[11px] text-gray-900"
         />
@@ -4302,15 +4307,28 @@ function RollerFabricAutocomplete({
         )}
       </div>
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-72 w-full min-w-[22rem] overflow-auto rounded-md border border-border bg-background shadow-lg">
+        <div className="relative z-50 mt-1 max-h-72 w-80 max-w-[calc(100vw-8rem)] overflow-auto rounded-md border border-border bg-background shadow-lg">
+          <div className="sticky top-0 z-10 border-b bg-background p-2">
+            <select
+              aria-label="Fabric category"
+              value={fabricCategory}
+              onChange={(event) => { setFabricCategory(event.target.value); setIsOpen(true); }}
+              className="w-full rounded border border-border bg-background p-1 text-xs"
+            >
+              <option value="">All fabrics</option>
+              {["Light Filtering", "Room Darkening", "Solar", "Sheer", "Natural"].map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
           {results.length > 0 ? (
             results.map((fabricColor) => (
               <button
                 key={fabricColor.id}
                 type="button"
                 disabled={!fabricColor.available || !fabricColor.programId}
-                onMouseDown={(event) => {
-                  event.preventDefault();
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
                   if (!fabricColor.available || !fabricColor.programId) return;
                   handleSelect(fabricColor);
                 }}
@@ -5056,6 +5074,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||
@@ -5153,6 +5172,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||
@@ -5305,6 +5325,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||

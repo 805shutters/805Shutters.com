@@ -1,3 +1,4 @@
+import { fall2026RollerPriceGrids } from "@/lib/quote/norman-roller-fall-2026";
 import { normanRollerPg4Program } from "@/lib/quote/norman-roller-pg4-2026-09.generated";
 // Pricing data for all products — extracted from 818 Shutters pricing structure
 // Heights and widths are in inches, prices are in USD
@@ -281,6 +282,7 @@ export const VERTICAL_HONEYCOMB_PRICING: Record<string, PriceGrid> = {
 
 // ========== ROLLER SHADES PRICING ==========
 export const ROLLER_PRICING: Record<string, PriceGrid> = {
+  ...fall2026RollerPriceGrids,
   group4September2026: {
     name: normanRollerPg4Program.name,
     fabrics: normanRollerPg4Program.fabricCollections.flatMap((row) => row.fabrics),

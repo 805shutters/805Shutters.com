@@ -1,3 +1,5 @@
+import { findFall2026RollerCollection } from "@/lib/quote/norman-roller-fall-2026";
+
 export type RollerShadeSpecWarning = {
   id: string;
   message: string;
@@ -131,7 +133,8 @@ export function getRollerFabricMaxWidth(
     if (colorLimit !== undefined) return colorLimit;
   }
 
-  return COLLECTION_MAX_WIDTH[normalizedCollection] ?? DEFAULT_MAX_FABRIC_WIDTH;
+  return findFall2026RollerCollection(collection)?.fabricWidth
+    ?? COLLECTION_MAX_WIDTH[normalizedCollection] ?? DEFAULT_MAX_FABRIC_WIDTH;
 }
 
 export function getEffectiveRollerFabricWidth(

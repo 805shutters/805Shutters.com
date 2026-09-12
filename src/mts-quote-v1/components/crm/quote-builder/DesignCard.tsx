@@ -3600,7 +3600,7 @@ function RollerFabricAutocomplete({
 
   const results = useMemo(
     () =>
-      searchMtsRollerFabricColors(query, { limit: 400 }).filter((row) =>
+      searchMtsRollerFabricColors(query).filter((row) =>
         isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
       ),
     [allowedCollections, query]
@@ -4289,6 +4289,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
@@ -4376,6 +4377,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
@@ -4518,6 +4520,7 @@ export function DesignCard({
       productLine: opts?.product_line as string | undefined,
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
+      liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
       catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,

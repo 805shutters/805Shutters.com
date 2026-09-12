@@ -1,3 +1,4 @@
+import { findFall2026RollerCollection, fall2026RollerProgramId, FALL_2026_ROLLER_PROGRAM_TO_GRID } from "./norman-roller-fall-2026";
 import { NORMAN_MICRO_SLAT_SURCHARGE_ID } from "./norman-assortment-2026-09";
 // Pure pricing engine for Norman window treatments.
 //
@@ -790,6 +791,19 @@ export function priceDesign(input: PriceInput): PriceResult {
   }
   if (needsHeight && prog.minHeight != null && H < prog.minHeight) {
     return fail("INVALID_DIMENSIONS", `Height ${H}\" is below the ${prog.minHeight}\" minimum for ${prog.name}.`, warnings);
+  }
+
+  const fallFabric = product.id === "roller" ? findFall2026RollerCollection(input.fabric) : undefined;
+  if (FALL_2026_ROLLER_PROGRAM_TO_GRID[prog.id] && input.fabric?.trim() && !fallFabric) {
+    return fail("PROGRAM_NOT_RESOLVED", "This price program is reserved for Fall 2026 fabrics.", warnings);
+  }
+  if (fallFabric && fallFabric.priceGroup !== 4) {
+    if (prog.id !== fall2026RollerProgramId(fallFabric.priceGroup)) {
+      return fail("PROGRAM_NOT_RESOLVED", "The selected fabric does not match this price program.", warnings);
+    }
+    if (pricedWidths.some((width) => width - 1 > fallFabric.fabricWidth)) {
+      return fail("WIDTH_EXCEEDS_MAX", `${fallFabric.collection} fabric width cannot exceed ${fallFabric.fabricWidth}" after the fabric deduction.`, warnings);
+    }
   }
 
   // Hard max-dimension limits (can be tighter than the grid extent).

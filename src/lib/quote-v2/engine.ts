@@ -1253,6 +1253,8 @@ function baselinePriceComponent(
   const baselineSourceResult = priceDesign({
     ...priceInput,
     programId: baselineProgramId,
+    // The selected fabric was validated above; this is a program-only baseline lookup.
+    ...(selectedProgram.id.endsWith("_fall_2026") ? { fabric: undefined } : {}),
   });
   if (!baselineSourceResult.ok) return null;
   const baselineRetailResult = catalogCostRetail(

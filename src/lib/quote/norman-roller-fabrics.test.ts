@@ -9,15 +9,15 @@ describe("Norman roller fabric color catalog", () => {
   const roller = getProduct("roller")!;
 
   it("contains the verified Norman Soluna roller fabric color rows", () => {
-    expect(normanRollerFabricColors).toHaveLength(364);
-    expect(new Set(normanRollerFabricColors.map((row) => row.collection)).size).toBe(76);
-    expect(new Set(normanRollerFabricColors.map((row) => row.colorCode)).size).toBe(364);
+    expect(normanRollerFabricColors).toHaveLength(440);
+    expect(new Set(normanRollerFabricColors.map((row) => row.collection)).size).toBe(92);
+    expect(new Set(normanRollerFabricColors.map((row) => row.colorCode)).size).toBe(440);
     expect(normanRollerFabricColors.every((row) => row.collection && row.colorCode && row.colorName)).toBe(true);
   });
 
   it("maps every selectable collection to a valid roller price program", () => {
     const collections = new Set(normanRollerFabricColors.filter((row) => row.available).map((row) => row.collection));
-    expect(collections.size).toBe(76);
+    expect(collections.size).toBe(92);
     for (const collection of collections) {
       const programId = roller.fabricRouting?.[collection];
       expect(programId, collection).toBeTruthy();

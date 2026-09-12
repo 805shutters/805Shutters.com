@@ -1,3 +1,4 @@
+import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
   PRODUCT_COLOR_COLLECTION_DETAIL,
@@ -393,6 +394,7 @@ export function getMtsGridKeyForCatalogProgram(
   if (!programId) return null;
 
   if (productType === "Roller Shades") {
+    if (FALL_2026_ROLLER_PROGRAM_TO_GRID[programId]) return FALL_2026_ROLLER_PROGRAM_TO_GRID[programId];
     if (programId.includes("fabric_price_group_1")) return "group1";
     if (programId.includes("fabric_price_group_2")) return "group2";
     if (programId.includes("fabric_price_group_3")) return "group3";

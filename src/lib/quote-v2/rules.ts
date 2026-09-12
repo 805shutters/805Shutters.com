@@ -1,3 +1,4 @@
+import { findFall2026RollerCollection } from "@/lib/quote/norman-roller-fall-2026";
 import {
   isNormanMicroSlatSize,
   normanColorWithdrawal,
@@ -1155,14 +1156,15 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
+  const fallFabric = fabric?.programId?.endsWith("_fall_2026") ? findFall2026RollerCollection(collection) : undefined;
   if (fabric && context.programId !== fabric.programId) {
     issues.push(
       issue(
         "hard_block",
         "roller.program.fabric_mismatch",
-        { sourceId: fabric.programId === "roller_cordless_fabric_price_group_4_pg4"
+        { sourceId: fallFabric || fabric.programId === "roller_cordless_fabric_price_group_4_pg4"
           ? "norman-retail-guide-2026-09" : "norman-retail-guide-2026-07",
-          page: fabric.programId === "roller_cordless_fabric_price_group_4_pg4" ? 19 : 14 },
+          page: fallFabric ? (fallFabric.priceGroup <= 2 ? 18 : 19) : fabric.programId === "roller_cordless_fabric_price_group_4_pg4" ? 19 : 14 },
         {
           fabric_collection: collection,
           fabric_color_code: colorCode,

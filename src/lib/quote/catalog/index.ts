@@ -1,3 +1,4 @@
+import { withFall2026RollerPrograms } from "../norman-roller-fall-2026";
 import { normanRollerPg4Program } from "../norman-roller-pg4-2026-09.generated";
 import catalogJson from "./norman-2026.catalog.json";
 import shuttersJson from "./shutters-mts.catalog.json";
@@ -40,7 +41,7 @@ export const catalog: Catalog = {
     programs: [...product.programs, normanRollerPg4Program],
     fabricRouting: { ...product.fabricRouting, Springtide: normanRollerPg4Program.id,
       "Olivia RD": normanRollerPg4Program.id, "Etch RD": normanRollerPg4Program.id },
-  } : product), ...shutterCatalog.products, ...polarCatalog.products, ...lotusCatalog.products],
+  } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...polarCatalog.products, ...lotusCatalog.products],
   motorization: { ...baseCatalog.motorization, ...polarCatalog.motorization, ...lotusCatalog.motorization },
 };
 

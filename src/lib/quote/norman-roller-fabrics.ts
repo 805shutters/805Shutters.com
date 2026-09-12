@@ -5,6 +5,8 @@
 // FR cross-check PDF: https://normanusa.com/app/uploads/2024/02/FR-Fabric-List.pdf
 // FR PDF visible last update: 4/10/2026
 
+import { fall2026RollerFabricColors } from "./norman-roller-fall-2026";
+
 export const NORMAN_ROLLER_PRODUCT_ID = "roller";
 export const NORMAN_ROLLER_COLOR_CODE_DETAIL = "fabric_color_code";
 export const NORMAN_ROLLER_COLOR_NAME_DETAIL = "fabric_color_name";
@@ -4580,6 +4582,7 @@ export const normanRollerJulyFabricColors = [
 
 export const normanRollerFabricColors: readonly NormanRollerFabricColor[] = [
   ...normanRollerJulyFabricColors, ...normanRollerPg4Colors,
+  ...fall2026RollerFabricColors.filter((row) => !normanRollerPg4Colors.some((existing) => existing.colorCode === row.colorCode)),
 ];
 
 export function normalizeNormanRollerFabricSearch(value: string): string {
@@ -4591,7 +4594,7 @@ export function searchNormanRollerFabrics(
   options: { includeUnavailable?: boolean; limit?: number } = {},
 ): NormanRollerFabricColor[] {
   const normalized = normalizeNormanRollerFabricSearch(query);
-  const limit = options.limit ?? 40;
+  const limit = options.limit ?? Number.POSITIVE_INFINITY;
   const sourceRows = options.includeUnavailable
     ? normanRollerFabricColors
     : normanRollerFabricColors.filter((row) => row.available);

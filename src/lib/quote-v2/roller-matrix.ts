@@ -1,3 +1,4 @@
+import { normanRollerFall2026Source } from "./generated/norman-roller-fall-2026.generated";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import { normalizeIdentity } from "./catalog";
 import { sourceProvenance } from "./source-manifest";
@@ -63,7 +64,7 @@ export type RollerOfferingResolution =
       candidates?: readonly string[];
     };
 
-const sourceIndexes = new Map([normanRollerV2Source, normanRollerPg4Source].map((source) => [source, {
+const sourceIndexes = new Map([normanRollerV2Source, normanRollerPg4Source, normanRollerFall2026Source].map((source) => [source, {
   definitions: new Map(source.profileDefinitions.map((row) => [row.id, row])),
   profiles: new Map(source.limitProfiles.map((row) => [row.id, row])),
 }]));
@@ -73,12 +74,18 @@ function isPg4Selection(context: SelectionContext): boolean {
   return normanRollerPg4Source.offerings.some((offering) => compact(offering.colorCode) === code);
 }
 
+function isFall2026Selection(context: SelectionContext): boolean {
+  const code = compact(stringConfig(context, "fabric_color_code"));
+  return normanRollerFall2026Source.offerings.some((offering) => compact(offering.colorCode) === code);
+}
+
 function rollerSource(context: SelectionContext) {
+  if (isFall2026Selection(context)) return normanRollerFall2026Source;
   return isPg4Selection(context) ? normanRollerPg4Source : normanRollerV2Source;
 }
 
 function rollerSourceId(context: SelectionContext) {
-  return isPg4Selection(context)
+  return (isPg4Selection(context) || isFall2026Selection(context))
     ? "norman-roller-minmax-appendix-2026-09"
     : "norman-roller-minmax-appendix-2026-08";
 }
@@ -253,8 +260,8 @@ export function normalizeRollerRegionScope(
 export function resolveRollerOffering(
   context: SelectionContext,
 ): RollerOfferingResolution {
-  if (isPg4Selection(context) && context.catalogAsOf < NORMAN_ROLLER_PG4_EFFECTIVE_FROM) {
-    return { ok: false, code: "OFFERING_NOT_FOUND", message: "September PG4 fabrics are not effective before September 1, 2026." };
+  if ((isPg4Selection(context) || isFall2026Selection(context)) && context.catalogAsOf < NORMAN_ROLLER_PG4_EFFECTIVE_FROM) {
+    return { ok: false, code: "OFFERING_NOT_FOUND", message: "September fabrics are not effective before September 1, 2026." };
   }
   const collection = normalizeIdentity(stringConfig(context, "fabric_collection"));
   const colorCode = compact(stringConfig(context, "fabric_color_code"));

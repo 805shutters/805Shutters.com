@@ -14,9 +14,9 @@ import { getProductPriceBreakdown } from "./pricingEngine";
 
 describe("MTS Norman roller fabric catalog", () => {
   it("loads the full verified roller color catalog", () => {
-    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(364);
-    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(364);
-    expect(new Set(MTS_ROLLER_FABRIC_COLORS.map((row) => row.collection))).toHaveLength(76);
+    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(440);
+    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(440);
+    expect(new Set(MTS_ROLLER_FABRIC_COLORS.map((row) => row.collection))).toHaveLength(92);
     expect(
       MTS_ROLLER_FABRIC_COLORS.every(
         (row) => row.collection && row.colorCode && row.colorName
@@ -35,13 +35,13 @@ describe("MTS Norman roller fabric catalog", () => {
     expect(searchMtsRollerFabricColors("Garden").map((row) => row.collection)).toEqual(
       Array(6).fill("Garden")
     );
-    expect(searchMtsRollerFabricColors("ecru")).toEqual([
+    expect(searchMtsRollerFabricColors("ecru")).toEqual(expect.arrayContaining([
       expect.objectContaining({
         collection: "Garden",
         colorCode: "F1515",
         colorName: "Ecru",
       }),
-    ]);
+    ]));
     expect(searchMtsRollerFabricColors("F0407")).toEqual([
       expect.objectContaining({ collection: "NA820 (3%)", colorName: "Oyster/Pewter" }),
     ]);

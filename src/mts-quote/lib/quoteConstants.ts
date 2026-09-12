@@ -1,3 +1,4 @@
+import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 import { normanColorWithdrawal } from "@/lib/quote/norman-assortment-2026-09";
 import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
@@ -2298,6 +2299,7 @@ const ROLLER_FABRIC_TO_GROUP = new Map<string, string>([
 export const ROLLER_FABRIC_UNKNOWN_GRID = "FABRIC_UNKNOWN";
 
 export const ROLLER_PROGRAM_TO_PRICING_GRID: Record<string, string> = {
+  ...FALL_2026_ROLLER_PROGRAM_TO_GRID,
   roller_cordless_fabric_price_group_1_pg1: "group1",
   roller_cordless_fabric_price_group_2_pg2: "group2",
   roller_cordless_fabric_price_group_3_pg3: "group3",

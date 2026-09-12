@@ -34,7 +34,7 @@ export function searchMtsRollerFabricColors(
   options: { includeUnavailable?: boolean; limit?: number } = {},
 ): MtsRollerFabricColor[] {
   const normalized = normalizeNormanRollerFabricSearch(query);
-  const limit = options.limit ?? 40;
+  const limit = options.limit ?? Number.POSITIVE_INFINITY;
   const sourceRows = options.includeUnavailable
     ? MTS_ROLLER_FABRIC_COLORS
     : MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available);
