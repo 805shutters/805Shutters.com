@@ -131,6 +131,7 @@ describe("legacy automatic price state", () => {
   it("counts physical shades and blinds within one opening", () => {
     expect(physicalUnitsPerWindow("Roller Shades", null, { coupled_shade_count: 3 })).toBe(3);
     expect(physicalUnitsPerWindow("Roller Shades", null, { lightguard_360_shade_count: 2 })).toBe(2);
+    expect(physicalUnitsPerWindow("Roller Shades", "Dual Rollers", {})).toBe(2);
     expect(physicalUnitsPerWindow("Faux Wood Blinds", null, { faux_blind_count: 3 })).toBe(3);
     expect(physicalUnitsPerWindow("Faux Wood Blinds", null, { lotus_blind_count: 3 })).toBe(3);
     expect(physicalUnitsPerWindow("Honeycomb Shades", "2 on 1", {})).toBe(2);

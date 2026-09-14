@@ -5167,7 +5167,7 @@ export function DesignCard({
         ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
         : undefined;
 
-    const priceBreakdown = getProductPriceBreakdown({
+    let priceBreakdown = getProductPriceBreakdown({
       productType: lineItem.product_type,
       width: widthIn,
       height: heightIn,
@@ -5198,8 +5198,19 @@ export function DesignCard({
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
+      fabricCollection: stringOption(opts, PRODUCT_COLOR_COLLECTION_DETAIL) || undefined,
+      fabricColorCode: stringOption(opts, PRODUCT_COLOR_CODE_DETAIL) || undefined,
       componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
+    const manufacturerPricingWarning = manufacturerSpecWarnings[0];
+    if (manufacturerPricingWarning) {
+      priceBreakdown = {
+        ...priceBreakdown,
+        price: null,
+        pricingMethod: "none",
+        blockReason: `manufacturer_restriction:${manufacturerPricingWarning.id}`,
+      };
+    }
     const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
@@ -5277,7 +5288,7 @@ export function DesignCard({
         ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
         : undefined;
 
-    const priceBreakdown = getProductPriceBreakdown({
+    let priceBreakdown = getProductPriceBreakdown({
       productType: lineItem.product_type,
       width: widthInches,
       height: heightInches,
@@ -5308,8 +5319,19 @@ export function DesignCard({
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
+      fabricCollection: stringOption(opts, PRODUCT_COLOR_COLLECTION_DETAIL) || undefined,
+      fabricColorCode: stringOption(opts, PRODUCT_COLOR_CODE_DETAIL) || undefined,
       componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
+    const manufacturerPricingWarning = manufacturerSpecWarnings[0];
+    if (manufacturerPricingWarning) {
+      priceBreakdown = {
+        ...priceBreakdown,
+        price: null,
+        pricingMethod: "none",
+        blockReason: `manufacturer_restriction:${manufacturerPricingWarning.id}`,
+      };
+    }
     const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
@@ -5449,7 +5471,7 @@ export function DesignCard({
         ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
         : undefined;
 
-    const priceBreakdown = getProductPriceBreakdown({
+    let priceBreakdown = getProductPriceBreakdown({
       productType: lineItem.product_type,
       width: widthInches,
       height: heightInches,
@@ -5479,9 +5501,20 @@ export function DesignCard({
       measurementBasis: opts?.size_type as string | undefined,
       cellSize, // Pass cell size for honeycomb routing
       slatSize: opts?.slat_size as string | undefined,
-      fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
+      fabric: currentDesign.fabric || undefined,
+      fabricCollection: stringOption(opts, PRODUCT_COLOR_COLLECTION_DETAIL) || undefined,
+      fabricColorCode: stringOption(opts, PRODUCT_COLOR_CODE_DETAIL) || undefined, // Pass fabric for all fabric-based routing
       componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
+    const manufacturerPricingWarning = manufacturerSpecWarnings[0];
+    if (manufacturerPricingWarning) {
+      priceBreakdown = {
+        ...priceBreakdown,
+        price: null,
+        pricingMethod: "none",
+        blockReason: `manufacturer_restriction:${manufacturerPricingWarning.id}`,
+      };
+    }
     const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
 

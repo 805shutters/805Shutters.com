@@ -246,6 +246,8 @@ export interface PriceLookupOptions {
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
   fabric?: string; // for fabric-based routing
+  fabricCollection?: string;
+  fabricColorCode?: string;
   slatSize?: string; // for slat-specific blind size limits
   frameType?: string;
   frameSides?: string | number;
@@ -343,7 +345,8 @@ export function getRollerPrice(options: PriceLookupOptions): number | null {
 }
 
 function isFall2026RollerConfigurationValid(options: PriceLookupOptions): boolean {
-  const collection = findFall2026RollerCollection(options.fabric);
+  const selectedCollection = options.fabricCollection || options.fabric;
+  const collection = findFall2026RollerCollection(selectedCollection);
   const isNewProgram = !!FALL_2026_ROLLER_PROGRAM_TO_GRID[options.catalogProgramId ?? ""];
   if ((!collection && !isNewProgram) || (collection?.priceGroup === 4 && !isNewProgram)) return true;
   if (isNewProgram && options.fabric?.trim() && !collection) return false;
@@ -351,7 +354,8 @@ function isFall2026RollerConfigurationValid(options: PriceLookupOptions): boolea
   if (collection && options.catalogProgramId && options.catalogProgramId !== fall2026RollerProgramId(collection.priceGroup)) return false;
   return getRollerShadeSpecWarnings({
     productType: "Roller Shades", widthInches: options.width, heightInches: options.height,
-    fabricCollection: options.fabric, shadeType: options.shadeType, liftSystem: options.liftSystem,
+    fabricCollection: selectedCollection, fabricColorCode: options.fabricColorCode,
+    shadeType: options.shadeType, liftSystem: options.liftSystem,
   }).length === 0;
 }
 
@@ -723,7 +727,12 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     }
     case "Roller Shades": {
       if (!isFall2026RollerConfigurationValid(options)) {
-        return { productType, price: null, pricingMethod: "none" };
+        return {
+          productType,
+          price: null,
+          pricingMethod: "none",
+          blockReason: "manufacturer_size_or_configuration_restriction",
+        };
       }
       const gridKey = getCatalogGridKey(productType, options) ?? (options.fabric
         ? getRollerFabricPriceGroup(options.fabric)

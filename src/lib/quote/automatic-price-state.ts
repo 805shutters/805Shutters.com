@@ -168,6 +168,9 @@ export function physicalUnitsPerWindow(
   let storedCount: unknown;
   if (normalizedProduct.includes("roller")) {
     storedCount = options.coupled_shade_count ?? options.lightguard_360_shade_count;
+    if (storedCount === undefined && shadeType?.trim().toLowerCase().includes("dual roller")) {
+      return 2;
+    }
   } else if (normalizedProduct.includes("faux wood")) {
     storedCount = options.lotus_blind_count ?? options.faux_blind_count;
   } else if (

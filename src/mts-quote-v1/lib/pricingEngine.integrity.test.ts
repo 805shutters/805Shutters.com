@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { fall2026RollerProgramId } from "@/lib/quote/norman-roller-fall-2026";
 import { getProductPriceBreakdown, lookupGridPriceMatch } from "./pricingEngine";
 import type { PriceGrid } from "./pricingData";
 
@@ -39,5 +40,26 @@ describe("frozen V1 quote grid integrity", () => {
         height: 48,
       }),
     ).toMatchObject({ price: null, blockReason: "unknown_fabric_price_group" });
+  });
+
+  it("blocks a Fall roller fabric beyond its source width before grid pricing", () => {
+    expect(
+      getProductPriceBreakdown({
+        productType: "Roller Shades",
+        supplier: "Norman",
+        fabric: "F2221",
+        fabricCollection: "Springtide",
+        fabricColorCode: "F2221",
+        catalogProductId: "roller",
+        catalogProgramId: fall2026RollerProgramId(4),
+        shadeType: "Standard",
+        liftSystem: "Cordless",
+        width: 98,
+        height: 60,
+      }),
+    ).toMatchObject({
+      price: null,
+      blockReason: "manufacturer_size_or_configuration_restriction",
+    });
   });
 });

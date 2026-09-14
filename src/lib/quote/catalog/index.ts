@@ -82,8 +82,7 @@ export function getCatalogPricingProvenance(
   const source = product.source?.trim() || catalog.source.trim();
   const sourceVersion =
     program?.sourceId?.trim() ||
-    catalog.sourceId?.trim() ||
-    [product.id, program?.id, product.source?.trim(), catalog.effectiveDate?.trim()]
+    [product.id, program?.id, source]
       .filter(Boolean)
       .join(":");
   return source && sourceVersion ? { source, sourceVersion } : null;
