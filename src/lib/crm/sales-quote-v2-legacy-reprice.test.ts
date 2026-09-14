@@ -383,6 +383,7 @@ describe("explicit legacy sales-quote V2 repricing", () => {
     expect(preview.proposedSelectedDesignTotal).toBeLessThan(9_999);
     expect(preview.lines[0].price).toMatchObject({
       discountPercent: 10,
+      customerCharges: { installationPerUnit: 25, shippingPerUnit: 14, perWindowTotal: 39 },
     });
     expect((preview.lines[0].price as { discountAmount: number }).discountAmount).toBeGreaterThan(0);
 

@@ -498,6 +498,7 @@ function parseStoredLegacyV2CustomerPreview(
       "matchedHeight",
       "sqft",
       "billableSqft",
+      "customerCharges",
       "base",
       "surchargeLines",
       "unitPrice",
