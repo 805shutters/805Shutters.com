@@ -1,3 +1,5 @@
+import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
+import { getProduct } from "@/lib/quote/catalog";
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import { lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
 import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
@@ -5057,8 +5059,10 @@ export function DesignCard({
           />
         )}
 
-        {/* Design options based on product type */}
-        {isShutters ? (
+        {/* Exact manual-only families must not render another manufacturer's options. */}
+        {getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required" ? (
+          <ManufacturerManualQuoteBadge manufacturer={currentDesign?.supplier || "Manufacturer"} />
+        ) : isShutters ? (
           <ShutterDesignOptions
             design={currentDesign}
             activeVariant={activeVariant}

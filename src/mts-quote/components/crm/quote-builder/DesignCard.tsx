@@ -1,3 +1,4 @@
+import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
@@ -1565,24 +1566,8 @@ export function resolveManufacturerOptionsUiRoute(
   };
 }
 
-export function ManualQuoteOnlyBadge() {
-  return (
-    <div
-      role="status"
-      className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-3 text-sm text-blue-950"
-      data-testid="manual-quoting-only"
-    >
-      <div className="flex items-center gap-2 font-bold">
-        <FileText className="h-4 w-4 shrink-0" />
-        <span>QUOTE ONLY — Polar automation stopped.</span>
-      </div>
-      <p className="mt-1">
-        This selection is saved as an internal staff task. No Polar price,
-        customer-ready quote, status advance, order preparation, or manufacturer
-        action is allowed from this request.
-      </p>
-    </div>
-  );
+export function ManualQuoteOnlyBadge({ manufacturer = "Polar" }: { manufacturer?: string }) {
+  return <ManufacturerManualQuoteBadge manufacturer={manufacturer} />;
 }
 
 export function shouldRenderMotorizationControlDirect(field: string): boolean {
@@ -4716,7 +4701,7 @@ export function DesignCard({
       currentOptions,
     );
   };
-  const manufacturerOptionsRoute = authoritativeV2
+  const manufacturerOptionsRoute = authoritativeV2 || getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required"
     ? resolveManufacturerOptionsUiRoute(
         currentDesign,
         lineItem.product_type,
@@ -5813,7 +5798,7 @@ export function DesignCard({
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.status === "manual_quote" ? (
-          <ManualQuoteOnlyBadge />
+          <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
         ) : manufacturerOptionsRoute.status === "supported" ? (
           isShutters ? (
             <ShutterDesignOptions
