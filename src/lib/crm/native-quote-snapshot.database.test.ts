@@ -1,7 +1,8 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const db = new PGlite();
+const db = new PGlite({extensions:{pgcrypto}});
 const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const migration=(name:string)=>readFileSync(`supabase/migrations/${name}.sql`,'utf8');
 beforeAll(async()=>{
@@ -16,7 +17,10 @@ beforeAll(async()=>{
  return query select $1,$2+1,'priced'::text,999::numeric,1,0;
  end $$;`);
  await db.exec(`
+ create extension pgcrypto;
  create schema auth;
+ alter table sales_quotes add quote_v2_last_priced_at timestamptz,add product_cost numeric,add manufacturer_cost numeric,add profit_amount numeric,add updated_at timestamptz;
+ create table sales_quote_v2_events(id uuid default gen_random_uuid(),quote_id uuid,event_type text,previous_revision bigint,new_revision bigint,actor_id uuid,idempotency_key text,event_payload jsonb);
  create function auth.role() returns text language sql as $$ select 'service_role'::text $$;
  alter table sales_quotes add customer_name text default 'Test customer',add customer_phone text default '5550000000',add customer_email text default 'test@example.invalid',add customer_address text,add sales_owner text,add appointment_date date,add deposit_paid numeric default 0,add account_id uuid,add quote_number text,add share_token uuid default gen_random_uuid(),add quote_group_id uuid,add quote_letter text;
  alter table sales_quote_line_items add room_name text,add width_whole numeric default 36,add width_fraction text default '',add height_whole numeric default 48,add height_fraction text default '',add sort_order integer default 0;
@@ -31,10 +35,12 @@ beforeAll(async()=>{
  `);
  const atomic=migration('20260722193000_add_quote_v2_atomic_customer_send');
  await db.exec(atomic.slice(0,atomic.indexOf('create table if not exists')));
+ await db.exec(migration('20260722192000_add_quote_v2_authoritative_pricing_batch_rpc'));
  await db.exec(migration('20260911173000_staff_line_price_overrides'));
  await db.exec(migration('20260912002500_line_price_contract_totals'));
  await db.exec(migration('20260914231500_customer_installation_shipping_snapshots'));
  await db.exec(migration('20260914232000_customer_quote_adjustment_rounding'));
+ await db.exec(migration('20260914232500_preserve_unchanged_manual_quote_snapshots'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -94,4 +100,33 @@ it('rounds discount and tax to cents before the next monetary step',async()=>{
  const result=(await db.query<any>('select quote_customer_adjusted_total(139.05,39,$1) as total',[controls])).rows[0];
  // $100.05 merchandise -> $10.01 discount; $129.04 taxable -> $10.32 tax.
  expect(result.total).toBe('139.36');
+});
+
+it('real batch preserves untouched manual snapshots and costs while pricing another line',async()=>{
+ await seed(4); await seed(5);
+ await db.query('update sales_quote_line_items set quote_id=$1 where id=$2',[id(4),id(105)]);
+ await db.query('update sales_quote_v2_price_snapshots set quote_id=$1 where id=$2',[id(4),id(305)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,100,$4,1,$5)',[id(4),id(104),'A',id(50),id(998)]);
+ const before=(await db.query<any>('select * from sales_quote_designs where id=$1',[id(204)])).rows[0];
+ const result=(n:number)=>({lineItemId:id(n+100),designId:id(n+200),selection,selectionFingerprint:fingerprint,catalogVersion:'catalog-test',priceStatus:'authoritative',selectDesign:true,
+ authoritativeSnapshot:{priceStatus:'authoritative',selectionFingerprint:fingerprint,catalogVersion:'catalog-test',catalogAsOf:'2026-09-14',retail:{...price,ok:true,validationStatus:'valid',catalogVersion:'catalog-test'}},
+ internalCostSnapshot:{productCostUnit:30,productCostTotal:90,freightAllocated:0,oversizeAllocated:0,processingFeeAllocated:0,landedCostTotal:90},validationSnapshot:[],provenanceSnapshot:{source:'test'}});
+ const batch=[result(4),result(5)];
+ const save=async(rev=2,key='manual-batch')=>(await db.query<any>('select * from save_quote_v2_pricing_batch($1,$2,$3,$4,$5)',[id(4),rev,key,id(50),batch])).rows[0];
+ const saved=await save();
+ expect(saved).toMatchObject({quote_total:'657.00',new_revision:3,quote_status:'priced',priced_design_count:2,blocked_design_count:0});
+ const after=(await db.query<any>('select * from sales_quote_designs where id=$1',[id(204)])).rows[0];
+ expect(after).toEqual(before);
+ expect(saved.manual_prices[id(204)]).toMatchObject({unitPrice:100,total:300});
+ expect((await db.query<any>('select product_cost,total_amount from sales_quotes where id=$1',[id(4)])).rows[0]).toMatchObject({product_cost:'180.00',total_amount:'657.00'});
+ expect((await save()).new_revision).toBe(3);
+ await expect(save(2,'stale')).rejects.toThrow(/revision conflict/);
+ const bad=[{...batch[0],lineItemId:id(101)},batch[1]];
+ await expect(db.query('select * from save_quote_v2_pricing_batch($1,3,$2,$3,$4)',[id(4),'wrong-line',id(50),bad])).rejects.toThrow(/does not belong/);
+ // Editing manual quantity follows ordinary repricing and reapplies its exact unit override.
+ await db.query('update sales_quote_line_items set quantity=4 where id=$1',[id(104)]);
+ const edited=batch.map((r,i)=>i===0?{...r,selection:{...selection,quantity:4},authoritativeSnapshot:{...r.authoritativeSnapshot,retail:{...r.authoritativeSnapshot.retail,quantity:4,total:556,customerCharges:{...customerCharges,quantity:4,eligibleUnitCount:4,installationTotal:100,shippingTotal:56,total:156}}}}:r);
+ const repriced=(await db.query<any>('select * from save_quote_v2_pricing_batch($1,3,$2,$3,$4)',[id(4),'quantity-edit',id(50),edited])).rows[0];
+ expect(repriced.manual_prices[id(204)]).toMatchObject({unitPrice:100,quantity:4,total:400});
+ expect(repriced.quote_total).toBe('747.00');
 });

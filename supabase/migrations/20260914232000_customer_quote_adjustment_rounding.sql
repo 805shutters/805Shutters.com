@@ -27,4 +27,3 @@ begin
 end $$;
 revoke all on function public.quote_customer_adjusted_total(numeric,numeric,text) from public,anon,authenticated;
 grant execute on function public.quote_customer_adjusted_total(numeric,numeric,text) to service_role;
-
