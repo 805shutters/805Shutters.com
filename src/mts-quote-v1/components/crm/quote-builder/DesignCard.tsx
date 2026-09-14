@@ -1,6 +1,10 @@
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import { getProduct } from "@/lib/quote/catalog";
-import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
+import {
+  calculateCustomerCharges,
+  storedCustomerCharges,
+  customerChargeLabels,
+} from "@/lib/quote/customer-charges";
 import { lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
 import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
 import {
@@ -239,17 +243,20 @@ import {
   isMarkedSelectedQuoteDesign,
   preferredSavedQuoteVariant,
 } from "@/lib/quote-v2/selected-design";
+import { getCatalogPricingProvenance } from "@/lib/quote/catalog";
 import {
   measurementToInches,
   getProductPriceBreakdown,
   calculateSqft,
   resolveShutterPricingDimensions,
+  type ProductPriceBreakdown,
 } from "@mts-v1/lib/pricingEngine";
 import {
-  automaticPriceNeedsClearing,
   automaticPricingInputSignature,
+  automaticPricingSnapshotOptions,
   automaticPricingTrigger,
   clearDerivedAutomaticPrice,
+  physicalUnitsPerWindow,
   stripDerivedAutomaticPrice,
 } from "@/lib/quote/automatic-price-state";
 import { getHoneycombShadeSpecWarnings } from "@mts-v1/lib/honeycombShadeSpecs";
@@ -2038,6 +2045,65 @@ function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<stri
     ...rest
   } = options;
   return rest;
+}
+
+function legacyCustomerCharges(
+  productType: string,
+  design: SalesQuoteDesign,
+  options: Record<string, unknown>,
+  quantity: number,
+) {
+  const program =
+    stringOption(options, "catalog_program_id") ||
+    stringOption(options, PRODUCT_COLOR_PROGRAM_DETAIL) ||
+    getShutterProgramName(design) ||
+    design.material ||
+    "";
+  return calculateCustomerCharges({
+    product: productType,
+    program,
+    physicalUnitsPerWindow: physicalUnitsPerWindow(productType, design.shade_type, options),
+    quantity,
+  });
+}
+
+function legacyPricingSnapshot(
+  lineItem: SalesQuoteLineItem,
+  design: SalesQuoteDesign,
+  options: Record<string, unknown>,
+  breakdown: ProductPriceBreakdown,
+) {
+  const catalogProductId =
+    stringOption(options, "catalog_product_id") ||
+    stringOption(options, "quote_lab_product_id") ||
+    stringOption(options, PRODUCT_COLOR_PRODUCT_ID_DETAIL) ||
+    (lineItem.product_type === "Shutters"
+      ? design.supplier?.trim().toLowerCase() === "onyx"
+        ? "onyx_shutters"
+        : design.supplier?.trim().toLowerCase() === "norman"
+          ? "norman_shutters"
+          : ""
+      : "");
+  const catalogProgramId =
+    stringOption(options, "catalog_program_id") ||
+    stringOption(options, PRODUCT_COLOR_PROGRAM_DETAIL) ||
+    "";
+  const provenance = getCatalogPricingProvenance(catalogProductId, catalogProgramId);
+  return {
+    inputWidthWhole: lineItem.width_whole,
+    inputWidthFraction: lineItem.width_fraction,
+    inputHeightWhole: lineItem.height_whole,
+    inputHeightFraction: lineItem.height_fraction,
+    ...(breakdown.price !== null
+      ? {
+          pricingWidth: breakdown.pricingWidth ?? measurementToInches(lineItem.width_whole, lineItem.width_fraction),
+          pricingHeight: breakdown.pricingHeight ?? measurementToInches(lineItem.height_whole, lineItem.height_fraction),
+        }
+      : {}),
+    ...(provenance
+      ? { source: provenance.source, sourceVersion: provenance.sourceVersion }
+      : {}),
+  };
 }
 
 function withoutFabricMetadata(
@@ -4416,6 +4482,7 @@ export function DesignCard({
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
     });
+    const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
@@ -4425,20 +4492,29 @@ export function DesignCard({
     ]);
     const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
     const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
-    const recalculatedOptions = stripPriceFreezeMetadata(opts);
+    const recalculatedOptions = stripDerivedAutomaticPrice(stripPriceFreezeMetadata(opts));
     const recalculatedDiscountPercent = Number(opts.discount_percent) || 0;
     const discount =
       recalculatedDiscountPercent > 0
         ? calculateDiscountedPrice(sourcePrice, recalculatedDiscountPercent)
         : { discountAmount: 0, unitPrice: sourcePrice };
+    const customerCharges = legacyCustomerCharges(
+      lineItem.product_type,
+      currentDesign,
+      opts,
+      quantity,
+    );
+    const calculatedUnitPrice = discount.unitPrice + (customerCharges?.perWindowTotal ?? 0);
 
     updateFields({
-      unit_price: discount.unitPrice,
+      unit_price: calculatedUnitPrice,
       options_json: {
         ...recalculatedOptions,
+        customer_charges: customerCharges,
         base_price: basePrice,
         surcharge_total: surchargeTotal,
         pricing_method: priceBreakdown.pricingMethod,
+        ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
         ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
         ...(priceBreakdown.gridPrice !== undefined
           ? { pricing_grid_price: priceBreakdown.gridPrice }
@@ -4515,6 +4591,7 @@ export function DesignCard({
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
     });
+    const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
@@ -4531,6 +4608,13 @@ export function DesignCard({
       discountPercent > 0
         ? calculateDiscountedPrice(sourcePrice, discountPercent)
         : { discountAmount: 0, unitPrice: sourcePrice };
+    const customerCharges = legacyCustomerCharges(
+      lineItem.product_type,
+      currentDesign,
+      opts,
+      quantity,
+    );
+    const calculatedUnitPrice = discount.unitPrice + (customerCharges?.perWindowTotal ?? 0);
     const currentBasePrice = Number(opts.base_price);
     const currentSurchargeTotal = Number(opts.surcharge_total);
     const currentDiscountSourcePrice = Number(opts.discount_source_price);
@@ -4557,18 +4641,27 @@ export function DesignCard({
       discountMetadataChanged ||
       pricingMetadataChanged;
     const unitPriceMissingSurcharges = surchargeTotal > 0 && currentUnitPrice === roundedBasePrice;
+    const customerChargesChanged =
+      JSON.stringify(opts.customer_charges ?? null) !== JSON.stringify(customerCharges);
 
-    if (!storedPricingChanged && !unitPriceMissingSurcharges) return;
+    if (
+      !storedPricingChanged &&
+      !unitPriceMissingSurcharges &&
+      !customerChargesChanged &&
+      currentUnitPrice === calculatedUnitPrice
+    ) return;
 
-    const recalculatedOptions = stripPriceFreezeMetadata(opts);
+    const recalculatedOptions = stripDerivedAutomaticPrice(stripPriceFreezeMetadata(opts));
 
     updateFields({
-      unit_price: discount.unitPrice,
+      unit_price: calculatedUnitPrice,
       options_json: {
         ...recalculatedOptions,
+        customer_charges: customerCharges,
         base_price: basePrice,
         surcharge_total: surchargeTotal,
         pricing_method: priceBreakdown.pricingMethod,
+        ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
         ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
         ...(priceBreakdown.gridPrice !== undefined
           ? { pricing_grid_price: priceBreakdown.gridPrice }
@@ -4607,6 +4700,7 @@ export function DesignCard({
     currentDesign?.remote_type,
     currentDesign?.options_json,
     currentRetailPerSqft,
+    quantity,
     isPriceLocked,
     authoritativeV2,
   ]);
@@ -4667,6 +4761,7 @@ export function DesignCard({
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
     });
+    const pricingSnapshot = legacyPricingSnapshot(lineItem, currentDesign, opts, priceBreakdown);
     const basePrice = priceBreakdown.price;
 
     if (basePrice !== null) {
@@ -4681,7 +4776,15 @@ export function DesignCard({
         discountPercent > 0
           ? calculateDiscountedPrice(sourcePrice, discountPercent)
           : { discountAmount: 0, unitPrice: sourcePrice };
-      const calculatedPrice = discount.unitPrice;
+      const customerCharges = legacyCustomerCharges(
+        lineItem.product_type,
+        currentDesign,
+        opts,
+        quantity,
+      );
+      const calculatedPrice = discount.unitPrice + (customerCharges?.perWindowTotal ?? 0);
+      const customerChargesChanged =
+        JSON.stringify(opts.customer_charges ?? null) !== JSON.stringify(customerCharges);
       const currentBasePrice = Number(opts.base_price);
       const currentSurchargeTotal = Number(opts.surcharge_total);
       const currentDiscountSourcePrice = Number(opts.discount_source_price);
@@ -4707,16 +4810,19 @@ export function DesignCard({
         currentBasePrice !== basePrice ||
         currentSurchargeTotal !== surchargeTotal ||
         discountMetadataChanged ||
-        pricingMetadataChanged
+        pricingMetadataChanged ||
+        customerChargesChanged
       ) {
         updateFields({
           unit_price: calculatedPrice,
           options_json: {
             ...cleanPricingOptions,
             pricing_block_reason: null,
+            customer_charges: customerCharges,
             base_price: basePrice,
             surcharge_total: surchargeTotal,
             pricing_method: priceBreakdown.pricingMethod,
+            ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
             ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
             ...(priceBreakdown.gridPrice !== undefined
               ? { pricing_grid_price: priceBreakdown.gridPrice }
@@ -4739,20 +4845,15 @@ export function DesignCard({
           },
         });
       }
-    } else if (pricingTrigger === "input_changed") {
+    } else if (pricingTrigger) {
       const pricingBlockReason = priceBreakdown.blockReason || "incomplete_pricing_configuration";
-      if (!automaticPriceNeedsClearing(
-        currentDesign.unit_price,
-        opts,
-        priceBreakdown.pricingMethod,
-        pricingBlockReason,
-      )) return;
       updateFields({
         unit_price: 0,
         options_json: clearDerivedAutomaticPrice(
           opts,
           priceBreakdown.pricingMethod,
           pricingBlockReason,
+          pricingSnapshot,
         ),
       });
     }
@@ -4773,6 +4874,7 @@ export function DesignCard({
     currentDesign?.remote_type,
     currentDesign?.options_json,
     currentRetailPerSqft,
+    quantity,
     isPriceLocked,
     authoritativeV2,
   ]);

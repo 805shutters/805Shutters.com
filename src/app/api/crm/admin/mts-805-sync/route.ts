@@ -18,6 +18,7 @@ const ACTIVE_QUOTE_STATUSES = new Set(["sold", "approved", "ordered", "received"
 const LEGACY_INTERNAL_OPTION_KEYS = new Set([
   "base_price",
   "surcharge_total",
+  "customer_charges",
   "manual_price_override",
   "discount_source_price",
   "discount_amount",
@@ -27,6 +28,15 @@ const LEGACY_INTERNAL_OPTION_KEYS = new Set([
   "pricing_grid_width",
   "pricing_grid_height",
   "pricing_built_in_adjustment",
+  "pricing_calculation_status",
+  "pricing_dimension_width",
+  "pricing_dimension_height",
+  "pricing_input_width_whole",
+  "pricing_input_width_fraction",
+  "pricing_input_height_whole",
+  "pricing_input_height_fraction",
+  "pricing_source",
+  "pricing_source_version",
   "sent_price_snapshot",
 ]);
 

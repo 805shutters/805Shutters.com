@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   automaticPriceNeedsClearing,
   automaticPricingInputSignature,
+  automaticPricingSnapshotOptions,
   automaticPricingTrigger,
   clearDerivedAutomaticPrice,
+  physicalUnitsPerWindow,
 } from "./automatic-price-state";
 
 const signatureInput = {
@@ -71,9 +73,18 @@ describe("legacy automatic price state", () => {
         pricing_grid_height: 60,
         discount_source_price: 140,
         discount_amount: 14,
+        customer_charges: { total: 39 },
       },
       "none",
       "unknown_fabric_price_group",
+      {
+        inputWidthWhole: 36,
+        inputWidthFraction: "0",
+        inputHeightWhole: 60,
+        inputHeightFraction: "0",
+        source: "Norman guide",
+        sourceVersion: "norman-2026",
+      },
     );
     expect(options).toEqual({
       fabric_group: "Unknown",
@@ -81,9 +92,48 @@ describe("legacy automatic price state", () => {
       surcharge_total: 0,
       pricing_method: "none",
       pricing_block_reason: "unknown_fabric_price_group",
+      pricing_calculation_status: "invalid",
+      pricing_input_width_whole: 36,
+      pricing_input_width_fraction: "0",
+      pricing_input_height_whole: 60,
+      pricing_input_height_fraction: "0",
+      pricing_source: "Norman guide",
+      pricing_source_version: "norman-2026",
     });
     expect(
       automaticPriceNeedsClearing(0, options, "none", "unknown_fabric_price_group"),
     ).toBe(false);
+  });
+
+  it("stores raw measurement parts separately from pricing dimensions", () => {
+    expect(automaticPricingSnapshotOptions("priced", {
+      inputWidthWhole: 35,
+      inputWidthFraction: "1/2",
+      inputHeightWhole: 60,
+      inputHeightFraction: "1/16",
+      pricingWidth: 36.5,
+      pricingHeight: 61.0625,
+      source: "Pinned source",
+      sourceVersion: "source-revision",
+    })).toEqual({
+      pricing_calculation_status: "priced",
+      pricing_input_width_whole: 35,
+      pricing_input_width_fraction: "1/2",
+      pricing_input_height_whole: 60,
+      pricing_input_height_fraction: "1/16",
+      pricing_dimension_width: 36.5,
+      pricing_dimension_height: 61.0625,
+      pricing_source: "Pinned source",
+      pricing_source_version: "source-revision",
+    });
+  });
+
+  it("counts physical shades and blinds within one opening", () => {
+    expect(physicalUnitsPerWindow("Roller Shades", null, { coupled_shade_count: 3 })).toBe(3);
+    expect(physicalUnitsPerWindow("Roller Shades", null, { lightguard_360_shade_count: 2 })).toBe(2);
+    expect(physicalUnitsPerWindow("Faux Wood Blinds", null, { faux_blind_count: 3 })).toBe(3);
+    expect(physicalUnitsPerWindow("Faux Wood Blinds", null, { lotus_blind_count: 3 })).toBe(3);
+    expect(physicalUnitsPerWindow("Honeycomb Shades", "2 on 1", {})).toBe(2);
+    expect(physicalUnitsPerWindow("Roman Shades", null, {})).toBe(1);
   });
 });

@@ -65,6 +65,30 @@ export function getProgram(
   return product.programs.find((pr) => pr.id === programId);
 }
 
+export type CatalogPricingProvenance = Readonly<{
+  source: string;
+  sourceVersion: string;
+}>;
+
+/** Return only source identities already pinned in the catalog. */
+export function getCatalogPricingProvenance(
+  productId: string | null | undefined,
+  programId?: string | null,
+): CatalogPricingProvenance | null {
+  if (!productId) return null;
+  const product = getProduct(productId);
+  if (!product) return null;
+  const program = programId ? getProgram(product, programId) : undefined;
+  const source = product.source?.trim() || catalog.source.trim();
+  const sourceVersion =
+    program?.sourceId?.trim() ||
+    catalog.sourceId?.trim() ||
+    [product.id, program?.id, product.source?.trim(), catalog.effectiveDate?.trim()]
+      .filter(Boolean)
+      .join(":");
+  return source && sourceVersion ? { source, sourceVersion } : null;
+}
+
 /** Find the program a fabric routes to (for fabric-priced products). */
 export function getProgramForFabric(
   product: CatalogProduct,

@@ -6,17 +6,27 @@ const DERIVED_PRICE_OPTION_KEYS = new Set([
   "authoritative_price_status",
   "authoritative_v2_snapshot",
   "base_price",
+  "customer_charges",
   "discount_amount",
   "discount_source_price",
   "priced_catalog_version",
   "priced_selection_fingerprint",
   "pricing_block_reason",
   "pricing_built_in_adjustment",
+  "pricing_calculation_status",
+  "pricing_dimension_height",
+  "pricing_dimension_width",
   "pricing_grid_height",
   "pricing_grid_key",
   "pricing_grid_price",
   "pricing_grid_width",
+  "pricing_input_height_fraction",
+  "pricing_input_height_whole",
+  "pricing_input_width_fraction",
+  "pricing_input_width_whole",
   "pricing_method",
+  "pricing_source",
+  "pricing_source_version",
   "sent_price_snapshot",
   "surcharge_total",
 ]);
@@ -78,6 +88,7 @@ export function clearDerivedAutomaticPrice(
   options: Record<string, unknown>,
   pricingMethod: "grid" | "square-foot" | "none",
   blockReason: string,
+  snapshot: AutomaticPricingSnapshot,
 ): Record<string, unknown> {
   const next = stripDerivedAutomaticPrice(options);
   return {
@@ -86,6 +97,35 @@ export function clearDerivedAutomaticPrice(
     surcharge_total: 0,
     pricing_method: pricingMethod,
     pricing_block_reason: blockReason,
+    ...automaticPricingSnapshotOptions("invalid", snapshot),
+  };
+}
+
+export interface AutomaticPricingSnapshot {
+  inputWidthWhole: number;
+  inputWidthFraction: string;
+  inputHeightWhole: number;
+  inputHeightFraction: string;
+  pricingWidth?: number;
+  pricingHeight?: number;
+  source?: string;
+  sourceVersion?: string;
+}
+
+export function automaticPricingSnapshotOptions(
+  status: "priced" | "invalid",
+  snapshot: AutomaticPricingSnapshot,
+): Record<string, unknown> {
+  return {
+    pricing_calculation_status: status,
+    pricing_input_width_whole: snapshot.inputWidthWhole,
+    pricing_input_width_fraction: snapshot.inputWidthFraction,
+    pricing_input_height_whole: snapshot.inputHeightWhole,
+    pricing_input_height_fraction: snapshot.inputHeightFraction,
+    ...(snapshot.pricingWidth !== undefined ? { pricing_dimension_width: snapshot.pricingWidth } : {}),
+    ...(snapshot.pricingHeight !== undefined ? { pricing_dimension_height: snapshot.pricingHeight } : {}),
+    ...(snapshot.source ? { pricing_source: snapshot.source } : {}),
+    ...(snapshot.sourceVersion ? { pricing_source_version: snapshot.sourceVersion } : {}),
   };
 }
 
@@ -110,10 +150,32 @@ export function automaticPriceNeedsClearing(
   return [
     "discount_amount",
     "discount_source_price",
+    "customer_charges",
     "pricing_built_in_adjustment",
     "pricing_grid_height",
     "pricing_grid_key",
     "pricing_grid_price",
     "pricing_grid_width",
   ].some((key) => key in options);
+}
+
+export function physicalUnitsPerWindow(
+  productType: string,
+  shadeType: string | null | undefined,
+  options: Record<string, unknown>,
+): number {
+  const normalizedProduct = productType.trim().toLowerCase();
+  let storedCount: unknown;
+  if (normalizedProduct.includes("roller")) {
+    storedCount = options.coupled_shade_count ?? options.lightguard_360_shade_count;
+  } else if (normalizedProduct.includes("faux wood")) {
+    storedCount = options.lotus_blind_count ?? options.faux_blind_count;
+  } else if (
+    normalizedProduct.includes("honeycomb") &&
+    shadeType?.trim().toLowerCase() === "2 on 1"
+  ) {
+    return 2;
+  }
+  const count = Number(storedCount);
+  return Number.isInteger(count) && count > 0 ? count : 1;
 }
