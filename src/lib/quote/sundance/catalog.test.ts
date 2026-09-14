@@ -37,6 +37,47 @@ describe("Sundance source catalog isolation", () => {
     }
   });
 
+  // These are imported-data boundary fixtures, distinct from the independent
+  // PDF golden values below. Every source grid gets minimum/middle/maximum
+  // cells, exact axes, next-sixteenth rounding, and every unavailable cell.
+  describe.each(sundanceCatalog.products.flatMap(product =>
+    product.programs.map(program => ({ product, program, name: program.id })),
+  ))("boundary sweep $name", ({ product, program }) => {
+    const { widths, heights, prices } = program.grid;
+    const positions = (length: number) => [...new Set([0, Math.floor(length / 2), length - 1])];
+    const check = (width: number, height: number, column: number, row: number) => {
+      const result = lookupSundanceSourceGrid(product.id, program.id, width, height);
+      const price = prices[row]?.[column];
+      if (column >= widths.length || row >= heights.length || price == null || price <= 0) {
+        expect(result).toBeNull();
+      } else {
+        expect(result).toEqual({
+          measuredWidth: width, measuredHeight: height,
+          gridWidth: widths[column], gridHeight: heights[row], sourceRetail: price,
+          sourceId: program.sourceId, sourcePage: program.sourcePages?.[0],
+        });
+      }
+    };
+    it("keeps exact and fractional measurement steps on this grid", () => {
+      for (const column of positions(widths.length)) {
+        for (const row of positions(heights.length)) {
+          check(widths[column], heights[row], column, row);
+          check(widths[column] + 1 / 16, heights[row], column + 1, row);
+          check(widths[column], heights[row] + 1 / 16, column, row + 1);
+          check(widths[column] + 1 / 16, heights[row] + 1 / 16, column + 1, row + 1);
+        }
+      }
+    });
+    it("preserves all missing cells and refuses dimensions outside source axes", () => {
+      prices.forEach((row, y) => row.forEach((price, x) => {
+        if (price == null || price <= 0) check(widths[x], heights[y], x, y);
+      }));
+      expect(lookupSundanceSourceGrid(product.id, program.id, widths.at(-1)! + 1 / 16, heights[0])).toBeNull();
+      expect(lookupSundanceSourceGrid(product.id, program.id, widths[0], heights.at(-1)! + 1 / 16)).toBeNull();
+      expect(lookupSundanceSourceGrid(product.id, program.id, 0, heights[0])).toBeNull();
+    });
+  });
+
   it.each([
     ["sundance_advantage_ii_2_5", "sundance_advantage_ii_2_5_p4_t1", 24, 48, 24, 48, 552],
     ["sundance_advantage_ii_2_5", "sundance_advantage_ii_2_5_p4_t1", 24.0625, 48, 30, 48, 569],

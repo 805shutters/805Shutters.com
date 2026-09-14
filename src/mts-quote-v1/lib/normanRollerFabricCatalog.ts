@@ -118,5 +118,6 @@ export function getMtsRollerProgramLabel(programId: string | null): string {
   if (programId.includes("fabric_price_group_1")) return "Fabric PG1";
   if (programId.includes("fabric_price_group_2")) return "Fabric PG2";
   if (programId.includes("fabric_price_group_3")) return "Fabric PG3";
+  if (programId.includes("fabric_price_group_4")) return "Fabric PG4";
   return programId;
 }
