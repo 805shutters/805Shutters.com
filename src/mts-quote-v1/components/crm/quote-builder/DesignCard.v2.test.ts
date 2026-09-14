@@ -422,7 +422,8 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('aria-label="Authoritative price"');
     expect(source).toContain("if (authoritativeV2) return;");
     expect(source).toContain("Authoritative pricing blocked");
-    expect(source).toContain("authoritativeV2 && designs.some");
+    expect(source).toContain("if (isPriceLocked) return;");
+    expect(source).toContain("if (designs.some((design) => design.variant === variant))");
     expect(source).toContain("{!authoritativeV2 && (\n            <SurchargePicker");
     expect(source).toContain("function SurchargePicker(");
   });
