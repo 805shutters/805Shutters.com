@@ -29,7 +29,7 @@ describe("installer form sold-path delivery", () => {
     expect(installerForms).toContain('.eq("quote_id", quoteId)');
     expect(installerForms).toContain("return deliverInstallerForm(supabase, prepared)");
     expect(installerForms).toContain("installer form already delivered");
-    expect(installerForms).toContain("`805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}`");
+    expect(installerForms).toContain("`805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}-${INSTALLER_FORM_RECIPIENT}`");
     expect(installerForms).toContain("installation handoff already delivered");
   });
 

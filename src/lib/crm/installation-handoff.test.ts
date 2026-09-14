@@ -66,11 +66,24 @@ describe("805 to MTS installation handoff", () => {
       source_sha256: handoff.sha256,
       source_version: handoff.payload.sourceVersion,
       status: "pending_delivery",
+      email_recipient: "mtsagent101@gmail.com",
     });
     expect(installationHandoffPackageFromDeliveryState(state)).toEqual(handoff);
     expect(
       installationHandoffDeliveryState({ ...state, source_sha256: "not-a-digest" }),
     ).toBeNull();
+  });
+
+  it("preserves historical recipient receipts so delivered packets stay deduplicated", () => {
+    const state = {
+      ...pendingInstallationHandoffDeliveryState(buildTechnicalMeasureInstallationHandoff(input)),
+      email_recipient: "mtsinstallations@gmail.com",
+      status: "sent",
+      sent_at: "2026-09-12T14:00:00.000Z",
+      email_message_id: "historical-message",
+    };
+    expect(installationHandoffDeliveryState(state)).toEqual(state);
+    expect(installationHandoffDeliveryState({ ...state, email_recipient: "unknown@example.com" })).toBeNull();
   });
 
   it("builds the strict no-measure variant without MTS-local verification fields", () => {

@@ -6,6 +6,7 @@ import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
 import { brandIdentity } from "@/lib/brand-identity";
 import {
+  INSTALLATION_HANDOFF_RECIPIENT,
   buildNoMeasureInstallationHandoff,
   buildTechnicalMeasureInstallationHandoff,
   installationHandoffDeliveryState,
@@ -19,7 +20,7 @@ import {
   requireInstallerCustomerBalance,
 } from "@/lib/crm/installer-balance";
 
-export const INSTALLER_FORM_RECIPIENT = "mtsinstallations@gmail.com";
+export const INSTALLER_FORM_RECIPIENT = INSTALLATION_HANDOFF_RECIPIENT;
 export const INSTALLER_REPORT_RECIPIENT = "805@805shutters.com";
 
 export type InstallerOutcome = "completed" | "partially_completed" | "incomplete";
@@ -350,7 +351,7 @@ async function deliverInstallerForm(
     const reconciled = {
       status: reconciledStatus,
       sent_at: form.sent_at || handoffState.sent_at,
-      email_recipient: form.email_recipient || INSTALLER_FORM_RECIPIENT,
+      email_recipient: form.email_recipient || handoffState.email_recipient,
       email_message_id: form.email_message_id || handoffState.email_message_id || null,
       email_error: null,
     };
@@ -410,8 +411,8 @@ async function deliverInstallerForm(
     text: message.text,
     attachments,
     idempotencyKey: handoff
-      ? `805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}`
-      : `805-installer-form-${balancePreparedForm.id}`,
+      ? `805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}-${INSTALLER_FORM_RECIPIENT}`
+      : `805-installer-form-${balancePreparedForm.id}-${INSTALLER_FORM_RECIPIENT}`,
   });
   const deliveryTime = email.sent ? new Date().toISOString() : null;
   const meta = handoffState
@@ -419,6 +420,7 @@ async function deliverInstallerForm(
         ...(balancePreparedForm.meta || {}),
         [INSTALLATION_HANDOFF_META_KEY]: {
           ...handoffState,
+          email_recipient: INSTALLER_FORM_RECIPIENT,
           status: email.sent ? "sent" : "email_failed",
           email_message_id: email.id || null,
           email_error: email.error || email.skipped || null,

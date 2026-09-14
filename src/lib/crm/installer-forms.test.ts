@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  INSTALLER_FORM_RECIPIENT,
   buildNoMeasureInstallerFormHandoff,
   buildInstallerFormEmail,
   buildInstallerFormPdf,
@@ -9,6 +10,10 @@ import {
   type InstallerFormRow,
 } from "./installer-forms";
 import { pendingInstallationHandoffDeliveryState } from "./installation-handoff";
+
+it("routes installer packets to MTS Agent 101", () => {
+  expect(INSTALLER_FORM_RECIPIENT).toBe("mtsagent101@gmail.com");
+});
 
 describe("installer COD adjustment", () => {
   it("withholds half of each unique not-installed line item", () => {
