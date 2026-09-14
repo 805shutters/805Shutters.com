@@ -1,3 +1,4 @@
+import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import { getProduct } from "@/lib/quote/catalog";
 import {
@@ -4243,8 +4244,11 @@ export function DesignCard({
     isShutters && widthIn > 0 && heightIn > 0
       ? calculateSqft(pricingWidthIn, pricingHeightIn, false)
       : null;
+  const normanSpecProductType = currentDesign?.supplier?.trim().toLowerCase() === "norman"
+    ? lineItem.product_type
+    : null;
   const rollerShadeSpecWarnings = getRollerShadeSpecWarnings({
-    productType: lineItem.product_type,
+    productType: normanSpecProductType,
     widthInches: widthIn,
     heightInches: heightIn,
     fabricCollection:
@@ -4254,7 +4258,7 @@ export function DesignCard({
     liftSystem: currentDesign?.lift_system,
   });
   const honeycombShadeSpecWarnings = getHoneycombShadeSpecWarnings({
-    productType: lineItem.product_type,
+    productType: normanSpecProductType,
     widthInches: widthIn,
     heightInches: heightIn,
     fabric: currentDesign?.fabric,
@@ -4267,7 +4271,7 @@ export function DesignCard({
     liftSystem: currentDesign?.lift_system,
   });
   const romanShadeSpecWarnings = getRomanShadeSpecWarnings({
-    productType: lineItem.product_type,
+    productType: normanSpecProductType,
     widthInches: widthIn,
     heightInches: heightIn,
     fabric: currentDesign?.fabric,
@@ -4283,7 +4287,7 @@ export function DesignCard({
     lining: stringOption(currentOptions, "lining"),
   });
   const miniBlindSpecWarnings = getMiniBlindSpecWarnings({
-    productType: lineItem.product_type,
+    productType: normanSpecProductType,
     widthInches: widthIn,
     heightInches: heightIn,
     slatSize: stringOption(currentOptions, "slat_size"),
@@ -4305,7 +4309,7 @@ export function DesignCard({
       line_item_id: lineItem.id,
       variant: activeVariant,
       product_type: lineItem.product_type,
-      ...(lineItem.product_type === "Mini Blinds"
+      ...(lineItem.product_type === "Mini Blinds" && (fields.supplier ?? currentDesign?.supplier)?.trim().toLowerCase() === "norman"
         ? { supplier: "Norman", material: "CityLights Cordless Aluminum Blinds" }
         : {}),
       ...fields,
@@ -5272,15 +5276,7 @@ export function DesignCard({
               <span>Pricing blocked</span>
             </div>
             <p className="mt-1">
-              {legacyPricingBlockReason === "missing_frame_sides"
-                ? "Choose whether the shutter frame has 3 or 4 sides before pricing."
-                : legacyPricingBlockReason === "invalid_dimensions"
-                  ? "Enter a width and height greater than zero before pricing."
-                  : legacyPricingBlockReason === "dimensions_outside_pricing_grid"
-                    ? "The measurements are outside the selected manufacturer's pricing grid."
-                    : legacyPricingBlockReason === "unknown_fabric_price_group"
-                      ? "Choose a fabric that is mapped to the selected manufacturer's pricing grid."
-                      : "Complete the manufacturer, product, and configuration before pricing."}
+              {pricingBlockReasonMessage(legacyPricingBlockReason)}
             </p>
           </div>
         )}

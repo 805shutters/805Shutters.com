@@ -32,6 +32,7 @@ export function lotusCatalogPrice(options: {
     price: null,
     gridKey: options.catalogProgramId ?? "PROGRAM_UNKNOWN",
     pricingMethod: "none" as const,
+    blockReason: "incomplete_lotus_configuration",
   };
   if (!product || !program || (options.supplier && options.supplier.trim().toLowerCase() !== "lotus") || (options.catalogProductId && options.catalogProductId !== product.id)) return unavailable;
   const result = priceDesign({
@@ -41,7 +42,7 @@ export function lotusCatalogPrice(options: {
     heightInches: options.height,
     componentWidthsInches: options.componentWidthsInches ? [...options.componentWidthsInches] : undefined,
   });
-  if (!result.ok) return { ...unavailable, gridKey: result.code };
+  if (!result.ok) return { ...unavailable, gridKey: result.code, blockReason: result.error };
   return {
     productType: options.productType,
     price: result.base,
