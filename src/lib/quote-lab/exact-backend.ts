@@ -1,4 +1,6 @@
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
+import { sourceProvenance } from "@/lib/quote-v2/source-manifest";
+import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
 import {
@@ -1563,26 +1565,22 @@ function repriceExactQuoteBuilderV2(
         pricedSelectionFingerprint !== result.selectionFingerprint ||
         pricedCatalogVersion !== result.catalogVersion ||
         !storedDealerPolicyIsCurrent);
+    const lotusDeliveryBlock = result.ok ? lotusCustomerDeliveryBlock(
+      result.productId, result.programId, entry.design.mount_type,
+    ) : null;
     const sendOnlyIssues =
-      result.ok && result.productId === "lotus_faux_wood_blinds"
+      result.ok && lotusDeliveryBlock
         ? [
             ...result.validationIssues,
             {
               severity: "hard_block" as const,
               ruleId: "lotus.faux.send_authority_pending",
-              source:
-                result.validationIssues[0]?.source ??
-                (() => {
-                  throw new Error(
-                    "Lotus FLX pricing requires pinned source provenance.",
-                  );
-                })(),
+              source: sourceProvenance("lotus-west-a26-v1"),
               selectedValues: {
                 productId: result.productId,
                 programId: result.programId,
               },
-              explanation:
-                "Lotus FLX remains draft-only until the supplied manufacturer grid has authoritative effective-date and fitment confirmation.",
+              explanation: lotusDeliveryBlock,
             },
           ]
         : result.validationIssues;

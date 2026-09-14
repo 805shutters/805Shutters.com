@@ -1,3 +1,4 @@
+import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { findFall2026RollerCollection } from "@/lib/quote/norman-roller-fall-2026";
 import {
   isNormanMicroSlatSize,
@@ -2231,7 +2232,8 @@ function validateLotusFauxWood(
     }
   }
 
-  issues.push(
+  const deliveryBlock = lotusCustomerDeliveryBlock(context.productId, context.programId ?? "", configValue(context, "mount_type"));
+  if (deliveryBlock) issues.push(
     issue(
       "warning",
       "lotus.faux.authority.needs_effective_date_and_fitment",
@@ -2240,7 +2242,7 @@ function validateLotusFauxWood(
         programId: profile.programId,
         mount_type: text(configValue(context, "mount_type")) || null,
       },
-      "The supplied Lotus West A26.v1 book has no stated effective date, and this route does not claim manufacturer fitment approval. Keep the line internal and draft-only pending authority.",
+      deliveryBlock,
     ),
   );
   return issues;

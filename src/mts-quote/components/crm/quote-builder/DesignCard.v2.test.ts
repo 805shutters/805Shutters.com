@@ -351,7 +351,7 @@ describe("V2 exact-interface contract", () => {
         { catalog_product_id: "lotus_roller_shades" },
       ),
     ).toEqual({
-      status: "unsupported",
+      status: "supported",
       productId: "lotus_roller_shades",
       manufacturer: "Lotus",
     });
@@ -1201,7 +1201,7 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('data-testid="lotus-faux-authority-status"');
     expect(source).toContain("Lotus pricing is draft-only.");
     expect(source).toContain("onSaveLinePrice(activeVariant, price)");
-    expect(source).toContain("Sending remains blocked");
+    expect(source).toContain("lotusCustomerDeliveryBlock(LOTUS_FAUX_WOOD_PRODUCT_ID");
     expect(source).toContain(
       'options: ["Inside Mount", "Outside Mount", "Side Mount"] as const',
     );

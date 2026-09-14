@@ -16,7 +16,7 @@ describe("legacy quote display isolation for Lotus faux wood", () => {
     expect(getProductPriceBreakdown(input)).toMatchObject({
       price: 133.4,
       gridPrice: 133.4,
-      gridKey: "PROGRAM_UNKNOWN",
+      gridKey: "lotus_ftx_2in_snow_white_custom",
       matchedWidth: 72,
       matchedHeight: 48,
       pricingMethod: "grid",

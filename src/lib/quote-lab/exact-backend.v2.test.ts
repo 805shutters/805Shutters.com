@@ -638,7 +638,7 @@ describe("exact-interface V2 integration", () => {
       }),
     ]);
     expect(quote.total).toBe(469.15);
-    expect(quote.sendability.sendable).toBe(false);
+    expect(quote.sendability.sendable).toBe(true);
   });
 
   it("rejects a fabric price-group mismatch and ignores a browser-supplied catalog identity", () => {

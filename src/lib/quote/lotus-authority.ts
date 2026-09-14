@@ -170,6 +170,28 @@ export function wholesaleAuthorityFindings(
     : [];
 }
 
+/** The known portal conflict concerns FLX, not the other six faux-wood programs. */
+export function lotusCustomerDeliveryBlock(
+  productId: string, programId: string, mountType?: unknown,
+): string | null {
+  if (!productId.startsWith("lotus_")) return null;
+  if (wholesaleAuthorityFindings(productId, programId).length) {
+    return "Lotus FLX dealer-guide and portal prices conflict. Customer delivery requires source authority confirmation.";
+  }
+  // July 22 authenticated three-product cart: CFCX4872W was $105 in the
+  // portal versus $53.97 in West A26.v1 (fresh-portal-order-recipes.json).
+  if (programId === "lotus_fcx_2in_soft_white_custom") {
+    return "Lotus FCX dealer-guide and portal prices conflict. Customer delivery requires source authority confirmation.";
+  }
+  if (typeof mountType === "string" && /\bside\s*mount\b/i.test(mountType)) {
+    return "Lotus Side Mount fitment and ordering dimensions require manufacturer confirmation.";
+  }
+  if (programId === "lotus_cvv_vertical_vanes_custom") {
+    return "Lotus vertical vane pricing does not establish whether the grid amount is per vane or per casepack.";
+  }
+  return null;
+}
+
 export function summarizeLotusFlxPortalAudit() {
   const rows = LOTUS_FLX_PORTAL_AUDIT.rows;
   const priceConflicts = rows.filter(

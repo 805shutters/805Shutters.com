@@ -1,4 +1,6 @@
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
+import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
+import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import {
@@ -780,6 +782,7 @@ function getAutomaticOptionSurcharges(
   width?: number | null
 ): QuoteSurcharge[] {
   if (!design) return [];
+  if (design.supplier?.trim().toLowerCase() === "lotus") return [];
 
   const surcharges: QuoteSurcharge[] = [];
   const opts = (design.options_json as Record<string, unknown> | undefined) || {};
@@ -1488,7 +1491,7 @@ export type ManufacturerOptionsUiRoute = Readonly<{
  * never render until the persisted catalog identity matches both the supplier
  * and the line category. Norman owns the shared shades/blinds panels; the
  * shutter panel additionally owns its explicit Onyx branch, and Lotus owns
- * only its dedicated faux-wood route. Other catalog identities remain
+ * its own source-backed options routes. Other catalog identities remain
  * selectable for source routing, but their configuration panel stays blocked
  * until a dedicated authoritative UI exists.
  */
@@ -1547,9 +1550,7 @@ export function resolveManufacturerOptionsUiRoute(
         POLAR_DRAPERY_UI_PRODUCT_IDS.has(product.id) ||
         POLAR_AWNING_UI_PRODUCT_IDS.has(product.id))) ||
     (productType === "Shutters" && productSupplierKey === "onyx") ||
-    (productType === "Faux Wood Blinds" &&
-      productSupplierKey === "lotus" &&
-      isLotusFauxWoodProductId(product.id));
+    productSupplierKey === "lotus";
   return {
     status: supported ? "supported" : "unsupported",
     productId: product.id,
@@ -5077,6 +5078,7 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||
         (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
@@ -5175,6 +5177,7 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||
         (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
@@ -5328,6 +5331,7 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
       catalogProgramId:
         stringOption(opts, "catalog_program_id") ||
         (opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined),
@@ -5449,7 +5453,7 @@ export function DesignCard({
         });
       }
     } else if (
-      lineItem.product_type === "Mini Blinds" &&
+      (lineItem.product_type === "Mini Blinds" || currentDesign.supplier?.trim().toLowerCase() === "lotus") &&
       (Number(currentDesign.unit_price) !== 0 ||
         Number(opts.base_price) !== 0 ||
         Number(opts.surcharge_total) !== 0)
@@ -5800,6 +5804,9 @@ export function DesignCard({
               onUpdateFields={updateFields}
               authoritativeV2={authoritativeV2}
             />
+          ) : currentDesign?.supplier?.trim().toLowerCase() === "lotus" &&
+            (!authoritativeV2 || !isLotusFauxWoodProductId(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id))) ? (
+            <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId &&
             POLAR_EXTERIOR_UI_PRODUCT_IDS.has(
               manufacturerOptionsRoute.productId,
@@ -6257,6 +6264,10 @@ function QuoteLabCatalogControls({
   const chooseProductProgram = (nextId: string, nextProgramId?: string) => {
     const product = products.find((candidate) => candidate.id === nextId);
     if (!product || product.priceBasis === "unavailable") return;
+    if (product.manufacturer?.trim().toLowerCase() === "lotus") {
+      onUpdateFields(buildCatalogSelectionPatch(options, product, nextProgramId));
+      return;
+    }
     const program = product.programs.find((candidate) => candidate.id === nextProgramId) ?? product.programs[0];
     onUpdateFields({
       supplier: product.manufacturer,
@@ -11820,18 +11831,14 @@ function ShadesAndBlindsOptions({
 
   return (
     <div className="space-y-3">
-      {lotusFauxWood ? (
+      {lotusFauxWood && lotusCustomerDeliveryBlock(LOTUS_FAUX_WOOD_PRODUCT_ID, String(optionsJson.catalog_program_id ?? optionsJson.quote_lab_program_id ?? ""), design?.mount_type) ? (
         <div
           className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950"
           data-testid="lotus-faux-authority-status"
           role="alert"
         >
           <strong>Lotus pricing is draft-only.</strong>{" "}
-          The selected West A26.v1 source program records the exact selected program identity,
-          dimensions, mount, and manufacturer wholesale grid. Draft retail is
-          wholesale plus the selected internal line margin, with a complete
-          audit trail. Sending remains blocked because the supplied book states
-          no effective date. For a three-blind opening, enter all three measured
+          {lotusCustomerDeliveryBlock(LOTUS_FAUX_WOOD_PRODUCT_ID, String(optionsJson.catalog_program_id ?? optionsJson.quote_lab_program_id ?? ""), design?.mount_type)} For a three-blind opening, enter all three measured
           blind widths; the center is never inferred.
         </div>
       ) : null}

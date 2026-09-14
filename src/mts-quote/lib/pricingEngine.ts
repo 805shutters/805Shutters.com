@@ -1,3 +1,4 @@
+import { lotusCatalogPrice } from "@/lib/quote/lotus-selection";
 // Pricing engine for quote builder
 // Handles price lookups and surcharge calculations
 
@@ -205,6 +206,7 @@ export interface PriceLookupOptions {
   liftSystem?: string;
   program?: string;
   catalogProgramId?: string;
+  catalogProductId?: string;
   supplier?: string;
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
@@ -367,6 +369,7 @@ export function getVerticalPrice(options: PriceLookupOptions): number | null {
  * Faux Wood Blinds
  */
 export function getFauxWoodPrice(options: PriceLookupOptions): number | null {
+  if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) return lotusCatalogPrice({ ...options, productType: "Faux Wood Blinds" }).price;
   const { productLine = "SmartPrivacy", width, height } = options;
 
   if (options.supplier?.trim().toLowerCase() === "lotus") {
@@ -582,6 +585,9 @@ function catalogComponentGridBreakdown(
 
 export function getProductPriceBreakdown(options: ProductPricingOptions): ProductPriceBreakdown {
   const { productType } = options;
+  if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) {
+    return lotusCatalogPrice(options);
+  }
 
   switch (productType) {
     case "Honeycomb Shades": {

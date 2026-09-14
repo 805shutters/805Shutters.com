@@ -1,3 +1,4 @@
+import { lotusCatalogPrice } from "@/lib/quote/lotus-selection";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID, findFall2026RollerCollection, fall2026RollerProgramId } from "@/lib/quote/norman-roller-fall-2026";
 import { getRollerShadeSpecWarnings } from "./rollerShadeSpecs";
 // Pricing engine for quote builder
@@ -183,6 +184,7 @@ export function applyFixedSurcharges(basePrice: number, fixedAmounts: number[]):
 // ========================================
 
 export interface PriceLookupOptions {
+  componentWidthsInches?: readonly number[];
   width: number; // inches
   height: number; // inches
   priceGroup?: string;
@@ -192,6 +194,7 @@ export interface PriceLookupOptions {
   liftSystem?: string;
   program?: string;
   catalogProgramId?: string;
+  catalogProductId?: string;
   supplier?: string;
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
@@ -306,6 +309,7 @@ export function getVerticalPrice(options: PriceLookupOptions): number | null {
  * Faux Wood Blinds
  */
 export function getFauxWoodPrice(options: PriceLookupOptions): number | null {
+  if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) return lotusCatalogPrice({ ...options, productType: "Faux Wood Blinds" }).price;
   const { productLine = "SmartPrivacy", width, height } = options;
 
   const gridKey =
@@ -451,6 +455,9 @@ function catalogGridBreakdown(
 
 export function getProductPriceBreakdown(options: ProductPricingOptions): ProductPriceBreakdown {
   const { productType } = options;
+  if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) {
+    return lotusCatalogPrice(options);
+  }
 
   switch (productType) {
     case "Honeycomb Shades": {

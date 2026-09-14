@@ -1,4 +1,6 @@
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
+import { lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
+import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
 import {
   useState,
   useEffect,
@@ -631,6 +633,7 @@ function getAutomaticOptionSurcharges(
   width?: number | null
 ): QuoteSurcharge[] {
   if (!design) return [];
+  if (design.supplier?.trim().toLowerCase() === "lotus") return [];
 
   const surcharges: QuoteSurcharge[] = [];
   const opts = (design.options_json as Record<string, unknown> | undefined) || {};
@@ -1680,6 +1683,7 @@ export function buildCleanCatalogSelectionOptions(
     catalog_manufacturer: product.manufacturer ?? null,
     surcharges: [],
     [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+    ...(product.id === "lotus_faux_wood_blinds" ? lotusFauxWoodConfigurationForProgram(programId) : {}),
   };
 }
 
@@ -4292,7 +4296,9 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      componentWidthsInches: Number(opts.lotus_blind_count) === 3 ? [1, 2, 3].map(index => Number(opts[`lotus_blind_${index}_width_inches`])) : undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
+      catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
@@ -4380,7 +4386,9 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      componentWidthsInches: Number(opts.lotus_blind_count) === 3 ? [1, 2, 3].map(index => Number(opts[`lotus_blind_${index}_width_inches`])) : undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
+      catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
@@ -4523,7 +4531,9 @@ export function DesignCard({
       shadeType: currentDesign.shade_type || undefined,
       liftSystem: currentDesign.lift_system || undefined,
       program: shutterProgram || currentDesign.material || undefined,
-      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
+      componentWidthsInches: Number(opts.lotus_blind_count) === 3 ? [1, 2, 3].map(index => Number(opts[`lotus_blind_${index}_width_inches`])) : undefined,
+      catalogProductId: stringOption(opts, "catalog_product_id") || stringOption(opts, "quote_lab_product_id") || undefined,
+      catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize, // Pass cell size for honeycomb routing
@@ -4601,7 +4611,7 @@ export function DesignCard({
         });
       }
     } else if (
-      lineItem.product_type === "Mini Blinds" &&
+      (lineItem.product_type === "Mini Blinds" || currentDesign.supplier?.trim().toLowerCase() === "lotus") &&
       (Number(currentDesign.unit_price) !== 0 ||
         Number(opts.base_price) !== 0 ||
         Number(opts.surcharge_total) !== 0)
@@ -4935,6 +4945,8 @@ export function DesignCard({
             authoritativeV2={authoritativeV2}
             allowManualPriceEditing={!authoritativeV2}
           />
+        ) : currentDesign?.supplier?.trim().toLowerCase() === "lotus" ? (
+          <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} onUpdateFields={updateFields} />
         ) : (
           <ShadesAndBlindsOptions
             design={currentDesign}
@@ -5294,6 +5306,10 @@ function QuoteLabCatalogControls({
   const chooseProductProgram = (nextId: string, nextProgramId?: string) => {
     const product = products.find((candidate) => candidate.id === nextId);
     if (!product || product.priceBasis === "unavailable") return;
+    if (product.manufacturer?.trim().toLowerCase() === "lotus") {
+      onUpdateFields(buildCatalogSelectionPatch(options, product, nextProgramId));
+      return;
+    }
     const program = product.programs.find((candidate) => candidate.id === nextProgramId) ?? product.programs[0];
     onUpdateFields({
       supplier: product.manufacturer,
