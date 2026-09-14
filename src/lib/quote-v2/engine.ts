@@ -1747,7 +1747,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
       )
     : undefined;
   const customerCharges = request.applyCustomerCharges ? calculateCustomerCharges({
-    product: product.id, program: result.programId,
+    product: `${product.id} ${product.productType ?? ""}`, program: result.programId,
     physicalUnitsPerWindow: result.configurationUnits, quantity: result.quantity,
   }) : null;
   return {

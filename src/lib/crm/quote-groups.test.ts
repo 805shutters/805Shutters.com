@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { calculateCustomerCharges } from "@/lib/quote/customer-charges";
 import {
   buildSignedQuoteSplitPlan,
   createQuoteVersion,
@@ -308,6 +309,23 @@ describe("signed customer selection splitting", () => {
 });
 
 describe("createQuoteVersion", () => {
+  it("copies fixed customer charges without discounting or duplicating them", async () => {
+    const charges = calculateCustomerCharges({ product: "shade", physicalUnitsPerWindow: 1, quantity: 3 })!;
+    const tables: Tables = {
+      crm_quotes: [{ id: "quote-1", job_id: "job-1", quote_number: "805-100", status: "sent", quote_total: 387,
+        meta: { adjustments: { discountPercent: 10, depositPercent: 50 } } }],
+      crm_quote_line_items: [{ id: "line-1", quote_id: "quote-1", room: "Office", width_in: 24, height_in: 36,
+        quantity: 3, discount_percent: 0, sort_order: 0, selected_design_id: "design-1" }],
+      crm_quote_designs: [{ id: "design-1", line_item_id: "line-1", label: "A", sort_order: 0,
+        product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 139,
+        details: {}, surcharges: [], motorization: [], price_status: "ok", price_breakdown: { customerCharges: charges } }],
+      crm_activity_events: [],
+    };
+    const result = await createQuoteVersion(fakeSupabase(tables), "quote-1", { email: "rep@805shutters.com" });
+    expect(tables.crm_quotes.find((row) => row.id === result.quoteId)?.quote_total).toBe(387);
+    expect(tables.crm_quote_designs.find((row) => row.id !== "design-1")?.price_breakdown).toEqual({ customerCharges: charges });
+    expect(tables.crm_quotes.find((row) => row.id === "quote-1")?.quote_total).toBe(387);
+  });
   it("copies source windows/designs into a draft without repricing the saved snapshot", async () => {
     const tables: Tables = {
       crm_quotes: [

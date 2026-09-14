@@ -5,6 +5,7 @@ import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design"
 import { priceQuoteV2Selection, createImmutablePriceSnapshot, toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
 import { QUOTE_V2_CATALOG_VERSION } from "@/lib/quote-v2/catalog";
 import { projectV2CustomerRetailPrice } from "@/lib/crm/sales-quote-v2-send";
+import { getProduct } from "@/lib/quote/catalog";
 import { customModeCustomerRetail } from "@/lib/quote-v2/custom-mode";
 
 describe("customer installation and shipping", () => {
@@ -25,6 +26,11 @@ describe("customer installation and shipping", () => {
   });
   it.each([['norman_shutters','woodlore'],['onyx_shutters','bassia'],['lotus_vertical_blinds','headrail_only'],['lotus_vertical_blinds','vane_case'],['remote','remote'],['polar_awning','standard']])("excludes %s %s",(product,program)=>{
     expect(calculateCustomerCharges({product,program,physicalUnitsPerWindow:1,quantity:3})).toBeNull();
+  });
+  it.each(["sundance_advantage_ii_2", "sundance_basicvue", "sundance_walden_premier", "sundance_exterior_zip"])("classifies %s using its exact catalog family", (id) => {
+    const product = getProduct(id);
+    expect(product).toBeDefined();
+    expect(calculateCustomerCharges({ product: `${id} ${product!.productType}`, physicalUnitsPerWindow: 1, quantity: 2 })?.total).toBe(78);
   });
   it("preserves historical and manual prices and rejects corrupt fee snapshots",()=>{
     const charges=calculateCustomerCharges({product:"shade",physicalUnitsPerWindow:1,quantity:1})!;
