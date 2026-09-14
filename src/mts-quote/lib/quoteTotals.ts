@@ -1,3 +1,4 @@
+import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import { authoritativeDesignPriceIssue } from "./quotePricingDisplay";
 
@@ -198,15 +199,30 @@ export function resolveQuoteDisplayTotal(
   return roundCurrency(normalizeMoney(storedTotal));
 }
 
+/** Fixed customer charges already included in unit prices, using the same billable alternatives. */
+export function calculateQuoteFixedCharges(
+  lines: QuoteTotalLineItem[], designs: QuoteTotalDesign[], options: QuoteTotalCalculationOptions = {},
+): number {
+  return roundCurrency(lines.reduce((total, line) => {
+    const lineDesigns = designs.filter(design => design.line_item_id === line.id);
+    const billable = quoteTotalDesignsForMode(lineDesigns, options.mode ?? "legacy");
+    return total + billable.reduce((sum, design) => {
+      const charges = storedCustomerCharges(design.options_json);
+      return sum + (charges ? charges.perWindowTotal * normalizeQuantity(line.quantity) : 0);
+    }, 0);
+  }, 0));
+}
+
 export function calculateQuoteTotalBreakdown(
   subtotal: number,
-  controls: QuoteAdminControls = DEFAULT_QUOTE_ADMIN_CONTROLS
+  controls: QuoteAdminControls = DEFAULT_QUOTE_ADMIN_CONTROLS,
+  fixedCharges = 0,
 ): QuoteTotalBreakdown {
   const extrasTotal = controls.showExtras
     ? controls.extraFees.reduce((sum, fee) => sum + normalizeMoney(fee.amount), 0)
     : 0;
   const discountAmount = controls.showDiscount
-    ? (subtotal + extrasTotal) * (normalizeMoney(controls.discountPercent) / 100)
+    ? Math.max(0, subtotal + extrasTotal - normalizeMoney(fixedCharges)) * (normalizeMoney(controls.discountPercent) / 100)
     : 0;
   const subtotalAfterDiscount = subtotal + extrasTotal - discountAmount;
   const taxAmount = controls.showTax

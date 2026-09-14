@@ -1,3 +1,4 @@
+import { calculateCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
 import {
   catalog,
   findProductSurcharge,
@@ -90,6 +91,7 @@ export type QuoteV2ResultMetadata = {
 
 export type QuoteV2PriceSuccess = PriceBreakdown &
   QuoteV2ResultMetadata & {
+    customerCharges?: CustomerCharges;
     components: readonly AuthoritativePriceComponent[];
     componentTotals: AuthoritativePriceComponentTotals;
   };
@@ -100,6 +102,8 @@ export type QuoteV2PriceRequest = {
   selection: SelectionContext;
   priceInput: PriceInput;
   includeInternalCost?: boolean;
+  /** Enabled by explicit draft pricing, never by loading a saved quote. */
+  applyCustomerCharges?: boolean;
   /** Quote-wide rules already evaluated against exactly one selected design per line. */
   additionalValidationIssues?: readonly ValidationIssue[];
 };
@@ -1742,8 +1746,16 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
           : undefined,
       )
     : undefined;
+  const customerCharges = request.applyCustomerCharges ? calculateCustomerCharges({
+    product: product.id, program: result.programId,
+    physicalUnitsPerWindow: result.configurationUnits, quantity: result.quantity,
+  }) : null;
   return {
     ...result,
+    ...(customerCharges ? { customerCharges,
+      unitPrice: roundMoney(result.unitPrice + customerCharges.perWindowTotal),
+      total: roundMoney(result.total + customerCharges.total),
+    } : {}),
     components: componentResult.components,
     componentTotals: componentResult.totals,
     ...resultMetadata,
@@ -1810,6 +1822,7 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
       amount,
       kind,
     })),
+    ...(result.customerCharges ? { customerCharges: result.customerCharges } : {}),
     unitPrice: result.unitPrice,
     discountPercent: result.discountPercent,
     discountAmount: result.discountAmount,

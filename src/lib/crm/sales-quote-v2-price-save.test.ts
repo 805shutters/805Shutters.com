@@ -367,7 +367,7 @@ describe("authoritative sales quote V2 pricing save", () => {
         snapshot_id: "88888888-8888-4888-8888-888888888888",
         new_revision: 8,
         quote_status: "priced",
-        quote_total: 186.38,
+        quote_total: 225.38,
         priced_design_count: 1,
         blocked_design_count: 0,
         product_cost_total: 61.38,
@@ -384,12 +384,12 @@ describe("authoritative sales quote V2 pricing save", () => {
     });
     expect(response).toMatchObject({
       priceStatus: "authoritative",
-      quoteTotal: 186.38,
+      quoteTotal: 225.38,
       price: {
         ok: true,
         productId: "smartprivacy_faux",
-        unitPrice: 186.38,
-        total: 186.38,
+        unitPrice: 225.38,
+        total: 225.38,
       },
     });
     const saved = (

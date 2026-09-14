@@ -1,3 +1,4 @@
+import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import {
   useState,
   useEffect,
@@ -4982,6 +4983,9 @@ export function DesignCard({
           </div>
         )}
 
+        {customerChargeLabels(storedCustomerCharges(currentDesign?.options_json)).map(label => (
+          <div key={label} className="text-sm text-slate-700">{label}</div>
+        ))}
         <PriceExplanation
           design={currentDesign}
           productType={lineItem.product_type}

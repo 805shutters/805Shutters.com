@@ -1,3 +1,4 @@
+import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -384,7 +385,7 @@ export function QuoteContract({
     const controlledSubtotal = calculateQuoteDesignSubtotal(items, effective.designs, {
       mode: effective.selectionAware ? "authoritative_v2" : "legacy",
     });
-    return calculateQuoteTotalBreakdown(controlledSubtotal, controls).total;
+    return calculateQuoteTotalBreakdown(controlledSubtotal, controls, calculateQuoteFixedCharges(items, effective.designs, { mode: effective.selectionAware ? "authoritative_v2" : "legacy" })).total;
   };
 
   // Admin controls functions
@@ -489,7 +490,7 @@ export function QuoteContract({
   const subtotal = acceptedProjection.acceptedTotal ?? calculateQuoteDesignSubtotal(displayLineItems, effectiveActiveDesigns.designs, {
     mode: effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy",
   });
-  const totals = calculateQuoteTotalBreakdown(subtotal, adminControls);
+  const totals = calculateQuoteTotalBreakdown(subtotal, adminControls, calculateQuoteFixedCharges(displayLineItems, effectiveActiveDesigns.designs, { mode: effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy" }));
   const totalAmount = acceptedProjection.acceptedTotal ?? totals.total;
 
   // Payment schedule
@@ -847,7 +848,7 @@ export function QuoteContract({
         const gqSubtotal = accepted.acceptedTotal ?? calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
           mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
         });
-        const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls);
+        const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls, calculateQuoteFixedCharges(gqLineItems, gqDesigns, { mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy" }));
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
         const gqTotal = accepted.acceptedTotal ?? gqTotals.total;

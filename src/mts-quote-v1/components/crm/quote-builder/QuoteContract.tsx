@@ -1,3 +1,4 @@
+import { calculateQuoteFixedCharges } from "@/mts-quote-v1/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -297,7 +298,7 @@ export function QuoteContract() {
     const controlledSubtotal = calculateQuoteDesignSubtotal(items, quoteDesigns, {
       mode: totalMode,
     });
-    return calculateQuoteTotalBreakdown(controlledSubtotal, controls).total;
+    return calculateQuoteTotalBreakdown(controlledSubtotal, controls, calculateQuoteFixedCharges(items, quoteDesigns, { mode: totalMode })).total;
   };
 
   // Admin controls functions
@@ -480,7 +481,7 @@ export function QuoteContract() {
   const subtotal = calculateQuoteDesignSubtotal(lineItems, designs, {
     mode: totalMode,
   });
-  const totals = calculateQuoteTotalBreakdown(subtotal, adminControls);
+  const totals = calculateQuoteTotalBreakdown(subtotal, adminControls, calculateQuoteFixedCharges(lineItems, designs, { mode: totalMode }));
   const totalAmount = totals.total;
 
   // Payment schedule
@@ -847,7 +848,7 @@ export function QuoteContract() {
         const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
           mode: totalMode,
         });
-        const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls);
+        const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls, calculateQuoteFixedCharges(gqLineItems, gqDesigns, { mode: totalMode }));
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
         const gqTotal = gqTotals.total;

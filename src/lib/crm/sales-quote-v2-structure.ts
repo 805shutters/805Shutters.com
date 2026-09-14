@@ -44,6 +44,7 @@ const PROTECTED_NORMALIZED_KEYS = new Set([
   "profitamount",
   "baseprice",
   "surchargetotal",
+  "customercharges",
   "pricingmethod",
   "pricinggridkey",
   "pricinggridprice",

@@ -424,6 +424,7 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
         lines: [...input.lines],
         designs: [...input.selectedDesigns],
         selectedVariantByLine,
+        applyCustomerCharges: true,
       },
       input.serverDate,
     );

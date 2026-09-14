@@ -1,3 +1,4 @@
+import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -685,7 +686,7 @@ export function QuoteBuilder({
     const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
       mode: totalMode,
     });
-    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote)).total;
+    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(latestLineItems ?? [], projectedDesigns, { mode: totalMode })).total;
     if (!shouldPersistQuoteDesignSubtotal(projectedDesigns, { ...options, mode: totalMode })) return;
 
     const { error: quoteError } = await (supabase as any)

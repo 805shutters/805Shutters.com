@@ -1,3 +1,5 @@
+import { calculateQuoteTotalBreakdown, parseQuoteAdminControls } from "@mts/lib/quoteTotals";
+import { parseCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isServerMarkedV2SalesQuote } from "@/lib/crm/sales-quote-v2-send-guard";
@@ -41,6 +43,7 @@ type V2RetailSnapshotRow = {
 };
 
 export type V2CustomerRetailPrice = {
+  customerCharges?: CustomerCharges;
   productId: string;
   programId: string;
   programName: string;
@@ -213,6 +216,11 @@ export function projectV2CustomerRetailPrice(value: unknown): V2CustomerRetailPr
     onceTotal: finiteNumber(source.onceTotal, "Retail one-time total"),
     total: finiteNumber(source.total, "Retail total"),
   };
+  if (source.customerCharges !== undefined) {
+    const charges = parseCustomerCharges(source.customerCharges);
+    if (!charges || charges.quantity !== projected.quantity) fail("The installation and shipping snapshot is invalid.");
+    projected.customerCharges = charges;
+  }
   // Onyx retail snapshots already substitute the measured opening for matched
   // geometry. Its internal frame-pricing area must never enter the customer
   // DTO even if a malformed or stale snapshot contains area fields.
@@ -429,9 +437,7 @@ export function prepareV2CustomerSendPayload(
         price: customerPrice,
       };
     });
-    const total = money(
-      customerLines.reduce((sum, line) => sum + line.price.total, 0),
-    );
+    const total = customerQuoteTotal(customerLines, input.quote);
     if (
       !sameMoney(
         persistedMoney(input.quote.total_amount, "Stored quote total"),
@@ -451,6 +457,9 @@ export function prepareV2CustomerSendPayload(
         lines: input.lineItems,
         designs: selectedDesigns,
         selectedVariantByLine,
+        applyCustomerCharges: [...storedByDesignId.entries()].filter(([, stored]) =>
+          Boolean(parseCustomerCharges(record(stored.snapshot.retail)?.customerCharges))
+        ).map(([id]) => id),
       },
       serverDate,
     );
@@ -573,9 +582,7 @@ export function prepareV2CustomerSendPayload(
     };
   });
 
-  const total = money(
-    customerLines.reduce((sum, line) => sum + line.price.total, 0),
-  );
+  const total = customerQuoteTotal(customerLines, input.quote);
   if (
     !sameMoney(
       persistedMoney(input.quote.total_amount, "Stored quote total"),
@@ -662,4 +669,12 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     snapshots: (snapshots || []) as unknown as V2RetailSnapshotRow[],
     sendAsIs: options.sendAsIs === true,
   });
+}
+
+function customerQuoteTotal(lines: PreparedV2CustomerQuote["lines"], quote: AnyRow): number {
+  return calculateQuoteTotalBreakdown(
+    lines.reduce((sum, line) => sum + line.price.total, 0),
+    parseQuoteAdminControls(quote),
+    lines.reduce((sum, line) => sum + (line.price.customerCharges?.total ?? 0), 0),
+  ).total;
 }

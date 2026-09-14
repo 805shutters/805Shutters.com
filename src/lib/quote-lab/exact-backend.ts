@@ -1,3 +1,4 @@
+import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
 import {
@@ -902,6 +903,7 @@ function graduatedAllocation(
 }
 
 export type ExactQuoteBuilderRepriceInput = {
+  applyCustomerCharges?: boolean | readonly string[];
   lines: SalesQuoteLineItem[];
   designs: SalesQuoteDesign[];
   selectedVariantByLine: Record<string, string>;
@@ -1239,6 +1241,9 @@ function repriceExactQuoteBuilderV2(
       selection,
       priceInput: authoritativePriceInput,
       includeInternalCost: true,
+      applyCustomerCharges: typeof input.applyCustomerCharges === "boolean"
+        ? input.applyCustomerCharges
+        : input.applyCustomerCharges?.includes(design.id) ?? Boolean(storedCustomerCharges(design.options_json)),
       additionalValidationIssues: [
         ...motorizationIssues,
         ...(selectedDesignIdByLine.get(line.id) === design.id

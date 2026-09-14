@@ -34,8 +34,9 @@ export function customModeCustomerRetail(
   sellPrice: number,
 ) {
   const quantity = Math.max(1, Math.floor(Number(originalRetail.quantity) || 1));
+  const { customerCharges: _charges, ...merchandise } = originalRetail;
   return {
-    ...originalRetail,
+    ...merchandise,
     unitPrice: cents(sellPrice),
     base: cents(sellPrice),
     surchargeLines: [],

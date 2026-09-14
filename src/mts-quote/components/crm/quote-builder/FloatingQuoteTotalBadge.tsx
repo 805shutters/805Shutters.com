@@ -1,3 +1,4 @@
+import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import {
   resolveQuoteDisplayTotal,
   calculateQuoteTotalBreakdown,
@@ -41,7 +42,7 @@ export function FloatingQuoteTotalBadge({
   const lockedTotal = Number(historicalTotal);
   const fromHistoricalLock =
     useHistoricalTotal && Number.isFinite(lockedTotal) && lockedTotal > 0;
-  const total = fromHistoricalLock ? lockedTotal : preferStoredTotal ? calculatedTotal : calculateQuoteTotalBreakdown(calculatedTotal, adminControls).total;
+  const total = fromHistoricalLock ? lockedTotal : preferStoredTotal ? calculatedTotal : calculateQuoteTotalBreakdown(calculatedTotal, adminControls, calculateQuoteFixedCharges(lineItems, designs, { mode: authoritativeV2 ? "authoritative_v2" : "legacy" })).total;
 
   const missingPrices = authoritativeV2 && !fromHistoricalLock ? unpricedQuoteLineIds(lineItems, designs).length : 0;
   const incomplete = authoritativeV2 && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);

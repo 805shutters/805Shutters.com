@@ -50,7 +50,8 @@ describe("send catalog effective dates", () => {
         retail_total: snapshot.retail.total, retail_snapshot: snapshot,
       }],
     });
-    expect(payload.total).toBe(768);
+    expect(payload.total).toBe(846);
+    expect(payload.lines[0].price.customerCharges?.total).toBe(78);
     expect(payload.lines[0].quantity).toBe(2);
   });
 

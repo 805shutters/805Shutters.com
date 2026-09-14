@@ -1,3 +1,4 @@
+import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
   PRODUCT_COLOR_COLLECTION_DETAIL,
@@ -34,6 +35,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 const INTERNAL_OPTION_KEYS = new Set([
   "base_price",
   "surcharge_total",
+  "customer_charges",
   "manual_price_override",
   "discount_source_price",
   "discount_amount",
@@ -99,6 +101,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   if (design.notes) details.push({ label: "Notes", value: design.notes });
 
+  for (const text of customerChargeLabels(storedCustomerCharges(options))) {
+    const [label, ...value] = text.split(":");
+    details.push({ label, value: value.join(":").trim() });
+  }
   return details;
 }
 

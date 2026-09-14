@@ -20,6 +20,7 @@ const INTERNAL_OPTION_KEYS = new Set([
   "manual_price_override",
   "sent_price_snapshot",
   "base_price",
+  "customer_charges",
   "surcharge_total",
   "pricing_method",
   "pricing_grid_key",

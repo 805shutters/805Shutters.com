@@ -1,3 +1,4 @@
+import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
@@ -917,7 +918,13 @@ export function calculateSalesQuoteMirrorPricing(
 ) {
   const subtotal = legacyQuoteSubtotal(quoteLineItems, designsByLineItemId);
   const adjustments = legacyQuoteAdjustments(quote.installer_notes);
-  const calculatedTotal = computeLegacyTotal(subtotal, adjustments);
+  const fixedCharges = quoteLineItems.reduce((sum, line) => {
+    const designs = designsByLineItemId.get(line.id) ?? [];
+    const selected = designs.find(design => design.id === line.selected_design_id);
+    return sum + (selected ? [selected] : designs).reduce((amount, design) =>
+      amount + (storedCustomerCharges(design.options_json)?.perWindowTotal ?? 0) * normalizeQuantity(line.quantity), 0);
+  }, 0);
+  const calculatedTotal = computeLegacyTotal(subtotal, adjustments, fixedCharges);
   const storedTotal = money(quote.total_amount);
   const hasLineItemTotal = quoteLineItems.length > 0 && subtotal > 0;
   const total = hasLineItemTotal ? calculatedTotal : storedTotal;
@@ -967,10 +974,10 @@ function parseLegacyAdminControls(installerNotes: unknown): AnyRow | null {
   }
 }
 
-function computeLegacyTotal(subtotal: number, adjustments: AnyRow) {
+function computeLegacyTotal(subtotal: number, adjustments: AnyRow, fixedCharges = 0) {
   const fees = Array.isArray(adjustments?.fees) ? adjustments.fees.reduce((sum: number, fee: AnyRow) => sum + money(fee.amount), 0) : 0;
   const preDiscount = money(subtotal + fees);
-  const discount = money(preDiscount * (money(adjustments?.discountPercent) / 100) + money(adjustments?.discountFlat));
+  const discount = money(Math.max(0, preDiscount - fixedCharges) * (money(adjustments?.discountPercent) / 100) + money(adjustments?.discountFlat));
   const taxableBase = money(Math.max(preDiscount - discount, 0));
   const tax = money(taxableBase * (money(adjustments?.taxPercent) / 100));
   return money(taxableBase + tax);
