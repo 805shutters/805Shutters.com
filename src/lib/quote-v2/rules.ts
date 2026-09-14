@@ -2327,6 +2327,7 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  if (context.productId.startsWith("sundance_")) return "manual_quote_required";
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
   // The pinned July 2026 Motorization Guide now supplies exact motor-family,
   // power, control, accessory, and size rules. Unsupported or incomplete

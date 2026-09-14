@@ -588,6 +588,10 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
   if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) {
     return lotusCatalogPrice(options);
   }
+  // Sundance must never inherit Norman's grid from the generic line category.
+  if (options.supplier?.trim().toLowerCase() === "sundance") {
+    return { productType, price: null, pricingMethod: "none" };
+  }
 
   switch (productType) {
     case "Honeycomb Shades": {

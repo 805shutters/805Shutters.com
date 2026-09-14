@@ -185,9 +185,9 @@ describe("buildPricingReference", () => {
     );
   });
 
-  it("lists every automated-pricing manufacturer and preserves Lotus send restrictions", () => {
+  it("lists every manufacturer and preserves manual and Lotus send restrictions", () => {
     expect(new Set(ref.products.map((product) => product.manufacturer))).toEqual(
-      new Set(["Lotus", "Norman", "Onyx", "Polar"]),
+      new Set(["Lotus", "Norman", "Onyx", "Polar", "Sundance"]),
     );
     const lotus = ref.programs.find(
       (program) => program.productId === "lotus_mini_blinds",

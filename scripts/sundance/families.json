@@ -1,0 +1,508 @@
+[
+  {
+    "id": "sundance_roller",
+    "name": "Sundance roller",
+    "quoteProductType": "Roller Shades",
+    "sourceFile": "A-Sundance-Roller-Shades-11-25.pdf",
+    "pricePages": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24
+    ],
+    "sourcePageLabel": "A-6\u2013A-24; fabrics A-3/A-4; motors A-29+",
+    "priceBasisDescription": "Retail groups 1\u201310 plus retail/net options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_flat_roman",
+    "name": "Sundance flat Roman",
+    "quoteProductType": "Roman Shades",
+    "sourceFile": "Sundance-Product_Price-Guide-2026.pdf",
+    "pricePages": [
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+    ],
+    "sourcePageLabel": "Master PDF 37\u201356, section B",
+    "priceBasisDescription": "Retail grids B-5\u2013B-14",
+    "activationBlockers": [
+      "Confirm current orderability",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_europanels",
+    "name": "Sundance Europanels",
+    "quoteProductType": "Vertical Blinds",
+    "sourceFile": "C-Sundance-Europanels-V2.pdf",
+    "pricePages": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "sourcePageLabel": "C-5\u2013C-14",
+    "priceBasisDescription": "Retail groups 1\u201310",
+    "activationBlockers": [
+      "Track/panel rules and account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_louvolite_roller",
+    "name": "Louvolite roller",
+    "quoteProductType": "Roller Shades",
+    "sourceFile": "D-Louvolite-Roller-Shades-11-25.pdf",
+    "pricePages": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "sourcePageLabel": "D-6/D-8/D-10/D-12; motors D-17+",
+    "priceBasisDescription": "Retail groups A\u2013D plus options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_louvolite_flat_roman",
+    "name": "Louvolite flat Roman",
+    "quoteProductType": "Roman Shades",
+    "sourceFile": "Sundance-Product_Price-Guide-2026.pdf",
+    "pricePages": [
+      99,
+      100,
+      101,
+      102,
+      103,
+      104
+    ],
+    "sourcePageLabel": "Master PDF 95\u2013109, section E",
+    "priceBasisDescription": "Retail grids E-5 onward",
+    "activationBlockers": [
+      "Confirm current orderability",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_louvolite_europanels",
+    "name": "Louvolite Europanels",
+    "quoteProductType": "Vertical Blinds",
+    "sourceFile": "F-Louvolite-Europanels-V2.pdf",
+    "pricePages": [
+      5,
+      6,
+      7
+    ],
+    "sourcePageLabel": "F-5\u2013F-7",
+    "priceBasisDescription": "Retail groups A\u2013E",
+    "activationBlockers": [
+      "Track/panel rules and account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_zebra",
+    "name": "Sundance Zebra",
+    "quoteProductType": "Sheer Shades",
+    "sourceFile": "G-Zebra-Shades-V2.pdf",
+    "pricePages": [
+      5,
+      6
+    ],
+    "sourcePageLabel": "G-5\u2013G-8; options G-9; motors G-10+",
+    "priceBasisDescription": "Retail groups 1\u20134",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_louvolite_zebra",
+    "name": "Louvolite Zebra",
+    "quoteProductType": "Sheer Shades",
+    "sourceFile": "G-Zebra-Shades-V2.pdf",
+    "pricePages": [
+      7,
+      8
+    ],
+    "sourcePageLabel": "G-5\u2013G-8; options G-9; motors G-10+",
+    "priceBasisDescription": "Retail groups 5\u20138",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_sheerview",
+    "name": "Sheerview",
+    "quoteProductType": "Sheer Shades",
+    "sourceFile": "H-Sheerview-Pricing_Aug2026.pdf",
+    "pricePages": [
+      22,
+      23,
+      24
+    ],
+    "sourcePageLabel": "Printed 20\u201322 (PDF 22\u201324); options 23\u201325",
+    "priceBasisDescription": "Retail grids plus options",
+    "activationBlockers": [
+      "Separate book required; absent from master pricing",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_cellular",
+    "name": "Cellular horizontal",
+    "quoteProductType": "Honeycomb Shades",
+    "sourceFile": "I-Cellular-Shades_2026-web.pdf",
+    "pricePages": [
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "sourcePageLabel": "I-3\u2013I-11; options I-12; motors I-15+",
+    "priceBasisDescription": "Retail groups 1\u20135; TDBU +500 retail",
+    "activationBlockers": [
+      "Four historic cases match factor .16; Bamboo LF group conflict",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_verticell",
+    "name": "Verticell",
+    "quoteProductType": "Honeycomb Shades",
+    "sourceFile": "I-Cellular-Shades_2026-web.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "I-13 specifications; related cellular grids/options",
+    "priceBasisDescription": "Separate orientation/rules must be resolved",
+    "activationBlockers": [
+      "Complete grid/control routing and account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_cellular_shapes",
+    "name": "Cellular specialty shapes",
+    "quoteProductType": "Honeycomb Shades",
+    "sourceFile": "I-Cellular-Shades_2026-web.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "I-14; related cellular grids/options",
+    "priceBasisDescription": "Shape-specific pricing and restrictions",
+    "activationBlockers": [
+      "Complete shape adders/dimensions and account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_advantage_ii_2",
+    "name": "Advantage II 2-inch faux wood",
+    "quoteProductType": "Faux Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      3
+    ],
+    "sourcePageLabel": "J-3",
+    "priceBasisDescription": "Retail grid plus color/option adders",
+    "activationBlockers": [
+      "No fixture for this slat size",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_advantage_ii_2_5",
+    "name": "Advantage II 2.5-inch faux wood",
+    "quoteProductType": "Faux Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      4
+    ],
+    "sourcePageLabel": "J-4",
+    "priceBasisDescription": "Retail grid plus color/option adders",
+    "activationBlockers": [
+      "Historic .13 case; final invoice adds 45 freight",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_premium_ii_2",
+    "name": "Premium II 2-inch wood",
+    "quoteProductType": "Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      5
+    ],
+    "sourcePageLabel": "J-5",
+    "priceBasisDescription": "Retail grid plus options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_premium_ii_2_5",
+    "name": "Premium II 2.5-inch wood",
+    "quoteProductType": "Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      6
+    ],
+    "sourcePageLabel": "J-6",
+    "priceBasisDescription": "Retail grid plus options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_aluminum_2",
+    "name": "2-inch aluminum 8-gauge",
+    "quoteProductType": "Mini Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      8
+    ],
+    "sourcePageLabel": "J-8; specifications J-10 onward",
+    "priceBasisDescription": "Retail grid plus options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_aluminum_1",
+    "name": "1-inch aluminum variants",
+    "quoteProductType": "Mini Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      9
+    ],
+    "sourcePageLabel": "J-9; specifications J-10 onward",
+    "priceBasisDescription": "6/8-gauge, Metallix/Jewel, Alumiwood and control distinctions",
+    "activationBlockers": [
+      "Normalize variant routing; no account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_basicvue",
+    "name": "BasicVue 2-inch faux wood",
+    "quoteProductType": "Faux Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      13
+    ],
+    "sourcePageLabel": "J-13",
+    "priceBasisDescription": "Retail grid plus options",
+    "activationBlockers": [
+      "No account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_chateau_woods",
+    "name": "Chateau Woods 2/2.5-inch",
+    "quoteProductType": "Wood Blinds",
+    "sourceFile": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+    "pricePages": [
+      16
+    ],
+    "sourcePageLabel": "J-16 onward; specifications J-19",
+    "priceBasisDescription": "Premium/Lacquer finishes and options",
+    "activationBlockers": [
+      "Normalize finish/slat routing; no account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_vertical_essence",
+    "name": "Vertical Essence custom/stock",
+    "quoteProductType": "Vertical Blinds",
+    "sourceFile": "K-Vertical-Essence-V2.pdf",
+    "pricePages": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "sourcePageLabel": "K-3\u2013K-10; stock K-12",
+    "priceBasisDescription": "Groups 1/1A/2\u20136; width-priced valances",
+    "activationBlockers": [
+      "Historic Riva Frost .21 case; stock separately validate",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_wood_shutters",
+    "name": "Custom wood shutters",
+    "quoteProductType": "Shutters",
+    "sourceFile": "L-Shutters-V2.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "L-3\u2013L-10",
+    "priceBasisDescription": "Framed area (W+4)*(H+4)/144; base rate missing",
+    "activationBlockers": [
+      "Obtain base rates, minimums, rounding and shape/track terms",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_vinyl_shutters",
+    "name": "Solid vinyl shutters",
+    "quoteProductType": "Shutters",
+    "sourceFile": "L-Shutters-V2.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "L-3\u2013L-10",
+    "priceBasisDescription": "Framed area (W+4)*(H+4)/144; base rate missing",
+    "activationBlockers": [
+      "Obtain base rates, minimums, rounding and shape/track terms",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_exterior_cable",
+    "name": "Exterior cable-guided",
+    "quoteProductType": "Roller Shades",
+    "sourceFile": "Sundance-Exterior-Shade-System-Price-List-Aug-2025-1.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "One-page net price sheet plus cable specification book",
+    "priceBasisDescription": "20 standard / 22 premium per sqft; motor extra",
+    "activationBlockers": [
+      "Minimum/billing rounding, current net terms, service territory and selling policy",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_exterior_zip",
+    "name": "Exterior ZipScreen",
+    "quoteProductType": "Roller Shades",
+    "sourceFile": "Sundance-Exterior-Shade-System-Price-List-Aug-2025-1.pdf",
+    "pricePages": [],
+    "sourcePageLabel": "One-page net price sheet plus Zip specification book",
+    "priceBasisDescription": "22 standard / 24 premium per sqft; motor extra",
+    "activationBlockers": [
+      "Minimum/billing rounding, current net terms, service territory and selling policy",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_walden_premier",
+    "name": "Walden Premier woven",
+    "quoteProductType": "Roman Shades",
+    "sourceFile": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+    "pricePages": [
+      17,
+      18,
+      19
+    ],
+    "sourcePageLabel": "PDF 17\u201319; options 20\u201323; materials 3",
+    "priceBasisDescription": "Style/material grids plus options",
+    "activationBlockers": [
+      "Separate book required; no account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_walden_select",
+    "name": "Walden Select woven",
+    "quoteProductType": "Roman Shades",
+    "sourceFile": "Sundance-Walden-Select-2026A-updated-10.21.25.pdf",
+    "pricePages": [
+      17,
+      18
+    ],
+    "sourcePageLabel": "PDF 17\u201318; options 19\u201321; materials 3",
+    "priceBasisDescription": "Style/material grids plus options",
+    "activationBlockers": [
+      "Separate book required; no account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  },
+  {
+    "id": "sundance_portfolio_roman",
+    "name": "Portfolio Roman",
+    "quoteProductType": "Roman Shades",
+    "sourceFile": "Sundance-Portfolio-Roman-Shade-Product-Price-Guide-2026.pdf",
+    "pricePages": [
+      21,
+      22,
+      23,
+      24
+    ],
+    "sourcePageLabel": "PDF 21\u201324; options 25\u201326; cut fabric/freight 27",
+    "priceBasisDescription": "Style/group grids plus options",
+    "activationBlockers": [
+      "Separate book required; no account fixture",
+      "Current account factors and retail/net exceptions are not verified.",
+      "Full configuration and product availability must be verified before automatic pricing."
+    ]
+  }
+]

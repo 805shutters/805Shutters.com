@@ -4,6 +4,7 @@ import catalogJson from "./norman-2026.catalog.json";
 import shuttersJson from "./shutters-mts.catalog.json";
 import polarJson from "./polar-shades.catalog.json";
 import lotusJson from "./lotus-west-a26.catalog.json";
+import { sundanceCatalog } from "../sundance/catalog";
 import type {
   Catalog,
   CatalogProduct,
@@ -22,8 +23,8 @@ const lotusCatalog = lotusJson as unknown as Catalog;
 // current Norman/Onyx guide is ingested). Merged into the single product list.
 export const catalog: Catalog = {
   ...baseCatalog,
-  source: `${baseCatalog.source} + ${polarCatalog.source} + ${lotusCatalog.source}`,
-  sources: [...(baseCatalog.sources ?? []), ...(polarCatalog.sources ?? []), ...(lotusCatalog.sources ?? [])],
+  source: `${baseCatalog.source} + ${polarCatalog.source} + ${lotusCatalog.source} + ${sundanceCatalog.source}`,
+  sources: [...(baseCatalog.sources ?? []), ...(polarCatalog.sources ?? []), ...(lotusCatalog.sources ?? []), ...(sundanceCatalog.sources ?? [])],
   globalRules: {
     surcharges: [
       ...baseCatalog.globalRules.surcharges,
@@ -41,7 +42,7 @@ export const catalog: Catalog = {
     programs: [...product.programs, normanRollerPg4Program],
     fabricRouting: { ...product.fabricRouting, Springtide: normanRollerPg4Program.id,
       "Olivia RD": normanRollerPg4Program.id, "Etch RD": normanRollerPg4Program.id },
-  } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...polarCatalog.products, ...lotusCatalog.products],
+  } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...polarCatalog.products, ...lotusCatalog.products, ...sundanceCatalog.products],
   motorization: { ...baseCatalog.motorization, ...polarCatalog.motorization, ...lotusCatalog.motorization },
 };
 

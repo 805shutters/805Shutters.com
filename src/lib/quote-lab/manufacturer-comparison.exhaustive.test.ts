@@ -15,7 +15,7 @@ const sharedCategories = new Set(
     ).size > 1),
 );
 const sharedProducts = products.filter((product) => sharedCategories.has(quoteLabProductType(product.id)));
-const launchProducts = sharedProducts.filter((product) => !product.id.startsWith("polar_"));
+const launchProducts = sharedProducts.filter((product) => !product.id.startsWith("polar_") && product.priceBasis !== "manual_required");
 
 function isDealerNet(product: CatalogProduct, program: CatalogProgram): boolean {
   return (program.priceBasis ?? product.priceBasis) === "dealer_net";
@@ -54,6 +54,16 @@ function firstPricedCell(product: CatalogProduct, program: CatalogProgram) {
 }
 
 describe("exhaustive shared-manufacturer pricing audit", () => {
+  it("keeps manual source grids blocked in comparisons even when their cells contain retail amounts", () => {
+    for (const product of sharedProducts.filter((item) => item.priceBasis === "manual_required")) {
+      for (const program of product.programs) {
+        const cell = firstPricedCell(product, program);
+        if (!cell) continue;
+        const size = dimensionsAt(program, cell.rowIndex, cell.columnIndex);
+        expect(directPrice(product, program, size.widthInches, size.heightInches)).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+      }
+    }
+  });
   it("matches every priced source grid cell and blocks every null cell", () => {
     let pricedCells = 0;
     let blockedCells = 0;
@@ -316,7 +326,8 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       quantity: 1,
       selectedProductId: "norman_shutters",
     });
-    expect(shutters.products.every((product) => product.provisional)).toBe(true);
+    expect(shutters.products.filter((product) => product.manufacturer !== "Sundance").every((product) => product.provisional)).toBe(true);
+    expect(shutters.products.filter((product) => product.manufacturer === "Sundance").every((product) => product.priceBasis === "manual_required")).toBe(true);
 
     const rollers = compareManufacturers({
       productType: "Roller Shades",

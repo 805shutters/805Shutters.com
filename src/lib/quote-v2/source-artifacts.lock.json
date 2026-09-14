@@ -7,6 +7,114 @@
   },
   "artifacts": [
     {
+      "sourceId": "sundance-sundance-product_price-guide-2026-1d87571a8af7",
+      "fileName": "Sundance-Product_Price-Guide-2026.pdf",
+      "byteLength": 10597732,
+      "sha256": "1d87571a8af789ff81ce3a45cbcca3a3b2f3d3baeef64d8b16d0b0e46d43342b"
+    },
+    {
+      "sourceId": "sundance-a-sundance-roller-shades-11-25-1b8b33838689",
+      "fileName": "A-Sundance-Roller-Shades-11-25.pdf",
+      "byteLength": 7994100,
+      "sha256": "1b8b338386893e03129a1bfc3761b91ca1cec65c268b30033fd2d70c81a61f4e"
+    },
+    {
+      "sourceId": "sundance-c-sundance-europanels-v2-4c998b29a4f1",
+      "fileName": "C-Sundance-Europanels-V2.pdf",
+      "byteLength": 848904,
+      "sha256": "4c998b29a4f10da4c3f3dfb6e34e12dcd4c5e722cf2ec78596ff18f23233f9a8"
+    },
+    {
+      "sourceId": "sundance-d-louvolite-roller-shades-11-25-ccea3cc6ad47",
+      "fileName": "D-Louvolite-Roller-Shades-11-25.pdf",
+      "byteLength": 7415730,
+      "sha256": "ccea3cc6ad4728348c275656456c46c74682a9e142e8d0bcac63e72f37a44e26"
+    },
+    {
+      "sourceId": "sundance-f-louvolite-europanels-v2-f0895ea35026",
+      "fileName": "F-Louvolite-Europanels-V2.pdf",
+      "byteLength": 397109,
+      "sha256": "f0895ea3502643974626774e7fab99cd9152e89cdfc539709f3e1726e199803e"
+    },
+    {
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "fileName": "G-Zebra-Shades-V2.pdf",
+      "byteLength": 1320642,
+      "sha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816"
+    },
+    {
+      "sourceId": "sundance-h-sheerview-pricing_aug2026-4a981c88776d",
+      "fileName": "H-Sheerview-Pricing_Aug2026.pdf",
+      "byteLength": 55459173,
+      "sha256": "4a981c88776d305344f288307372110c0042a17c83c48e200831cc74b8269cc4"
+    },
+    {
+      "sourceId": "sundance-i-cellular-shades_2026-web-10b773a7a851",
+      "fileName": "I-Cellular-Shades_2026-web.pdf",
+      "byteLength": 1232902,
+      "sha256": "10b773a7a85131ea0576cd667f0660526a8d1395e4364724768c977d9e7b6c96"
+    },
+    {
+      "sourceId": "sundance-j-sundance-horizontal-blinds-12-25-75665a0d01a9",
+      "fileName": "J-Sundance-Horizontal-Blinds-12-25.pdf",
+      "byteLength": 1973502,
+      "sha256": "75665a0d01a9f9cff643aa3737b238bbeb81959d407547cb8a2ceeb38d267012"
+    },
+    {
+      "sourceId": "sundance-k-vertical-essence-v2-97db633ff299",
+      "fileName": "K-Vertical-Essence-V2.pdf",
+      "byteLength": 598695,
+      "sha256": "97db633ff299d6fcdf53ba55cda9bcb5e61554749aab07aee6016336b3444e80"
+    },
+    {
+      "sourceId": "sundance-l-shutters-v2-4d86333a102e",
+      "fileName": "L-Shutters-V2.pdf",
+      "byteLength": 1143353,
+      "sha256": "4d86333a102e329d82270b7f88f4317225a3caea053b174abd804d2d6cfc12a1"
+    },
+    {
+      "sourceId": "sundance-sundance-exterior-cable-guided-feb-2025-1-06bf442a6fa0",
+      "fileName": "Sundance-Exterior-Cable-Guided-Feb-2025-1.pdf",
+      "byteLength": 13097609,
+      "sha256": "06bf442a6fa07685632907ace8c376ef3d8946442ef0ad3c375612d535a92656"
+    },
+    {
+      "sourceId": "sundance-sundance-exterior-zipshade-feb-2025-1-84b7994f8157",
+      "fileName": "Sundance-Exterior-Zipshade-Feb-2025-1.pdf",
+      "byteLength": 12808014,
+      "sha256": "84b7994f8157a0aa5c464b3c64cc17b44ae07e7393997de9c8356e12fbe30190"
+    },
+    {
+      "sourceId": "sundance-sundance-exterior-shade-system-price-list-aug-2025-1-27a5e7f8f837",
+      "fileName": "Sundance-Exterior-Shade-System-Price-List-Aug-2025-1.pdf",
+      "byteLength": 82117,
+      "sha256": "27a5e7f8f83727d42ae8db5f60a5b1de27667bcb186af67778427ad65eb9b29d"
+    },
+    {
+      "sourceId": "sundance-sundance-walden-premier-2026a-updated-10.01.25-c4bb3d052337",
+      "fileName": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+      "byteLength": 1689489,
+      "sha256": "c4bb3d0523373d6f43b752c207340af11f97afaf84c1dbd702c9e804ad9e3d0d"
+    },
+    {
+      "sourceId": "sundance-sundance-walden-select-2026a-updated-10.21.25-e380aefdb6f3",
+      "fileName": "Sundance-Walden-Select-2026A-updated-10.21.25.pdf",
+      "byteLength": 2044043,
+      "sha256": "e380aefdb6f399cf9f17622978dd0966298649127731fd78cdb98f5af8e4a451"
+    },
+    {
+      "sourceId": "sundance-sundance-portfolio-roman-shade-product-price-guide-2026-421a4cba9a72",
+      "fileName": "Sundance-Portfolio-Roman-Shade-Product-Price-Guide-2026.pdf",
+      "byteLength": 1703578,
+      "sha256": "421a4cba9a72fdb510ff8650cf1ee2c2e9c6d12e0486fd2b6c5b4c35b8d580e2"
+    },
+    {
+      "sourceId": "sundance-p-sundance-general-information_2024-25-2a54ee5ba2a8",
+      "fileName": "P-Sundance-General-Information_2024-25.pdf",
+      "byteLength": 533137,
+      "sha256": "2a54ee5ba2a85cad4c30e489e1887ef497046c622e27851fba299731681029ed"
+    },
+    {
       "sourceId": "norman-retail-guide-2026-07",
       "fileName": "2026Jul Retail Price Guide (1).pdf",
       "byteLength": 16583230,

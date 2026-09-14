@@ -27,10 +27,15 @@ describe("Quote Lab builder model", () => {
       "faux_wood",
       "lotus_faux_wood_blinds",
       "smartprivacy_faux",
+      "sundance_advantage_ii_2",
+      "sundance_advantage_ii_2_5",
+      "sundance_basicvue",
     ]);
     expect(quoteLabProductsForType(products, "Mini Blinds").map((product) => product.id).sort()).toEqual([
       "citylights_aluminum",
       "lotus_mini_blinds",
+      "sundance_aluminum_1",
+      "sundance_aluminum_2",
     ]);
     expect(quoteLabDefaultProduct(products, "Vinyl Blinds").id).toBe("lotus_vinyl_blinds");
     expect(quoteLabProductType("smartfold")).toBe("Honeycomb Shades");

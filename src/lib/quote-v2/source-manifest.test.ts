@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(21);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(39);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(21);
+    ).toBe(39);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(21);
+    ).toBe(39);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -66,7 +66,7 @@ describe("quote V2 source manifest", () => {
     expect(
       Object.fromEntries(
         QUOTE_V2_SOURCE_MANIFEST.filter(
-          (source) => source.format === "pdf",
+          (source) => source.format === "pdf" && source.manufacturer !== "Sundance",
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({

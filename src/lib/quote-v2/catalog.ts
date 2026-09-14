@@ -1,6 +1,7 @@
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { normanRollerFabricColors, normanRollerJulyFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
+import { isSundanceProductId, SUNDANCE_CATALOG_VERSION } from "@/lib/quote/sundance/catalog";
 
 /**
  * Customer-retail policy revision introduced with the authoritative MSRP/list
@@ -32,6 +33,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
   }

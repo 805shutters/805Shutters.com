@@ -3,6 +3,7 @@ import type {
   QuoteLabDesignInput,
   QuoteLabLineInput,
 } from "./types";
+import { sundanceCatalog } from "@/lib/quote/sundance/catalog";
 
 export const QUOTE_LAB_PRODUCT_TYPES = [
   "Shutters",
@@ -83,6 +84,10 @@ function uniqueId(prefix: string): string {
 }
 
 export function quoteLabProductType(productId: string): QuoteLabProductType | null {
+  const sundanceProduct = sundanceCatalog.products.find((product) => product.id === productId);
+  if (sundanceProduct && QUOTE_LAB_PRODUCT_TYPES.includes(sundanceProduct.productType as QuoteLabProductType)) {
+    return sundanceProduct.productType as QuoteLabProductType;
+  }
   return PRODUCT_TYPE_BY_ID[productId] ?? null;
 }
 

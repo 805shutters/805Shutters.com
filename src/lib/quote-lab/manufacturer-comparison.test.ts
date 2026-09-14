@@ -11,7 +11,7 @@ describe("manufacturer price comparison", () => {
       selectedProductId: "faux_wood",
     });
 
-    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Lotus"]));
+    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Lotus", "Sundance"]));
     expect(result.products.find((product) => product.productId === "faux_wood")?.selected).toBe(true);
 
     const normanPrograms = result.products.find((product) => product.productId === "faux_wood")?.programs ?? [];
@@ -37,7 +37,7 @@ describe("manufacturer price comparison", () => {
       selectedProductId: "roller",
     });
 
-    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Polar", "Lotus"]));
+    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Polar", "Lotus", "Sundance"]));
     const blackout = result.products
       .find((product) => product.productId === "lotus_roller_shades")
       ?.programs.find((program) => program.programId === "lotus_rs_blackout_unpriced");
@@ -55,7 +55,8 @@ describe("manufacturer price comparison", () => {
       heightInches: 500,
       quantity: 1,
     });
-    expect(result.products.flatMap((product) => product.programs).every((program) => program.status === "unavailable")).toBe(true);
+    expect(result.products.flatMap((product) => product.programs).every((program) => ["unavailable", "manual_required"].includes(program.status))).toBe(true);
+    expect(result.products.filter((product) => product.manufacturer === "Sundance").flatMap((product) => product.programs).every((program) => program.errorCode === "MANUAL_PRICE_REQUIRED")).toBe(true);
     expect(result.products.flatMap((product) => product.programs).some((program) => program.errorCode === "WIDTH_EXCEEDS_MAX")).toBe(true);
   });
 

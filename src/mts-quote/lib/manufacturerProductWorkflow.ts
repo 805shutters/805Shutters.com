@@ -1,6 +1,6 @@
 import type { QuoteLabCatalogProduct } from "@/lib/quote-lab/types";
 
-const MANUFACTURER_ORDER = ["Norman", "Onyx", "Polar", "Lotus"];
+const MANUFACTURER_ORDER = ["Norman", "Onyx", "Polar", "Lotus", "Sundance"];
 
 export function isQuoteOnlyManufacturer(manufacturer: string | null | undefined) {
   return normalize(manufacturer) === "polar";

@@ -1,4 +1,5 @@
 import type { ISODate, SourceProvenance } from "./core";
+import { SUNDANCE_SOURCE_MANIFEST } from "@/lib/quote/sundance/source-manifest";
 
 export type SourceDocumentKind =
   | "price_book"
@@ -50,6 +51,7 @@ export interface SourceManifestEntry {
  * entry/version rather than editing its hash in place.
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
+  ...SUNDANCE_SOURCE_MANIFEST,
   {
     id: "norman-retail-guide-2026-07",
     manufacturer: "Norman",
