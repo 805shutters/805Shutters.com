@@ -18,8 +18,8 @@ export type QuoteTotalMode = "legacy" | "authoritative_v2";
 
 export interface QuoteTotalCalculationOptions {
   /**
-   * Legacy quotes intentionally retain the historical behavior of totaling
-   * every saved A/B/C design. The isolated V2 runtime explicitly opts into one
+   * Legacy quotes without a saved selection retain their historical totals.
+   * Persisted choices and the isolated V2 runtime use one
    * selected design per line plus any documented once-per-line retail charge.
    */
   mode?: QuoteTotalMode;
@@ -102,7 +102,7 @@ function quoteTotalDesignsForMode<T extends QuoteTotalDesign>(
   designs: readonly T[],
   mode: QuoteTotalMode,
 ): readonly T[] {
-  if (mode !== "authoritative_v2") return designs;
+  if (mode !== "authoritative_v2" && !designs.some(d => d[QUOTE_V2_SELECTED_DESIGN_MARKER] === true)) return designs;
   const selected = resolveQuoteTotalDesign(designs);
   return selected ? [selected] : [];
 }
@@ -166,6 +166,7 @@ export function hasPricedQuoteDesigns(
       : designs;
   return billableDesigns.some(
     (design) =>
+      (design.options_json?.manual_price_override === true && design.unit_price != null && Number.isFinite(Number(design.unit_price))) ||
       normalizeMoney(design.unit_price) > 0 ||
       (mode === "authoritative_v2" && authoritativeOnceTotal(design) > 0),
   );
@@ -185,7 +186,7 @@ export function resolveQuoteDisplayTotal(
   options: QuoteTotalCalculationOptions = {},
 ): number {
   const calculatedTotal = calculateQuoteDesignSubtotal(lineItems, designs, options);
-  if (calculatedTotal > 0) return calculatedTotal;
+  if (calculatedTotal > 0 || hasPricedQuoteDesigns(designs, options)) return calculatedTotal;
   return roundCurrency(normalizeMoney(storedTotal));
 }
 

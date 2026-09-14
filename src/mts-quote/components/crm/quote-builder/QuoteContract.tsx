@@ -1,3 +1,4 @@
+import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
@@ -98,10 +99,10 @@ function effectiveContractDesigns(
   lineItems: SalesQuoteLineItem[],
   designs: SalesQuoteDesign[],
 ): { designs: SalesQuoteDesign[]; selectionAware: boolean } {
-  if (!hasCompletePersistedDesignSelections(lineItems, designs)) {
-    return { designs, selectionAware: false };
-  }
   const projected = projectPersistedDesignSelections(designs, lineItems);
+  if (!hasCompletePersistedDesignSelections(lineItems, designs)) {
+    return { designs: projected, selectionAware: false };
+  }
   return {
     designs: selectedQuoteTotalDesigns(projected),
     selectionAware: true,
@@ -537,6 +538,16 @@ export function QuoteContract({
     );
   }
 
+  const incompleteDraft = acceptedProjection.acceptedTotal == null && shouldCheckQuoteCompleteness(quote, effectiveActiveDesigns.designs, quote.quote_v2_backend === true) &&
+    (lineItems.length === 0 || incompleteQuoteLineIds(lineItems, effectiveActiveDesigns.designs, quote.quote_v2_backend === true).length > 0);
+  if (incompleteDraft) {
+    return <div role="alert" className="p-6 space-y-3">
+      <h2 className="font-bold">Pricing incomplete</h2>
+      <p>Complete pricing for every selected window before reviewing or sending the contract.</p>
+      <Button onClick={() => setActiveTab("builder")}>Return to quote builder</Button>
+    </div>;
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto relative">
       {/* Admin Panel Toggle */}
@@ -845,6 +856,13 @@ export function QuoteContract({
           : displayDesigns;
         const effectiveGqDesigns = effectiveContractDesigns(gqLineItems, rawGqDesigns);
         const gqDesigns = effectiveGqDesigns.designs;
+        if (!accepted.accepted && shouldCheckQuoteCompleteness(gq, gqDesigns, gq.quote_v2_backend === true) &&
+          (gqLineItems.length === 0 || incompleteQuoteLineIds(gqLineItems, gqDesigns, gq.quote_v2_backend === true).length > 0)) {
+          return <Card key={gq.id}><CardContent className="p-6" role="alert">
+            <h3 className="font-bold">Quote {gq.quote_letter || "A"}: Pricing incomplete</h3>
+            <p>Complete pricing for every selected window before reviewing this contract.</p>
+          </CardContent></Card>;
+        }
         const gqSubtotal = accepted.acceptedTotal ?? calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
           mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
         });

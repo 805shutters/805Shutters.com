@@ -1,3 +1,4 @@
+import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1263,18 +1264,22 @@ export function QuoteBuilder({
       .upsert(copied.rows, { onConflict: "line_item_id,variant" });
     if (error) throw error;
 
-    // The isolated V2 database records the selected alternative when it sees a
-    // single-row upsert. Re-upserting just the source selection also remains a
-    // harmless normal upsert for the legacy Supabase adapter.
-    if (copied.rows.length > 1 && copied.selectedVariant) {
+    // Persist the copied source choice for both the isolated and legacy adapters.
+    if (copied.selectedVariant) {
       const selectedRow = copied.rows.find(
         (row) => row.variant === copied.selectedVariant
       );
       if (selectedRow) {
-        const { error: selectionError } = await (supabase as any)
+        const { data: selectedCopy, error: selectionError } = await (supabase as any)
           .from("sales_quote_designs")
-          .upsert(selectedRow, { onConflict: "line_item_id,variant" });
+          .upsert(selectedRow, { onConflict: "line_item_id,variant" }).select("id").single();
         if (selectionError) throw selectionError;
+        if (!selectedCopy?.id) throw new Error("Copied design selection did not return an ID.");
+        if (!isolated) {
+          const { error: lineSelectionError } = await (supabase as any).from("sales_quote_line_items")
+            .update({ selected_design_id: selectedCopy.id }).eq("id", targetLineItemId);
+          if (lineSelectionError) throw lineSelectionError;
+        }
       }
     }
 
@@ -2649,6 +2654,7 @@ export function QuoteBuilder({
           authoritativeV2={authoritativeV2}
           historicalTotal={historicalPriceLock?.total}
           useHistoricalTotal={useHistoricalPriceLock}
+          checkPricingCompleteness={shouldCheckQuoteCompleteness(quote, designs, authoritativeV2)}
         />
       )}
     </div>

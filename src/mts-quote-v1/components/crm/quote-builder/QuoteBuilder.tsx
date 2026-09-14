@@ -1,3 +1,4 @@
+import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges, calculateQuoteTotalBreakdown, parseQuoteAdminControls } from "@/mts-quote-v1/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -17,6 +18,8 @@ import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import {
   QUOTE_V2_SELECTED_DESIGN_MARKER,
   resolveSelectedQuoteDesign,
+  projectPersistedDesignSelections,
+  hasCompletePersistedDesignSelections,
 } from "@/lib/quote-v2/selected-design";
 import { Textarea } from "@mts-v1/components/ui/textarea";
 import {
@@ -558,32 +561,33 @@ export function QuoteBuilder() {
 
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
-      .select("id, quantity")
+      .select("id, quantity, selected_design_id")
       .eq("quote_id", activeQuoteId);
     if (lineItemsError) throw lineItemsError;
 
     const latestLineItemIds = (latestLineItems ?? []).map((item: SalesQuoteLineItem) => item.id);
     let latestDesigns: Pick<
       SalesQuoteDesign,
-      "line_item_id" | "variant" | "unit_price" | "options_json"
+      "id" | "line_item_id" | "variant" | "unit_price" | "options_json"
     >[] = [];
 
     if (latestLineItemIds.length > 0) {
       const { data: designRows, error: designsError } = await (supabase as any)
         .from("sales_quote_designs")
-        .select("line_item_id, variant, unit_price, options_json")
+        .select("id, line_item_id, variant, unit_price, options_json")
         .in("line_item_id", latestLineItemIds);
       if (designsError) throw designsError;
       latestDesigns = designRows ?? [];
     }
 
-    const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
-    const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
+    const projectedDesigns = projectPersistedDesignSelections(latestDesigns as SalesQuoteDesign[], latestLineItems ?? []);
+    const totalMode = authoritativeV2 || hasCompletePersistedDesignSelections(latestLineItems ?? [], latestDesigns) ? "authoritative_v2" : "legacy";
+    const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
       mode: totalMode,
     });
-    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, { ...options, mode: totalMode })) return;
+    if (!shouldPersistQuoteDesignSubtotal(projectedDesigns, { ...options, mode: totalMode })) return;
 
-    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(latestLineItems ?? [], latestDesigns, { mode: totalMode })).total;
+    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(latestLineItems ?? [], projectedDesigns, { mode: totalMode })).total;
     const { error: quoteError } = await (supabase as any)
       .from("sales_quotes")
       .update({ total_amount: total })
@@ -644,6 +648,7 @@ export function QuoteBuilder() {
       if (error) throw error;
       return (data || []) as SalesQuoteDesign[];
     },
+    select: (rows) => projectPersistedDesignSelections(rows, lineItems),
     enabled: lineItemIds.length > 0,
   });
 
@@ -841,18 +846,22 @@ export function QuoteBuilder() {
       .upsert(copied.rows, { onConflict: "line_item_id,variant" });
     if (error) throw error;
 
-    // The isolated V2 database records the selected alternative when it sees a
-    // single-row upsert. Re-upserting just the source selection also remains a
-    // harmless normal upsert for the legacy Supabase adapter.
-    if (copied.rows.length > 1 && copied.selectedVariant) {
+    // Persist the copied source choice for both the isolated and legacy adapters.
+    if (copied.selectedVariant) {
       const selectedRow = copied.rows.find(
         (row) => row.variant === copied.selectedVariant
       );
       if (selectedRow) {
-        const { error: selectionError } = await (supabase as any)
+        const { data: selectedCopy, error: selectionError } = await (supabase as any)
           .from("sales_quote_designs")
-          .upsert(selectedRow, { onConflict: "line_item_id,variant" });
+          .upsert(selectedRow, { onConflict: "line_item_id,variant" }).select("id").single();
         if (selectionError) throw selectionError;
+        if (!selectedCopy?.id) throw new Error("Copied design selection did not return an ID.");
+        if (!isolated) {
+          const { error: lineSelectionError } = await (supabase as any).from("sales_quote_line_items")
+            .update({ selected_design_id: selectedCopy.id }).eq("id", targetLineItemId);
+          if (lineSelectionError) throw lineSelectionError;
+        }
       }
     }
 
@@ -950,10 +959,15 @@ export function QuoteBuilder() {
     mutationFn: async (
       design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
     ) => {
-      const { error } = await (supabase as any).from("sales_quote_designs").upsert(design, {
-        onConflict: "line_item_id,variant",
-      });
+      const { data: savedDesign, error } = await (supabase as any).from("sales_quote_designs")
+        .upsert(design, { onConflict: "line_item_id,variant" }).select("id").single();
       if (error) throw error;
+      if (!savedDesign?.id) throw new Error("Saved design selection did not return an ID.");
+      if (!isolated) {
+        const { error: selectionError } = await (supabase as any).from("sales_quote_line_items")
+          .update({ selected_design_id: savedDesign.id }).eq("id", design.line_item_id);
+        if (selectionError) throw selectionError;
+      }
     },
     onMutate: async (design) => {
       const editSequence = ++designEditSequence.current;
@@ -966,8 +980,7 @@ export function QuoteBuilder() {
         );
 
         const markSelected = (rows: SalesQuoteDesign[]) =>
-          authoritativeV2
-            ? rows.map((row) =>
+          rows.map((row) =>
                 row.line_item_id === design.line_item_id
                   ? {
                       ...row,
@@ -975,8 +988,7 @@ export function QuoteBuilder() {
                         row.variant === design.variant,
                     }
                   : row,
-              )
-            : rows;
+              );
 
         if (index === -1) {
           return markSelected([
@@ -1898,6 +1910,8 @@ export function QuoteBuilder() {
           storedTotal={quote.total_amount}
           preferStoredTotal={preferStoredTotal}
           authoritativeV2={authoritativeV2}
+          adminControls={parseQuoteAdminControls(quote)}
+          checkPricingCompleteness={shouldCheckQuoteCompleteness(quote, designs, authoritativeV2)}
         />
       )}
     </div>

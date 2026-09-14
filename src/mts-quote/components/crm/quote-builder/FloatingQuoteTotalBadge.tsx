@@ -1,9 +1,9 @@
+import { incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import {
   resolveQuoteDisplayTotal,
   calculateQuoteTotalBreakdown,
   type QuoteAdminControls,
-  unpricedQuoteLineIds,
   type QuoteTotalDesign,
   type QuoteTotalLineItem,
 } from "@mts/lib/quoteTotals";
@@ -24,6 +24,7 @@ export function FloatingQuoteTotalBadge({
   historicalTotal,
   useHistoricalTotal = false,
   adminControls,
+  checkPricingCompleteness = authoritativeV2,
 }: {
   lineItems: QuoteTotalLineItem[];
   designs: QuoteTotalDesign[];
@@ -33,6 +34,7 @@ export function FloatingQuoteTotalBadge({
   historicalTotal?: number | null;
   useHistoricalTotal?: boolean;
   adminControls?: QuoteAdminControls;
+  checkPricingCompleteness?: boolean;
 }) {
   const calculatedTotal = preferStoredTotal && Number.isFinite(Number(storedTotal))
     ? Number(storedTotal)
@@ -44,8 +46,8 @@ export function FloatingQuoteTotalBadge({
     useHistoricalTotal && Number.isFinite(lockedTotal) && lockedTotal > 0;
   const total = fromHistoricalLock ? lockedTotal : preferStoredTotal ? calculatedTotal : calculateQuoteTotalBreakdown(calculatedTotal, adminControls, calculateQuoteFixedCharges(lineItems, designs, { mode: authoritativeV2 ? "authoritative_v2" : "legacy" })).total;
 
-  const missingPrices = authoritativeV2 && !fromHistoricalLock ? unpricedQuoteLineIds(lineItems, designs).length : 0;
-  const incomplete = authoritativeV2 && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);
+  const missingPrices = checkPricingCompleteness && !fromHistoricalLock ? incompleteQuoteLineIds(lineItems, designs, authoritativeV2).length : 0;
+  const incomplete = checkPricingCompleteness && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);
   const label = fromHistoricalLock ? "Original Contract Total" : incomplete ? "Pricing incomplete" : "Contract Total";
 
   return (

@@ -1,3 +1,5 @@
+import { projectPersistedDesignSelections } from "@/lib/quote-v2/selected-design";
+import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote-v1/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
@@ -186,6 +188,7 @@ export function QuoteContract() {
       if (error) throw error;
       return (data || []) as SalesQuoteDesign[];
     },
+    select: (rows) => projectPersistedDesignSelections(rows, lineItems),
     enabled: lineItemIds.length > 0 && !designWritesPending,
   });
 
@@ -233,6 +236,7 @@ export function QuoteContract() {
       if (error) throw error;
       return (data || []) as SalesQuoteDesign[];
     },
+    select: (rows) => projectPersistedDesignSelections(rows, allGroupLineItems),
     enabled: allGroupLineItemIds.length > 0 && !designWritesPending,
   });
 
@@ -520,6 +524,16 @@ export function QuoteContract() {
         Saving quote changes before loading contract...
       </div>
     );
+  }
+
+  const incompleteDraft = shouldCheckQuoteCompleteness(quote, designs, authoritativeV2) &&
+    (lineItems.length === 0 || incompleteQuoteLineIds(lineItems, designs, authoritativeV2).length > 0);
+  if (incompleteDraft) {
+    return <div role="alert" className="p-6 space-y-3">
+      <h2 className="font-bold">Pricing incomplete</h2>
+      <p>Complete pricing for every selected window before reviewing or sending the contract.</p>
+      <Button onClick={() => setActiveTab("builder")}>Return to quote builder</Button>
+    </div>;
   }
 
   return (
@@ -845,6 +859,13 @@ export function QuoteContract() {
         const gqDesigns = hasMultipleQuotes
           ? allGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
           : designs;
+        if (shouldCheckQuoteCompleteness(gq, gqDesigns, authoritativeV2) &&
+          (gqLineItems.length === 0 || incompleteQuoteLineIds(gqLineItems, gqDesigns, authoritativeV2).length > 0)) {
+          return <Card key={gq.id}><CardContent className="p-6" role="alert">
+            <h3 className="font-bold">Quote {gq.quote_letter || "A"}: Pricing incomplete</h3>
+            <p>Complete pricing for every selected window before reviewing this contract.</p>
+          </CardContent></Card>;
+        }
         const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
           mode: totalMode,
         });

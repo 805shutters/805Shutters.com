@@ -17,13 +17,15 @@ export function projectPersistedDesignSelections<T extends SalesQuoteDesign>(
   lines: readonly PersistedDesignSelectionLine[],
 ): Array<T & SelectionMarkedQuoteDesign> {
   const selectedByLine = new Map(
-    lines.map((line) => [line.id, line.selected_design_id ?? null]),
+    lines.map((line) => [line.id, line.selected_design_id]),
   );
 
   return designs.map((design) => ({
     ...design,
     [QUOTE_V2_SELECTED_DESIGN_MARKER]:
-      selectedByLine.get(design.line_item_id) === design.id,
+      selectedByLine.has(design.line_item_id) && selectedByLine.get(design.line_item_id) === undefined
+        ? (design as SelectionMarkedQuoteDesign)[QUOTE_V2_SELECTED_DESIGN_MARKER] === true
+        : selectedByLine.get(design.line_item_id) === design.id,
   }));
 }
 

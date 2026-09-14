@@ -60,7 +60,7 @@ describe("quote note metadata", () => {
 });
 
 describe("selected-design quote totals", () => {
-  it("preserves cumulative A/B/C totals in the legacy runtime", () => {
+  it("honors a persisted selection in the legacy runtime", () => {
     const designs = [
       { line_item_id: "line-1", variant: "A", unit_price: 100 },
       { line_item_id: "line-1", variant: "B", unit_price: 200 },
@@ -75,7 +75,7 @@ describe("selected-design quote totals", () => {
     expect(resolveQuoteTotalDesign(designs)?.variant).toBe("C");
     expect(
       calculateLineItemDesignTotal({ id: "line-1", quantity: 2 }, designs)
-    ).toBe(1_200);
+    ).toBe(600);
   });
 
   it("totals only the explicitly selected alternative in authoritative V2", () => {
@@ -171,7 +171,7 @@ describe("selected-design quote totals", () => {
     ).toBe(325);
     expect(
       calculateLineItemDesignTotal({ id: "line-1", quantity: 3 }, designs)
-    ).toBe(3_297);
+    ).toBe(300);
   });
 
   it("does not treat a priced unselected alternative as the sold price", () => {
