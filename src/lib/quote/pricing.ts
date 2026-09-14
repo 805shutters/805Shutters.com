@@ -233,6 +233,14 @@ function resolveProgram(
   input: PriceInput,
   warnings: string[],
 ): CatalogProgram | PriceFailure {
+  if (product.id.startsWith("polar_") && input.fabric && product.fabricRouting) {
+    const routed = getProgramForFabric(product, input.fabric);
+    if (!routed) return fail("FABRIC_UNKNOWN", `Fabric '${input.fabric}' is not published for '${product.id}'.`, warnings);
+    if (input.programId && input.programId !== routed.id) {
+      return fail("PROGRAM_NOT_RESOLVED", "The selected Polar fabric and price group do not match.", warnings);
+    }
+    return routed;
+  }
   if (input.programId) {
     const prog = getProgram(product, input.programId);
     if (!prog) return fail("PROGRAM_NOT_RESOLVED", `Program '${input.programId}' not found on '${product.id}'`, warnings);

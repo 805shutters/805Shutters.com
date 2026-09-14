@@ -560,6 +560,25 @@ function validatePolarExteriorConfiguration(
 ): ValidationIssue[] {
   if (!POLAR_EXTERIOR_PRODUCTS.has(context.productId)) return [];
   const issues: ValidationIssue[] = [];
+  const product = getProduct(context.productId);
+  const fabricName = text(configValue(context, "fabric_collection", "fabric"));
+  const fabric = product?.fabricMetadata?.find(
+    (candidate) => normalizeIdentity(candidate.name) === normalizeIdentity(fabricName),
+  );
+  const expectedProgram = fabric ? product?.fabricRouting?.[fabric.name] : null;
+  if (!fabric || !expectedProgram) {
+    issues.push(issue(
+      "hard_block", "polar.exterior.fabric.required", POLAR_DEALER_BOOK,
+      { fabric_collection: fabricName || null },
+      "Select an exact fabric published for this Polar exterior shade.",
+    ));
+  } else if (context.programId !== expectedProgram) {
+    issues.push(issue(
+      "hard_block", "polar.exterior.fabric.program_mismatch", POLAR_DEALER_BOOK,
+      { fabric_collection: fabric.name, programId: context.programId, expectedProgramId: expectedProgram },
+      "The selected Polar exterior fabric must use its published price group.",
+    ));
+  }
   const guide = text(
     configValue(context, "polar_exterior_guide_type"),
   ).trim().toLowerCase();
@@ -2306,7 +2325,6 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
-  if (context.productId.startsWith("polar_")) return "manual_quote_required";
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
   // The pinned July 2026 Motorization Guide now supplies exact motor-family,
   // power, control, accessory, and size rules. Unsupported or incomplete

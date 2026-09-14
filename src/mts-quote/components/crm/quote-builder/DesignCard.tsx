@@ -6320,7 +6320,7 @@ function QuoteLabCatalogControls({
             <Label className="text-xs font-semibold">Fabric collection</Label>
             <Select value={design?.fabric || ""} onValueChange={(fabric) => {
               const choice = selectedProduct.fabrics?.find((candidate) => candidate.name === fabric);
-              onUpdateFields({ fabric, material: choice ? `Price Group ${choice.programId.replace("group_", "")}` : null, options_json: { ...options, quote_lab_program_id: choice?.programId ?? null, catalog_program_id: choice?.programId ?? null } });
+              onUpdateFields({ fabric, material: choice ? `Price Group ${choice.programId.replace("group_", "")}` : null, options_json: { ...options, fabric_program_id: choice?.programId ?? null, fabric_color_collection: fabric, quote_lab_program_id: choice?.programId ?? null, catalog_program_id: choice?.programId ?? null } });
             }}>
               <SelectTrigger aria-label="Fabric collection"><SelectValue placeholder="Select fabric" /></SelectTrigger>
               <SelectContent>{selectedProduct.fabrics?.map((fabric) => <SelectItem key={fabric.name} value={fabric.name}>{fabric.name}</SelectItem>)}</SelectContent>

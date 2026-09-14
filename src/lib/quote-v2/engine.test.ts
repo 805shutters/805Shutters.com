@@ -1360,7 +1360,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(context).toMatchObject({ widthInches: 30, heightInches: 60 });
   });
 
-  it.skip("retires Polar component pricing from customer payloads", () => {
+  it("keeps Polar component pricing customer-safe", () => {
     const context = selection(
       "polar_interior_roller",
       "group_2",
@@ -1542,7 +1542,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
   });
 
-  it.skip("retires the legacy mixed-manufacturer Polar pricing fixture", () => {
+  it("preserves measured geometry in customer snapshots", () => {
     const context = selection(
       "polar_interior_roller",
       "group_2",
@@ -1621,7 +1621,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(snapshot.retail).not.toHaveProperty("billableSqft");
   });
 
-  it.skip("retires Polar internal-cost projections and snapshots", () => {
+  it("keeps Polar internal costs out of customer projections and snapshots", () => {
     const context = selection(
       "polar_interior_roller",
       "group_2",
