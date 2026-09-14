@@ -4839,6 +4839,7 @@ export function DesignCard({
   const handleVariantChange = (variant: string) => {
     userSelectedVariantRef.current = true;
     setActiveVariant(variant);
+    if (isPriceLocked) return;
     if (designs.some((design) => design.variant === variant)) {
       onUpdateDesign({
         line_item_id: lineItem.id,
