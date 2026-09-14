@@ -18,6 +18,11 @@ import {
   type PriceGrid,
   type ShutterProgram,
 } from "./pricingData";
+import { createShutterSquareFootGrid } from "../../lib/quote/shutter-square-foot-grid";
+import {
+  resolveShutterFramePricing,
+  type ShutterFramePricingResolution,
+} from "../../lib/quote/shutter-frame-pricing";
 import {
   getHoneycombGrid,
   getRollerFabricPriceGroup,
@@ -84,11 +89,45 @@ export interface GridPriceMatch {
   matchedHeight: number;
 }
 
+function hasPositiveFiniteDimensions(width: number, height: number): boolean {
+  return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0;
+}
+
+function gridFailureReason(
+  grid: Pick<PriceGrid, "widths" | "heights">,
+  width: number,
+  height: number,
+): ProductPriceBreakdown["blockReason"] {
+  if (!hasPositiveFiniteDimensions(width, height)) return "invalid_dimensions";
+  const maxWidth = grid.widths.at(-1);
+  const maxHeight = grid.heights.at(-1);
+  if (
+    maxWidth === undefined ||
+    maxHeight === undefined ||
+    width > maxWidth ||
+    height > maxHeight
+  ) {
+    return "dimensions_outside_pricing_grid";
+  }
+  return "missing_grid_price";
+}
+
 export function lookupGridPriceMatch(
   grid: PriceGrid,
   widthInches: number,
   heightInches: number
 ): GridPriceMatch | null {
+  if (!hasPositiveFiniteDimensions(widthInches, heightInches)) return null;
+  const maxWidth = grid.widths.at(-1);
+  const maxHeight = grid.heights.at(-1);
+  if (
+    maxWidth === undefined ||
+    maxHeight === undefined ||
+    widthInches > maxWidth ||
+    heightInches > maxHeight
+  ) {
+    return null;
+  }
   const roundedWidth = grid.widths.find((width) => width >= widthInches);
   const roundedHeight = grid.heights.find((height) => height >= heightInches);
 
@@ -116,8 +155,8 @@ export function lookupGridPriceMatch(
 }
 
 /**
- * Calculate price for shutters (per square foot with min 8 sqft)
- * Formula: actualSqft * retailPrice * (1 + tariff/100)
+ * Calculate price for shutters by selecting the next whole-square-foot row
+ * from the program's independent grid (8 sqft minimum).
  * Inputs: widthInches (number), heightInches (number), retailPriceOverride (optional $/sqft)
  * Output: total price in dollars
  *
@@ -130,26 +169,28 @@ export function calculateShutterPrice(
   useRetail = true,
   retailPriceOverride?: number
 ): number {
-  // sqft = (width * height) / 144, minimum 8 sqft
-  const sqft = (widthInches * heightInches) / 144;
-  const actualSqft = Math.max(sqft, 8);
-
   // Use override if provided, otherwise use program's price
   const basePriceDollars =
     retailPriceOverride ?? (useRetail ? program.retailPrice : program.wholesalePrice);
 
-  // Convert to cents for integer arithmetic
   const basePriceCents = Math.round(basePriceDollars * 100);
   const tariffMultiplier = 100 + program.tariff; // e.g. 108 for 8% tariff
   const priceWithTariffCents = Math.round((basePriceCents * tariffMultiplier) / 100);
 
-  // Total in cents, then convert to dollars at the end
-  const totalCents = Math.round(actualSqft * priceWithTariffCents);
-  return totalCents / 100;
+  const grid = createShutterSquareFootGrid({
+    manufacturer: "Shutter",
+    productId: program.name,
+    programId: program.name,
+    minimumBillableSquareFeet: 8,
+    retailRatePerSquareFoot: priceWithTariffCents / 100,
+    wholesaleRatePerSquareFoot: null,
+  });
+  return grid.select(widthInches, heightInches).row.retailPrice!;
 }
 
 /**
- * Calculate square footage from dimensions (with minimum 8 sqft for shutters)
+ * Calculate shutter square footage. Billable area follows the selected whole
+ * square-foot row; callers can request the raw measured area for display.
  */
 export function calculateSqft(
   widthInches: number,
@@ -157,7 +198,7 @@ export function calculateSqft(
   applyMinimum = true
 ): number {
   const sqft = (widthInches * heightInches) / 144;
-  return applyMinimum ? Math.max(sqft, 8) : sqft;
+  return applyMinimum ? Math.max(Math.ceil(sqft), 8) : sqft;
 }
 
 /**
@@ -200,6 +241,55 @@ export interface PriceLookupOptions {
   cellSize?: string; // for honeycomb shades
   fabric?: string; // for fabric-based routing
   slatSize?: string; // for slat-specific blind size limits
+  frameType?: string;
+  frameSides?: string | number;
+  mountType?: string;
+  measurementBasis?: string;
+}
+
+function canonicalMeasurementBasis(
+  value: string | undefined,
+): "window_size" | "frame_to_frame" | null {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (!normalized) return null;
+  if (normalized.startsWith("w ") || normalized.includes("window")) return "window_size";
+  if (normalized.startsWith("f ") || normalized.includes("frame")) return "frame_to_frame";
+  return null;
+}
+
+function canonicalMount(value: string | undefined): "inside" | "outside" | null {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (normalized === "im" || normalized.includes("inside")) return "inside";
+  if (normalized === "om" || normalized.includes("outside")) return "outside";
+  return null;
+}
+
+export function resolveShutterPricingDimensions(
+  options: Pick<
+    PriceLookupOptions,
+    | "supplier"
+    | "width"
+    | "height"
+    | "frameType"
+    | "frameSides"
+    | "mountType"
+    | "measurementBasis"
+  >,
+): ShutterFramePricingResolution | null {
+  if (options.supplier !== "Norman" && options.supplier !== "Onyx") return null;
+  const measurementBasis = canonicalMeasurementBasis(options.measurementBasis);
+  if (!measurementBasis) return null;
+  const numericSides = Number(options.frameSides);
+  const frameSides = numericSides === 3 || numericSides === 4 ? numericSides : null;
+  return resolveShutterFramePricing({
+    manufacturer: options.supplier,
+    widthInches: options.width,
+    heightInches: options.height,
+    measurementBasis,
+    mountType: canonicalMount(options.mountType),
+    frameType: options.frameType,
+    frameSides,
+  });
 }
 
 function getCatalogGridKey(productType: string, options: PriceLookupOptions): string | null {
@@ -269,7 +359,9 @@ export function getRomanPrice(options: PriceLookupOptions): number | null {
 
   const gridKey = getCatalogGridKey("Roman Shades", options) ?? (fabric
     ? getRomanFabricPriceGroup(fabric)
-    : priceGroup?.toLowerCase().replace(" ", "") || "group1");
+    : priceGroup?.toLowerCase().replaceAll(" ", ""));
+
+  if (!gridKey) return null;
 
   const grid = ROMAN_PRICING[gridKey as keyof typeof ROMAN_PRICING];
 
@@ -294,9 +386,10 @@ export function getPerfectSheerPrice(options: PriceLookupOptions): number | null
 export function getVerticalPrice(options: PriceLookupOptions): number | null {
   const { fabricGroup, width, height } = options;
 
-  const gridKey =
-    getCatalogGridKey("Vertical Blinds", options) ??
-    (fabricGroup ? getVerticalFabricPriceGroup(fabricGroup) : "group1");
+  const gridKey = getCatalogGridKey("Vertical Blinds", options) ??
+    (fabricGroup ? getVerticalFabricPriceGroup(fabricGroup) : undefined);
+
+  if (!gridKey) return null;
 
   const grid = VERTICAL_PRICING[gridKey as keyof typeof VERTICAL_PRICING];
 
@@ -346,19 +439,40 @@ export function getSmartDrapePrice(options: PriceLookupOptions): number | null {
 export function getShutterPrice(options: PriceLookupOptions): number | null {
   const { supplier, program, width, height, retailPriceOverride } = options;
 
-  if (!supplier || !program) return null;
+  if (!supplier || !program || !hasPositiveFiniteDimensions(width, height)) return null;
 
   let programData: ShutterProgram | undefined;
 
   if (supplier === "Norman") {
     programData = NORMAN_SHUTTER_PROGRAMS.find((p) => p.name === program);
   } else if (supplier === "Onyx") {
-    programData = ONYX_SHUTTER_PROGRAMS.find((p) => p.name === program);
+    const programAliases: Readonly<Record<string, string>> = {
+      "basswood": "Painted Basswood",
+      "painted basswood": "Painted Basswood",
+      "basswood stain": "Stained Basswood",
+      "stained basswood": "Stained Basswood",
+      "sycamore": "Secamore",
+      "secamore": "Secamore",
+      "mdf hybrid": "VLO Hybrid",
+      "vlo hybrid": "VLO Hybrid",
+      "onyx u.s. made vinyl": "Onyx US Made Vinyl",
+      "onyx us made vinyl": "Onyx US Made Vinyl",
+    };
+    const canonicalProgram = programAliases[program.trim().toLowerCase()] ?? program;
+    programData = ONYX_SHUTTER_PROGRAMS.find((p) => p.name === canonicalProgram);
   }
 
   if (!programData) return null;
 
-  return calculateShutterPrice(programData, width, height, true, retailPriceOverride);
+  const framePricing = resolveShutterPricingDimensions(options);
+  if (framePricing && !framePricing.supported) return null;
+  return calculateShutterPrice(
+    programData,
+    framePricing?.pricingWidthInches ?? width,
+    framePricing?.pricingHeightInches ?? height,
+    true,
+    retailPriceOverride,
+  );
 }
 
 // ========================================
@@ -377,6 +491,11 @@ export interface ProductPriceBreakdown {
   matchedWidth?: number;
   matchedHeight?: number;
   builtInAdjustment?: number;
+  pricingWidth?: number;
+  pricingHeight?: number;
+  actualSquareFeet?: number;
+  billableSquareFeet?: number;
+  blockReason?: string;
   pricingMethod: "grid" | "square-foot" | "none";
 }
 
@@ -392,6 +511,7 @@ function gridBreakdown(
       price: null,
       gridKey,
       pricingMethod: "none",
+      blockReason: "incomplete_pricing_configuration",
     };
   }
 
@@ -402,6 +522,7 @@ function gridBreakdown(
       price: null,
       gridKey,
       pricingMethod: "grid",
+      blockReason: gridFailureReason(grid, options.width, options.height),
     };
   }
 
@@ -428,18 +549,62 @@ function catalogGridBreakdown(
   const gridKey = getMtsGridKeyForCatalogProgram(options.productType, programId) ?? programId;
 
   if (!program || program.priceAxis !== "wh") {
-    return { productType: options.productType, price: null, gridKey, pricingMethod: "none" };
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey,
+      pricingMethod: "none",
+      blockReason: "incomplete_pricing_configuration",
+    };
+  }
+
+  if (!hasPositiveFiniteDimensions(options.width, options.height)) {
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey,
+      pricingMethod: "grid",
+      blockReason: "invalid_dimensions",
+    };
+  }
+  const maxWidth = program.grid.widths.at(-1);
+  const maxHeight = program.grid.heights.at(-1);
+  if (
+    maxWidth === undefined ||
+    maxHeight === undefined ||
+    options.width > maxWidth ||
+    options.height > maxHeight
+  ) {
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey,
+      pricingMethod: "grid",
+      blockReason: "dimensions_outside_pricing_grid",
+    };
   }
 
   const widthIndex = program.grid.widths.findIndex((width) => width >= options.width);
   const heightIndex = program.grid.heights.findIndex((height) => height >= options.height);
   if (widthIndex < 0 || heightIndex < 0) {
-    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey,
+      pricingMethod: "grid",
+      blockReason: "dimensions_outside_pricing_grid",
+    };
   }
 
   const price = program.grid.prices[heightIndex]?.[widthIndex];
   if (price === null || price === undefined || price <= 0) {
-    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey,
+      pricingMethod: "grid",
+      blockReason: "missing_grid_price",
+    };
   }
 
   return {
@@ -461,6 +626,15 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
   // Sundance must never inherit Norman's grid from the generic line category.
   if (options.supplier?.trim().toLowerCase() === "sundance") {
     return { productType, price: null, pricingMethod: "none" };
+  }
+
+  if (!hasPositiveFiniteDimensions(options.width, options.height)) {
+    return {
+      productType,
+      price: null,
+      pricingMethod: "none",
+      blockReason: "invalid_dimensions",
+    };
   }
 
   switch (productType) {
@@ -492,7 +666,15 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     case "Roman Shades": {
       const gridKey = getCatalogGridKey(productType, options) ?? (options.fabric
         ? getRomanFabricPriceGroup(options.fabric)
-        : options.priceGroup?.toLowerCase().replace(" ", "") || "group1");
+        : options.priceGroup?.toLowerCase().replaceAll(" ", ""));
+      if (!gridKey) {
+        return {
+          productType,
+          price: null,
+          pricingMethod: "none",
+          blockReason: "unknown_fabric_price_group",
+        };
+      }
       return gridBreakdown(options, ROMAN_PRICING[gridKey as keyof typeof ROMAN_PRICING], gridKey);
     }
     case "Sheer Shades": {
@@ -521,7 +703,15 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     case "Vertical Blinds": {
       const gridKey =
         getCatalogGridKey(productType, options) ??
-        (options.fabricGroup ? getVerticalFabricPriceGroup(options.fabricGroup) : "group1");
+        (options.fabricGroup ? getVerticalFabricPriceGroup(options.fabricGroup) : undefined);
+      if (!gridKey) {
+        return {
+          productType,
+          price: null,
+          pricingMethod: "none",
+          blockReason: "unknown_fabric_price_group",
+        };
+      }
       return gridBreakdown(
         options,
         VERTICAL_PRICING[gridKey as keyof typeof VERTICAL_PRICING],
@@ -556,10 +746,27 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     }
     case "Shutters": {
       const price = getShutterPrice(options);
+      const framePricing = resolveShutterPricingDimensions(options);
+      const pricingWidth = framePricing?.pricingWidthInches ?? options.width;
+      const pricingHeight = framePricing?.pricingHeightInches ?? options.height;
+      const actualSquareFeet =
+        price === null ? undefined : calculateSqft(pricingWidth, pricingHeight, false);
+      const billableSquareFeet =
+        price === null ? undefined : calculateSqft(pricingWidth, pricingHeight, true);
       return {
         productType,
         price,
+        ...(price !== null
+          ? { pricingWidth, pricingHeight, actualSquareFeet, billableSquareFeet }
+          : {}),
         pricingMethod: price === null ? "none" : "square-foot",
+        ...(price === null
+          ? {
+              blockReason:
+                (framePricing && !framePricing.supported && framePricing.reason) ||
+                "incomplete_pricing_configuration",
+            }
+          : {}),
       };
     }
     default:

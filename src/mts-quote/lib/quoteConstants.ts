@@ -2439,7 +2439,7 @@ export function getRomanFabricCanonicalLabel(fabric?: string | null): string | u
 
 // Roman Shade fabric-to-grid routing. Norman prices several colors within one
 // collection differently, so this resolves at color level before category level.
-export function getRomanFabricPriceGroup(fabric: string): string {
+export function getRomanFabricPriceGroup(fabric: string): string | undefined {
   const normalized = normalizeRomanOption(fabric);
 
   for (const category of ROMAN_FABRIC_CATEGORIES) {
@@ -2454,18 +2454,11 @@ export function getRomanFabricPriceGroup(fabric: string): string {
     }
   }
 
-  const category = ROMAN_FABRIC_CATEGORIES.find(
-    (candidate) => normalizeRomanOption(candidate.name) === normalized
-  );
-  if (category) {
-    return category.colors[0]?.priceGroup || "group1";
-  }
-
-  return "group1"; // default fallback
+  return undefined;
 }
 
 // Vertical Blinds fabric group-to-grid routing
-export function getVerticalFabricPriceGroup(fabricGroup: string): string {
+export function getVerticalFabricPriceGroup(fabricGroup: string): string | undefined {
   const groupMapping: Record<string, string> = {
     "Classic collection": "group1",
     "S-Curved": "group2",
@@ -2478,5 +2471,9 @@ export function getVerticalFabricPriceGroup(fabricGroup: string): string {
     Willow: "group4",
     "Faux Wood": "group4",
   };
-  return groupMapping[fabricGroup] || "group1";
+  const normalized = normalizeRomanOption(fabricGroup);
+  const match = Object.entries(groupMapping).find(
+    ([label]) => normalizeRomanOption(label) === normalized
+  );
+  return match?.[1];
 }

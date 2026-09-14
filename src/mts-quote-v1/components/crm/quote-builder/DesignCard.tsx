@@ -237,7 +237,19 @@ import {
   isMarkedSelectedQuoteDesign,
   preferredSavedQuoteVariant,
 } from "@/lib/quote-v2/selected-design";
-import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts-v1/lib/pricingEngine";
+import {
+  measurementToInches,
+  getProductPriceBreakdown,
+  calculateSqft,
+  resolveShutterPricingDimensions,
+} from "@mts-v1/lib/pricingEngine";
+import {
+  automaticPriceNeedsClearing,
+  automaticPricingInputSignature,
+  automaticPricingTrigger,
+  clearDerivedAutomaticPrice,
+  stripDerivedAutomaticPrice,
+} from "@/lib/quote/automatic-price-state";
 import { getHoneycombShadeSpecWarnings } from "@mts-v1/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts-v1/lib/rollerShadeSpecs";
 import { getRomanShadeSpecWarnings } from "@mts-v1/lib/romanShadeSpecs";
@@ -3076,6 +3088,19 @@ function getStandardShutterGridOptions(
       },
     ];
 
+    if (String((design.options_json as Record<string, unknown>)?.size_type || "") === "W - Window Size") {
+      const frameTypeIndex = options.findIndex(
+        (option) => option.field === "json:frame_type",
+      );
+      options.splice(frameTypeIndex + 1, 0, {
+        key: "frame_sides",
+        label: "Frame Sides",
+        field: "json:frame_sides",
+        type: "buttons",
+        options: ["3", "4"],
+      });
+    }
+
     if (!authoritativeV2) return options;
 
     const onyxOptions = (design.options_json as Record<string, unknown>) || {};
@@ -3933,6 +3958,7 @@ export function DesignCard({
   );
   const userSelectedVariantRef = useRef(false);
   const lineItemIdRef = useRef(lineItem.id);
+  const pricingInputSignaturesRef = useRef(new Map<string, string>());
   const [editingRetail, setEditingRetail] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [roomNameDraft, setRoomNameDraft] = useState(lineItem.room_name);
@@ -3943,6 +3969,47 @@ export function DesignCard({
   const currentDesign = designs.find((d) => d.variant === activeVariant);
   const displayedUnitPrice = Number(currentDesign?.unit_price || 0);
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const automaticPricingSignature = currentDesign
+    ? automaticPricingInputSignature({
+        productType: lineItem.product_type,
+        widthWhole: lineItem.width_whole,
+        widthFraction: lineItem.width_fraction,
+        heightWhole: lineItem.height_whole,
+        heightFraction: lineItem.height_fraction,
+        quantity,
+        variant: currentDesign.variant,
+        supplier: currentDesign.supplier,
+        selections: {
+          material: currentDesign.material,
+          louverSize: currentDesign.louver_size,
+          tiltType: currentDesign.tilt_type,
+          hingeColor: currentDesign.hinge_color,
+          panelConfig: currentDesign.panel_config,
+          mountType: currentDesign.mount_type,
+          shadeType: currentDesign.shade_type,
+          liftSystem: currentDesign.lift_system,
+          valance: currentDesign.valance,
+          fabric: currentDesign.fabric,
+          motorType: currentDesign.motor_type,
+          remoteType: currentDesign.remote_type,
+          hardSurfaceInstall: currentDesign.hard_surface_install,
+          ladderOver15ft: currentDesign.ladder_over_15ft,
+          requiresTakedown: currentDesign.requires_takedown,
+        },
+        options: currentOptions,
+      })
+    : null;
+  const consumeAutomaticPricingTrigger = () => {
+    if (!currentDesign || !automaticPricingSignature) return null;
+    const previous = pricingInputSignaturesRef.current.get(currentDesign.id);
+    pricingInputSignaturesRef.current.set(currentDesign.id, automaticPricingSignature);
+    return automaticPricingTrigger(
+      previous,
+      automaticPricingSignature,
+      currentDesign.unit_price,
+      currentOptions,
+    );
+  };
   const displayedLineTotal = calculateLineItemDesignTotal(
     lineItem,
     currentDesign ? [currentDesign] : [],
@@ -3954,6 +4021,15 @@ export function DesignCard({
     authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
       ? currentOptions.authoritative_price_error.trim()
       : "";
+  const legacyPricingBlockReason = !authoritativeV2
+    ? (typeof currentOptions.pricing_block_reason === "string"
+        ? currentOptions.pricing_block_reason.trim()
+        : "") ||
+      (measurementToInches(lineItem.width_whole, lineItem.width_fraction) <= 0 ||
+      measurementToInches(lineItem.height_whole, lineItem.height_fraction) <= 0
+        ? "invalid_dimensions"
+        : "")
+    : "";
   const discountPercent = Number(currentOptions.discount_percent) || 0;
   const hasDiscount = Boolean(currentDesign && discountPercent > 0);
 
@@ -4068,10 +4144,36 @@ export function DesignCard({
   // Compute sqft and current retail $/sqft for shutters
   const widthIn = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
   const heightIn = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
+  const shutterFramePricing = isShutters
+    ? resolveShutterPricingDimensions({
+        supplier: currentDesign?.supplier || undefined,
+        width: widthIn,
+        height: heightIn,
+        frameType: stringOption(currentOptions, "frame_type") || undefined,
+        frameSides: currentOptions.frame_sides as string | number | undefined,
+        mountType:
+          stringOption(currentOptions, "onyx_mount") ||
+          currentDesign?.mount_type ||
+          undefined,
+        measurementBasis: stringOption(currentOptions, "size_type") || undefined,
+      })
+    : null;
+  const pricingWidthIn =
+    shutterFramePricing?.supported && shutterFramePricing.pricingWidthInches != null
+      ? shutterFramePricing.pricingWidthInches
+      : widthIn;
+  const pricingHeightIn =
+    shutterFramePricing?.supported && shutterFramePricing.pricingHeightInches != null
+      ? shutterFramePricing.pricingHeightInches
+      : heightIn;
   const sqft =
-    isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, true) : null;
+    isShutters && widthIn > 0 && heightIn > 0
+      ? calculateSqft(pricingWidthIn, pricingHeightIn, true)
+      : null;
   const rawSqft =
-    isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, false) : null;
+    isShutters && widthIn > 0 && heightIn > 0
+      ? calculateSqft(pricingWidthIn, pricingHeightIn, false)
+      : null;
   const rollerShadeSpecWarnings = getRollerShadeSpecWarnings({
     productType: lineItem.product_type,
     widthInches: widthIn,
@@ -4301,6 +4403,13 @@ export function DesignCard({
       catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
+      frameType: opts?.frame_type as string | undefined,
+      frameSides: opts?.frame_sides as string | number | undefined,
+      mountType:
+        (opts?.onyx_mount as string | undefined) ||
+        currentDesign.mount_type ||
+        undefined,
+      measurementBasis: opts?.size_type as string | undefined,
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
@@ -4355,6 +4464,8 @@ export function DesignCard({
   useEffect(() => {
     if (authoritativeV2) return;
     if (!currentDesign || !isPriceLocked) return;
+    if (currentDesign.options_json?.manual_price_override === true) return;
+    if (!consumeAutomaticPricingTrigger()) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
     const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
@@ -4391,6 +4502,13 @@ export function DesignCard({
       catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
+      frameType: opts?.frame_type as string | undefined,
+      frameSides: opts?.frame_sides as string | number | undefined,
+      mountType:
+        (opts?.onyx_mount as string | undefined) ||
+        currentDesign.mount_type ||
+        undefined,
+      measurementBasis: opts?.size_type as string | undefined,
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
@@ -4499,11 +4617,11 @@ export function DesignCard({
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
     const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
 
-    if (widthInches === 0 || heightInches === 0) return;
-
     const opts = (currentDesign.options_json as Record<string, unknown>) || {};
     if (opts.manual_price_override === true) return;
     if (isPriceLocked) return;
+    const pricingTrigger = consumeAutomaticPricingTrigger();
+    if (!pricingTrigger) return;
 
     const fabricGroup = opts?.fabric_group as string | undefined;
     const romanFabricCategory = opts?.roman_fabric_category as string | undefined;
@@ -4536,6 +4654,13 @@ export function DesignCard({
       catalogProgramId: stringOption(opts, "catalog_program_id") || stringOption(opts, "quote_lab_program_id") || opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
+      frameType: opts?.frame_type as string | undefined,
+      frameSides: opts?.frame_sides as string | number | undefined,
+      mountType:
+        (opts?.onyx_mount as string | undefined) ||
+        currentDesign.mount_type ||
+        undefined,
+      measurementBasis: opts?.size_type as string | undefined,
       cellSize, // Pass cell size for honeycomb routing
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
@@ -4573,6 +4698,7 @@ export function DesignCard({
           currentGridHeight !== priceBreakdown.matchedHeight) ||
         (priceBreakdown.gridPrice !== undefined && currentGridPrice !== priceBreakdown.gridPrice) ||
         (priceBreakdown.gridKey !== undefined && opts.pricing_grid_key !== priceBreakdown.gridKey);
+      const cleanPricingOptions = stripDerivedAutomaticPrice(opts);
 
       if (
         currentDesign.unit_price !== calculatedPrice ||
@@ -4584,7 +4710,8 @@ export function DesignCard({
         updateFields({
           unit_price: calculatedPrice,
           options_json: {
-            ...opts,
+            ...cleanPricingOptions,
+            pricing_block_reason: null,
             base_price: basePrice,
             surcharge_total: surchargeTotal,
             pricing_method: priceBreakdown.pricingMethod,
@@ -4610,24 +4737,21 @@ export function DesignCard({
           },
         });
       }
-    } else if (
-      (lineItem.product_type === "Mini Blinds" || currentDesign.supplier?.trim().toLowerCase() === "lotus") &&
-      (Number(currentDesign.unit_price) !== 0 ||
-        Number(opts.base_price) !== 0 ||
-        Number(opts.surcharge_total) !== 0)
-    ) {
+    } else if (pricingTrigger === "input_changed") {
+      const pricingBlockReason = priceBreakdown.blockReason || "incomplete_pricing_configuration";
+      if (!automaticPriceNeedsClearing(
+        currentDesign.unit_price,
+        opts,
+        priceBreakdown.pricingMethod,
+        pricingBlockReason,
+      )) return;
       updateFields({
         unit_price: 0,
-        options_json: {
-          ...opts,
-          base_price: 0,
-          surcharge_total: 0,
-          pricing_method: "grid",
-          pricing_grid_key: priceBreakdown.gridKey || "citylights_aluminum",
-          pricing_grid_price: null,
-          pricing_grid_width: null,
-          pricing_grid_height: null,
-        },
+        options_json: clearDerivedAutomaticPrice(
+          opts,
+          priceBreakdown.pricingMethod,
+          pricingBlockReason,
+        ),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -4998,6 +5122,29 @@ export function DesignCard({
         {customerChargeLabels(storedCustomerCharges(currentDesign?.options_json)).map(label => (
           <div key={label} className="text-sm text-slate-700">{label}</div>
         ))}
+        {legacyPricingBlockReason && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
+          >
+            <div className="flex items-center gap-2 font-bold">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Pricing blocked</span>
+            </div>
+            <p className="mt-1">
+              {legacyPricingBlockReason === "missing_frame_sides"
+                ? "Choose whether the shutter frame has 3 or 4 sides before pricing."
+                : legacyPricingBlockReason === "invalid_dimensions"
+                  ? "Enter a width and height greater than zero before pricing."
+                  : legacyPricingBlockReason === "dimensions_outside_pricing_grid"
+                    ? "The measurements are outside the selected manufacturer's pricing grid."
+                    : legacyPricingBlockReason === "unknown_fabric_price_group"
+                      ? "Choose a fabric that is mapped to the selected manufacturer's pricing grid."
+                      : "Complete the manufacturer, product, and configuration before pricing."}
+            </p>
+          </div>
+        )}
+
         <PriceExplanation
           design={currentDesign}
           productType={lineItem.product_type}
@@ -5668,6 +5815,16 @@ function ShutterDesignOptions({
             ...currentJson,
             onyx_mount: value,
             ...(value === "IM" ? {} : { opening_diagonal_difference_inches: null }),
+          },
+        });
+        return;
+      }
+      if (field === "json:size_type") {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            size_type: value,
+            ...(value === "W - Window Size" ? {} : { frame_sides: null }),
           },
         });
         return;

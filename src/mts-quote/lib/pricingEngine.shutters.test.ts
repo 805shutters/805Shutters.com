@@ -118,4 +118,20 @@ describe("MTS quote shutter square-foot defaults", () => {
       billableSquareFeet: 13,
     });
   });
+
+  it("recognizes source and legacy Onyx program names without borrowing a rate", () => {
+    const cases = [
+      ["Basswood", "Painted Basswood"],
+      ["Basswood Stain", "Stained Basswood"],
+      ["Sycamore", "Secamore"],
+      ["MDF Hybrid", "VLO Hybrid"],
+      ["Onyx U.S. Made Vinyl", "Onyx US Made Vinyl"],
+    ] as const;
+    for (const [alias, legacy] of cases) {
+      expect(getShutterPrice({ supplier: "Onyx", program: alias, width: 30, height: 60 })).toBe(
+        getShutterPrice({ supplier: "Onyx", program: legacy, width: 30, height: 60 }),
+      );
+    }
+    expect(getShutterPrice({ supplier: "Onyx", program: "Unknown", width: 30, height: 60 })).toBeNull();
+  });
 });

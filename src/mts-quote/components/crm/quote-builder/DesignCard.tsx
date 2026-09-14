@@ -271,6 +271,13 @@ import {
   calculateSqft,
   resolveShutterPricingDimensions,
 } from "@mts/lib/pricingEngine";
+import {
+  automaticPriceNeedsClearing,
+  automaticPricingInputSignature,
+  automaticPricingTrigger,
+  clearDerivedAutomaticPrice,
+  stripDerivedAutomaticPrice,
+} from "@/lib/quote/automatic-price-state";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
 import { getRomanShadeSpecWarnings } from "@mts/lib/romanShadeSpecs";
@@ -4653,6 +4660,7 @@ export function DesignCard({
   );
   const userSelectedVariantRef = useRef(false);
   const lineItemIdRef = useRef(lineItem.id);
+  const pricingInputSignaturesRef = useRef(new Map<string, string>());
   const [editingRetail, setEditingRetail] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [roomNameDraft, setRoomNameDraft] = useState(lineItem.room_name);
@@ -4667,6 +4675,47 @@ export function DesignCard({
   );
   const displayedUnitPrice = displayedPrice.amount;
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const automaticPricingSignature = currentDesign
+    ? automaticPricingInputSignature({
+        productType: lineItem.product_type,
+        widthWhole: lineItem.width_whole,
+        widthFraction: lineItem.width_fraction,
+        heightWhole: lineItem.height_whole,
+        heightFraction: lineItem.height_fraction,
+        quantity,
+        variant: currentDesign.variant,
+        supplier: currentDesign.supplier,
+        selections: {
+          material: currentDesign.material,
+          louverSize: currentDesign.louver_size,
+          tiltType: currentDesign.tilt_type,
+          hingeColor: currentDesign.hinge_color,
+          panelConfig: currentDesign.panel_config,
+          mountType: currentDesign.mount_type,
+          shadeType: currentDesign.shade_type,
+          liftSystem: currentDesign.lift_system,
+          valance: currentDesign.valance,
+          fabric: currentDesign.fabric,
+          motorType: currentDesign.motor_type,
+          remoteType: currentDesign.remote_type,
+          hardSurfaceInstall: currentDesign.hard_surface_install,
+          ladderOver15ft: currentDesign.ladder_over_15ft,
+          requiresTakedown: currentDesign.requires_takedown,
+        },
+        options: currentOptions,
+      })
+    : null;
+  const consumeAutomaticPricingTrigger = () => {
+    if (!currentDesign || !automaticPricingSignature) return null;
+    const previous = pricingInputSignaturesRef.current.get(currentDesign.id);
+    pricingInputSignaturesRef.current.set(currentDesign.id, automaticPricingSignature);
+    return automaticPricingTrigger(
+      previous,
+      automaticPricingSignature,
+      currentDesign.unit_price,
+      currentOptions,
+    );
+  };
   const manufacturerOptionsRoute = authoritativeV2
     ? resolveManufacturerOptionsUiRoute(
         currentDesign,
@@ -4690,10 +4739,15 @@ export function DesignCard({
   const authoritativePriceError = authoritativeV2 && !displayedPrice.fromHistoricalLock && !isPriceLocked
     ? authoritativeDesignPriceIssue(currentDesign)
     : null;
-  const legacyPricingBlockReason =
-    !authoritativeV2 && typeof currentOptions.pricing_block_reason === "string"
-      ? currentOptions.pricing_block_reason.trim()
-      : "";
+  const legacyPricingBlockReason = !authoritativeV2
+    ? (typeof currentOptions.pricing_block_reason === "string"
+        ? currentOptions.pricing_block_reason.trim()
+        : "") ||
+      (measurementToInches(lineItem.width_whole, lineItem.width_fraction) <= 0 ||
+      measurementToInches(lineItem.height_whole, lineItem.height_fraction) <= 0
+        ? "invalid_dimensions"
+        : "")
+    : "";
   const discountPercent = Number(currentOptions.discount_percent) || 0;
   const hasDiscount = Boolean(currentDesign && discountPercent > 0);
 
@@ -5146,6 +5200,7 @@ export function DesignCard({
   useEffect(() => {
     if (authoritativeV2) return;
     if (!currentDesign || !isPriceLocked || currentDesign.options_json?.manual_price_override === true) return;
+    if (!consumeAutomaticPricingTrigger()) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
     const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
@@ -5299,11 +5354,11 @@ export function DesignCard({
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
     const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
 
-    if (widthInches === 0 || heightInches === 0) return;
-
     const opts = (currentDesign.options_json as Record<string, unknown>) || {};
     if (opts.manual_price_override === true) return;
     if (isPriceLocked) return;
+    const pricingTrigger = consumeAutomaticPricingTrigger();
+    if (!pricingTrigger) return;
 
     const fabricGroup = opts?.fabric_group as string | undefined;
     const romanFabricCategory = opts?.roman_fabric_category as string | undefined;
@@ -5382,6 +5437,7 @@ export function DesignCard({
           currentGridHeight !== priceBreakdown.matchedHeight) ||
         (priceBreakdown.gridPrice !== undefined && currentGridPrice !== priceBreakdown.gridPrice) ||
         (priceBreakdown.gridKey !== undefined && opts.pricing_grid_key !== priceBreakdown.gridKey);
+      const cleanPricingOptions = stripDerivedAutomaticPrice(opts);
 
       if (
         currentDesign.unit_price !== calculatedPrice ||
@@ -5393,7 +5449,7 @@ export function DesignCard({
         updateFields({
           unit_price: calculatedPrice,
           options_json: {
-            ...opts,
+            ...cleanPricingOptions,
             pricing_block_reason: null,
             base_price: basePrice,
             surcharge_total: surchargeTotal,
@@ -5420,56 +5476,21 @@ export function DesignCard({
           },
         });
       }
-    } else if (isShutters) {
-      const frameResolution = resolveShutterPricingDimensions({
-        supplier: currentDesign.supplier || undefined,
-        width: widthInches,
-        height: heightInches,
-        frameType: opts?.frame_type as string | undefined,
-        frameSides: opts?.frame_sides as string | number | undefined,
-        mountType:
-          (opts?.onyx_mount as string | undefined) ||
-          currentDesign.mount_type ||
-          undefined,
-        measurementBasis: opts?.size_type as string | undefined,
-      });
-      const pricingBlockReason =
-        frameResolution && !frameResolution.supported
-          ? frameResolution.reason || "incomplete_shutter_configuration"
-          : "incomplete_shutter_configuration";
-      if (
-        Number(currentDesign.unit_price) !== 0 ||
-        opts.pricing_block_reason !== pricingBlockReason
-      ) {
-        updateFields({
-          unit_price: 0,
-          options_json: {
-            ...opts,
-            base_price: 0,
-            surcharge_total: 0,
-            pricing_method: "none",
-            pricing_block_reason: pricingBlockReason,
-          },
-        });
-      }
-    } else if (
-      (lineItem.product_type === "Mini Blinds" || currentDesign.supplier?.trim().toLowerCase() === "lotus") &&
-      (Number(currentDesign.unit_price) !== 0 ||
-        Number(opts.base_price) !== 0 ||
-        Number(opts.surcharge_total) !== 0)
-    ) {
+    } else if (pricingTrigger === "input_changed") {
+      const pricingBlockReason = priceBreakdown.blockReason || "incomplete_pricing_configuration";
+      if (!automaticPriceNeedsClearing(
+        currentDesign.unit_price,
+        opts,
+        priceBreakdown.pricingMethod,
+        pricingBlockReason,
+      )) return;
       updateFields({
         unit_price: 0,
-        options_json: {
-          ...opts,
-          base_price: 0,
-          surcharge_total: 0,
-          pricing_method: "grid",
-          pricing_grid_key: priceBreakdown.gridKey || "citylights_aluminum",
-          pricing_grid_price: null,
-          pricing_grid_width: null,
-          pricing_grid_height: null,
-        },
+        options_json: clearDerivedAutomaticPrice(
+          opts,
+          priceBreakdown.pricingMethod,
+          pricingBlockReason,
+        ),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -5920,7 +5941,13 @@ export function DesignCard({
             <p className="mt-1">
               {legacyPricingBlockReason === "missing_frame_sides"
                 ? "Choose whether the shutter frame has 3 or 4 sides before pricing."
-                : "Complete the shutter product and frame configuration before pricing."}
+                : legacyPricingBlockReason === "invalid_dimensions"
+                  ? "Enter a width and height greater than zero before pricing."
+                  : legacyPricingBlockReason === "dimensions_outside_pricing_grid"
+                    ? "The measurements are outside the selected manufacturer's pricing grid."
+                    : legacyPricingBlockReason === "unknown_fabric_price_group"
+                      ? "Choose a fabric that is mapped to the selected manufacturer's pricing grid."
+                      : "Complete the manufacturer, product, and configuration before pricing."}
             </p>
           </div>
         )}
