@@ -65,7 +65,7 @@ const INTERNAL_OPTION_KEYS = new Set([
   PRODUCT_COLOR_SURCHARGE_DETAIL,
 ]);
 
-const INTERNAL_OPTION_KEY_PREFIXES = ["catalog_", "quote_lab_", "authoritative_"];
+const INTERNAL_OPTION_KEY_PREFIXES = ["catalog_", "quote_lab_", "authoritative_", "pricing_"];
 
 const INTERNAL_OPTION_KEY_SUFFIXES = [
   "_blind_count",

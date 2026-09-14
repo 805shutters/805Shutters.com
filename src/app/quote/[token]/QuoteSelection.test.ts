@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { PublicQuote } from "@/lib/crm/public-quote";
+import { projectLine, expandPublicQuoteLine, type PublicQuote } from "@/lib/crm/public-quote";
+import { calculateCustomerCharges } from "@/lib/quote/customer-charges";
+import type { CrmQuoteLineItem } from "@/lib/crm/types";
 import { DEFAULT_ADJUSTMENTS } from "@/lib/crm/quote-builder";
 import { QuoteSelection } from "./QuoteSelection";
 import { CustomerContractDocument } from "./CustomerContractDocument";
@@ -87,6 +89,24 @@ function quoteWithLegacyDetails(signed = true): PublicQuote {
 }
 
 describe("QuoteSelection", () => {
+  it("renders saved installation and shipping in the customer contract and print document", () => {
+    const charges = calculateCustomerCharges({ product: "roller", physicalUnitsPerWindow: 1, quantity: 3 })!;
+    const savedLine = JSON.parse(JSON.stringify({
+      id: "fees-line", room: "Kitchen", quantity: 3, discount_percent: 0, selected_design_id: "fees-design",
+      designs: [{ id: "fees-design", label: "A", product_id: "roller", program_id: "roller_cordless_fabric_price_group_1_pg1",
+        details: {}, surcharges: [], motorization: [], unit_price: 139, price_status: "ok",
+        price_breakdown: { customerCharges: charges, onceTotal: 0 } }],
+    })) as CrmQuoteLineItem;
+    const quote = { ...quoteWithLegacyDetails(false), lines: expandPublicQuoteLine(projectLine(savedLine, false)),
+      adjustments: { ...DEFAULT_ADJUSTMENTS, discountPercent: 10 }, subtotal: 417, discount: 30, total: 387,
+      depositDue: 193.5, balanceDue: 193.5 };
+    const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
+    expect(html.match(/<dt>Installation<\/dt><dd>\$25\.00 \(1 × \$25\)<\/dd>/g)).toHaveLength(3);
+    expect(html.match(/<dt>Shipping<\/dt><dd>\$14\.00 \(1 × \$14\)<\/dd>/g)).toHaveLength(3);
+    expect(html).toContain("$387.00");
+    expect(html).not.toContain("$375.30");
+    expect(html).toContain("@media print");
+  });
   const paymentOptions = {
     zelleDestination: "805-806-9344",
   };
