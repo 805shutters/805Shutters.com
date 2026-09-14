@@ -17,6 +17,8 @@ beforeAll(async()=>{
  end $$;`);
  await db.exec(readFileSync('supabase/migrations/20260911173000_staff_line_price_overrides.sql','utf8'));
  await db.exec(readFileSync('supabase/migrations/20260912002500_line_price_contract_totals.sql','utf8'));
+ await db.exec('create table sales_quote_v2_customer_send_preparations(id uuid);');
+ await db.exec(readFileSync('supabase/migrations/20260914231500_customer_installation_shipping_snapshots.sql','utf8'));
  await db.query(`insert into sales_quotes(id,quote_v2_backend) values($1,false),($2,true)`,[id(1),id(2)]);
  await db.query(`insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Shutters',2),($3,$4,'Unsupported catalog',3)`,[id(11),id(1),id(12),id(2)]);
 },30000);
@@ -76,4 +78,55 @@ it('retains contract discount, tax, and extras when setting an exact line price'
  await db.query('insert into sales_quotes(id,installer_notes) values($1,$2)',[id(4),JSON.stringify({__adminControls:{showExtras:true,extraFees:[{amount:100}],showDiscount:true,discountPercent:10,showTax:true,taxPercent:8}})]);
  await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Roller Shades',2)",[id(14),id(4)]);
  expect(await save(4,14,500)).toMatchObject({unitPrice:500,total:1069.2});
+});
+
+const charges = (quantity=1,units=1) => ({version:'blind-shade-install-ship-v1',eligibleUnitsPerWindow:units,quantity,
+ eligibleUnitCount:quantity*units,installationPerUnit:25,shippingPerUnit:14,installationTotal:25*quantity*units,
+ shippingTotal:14*quantity*units,perWindowTotal:39*units,total:39*quantity*units});
+it('preserves fixed per-unit charges under quote discounts, extras and tax in SQL',async()=>{
+ const controls={showDiscount:true,discountPercent:10};
+ const calculate=async(c:object)=> (await db.query<any>('select quote_customer_adjusted_total(417,117,$1) as total',[JSON.stringify({__adminControls:c})])).rows[0].total;
+ expect(await calculate(controls)).toBe('387.00');
+ expect(await calculate({...controls,showTax:true,taxPercent:8})).toBe('417.96');
+ expect(await calculate({...controls,showExtras:true,extraFees:[{amount:100}]})).toBe('477.00');
+ expect(await calculate({...controls,showDiscount:false})).toBe('417.00');
+});
+it('projects only validated customer charges and rejects corrupted policy data',async()=>{
+ const project=async(c:unknown,qty=3)=> (await db.query<any>('select quote_customer_price_with_charges($1,$2,$3) as price',[{unitPrice:139,total:417},{customerCharges:c,manufacturerCost:999},qty])).rows[0].price;
+ expect(await project(charges(3))).toEqual({unitPrice:139,total:417,customerCharges:charges(3)});
+ expect(await project(null)).toEqual({unitPrice:139,total:417});
+ for(const invalid of [{...charges(3),total:1},{...charges(3),manufacturerCost:1},{...charges(3),version:'fake'},{...charges(3),quantity:'3'},charges(2)]) {
+   await expect(project(invalid)).rejects.toThrow(/Customer|customer|Invalid/);
+ }
+ await expect(project(charges(3,4))).rejects.toThrow(/exceeds/);
+ const guard=await db.query<any>("select quote_v2_structure_is_protected_key('customer_charges') as protected");
+ expect(guard.rows[0].protected).toBe(true);
+});
+it('freezes normalized customer adjustments without private editor fields',async()=>{
+ const {rows}=await db.query<any>('select quote_customer_adjustments($1) as adjustments',[JSON.stringify({__adminControls:{
+ showExtras:true,extraFees:[{id:'private',name:'Permit',amount:100}],showDiscount:true,discountPercent:10,showTax:false,taxPercent:8,depositPercent:35,
+ manufacturerCost:123}})]);
+ expect(rows[0].adjustments).toEqual({fees:[{name:'Permit',amount:100}],discountFlat:0,discountPercent:10,taxPercent:0,depositPercent:35,
+ totalOverride:null,balanceDueOverride:null,balanceAdjustmentNote:null});
+ expect((await db.query<any>("select quote_customer_adjustments('ordinary notes') as adjustments")).rows[0].adjustments.depositPercent).toBe(50);
+});
+it('manual override clears only its fees and keeps other selected units undiscounted',async()=>{
+ await db.query('insert into sales_quotes(id,quote_v2_backend,installer_notes) values($1,true,$2)',[id(5),JSON.stringify({__adminControls:{showDiscount:true,discountPercent:10}})]);
+ await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,selected_design_id) values($1,$2,'Roller Shades',3,$3),($4,$2,'Roller Shades',1,$5)",[id(15),id(5),id(30),id(16),id(31)]);
+ const stored={authoritative_price_breakdown:{customerCharges:charges(3)},authoritative_once_total:0};
+ const overridden={customer_charges:charges(),authoritative_price_breakdown:{customerCharges:charges()},authoritative_v2_snapshot:{retail:{customerCharges:charges()}}};
+ await db.query("insert into sales_quote_designs(id,line_item_id,variant,unit_price,options_json,quote_v2_price_status,current_v2_snapshot_id) values($1,$2,'A',139,$3,'authoritative',null),($4,$5,'A',139,$6,'authoritative',$7),($8,$2,'B',999,$9,'authoritative',null)",[id(30),id(15),stored,id(31),id(16),overridden,id(32),id(33),{customer_charges:charges(99)}]);
+ await db.query('insert into sales_quote_v2_price_snapshots(id,design_id,catalog_version,retail_snapshot) values($1,$2,$3,$4)',[id(32),id(31),'test',{retail:{customerCharges:charges(),unitPrice:139,quantity:1,total:139}}]);
+ expect(await save(5,16,0,1)).toMatchObject({total:387,unitPrice:0});
+ const {rows}=await db.query<any>('select d.options_json,s.retail_snapshot from sales_quote_designs d join sales_quote_v2_price_snapshots s on s.id=d.current_v2_snapshot_id where d.id=$1',[id(31)]);
+ expect(JSON.stringify(rows[0])).not.toMatch(/customerCharges|customer_charges/);
+ expect(rows[0].options_json.manual_price_override).toBe(true);
+ const original=await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(32)]);
+ expect(original.rows[0].retail_snapshot.retail.customerCharges).toEqual(charges());
+});
+
+it('rejects native adjustments that the public contract would clamp differently',async()=>{
+ for(const controls of [{showExtras:true,extraFees:[{amount:-1}]},{discountPercent:101},{taxPercent:-1},{depositPercent:101}]) {
+  await expect(db.query('select quote_customer_adjustments($1)',[JSON.stringify({__adminControls:controls})])).rejects.toThrow(/Native quote/);
+ }
 });
