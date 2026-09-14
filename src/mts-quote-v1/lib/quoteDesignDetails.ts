@@ -78,7 +78,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   }
 
   Object.entries(options).forEach(([key, value]) => {
-    if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key)) return;
+    if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key) || ["catalog_", "quote_lab_", "authoritative_", "pricing_"].some(prefix => key.startsWith(prefix)) || ["_blind_count", "_configuration_version", "_program_code", "_source_page"].some(suffix => key.endsWith(suffix))) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
       const surchargeText = value

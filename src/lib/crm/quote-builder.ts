@@ -1,3 +1,4 @@
+import { quoteFixedCustomerCharges } from "./quote-money";
 // Quote builder domain layer.
 //
 // Server-authoritative pricing: every design's unit_price + breakdown is computed
@@ -215,7 +216,7 @@ export async function recalcQuoteTotals(
 ): Promise<CrmQuoteWithItems> {
   const built = await loadQuoteBuilder(supabase, quoteId);
   const subtotal = quoteSubtotal(built.lineItems);
-  const money = computeQuoteMoney(subtotal, parseAdjustments(built.meta));
+  const money = computeQuoteMoney(subtotal, parseAdjustments(built.meta), quoteFixedCustomerCharges(built.lineItems));
 
   const { error: quoteError } = await supabase
     .from("crm_quotes")

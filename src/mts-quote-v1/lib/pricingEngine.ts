@@ -1,3 +1,4 @@
+import { polarCatalogPrice } from "@/lib/quote/polar-selection";
 import { lotusCatalogPrice } from "@/lib/quote/lotus-selection";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID, findFall2026RollerCollection, fall2026RollerProgramId } from "@/lib/quote/norman-roller-fall-2026";
 import { getRollerShadeSpecWarnings } from "./rollerShadeSpecs";
@@ -620,6 +621,11 @@ function catalogGridBreakdown(
 
 export function getProductPriceBreakdown(options: ProductPricingOptions): ProductPriceBreakdown {
   const { productType } = options;
+  const selectedProduct = options.catalogProductId ? getProduct(options.catalogProductId) : undefined;
+  if (selectedProduct && options.supplier && selectedProduct.manufacturer?.toLowerCase() !== options.supplier.trim().toLowerCase()) {
+    return {productType, price:null, pricingMethod:"none", blockReason:"manufacturer_product_mismatch"};
+  }
+  if (options.supplier?.trim().toLowerCase() === "polar" || options.catalogProductId?.startsWith("polar_")) return polarCatalogPrice(options);
   if (options.supplier?.trim().toLowerCase() === "lotus" || options.catalogProductId?.startsWith("lotus_")) {
     return lotusCatalogPrice(options);
   }

@@ -218,16 +218,16 @@ export function calculateQuoteTotalBreakdown(
   controls: QuoteAdminControls = DEFAULT_QUOTE_ADMIN_CONTROLS,
   fixedCharges = 0,
 ): QuoteTotalBreakdown {
-  const extrasTotal = controls.showExtras
+  const extrasTotal = roundCurrency(controls.showExtras
     ? controls.extraFees.reduce((sum, fee) => sum + normalizeMoney(fee.amount), 0)
-    : 0;
-  const discountAmount = controls.showDiscount
+    : 0);
+  const discountAmount = roundCurrency(controls.showDiscount
     ? Math.max(0, subtotal + extrasTotal - normalizeMoney(fixedCharges)) * (normalizeMoney(controls.discountPercent) / 100)
-    : 0;
-  const subtotalAfterDiscount = subtotal + extrasTotal - discountAmount;
-  const taxAmount = controls.showTax
+    : 0);
+  const subtotalAfterDiscount = roundCurrency(subtotal + extrasTotal - discountAmount);
+  const taxAmount = roundCurrency(controls.showTax
     ? subtotalAfterDiscount * (normalizeMoney(controls.taxPercent) / 100)
-    : 0;
+    : 0);
   const total = subtotalAfterDiscount + taxAmount;
 
   return {

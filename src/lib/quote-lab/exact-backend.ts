@@ -128,7 +128,18 @@ function resolveV2ProductId(
   );
   // Preserve an explicitly selected unknown code so the V2 engine fails closed
   // instead of silently substituting a different manufacturer's product.
-  if (explicit) return explicit;
+  const supplier = slug(design.supplier);
+  if (explicit) {
+    const product = getProduct(explicit);
+    if (supplier && product && slug(product.manufacturer) !== supplier) {
+      throw new Error(`Selected manufacturer ${design.supplier} does not match product ${product.name}. Select that manufacturer's product before pricing.`);
+    }
+    return explicit;
+  }
+  if (supplier && supplier !== "norman") {
+    const candidates = listProducts().filter(product => slug(product.manufacturer) === supplier && quoteLabProductType(product.id) === line.product_type);
+    return candidates.length === 1 ? candidates[0].id : "";
+  }
 
   if (line.product_type === "Shutters" && slug(design.supplier)?.includes("onyx")) {
     return "onyx_shutters";

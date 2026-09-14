@@ -1,6 +1,6 @@
-import { calculateQuoteFixedCharges } from "@/mts-quote-v1/lib/quoteTotals";
+import { calculateQuoteFixedCharges, calculateQuoteTotalBreakdown, parseQuoteAdminControls } from "@/mts-quote-v1/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuoteBuilderDatabase } from "@mts-v1/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts-v1/lib/queryKeys";
@@ -568,11 +568,12 @@ export function QuoteBuilder() {
     }
 
     const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
-    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
+    const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
       mode: totalMode,
     });
     if (!shouldPersistQuoteDesignSubtotal(latestDesigns, { ...options, mode: totalMode })) return;
 
+    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(latestLineItems ?? [], latestDesigns, { mode: totalMode })).total;
     const { error: quoteError } = await (supabase as any)
       .from("sales_quotes")
       .update({ total_amount: total })
@@ -732,6 +733,8 @@ export function QuoteBuilder() {
 
   // Update line item measurements
   const updateLineItem = useMutation({
+    mutationKey: quoteDesignMutationKey,
+    scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<SalesQuoteLineItem>) => {
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
@@ -740,6 +743,7 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
+      if (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 1) return;
       await syncQuoteTotal();
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
@@ -928,8 +932,10 @@ export function QuoteBuilder() {
     },
   });
 
+  const designEditSequence = useRef(0);
   // Upsert design
   const upsertDesign = useMutation({
+    scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationKey: quoteDesignMutationKey,
     mutationFn: async (
       design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
@@ -940,6 +946,7 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onMutate: async (design) => {
+      const editSequence = ++designEditSequence.current;
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
       const previousDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey);
 
@@ -977,15 +984,16 @@ export function QuoteBuilder() {
         return markSelected(next);
       });
 
-      return { previousDesigns };
+      return { previousDesigns, editSequence };
     },
     onError: (_error, _design, context) => {
-      if (context?.previousDesigns) {
+      if (context?.previousDesigns && context.editSequence === designEditSequence.current) {
         queryClient.setQueryData(designsQueryKey, context.previousDesigns);
       }
     },
     onSuccess: async () => {
-      await syncQuoteTotal();
+      if (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 1) return;
+      await syncQuoteTotal({ allowZero: true });
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
       });

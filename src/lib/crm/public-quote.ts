@@ -1,3 +1,5 @@
+import { customerChargeLabels } from "@/lib/quote/customer-charges";
+import { designCustomerCharges } from "./quote-money";
 import { valanceIllustration } from "@/lib/quote/valance-illustrations";
 // Customer-facing quote: load by unguessable share_token, project to a SAFE
 // public shape (no cost/profit/internal fields), and accept (e-sign -> sold).
@@ -94,6 +96,7 @@ type SignedShopSmsContact = {
 };
 
 export type PublicQuoteLine = {
+  fixedCharges?: number;
   id: string;
   lineItemId: string;
   room: string;
@@ -112,6 +115,7 @@ export type PublicQuoteLine = {
 };
 
 export type PublicQuoteDesignOption = {
+  fixedCharges?: number;
   id: string;
   label: string;
   productName: string;
@@ -610,7 +614,9 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
         ...surchargeOptions,
         ...motorizationOptions,
       ];
-  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(options), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
+  const chargeLabels = customerChargeLabels(designCustomerCharges(design));
+  const customerOptions = chargeLabels.length ? [...options.filter(option => !/^(installation|shipping):/i.test(option)), ...chargeLabels] : options;
+  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(customerOptions), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {
@@ -619,6 +625,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   return {
     id: design.id,
+    fixedCharges: designCustomerCharges(design, quantity)?.total ?? 0,
     label: customerQuoteText(design.label) || "A",
     productName,
     styleName,
@@ -670,6 +677,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       productName: customerQuoteProductName(li.notes || first?.productName),
       styleName: "",
       options: legacyLineOptions(designOptions),
+      fixedCharges: designOptions.reduce((sum, option) => sum + (option.fixedCharges ?? 0), 0),
       designOptions,
       showDesignOptions: true,
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
@@ -711,6 +719,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     options,
     valanceArtId,
     designOptions: [projectDesignOption(design, qty)],
+    fixedCharges: designCustomerCharges(design, qty)?.total ?? 0,
     showDesignOptions: false,
     unitPrice,
     quantity: qty,
@@ -747,10 +756,12 @@ export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] 
   return Array.from({ length: quantity }, (_, index) => ({
     ...line,
     id: `${line.id}#${index + 1}`,
+    fixedCharges: (line.fixedCharges ?? 0) / quantity,
     quantity: 1,
     lineTotal: line.priceReady ? splitLineTotal(line.lineTotal, quantity, index) : 0,
     designOptions: line.designOptions.map((option) => ({
       ...option,
+      fixedCharges: (option.fixedCharges ?? 0) / quantity,
       lineTotal: option.priceReady ? splitLineTotal(option.lineTotal, quantity, index) : 0,
     })),
   }));
@@ -1036,8 +1047,8 @@ async function projectPublicQuote(
   // Rebuild the full money breakdown from line items + adjustments (same engine
   // the builder uses), so Subtotal − discount + tax + fees = Total exactly. This
   // also self-heals a stale stored quote_total.
-  const adj = record(quote.meta).native_delivery_id ? { ...parseAdjustments(null), depositPercent: 50 } : parseAdjustments(quote.meta);
-  const money = computeQuoteMoney(subtotal, adj);
+  const adj = record(quote.meta).native_delivery_id ? { ...parseAdjustments(quote.meta), depositPercent: record(record(quote.meta).adjustments).depositPercent == null ? 50 : parseAdjustments(quote.meta).depositPercent } : parseAdjustments(quote.meta);
+  const money = computeQuoteMoney(subtotal, adj, lines.reduce((sum, line) => sum + (line.fixedCharges ?? 0), 0));
   const sourceTotalAdjustment = legacyMts ? await legacySourceTotalAdjustment(supabase, quote, money.total) : 0;
   const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
   const depositPercent = adj.depositPercent || 0;
@@ -1109,7 +1120,7 @@ async function projectPublicQuote(
  *  some"). Pure — used by the server route and unit-tested. Same engine as the
  *  full quote, so the trimmed total the customer signs matches what is billed. */
 export function computeSelectionMoney(
-  lines: { id: string; lineTotal: number; priceReady: boolean }[],
+  lines: { id: string; lineTotal: number; priceReady: boolean; fixedCharges?: number }[],
   adjustments: QuoteAdjustments,
 ): {
   selectedLineIds: string[];
@@ -1123,7 +1134,7 @@ export function computeSelectionMoney(
 } {
   const priced = lines.filter((l) => l.priceReady);
   const subtotal = round2(priced.reduce((s, l) => s + l.lineTotal, 0));
-  const money = computeQuoteMoney(subtotal, adjustments);
+  const money = computeQuoteMoney(subtotal, adjustments, priced.reduce((sum, line) => sum + (line.fixedCharges ?? 0), 0));
   return {
     selectedLineIds: priced.map((l) => l.id),
     subtotal: money.subtotal,

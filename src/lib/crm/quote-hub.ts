@@ -218,6 +218,7 @@ export async function loadHubConversation(
     basis: pub
       ? {
           subtotal: pub.subtotal,
+          fixedCharges: pub.lines.reduce((sum, line) => sum + (line.fixedCharges ?? 0), 0),
           total: pub.total,
           adjustments: pub.adjustments,
           sourceAdjustment: pub.sourceTotalAdjustment,

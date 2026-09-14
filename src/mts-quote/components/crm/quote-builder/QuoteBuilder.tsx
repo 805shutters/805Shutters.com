@@ -1100,6 +1100,8 @@ export function QuoteBuilder({
 
   // Update line item measurements
   const updateLineItem = useMutation({
+    mutationKey: quoteDesignMutationKey,
+    scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<SalesQuoteLineItem>) => {
       if (serverOwnedV2) {
         const patch = quoteV2LinePatch(updates);
@@ -1119,6 +1121,7 @@ export function QuoteBuilder({
       if (error) throw error;
     },
     onSuccess: async () => {
+      if (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 1) return;
       if (!serverOwnedV2) {
         await syncQuoteTotal();
       }
@@ -1409,8 +1412,10 @@ export function QuoteBuilder({
     return queued;
   };
 
+  const designEditSequence = useRef(0);
   // Upsert design
   const upsertDesign = useMutation({
+    scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationKey: quoteDesignMutationKey,
     mutationFn: async (
       design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
@@ -1455,6 +1460,7 @@ export function QuoteBuilder({
       return savedDesign.id as string;
     },
     onMutate: async (design) => {
+      const editSequence = ++designEditSequence.current;
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
       const previousDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey);
 
@@ -1490,10 +1496,10 @@ export function QuoteBuilder({
         return markSelected(next);
       });
 
-      return { previousDesigns };
+      return { previousDesigns, editSequence };
     },
     onError: (_error, _design, context) => {
-      if (context?.previousDesigns) {
+      if (context?.previousDesigns && context.editSequence === designEditSequence.current) {
         queryClient.setQueryData(designsQueryKey, context.previousDesigns);
       }
       toast.error(
@@ -1501,8 +1507,9 @@ export function QuoteBuilder({
       );
     },
     onSuccess: async () => {
+      if (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 1) return;
       if (!serverOwnedV2) {
-        await syncQuoteTotal();
+        await syncQuoteTotal({ allowZero: true });
       }
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,

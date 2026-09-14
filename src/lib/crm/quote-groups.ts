@@ -1,3 +1,4 @@
+import { quoteFixedCustomerCharges } from "./quote-money";
 // Whole-quote versions ("Quote A / Quote B / Quote C").
 // Sibling crm_quotes sharing quote_group_id are alternative whole quotes the
 // customer compares and picks one of. Conservative bookkeeping: alternative
@@ -176,7 +177,7 @@ async function cloneQuoteBuilderRows(
 
   if (preserveQuoteTotals) return;
 
-  const money = computeQuoteMoney(quoteSubtotal(clonedLineItems), parseAdjustments(source.meta));
+  const money = computeQuoteMoney(quoteSubtotal(clonedLineItems), parseAdjustments(source.meta), quoteFixedCustomerCharges(clonedLineItems));
   const { error: quoteError } = await supabase
     .from("crm_quotes")
     .update({

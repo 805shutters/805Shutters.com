@@ -1,3 +1,4 @@
+import { calculateCustomerCharges, parseCustomerCharges, storedCustomerCharges } from "@/lib/quote/customer-charges";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteSurchargeSelection } from "@/lib/crm/types";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
@@ -135,11 +136,12 @@ export type QuoteMoney = {
   balanceAdjustment: number;
 };
 
-export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): QuoteMoney {
+export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments, fixedCharges = 0): QuoteMoney {
   const extrasTotal = round2(adj.fees.reduce((s, f) => s + (Number(f.amount) || 0), 0));
   const preDiscount = round2(subtotal + extrasTotal);
-  const rawDiscount = adj.discountFlat + preDiscount * (adj.discountPercent / 100);
-  const discountAmount = round2(Math.min(preDiscount, Math.max(0, rawDiscount)));
+  const discountable = Math.max(0, preDiscount - Math.max(0, fixedCharges));
+  const rawDiscount = adj.discountFlat + discountable * (adj.discountPercent / 100);
+  const discountAmount = round2(Math.min(discountable, Math.max(0, rawDiscount)));
   const taxableBase = round2(Math.max(preDiscount - discountAmount, 0));
   const taxAmount = round2(taxableBase * (adj.taxPercent / 100));
   const engineTotal = round2(taxableBase + taxAmount);
@@ -215,4 +217,15 @@ export function priceDesignFields(
     price_status: result.code,
     priced_at: now,
   };
+}
+
+/** Read only persisted policy; old and manually priced records retain their amount. */
+export function designCustomerCharges(design: CrmQuoteDesign | null, quantity = 1) {
+  if (!design || design.price_status !== "ok") return null;
+  const data = design.price_breakdown as Record<string, unknown> | null;
+  const saved = parseCustomerCharges(data?.customerCharges) ?? storedCustomerCharges(data?.optionsJson);
+  return saved ? calculateCustomerCharges({product:"shade", physicalUnitsPerWindow:saved.eligibleUnitsPerWindow, quantity}) : null;
+}
+export function quoteFixedCustomerCharges(lines: CrmQuoteLineItem[]): number {
+  return lines.reduce((sum, line) => sum + (designCustomerCharges(selectedDesign(line), Math.max(1, Math.floor(Number(line.quantity) || 1)))?.total ?? 0), 0);
 }

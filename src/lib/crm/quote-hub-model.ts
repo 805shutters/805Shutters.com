@@ -32,6 +32,7 @@ export const HUB_PHOTOS: HubPhoto[] = [
   },
 ];
 export type HubOfferBasis = {
+  fixedCharges?: number;
   subtotal: number;
   total: number;
   adjustments: QuoteAdjustments;
@@ -116,20 +117,22 @@ export function hubOffer(basis: HubOfferBasis, percent: number): HubOffer {
       "Review this quote’s pricing in the editor before offering savings.",
     );
   }
-  const current = computeQuoteMoney(basis.subtotal, basis.adjustments);
+  const current = computeQuoteMoney(basis.subtotal, basis.adjustments, basis.fixedCharges ?? 0);
   if (Math.abs(current.total - basis.total) > 0.01)
     throw new Error("Quote pricing has changed. Reload the conversation.");
   // Additional discount applies to the remaining product share only. Preserve
   // existing discounts, fees, tax rate, deposit rate and underlying cost snapshots.
-  const productShare = basis.subtotal / (basis.subtotal + current.extrasTotal);
+  const fixed = basis.fixedCharges ?? 0;
+  const merchandise = Math.max(0, basis.subtotal - fixed);
+  const productShare = merchandise / Math.max(1, merchandise + current.extrasTotal);
   const additional =
-    Math.round(current.taxableBase * productShare * percent) / 100;
+    Math.round(Math.max(0, current.taxableBase - fixed) * productShare * percent) / 100;
   const adjustments = {
     ...basis.adjustments,
     discountFlat:
       Math.round((basis.adjustments.discountFlat + additional) * 100) / 100,
   };
-  const money = computeQuoteMoney(basis.subtotal, adjustments);
+  const money = computeQuoteMoney(basis.subtotal, adjustments, basis.fixedCharges ?? 0);
   if (money.total >= current.total)
     throw new Error(
       "This percentage does not produce a savings amount. Choose a larger discount.",
