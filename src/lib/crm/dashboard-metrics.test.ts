@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildClosedSalesReport,
+  previousClosedSalesMonday,
   buildDashboardSummaryMetrics,
   needToOrderRows,
   quotedPipelineQuotes,
@@ -8,7 +10,7 @@ import {
   soldLifecycleJobs,
   trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
-import { CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
+import { CrmCustomerContract, CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 function job(overrides: Partial<CrmJob> = {}): CrmJob {
   return {
@@ -452,5 +454,126 @@ describe("balanceDueCompletedRows", () => {
     });
     expect(summary.balanceDueCompleted).toBe(1);
     expect(summary.balanceDueCompletedAmount).toBe(400);
+  });
+});
+
+// Signing-based revenue is independent of the quote, fulfillment and payment dates.
+describe("weekly closed sales", () => {
+  const now = "2026-09-15T18:00:00Z";
+  const signed = (overrides: Partial<CrmQuote> = {}) => quote({ signed_at: "2026-09-10T18:00:00Z", status: "sold", ...overrides });
+  const contract = (overrides: Partial<CrmCustomerContract> = {}): CrmCustomerContract => ({
+    id: "contract-1", created_at: now, updated_at: now, customer_id: null, job_id: "job-1", quote_id: "quote-1",
+    bookkeeping_entry_id: null, title: "Signed contract", contract_url: null, share_token: null, status: "sold",
+    signed_at: "2026-09-10T18:00:00Z", total_amount: 1500, meta: {}, ...overrides
+  });
+  const calculate = (quotes: CrmQuote[] = [], contracts: CrmCustomerContract[] = [], at = now) => buildClosedSalesReport({ jobs: [job()], quotes, contracts, now: at });
+
+  it("selects the previous Monday–Sunday week and counts an older quote by signing", () => {
+    const report = calculate([signed({ quote_total: 1234.56, created_at: "2026-08-01T12:00:00Z" }), quote({ id: "unsigned" }), signed({ id: "current", signed_at: "2026-09-15T12:00:00Z" })]);
+    expect(report.latestWeekStart).toBe("2026-09-07");
+    expect(report.weeks[0]).toMatchObject({ startDate: "2026-09-07", endDate: "2026-09-13", startAt: "2026-09-07T07:00:00.000Z", endExclusiveAt: "2026-09-14T07:00:00.000Z", totalCents: 123456 });
+    expect(report.weeks[0].sales).toHaveLength(1);
+  });
+
+  it("includes exact Monday midnight and Sunday end, but excludes the next Monday", () => {
+    const report = calculate([
+      signed({ id: "before", signed_at: "2026-09-07T06:59:59Z" }),
+      signed({ id: "start", signed_at: "2026-09-07T07:00:00Z", quote_total: 0.1 }),
+      signed({ id: "end", signed_at: "2026-09-14T06:59:59.999Z", quote_total: 0.2 }),
+      signed({ id: "after", signed_at: "2026-09-14T07:00:00Z" })
+    ]);
+    expect(report.weeks[0].totalCents).toBe(30);
+    expect(report.weeks[0].sales.map(s => s.id)).toEqual(["quote:end", "quote:start"]);
+  });
+
+  it.each([
+    ["2026-03-09T12:00:00Z", "2026-03-02T08:00:00.000Z", "2026-03-09T07:00:00.000Z"],
+    ["2026-11-02T12:00:00Z", "2026-10-26T07:00:00.000Z", "2026-11-02T08:00:00.000Z"],
+    ["2027-01-04T12:00:00Z", "2026-12-28T08:00:00.000Z", "2027-01-04T08:00:00.000Z"]
+  ])("handles DST and year boundaries at %s", (at, startAt, endExclusiveAt) => {
+    expect(calculate([], [], at).weeks[0]).toMatchObject({ startAt, endExclusiveAt, totalCents: 0 });
+  });
+
+  it("does not advance the reporting week until Monday in Los Angeles", () => {
+    expect(previousClosedSalesMonday("2026-09-14T06:59:59Z")).toBe("2026-08-31");
+    expect(previousClosedSalesMonday("2026-09-14T07:00:00Z")).toBe("2026-09-07");
+  });
+
+  it("uses the signed snapshot despite quote edits and deduplicates linked contracts", () => {
+    const records = [contract(), contract({ id: "snapshot", total_amount: 2000, meta: { contract_snapshot: { schema: "805_signed_quote_contract_v1", signedAt: "2026-09-09T12:00:00Z", totals: { total: 1350.27 } } } })];
+    const report = calculate([signed({ quote_total: 9000, status: "installed", balance_due: 0 })], records);
+    expect(report.weeks[0].totalCents).toBe(135027);
+    expect(report.weeks[0].sales).toHaveLength(1);
+    expect(report.weeks[0].sales[0].signedAt).toBe("2026-09-09T12:00:00.000Z");
+  });
+
+  it("ignores zero-valued imported contract shells when the signed sale total is recorded", () => {
+    const report = calculate([signed({ quote_total: 1202.40 })], [contract({ id: "a-shell", total_amount: 0 }), contract({ id: "b-sale", total_amount: 1202.40 })]);
+    expect(report.weeks[0].totalCents).toBe(120240);
+    expect(calculate([signed({ quote_total: 1202.40 })], [contract({ total_amount: 0 })]).weeks[0].totalCents).toBe(120240);
+    expect(calculate([signed()], [contract({ meta: { contract_snapshot: { schema: "805_signed_quote_contract_v1", totals: { total: 0 } } } })]).weeks[0].totalCents).toBe(0);
+  });
+
+  it("falls back from contract totals to accepted quote selection totals", () => {
+    expect(calculate([signed({ quote_total: 9000 })], [contract()]).weeks[0].totalCents).toBe(150000);
+    expect(calculate([signed({ quote_total: 9000, meta: { signed_selection: { total: 1200.25 } } })]).weeks[0].totalCents).toBe(120025);
+  });
+
+  it("counts one accepted alternative while retaining separate purchases by the same customer", () => {
+    const report = calculate([
+      signed({ id: "first", quote_group_id: "group", signed_at: "2026-09-08T12:00:00Z", quote_total: 100 }),
+      signed({ id: "duplicate-alternative", quote_group_id: "group", quote_total: 200 }),
+      quote({ id: "unsigned-alternative", quote_group_id: "group", quote_total: 5000 }),
+      signed({ id: "separate-purchase", quote_total: 300 })
+    ]);
+    expect(report.weeks[0].totalCents).toBe(40000);
+    expect(report.weeks[0].sales).toHaveLength(2);
+  });
+
+  it("keeps historical gross revenue after status and payment changes", () => {
+    for (const status of ["sold", "ordered", "installed", "archived"] as const) {
+      expect(calculate([signed({ status, quote_total: 725.55, balance_due: 0 })]).weeks[0].totalCents).toBe(72555);
+    }
+  });
+
+  it("ignores fabricated display dates and reports undated signature evidence", () => {
+    const report = calculate([signed({ source_signed_at: null, customer_signature: "signature", sold_at: "2026-09-10T18:00:00Z" })]);
+    expect(report.weeks[0].totalCents).toBe(0);
+    expect(report.review[0].reason).toContain("signing date");
+  });
+
+  it("does not turn invalid or missing amounts into zero or use a lower-priority edited amount", () => {
+    for (const amount of [NaN, -1, "", "invalid"] as unknown as number[]) {
+      const report = calculate([signed()], [contract({ total_amount: amount })]);
+      expect(report.weeks[0].sales).toEqual([]);
+      expect(report.review[0].reason).toContain("amount");
+    }
+    expect(calculate([signed({ quote_total: 0 })]).weeks[0].sales).toHaveLength(1);
+  });
+
+  it("matches token-only contracts and includes standalone signed contracts", () => {
+    const report = calculate([signed({ share_token: "same-sale" })], [contract({ quote_id: null, share_token: "same-sale" }), contract({ id: "standalone", quote_id: null, job_id: null, total_amount: 500 })]);
+    expect(report.weeks[0].totalCents).toBe(200000);
+    expect(report.weeks[0].sales).toHaveLength(2);
+  });
+
+  it("includes empty intervening weeks for history navigation and sums every detail row", () => {
+    const report = calculate([signed({ signed_at: "2026-08-25T12:00:00Z" })]);
+    expect(report.weeks.map(week => [week.startDate, week.totalCents])).toEqual([["2026-09-07", 0], ["2026-08-31", 0], ["2026-08-24", 100000]]);
+    for (const week of report.weeks) expect(week.totalCents).toBe(week.sales.reduce((sum, sale) => sum + sale.amountCents, 0));
+  });
+
+  it("flags ambiguous job-only contracts instead of counting them as another purchase", () => {
+    const report = calculate([signed(), quote({ id: "alternative" })], [contract({ quote_id: null })]);
+    expect(report.weeks[0].totalCents).toBe(100000);
+    expect(report.review[0].reason).toContain("exact quote link");
+  });
+
+  it.each(["2026-02-30", "invalid", "2026-09-10T12:00:00"])("rejects unreliable signing dates: %s", signed_at => {
+    expect(calculate([signed({ signed_at })]).review).toHaveLength(1);
+  });
+
+  it("treats a recorded date-only signature as a Los Angeles calendar date", () => {
+    expect(calculate([], [contract({ signed_at: "2026-09-07" })]).weeks[0].totalCents).toBe(150000);
   });
 });

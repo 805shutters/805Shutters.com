@@ -1,5 +1,8 @@
 "use client";
 
+import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
+import type { CrmClosedSalesWeek } from "@/lib/crm/types";
+
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
 import { JessicaWorkingRanges } from "@/components/crm/JessicaWorkingRanges";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
@@ -867,6 +870,7 @@ export function CrmApp({
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
+  const [closedSalesStart, setClosedSalesStart] = useState<string | null>(null);
   const [activitySnapshot, setActivitySnapshot] = useState<CrmActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [dashboardRefreshError, setDashboardRefreshError] = useState<string | null>(null);
@@ -1135,6 +1139,11 @@ export function CrmApp({
   }
 
   function openSummaryDrill(metric: string) {
+    if (metric === "closedSales") {
+      const week = selectedClosedSalesWeek(data?.closedSales, closedSalesStart);
+      if (week && data?.closedSales) setDrill(buildClosedSalesDrill(week, jobs, customerFiles));
+      return;
+    }
     const payload = buildSummaryDrill(
       metric,
       jobs,
@@ -1625,11 +1634,13 @@ export function CrmApp({
       if (document.visibilityState === "visible") sync();
     };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", sync);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", sync);
     };
   }, [session]);
 
@@ -3070,7 +3081,11 @@ export function CrmApp({
   const readyToOrderCount = vendorOrderTasks.length;
 
   const financialViewBlocked=financialUnavailable&&["command","bookkeeping","payments","payoff","customers","jobs","installation"].includes(activeTab);
-  const globalDrill = drill && (activeTab !== "command" || drill.placement === "summary") ? drill : null;
+  const closedSalesUnavailable = Boolean(dashboardRefreshError);
+  const closedWeek = selectedClosedSalesWeek(data?.closedSales, closedSalesStart);
+  const effectiveDrill = drill?.metric === "closedSales" && data?.closedSales && closedWeek
+    ? buildClosedSalesDrill(closedWeek, jobs, customerFiles, closedSalesUnavailable) : drill;
+  const globalDrill = effectiveDrill && (activeTab !== "command" || effectiveDrill.placement === "summary") ? effectiveDrill : null;
   const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
 
   return (
@@ -3131,6 +3146,7 @@ export function CrmApp({
           <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
           <Metric label="60-Day Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
           <Metric label="Sold Pipeline" value={toCurrency(data?.summary.soldPipeline)} onClick={() => openSummaryDrill("soldPipeline")} />
+          <ClosedSalesCard report={data?.closedSales} selectedStart={closedSalesStart} unavailable={closedSalesUnavailable} onChange={setClosedSalesStart} onOpen={() => openSummaryDrill("closedSales")} />
           <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
           <Metric label="Need To Order" value={needsOrderCount} tone={needsOrderCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("needsOrder")} />
           <Metric label="Deposit Needed" value={depositNeededCount} tone={depositNeededCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("depositNeeded")} />
@@ -3209,6 +3225,14 @@ export function CrmApp({
 
       {globalDrill ? (
         <div className="crm-inline-drill-shell">
+          {globalDrill.metric === "closedSales" && data?.closedSales && closedWeek ? <>
+            <ClosedSalesWeekSelector report={data.closedSales} week={closedWeek} onChange={setClosedSalesStart} />
+            {data.closedSales.review.length ? <details className="crm-closed-sales-evidence"><summary>Signing records needing review ({data.closedSales.review.length})</summary>
+              <p>These records are excluded. Records without a signing date cannot be assigned to a week.</p>
+              <ul>{data.closedSales.review.map(item => <li key={item.id}>{item.customerName}: {item.reason}{item.signedAt ? ` (${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium" }).format(new Date(item.signedAt))})` : ""}</li>)}</ul>
+            </details> : null}
+          </> : null}
+
           <DrillSearchResultsPanel
             payload={globalDrill}
             quotes={quotes}
@@ -4052,6 +4076,7 @@ type InstallationInvoiceLedger = {
   totalOpen: number;
 };
 type DrillPayload = {
+  emptyMessage?: string;
   title: string;
   subtitle: string;
   entries: DrillEntry[];
@@ -5274,6 +5299,22 @@ function jessicaNetDrillEntries(rows: CrmBookkeepingRow[], jobs: CrmJob[], files
 }
 
 // Builds the drill payloads for the global summary band, mirroring backend.ts summary logic.
+function buildClosedSalesDrill(week: CrmClosedSalesWeek, jobs: CrmJob[], files: CrmCustomerFile[], unavailable = false): DrillPayload {
+  return {
+    title: "Closed Sales", metric: "closedSales", placement: "summary",
+    emptyMessage: unavailable ? "Weekly sales are unavailable until the dashboard refreshes successfully." : "No verified signed sales for this week.",
+    subtitle: unavailable ? "Closed sales could not be refreshed. Please try again." : `${week.label} · ${closedSalesCurrency(week.totalCents)} · ${week.sales.length} signed sale${week.sales.length === 1 ? "" : "s"}`,
+    entries: unavailable ? [] : week.sales.map(sale => {
+      const job = jobs.find(item => item.id === sale.jobId);
+      const file = files.find(item => (sale.customerId && item.customer?.id === sale.customerId) || (sale.jobId && item.jobs.some(job => job.id === sale.jobId)) || (sale.quoteId && item.quotes.some(quote => quote.id === sale.quoteId)));
+      return { id: sale.id, name: sale.customerName, customerName: sale.customerName,
+        jobId: sale.jobId, job, file, value: closedSalesCurrency(sale.amountCents),
+        meta: `${sale.reference} · Signed ${new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", dateStyle: "medium", timeStyle: "short" }).format(new Date(sale.signedAt))}`,
+        notes: ["Full signed contract total, including tax and fees."] };
+    })
+  };
+}
+
 function buildSummaryDrill(
   metric: string,
   jobs: CrmJob[],
@@ -6702,7 +6743,7 @@ function DrillSearchResultsPanel({
           ) : null}
         </div>
       ) : (
-        <p className="crm-empty">No customers in this segment.</p>
+        <p className="crm-empty">{payload.emptyMessage || "No customers in this segment."}</p>
       )}
     </section>
   );
@@ -7496,7 +7537,7 @@ function DrillDetailPanel({
             onVendorOrderAction={onVendorOrderAction}
           />
         ))}
-        {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
+        {!payload.entries.length ? <p className="crm-empty">{payload.emptyMessage || "No customers in this segment."}</p> : null}
       </div>
     </section>
   );

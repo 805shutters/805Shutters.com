@@ -889,7 +889,36 @@ export type CrmActivitySnapshot = {
   warnings?: string[];
 };
 
+export type CrmClosedSale = {
+  id: string;
+  jobId: string | null;
+  quoteId: string | null;
+  customerId: string | null;
+  customerName: string;
+  reference: string;
+  signedAt: string;
+  amountCents: number;
+};
+
+export type CrmClosedSalesWeek = {
+  startDate: string;
+  endDate: string;
+  startAt: string;
+  endExclusiveAt: string;
+  label: string;
+  totalCents: number;
+  sales: CrmClosedSale[];
+};
+
+export type CrmClosedSalesReport = {
+  latestWeekStart: string;
+  weeks: CrmClosedSalesWeek[];
+  review: { id: string; customerName: string; reason: string; signedAt: string | null }[];
+};
+
 export type CrmDashboardData = {
+  /** Signed-sale history, calculated before display/status projections. */
+  closedSales?: CrmClosedSalesReport;
   installerOutcomes?: InstallerOutcomeEvidence[];
   sourceHealth?: ProgressSourceHealth[];
   asOf?: string;

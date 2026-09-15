@@ -2798,3 +2798,19 @@ describe("job expense CRUD", () => {
 
 
 });
+
+describe("dashboard closed sales evidence", () => {
+  it("calculates revenue before display projections can invent a signing date", () => {
+    const data = buildDashboardData({
+      jobs: [job()], quotes: [quote({ signed_at: null, customer_signature: "legacy signature", created_at: "2026-09-10T18:00:00Z" })],
+      events: [], customers: [], products: [], contracts: [], entries: [], payments: [], credits: [], expenses: [],
+      installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000, now: "2026-09-15T18:00:00Z"
+    });
+    expect(data.quotes[0].signed_at).toBeTruthy();
+    expect(data.closedSales?.weeks[0].totalCents).toBe(0);
+    expect(data.closedSales?.review).toHaveLength(1);
+    // Payment-plan projections replace summary, not the original evidence ledger.
+    data.summary = { ...data.summary, openBalance: 0 };
+    expect(data.closedSales?.latestWeekStart).toBe("2026-09-07");
+  });
+});

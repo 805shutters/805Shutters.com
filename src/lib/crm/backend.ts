@@ -18,7 +18,7 @@ import {
 } from "@/lib/crm/bookkeeping";
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
-import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
+import { buildClosedSalesReport, buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
@@ -1286,6 +1286,7 @@ export function buildDashboardData({
   for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
   return {
+    closedSales: buildClosedSalesReport({ jobs, quotes, contracts, entries, customers, now }),
     fulfillment, ownedActions, installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
     jobs: jobsWithQuotes,
     quotes: liveQuotes,

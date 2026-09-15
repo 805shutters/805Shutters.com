@@ -18376,3 +18376,24 @@ body:has(.financing-banner) .site-header-shell {
     flex: 0 0 118px !important;
   }
 }
+
+.crm-closed-sales-card { min-width: 0; }
+.crm-closed-sales-open { display: grid; gap: 5px; padding: 0; border: 0; background: transparent; text-align: left; color: inherit; cursor: pointer; min-width: 0; }
+.crm-closed-sales-open:disabled { cursor: default; }
+.crm-closed-sales-open small { font-size: 11px; line-height: 1.35; color: var(--muted); }
+.crm-closed-sales-open strong { overflow-wrap: anywhere; }
+.crm-closed-sales-nav { display: flex; justify-content: space-between; gap: 5px; }
+.crm-closed-sales-nav button { min-height: 28px; padding: 3px 2px; border: 0; background: transparent; color: var(--ink); font-size: 11px; cursor: pointer; }
+.crm-closed-sales-nav button:disabled { opacity: .4; cursor: default; }
+.crm-closed-sales-open:focus-visible, .crm-closed-sales-nav button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.crm-closed-sales-open .crm-closed-sales-review { color: #914b12; }
+.crm-closed-sales-selector { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; font-weight: 700; }
+.crm-closed-sales-selector select { max-width: 100%; padding: 8px; font: inherit; font-size: 13px; }
+.crm-closed-sales-evidence { padding: 10px; margin-bottom: 10px; background: #fff7e8; font-size: 13px; }
+
+@media (max-width: 620px) {
+  .crm-closed-sales-card { grid-column: span 2; }
+}
+@media (pointer: coarse) {
+  .crm-closed-sales-nav button { min-height: 44px; }
+}
