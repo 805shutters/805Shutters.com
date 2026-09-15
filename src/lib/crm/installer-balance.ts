@@ -52,6 +52,52 @@ function exactInstant(value: unknown, label: string) {
   return instant;
 }
 
+type SignedContractRow = {
+  id?: unknown;
+  external_source?: unknown;
+  total_amount?: unknown;
+  signed_at?: unknown;
+};
+
+const AUTHORITATIVE_SIGNED_CONTRACT_SOURCES = new Set([
+  "crm_quote",
+  "technical_measure_addendum",
+]);
+
+export function selectAuthoritativeSignedContract(rows: SignedContractRow[]): SignedContractRow {
+  const contracts = rows.filter((row) =>
+    AUTHORITATIVE_SIGNED_CONTRACT_SOURCES.has(String(row.external_source || "")),
+  );
+  if (!contracts.length) {
+    throw new CrmAuthError(
+      409,
+      "A signed customer contract with a current total is required before the installer form can be delivered.",
+    );
+  }
+  const ordered = contracts
+    .map((contract) => ({
+      contract,
+      signedAt: new Date(exactInstant(
+        contract.signed_at,
+        "The signed customer contract timestamp",
+      )).getTime(),
+    }))
+    .sort((left, right) => right.signedAt - left.signedAt);
+  if (ordered.length > 1 && ordered[0].signedAt === ordered[1].signedAt) {
+    throw new CrmAuthError(
+      409,
+      "The current signed customer contract is ambiguous and cannot be used for an installer balance.",
+    );
+  }
+  const selected = ordered[0].contract;
+  const contractId = String(selected.id || "").trim();
+  if (!contractId) {
+    throw new CrmAuthError(409, "The signed customer contract identifier is missing.");
+  }
+  strictMoney(selected.total_amount, "The signed customer contract total", { positive: true });
+  return selected;
+}
+
 export function calculateInstallerCustomerBalance(input: {
   contractId: unknown;
   contractTotal: unknown;
@@ -152,12 +198,10 @@ export async function refreshInstallerCustomerBalance(
   const [contractResult, paymentsResult, creditsInResult, creditsOutResult] = await Promise.all([
     supabase
       .from("crm_customer_contracts")
-      .select("id,total_amount,signed_at")
+      .select("id,external_source,total_amount,signed_at")
       .eq("quote_id", form.quote_id)
       .not("signed_at", "is", null)
-      .order("signed_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+      .order("signed_at", { ascending: false }),
     supabase
       .from("crm_quote_bookkeeping_payments")
       .select("amount")
@@ -182,18 +226,9 @@ export async function refreshInstallerCustomerBalance(
       `The current installer customer balance could not be verified: ${ledgerError.message}`,
     );
   }
-  if (!contractResult.data) {
-    throw new CrmAuthError(
-      409,
-      "A signed customer contract with a current total is required before the installer form can be delivered.",
-    );
-  }
-
-  const contract = contractResult.data as {
-    id?: unknown;
-    total_amount?: unknown;
-    signed_at?: unknown;
-  };
+  const contract = selectAuthoritativeSignedContract(
+    (contractResult.data || []) as SignedContractRow[],
+  );
   const snapshot = calculateInstallerCustomerBalance({
     contractId: contract.id,
     contractTotal: contract.total_amount,

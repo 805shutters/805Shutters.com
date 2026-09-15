@@ -3,12 +3,111 @@ import {
   INSTALLER_CUSTOMER_BALANCE_META_KEY,
   calculateInstallerCustomerBalance,
   refreshInstallerCustomerBalance,
+  selectAuthoritativeSignedContract,
 } from "./installer-balance";
 
 const SIGNED_AT = "2026-07-30T12:00:00.000Z";
 const CALCULATED_AT = "2026-07-30T13:00:00.000Z";
 
 describe("installer customer balance", () => {
+  it("selects the authoritative quote contract instead of a zero-valued artifact with the same signed time", () => {
+    expect(selectAuthoritativeSignedContract([
+      {
+        id: "artifact-1",
+        external_source: "manufacturer_order_packet",
+        total_amount: 0,
+        signed_at: SIGNED_AT,
+      },
+      {
+        id: "contract-1",
+        external_source: "crm_quote",
+        total_amount: 4_000,
+        signed_at: SIGNED_AT,
+      },
+    ])).toMatchObject({ id: "contract-1", total_amount: 4_000 });
+  });
+
+  it("fails when only signed auxiliary artifacts exist for the quote", () => {
+    expect(() => selectAuthoritativeSignedContract([
+      {
+        id: "artifact-1",
+        external_source: "manufacturer_order_manifest",
+        total_amount: 0,
+        signed_at: SIGNED_AT,
+      },
+    ])).toThrow("A signed customer contract with a current total is required");
+  });
+
+  it("uses the latest signed addendum total rather than the largest contract total", () => {
+    expect(selectAuthoritativeSignedContract([
+      {
+        id: "contract-1",
+        external_source: "crm_quote",
+        total_amount: 4_000,
+        signed_at: "2026-07-30T12:00:00.000Z",
+      },
+      {
+        id: "addendum-1",
+        external_source: "technical_measure_addendum",
+        total_amount: 3_750,
+        signed_at: "2026-08-01T12:00:00.000Z",
+      },
+    ])).toMatchObject({ id: "addendum-1", total_amount: 3_750 });
+  });
+
+  it("fails instead of falling back when the latest authoritative contract total is invalid", () => {
+    expect(() => selectAuthoritativeSignedContract([
+      {
+        id: "contract-1",
+        external_source: "crm_quote",
+        total_amount: 4_000,
+        signed_at: "2026-07-30T12:00:00.000Z",
+      },
+      {
+        id: "addendum-1",
+        external_source: "technical_measure_addendum",
+        total_amount: 0,
+        signed_at: "2026-08-01T12:00:00.000Z",
+      },
+    ])).toThrow("signed customer contract total is invalid");
+  });
+
+  it("fails when two authoritative signed contracts are equally current", () => {
+    expect(() => selectAuthoritativeSignedContract([
+      {
+        id: "contract-1",
+        external_source: "crm_quote",
+        total_amount: 4_000,
+        signed_at: SIGNED_AT,
+      },
+      {
+        id: "addendum-1",
+        external_source: "technical_measure_addendum",
+        total_amount: 3_750,
+        signed_at: SIGNED_AT,
+      },
+    ])).toThrow("current signed customer contract is ambiguous");
+  });
+
+  it.each([
+    { contractTotal: 1_116, paid: 558, remaining: 558 },
+    { contractTotal: 1_521, paid: 760.5, remaining: 760.5 },
+    { contractTotal: 5_213.4, paid: 2_606.7, remaining: 2_606.7 },
+    { contractTotal: 1_590, paid: 795, remaining: 795 },
+  ])("keeps exact cents for audited 50% payment balances ($contractTotal)", ({ contractTotal, paid, remaining }) => {
+    expect(calculateInstallerCustomerBalance({
+      contractId: "contract-1",
+      contractTotal,
+      contractSignedAt: SIGNED_AT,
+      payments: [{ amount: paid }],
+      calculatedAt: CALCULATED_AT,
+    })).toMatchObject({
+      contract_total: contractTotal,
+      recorded_payments_total: paid,
+      remaining_customer_balance: remaining,
+    });
+  });
+
   it("shows zero balance when recorded payments equal the current contract total", () => {
     expect(calculateInstallerCustomerBalance({
       contractId: "contract-1",
@@ -71,13 +170,22 @@ describe("installer customer balance", () => {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
               not: vi.fn(() => ({
-                order: vi.fn(() => ({
-                  limit: vi.fn(() => ({
-                    maybeSingle: vi.fn(async () => ({
-                      data: { id: "contract-1", total_amount: 4_000, signed_at: SIGNED_AT },
-                      error: null,
-                    })),
-                  })),
+                order: vi.fn(async () => ({
+                  data: [
+                    {
+                      id: "artifact-1",
+                      external_source: "manufacturer_order_packet",
+                      total_amount: 0,
+                      signed_at: SIGNED_AT,
+                    },
+                    {
+                      id: "contract-1",
+                      external_source: "crm_quote",
+                      total_amount: 4_000,
+                      signed_at: SIGNED_AT,
+                    },
+                  ],
+                  error: null,
                 })),
               })),
             })),
@@ -141,13 +249,9 @@ describe("installer customer balance", () => {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
               not: vi.fn(() => ({
-                order: vi.fn(() => ({
-                  limit: vi.fn(() => ({
-                    maybeSingle: vi.fn(async () => ({
-                      data: null,
-                      error: { message: "ledger unavailable" },
-                    })),
-                  })),
+                order: vi.fn(async () => ({
+                  data: null,
+                  error: { message: "ledger unavailable" },
                 })),
               })),
             })),

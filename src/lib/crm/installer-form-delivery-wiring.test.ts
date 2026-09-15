@@ -8,6 +8,8 @@ function source(relativePath: string) {
 
 describe("installer form sold-path delivery", () => {
   const installerForms = source("./installer-forms.ts");
+  const installerOutbox = source("./installer-delivery-outbox.ts");
+  const installerMigration = source("../../../supabase/migrations/20260915140839_installer_delivery_outbox.sql");
   const soldInvariant = source("./sold-installer-delivery.ts");
   const publicQuote = source("./public-quote.ts");
   const salesQuoteSend = source("./sales-quote-send.ts");
@@ -25,32 +27,30 @@ describe("installer form sold-path delivery", () => {
   const bookkeepingImport = source("../../../scripts/import_mts_bookkeeping_to_805.mjs");
   const installerClient = source("../../app/installer-form/[token]/InstallerFormClient.tsx");
 
-  it("uses one form and one provider idempotency key per sold quote", () => {
+  it("uses one durable base version and a frozen provider idempotency key per sold quote", () => {
     expect(installerForms).toContain('.eq("quote_id", quoteId)');
-    expect(installerForms).toContain("return deliverInstallerForm(supabase, prepared)");
-    expect(installerForms).toContain("installer form already delivered");
-    expect(installerForms).toContain("`805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}-${INSTALLER_FORM_RECIPIENT}`");
-    expect(installerForms).toContain("installation handoff already delivered");
+    expect(installerForms).toContain('status: "pending_delivery"');
+    expect(installerOutbox).toContain("claim.payload");
+    expect(installerOutbox).toContain("claim.idempotency_key !== prepared.payload.idempotencyKey");
+    expect(installerOutbox).toContain("`805-installer-form-${balanced.id}-${BASE_VERSION}-${INSTALLER_FORM_RECIPIENT}`");
+    expect(installerMigration).toContain("unique (quote_id, kind, version_key)");
+    expect(installerMigration).toContain("first_send_attempt_at <= now() - interval '24 hours'");
   });
 
-  it("persists an observable success or failure before returning", () => {
-    expect(installerForms).toContain("refreshInstallerCustomerBalance");
-    expect(installerForms.indexOf("refreshInstallerCustomerBalance")).toBeLessThan(
-      installerForms.indexOf("buildInstallerFormPdf(balancePreparedForm"),
+  it("persists provider acceptance in the live outbox before form reconciliation", () => {
+    expect(installerOutbox).toContain("refreshInstallerCustomerBalance");
+    expect(installerOutbox.indexOf('status: "accepted"')).toBeLessThan(
+      installerOutbox.indexOf("dependencies.recordAccepted"),
     );
-    expect(installerForms).toContain("REMAINING CUSTOMER BALANCE:");
-    expect(installerForms).toContain('status: workflowStatus');
-    expect(installerForms).toContain('? "sent"');
-    expect(installerForms).toContain(': "email_failed"');
-    expect(installerForms).toContain("email_error: email.error || email.skipped || null");
-    expect(installerForms).toContain("if (deliveryError)");
-    expect(installerForms).toContain("INSTALLATION_HANDOFF_META_KEY");
-    expect(installerForms).toContain("The confirmed installer delivery state could not be reconciled");
+    expect(installerOutbox).toContain('failure_stage: "persist"');
+    expect(installerOutbox).toContain('providerAccepted\n          ? "accepted"');
+    expect(installerOutbox).toContain("recordedBaseAcceptance");
+    expect(installerForms).not.toContain("async function deliverInstallerForm");
   });
 
   it("routes every supported sold transition through one installer-delivery invariant", () => {
     expect(soldInvariant).toContain("export async function ensureSoldQuoteInstallerDelivery");
-    expect(soldInvariant).toContain("return createAndSendInstallerForm(supabase, quote.id)");
+    expect(soldInvariant).toContain("return enqueueAndProcessInstallerDelivery(supabase, quote.id)");
     expect(publicQuote.match(/ensureSoldQuoteInstallerDelivery\(supabase,/g)).toHaveLength(2);
     expect(publicQuote).toContain("quote_signed_retry");
     expect(salesQuoteSend).toContain("const installerForm = await ensureSoldQuoteInstallerDelivery");

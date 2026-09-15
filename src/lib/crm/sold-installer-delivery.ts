@@ -5,6 +5,10 @@ export type SoldQuoteInstallerCandidate = {
   status?: string | null;
   signed_at?: string | null;
   sold_at?: string | null;
+  archived_at?: string | null;
+  external_source?: string | null;
+  customer_name?: string | null;
+  meta?: Record<string, unknown> | null;
 };
 
 const SALE_RECORDED_QUOTE_STATUSES = new Set([
@@ -25,12 +29,22 @@ const SALE_RECORDED_QUOTE_STATUSES = new Set([
 export function quoteRequiresInstallerDelivery(
   quote: SoldQuoteInstallerCandidate,
 ): boolean {
-  return Boolean(
-    quote.id &&
-      (quote.signed_at ||
-        quote.sold_at ||
-        SALE_RECORDED_QUOTE_STATUSES.has(String(quote.status || ""))),
+  const meta = quote.meta || {};
+  const fixtureName = /(^|[^a-z])(test|fixture|sample|demo)([^a-z]|$)/i.test(quote.customer_name || "");
+  const excluded = Boolean(
+    quote.archived_at ||
+    String(quote.status || "").toLowerCase() === "archived" ||
+    meta.historical_recordkeeping_only === true ||
+    meta.no_external_notification === true ||
+    meta.no_installer_form === true ||
+    fixtureName,
   );
+  const saleRecorded = SALE_RECORDED_QUOTE_STATUSES.has(String(quote.status || "").toLowerCase());
+  // Some callers intentionally pass only {id,status}. Let the service-role RPC
+  // establish signature truth from the durable quote instead of suppressing a
+  // legitimate immediate repair because the projection was partial.
+  const signatureKnownMissing = Object.prototype.hasOwnProperty.call(quote, "signed_at") && !quote.signed_at;
+  return Boolean(!excluded && quote.id && saleRecorded && !signatureKnownMissing);
 }
 
 /**
@@ -43,6 +57,6 @@ export async function ensureSoldQuoteInstallerDelivery(
   quote: SoldQuoteInstallerCandidate,
 ) {
   if (!quoteRequiresInstallerDelivery(quote)) return null;
-  const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
-  return createAndSendInstallerForm(supabase, quote.id);
+  const { enqueueAndProcessInstallerDelivery } = await import("@/lib/crm/installer-delivery-outbox");
+  return enqueueAndProcessInstallerDelivery(supabase, quote.id);
 }

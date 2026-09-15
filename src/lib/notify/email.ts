@@ -31,6 +31,7 @@ export async function sendEmail(input: {
   attachments?: EmailAttachment[];
   from?: string;
   idempotencyKey?: string;
+  signal?: AbortSignal;
 }): Promise<EmailResult> {
   const to = (input.to || "").trim();
   if (!to) return { sent: false, skipped: "no recipient email" };
@@ -60,6 +61,7 @@ export async function sendEmail(input: {
             }
           : {})
       }),
+      signal: input.signal,
     });
     const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
     if (!res.ok) {

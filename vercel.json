@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/booking-outbox/",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/installer-delivery/",
+      "schedule": "*/3 * * * *"
     }
   ]
 }

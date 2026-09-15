@@ -492,8 +492,51 @@ export async function ensureTechnicalMeasureForm(
   input: { jobId: string; quoteId: string },
   actor: CrmActor,
 ): Promise<TechnicalMeasureForm> {
-  const existing = await supabase.from("crm_technical_measure_forms").select("id").eq("quote_id", input.quoteId).maybeSingle();
-  if (existing.data?.id) return loadTechnicalMeasureForm(supabase, existing.data.id);
+  const existing = await supabase
+    .from("crm_technical_measure_forms")
+    .select("id,customer_id,contract_id,meta")
+    .eq("job_id", input.jobId)
+    .eq("quote_id", input.quoteId)
+    .maybeSingle();
+  if (existing.data?.id) {
+    if (!existing.data.customer_id) {
+      const { data: signedContract, error: signedContractError } = await supabase
+        .from("crm_customer_contracts")
+        .select("id,customer_id")
+        .eq("job_id", input.jobId)
+        .eq("quote_id", input.quoteId)
+        .in("external_source", ["crm_quote", "technical_measure_addendum"])
+        .not("signed_at", "is", null)
+        .order("signed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (signedContractError) {
+        throw new CrmAuthError(502, `The Technical Measure customer lineage could not be checked: ${signedContractError.message}`);
+      }
+      if (signedContract?.customer_id) {
+        const { error: linkError } = await supabase
+          .from("crm_technical_measure_forms")
+          .update({
+            customer_id: signedContract.customer_id,
+            contract_id: signedContract.id,
+            meta: {
+              ...object(existing.data.meta),
+              customer_lineage_repair: {
+                source: "exact_signed_customer_contract",
+                contract_id: signedContract.id,
+                repaired_at: new Date().toISOString(),
+              },
+            },
+          })
+          .eq("id", existing.data.id)
+          .eq("job_id", input.jobId)
+          .eq("quote_id", input.quoteId)
+          .is("customer_id", null);
+        if (linkError) throw new CrmAuthError(502, `The Technical Measure customer lineage could not be saved: ${linkError.message}`);
+      }
+    }
+    return loadTechnicalMeasureForm(supabase, existing.data.id);
+  }
 
   const [built, jobResult, contractResult] = await Promise.all([
     loadQuoteBuilder(supabase, input.quoteId),

@@ -220,7 +220,33 @@ describe("installer-form installation handoff", () => {
     expect(handoff.canonicalJson).not.toContain("123 Main Street");
   });
 
-  it("requires both installer and handoff sent timestamps before suppressing a retry", () => {
+  it("does not claim canonical handoff files are attached to the independent base email", () => {
+    const base = {
+      ...form,
+      meta: {
+        ...form.meta,
+        customer_balance: {
+          schema: "805_installer_customer_balance_v1",
+          contract_id: "contract-1",
+          contract_total: 1500,
+          recorded_payments_total: 0,
+          payment_record_count: 0,
+          credits_in_total: 0,
+          credits_out_total: 0,
+          remaining_customer_balance: 1500,
+          contract_signed_at: "2026-07-30T12:00:00.000Z",
+          calculated_at: "2026-07-30T13:00:00.000Z",
+        },
+        installation_handoff: pendingInstallationHandoffDeliveryState(
+          buildNoMeasureInstallerFormHandoff(form, "10000000-0000-4000-8000-000000000001"),
+        ),
+      },
+    };
+    expect(buildInstallerFormEmail(base, "https://805shutters.com/installer-form/secret").text)
+      .not.toContain("canonical JSON handoff");
+  });
+
+  it("suppresses the base retry after accepted delivery while leaving handoff pending", () => {
     const handoff = buildNoMeasureInstallerFormHandoff(
       form,
       "10000000-0000-4000-8000-000000000001",
@@ -229,7 +255,7 @@ describe("installer-form installation handoff", () => {
     expect(installerFormDeliveryComplete({
       ...form,
       meta: { installation_handoff: pending },
-    })).toBe(false);
+    })).toBe(true);
     expect(installerFormDeliveryComplete({
       ...form,
       meta: {
