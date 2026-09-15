@@ -585,7 +585,6 @@ export function QuoteBuilder({
     setWidthWhole,
     setWidthFraction,
     setHeightWhole,
-    setHeightFraction,
     resetMeasurement,
     copyMode,
     setCopyMode,
@@ -613,6 +612,9 @@ export function QuoteBuilder({
 
   const [editingName, setEditingName] = useState(false);
   const [measuringItemId, setMeasuringItemId] = useState<string | null>(null);
+  const [measurementSaveError, setMeasurementSaveError] = useState("");
+  const measurementSavePendingRef = useRef(false);
+  const [measurementSavePending, setMeasurementSavePending] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showPaymentLinkDialog, setShowPaymentLinkDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState<"deposit" | "balance" | null>(null);
@@ -1128,7 +1130,9 @@ export function QuoteBuilder({
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .update(updates)
-        .eq("id", id);
+        .eq("id", id)
+        .select("id")
+        .single();
       if (error) throw error;
     },
     onSuccess: async () => {
@@ -1794,44 +1798,53 @@ export function QuoteBuilder({
     });
   };
 
-  // Open measurement grid for a specific line item
+  // Keep entered measurements available until the database confirms the save.
   const handleOpenMeasurement = (itemId: string) => {
+    const item = lineItems.find((row) => row.id === itemId);
     setMeasuringItemId(itemId);
-    useQuoteBuilderStore.getState().openMeasurementGrid();
-    useQuoteBuilderStore.setState({ measurementStep: "width_whole" });
+    setMeasurementSaveError("");
+    useQuoteBuilderStore.setState({
+      showMeasurementGrid: true,
+      measurementStep: "width_whole",
+      pendingWidth: item && item.width_whole > 0
+        ? { whole: item.width_whole, fraction: item.width_fraction } : null,
+      pendingHeight: item && item.height_whole > 0
+        ? { whole: item.height_whole, fraction: item.height_fraction } : null,
+    });
   };
 
-  // When height fraction is selected, save measurements to the line item
-  const handleHeightFraction = (f: string) => {
-    setHeightFraction(f);
-    if (measuringItemId && pendingWidth) {
-      const heightWhole = useQuoteBuilderStore.getState().pendingHeight?.whole || 0;
-      updateLineItem.mutate({
-        id: measuringItemId,
-        width_whole: pendingWidth.whole,
-        width_fraction: pendingWidth.fraction,
-        height_whole: heightWhole,
-        height_fraction: f,
-      });
-      setMeasuringItemId(null);
-      resetMeasurement();
-    }
-  };
-
-  const handleDirectMeasurements = (
+  const handleDirectMeasurements = async (
     width: { whole: number; fraction: string },
     height: { whole: number; fraction: string },
   ) => {
-    if (!measuringItemId) return;
-    updateLineItem.mutate({
-      id: measuringItemId,
-      width_whole: width.whole,
-      width_fraction: width.fraction,
-      height_whole: height.whole,
-      height_fraction: height.fraction,
-    });
-    setMeasuringItemId(null);
-    resetMeasurement();
+    if (!measuringItemId || measurementSavePendingRef.current) return;
+    measurementSavePendingRef.current = true;
+    setMeasurementSavePending(true);
+    setMeasurementSaveError("");
+    useQuoteBuilderStore.setState({ pendingWidth: width, pendingHeight: height });
+    try {
+      await updateLineItem.mutateAsync({
+        id: measuringItemId,
+        width_whole: width.whole,
+        width_fraction: width.fraction,
+        height_whole: height.whole,
+        height_fraction: height.fraction,
+      });
+      setMeasuringItemId(null);
+      resetMeasurement();
+    } catch (error) {
+      setMeasurementSaveError(error instanceof Error ? error.message : "Measurements could not be saved. Please try again.");
+    } finally {
+      measurementSavePendingRef.current = false;
+      setMeasurementSavePending(false);
+    }
+  };
+
+  const handleHeightFraction = (fraction: string) => {
+    const { pendingWidth: width, pendingHeight: height } = useQuoteBuilderStore.getState();
+    if (width && height) {
+      void handleDirectMeasurements(width, { ...height, fraction });
+    }
   };
 
   const handleCopyAll = (sourceId: string) => {
@@ -2603,7 +2616,11 @@ export function QuoteBuilder({
       {/* Measurement Grid Modal */}
       <MeasurementGridModal
         open={showMeasurementGrid}
+        showDirectEntry
+        saving={measurementSavePending}
+        saveError={measurementSaveError}
         onClose={() => {
+          if (measurementSavePendingRef.current) return;
           closeMeasurementGrid();
           setMeasuringItemId(null);
         }}

@@ -6,6 +6,8 @@ import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 
 interface MeasurementGridModalProps {
   open: boolean;
+  saving?: boolean;
+  saveError?: string;
   showDirectEntry?: boolean;
   singleDimensionLabel?: string;
   wholeStart?: number;
@@ -28,6 +30,8 @@ interface MeasurementGridModalProps {
 export function MeasurementGridModal({
   open,
   showDirectEntry = false,
+  saving = false,
+  saveError,
   singleDimensionLabel,
   wholeStart = 10,
   wholeEnd,
@@ -94,7 +98,7 @@ export function MeasurementGridModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
       <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -112,7 +116,9 @@ export function MeasurementGridModal({
           <p className="text-sm text-muted-foreground">{sublabel}</p>
         </DialogHeader>
 
-        <div className="mt-4">
+        {saveError ? <p role="alert" className="mt-3 text-sm font-medium text-destructive">{saveError} Your entered measurements are still here; retry the save.</p> : null}
+        {saving ? <p role="status" className="mt-3 text-sm">Saving measurements…</p> : null}
+        <fieldset disabled={saving} className="mt-4 min-w-0">
           {showDirectEntry ? <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
             <div className="mb-2 text-sm font-semibold">Enter measurements instead</div>
             <div className="grid grid-cols-2 gap-3">
@@ -149,7 +155,7 @@ export function MeasurementGridModal({
                 />
               </label>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-xs text-muted-foreground">Decimals are rounded to the nearest 1/16 inch.</span>
               <button
                 type="button"
@@ -197,7 +203,7 @@ export function MeasurementGridModal({
               ))}
             </div>
           )}
-        </div>
+        </fieldset>
       </DialogContent>
     </Dialog>
   );

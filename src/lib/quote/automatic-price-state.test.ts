@@ -45,6 +45,21 @@ describe("legacy automatic price state", () => {
     );
   });
 
+  it("recovers an unpriced draft when saved dimensions changed before the card remounted", () => {
+    const signature = automaticPricingInputSignature(signatureInput);
+    const invalid = {
+      base_price: 0, pricing_method: "none", pricing_calculation_status: "invalid",
+      pricing_input_width_whole: 0, pricing_input_width_fraction: "0",
+      pricing_input_height_whole: 0, pricing_input_height_fraction: "0",
+    };
+    expect(automaticPricingTrigger(undefined, signature, 0, invalid)).toBe("input_changed");
+    expect(automaticPricingTrigger(signature, signature, 0, invalid)).toBeNull();
+    expect(automaticPricingTrigger(undefined, signature, 100, invalid)).toBeNull();
+    expect(automaticPricingTrigger(undefined, signature, 0, {
+      ...invalid, pricing_input_width_whole: 30, pricing_input_height_whole: 60,
+    })).toBeNull();
+  });
+
   it("detects dimension, quantity, and manufacturer-option edits", () => {
     const first = automaticPricingInputSignature(signatureInput);
     expect(

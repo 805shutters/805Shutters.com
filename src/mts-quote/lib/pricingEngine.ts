@@ -772,6 +772,7 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
           price: null,
           gridKey: "citylights_aluminum",
           pricingMethod: "grid",
+          blockReason: options.slatSize ? "dimensions_outside_pricing_grid" : "missing_mini_blind_slat_size",
         };
       }
       return catalogGridBreakdown(

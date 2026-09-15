@@ -75,6 +75,21 @@ export function automaticPricingTrigger(
 ): AutomaticPricingTrigger {
   if (previousSignature === undefined) {
     const basePrice = Number(options.base_price);
+    // A failed calculation is not a saved price. If measurements were saved
+    // before the card unmounted, resume that edit instead of freezing at $0.
+    if (Number(unitPrice) === 0 && basePrice === 0 && options.pricing_calculation_status === "invalid") {
+      const current = JSON.parse(currentSignature) as AutomaticPricingSignatureInput;
+      const dimensions = [
+        [current.widthWhole, options.pricing_input_width_whole],
+        [current.widthFraction, options.pricing_input_width_fraction],
+        [current.heightWhole, options.pricing_input_height_whole],
+        [current.heightFraction, options.pricing_input_height_fraction],
+      ];
+      if (dimensions.every(([, saved]) => saved !== undefined) &&
+          dimensions.some(([value, saved]) => String(value) !== String(saved))) {
+        return "input_changed";
+      }
+    }
     const hasPersistedPrice =
       Number(unitPrice) !== 0 ||
       (Number.isFinite(basePrice) && basePrice !== 0) ||

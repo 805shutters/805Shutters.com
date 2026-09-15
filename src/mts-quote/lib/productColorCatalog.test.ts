@@ -12,6 +12,14 @@ import {
 import { getProductPriceBreakdown } from "./pricingEngine";
 
 describe("MTS Norman product color catalog adapter", () => {
+  it("identifies the missing CityLights slat size before grid pricing", () => {
+    expect(getProductPriceBreakdown({
+      productType: "Mini Blinds", supplier: "Norman", width: 36, height: 60,
+      catalogProductId: "citylights_aluminum",
+      catalogProgramId: "citylights_aluminum_1in_slats_cordless_pgusa",
+    })).toMatchObject({ price: null, blockReason: "missing_mini_blind_slat_size" });
+  });
+
   it("exposes the verified Norman color rows for every MTS fabric/color product", () => {
     expect(getMtsProductColorRows("Roman Shades")).toHaveLength(201);
     expect(getMtsProductColorRows("Honeycomb Shades")).toHaveLength(191);

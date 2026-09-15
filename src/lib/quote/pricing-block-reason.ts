@@ -2,6 +2,7 @@
 export function pricingBlockReasonMessage(reason: string): string {
   const messages: Record<string, string> = {
     missing_frame_sides: "Choose whether the shutter frame has 3 or 4 sides before pricing.",
+    missing_mini_blind_slat_size: "Choose a slat size under Slat Size to calculate the CityLights price.",
     invalid_dimensions: "Enter a width and height greater than zero before pricing.",
     dimensions_outside_pricing_grid: "The measurements are outside the selected manufacturer's pricing grid.",
     unknown_fabric_price_group: "Choose a fabric that is mapped to the selected manufacturer's pricing grid.",
