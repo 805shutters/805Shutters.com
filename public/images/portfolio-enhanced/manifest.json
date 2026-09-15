@@ -24,18 +24,6 @@
     "natural": "/images/portfolio-enhanced/roller-shade-large-window-natural.jpg"
   },
   {
-    "base": "layered-shades-bedroom-window",
-    "source": "ventura-county-layered-shades-bedroom-window-jpg.jpg",
-    "category": "Shades",
-    "title": "Layered Bedroom Shades",
-    "alt": "Layered window shades installed on a Ventura County bedroom window",
-    "position": "attention",
-    "grade": "bright",
-    "wide": "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg",
-    "card": "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-    "natural": "/images/portfolio-enhanced/layered-shades-bedroom-window-natural.jpg"
-  },
-  {
     "base": "bedroom-horizontal-blinds-before",
     "source": "2026-07-10-bedroom-horizontal-blinds-before.jpg",
     "category": "Blinds",
@@ -419,18 +407,6 @@
     "wide": "/images/portfolio-enhanced/uploaded-twin-cellular-shades-wide.jpg",
     "card": "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg",
     "natural": "/images/portfolio-enhanced/uploaded-twin-cellular-shades-natural.jpg"
-  },
-  {
-    "base": "uploaded-office-plantation-shutters",
-    "source": "uploaded-portfolio-9222.jpg",
-    "category": "Shutters",
-    "title": "Office Plantation Shutters",
-    "alt": "White plantation shutters installed over office corner windows",
-    "position": "attention",
-    "grade": "phone",
-    "wide": "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg",
-    "card": "/images/portfolio-enhanced/uploaded-office-plantation-shutters-card.jpg",
-    "natural": "/images/portfolio-enhanced/uploaded-office-plantation-shutters-natural.jpg"
   },
   {
     "base": "uploaded-corner-room-cellular-shades",

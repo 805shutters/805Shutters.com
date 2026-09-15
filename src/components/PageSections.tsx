@@ -537,12 +537,6 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   },
   {
     category: "Shades",
-    title: "Layered Bedroom Shades",
-    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
-  },
-  {
-    category: "Shades",
     title: "Motorized Roller Shades",
     image: "/images/video-posters/motorized-roller-shades-patio-view.jpg",
     imageAlt: "Motorized roller shades installed over patio-view windows",
@@ -572,12 +566,6 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
     title: "Twin Cellular Shades",
     image: "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg",
     imageAlt: "Twin cellular shades installed on side-by-side bedroom windows"
-  },
-  {
-    category: "Shutters",
-    title: "Office Plantation Shutters",
-    image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-card.jpg",
-    imageAlt: "White plantation shutters installed over office corner windows"
   },
   {
     category: "Shades",

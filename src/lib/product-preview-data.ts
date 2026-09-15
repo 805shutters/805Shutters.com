@@ -38,7 +38,7 @@ export const residentialCategoryItems: CategoryNavItem[] = [
       { label: "Roller Shades", image: "/images/editorial-scroll/coastal-living-roller-shades.jpg" },
       { label: "Honeycomb Shades", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp" },
       { label: "Room Darkening", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp" },
-      { label: "Layered Shades", image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg" },
+      { label: "Layered Shades", image: "/images/homepage-flow/layered-kitchen-shades.webp" },
       { label: "Roman Shades", image: "/images/805-portfolio-shades-bedroom.jpg" },
       { label: "Natural Shades", image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg" },
       { label: "Bamboo Shades", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" },
@@ -65,7 +65,7 @@ export const residentialCategoryItems: CategoryNavItem[] = [
       { label: "Premium Stained Wood", image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg" },
       { label: "Painted Wood", image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg" },
       { label: "Poly Composite", image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg" },
-      { label: "MDF Composite", image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg" }
+      { label: "MDF Composite" }
     ]
   },
   {

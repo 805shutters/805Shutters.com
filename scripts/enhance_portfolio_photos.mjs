@@ -56,15 +56,6 @@ const photos = [
     grade: "bright"
   },
   {
-    base: "layered-shades-bedroom-window",
-    source: "ventura-county-layered-shades-bedroom-window-jpg.jpg",
-    category: "Shades",
-    title: "Layered Bedroom Shades",
-    alt: "Layered window shades installed on a Ventura County bedroom window",
-    position: "attention",
-    grade: "bright"
-  },
-  {
     base: "bedroom-horizontal-blinds-before",
     source: "2026-07-10-bedroom-horizontal-blinds-before.jpg",
     category: "Blinds",
@@ -448,15 +439,6 @@ const photos = [
     category: "Shades",
     title: "Twin Cellular Shades",
     alt: "Twin cellular shades installed on side-by-side bedroom windows",
-    position: "attention",
-    grade: "phone"
-  },
-  {
-    base: "uploaded-office-plantation-shutters",
-    source: "uploaded-portfolio-9222.jpg",
-    category: "Shutters",
-    title: "Office Plantation Shutters",
-    alt: "White plantation shutters installed over office corner windows",
     position: "attention",
     grade: "phone"
   },

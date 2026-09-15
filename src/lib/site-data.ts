@@ -307,10 +307,6 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
     imageAlt: "Roller shade covering a large Ventura County window"
   },
   {
-    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
-  },
-  {
     image: "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg",
     imageAlt: "Specialty arch window shutters custom fit in a Ventura County home"
   },
@@ -365,10 +361,6 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
     image: "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg",
     imageAlt: "Twin cellular shades installed on side-by-side bedroom windows"
-  },
-  {
-    image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-card.jpg",
-    imageAlt: "White plantation shutters installed over office corner windows"
   },
   {
     image: "/images/portfolio-enhanced/uploaded-corner-room-cellular-shades-card.jpg",
@@ -1585,10 +1577,6 @@ const supportPages: SitePage[] = [
         imageAlt: "Custom arched plantation shutters installed in Ventura County"
       },
       {
-        image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-        imageAlt: "Layered window shades installed on a Ventura County bedroom window"
-      },
-      {
         image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
         imageAlt: "Roller shade covering a large Ventura County window"
       },
@@ -1723,14 +1711,8 @@ const recentProjectPages: SitePage[] = [
     eyebrow: "Recent project",
     intro:
       "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
-    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg",
-    imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters.",
-    gallery: [
-      {
-        image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-        imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters."
-      }
-    ],
+    image: "/images/homepage-flow/layered-kitchen-shades.webp",
+    imageAlt: "Layered shades shown in a kitchen setting",
     sections: [
       {
         heading: "Project details",
@@ -1978,10 +1960,6 @@ function shadeCityGallery(city: string): NonNullable<SitePage["gallery"]> {
     {
       image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
       imageAlt: `Roller shade on a large ${city} window for glare and privacy control`
-    },
-    {
-      image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-      imageAlt: `Layered window shades for a ${city} bedroom window`
     },
     {
       image: "/images/portfolio-enhanced/uploaded-bedroom-cellular-shades-card.jpg",
