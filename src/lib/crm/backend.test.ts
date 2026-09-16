@@ -2811,6 +2811,7 @@ describe("dashboard closed sales evidence", () => {
     expect(data.closedSales?.review).toHaveLength(1);
     // Payment-plan projections replace summary, not the original evidence ledger.
     data.summary = { ...data.summary, openBalance: 0 };
-    expect(data.closedSales?.latestWeekStart).toBe("2026-09-07");
+    expect(data.closedSales?.latestWeekStart).toBe("2026-09-14");
+    expect(data.closedSales?.weeks[0]).toMatchObject({ isCurrentWeek: true, endDate: "2026-09-15" });
   });
 });

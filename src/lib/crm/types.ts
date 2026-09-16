@@ -901,6 +901,7 @@ export type CrmClosedSale = {
 };
 
 export type CrmClosedSalesWeek = {
+  isCurrentWeek?: boolean;
   startDate: string;
   endDate: string;
   startAt: string;

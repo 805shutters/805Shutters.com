@@ -475,6 +475,29 @@ describe("weekly closed sales", () => {
     expect(report.weeks[0].sales).toHaveLength(1);
   });
 
+  it("includes this Monday through now, excluding future signatures and retaining prior weeks", () => {
+    const report = buildClosedSalesReport({ jobs: [job()], contracts: [], now: "2026-09-16T22:00:00Z", includeCurrentWeek: true,
+      quotes: [
+        signed({ id: "previous", signed_at: "2026-09-14T06:59:59Z", quote_total: 100 }),
+        signed({ id: "monday", signed_at: "2026-09-14T07:00:00Z", quote_total: 125.25 }),
+        signed({ id: "today", signed_at: "2026-09-16T22:00:00Z", quote_total: 200.10 }),
+        signed({ id: "later-today", signed_at: "2026-09-16T23:00:00Z", quote_total: 900 }),
+        signed({ id: "tomorrow", signed_at: "2026-09-17T18:00:00Z", quote_total: 900 })
+      ] });
+    expect(report.latestWeekStart).toBe("2026-09-14");
+    expect(report.weeks[0]).toMatchObject({ isCurrentWeek: true, startDate: "2026-09-14", endDate: "2026-09-16",
+      label: "Mon, Sep 14–Wed, Sep 16, 2026", startAt: "2026-09-14T07:00:00.000Z", endExclusiveAt: "2026-09-17T07:00:00.000Z", totalCents: 32535 });
+    expect(report.weeks[0].sales.map(sale => sale.id)).toEqual(["quote:today", "quote:monday"]);
+    expect(report.weeks[1]).toMatchObject({ startDate: "2026-09-07", endDate: "2026-09-13", totalCents: 10000 });
+    expect(report.weeks[1].isCurrentWeek).toBeUndefined();
+  });
+
+  it("shows an empty current week and rolls over at Pacific Monday midnight", () => {
+    const calculateCurrent = (at: string) => buildClosedSalesReport({ jobs: [], quotes: [], contracts: [], now: at, includeCurrentWeek: true });
+    expect(calculateCurrent("2026-09-21T06:59:59Z").weeks[0]).toMatchObject({ startDate: "2026-09-14", endDate: "2026-09-20", isCurrentWeek: true, totalCents: 0 });
+    expect(calculateCurrent("2026-09-21T07:00:00Z").weeks[0]).toMatchObject({ startDate: "2026-09-21", endDate: "2026-09-21", isCurrentWeek: true, totalCents: 0 });
+  });
+
   it("includes exact Monday midnight and Sunday end, but excludes the next Monday", () => {
     const report = calculate([
       signed({ id: "before", signed_at: "2026-09-07T06:59:59Z" }),

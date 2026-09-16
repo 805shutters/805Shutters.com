@@ -197,15 +197,16 @@ export function previousClosedSalesMonday(now: Date | string = new Date()) {
   return shiftSalesDate(today, -((weekday + 6) % 7) - 7);
 }
 
-function closedSalesWeek(startDate: string): CrmClosedSalesWeek {
-  const endDate = shiftSalesDate(startDate, 6);
+function closedSalesWeek(startDate: string, throughDate?: string): CrmClosedSalesWeek {
+  const endDate = throughDate || shiftSalesDate(startDate, 6);
   const labelDate = (date: string, includeYear = true) => new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC", weekday: "short", month: "short", day: "numeric", ...(includeYear ? { year: "numeric" as const } : {})
   }).format(new Date(`${date}T12:00:00Z`));
   return {
     startDate, endDate,
+    ...(throughDate ? { isCurrentWeek: true } : {}),
     startAt: zonedTimeToUtc(startDate, "00:00").toISOString(),
-    endExclusiveAt: zonedTimeToUtc(shiftSalesDate(startDate, 7), "00:00").toISOString(),
+    endExclusiveAt: zonedTimeToUtc(shiftSalesDate(endDate, 1), "00:00").toISOString(),
     label: `${labelDate(startDate, startDate.slice(0, 4) !== endDate.slice(0, 4))}–${labelDate(endDate)}`,
     totalCents: 0, sales: []
   };
@@ -318,7 +319,7 @@ export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], 
     byWeek.set(monday, [...(byWeek.get(monday) || []), sale]);
   }
   for (let monday = latestWeekStart; monday >= earliest; monday = shiftSalesDate(monday, -7)) {
-    const week = closedSalesWeek(monday);
+    const week = closedSalesWeek(monday, includeCurrentWeek && monday === latestWeekStart ? losAngelesDateString(new Date(now)) : undefined);
     week.sales = (byWeek.get(monday) || []).sort((a, b) => b.signedAt.localeCompare(a.signedAt) || a.id.localeCompare(b.id));
     week.totalCents = week.sales.reduce((total, sale) => total + sale.amountCents, 0);
     report.weeks.push(week);

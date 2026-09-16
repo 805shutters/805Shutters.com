@@ -1286,7 +1286,7 @@ export function buildDashboardData({
   for (const item of progressItems) if (item.row) item.row.operationalProgress = item.progress;
 
   return {
-    closedSales: buildClosedSalesReport({ jobs, quotes, contracts, entries, customers, now }),
+    closedSales: buildClosedSalesReport({ jobs, quotes, contracts, entries, customers, now, includeCurrentWeek: true }),
     fulfillment, ownedActions, installerOutcomes, sourceHealth, asOf: sourceHealth[0]?.loadedAt || (now ? new Date(now).toISOString() : new Date().toISOString()),
     jobs: jobsWithQuotes,
     quotes: liveQuotes,
