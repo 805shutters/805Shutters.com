@@ -11,6 +11,10 @@ import { SignQuote } from "./SignQuote";
 import { QuoteWalletButtons, type QuoteWalletConfig } from "./QuoteWalletButtons";
 import styles from "./QuoteSelection.module.css";
 import { copyPaymentText } from "./copyPaymentText";
+import {
+  PAYMENT_AT_INSTALLATION_SECTION,
+  SHUTTER_MANUFACTURER_WARRANTY_SECTIONS,
+} from "@/lib/crm/customer-contract-terms";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -394,66 +398,34 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
       {quote.hasOnyxShutters ? (
         <details open style={termsBox}>
-          <summary style={summaryStyle}>Shutter Manufacturer Warranty</summary>
+          <summary style={summaryStyle}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[0].heading}</summary>
           <div style={{ marginTop: 10 }}>
-            <p style={{ margin: "0 0 10px" }}>
-              Your shutters include manufacturer warranty coverage for the original
-              purchaser when the shutters are properly installed, properly operated, and properly
-              maintained.
-            </p>
-            <strong style={{ color: "#0b0b0b" }}>Manufacturer warranty coverage</strong>
+            <p style={{ margin: "0 0 10px" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[0].paragraphs?.[0]}</p>
+            <strong style={{ color: "#0b0b0b" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].heading}</strong>
             <ul style={termsList}>
-              <li>Limited lifetime warranty on shutter mechanisms.</li>
-              <li>7-year warranty on paint color fastness.</li>
-              <li>7-year warranty against warping and cracking.</li>
-              <li>2-year warranty on color fastness for stained wood shutters.</li>
+              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].bullets?.map((term) => <li key={term}>{term}</li>)}
             </ul>
-            <p style={{ margin: "10px 0 0" }}>
-              Warranty coverage begins from the original date of purchase and applies to the
-              original purchaser.
-            </p>
+            <p style={{ margin: "10px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].paragraphs?.[0]}</p>
             <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
-              Manufacturer exclusions
+              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[2].heading}
             </strong>
             <ul style={termsList}>
-              <li>Improper installation, operation, or maintenance.</li>
-              <li>Abuse, misuse, customer-performed repairs, accidents, or alterations.</li>
-              <li>Acts of God and normal wear and tear.</li>
+              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[2].bullets?.map((term) => <li key={term}>{term}</li>)}
             </ul>
             <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
-              Color matching
+              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].heading}
             </strong>
-            <p style={{ margin: "6px 0 0" }}>
-              Custom color matches and color matches between separate orders are not guaranteed due
-              to material, finish, dye lot, and production variations. Once a custom color sample has
-              been approved, resulting color variation is not covered by the manufacturer
-              warranty.
-            </p>
-            <p style={{ margin: "10px 0 0" }}>
-              If a warranty concern arises, please contact 805 Shutters. We will review the concern,
-              request photos if needed, and help coordinate the claim process with the manufacturer.
-              Manufacturer warranty approval, repair, replacement, or remake decisions are subject
-              to the manufacturer&apos;s review and warranty terms.
-            </p>
+            <p style={{ margin: "6px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].paragraphs?.[0]}</p>
+            <p style={{ margin: "10px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].paragraphs?.[1]}</p>
           </div>
         </details>
       ) : null}
 
       {/* Balance terms — shown above the sign section */}
       <div style={termsBox}>
-        <strong style={{ color: "#0b0b0b" }}>Payment at Installation</strong>
-        <p style={{ margin: "6px 0 0" }}>
-          The remaining balance is due at installation for all products installed and completed.
-          Payment may not be withheld for corrections, manufacturer defects, warranty claims,
-          shipping damage, or other open issues. Any issue will be handled through the appropriate
-          correction, service, or manufacturer warranty process, but the balance for installed
-          products remains due.
-        </p>
-        <p style={{ margin: "10px 0 0" }}>
-          Approved in-house payment plans split the remaining balance into 3 monthly payments,
-          with the first payment due at installation. An in-house plan must be approved by
-          805 Shutters in writing before it applies.
-        </p>
+        <strong style={{ color: "#0b0b0b" }}>{PAYMENT_AT_INSTALLATION_SECTION.heading}</strong>
+        <p style={{ margin: "6px 0 0" }}>{PAYMENT_AT_INSTALLATION_SECTION.paragraphs?.[0]}</p>
+        <p style={{ margin: "10px 0 0" }}>{PAYMENT_AT_INSTALLATION_SECTION.paragraphs?.[1]}</p>
       </div>
 
         </div>

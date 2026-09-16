@@ -80,6 +80,7 @@ import {
 } from "@mts/lib/quoteSoldNotification";
 import { loadQuotePaymentState, type QuotePaymentState } from "@/lib/crm/quote-payment-state";
 import { loadHistoricalCrmMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
+import { customerContractTerms, type CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -186,7 +187,12 @@ export type SignedContractSnapshot = {
   schema: "805_signed_quote_contract_v1";
   signedAt: string;
   customerPrintedName: string;
+  customerSignature: string;
   customerName: string;
+  customerAddress: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  customerEmailDelivery: "enabled" | "suppressed";
   business: PublicQuote["business"];
   quote: { id: string; quoteNumber: string | null };
   lines: Array<{
@@ -213,9 +219,13 @@ export type SignedContractSnapshot = {
     total: number;
   };
   hasOnyxShutters: boolean;
+  terms: CustomerContractTerms;
 };
 
-export type FutureContractSnapshot = Omit<SignedContractSnapshot, "schema" | "signedAt" | "customerPrintedName"> & {
+export type FutureContractSnapshot = Omit<
+  SignedContractSnapshot,
+  "schema" | "signedAt" | "customerPrintedName" | "customerSignature" | "customerEmailDelivery"
+> & {
   schema: "805_future_quote_contract_v1";
   createdAt: string;
   sourceSignedQuoteId: string;
@@ -251,12 +261,19 @@ export function buildSignedContractSnapshot(
   pub: PublicQuote,
   signedAt: string,
   printedName: string,
+  signature = printedName,
+  customerEmailDelivery: "enabled" | "suppressed" = "enabled",
 ): SignedContractSnapshot {
   return {
     schema: "805_signed_quote_contract_v1",
     signedAt,
     customerPrintedName: printedName,
+    customerSignature: signature,
     customerName: pub.customerName,
+    customerAddress: pub.customerAddress,
+    customerPhone: pub.customerPhone,
+    customerEmail: pub.customerEmail,
+    customerEmailDelivery,
     business: pub.business,
     quote: { id: pub.id, quoteNumber: pub.quoteNumber },
     lines: pub.lines.map((line) => ({
@@ -283,6 +300,7 @@ export function buildSignedContractSnapshot(
       total: pub.total,
     },
     hasOnyxShutters: pub.hasOnyxShutters,
+    terms: customerContractTerms(pub.hasOnyxShutters),
   };
 }
 
@@ -292,7 +310,14 @@ export function buildFutureContractSnapshot(
   sourceSignedQuoteId: string,
 ): FutureContractSnapshot {
   const signedShape = buildSignedContractSnapshot(pub, createdAt, pub.customerName);
-  const { schema: _schema, signedAt: _signedAt, customerPrintedName: _printedName, ...snapshot } = signedShape;
+  const {
+    schema: _schema,
+    signedAt: _signedAt,
+    customerPrintedName: _printedName,
+    customerSignature: _signature,
+    customerEmailDelivery: _delivery,
+    ...snapshot
+  } = signedShape;
   return {
     ...snapshot,
     schema: "805_future_quote_contract_v1",
@@ -1329,7 +1354,9 @@ async function syncSignedQuoteArtifacts(
   pub: PublicQuote,
   signedAt: string,
   printedName: string,
+  signature: string,
   technicalMeasure: TechnicalMeasureDecision,
+  customerEmailDelivery: "enabled" | "suppressed",
 ) {
   const { data: job } = quote.job_id
     ? await supabase
@@ -1382,7 +1409,13 @@ async function syncSignedQuoteArtifacts(
       meta: {
         customer_printed_name: printedName,
         source: "public_quote_signature",
-        contract_snapshot: buildSignedContractSnapshot(pub, signedAt, printedName),
+        contract_snapshot: buildSignedContractSnapshot(
+          pub,
+          signedAt,
+          printedName,
+          signature,
+          customerEmailDelivery,
+        ),
       },
     },
     { onConflict: "external_source,external_id" },
@@ -1673,7 +1706,11 @@ export async function acceptPublicQuote(
         pub,
         quote.signed_at,
         printedName,
+        signature,
         technicalMeasure,
+        input.notify === false || record(quote.meta).no_external_notification === true || record(quote.meta).historical_recordkeeping_only === true
+          ? "suppressed"
+          : "enabled",
       );
       await syncLinkedSalesQuoteSignature(supabase, quote, {
         signedAt: quote.signed_at,
@@ -1981,7 +2018,11 @@ export async function acceptPublicQuote(
     signedPub,
     now,
     printedName,
+    signature,
     technicalMeasure,
+    input.notify === false || record(quote.meta).no_external_notification === true || record(quote.meta).historical_recordkeeping_only === true
+      ? "suppressed"
+      : "enabled",
   );
   await syncLinkedSalesQuoteSignature(supabase, signedQuote, {
     signedAt: now,

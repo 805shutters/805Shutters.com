@@ -49,6 +49,10 @@
       "schedule": "*/3 * * * *"
     },
     {
+      "path": "/api/cron/customer-signed-contract-email/",
+      "schedule": "*/3 * * * *"
+    },
+    {
       "path": "/api/cron/weekly-sales/",
       "schedule": "0 0,1 * * 1"
     }
