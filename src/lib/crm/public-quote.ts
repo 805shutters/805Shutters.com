@@ -196,6 +196,8 @@ export type SignedContractSnapshot = {
   business: PublicQuote["business"];
   quote: { id: string; quoteNumber: string | null };
   lines: Array<{
+    showDesignOptions?: boolean;
+    fixedCharges?: number;
     lineItemId: string;
     room: string;
     productName: string;
@@ -277,6 +279,8 @@ export function buildSignedContractSnapshot(
     business: pub.business,
     quote: { id: pub.id, quoteNumber: pub.quoteNumber },
     lines: pub.lines.map((line) => ({
+      showDesignOptions: line.showDesignOptions,
+      fixedCharges: line.fixedCharges,
       lineItemId: line.lineItemId,
       room: line.room,
       productName: line.productName,

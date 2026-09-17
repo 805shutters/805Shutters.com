@@ -12,6 +12,7 @@ import { QuoteWalletButtons, type QuoteWalletConfig } from "./QuoteWalletButtons
 import styles from "./QuoteSelection.module.css";
 import { copyPaymentText } from "./copyPaymentText";
 import {
+  type CustomerContractTerms,
   PAYMENT_AT_INSTALLATION_SECTION,
   SHUTTER_MANUFACTURER_WARRANTY_SECTIONS,
 } from "@/lib/crm/customer-contract-terms";
@@ -42,7 +43,9 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
+export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
+  const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation") || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
+  const paymentSection = contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
@@ -398,34 +401,34 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
       {quote.hasOnyxShutters ? (
         <details open style={termsBox}>
-          <summary style={summaryStyle}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[0].heading}</summary>
+          <summary style={summaryStyle}>{warrantySections[0].heading}</summary>
           <div style={{ marginTop: 10 }}>
-            <p style={{ margin: "0 0 10px" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[0].paragraphs?.[0]}</p>
-            <strong style={{ color: "#0b0b0b" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].heading}</strong>
+            <p style={{ margin: "0 0 10px" }}>{warrantySections[0].paragraphs?.[0]}</p>
+            <strong style={{ color: "#0b0b0b" }}>{warrantySections[1].heading}</strong>
             <ul style={termsList}>
-              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].bullets?.map((term) => <li key={term}>{term}</li>)}
+              {warrantySections[1].bullets?.map((term) => <li key={term}>{term}</li>)}
             </ul>
-            <p style={{ margin: "10px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[1].paragraphs?.[0]}</p>
+            <p style={{ margin: "10px 0 0" }}>{warrantySections[1].paragraphs?.[0]}</p>
             <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
-              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[2].heading}
+              {warrantySections[2].heading}
             </strong>
             <ul style={termsList}>
-              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[2].bullets?.map((term) => <li key={term}>{term}</li>)}
+              {warrantySections[2].bullets?.map((term) => <li key={term}>{term}</li>)}
             </ul>
             <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
-              {SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].heading}
+              {warrantySections[3].heading}
             </strong>
-            <p style={{ margin: "6px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].paragraphs?.[0]}</p>
-            <p style={{ margin: "10px 0 0" }}>{SHUTTER_MANUFACTURER_WARRANTY_SECTIONS[3].paragraphs?.[1]}</p>
+            <p style={{ margin: "6px 0 0" }}>{warrantySections[3].paragraphs?.[0]}</p>
+            <p style={{ margin: "10px 0 0" }}>{warrantySections[3].paragraphs?.[1]}</p>
           </div>
         </details>
       ) : null}
 
       {/* Balance terms — shown above the sign section */}
       <div style={termsBox}>
-        <strong style={{ color: "#0b0b0b" }}>{PAYMENT_AT_INSTALLATION_SECTION.heading}</strong>
-        <p style={{ margin: "6px 0 0" }}>{PAYMENT_AT_INSTALLATION_SECTION.paragraphs?.[0]}</p>
-        <p style={{ margin: "10px 0 0" }}>{PAYMENT_AT_INSTALLATION_SECTION.paragraphs?.[1]}</p>
+        <strong style={{ color: "#0b0b0b" }}>{paymentSection.heading}</strong>
+        <p style={{ margin: "6px 0 0" }}>{paymentSection.paragraphs?.[0]}</p>
+        <p style={{ margin: "10px 0 0" }}>{paymentSection.paragraphs?.[1]}</p>
       </div>
 
         </div>

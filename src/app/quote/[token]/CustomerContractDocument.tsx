@@ -8,6 +8,7 @@ import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
 import type { QuoteWalletConfig } from "./QuoteWalletButtons";
 import { PrintButton } from "./PrintButton";
+import type { CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -37,6 +38,7 @@ export function CustomerContractDocument({
   embedded = false,
   previewOnly = false,
   previewLabel = "Internal preview",
+  contractTerms,
 }: {
   quote: PublicQuote;
   paymentOptions?: PaymentOptions | null;
@@ -44,6 +46,7 @@ export function CustomerContractDocument({
   embedded?: boolean;
   previewOnly?: boolean;
   previewLabel?: string;
+  contractTerms?: CustomerContractTerms;
 }) {
   const preparedFor = customerDetails(quote);
   const reserveCustomerActionRail =
@@ -147,7 +150,7 @@ export function CustomerContractDocument({
           </section>
         ) : null}
 
-        <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} />
+        <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
       </div>
       <footer className="customer-contract-print-only" style={contractFooter}>
         <strong>{quote.business.name}</strong>

@@ -853,6 +853,8 @@ describe("buildSignedContractSnapshot", () => {
       hasOnyxShutters: true,
     });
     expect(snapshot.lines).toHaveLength(2);
+    expect(snapshot.lines.map(line => line.showDesignOptions)).toEqual(pub.lines.map(line => line.showDesignOptions));
+    expect(snapshot.lines.map(line => line.fixedCharges)).toEqual(pub.lines.map(line => line.fixedCharges));
     expect(snapshot.lines[0]).toMatchObject({
       lineItemId: "line-1",
       room: "Living Room",

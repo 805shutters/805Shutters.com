@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { PDFParse } from "pdf-parse";
+import { signedSnapshotPublicQuote } from "./signed-contract-snapshot";
 import { customerContractTerms } from "./customer-contract-terms";
 import {
   CUSTOMER_SIGNED_CONTRACT_FROM,
   CUSTOMER_SIGNED_CONTRACT_SUBJECT,
   buildCustomerSignedContractEmail,
-  buildSignedContractPdf,
   processCustomerSignedContractEmailOutbox,
   type CustomerContractEmailClaim,
   type CustomerContractEmailDependencies,
@@ -26,6 +25,7 @@ const snapshot: SignedContractSnapshot = {
   business: { name: "805 Shutters", phone: "805-806-9344", website: "805shutters.com", email: "805@805shutters.com" },
   quote: { id: "10000000-0000-4000-8000-000000000001", quoteNumber: "805-0201" },
   lines: [{
+    showDesignOptions: false,
     lineItemId: "line-1",
     room: "Living Room",
     productName: "Roller Shade",
@@ -69,7 +69,7 @@ function frozenPayload(): FrozenCustomerContractEmail {
     to: snapshot.customerEmail!,
     from: CUSTOMER_SIGNED_CONTRACT_FROM,
     attachments: [{ filename: "contract.pdf", content: "JVBERi0xLjQ=", contentType: "application/pdf" }],
-    idempotencyKey: "805-signed-contract-30000000-0000-4000-8000-000000000001-customer-signed-contract-v1",
+    idempotencyKey: "805-signed-contract-30000000-0000-4000-8000-000000000001-customer-signed-contract-ui-v2",
   };
 }
 
@@ -98,18 +98,23 @@ describe("signed customer contract email", () => {
     expect(CUSTOMER_SIGNED_CONTRACT_FROM).toBe("805 Shutters <805@805shutters.com>");
   });
 
-  it("renders the immutable selected line, totals, terms, accented signature, and no optional alternative", async () => {
-    const pdf = await buildSignedContractPdf(snapshot);
-    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
-    const parser = new PDFParse({ data: pdf });
-    const result = await parser.getText();
-    await parser.destroy();
-    expect(result.text).toContain("José Customer");
-    expect(result.text).toContain("Roller Shade");
-    expect(result.text).toContain("$2,440.00");
-    expect(result.text).toContain("Payment at Installation");
-    expect(result.text).toContain("Limited lifetime warranty on shutter mechanisms");
-    expect(result.text).not.toContain("Unpurchased Roman Shade");
+  it("projects the signed terms into the actual contract UI without unsold alternatives", () => {
+    const document = signedSnapshotPublicQuote(snapshot);
+    expect(document.signed).toBe(true);
+    expect(document.total).toBe(2440);
+    expect(document.customerName).toBe("José Customer");
+    expect(document.lines[0].options).toEqual(snapshot.lines[0].options);
+    expect(document.lines[0].designOptions).toEqual([]);
+    expect(document.payment.available).toBe(false);
+    expect(document.versions).toEqual([]);
+  });
+
+  it("blocks a saved payload from the rejected PDF generator without sending", async () => {
+    const payload = { ...frozenPayload(), idempotencyKey: "805-signed-contract-30000000-0000-4000-8000-000000000001-customer-signed-contract-v1" };
+    const h = harness({ claims: [claim({ payload, idempotency_key: payload.idempotencyKey })] });
+    await processCustomerSignedContractEmailOutbox({} as never, { dependencies: h.dependencies, limit: 1 });
+    expect(h.send).not.toHaveBeenCalled();
+    expect(h.updates.at(-1)).toMatchObject({ status: "blocked", failure_stage: "prepare" });
   });
 
   it("records provider acceptance once and never calls two workers for one claim", async () => {
