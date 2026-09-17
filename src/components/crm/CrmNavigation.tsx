@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, CalendarDays, CircleCheck, ClipboardList, FileText, LayoutDashboard, LogOut, Package, RefreshCw, Users, Wallet, Wrench, Building2 } from "lucide-react";
+import { Menu, CalendarDays, CircleCheck, ClipboardList, FileText, LayoutDashboard, LogOut, Package, RefreshCw, Wallet, Wrench, Building2 } from "lucide-react";
 
 export const crmNavigation = [
   { id: "tracking", label: "Job status", icon: CircleCheck },
   { id: "command", label: "Dashboard", icon: LayoutDashboard },
-  { id: "customers", label: "Customer files", icon: Users },
   { id: "quotes", label: "Quotes", icon: FileText },
   { id: "orders", label: "Orders & shipping", icon: Package },
   { id: "calendar", label: "Calendar", icon: CalendarDays },

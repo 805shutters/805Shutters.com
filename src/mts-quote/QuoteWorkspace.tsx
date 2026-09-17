@@ -34,6 +34,8 @@ const tabs = [
 ] as const;
 
 type QuoteWorkspaceProps = {
+  /** Opt-in staff CRM list; the standalone quote system keeps its original UI. */
+  staffOverview?: boolean;
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmBookkeepingRows?: CrmBookkeepingRow[];
@@ -54,6 +56,7 @@ export type QuoteWorkspaceOpenRequest = {
 };
 
 export function QuoteWorkspace({
+  staffOverview = false,
   crmJobs = [],
   crmQuotes = [],
   crmBookkeepingRows = [],
@@ -66,6 +69,7 @@ export function QuoteWorkspace({
 }: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
+  const [showQuoteTools, setShowQuoteTools] = useState(false);
   const [newQuoteRequest, setNewQuoteRequest] = useState(0);
   const [quoteSearch, setQuoteSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -95,10 +99,14 @@ export function QuoteWorkspace({
         <div
           ref={setScopeEl}
           className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
+          style={staffOverview && effectiveTab === "dashboard" && !showQuoteTools ? { background: "#0b0b0b" } : undefined}
           data-theme="light"
         >
           {/* Tab buttons (hidden in the full-screen builder — its slim bar carries the toggle + X) */}
-          {effectiveTab !== "builder" && (
+          {staffOverview && effectiveTab === "dashboard" && showQuoteTools && (
+            <button type="button" onClick={() => setShowQuoteTools(false)} className="m-4 rounded-md border border-[#b9b7b0] bg-white px-4 py-2 text-sm text-[#0b0b0b]">Back to quote list</button>
+          )}
+          {effectiveTab !== "builder" && !(staffOverview && effectiveTab === "dashboard" && !showQuoteTools) && (
             <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
               <div className="flex flex-wrap items-center gap-2">
                 {tabs.map((tab) => {
@@ -185,6 +193,7 @@ export function QuoteWorkspace({
           <div>
             {effectiveTab === "dashboard" && (
               <QuoteDashboard
+                staffOverview={staffOverview && !showQuoteTools}
                 quoteOperatorMode={false}
                 newQuoteRequest={newQuoteRequest}
                 crmJobs={crmJobs}
@@ -197,6 +206,7 @@ export function QuoteWorkspace({
                 onChanged={onChanged}
                 onOpenCrmCalendarDate={onOpenCrmCalendarDate}
                 onOpenCrmQuote={onOpenCrmQuote}
+                onOpenQuoteTools={() => setShowQuoteTools(true)}
               />
             )}
             {effectiveTab === "builder" && (

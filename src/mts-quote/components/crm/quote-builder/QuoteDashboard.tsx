@@ -1,3 +1,4 @@
+import { StaffQuoteDesk } from "@/components/crm/quotes/StaffQuoteDesk";
 import { isPendingQuoteAlternative } from "@mts/lib/quoteGroupLabels";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { QuoteCommunicationHub } from "@/components/crm/quote-hub/QuoteCommunicationHub";
@@ -41,6 +42,8 @@ import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
+  staffOverview?: boolean;
+  onOpenQuoteTools?: () => void;
   quoteOperatorMode?: boolean;
   newQuoteRequest?: number;
   searchQuery?: string;
@@ -145,6 +148,8 @@ function appointmentSortKey(appointment: DashboardCalendarAppointment): string {
 }
 
 export function QuoteDashboard({
+  staffOverview = false,
+  onOpenQuoteTools,
   quoteOperatorMode = false,
   newQuoteRequest = 0,
   searchQuery = "",
@@ -858,7 +863,18 @@ export function QuoteDashboard({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
+    <div className={staffOverview ? "w-full min-w-0" : "mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6"}>
+      {staffOverview ? <StaffQuoteDesk
+        quotes={dashboardQuotes}
+        isLoading={isLoading}
+        isError={isError}
+        isFetching={isFetching}
+        onRetry={() => void refetch()}
+        onOpen={handleOpenQuote}
+        onNewQuote={() => setShowNewQuoteDialog(true)}
+        onOpenTools={() => onOpenQuoteTools?.()}
+      /> : <>
+
       {/* Stats Bar — status filter tabs */}
       {!isSearching && statsBar}
 
@@ -961,6 +977,8 @@ export function QuoteDashboard({
       )}
 
       {isSearching && statsBar}
+
+      </>}
 
       {/* New Quote Dialog */}
       <NewQuoteDialog

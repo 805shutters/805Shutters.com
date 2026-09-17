@@ -31,6 +31,7 @@ export function QuotesWorkspace({
 }: Props) {
   return (
     <QuoteWorkspace
+      staffOverview
       crmJobs={jobs}
       crmQuotes={quotes}
       crmBookkeepingRows={bookkeepingRows}

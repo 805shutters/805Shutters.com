@@ -1,0 +1,31 @@
+import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
+import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
+import { isSavedQuotePricingIncomplete } from "@mts/lib/quotePricingDisplay";
+import { searchQuotes } from "@mts/lib/quoteSearch";
+
+export const staffQuoteStages = ["draft", "sent", "sold", "pending", "ordered", "received", "installed", "archived"] as const;
+export type StaffQuoteStage = typeof staffQuoteStages[number];
+export type StaffQuoteFilter = "all" | StaffQuoteStage;
+export const staffStageLabels: Record<StaffQuoteFilter, string> = {
+  all: "All quotes", draft: "Draft", sent: "Sent", sold: "Sold", pending: "Pending quote",
+  ordered: "Ordered", received: "Received", installed: "Installed", archived: "Archived",
+};
+export const staffNextSteps: Record<StaffQuoteStage, string> = {
+  draft: "Finish quote details", sent: "Follow up with customer", sold: "Review order handoff",
+  pending: "Retained alternative", ordered: "Review order progress", received: "Review installation",
+  installed: "Review job completion", archived: "View quote history",
+};
+export function staffQuoteStage(quote: QuoteTableRow): StaffQuoteStage {
+  return quote.pendingAlternative ? "pending" : getQuoteStatsStatus(quote);
+}
+export function staffQuoteAmount(quote: QuoteTableRow): string {
+  if (isSavedQuotePricingIncomplete(quote.salesQuote)) return "Pricing incomplete";
+  if (quote.total_amount == null || !Number.isFinite(Number(quote.total_amount))) return "Amount unavailable";
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(quote.total_amount));
+}
+export function staffQuoteView(quotes: QuoteTableRow[], filter: StaffQuoteFilter, search: string) {
+  const counts = Object.fromEntries(staffQuoteStages.map(stage => [stage, 0])) as Record<StaffQuoteStage, number>;
+  for (const quote of quotes) counts[staffQuoteStage(quote)]++;
+  const matching = searchQuotes(quotes, search).filter(quote => filter === "all" || staffQuoteStage(quote) === filter);
+  return { counts, matching };
+}
