@@ -4,6 +4,7 @@ import { ContractsWorkspace } from "./ContractsWorkspace";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
+import appointmentStyles from "./CalendarAppointmentModal.module.css";
 import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
@@ -14780,83 +14781,78 @@ function CalendarAppointmentModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   const defaultAssignedTo = selectedSlot.availableOwners?.[0] || "Unassigned";
+  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "America/Los_Angeles" })
+    .format(new Date(selectedSlot.startAt));
+  const durationMinutes = (new Date(selectedSlot.endAt).getTime() - new Date(selectedSlot.startAt).getTime()) / 60_000;
 
   return (
-    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title">
+    <div className={`crm-slot-modal ${appointmentStyles.modal}`} role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title" aria-describedby="crm-slot-booking-notice">
       <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment form" onClick={onClose} />
-      <section className="crm-slot-form-panel">
-        <div className="crm-slot-form-head">
+      <section className={appointmentStyles.panel}>
+        <header className={appointmentStyles.header}>
           <div>
-            <p className="eyebrow">New Appointment</p>
-            <h2 id="crm-slot-modal-title">{formatCalendarLongDay(selectedSlot.date)}</h2>
+            <p className={appointmentStyles.eyebrow}>Calendar / Manual booking</p>
+            <h2 className={appointmentStyles.heading} id="crm-slot-modal-title">New appointment</h2>
           </div>
-          <button type="button" className="crm-slot-close" aria-label="Close appointment form" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
-        <p className="crm-slot-override-note">
-          Manual scheduling overrides travel time, overlapping appointments, and public availability restrictions.
-        </p>
-        <form className="crm-form" onSubmit={onSubmit}>
-          <div className="crm-field-row">
-            <label>
-              Customer
-              <input name="customer_name" required placeholder="Customer name" autoFocus />
-            </label>
-            <label>
-              Phone
-              <input name="phone" required placeholder="805-000-0000" />
-            </label>
+          <button type="button" className={appointmentStyles.close} aria-label="Close appointment form" onClick={onClose}>×</button>
+        </header>
+        <form className={appointmentStyles.form} onSubmit={onSubmit}>
+          <div className={appointmentStyles.body}>
+            <div className={appointmentStyles.schedule}>
+              <div className={appointmentStyles.dateTile} aria-hidden="true">
+                <span>{monthLabel}</span><strong>{formatCalendarDayNumber(selectedSlot.date)}</strong>
+              </div>
+              <div>
+                <p className={appointmentStyles.date}>{formatCalendarLongDay(selectedSlot.date)}</p>
+                <p className={appointmentStyles.time}>{formatCalendarSlotRange(selectedSlot)} · {calendarAppointmentDurationLabel(durationMinutes)}</p>
+              </div>
+              <span className={appointmentStyles.zone}>Pacific time</span>
+            </div>
+            <fieldset className={appointmentStyles.group}>
+              <legend>Customer details</legend>
+              <div className={appointmentStyles.fields}>
+                <label className={appointmentStyles.full}>
+                  Customer name
+                  <input name="customer_name" required placeholder="Full name" autoFocus />
+                </label>
+                <label>Phone<input name="phone" type="tel" required placeholder="(805) 000-0000" /></label>
+                <label>Email<input name="email" type="email" placeholder="name@email.com" /></label>
+                <label>Street address<AddressAutocomplete name="address" cityFieldName="city" placeholder="Project address" /></label>
+                <label>City<input name="city" placeholder="e.g. Ventura" /></label>
+              </div>
+            </fieldset>
+            <fieldset className={appointmentStyles.group}>
+              <legend>Consultation details</legend>
+              <div className={appointmentStyles.fields}>
+                <label>
+                  Product
+                  <select name="product_interest" defaultValue="Shutters">
+                    {productOptions.map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Assigned to
+                  <select name="assigned_to" defaultValue={defaultAssignedTo}>
+                    {ownerOptions.map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
+                <label className={appointmentStyles.full}>Lead source<LeadSourceSelect /></label>
+              </div>
+            </fieldset>
+            <details className={appointmentStyles.notes}>
+              <summary>Add job notes</summary>
+              <label>Job notes<textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring…" /></label>
+            </details>
+            <p className={appointmentStyles.notice} id="crm-slot-booking-notice">
+              <span aria-hidden="true">ⓘ</span> Manual booking overrides travel time, appointment conflicts, and public availability restrictions.
+            </p>
           </div>
-          <div className="crm-field-row">
-            <label>
-              Email
-              <input name="email" type="email" placeholder="customer@email.com" />
-            </label>
-            <label>
-              City
-              <input name="city" placeholder="Ventura" />
-            </label>
-          </div>
-          <label>
-            Address
-            <AddressAutocomplete name="address" cityFieldName="city" placeholder="Project address" />
-          </label>
-          <div className="crm-field-row">
-            <label>
-              Product
-              <select name="product_interest" defaultValue="Shutters">
-                {productOptions.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Assigned
-              <select name="assigned_to" defaultValue={defaultAssignedTo}>
-                {ownerOptions.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            Lead Source
-            <LeadSourceSelect />
-          </label>
-          <label>
-            Job Notes
-            <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />
-          </label>
-          <div className="crm-slot-actions">
-            <button type="button" className="crm-ghost-button" onClick={onClose}>
-              Cancel
+          <footer className={appointmentStyles.footer}>
+            <button type="button" className={appointmentStyles.cancel} onClick={onClose}>Cancel</button>
+            <button type="submit" className={appointmentStyles.submit} disabled={busy}>
+              {busy ? "Saving…" : "Book appointment"}<span aria-hidden="true">↗</span>
             </button>
-            <button type="submit" disabled={busy}>
-              {busy ? "Saving..." : "Save Appointment"}
-            </button>
-          </div>
+          </footer>
         </form>
       </section>
     </div>
