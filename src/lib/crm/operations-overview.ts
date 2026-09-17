@@ -6,7 +6,7 @@ import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed", "paid"] as const;
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
-export type ProductProgress = { id: string; name: string; ordered: boolean; shipped: boolean; installed: boolean };
+export type ProductProgress = { id: string; name: string; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[] };
 export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
 
 function productProgress(product: CrmCustomerProduct): ProductProgress {
@@ -15,7 +15,7 @@ function productProgress(product: CrmCustomerProduct): ProductProgress {
   // Each milestone needs its own source evidence; payment or a later workflow
   // marker must never fabricate a manufacturer order or shipment.
   return {
-    id: product.id, name: product.product_type.trim() || "Product type needed",
+    id: product.id, name: product.product_type.trim() || "Product type needed", records: [{ id: product.id, updatedAt: product.updated_at }],
     ordered: Boolean(meta.ordered_at || status === "ordered"),
     shipped: Boolean(meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)),
     installed: Boolean(meta.installed_at || status === "installed")
@@ -40,7 +40,7 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
       const key = product.product_type.trim().toLowerCase() || "unknown";
       grouped.set(key, [...(grouped.get(key) || []), productProgress(product)]);
     }
-    const progress = [...grouped].map(([id, items]) => ({ id, name: items[0].name, ordered: items.every(item => item.ordered), shipped: items.every(item => item.shipped), installed: items.every(item => item.installed) }));
+    const progress = [...grouped].map(([id, items]) => ({ id, name: items[0].name, records: items.flatMap(item => item.records), ordered: items.every(item => item.ordered), shipped: items.every(item => item.shipped), installed: items.every(item => item.installed) }));
     return { source, products: progress, quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
       paid: source.isSale && source.progress.payment === "settled",

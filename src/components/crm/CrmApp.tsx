@@ -1,11 +1,12 @@
 "use client";
 
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
-import { BackToStatus, JobStatusOverview, OperationsDashboard } from "./OperationsOverview";
+import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
 import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
+import { buildOperationsItems } from "@/lib/crm/operations-overview";
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
 import { StaffMonthCalendar } from "./StaffMonthCalendar";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
@@ -873,6 +874,7 @@ export function CrmApp({
   const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
   const [trackingDetailId, setTrackingDetailId] = useState<string | null>(null);
+  const [trackingQuickAction, setTrackingQuickAction] = useState<{ itemId: string; requestId: string; paymentType?: "deposit" | "balance"; kind: "contract" | "sold_date" | "payment" | "install" } | null>(null);
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -1091,6 +1093,49 @@ export function CrmApp({
       throw error;
     } finally { setBusy(false); }
   }
+
+  const updateWorkflowCheck: WorkflowAction = async (item, step, product) => {
+    if (!session) throw new Error("Sign in again before updating a job.");
+    const source = item.source;
+    const financialSource = Boolean(source.row || (source.quote && source.isSale));
+    if (step === "deposit") {
+      if (!financialSource || source.depositOutstanding === null || source.depositOutstanding <= 0.005) { setTrackingDetailId(source.id); return; }
+      setTrackingQuickAction({ itemId: source.id, requestId: crypto.randomUUID(), kind: "payment", paymentType: "deposit" });
+      return;
+    }
+    if (step === "quote") {
+      if (source.quote) await openQuoteWorkspaceQuote(source.quote.id);
+      else openTab("quotes");
+      return;
+    }
+    if (step === "sold" || step === "paid" || (step === "installed" && item.installed)) {
+      if ((step === "paid" && (item.paid || !financialSource || source.balanceOutstanding === null)) || (!source.row && !source.quote)) { setTrackingDetailId(source.id); return; }
+      setTrackingQuickAction({ itemId: source.id, requestId: crypto.randomUUID(), kind: step === "paid" ? "payment" : step === "installed" ? "install" : item.sold ? "sold_date" : "contract" });
+      return;
+    }
+    if (step === "installed") {
+      if (!financialSource) throw new Error("Record the sale before confirming installation.");
+      if (source.progress.installation === "partial") throw new Error("This job has a partial installation report. Resolve the remaining installation items in the job first.");
+      const patch = { installed_at: new Date().toISOString() };
+      await saveTrackingField(source, source.row ? { row: patch } : { quote: patch });
+      const fresh = await refresh();
+      if (!fresh || !buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id)?.installed) throw new Error("The installation date was saved, but this job still needs review before it can be marked complete.");
+      return `Installation completed today for ${source.customerName}.`;
+    }
+    if (!product) throw new Error("Open the job to add its product details first.");
+    if (product[step]) { setTrackingDetailId(source.id); return; }
+    setBusy(true);
+    try {
+      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, records: product.records, quoteId: source.quote?.id || source.row?.quoteId || undefined, jobId: source.job?.id || source.row?.jobId || source.quote?.job_id || undefined, bookkeepingEntryId: source.row && source.row.source !== "crm_quote" ? source.row.id : undefined }) });
+      const fresh = await refresh();
+      const saved = fresh && buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id)?.products.find(candidate => candidate.id === product.id);
+      if (!saved?.[step]) throw new Error("The update was saved but completion could not be verified. Refresh the job before trying again.");
+      return `${product.name} marked ${step} for ${source.customerName}.`;
+    } catch (error) {
+      await refresh().catch(() => null);
+      throw error;
+    } finally { setBusy(false); }
+  };
 
   async function saveTrackingStage(item: JobTrackingViewItem, stage: WorkspaceStageId, managerException?:string) {
     if (!session) throw new Error("Sign in again before editing a job.");
@@ -3264,10 +3309,11 @@ export function CrmApp({
 
       {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
       {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
-      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview data={dashboardRefreshError ? null : data} busy={busy} onOpen={item => setTrackingDetailId(item.id)} /> : null}
-      {activeTab === "tracking" && trackingDetailId ? (<>
-        <BackToStatus onClick={() => setTrackingDetailId(null)} />
-        <div className="crm-record-detail"><JobTrackingWorkspace focusedItemId={trackingDetailId}
+      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onOpen={item => setTrackingDetailId(item.id)} /> : null}
+      {activeTab === "tracking" && (trackingDetailId || trackingQuickAction) ? (<>
+        {trackingDetailId && <BackToStatus onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); }} />}
+        <div className={trackingDetailId ? "crm-record-detail" : undefined}><JobTrackingWorkspace focusedItemId={trackingDetailId || trackingQuickAction?.itemId}
+          editorOnly={!trackingDetailId} quickAction={trackingQuickAction} onQuickClose={() => setTrackingQuickAction(null)}
           ownedActions={data?.ownedActions}
           fulfillment={data?.fulfillment} events={events}
           onLoadFulfillmentScope={async quoteId => { if(!session) throw new Error("CRM session required."); const result=await crmFetch<{scope:import("@/lib/crm/fulfillment").FulfillmentScope}>(session,`/api/crm/operations/fulfillment?quoteId=${encodeURIComponent(quoteId)}`);return result.scope; }}

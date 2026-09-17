@@ -17,6 +17,9 @@ import styles from "./JobTrackingWorkspace.module.css";
 export type { JobTrackingSavePatch, JobTrackingStageId, JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 export type JobTrackingWorkspaceProps = {
   focusedItemId?: string;
+  quickAction?: { requestId: string; paymentType?: "deposit" | "balance"; kind: "contract" | "sold_date" | "payment" | "install" } | null;
+  editorOnly?: boolean;
+  onQuickClose?: () => void;
   fulfillment?: FulfillmentData; events?: import("@/lib/crm/types").CrmCalendarEvent[]; onLoadFulfillmentScope?: (id:string)=>Promise<FulfillmentScope>; onSaveFulfillment?: (c:FulfillmentChange)=>Promise<void>;
   ownedActions?: OwnedAction[]; onSaveOwnedAction?: (c:OwnedActionChange)=>Promise<void>;
   integrationHealth?: IntegrationHealth[];
@@ -67,8 +70,17 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const counts = new Map(JOB_TRACKING_STAGES.map((stage) => [stage.id, items.filter((item) => item.stageId === stage.id).length]));
   const disabled = running || props.busy;
   const open = (item: JobTrackingViewItem, kind: EditKind, paymentType?: "deposit" | "balance") => { opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setError(""); setNotice(""); setSquareUrl(null); setActionWarning(""); setEditor({ item, kind, paymentType, ...(kind === "payment" ? { paymentRequestId: crypto.randomUUID() } : {}) }); };
-  const close = () => { if (!submitting.current) { setEditor(null); setError(""); } };
+  const close = () => { if (!submitting.current) { setEditor(null); setError(""); props.onQuickClose?.(); } };
   const toggle = (id: string) => setExpanded((old) => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+
+  const handledQuickAction = useRef<string | null>(null);
+  useEffect(() => {
+    if (!props.quickAction || handledQuickAction.current === props.quickAction.requestId) return;
+    const item = items.find(candidate => candidate.id === props.focusedItemId);
+    if (!item) return;
+    handledQuickAction.current = props.quickAction.requestId;
+    open(item, props.quickAction.kind, props.quickAction.kind === "payment" ? props.quickAction.paymentType || "balance" : undefined);
+  }, [props.quickAction, props.focusedItemId, items]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,13 +152,14 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       if (!ok) throw new Error("The change could not be saved. Your entry is still here; check the error and try again.");
       if (kind !== "square") setNotice(`${labels[kind]} saved for ${item.customerName}.`);
       setEditor(null);
+      props.onQuickClose?.();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "The change could not be saved. Please try again."); }
     finally { submitting.current = false; setRunning(false); }
   }
 
   const amountValue = editor ? ({ cogs: editor.item.cogs, deposit_required: editor.item.depositRequired, deposit_paid_target: editor.item.depositReceived, balance_paid_target: editor.item.balanceReceived, balance_due_target: editor.item.balanceOutstanding, payment: editor.paymentType === "balance" ? editor.item.balanceOutstanding : editor.item.depositOutstanding } as Partial<Record<EditKind, number | null>>)[editor.kind] : null;
 
-  return <section data-focused={Boolean(props.focusedItemId)} className={styles.workspace} aria-labelledby="job-tracking-heading" aria-busy={props.busy}>
+  return <section style={props.editorOnly ? { display: "none" } : undefined} data-focused={Boolean(props.focusedItemId)} className={styles.workspace} aria-labelledby="job-tracking-heading" aria-busy={props.busy}>
     <header className={styles.heading}>
       <div><span className={styles.eyebrow}>805 / Operations</span><h2 id="job-tracking-heading">Job tracking</h2><p>Every job. Every stage. One working record.</p></div>
       <button type="button" className={styles.secondary} onClick={props.onPullInstallInvoices} disabled={disabled}>Pull install invoices</button>

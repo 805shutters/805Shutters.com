@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Circle, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Circle, LoaderCircle, Search } from "lucide-react";
 import type { CrmDashboardData } from "@/lib/crm/types";
-import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type WorkflowStep } from "@/lib/crm/operations-overview";
+import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import styles from "./OperationsOverview.module.css";
 
@@ -46,11 +46,33 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
   </section>;
 }
 
-function ProductChecks({ item, step }: { item: OperationsItem; step: "ordered" | "shipped" }) {
-  if (!item.products.length) return <><span className={styles.pending}>Product details needed</span>{step === "ordered" && item.source.orderedAt && <small>Job order recorded · Verify product breakdown</small>}</>;
-  return <><small>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionMark done={product[step]} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span></div>)}</>;
+type WorkflowActionStep = WorkflowStep | "deposit";
+export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => Promise<string | void>;
+function CompletionButton({ done, label, disabled, saving, onClick }: { done: boolean; label: string; disabled: boolean; saving?: boolean; onClick: () => void }) {
+  return <button type="button" className={styles.completionButton} aria-label={label} title={label} aria-pressed={done} aria-busy={saving || undefined} disabled={disabled} onClick={onClick}>{saving ? <LoaderCircle className={styles.savingMark} size={24} aria-hidden="true" /> : <CompletionMark done={done} />}</button>;
 }
-export function JobStatusOverview({ data, busy, onOpen }: Props) {
+function ProductChecks({ item, step, disabled, pending, onAction }: { item: OperationsItem; step: "ordered" | "shipped"; disabled: boolean; pending: string | null; onAction: (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => void }) {
+  if (!item.products.length) return <><span className={styles.pending}>Product details needed</span>{step === "ordered" && item.source.orderedAt && <small>Job order recorded · Verify product breakdown</small>}</>;
+  return <><small>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span></div>)}</>;
+}
+export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { onAction: WorkflowAction }) {
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const lock = useRef(false);
+  async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
+    if (lock.current || busy) return;
+    lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
+    try { const message = await onAction(item, step, product); if (message) setNotice(message); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Update failed. Refresh and try again."); }
+    finally { lock.current = false; setPending(null); }
+  }
+  const disabled = busy || pending !== null;
+  const mark = (item: OperationsItem, step: WorkflowActionStep) => {
+    const done = step === "deposit" ? item.sold && item.source.depositOutstanding !== null && item.source.depositOutstanding <= 0.005 : stepComplete(item, step);
+    const label = step === "deposit" ? "Deposit" : workflowLabels[step];
+    return <CompletionButton done={done} label={`${done ? "Review" : step === "quote" ? "Open" : ["sold", "paid", "deposit"].includes(step) ? "Record" : "Mark"} ${label} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:`} onClick={() => void act(item, step)} />;
+  };
   const [filter, setFilter] = useState("active");
   const [search, setSearch] = useState("");
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
@@ -62,16 +84,18 @@ export function JobStatusOverview({ data, busy, onOpen }: Props) {
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
   return <section className={styles.workspace} aria-labelledby="job-status-title" aria-busy={busy}>
-    <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Open circles = not confirmed</small></span></header>
+    <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Click a circle to update</small></span></header>
     <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
-    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Ordered", "Shipped", "Installed", "Balance paid"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <tr key={item.source.id}>
+    {error && <p className={styles.warning} role="alert">{error}</p>}{notice && <p className={styles.warning} role="status">{notice}</p>}
+    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <tr key={item.source.id}>
       <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button></th>
-      <td data-label="Quote"><CompletionMark done={item.quote} /><small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
-      <td data-label="Sold"><CompletionMark done={item.sold} /></td>
-      <td data-label="Ordered"><ProductChecks item={item} step="ordered" /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" /></td>
-      <td data-label="Installed"><CompletionMark done={item.installed} /><small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
-      <td data-label="Balance paid"><CompletionMark done={item.paid} /><small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
+      <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
+      <td data-label="Sold">{mark(item, "sold")}</td>
+      <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "Required amount unknown" : `${currency(item.source.depositRequired)} required`}</small><small>{item.source.depositReceived === null ? "Received amount unknown" : `${currency(item.source.depositReceived)} received`}</small></td>
+      <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
+      <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
+      <td data-label="Balance paid">{mark(item, "paid")}<small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
     </tr>)}</tbody></table>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>

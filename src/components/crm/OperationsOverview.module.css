@@ -54,10 +54,12 @@
 .toolbar input { width:100%; min-width:0; max-width:100%; color:#fbfbfa; background:transparent; border:0; padding:12px 0; font-size:13px; }
 .statusTable { width:100%; border-spacing:0; border-collapse:separate; table-layout:fixed; background:#1d1d1b; border:1px solid #343330; border-radius:14px; overflow:hidden; }
 .statusTable thead th { background:#111110; color:#b8b6ae; font-size:13px; padding:18px 14px; text-align:left; font-weight:500; }
-.statusTable th:first-child { width:19%; }
-.statusTable th:nth-child(2) { width:11%; }
-.statusTable th:nth-child(3) { width:7%; }
-.statusTable th:nth-child(4),.statusTable th:nth-child(5) { width:19%; }
+.statusTable th:first-child { width:18%; }
+.statusTable th:nth-child(2) { width:10%; }
+.statusTable th:nth-child(3) { width:6%; }
+.statusTable th:nth-child(4) { width:12%; }
+.statusTable th:nth-child(5),.statusTable th:nth-child(6) { width:17%; }
+.statusTable th:nth-child(7),.statusTable th:nth-child(8) { width:10%; }
 .statusTable td,.statusTable tbody th { text-align:left; vertical-align:top; padding:24px 14px; border-top:1px solid #343330; overflow-wrap:anywhere; }
 .statusTable tbody tr:hover { background:#282724; }
 .statusTable small { display:block; font-size:12px; font-weight:400; color:#b8b6ae; margin-top:9px; line-height:1.5; }
@@ -75,3 +77,11 @@
 
 .toolbar input::placeholder { color:#b8b6ae; opacity:1; }
 .toolbar label svg { flex-shrink:0; }
+
+.workspace .completionButton { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; min-height:36px; flex:none; padding:4px; background:transparent; border:0; border-radius:50%; vertical-align:middle; }
+.workspace .completionButton:hover:not(:disabled) { background:#45443f; }
+.workspace .completionButton:focus-visible { outline:2px solid #75dfab; outline-offset:3px; }
+.workspace .completionButton:disabled { cursor:wait; opacity:.5; }
+.savingMark { color:#75dfab; animation:workflowSaving 1s linear infinite; }
+@keyframes workflowSaving { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .savingMark { animation:none; } }
