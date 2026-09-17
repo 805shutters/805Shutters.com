@@ -5,18 +5,21 @@ import type { Session } from "@supabase/supabase-js";
 import { Ban, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { losAngelesDateString, losAngelesTimeString, zonedTimeToUtc, bookingSlotDurationMinutes } from "@/lib/booking/availability";
 import type { CrmAvailabilitySlot, CrmCalendarEvent, CrmJob } from "@/lib/crm/types";
-import { changeCalendarDay, monthAppointmentDetails, monthCalendarDays, monthDayEvents, publishedCalendarRanges } from "@/lib/crm/staff-month-calendar";
+import { changeCalendarDay, monthAppointmentDetails, monthDayEvents, publishedCalendarRanges } from "@/lib/crm/staff-month-calendar";
+import { weekCalendarDays, shiftCalendarWeek, weekTimeBounds, weekDayLayout } from "@/lib/crm/staff-week-calendar";
 import { JessicaWorkingRanges } from "./JessicaWorkingRanges";
-import styles from "./StaffMonthCalendar.module.css";
+import styles from "./StaffWeekCalendar.module.css";
 
 type Snapshot = { month: string; revision: string; ranges: CrmAvailabilitySlot[] };
 type Selection = { date: string; time: string; startAt: string; endAt: string; availableOwners?: string[] };
 type Props = { session: Session; events: CrmCalendarEvent[]; jobs: CrmJob[]; anchorDate: string; onDateChange: (date: string) => void; onSelectSlot: (slot: Selection) => void; onOpenEvent: (event: CrmCalendarEvent) => void };
 
-export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateChange, onSelectSlot, onOpenEvent }: Props) {
+export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateChange, onSelectSlot, onOpenEvent }: Props) {
   const month = anchorDate.slice(0, 7);
-  const days = monthCalendarDays(month);
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const days = weekCalendarDays(anchorDate);
+  const week = days[0];
+  const monthsKey = [...new Set(days.map(date => date.slice(0, 7)))].join(",");
+  const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -30,8 +33,8 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
   const inFlight = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const section = useRef<HTMLElement>(null);
-  const activeMonth = useRef(month);
-  activeMonth.current = month;
+  const activeWeek = useRef(week);
+  activeWeek.current = week;
   const request = useCallback(async (path: string, init: RequestInit = {}) => {
     const response = await fetch(path, { ...init, cache: "no-store", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` } });
     const body = await response.json();
@@ -42,12 +45,12 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
 
   useEffect(() => {
     let current = true;
-    setLoading(true); setError(""); setNotice(""); setSnapshot(null);
-    request(`/api/crm/availability?month=${month}`).then(body => {
-      if (current) setSnapshot({ ...body, month });
+    setLoading(true); setError(""); setNotice(""); setSnapshots({});
+    Promise.all(monthsKey.split(",").map(async month => ({ ...await request(`/api/crm/availability?month=${month}`), month }))).then(results => {
+      if (current) setSnapshots(Object.fromEntries(results.map(snapshot => [snapshot.month, snapshot])));
     }).catch(reason => { if (current) setError(reason.message); }).finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
-  }, [month, request, reload, events]);
+  }, [monthsKey, request, reload, events]);
 
   useEffect(() => {
     // Size the grid to the actual remaining viewport, independent of its contents.
@@ -69,27 +72,29 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
     setSelectedDay(null); setBookingDay(null);
     if (showHours) { setShowHours(false); setReload(value => value + 1); }
   }
-  const ready = !loading && snapshot?.month === month && !!snapshot.revision;
-  const hasDrafts = snapshot?.ranges.some(range => range.status === "draft") ?? false;
+  const ready = !loading && monthsKey.split(",").every(month => !!snapshots[month]?.revision);
+  const hasDrafts = Object.values(snapshots).some(snapshot => snapshot.ranges.some(range => range.status === "draft"));
   const canChange = ready && !saving && !hasDrafts;
-  const published = publishedCalendarRanges(snapshot?.month === month ? snapshot.ranges : []);
+  const published = publishedCalendarRanges(Object.values(snapshots).flatMap(snapshot => snapshot.ranges));
   const isAvailable = (date: string) => published.some(range => losAngelesDateString(new Date(range.start_at)) === date);
 
   async function updateDay(date: string, available: boolean) {
+    const month = date.slice(0, 7);
+    const snapshot = snapshots[month];
     if (!canChange || !snapshot || inFlight.current) return;
     inFlight.current = true; setSaving(true); setError(""); setNotice("");
     try {
       const ranges = changeCalendarDay(snapshot.ranges, date, available, start, end);
       const body = await request("/api/crm/availability", { method: "PUT", body: JSON.stringify({ month, revision: snapshot.revision, ranges }) });
-      if (activeMonth.current === month) {
-        setSnapshot({ ...body, month });
+      if (activeWeek.current === week) {
+        setSnapshots(current => ({ ...current, [month]: { ...body, month } }));
         setNotice(available ? `${date}: working hours published, ${start}–${end}.` : `${date}: blocked for new public bookings. Existing appointments stay scheduled.`);
       }
     } catch (reason) {
-      if (activeMonth.current === month) {
+      if (activeWeek.current === week) {
         setError(reason instanceof Error ? reason.message : "Save failed. Reload to see current hours.");
         // A conflict or uncertain response must be reconciled before another write.
-        setSnapshot(null);
+        setSnapshots({});
       }
     } finally { inFlight.current = false; setSaving(false); }
   }
@@ -98,10 +103,6 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
     const first = published.find(range => losAngelesDateString(new Date(range.start_at)) === date);
     setBookingTime(first ? losAngelesTimeString(new Date(first.start_at)) : start);
   }
-  function moveMonth(delta: number) {
-    const [year, number] = month.split("-").map(Number);
-    onDateChange(new Date(Date.UTC(year, number - 1 + delta, 1)).toISOString().slice(0, 10));
-  }
   function controls(date: string, expanded = false) {
     return <div className={styles.actions} data-expanded={expanded}>
       <button type="button" className={styles.block} disabled={!canChange} aria-label={`Block ${date}`} title="Block day for public booking" onClick={() => void updateDay(date, false)}><Ban aria-hidden="true" /><span>Block</span></button>
@@ -109,11 +110,15 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
       <button type="button" className={styles.book} disabled={saving} aria-label={`Book Appointment ${date}`} title="Book Appointment" onClick={() => beginBooking(date)}><CalendarPlus aria-hidden="true" /><span>Book Appointment</span></button>
     </div>;
   }
-  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${month}-01T12:00:00Z`));
+  const labelDate = (date: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+  const weekLabel = `${labelDate(days[0])} – ${labelDate(days[6])}, ${days[6].slice(0, 4)}`;
+  const bounds = weekTimeBounds(events, days);
+  const hours = Array.from({ length: (bounds.end - bounds.start) / 60 }, (_, index) => bounds.start + index * 60);
+  const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12} ${minute < 720 ? "AM" : "PM"}`;
   return <section ref={section} className={styles.calendar} aria-label="Appointment calendar">
     <header className={styles.header}>
       <div><h1>Calendar</h1><p>Consultations &amp; public booking · Pacific time</p></div>
-      <div className={styles.navigation}><button type="button" disabled={saving} onClick={() => moveMonth(-1)} aria-label="Previous month"><ChevronLeft /></button><h2>{monthLabel}</h2><button type="button" disabled={saving} onClick={() => moveMonth(1)} aria-label="Next month"><ChevronRight /></button><button type="button" disabled={saving} onClick={() => onDateChange(losAngelesDateString())}>Today</button></div>
+      <div className={styles.navigation}><button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, -1))} aria-label="Previous week"><ChevronLeft /></button><h2>{weekLabel}</h2><button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, 1))} aria-label="Next week"><ChevronRight /></button><button type="button" disabled={saving} onClick={() => onDateChange(losAngelesDateString())}>Today</button></div>
     </header>
     <div className={styles.toolbar}>
       <span>Jessica’s public hours</span><label>From <input type="time" aria-label="Public hours start" value={start} disabled={saving} onChange={e => setStart(e.target.value)} /></label><label>To <input type="time" aria-label="Public hours end" value={end} disabled={saving} onChange={e => setEnd(e.target.value)} /></label>
@@ -124,24 +129,31 @@ export function StaffMonthCalendar({ session, events, jobs, anchorDate, onDateCh
       <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a day." : notice || "Available uses the hours above. Customer booking still checks travel time, conflicts, and notice.")}</span>
       {error && <button type="button" disabled={saving} onClick={() => setReload(value => value + 1)}>Reload calendar</button>}
     </div>
-    <div className={styles.weekdays}>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => <span key={day}>{day}</span>)}</div>
-    <div className={styles.grid} style={{ "--week-count": days.length / 7 } as CSSProperties}>
-      {days.map((date, index) => {
-        if (!date) return <div key={`empty-${index}`} className={styles.empty} />;
-        const appointments = monthDayEvents(events, date);
-        const first = appointments[0];
-        const details = first && monthAppointmentDetails(first, jobs);
+    <div className={styles.weekHeader}>
+      <span className={styles.timeHeading}>Pacific</span>
+      {days.map((date, index) => <div key={date} className={styles.dayHead}>
+        <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][index]} {Number(date.slice(-2))}</span><small>{monthDayEvents(events, date).length || ""}</small></button>
+        {controls(date)}
+      </div>)}
+    </div>
+    <div className={styles.grid} style={{ "--hour-count": hours.length } as CSSProperties}>
+      <div className={styles.timeAxis}>{hours.map((minute, index) => <span key={minute} style={{ top: `${index / hours.length * 100}%` }}>{timeLabel(minute)}</span>)}</div>
+      {days.map(date => {
         const state = !ready ? "unknown" : isAvailable(date) ? "available" : "blocked";
+        const layout = weekDayLayout(events, date, bounds);
         return <article key={date} className={styles.day} data-date={date} data-state={state} aria-label={`${date}, ${state}`}>
-          <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span>{Number(date.slice(-2))}</span>{appointments.length > 1 && <small>+{appointments.length - 1}</small>}</button>
-          {details ? <button type="button" className={styles.appointment} aria-label={`Appointments ${date}: ${details.name}${appointments.length > 1 ? ` and ${appointments.length - 1} more` : ""}`} onClick={() => setSelectedDay(date)}>
-            <strong title={details.name}>{details.name}</strong><span title={`City: ${details.city}`}><small>City</small> {details.city}</span><span title={`Product: ${details.product}`}><small>Product</small> {details.product}</span><span title={`Lead Type: ${details.leadType}`}><small>Lead Type</small> {details.leadType}</span>
-          </button> : controls(date)}
+          {layout.map(({ event, top, height, lane, lanes }) => {
+            const details = monthAppointmentDetails(event, jobs);
+            const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
+            return <button type="button" key={event.id} className={styles.appointment} style={{ top: `${top}%`, height: `${height}%`, left: `${lane / lanes * 100}%`, width: `${100 / lanes}%` }} aria-label={`${details.name}, ${date} ${time}. City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}. Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
+              <strong>{details.name}</strong><span><small>City</small> {details.city}</span><span><small>Product</small> {details.product}</span><span><small>Lead Type</small> {details.leadType}</span>
+            </button>;
+          })}
         </article>;
       })}
     </div>
-    <dialog ref={dialog} className={styles.dialog} onCancel={closeDialog} onClose={closeDialog} aria-labelledby="month-dialog-title">
-      <div className={styles.dialogHead}><h2 id="month-dialog-title">{showHours ? "Working hours" : bookingDay ? "Book Appointment" : selectedDay}</h2><button type="button" aria-label="Close calendar details" onClick={closeDialog}><X /></button></div>
+    <dialog ref={dialog} className={styles.dialog} onCancel={closeDialog} onClose={closeDialog} aria-labelledby="week-dialog-title">
+      <div className={styles.dialogHead}><h2 id="week-dialog-title">{showHours ? "Working hours" : bookingDay ? "Book Appointment" : selectedDay}</h2><button type="button" aria-label="Close calendar details" onClick={closeDialog}><X /></button></div>
       {showHours ? <JessicaWorkingRanges session={session} initialMonth={month} /> : bookingDay ? <form className={styles.bookingForm} onSubmit={event => {
         event.preventDefault();
         const startAt = zonedTimeToUtc(bookingDay, bookingTime);

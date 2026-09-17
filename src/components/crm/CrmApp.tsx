@@ -8,7 +8,7 @@ import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
 import { buildOperationsItems } from "@/lib/crm/operations-overview";
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
-import { StaffMonthCalendar } from "./StaffMonthCalendar";
+import { StaffWeekCalendar } from "./StaffWeekCalendar";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
 
 import { OperationsReports } from "@/components/crm/OperationsReports";
@@ -3697,7 +3697,7 @@ export function CrmApp({
 
       {activeTab === "calendar" && session ? (
         <>
-          <StaffMonthCalendar
+          <StaffWeekCalendar
             session={session}
             events={events}
             jobs={jobs}
