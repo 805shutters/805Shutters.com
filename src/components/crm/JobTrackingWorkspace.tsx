@@ -16,6 +16,7 @@ import styles from "./JobTrackingWorkspace.module.css";
 
 export type { JobTrackingSavePatch, JobTrackingStageId, JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 export type JobTrackingWorkspaceProps = {
+  focusedItemId?: string;
   fulfillment?: FulfillmentData; events?: import("@/lib/crm/types").CrmCalendarEvent[]; onLoadFulfillmentScope?: (id:string)=>Promise<FulfillmentScope>; onSaveFulfillment?: (c:FulfillmentChange)=>Promise<void>;
   ownedActions?: OwnedAction[]; onSaveOwnedAction?: (c:OwnedActionChange)=>Promise<void>;
   integrationHealth?: IntegrationHealth[];
@@ -60,7 +61,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
   const [squareUrl, setSquareUrl] = useState<string | null>(null);
   const [actionWarning, setActionWarning] = useState("");
   const matches = useMemo(() => filterJobTrackingView(items, filter, search), [items, filter, search]);
-  const visible = selectedSearchId ? matches.filter(item => item.id === selectedSearchId) : matches;
+  const visible = props.focusedItemId ? items.filter(item => item.id === props.focusedItemId) : selectedSearchId ? matches.filter(item => item.id === selectedSearchId) : matches;
   const active = items.filter((item) => !["complete", "lost", "archived"].includes(item.stageId));
   const openBalance = active.reduce((sum, item) => sum + (item.isSale ? Math.max(0, item.balanceOutstanding || 0) : 0), 0);
   const counts = new Map(JOB_TRACKING_STAGES.map((stage) => [stage.id, items.filter((item) => item.stageId === stage.id).length]));
@@ -145,7 +146,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
 
   const amountValue = editor ? ({ cogs: editor.item.cogs, deposit_required: editor.item.depositRequired, deposit_paid_target: editor.item.depositReceived, balance_paid_target: editor.item.balanceReceived, balance_due_target: editor.item.balanceOutstanding, payment: editor.paymentType === "balance" ? editor.item.balanceOutstanding : editor.item.depositOutstanding } as Partial<Record<EditKind, number | null>>)[editor.kind] : null;
 
-  return <section className={styles.workspace} aria-labelledby="job-tracking-heading" aria-busy={props.busy}>
+  return <section data-focused={Boolean(props.focusedItemId)} className={styles.workspace} aria-labelledby="job-tracking-heading" aria-busy={props.busy}>
     <header className={styles.heading}>
       <div><span className={styles.eyebrow}>805 / Operations</span><h2 id="job-tracking-heading">Job tracking</h2><p>Every job. Every stage. One working record.</p></div>
       <button type="button" className={styles.secondary} onClick={props.onPullInstallInvoices} disabled={disabled}>Pull install invoices</button>

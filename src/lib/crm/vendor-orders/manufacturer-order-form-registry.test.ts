@@ -45,7 +45,8 @@ describe("manufacturer ordering-form registry", () => {
 
   it("exposes the library as a dedicated CRM navigation page", () => {
     const source = readFileSync(join(process.cwd(), "src/components/crm/CrmApp.tsx"), "utf8");
-    expect(source).toContain('["order-forms", "Order Forms"]');
+    const navigation = readFileSync(join(process.cwd(), "src/components/crm/CrmNavigation.tsx"), "utf8");
+    expect(navigation).toContain('id: "order-forms", label: "Order forms"');
     expect(source).toContain('activeTab === "order-forms"');
     expect(source).toContain("<OrderFormLibrary session={session} />");
   });

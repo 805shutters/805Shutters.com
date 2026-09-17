@@ -1,0 +1,42 @@
+/* 805 website palette. Givonic may be installed locally; the personal-use demo
+   must not ship. Add a licensed webfont through --crm-ui-font when supplied. */
+.crm-platinum-shell {
+  --crm-ui-font: Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  display:grid; grid-template-columns:200px minmax(0,1fr); min-height:100vh;
+  padding:0; background:#0b0b0b; color:#fbfbfa; font-family:var(--crm-ui-font);
+}
+.crm-platinum-shell * { box-sizing:border-box; }
+.crm-platinum-sidebar { align-self:stretch; background:#0b0b0b; border-right:1px solid #343330; padding:22px 14px; }
+.crm-platinum-logo { display:block; width:134px; margin:0 auto 26px; }
+/* Same transparent asset and white-on-dark treatment as the website masthead. */
+.crm-platinum-logo img { display:block; width:100%; height:auto; filter:brightness(0) invert(1); object-fit:contain; }
+.crm-platinum-sidebar nav { display:grid; gap:5px; }
+.crm-platinum-sidebar button { display:flex; align-items:center; gap:9px; width:100%; text-align:left; color:#e5e4e2; font:500 13px/1.5 var(--crm-ui-font); padding:12px 10px; border:0; border-radius:7px; background:none; cursor:pointer; }
+.crm-platinum-sidebar button svg { flex:none; }
+.crm-platinum-sidebar button small { margin-left:auto; font-size:9px; letter-spacing:.08em; }
+.crm-platinum-sidebar button:hover { background:#1d1d1b; }
+.crm-platinum-sidebar button[aria-current=page] { background:#fbfbfa; color:#0b0b0b; }
+.crm-platinum-sidebar-actions { display:grid; gap:5px; border-top:1px solid #343330; padding-top:16px; margin-top:25px; }
+.crm-platinum-sidebar button:disabled { opacity:.5; cursor:wait; }
+.crm-platinum-main { min-width:0; }
+.crm-platinum-topbar { min-height:58px; padding:16px 28px; display:flex; justify-content:space-between; align-items:center; gap:16px; background:#1d1d1b; border-bottom:1px solid #343330; color:#b8b6ae; font-size:12px; overflow-wrap:anywhere; }
+.crm-platinum-content { padding:28px; min-width:0; }
+.crm-platinum-content > .crm-alert { color:#e5e4e2; background:#343330; border-color:#7d7a72; }
+/* Existing operational editors keep their established, readable paper surface. */
+.crm-platinum-content > .crm-workspace, .crm-platinum-content > .crm-inline-drill-shell { color:#0b0b0b; background:#fbfbfa; border-radius:12px; padding:20px; }
+.crm-platinum-content > .crm-record-detail { color:#0b0b0b; background:#fbfbfa; border-radius:12px; padding:22px; }
+body.qb-fullscreen .crm-platinum-sidebar, body.qb-fullscreen .crm-platinum-topbar { display:none; }
+body.qb-fullscreen .crm-platinum-shell { display:block; }
+body.qb-fullscreen .crm-platinum-content { padding:0; }
+@media(max-width:900px) { .crm-platinum-shell { grid-template-columns:170px minmax(0,1fr); } .crm-platinum-sidebar { padding:18px 10px; } .crm-platinum-sidebar button { font-size:12px; gap:7px; padding:11px 8px; } .crm-platinum-content { padding:22px 18px; } .crm-platinum-logo { width:118px; } }
+@media(max-width:600px) { .crm-platinum-shell { display:block; } .crm-platinum-sidebar { border-right:0; border-bottom:1px solid #343330; padding:14px; } .crm-platinum-logo { width:92px; margin:0 0 16px; } .crm-platinum-sidebar nav { display:flex; flex-wrap:wrap; gap:6px; } .crm-platinum-sidebar button { width:auto; padding:9px; font-size:12px; } .crm-platinum-sidebar nav svg { width:14px; height:14px; } .crm-platinum-sidebar-actions { display:flex; margin-top:12px; padding-top:10px; } .crm-platinum-topbar { padding:14px 16px; font-size:11px; } .crm-platinum-content { padding:22px 14px; } }
+
+.crm-platinum-sidebar .crm-platinum-menu-toggle { display:none; }
+@media(max-width:600px) {
+  .crm-platinum-sidebar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+  .crm-platinum-logo { width:72px; margin:0 auto 0 0; }
+  .crm-platinum-sidebar .crm-platinum-menu-toggle { display:flex; border:1px solid #343330; }
+  .crm-platinum-sidebar nav, .crm-platinum-sidebar-actions { display:none; }
+  .crm-platinum-sidebar[data-menu-open=true] nav { display:flex; width:100%; }
+  .crm-platinum-sidebar[data-menu-open=true] .crm-platinum-sidebar-actions { display:flex; width:100%; }
+}

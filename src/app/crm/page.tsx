@@ -17,5 +17,5 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
     redirect("/crm/mobile/quotes");
   }
 
-  return <CrmApp initialTab={quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "command"} />;
+  return <CrmApp initialTab={quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "tracking"} />;
 }

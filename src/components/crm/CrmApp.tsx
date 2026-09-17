@@ -1,5 +1,8 @@
 "use client";
 
+import { CrmNavigation, crmNavigation } from "./CrmNavigation";
+import { BackToStatus, JobStatusOverview, OperationsDashboard } from "./OperationsOverview";
+import "./crm-platinum.css";
 import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
@@ -118,7 +121,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "reports" | "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
+type CrmTab = "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -854,7 +857,7 @@ function CollapsiblePanel({
 }
 
 export function CrmApp({
-  initialTab = "command",
+  initialTab = "tracking",
   initialPaymentPerson = "ken",
   loginRedirectPath: loginRedirectPathOverride,
   mode = "full"
@@ -876,6 +879,7 @@ export function CrmApp({
   const [dashboardRefreshError, setDashboardRefreshError] = useState<string | null>(null);
   const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
+  const [trackingDetailId, setTrackingDetailId] = useState<string | null>(null);
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -1261,6 +1265,7 @@ export function CrmApp({
   }
 
   function openTab(tab: CrmTab) {
+    setTrackingDetailId(null);
     if (isKenMode && tab !== "bookkeeping" && tab !== "payoff") {
       setActiveTab("bookkeeping");
       setDrill(null);
@@ -3080,16 +3085,20 @@ export function CrmApp({
   const measureScheduledCount = summary?.measureScheduled || 0;
   const readyToOrderCount = vendorOrderTasks.length;
 
-  const financialViewBlocked=financialUnavailable&&["command","bookkeeping","payments","payoff","customers","jobs","installation"].includes(activeTab);
+  const financialViewBlocked=financialUnavailable&&["tools","command","bookkeeping","payments","payoff","customers","jobs","installation"].includes(activeTab);
   const closedSalesUnavailable = Boolean(dashboardRefreshError);
   const closedWeek = selectedClosedSalesWeek(data?.closedSales, closedSalesStart);
   const effectiveDrill = drill?.metric === "closedSales" && data?.closedSales && closedWeek
     ? buildClosedSalesDrill(closedWeek, jobs, customerFiles, closedSalesUnavailable) : drill;
-  const globalDrill = effectiveDrill && (activeTab !== "command" || effectiveDrill.placement === "summary") ? effectiveDrill : null;
-  const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
+  const globalDrill = effectiveDrill && (activeTab !== "tools" || effectiveDrill.placement === "summary") ? effectiveDrill : null;
+  const commandDrill = activeTab === "tools" && drill?.placement !== "summary" ? drill : null;
 
   return (
-    <div className="crm-app-shell">
+    <div className="crm-app-shell crm-platinum-shell">
+      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void refresh().catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
+      <div className="crm-platinum-main">
+      <header className="crm-platinum-topbar"><span>Workspace / {crmNavigation.find(item => item.id === activeTab)?.label || "CRM"}</span><span>{user?.email}</span></header>
+      <div className="crm-platinum-content">
       {builderQuoteId && session ? (
         builderVersion === "original-v1" ? (
           <OriginalV1QuoteBuilderPanel
@@ -3111,7 +3120,7 @@ export function CrmApp({
       ) : null}
       {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
       {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
-      <header className="crm-topbar">
+      {activeTab === "tools" ? <header className="crm-topbar">
         <div className="crm-logo-lockup">
           <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} />
           <h1 className="crm-visually-hidden">CRM Command</h1>
@@ -3162,7 +3171,7 @@ export function CrmApp({
             onClick={() => openSummaryDrill("measureNeeded")}
           />
         </section>
-      </header>
+      </header> : null}
 
       {closeRatePeriod ? (
         <CloseRateDrilldown
@@ -3198,30 +3207,7 @@ export function CrmApp({
         </p>
       ) : null}
 
-      <nav className="crm-tabs" aria-label="CRM sections">
-        {[
-          ["command", "Command Center"],
-          ["intelligence", "Sales Intelligence"],
-          ["tracking", "Job Tracking"],
-          ["reports", "Operations Reports"],
-          ["quotes", "Quotes"],
-          ["commercial", "Commercial Leads & Estimates"],
-          ["customers", "Customer Files"],
-          ["order-forms", "Order Forms"],
-          ["bookkeeping", "Bookkeeping"],
-          ["payments", "Payables"],
-          ["calendar", "Calendar"]
-        ].map(([tab, label]) => (
-          <button
-            type="button"
-            key={tab}
-            className={activeTab === tab ? "active" : ""}
-            onClick={() => openTab(tab as CrmTab)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+
 
       {globalDrill ? (
         <div className="crm-inline-drill-shell">
@@ -3291,8 +3277,10 @@ export function CrmApp({
 
       {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
       {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
-      {activeTab === "tracking" ? (
-        <JobTrackingWorkspace
+      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview data={dashboardRefreshError ? null : data} busy={busy} onOpen={item => setTrackingDetailId(item.id)} /> : null}
+      {activeTab === "tracking" && trackingDetailId ? (<>
+        <BackToStatus onClick={() => setTrackingDetailId(null)} />
+        <div className="crm-record-detail"><JobTrackingWorkspace focusedItemId={trackingDetailId}
           ownedActions={data?.ownedActions}
           fulfillment={data?.fulfillment} events={events}
           onLoadFulfillmentScope={async quoteId => { if(!session) throw new Error("CRM session required."); const result=await crmFetch<{scope:import("@/lib/crm/fulfillment").FulfillmentScope}>(session,`/api/crm/operations/fulfillment?quoteId=${encodeURIComponent(quoteId)}`);return result.scope; }}
@@ -3315,10 +3303,13 @@ export function CrmApp({
           onStage={saveTrackingStage}
           onSendSquare={sendTrackingSquare}
           onOpenCustomer={openCustomerFile}
-        />
+        /></div></>
       ) : null}
 
-      {activeTab === "command" && !financialViewBlocked ? (
+      {activeTab === "command" && !financialViewBlocked ? <OperationsDashboard data={dashboardRefreshError ? null : data} busy={busy}
+        onOpen={item => { openTab("tracking"); setTrackingDetailId(item.id); }} onStatus={() => openTab("tracking")}
+        onSales={() => openSummaryDrill("closedSales")} onBookkeeping={() => openTab("bookkeeping")} /> : null}
+      {activeTab === "tools" && !financialViewBlocked ? (
         <>
           <CommandDashboard
             jobs={jobs}
@@ -3758,7 +3749,7 @@ export function CrmApp({
         />
       ) : null}
 
-    </div>
+    </div></div></div>
   );
 }
 

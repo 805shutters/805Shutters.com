@@ -1,0 +1,81 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Circle, Search } from "lucide-react";
+import type { CrmDashboardData } from "@/lib/crm/types";
+import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type WorkflowStep } from "@/lib/crm/operations-overview";
+import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
+import styles from "./OperationsOverview.module.css";
+
+function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
+
+type Props = { data: CrmDashboardData | null; busy: boolean; onOpen: (item: JobTrackingViewItem) => void; onStatus?: () => void; onSales?: () => void; onBookkeeping?: () => void };
+export function CompletionMark({ done }: { done: boolean }) {
+  return <span className={`${styles.mark} ${done ? styles.done : ""}`} role="img" aria-label={done ? "Complete" : "Not confirmed"}>{done ? <Check size={17} strokeWidth={3} aria-hidden="true" /> : <Circle size={15} aria-hidden="true" />}</span>;
+}
+function Ring({ value }: { value: number | null }) {
+  return <svg className={styles.ring} viewBox="0 0 48 48" role="img" aria-label={value === null ? "No quoted customers in this period" : `${value.toFixed(1)} percent closed`}><circle cx="24" cy="24" r="20" fill="none" stroke="var(--op-line)" strokeWidth="4" /><circle cx="24" cy="24" r="20" fill="none" stroke="var(--op-silver)" strokeWidth="4" strokeLinecap="round" pathLength="100" strokeDasharray={`${value || 0} 100`} transform="rotate(-90 24 24)" /></svg>;
+}
+export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onBookkeeping }: Props) {
+  const [step, setStep] = useState<WorkflowStep>("ordered");
+  const [metric, setMetric] = useState<"weekly" | "monthly" | "gross" | "cash" | null>(null);
+  const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
+  const metrics = useMemo(() => data ? buildPerformanceMetrics(data) : null, [data]);
+  if (!data || !metrics) return <section className={styles.workspace} role="status">{busy ? "Loading dashboard…" : "Dashboard records are unavailable. Refresh to try again."}</section>;
+  const attention = items.filter(item => !item.archived && (["quote", "sold"].includes(step) || item.sold) && !stepComplete(item, step));
+  const definitions = {
+    weekly: "Customers first sent a quote this week who have a dated sale, divided by all customers first sent a quote this week. Each customer counts once; quote alternatives do not inflate the rate.",
+    monthly: "Customers first sent a quote this month who have a dated sale, divided by all customers first sent a quote this month. Each customer counts once.",
+    gross: "Signed contract value for this week, using the existing signed-sales report. Deposits and balance receipts are reported separately.",
+    cash: "Recorded customer payments received this week, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
+  };
+  const cohort = metric === "weekly" || metric === "monthly" ? metrics[metric] : null;
+  return <section className={styles.workspace} aria-labelledby="operations-dashboard-title" aria-busy={busy}>
+    <header className={styles.heading}><div><h1 id="operations-dashboard-title">Dashboard</h1><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>Week to date · Los Angeles</small></span></header>
+    {data.loadWarnings?.map(warning => <p className={styles.warning} role="status" key={warning}>{warning}</p>)}
+    <div className={styles.metrics}>
+      {(["weekly", "monthly"] as const).map(period => <button type="button" className={styles.metric} key={period} aria-expanded={metric === period} onClick={() => setMetric(metric === period ? null : period)}><span>{period === "weekly" ? "Weekly" : "Monthly"} close rate</span><div><strong>{metrics[period].percent === null ? "—" : `${metrics[period].percent!.toFixed(1)}%`}</strong><Ring value={metrics[period].percent} /></div><small>{metrics[period].sold} sold / {metrics[period].quoted} quoted customers</small><small>{displayDate(period === "weekly" ? metrics.weekStart : metrics.monthStart)} – {displayDate(metrics.today)}</small></button>)}
+      <button type="button" className={styles.metric} aria-expanded={metric === "gross"} onClick={() => setMetric(metric === "gross" ? null : "gross")}><span>Weekly gross sales</span><div><strong>{metrics.grossCents === null ? "Unavailable" : currency(metrics.grossCents / 100)}</strong></div><small>Signed contract value</small><small>{displayDate(metrics.weekStart)} – {displayDate(metrics.today)}</small></button>
+      <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Weekly payments collected</span><div><strong>{currency(metrics.cashCents / 100)}</strong></div><small>Deposits + balances received</small><small>{displayDate(metrics.weekStart)} – {displayDate(metrics.today)}</small></button>
+    </div>
+    {metric && <section className={styles.explanation} aria-live="polite"><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <button type="button" onClick={onSales}>Open signed sales history <ArrowRight size={14} /></button>}{metric === "cash" && <><p>{metrics.receipts.length} dated receipts · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onBookkeeping}>Open payment records <ArrowRight size={14} /></button></>}</section>}
+    <div className={styles.sectionHeading}><h2>Workflow completion</h2><span>Select a step to see what needs attention</span></div>
+    <div className={styles.stages}>{workflowSteps.map(id => { const value = workflowSummary(items, id); return <button key={id} type="button" aria-pressed={step === id} className={styles.stage} onClick={() => setStep(id)}><div><span>{workflowLabels[id]}</span><CompletionMark done={value.total > 0 && value.done === value.total && value.unknown === 0} /></div><strong>{value.done}<small> / {value.total}</small></strong><small>{value.unit}</small><span>{value.total ? `${Math.round(value.done / value.total * 100)}% complete` : "No records"}</span>{value.unknown > 0 && <small>{value.unknown} jobs need product details</small>}</button>; })}</div>
+    <section className={styles.attention} aria-live="polite"><header><div><h2>Needs attention · {workflowLabels[step]}</h2><p>Review the customer record to complete the next step.</p></div><span>{attention.length} jobs</span></header>{attention.length ? attention.map(item => <div className={styles.attentionRow} key={item.source.id}><span className={styles.initials} aria-hidden="true">{item.source.customerName.split(" ").map(part => part[0]).slice(0, 2).join("")}</span><div><strong>{item.source.customerName}</strong><small>{attentionDetail(item, step)}</small></div><button type="button" onClick={() => onOpen(item.source)}>Review job <ArrowRight size={14} /></button></div>) : <p className={styles.empty}><CompletionMark done={true} /> No unfinished jobs in this step.</p>}</section>
+    <footer className={styles.footer}><span>{items.filter(item => !item.archived && item.complete).length} jobs installed and paid</span><button type="button" onClick={onStatus}>Open job status <ArrowRight size={14} /></button></footer>
+  </section>;
+}
+
+function ProductChecks({ item, step }: { item: OperationsItem; step: "ordered" | "shipped" }) {
+  if (!item.products.length) return <><span className={styles.pending}>Product details needed</span>{step === "ordered" && item.source.orderedAt && <small>Job order recorded · Verify product breakdown</small>}</>;
+  return <><small>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionMark done={product[step]} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span></div>)}</>;
+}
+export function JobStatusOverview({ data, busy, onOpen }: Props) {
+  const [filter, setFilter] = useState("active");
+  const [search, setSearch] = useState("");
+  useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
+  const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
+  const visible = items.filter(item => {
+    if (filter === "active" && (item.archived || (item.complete))) return false;
+    if (filter === "completed" && !(item.complete)) return false;
+    if ((filter === "ordered" || filter === "shipped") && (item.archived || !item.sold || stepComplete(item, filter))) return false;
+    return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
+  });
+  return <section className={styles.workspace} aria-labelledby="job-status-title" aria-busy={busy}>
+    <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Open circles = not confirmed</small></span></header>
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
+    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Ordered", "Shipped", "Installed", "Balance paid"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <tr key={item.source.id}>
+      <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button></th>
+      <td data-label="Quote"><CompletionMark done={item.quote} /><small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
+      <td data-label="Sold"><CompletionMark done={item.sold} /></td>
+      <td data-label="Ordered"><ProductChecks item={item} step="ordered" /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" /></td>
+      <td data-label="Installed"><CompletionMark done={item.installed} /><small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
+      <td data-label="Balance paid"><CompletionMark done={item.paid} /><small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
+    </tr>)}</tbody></table>
+    {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
+  </section>;
+}
+
+export function BackToStatus({ onClick }: { onClick: () => void }) { return <button className={styles.back} type="button" onClick={onClick}><ArrowLeft size={16} /> Back to job status</button>; }

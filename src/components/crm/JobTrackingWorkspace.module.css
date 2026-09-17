@@ -194,3 +194,6 @@
 .workspace .search input:focus-visible { outline: none; }
 .workspace .search > svg { flex: 0 0 17px; }
 .workspace .search button { flex: 0 0 32px; width: 32px; min-width: 32px; height: 32px; padding: 6px; align-items: center; justify-content: center; color: #666; }
+
+.workspace[data-focused=true] .summary, .workspace[data-focused=true] .filters, .workspace[data-focused=true] .toolbar, .workspace[data-focused=true] .tableShell { display:none; }
+.workspace[data-focused=true] .cardList { display:grid; grid-template-columns:minmax(0,1fr); }
