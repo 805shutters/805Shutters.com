@@ -7,7 +7,7 @@ import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selected
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
-import { JessicaWorkingRanges } from "@/components/crm/JessicaWorkingRanges";
+import { StaffMonthCalendar } from "./StaffMonthCalendar";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
 
 import { OperationsReports } from "@/components/crm/OperationsReports";
@@ -51,7 +51,6 @@ import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
-import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
@@ -121,7 +120,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
+type CrmTab = "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -285,18 +284,12 @@ type CalendarSlotSelection = {
   availableOwners?: string[];
 };
 type CalendarView = "day" | "week" | "month";
-type CalendarManagementMode = "appointments" | "availability";
 
 const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" }
 ];
-const calendarManagementOptions: Array<{ value: CalendarManagementMode; label: string }> = [
-  { value: "appointments", label: "Appointments" },
-  { value: "availability", label: "Open Times" }
-];
-
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -895,8 +888,6 @@ export function CrmApp({
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
-  const [calendarView, setCalendarView] = useState<CalendarView>("week");
-  const [calendarManagementMode, setCalendarManagementMode] = useState<CalendarManagementMode>("appointments");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
   const [viewingCalendarEvent, setViewingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
@@ -1034,7 +1025,6 @@ export function CrmApp({
 
     if (page.target === "calendar") {
       setActiveTab("calendar");
-      setCalendarManagementMode("appointments");
       const event = events.find((item) => item.id === page.eventId);
       if (event) {
         setCalendarDate(calendarEventDateValue(event));
@@ -3085,7 +3075,7 @@ export function CrmApp({
   const measureScheduledCount = summary?.measureScheduled || 0;
   const readyToOrderCount = vendorOrderTasks.length;
 
-  const financialViewBlocked=financialUnavailable&&["tools","command","bookkeeping","payments","payoff","customers","jobs","installation"].includes(activeTab);
+  const financialViewBlocked=financialUnavailable&&["tools","command","bookkeeping","payments","payoff","customers","jobs"].includes(activeTab);
   const closedSalesUnavailable = Boolean(dashboardRefreshError);
   const closedWeek = selectedClosedSalesWeek(data?.closedSales, closedSalesStart);
   const effectiveDrill = drill?.metric === "closedSales" && data?.closedSales && closedWeek
@@ -3252,8 +3242,6 @@ export function CrmApp({
           onChanged={refresh}
           onOpenCalendarDate={(date) => {
             setCalendarDate(date);
-            setCalendarView("week");
-            setCalendarManagementMode("appointments");
             setActiveTab("calendar");
           }}
           openRequest={quoteWorkspaceOpenRequest}
@@ -3261,7 +3249,6 @@ export function CrmApp({
         />
       ) : null}
 
-      {activeTab === "commercial" && session ? <CommercialWorkspace session={session} /> : null}
 
       {activeTab === "order-forms" && session ? <OrderFormLibrary session={session} /> : null}
 
@@ -3555,17 +3542,6 @@ export function CrmApp({
         />
       ) : null}
 
-      {activeTab === "installation" && !financialViewBlocked ? (
-        <section className="crm-workspace crm-workspace-wide crm-installation-payables-workspace">
-          <InstallationInvoiceInbox
-            invoices={installationInvoiceEmails}
-            rows={rows}
-            onPull={pullInstallationInvoices}
-            onSaveInvoice={saveInstallationInvoiceLedgerItem}
-            busy={busy}
-          />
-        </section>
-      ) : null}
 
       {activeTab === "orders" ? (
         <section className="crm-workspace crm-workspace-wide">
@@ -3675,23 +3651,15 @@ export function CrmApp({
 
       {activeTab === "calendar" && session ? (
         <>
-          <CalendarManagementToggle mode={calendarManagementMode} onModeChange={setCalendarManagementMode} />
-          {calendarManagementMode === "availability" ? (
-            <AvailabilityBoard session={session} events={events} embedded />
-          ) : (
-            <>
-              <CalendarPlanner
-                session={session}
-                events={events}
-                anchorDate={calendarDate}
-                view={calendarView}
-                canOverrideAvailability={isCrmOwnerAdminEmail(user?.email)}
-                onDateChange={setCalendarDate}
-                onViewChange={setCalendarView}
-                onSelectSlot={setSelectedCalendarSlot}
-                onRescheduleEvent={rescheduleCalendarEvent}
-                onOpenEvent={setViewingCalendarEvent}
-              />
+          <StaffMonthCalendar
+            session={session}
+            events={events}
+            jobs={jobs}
+            anchorDate={calendarDate}
+            onDateChange={setCalendarDate}
+            onSelectSlot={setSelectedCalendarSlot}
+            onOpenEvent={setViewingCalendarEvent}
+          />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
                   busy={busy}
@@ -3731,8 +3699,6 @@ export function CrmApp({
                   onConfirm={cancelCalendarEvent}
                 />
               ) : null}
-            </>
-          )}
         </>
       ) : null}
 
@@ -3750,32 +3716,6 @@ export function CrmApp({
       ) : null}
 
     </div></div></div>
-  );
-}
-
-function CalendarManagementToggle({
-  mode,
-  onModeChange
-}: {
-  mode: CalendarManagementMode;
-  onModeChange: (mode: CalendarManagementMode) => void;
-}) {
-  return (
-    <div className="crm-calendar-management-bar">
-      <div className="crm-calendar-management-switch" aria-label="Calendar management mode">
-        {calendarManagementOptions.map((option) => (
-          <button
-            type="button"
-            aria-pressed={mode === option.value}
-            className={mode === option.value ? "active" : ""}
-            key={option.value}
-            onClick={() => onModeChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -14053,10 +13993,6 @@ function isSlotBooked(owner: string, date: string, time: string, events: CrmCale
       new Date(event.start_at) < end &&
       new Date(event.end_at) > start
   );
-}
-
-function AvailabilityBoard({session}: {session:Session;events:CrmCalendarEvent[];embedded?:boolean}) {
-  return <JessicaWorkingRanges session={session}/>;
 }
 
 function CalendarPlanner({

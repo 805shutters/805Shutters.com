@@ -55,8 +55,8 @@ export function editableWorkingRanges(slots: CrmAvailabilitySlot[]): Range[] {
     end: losAngelesTimeString(new Date(r.end)),
   }));
 }
-export function JessicaWorkingRanges({ session }: { session: Session }) {
-  const [month, setMonth] = useState(() => losAngelesDateString().slice(0, 7));
+export function JessicaWorkingRanges({ session, initialMonth }: { session: Session; initialMonth?: string }) {
+  const [month, setMonth] = useState(() => initialMonth || losAngelesDateString().slice(0, 7));
   const [ranges, setRanges] = useState<Range[]>([]),
     [revision, setRevision] = useState("");
   const [draft, setDraft] = useState(false),
