@@ -31,18 +31,23 @@ export function weekTimeBounds(events: CrmCalendarEvent[], days: string[]) {
 }
 export function weekDayLayout(events: CrmCalendarEvent[], date: string, bounds: {start:number;end:number}) {
   const ordered = monthDayEvents(events, date).map(event => ({event, ...interval(event,date)})).filter(item => item.end > bounds.start && item.start < bounds.end);
-  const result: {event:CrmCalendarEvent;top:number;height:number;lane:number;lanes:number}[] = [];
+  const result: {event:CrmCalendarEvent;top:number;height:number;overlap:boolean}[] = [];
   let group: typeof ordered = [], groupEnd = -1;
   const flush = () => {
-    const lanes: number[] = [];
-    const items = group.map(item => {
-      let lane = lanes.findIndex(end => end <= item.start);
-      if (lane === -1) lane = lanes.length;
-      lanes[lane] = item.end;
-      const start = Math.max(bounds.start,item.start), end = Math.min(bounds.end,item.end);
-      return {event:item.event,lane,top:(start-bounds.start)/(bounds.end-bounds.start)*100,height:(end-start)/(bounds.end-bounds.start)*100};
-    });
-    result.push(...items.map(item=>({...item,lanes:lanes.length})));group=[];
+    if (!group.length) return;
+    // Keep overlapping records visible in separate full-width rows. These are
+    // display positions only: retain the source times and label the conflict.
+    const start = Math.max(bounds.start, group[0].start);
+    const end = Math.min(bounds.end, Math.max(...group.map(item => item.end)));
+    const overlap = group.length > 1;
+    const rowHeight = (end - start) / group.length;
+    result.push(...group.map((item, index) => ({
+      event: item.event,
+      top: (start + index * rowHeight - bounds.start) / (bounds.end - bounds.start) * 100,
+      height: rowHeight / (bounds.end - bounds.start) * 100,
+      overlap,
+    })));
+    group = [];
   };
   for (const item of ordered) {
     if (group.length && item.start >= groupEnd) flush();

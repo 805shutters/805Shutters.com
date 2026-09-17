@@ -56,3 +56,26 @@ export function changeCalendarHour(ranges: CrmAvailabilitySlot[], date: string, 
   }
   return normalizeWorkingRanges(date.slice(0, 7), merged);
 }
+
+// A day toggle opens only the visible unbooked hours. This never creates,
+// moves, or removes appointments, and uses the existing monthly write contract.
+export function calendarDayState(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[]) {
+  const free = minutes.map(minute => calendarHour(date, minute)).filter(slot => !calendarHourOccupied(events, date, slot.startAt, slot.endAt));
+  if (!free.length) return "booked";
+  const states = free.map(slot => calendarHourState(ranges, slot.startAt, slot.endAt));
+  if (states.every(state => state === "available")) return "available";
+  return states.every(state => state === "blocked") ? "blocked" : "partial";
+}
+
+export function changeCalendarDayHours(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[]) {
+  if (ranges.some(range => range.status === "draft")) throw new Error("Review unpublished working hours before changing a day.");
+  let next = ranges;
+  for (const minute of minutes) {
+    const slot = calendarHour(date, minute);
+    if (calendarHourOccupied(events, date, slot.startAt, slot.endAt)) continue;
+    next = changeCalendarHour(next, date, minute, true).map((range, index) => ({
+      ...range, id: `calendar-hour-${index}`, owner: "Jessica", status: "available", source: "crm_working_ranges",
+    } as CrmAvailabilitySlot));
+  }
+  return next.filter(range => publishedCalendarRanges([range]).length).map(({ start_at, end_at }) => ({ start_at, end_at }));
+}

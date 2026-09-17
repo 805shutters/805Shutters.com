@@ -9,7 +9,17 @@ describe("weekly staff calendar",()=>{
   it("moves by calendar weeks across daylight saving boundaries",()=>{expect(shiftCalendarWeek('2026-11-01',1)).toBe('2026-11-08');expect(shiftCalendarWeek('2026-03-08',-1)).toBe('2026-03-01');});
   it("places appointments by Pacific time and separates overlaps within each day",()=>{
     const events=[event('a','2026-09-18T16:00:00Z','2026-09-18T17:00:00Z'),event('b','2026-09-18T16:30:00Z','2026-09-18T17:30:00Z'),event('c','2026-09-18T18:00:00Z','2026-09-18T19:00:00Z')];
-    const layout=weekDayLayout(events,'2026-09-18',{start:480,end:1080});expect(layout.map(({top,height,lane,lanes})=>({top,height,lane,lanes}))).toEqual([{top:10,height:10,lane:0,lanes:2},{top:15,height:10,lane:1,lanes:2},{top:30,height:10,lane:0,lanes:1}]);
+    const layout=weekDayLayout(events,'2026-09-18',{start:480,end:1080});expect(layout.map(({top,height,overlap})=>({top,height,overlap}))).toEqual([{top:10,height:7.5,overlap:true},{top:17.5,height:7.5,overlap:true},{top:30,height:10,overlap:false}]);
+  });
+  it("keeps identical and chained overlaps in distinct rows without changing scheduled times",()=>{
+    const events=[event('a','2026-09-18T16:00:00Z','2026-09-18T17:00:00Z'),event('b','2026-09-18T16:00:00Z','2026-09-18T17:00:00Z'),event('c','2026-09-18T16:30:00Z','2026-09-18T18:00:00Z'),event('d','2026-09-18T18:00:00Z','2026-09-18T19:00:00Z')];
+    const original=JSON.stringify(events);
+    const layout=weekDayLayout(events,'2026-09-18',{start:480,end:1080});
+    expect(layout).toHaveLength(4);
+    for(let i=1;i<layout.length;i++) expect(layout[i].top).toBeGreaterThanOrEqual(layout[i-1].top+layout[i-1].height-0.00001);
+    expect(layout.map(item=>item.overlap)).toEqual([true,true,true,false]);
+    expect(JSON.stringify(events)).toBe(original);
+    expect(layout[3].top).toBe(30);
   });
   it("includes early and late appointments without expanding for all-day blocks",()=>{
     const days=weekCalendarDays('2026-09-18');const events=[event('early','2026-09-18T13:30:00Z','2026-09-18T14:30:00Z'),event('late','2026-09-19T02:00:00Z','2026-09-19T03:00:00Z'),event('all','2026-09-18T07:00:00Z','2026-09-19T07:00:00Z')];expect(weekTimeBounds(events,days)).toEqual({start:360,end:1200});

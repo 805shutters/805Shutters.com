@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseSlotReason, zonedTimeToUtc } from "@/lib/booking/availability";
-import { calendarHour, calendarHourOccupied, calendarHourState, changeCalendarHour } from "./staff-calendar-slots";
+import { calendarHour, calendarHourOccupied, calendarHourState, changeCalendarHour, calendarDayState, changeCalendarDayHours } from "./staff-calendar-slots";
 import type { CrmAvailabilitySlot, CrmCalendarEvent } from "./types";
 
 const date = "2035-10-01";
@@ -70,5 +70,32 @@ describe("hourly staff calendar controls", () => {
     expect(() => changeCalendarHour([{ ...range("09:00", "10:00"), status: "draft" }], date, 600, true)).toThrow(/unpublished/);
     expect(() => calendarHour(date, 570)).toThrow(/hourly/);
     expect(() => changeCalendarHour([range("09:00", "10:00", "2035-11-01")], date, 600, true)).toThrow(/selected month/);
+  });
+});
+
+
+describe("minimal calendar day availability", () => {
+  const hours = [480,540,600,660];
+  it("defaults unpublished hours to blocked and reflects existing saved availability", () => {
+    expect(calendarDayState([], [], date, hours)).toBe("blocked");
+    expect(calendarDayState([range("09:00","10:00")], [], date, hours)).toBe("partial");
+    expect(calendarDayState([range("08:00","12:00")], [], date, hours)).toBe("available");
+  });
+  it("opens only displayed unbooked hours and preserves other dates", () => {
+    const original=[range("14:00","15:00","2035-10-02")];
+    const appts=[event("09:30","10:30")];
+    const before=JSON.stringify(appts);
+    const next=changeCalendarDayHours(original,appts,date,hours);
+    expect(next).toEqual([{start_at:at("08:00"),end_at:at("09:00")},{start_at:at("11:00"),end_at:at("12:00")},{start_at:at("14:00","2035-10-02"),end_at:at("15:00","2035-10-02")}]);
+    expect(calendarDayState(asSlots(next),appts,date,hours)).toBe("available");
+    expect(JSON.stringify(appts)).toBe(before);
+  });
+  it("does not treat an entirely occupied day as publicly available", () => {
+    expect(calendarDayState([], [event("08:00","12:00")], date,hours)).toBe("booked");
+    expect(changeCalendarDayHours([], [event("08:00","12:00")], date,hours)).toEqual([]);
+  });
+  it("does not publish drafts or expand a partial hour until explicitly toggled", () => {
+    expect(calendarDayState([range("08:30","09:00")],[],date,hours)).toBe("partial");
+    expect(()=>changeCalendarDayHours([{...range("08:00","09:00"),status:"draft"}],[],date,hours)).toThrow(/unpublished/);
   });
 });
