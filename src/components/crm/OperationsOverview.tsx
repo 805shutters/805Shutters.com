@@ -49,6 +49,8 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
   </section>;
 }
 
+const statusColumns = ["Customer", "Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid", "Cost of goods"];
+
 type WorkflowActionStep = WorkflowStep | "deposit";
 export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => Promise<string | void>;
 function CompletionButton({ done, label, disabled, saving, onClick }: { done: boolean; label: string; disabled: boolean; saving?: boolean; onClick: () => void }) {
@@ -68,9 +70,11 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: 
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [feedbackId, setFeedbackId] = useState<string | null>(null);
   const lock = useRef(false);
   async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
     if (lock.current || busy) return;
+    setFeedbackId(item.source.id);
     lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
     try { const message = await onAction(item, step, product); if (message) setNotice(message); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Update failed. Refresh and try again."); }
@@ -96,12 +100,11 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: 
     <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Click a circle to update</small></span></header>
     <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
-    {error && <p className={styles.warning} role="alert">{error}</p>}{notice && <p className={styles.warning} role="status">{notice}</p>}
-    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid", "Cost of goods"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <Fragment key={item.source.id}><tr>
-      <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div></th>
+    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{statusColumns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map((item, index) => <Fragment key={item.source.id}>{index > 0 && <tr className={styles.repeatHeader} aria-hidden="true">{statusColumns.map(label => <td key={label}>{label}</td>)}</tr>}<tr>
+      <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div>{feedbackId === item.source.id && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{error || notice}</p>}</th>
       <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
       <td data-label="Sold">{mark(item, "sold")}</td>
-      <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "Required amount unknown" : `${currency(item.source.depositRequired)} required`}</small><small>{item.source.depositReceived === null ? "Received amount unknown" : `${currency(item.source.depositReceived)} received`}</small></td>
+      <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "—" : currency(item.source.depositRequired)}</small></td>
       <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
       <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
       <td data-label="Balance paid">{mark(item, "paid")}<small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>

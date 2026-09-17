@@ -8,14 +8,36 @@ type Input = { step: "ordered" | "shipped"; records: { id: string; updatedAt: st
 export function parseProductCompletion(value: unknown): Input {
   const body = value as Partial<Input> | null;
   if (!body || !["ordered", "shipped"].includes(body.step || "") || !Array.isArray(body.records) || !body.records.length || body.records.length > 100) throw new CrmAuthError(400, "Choose a product group and an order or shipment step.");
-  if (body.records.some(record => !record || typeof record.id !== "string" || !uuid.test(record.id) || typeof record.updatedAt !== "string" || !record.updatedAt || !Number.isFinite(Date.parse(record.updatedAt))) || new Set(body.records.map(record => record.id)).size !== body.records.length) throw new CrmAuthError(400, "Refresh to load the original product records.");
+  if (body.records.some(record => !record || typeof record.id !== "string" || !(uuid.test(record.id) || /^job-product-[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i.test(record.id)) || typeof record.updatedAt !== "string" || !record.updatedAt || !Number.isFinite(Date.parse(record.updatedAt))) || new Set(body.records.map(record => record.id)).size !== body.records.length) throw new CrmAuthError(400, "Refresh to load the original product records.");
   for (const key of ["quoteId", "jobId", "bookkeepingEntryId"] as const) if (body[key] !== undefined && (typeof body[key] !== "string" || !uuid.test(body[key]!))) throw new CrmAuthError(400, "An exact CRM source is required.");
   if (!body.quoteId && !body.bookkeepingEntryId && !body.jobId) throw new CrmAuthError(400, "An exact CRM source is required.");
+  const generated = body.records.filter(record => record.id.startsWith("job-product-"));
+  if (generated.length && (body.records.length !== 1 || generated[0].id !== `job-product-${body.jobId}`)) throw new CrmAuthError(400, "Refresh to load the exact linked job.");
   return body as Input;
 }
 
 export async function completeProductMilestone(supabase: SupabaseClient, value: unknown, actor: { email: string; userId?: string }) {
   const input = parseProductCompletion(value);
+  if (input.records[0].id.startsWith("job-product-")) {
+    const { data: job, error: loadError } = await supabase.from("crm_jobs").select("*").eq("id", input.jobId!).maybeSingle();
+    if (loadError) throw new CrmAuthError(502, "The linked job could not be loaded.");
+    if (!job || objectMeta(job.meta).deleted_at) throw new CrmAuthError(404, "The linked job is no longer available.");
+    const meta = objectMeta(job.meta);
+    const productType = job.product_interest || "Window Treatments";
+    const previous = objectMeta(meta.product_workflow_checks);
+    const checks = previous.product_type === productType ? previous : {};
+    if (objectMeta(checks[input.step]).at) return { recorded: true, step: input.step, productIds: [input.records[0].id] };
+    if (job.updated_at !== input.records[0].updatedAt) throw new CrmAuthError(409, "This job changed. Refresh before trying again.");
+    if (input.step === "ordered") {
+      const measure = getMeasureNeededMeta(meta);
+      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") throw new CrmAuthError(409, "Submit the required technical measure before marking this product ordered.");
+    }
+    const at = new Date().toISOString();
+    const next = { ...meta, product_workflow_checks: { ...checks, product_type: productType, [input.step]: { at, by: actor.email, user_id: actor.userId || null, source: "staff_job_status" } } };
+    const { data: saved, error: saveError } = await supabase.from("crm_jobs").update({ meta: next }).eq("id", job.id).eq("updated_at", job.updated_at).select("id").maybeSingle();
+    if (saveError || !saved) throw new CrmAuthError(409, "The job changed before the check could be saved. Refresh and try again.");
+    return { recorded: true, step: input.step, productIds: [input.records[0].id] };
+  }
   const { data, error } = await supabase.from("crm_customer_products").select("*").in("id", input.records.map(record => record.id));
   if (error) throw new CrmAuthError(502, "Product records could not be loaded.");
   const products = (data || []) as CrmCustomerProduct[];

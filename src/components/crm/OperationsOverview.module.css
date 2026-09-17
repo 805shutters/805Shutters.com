@@ -53,7 +53,7 @@
 .toolbar label { color:#b8b6ae; width:280px; max-width:100%; display:flex; align-items:center; gap:9px; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:0 12px; min-width:0; }
 .toolbar input { width:100%; min-width:0; max-width:100%; color:#fbfbfa; background:transparent; border:0; padding:12px 0; font-size:13px; }
 .statusTable { width:100%; border-spacing:0; border-collapse:separate; table-layout:fixed; background:#1d1d1b; border:1px solid #343330; border-radius:14px; overflow:hidden; }
-.statusTable thead th { background:#111110; color:#b8b6ae; font-size:13px; padding:18px 14px; text-align:left; font-weight:500; }
+.statusTable thead th { background:#111110; color:#b8b6ae; font-size:11px; padding:7px 14px; text-align:left; font-weight:500; }
 .statusTable thead th:first-child { width:16%; }
 .statusTable thead th:nth-child(2) { width:8%; }
 .statusTable thead th:nth-child(3) { width:6%; }
@@ -112,3 +112,10 @@
 .costForm button[type=submit] { background:#75dfab; color:#102d21; }
 .costForm button:disabled { opacity:.5; }
 .costForm p { font-size:12px; color:#ffcfba; margin:0; }
+
+/* Repeat a slim column key between customer records. */
+.statusTable .repeatHeader > td { background:#111110; color:#b8b6ae; font-size:11px; font-weight:500; line-height:1.4; padding:7px 14px; }
+@media(max-width:1200px) { .statusTable .repeatHeader { display:none; } }
+
+.rowFeedback { color:#d6d5cf; font-size:12px; font-weight:400; line-height:1.5; margin:12px 0 0; }
+.rowFeedback[role=alert] { color:#ffcfba; }

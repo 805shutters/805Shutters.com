@@ -3,6 +3,9 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CrmAuthError, requireCrmUser } from "./auth";
 import { completeProductMilestone, parseProductCompletion } from "./product-completion";
+import { buildCustomerFiles } from "./customer-files";
+import { buildOperationsItems } from "./operations-overview";
+import type { CrmDashboardData, CrmJob } from "./types";
 import { POST } from "@/app/api/crm/operations/product-completion/route";
 
 vi.mock("@/lib/crm/auth", async original => ({ ...await original<typeof import("./auth")>(), requireCrmUser: vi.fn() }));
@@ -82,5 +85,54 @@ describe("staff product completion",()=>{
   it("rejects malformed JSON with 400",async()=>{
     const db=database();vi.mocked(requireCrmUser).mockResolvedValue({supabase:db.client,email:actor.email,user:{id:actor.userId}} as never);
     const response=await POST(new NextRequest("http://localhost/api/crm/operations/product-completion",{method:"POST",body:"{"}));expect(response.status).toBe(400);expect(db.writes).toHaveLength(0);
+  });
+});
+
+
+describe("job-derived product completion", () => {
+  const fallback = { step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp }] };
+  function overview(db: ReturnType<typeof database>) {
+    const jobs = structuredClone(db.tables.crm_jobs) as CrmJob[];
+    const customerFiles = buildCustomerFiles({ jobs, quotes: [], bookkeepingRows: [], customers: [], products: [], contracts: [] });
+    return buildOperationsItems({ jobs, customerFiles, quotes: [], customerProducts: [], bookkeepingRows: [], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData)[0];
+  }
+  function setup() {
+    const db = database();
+    Object.assign(db.tables.crm_jobs[0], { customer_name: "Sample customer", status: "sold", created_at: timestamp, updated_at: timestamp, product_interest: "roller shades, shutters", meta: { keep: true } });
+    return db;
+  }
+  it.each(["ordered", "shipped"])("persists %s for a generated row and rebuilds its green check after reload", async step => {
+    const db = setup();
+    expect(overview(db).products[0]).toMatchObject({ ordered: false, shipped: false });
+    await completeProductMilestone(db.client, { ...fallback, step }, actor);
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].table).toBe("crm_jobs");
+    expect(db.tables.crm_jobs[0].meta.keep).toBe(true);
+    expect(db.tables.crm_jobs[0].status).toBe("sold");
+    expect(overview(db).products[0]).toMatchObject({ [step]: true, [step === "ordered" ? "shipped" : "ordered"]: false });
+    await completeProductMilestone(db.client, { ...fallback, step }, actor);
+    expect(db.writes).toHaveLength(1);
+    db.tables.crm_jobs[0].product_interest = "Blinds";
+    expect(overview(db).products[0]).toMatchObject({ ordered: false, shipped: false });
+  });
+  it("keeps independently saved order and shipment checks", async () => {
+    const db = setup();
+    await completeProductMilestone(db.client, { ...fallback, step: "ordered" }, actor);
+    await completeProductMilestone(db.client, { ...fallback, records: [{ id: fallback.records[0].id, updatedAt: db.tables.crm_jobs[0].updated_at }] }, actor);
+    expect(overview(db).products[0]).toMatchObject({ ordered: true, shipped: true });
+  });
+  it.each(["stale", "deleted", "missing", "write conflict", "measure"])("rejects %s without painting or saving a check", async reason => {
+    const db = setup();
+    if (reason === "stale") db.tables.crm_jobs[0].updated_at = "2026-09-18";
+    if (reason === "deleted") db.tables.crm_jobs[0].meta.deleted_at = timestamp;
+    if (reason === "missing") db.tables.crm_jobs = [];
+    if (reason === "write conflict") db.controls.failId = jobId;
+    if (reason === "measure") db.tables.crm_jobs[0].meta.measure_needed = { status: "needed" };
+    await expect(completeProductMilestone(db.client, { ...fallback, step: reason === "measure" ? "ordered" : "shipped" }, actor)).rejects.toBeInstanceOf(CrmAuthError);
+    expect(db.writes).toHaveLength(0);
+  });
+  it("rejects mismatched and mixed synthetic targets", () => {
+    expect(() => parseProductCompletion({ ...fallback, jobId: quoteId })).toThrow();
+    expect(() => parseProductCompletion({ ...fallback, records: [...fallback.records, input.records[0]] })).toThrow();
   });
 });

@@ -8,6 +8,7 @@ import {
   CrmJobStatus,
   CrmQuote
 } from "@/lib/crm/types";
+import { objectMeta } from "./measure-needed-state";
 import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
 
 // Jobs the customer actually bought — quoted/lost jobs must not count as money
@@ -179,6 +180,8 @@ export function buildCustomerFiles({
 
     if (!file.products.length) {
       for (const job of file.jobs) {
+        const savedChecks = objectMeta(objectMeta(job.meta).product_workflow_checks);
+        const checks = savedChecks.product_type === (job.product_interest || "Window Treatments") ? savedChecks : {};
         pushUnique(file.products, `job-product-${job.id}`, {
           id: `job-product-${job.id}`,
           created_at: job.created_at,
@@ -202,7 +205,7 @@ export function buildCustomerFiles({
           unit_price: Number(job.estimated_total) || 0,
           total_price: Number(job.estimated_total) || 0,
           status: job.status,
-          meta: { source: "crm_job" }
+          meta: { source: "crm_job", ordered_at: objectMeta(checks.ordered).at, shipped_at: objectMeta(checks.shipped).at }
         });
       }
     }
