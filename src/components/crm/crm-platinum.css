@@ -24,7 +24,7 @@
 .crm-platinum-content > .crm-alert { color:#e5e4e2; background:#343330; border-color:#7d7a72; }
 /* Existing operational editors keep their established, readable paper surface. */
 .crm-platinum-content > .crm-workspace, .crm-platinum-content > .crm-inline-drill-shell { color:#0b0b0b; background:#fbfbfa; border-radius:12px; padding:20px; }
-.crm-platinum-content > .crm-record-detail { color:#0b0b0b; background:#fbfbfa; border-radius:12px; padding:22px; }
+.crm-platinum-content > .crm-record-detail { color:#fbfbfa; background:#0b0b0b; min-width:0; }
 body.qb-fullscreen .crm-platinum-sidebar, body.qb-fullscreen .crm-platinum-topbar { display:none; }
 body.qb-fullscreen .crm-platinum-shell { display:block; }
 body.qb-fullscreen .crm-platinum-content { padding:0; }

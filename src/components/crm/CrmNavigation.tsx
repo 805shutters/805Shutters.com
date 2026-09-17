@@ -7,6 +7,7 @@ export const crmNavigation = [
   { id: "tracking", label: "Job status", icon: CircleCheck },
   { id: "command", label: "Dashboard", icon: LayoutDashboard },
   { id: "quotes", label: "Quotes", icon: FileText },
+  { id: "contracts", label: "Contracts", icon: FileText },
   { id: "orders", label: "Orders & shipping", icon: Package },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "bookkeeping", label: "Bookkeeping", icon: Wallet },

@@ -1,5 +1,6 @@
 "use client";
 
+import { ContractsWorkspace } from "./ContractsWorkspace";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
@@ -121,7 +122,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
+type CrmTab = "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -3295,6 +3296,8 @@ export function CrmApp({
       ) : null}
 
 
+      {activeTab === "contracts" ? <ContractsWorkspace data={dashboardRefreshError ? null : data} busy={busy} /> : null}
+
       {activeTab === "order-forms" && session ? <OrderFormLibrary session={session} /> : null}
 
       {activeTab === "intelligence" ? (
@@ -3309,7 +3312,7 @@ export function CrmApp({
 
       {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
       {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
-      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onOpen={item => setTrackingDetailId(item.id)} /> : null}
+      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onSaveCost={saveTrackingField} onOpen={item => setTrackingDetailId(item.id)} /> : null}
       {activeTab === "tracking" && (trackingDetailId || trackingQuickAction) ? (<>
         {trackingDetailId && <BackToStatus onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); }} />}
         <div className={trackingDetailId ? "crm-record-detail" : undefined}><JobTrackingWorkspace focusedItemId={trackingDetailId || trackingQuickAction?.itemId}

@@ -197,3 +197,24 @@
 
 .workspace[data-focused=true] .summary, .workspace[data-focused=true] .filters, .workspace[data-focused=true] .toolbar, .workspace[data-focused=true] .tableShell { display:none; }
 .workspace[data-focused=true] .cardList { display:grid; grid-template-columns:minmax(0,1fr); }
+
+/* The focused customer record follows the CRM home palette. */
+.workspace[data-focused=true] { --ink:#fbfbfa; --muted:#b8b6ae; --line:#3c3b38; --paper:#1e1e1c; color:var(--ink); font-family:var(--crm-ui-font,Arial,sans-serif); }
+.workspace[data-focused=true] .heading { padding:0 0 20px; }
+.workspace[data-focused=true] .heading h2 { font-size:18px; color:#b8b6ae; }
+.workspace[data-focused=true] .eyebrow,.workspace[data-focused=true] .footer { display:none; }
+.workspace[data-focused=true] .heading .secondary { color:#d8d7d1; border-color:#454440; background:#242423; }
+.workspace[data-focused=true] .success { color:#75dfab; background:#1e2822; border-color:#405749; }
+.darkModal { color:#fbfbfa; background:#1e1e1c; border-color:#454440; font-family:var(--crm-ui-font,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif); }
+.darkModal .modalDescription,.darkModal .form p { color:#b8b6ae; }
+.darkModal .form input,.darkModal .form select,.darkModal .form textarea { color:#fbfbfa; background:#111110; border-color:#565650; }
+.darkModal .confirmBox { background:#282826; border-color:#454440; }
+.darkModal .confirmBox>span { color:#b8b6ae; }
+.darkModal .primary { background:#deddd6; border-color:#deddd6; color:#111; }
+.darkModal .secondary,.darkModal .close { background:#30302d; border-color:#565650; color:#e5e4df; }
+.darkModal .modalActions { border-color:#454440; }
+.darkModal .stageChoices label { border-color:#454440; }
+.darkModal .stageChoices label:has(input:checked) { color:#fbfbfa; background:#3b3b37; }
+.darkModal .form .error { color:#ffb6ac; background:#422b29; border-color:#845149; }
+
+.darkModal .form label { color:#deddd7; }

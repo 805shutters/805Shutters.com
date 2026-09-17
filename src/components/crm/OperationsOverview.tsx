@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Circle, LoaderCircle, Search } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search } from "lucide-react";
 import type { CrmDashboardData } from "@/lib/crm/types";
 import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
+import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
+import { InlineJobCost, type SaveJobCost } from "./InlineJobCost";
+import { InlineJobContract } from "./InlineJobContract";
 import styles from "./OperationsOverview.module.css";
 
 function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
@@ -55,7 +58,13 @@ function ProductChecks({ item, step, disabled, pending, onAction }: { item: Oper
   if (!item.products.length) return <><span className={styles.pending}>Product details needed</span>{step === "ordered" && item.source.orderedAt && <small>Job order recorded · Verify product breakdown</small>}</>;
   return <><small>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span></div>)}</>;
 }
-export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { onAction: WorkflowAction }) {
+export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost }) {
+  const [contractId, setContractId] = useState<string | null>(null);
+  const contractButtons = useRef(new Map<string, HTMLButtonElement>());
+  function closeContract() {
+    if (contractId) contractButtons.current.get(contractId)?.focus();
+    setContractId(null);
+  }
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -88,15 +97,16 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
     <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     {error && <p className={styles.warning} role="alert">{error}</p>}{notice && <p className={styles.warning} role="status">{notice}</p>}
-    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <tr key={item.source.id}>
-      <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button></th>
+    <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by customer and product type. Open a job to review its source records.</caption><thead><tr>{["Customer", "Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid", "Cost of goods"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{visible.map(item => <Fragment key={item.source.id}><tr>
+      <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div></th>
       <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
       <td data-label="Sold">{mark(item, "sold")}</td>
       <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "Required amount unknown" : `${currency(item.source.depositRequired)} required`}</small><small>{item.source.depositReceived === null ? "Received amount unknown" : `${currency(item.source.depositReceived)} received`}</small></td>
       <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
       <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
       <td data-label="Balance paid">{mark(item, "paid")}<small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
-    </tr>)}</tbody></table>
+    <td data-label="Cost of goods"><InlineJobCost item={item.source} busy={disabled} onSave={onSaveCost} /></td>
+    </tr>{contractId === item.source.id && <tr className={styles.contractRow}><td colSpan={9} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></td></tr>}</Fragment>)}</tbody></table>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
   </section>;
