@@ -40,3 +40,17 @@ body.qb-fullscreen .crm-platinum-content { padding:0; }
   .crm-platinum-sidebar[data-menu-open=true] nav { display:flex; width:100%; }
   .crm-platinum-sidebar[data-menu-open=true] .crm-platinum-sidebar-actions { display:flex; width:100%; }
 }
+
+/* Calendar focus mode: navigation is available in a modal drawer. */
+.crm-platinum-shell:has(.crm-calendar-menu) { display:block; min-height:100dvh; background:#080808; }
+.crm-platinum-shell:has(.crm-calendar-menu) .crm-platinum-topbar { display:none; }
+.crm-platinum-shell:has(.crm-calendar-menu) .crm-platinum-content { padding:8px; }
+.crm-calendar-menu-open { width:auto; position:absolute; z-index:5; top:12px; left:12px; display:flex; align-items:center; gap:6px; min-height:32px; padding:5px 9px; border:1px solid #454545; border-radius:6px; background:#202020; color:#efefed; font:inherit; font-size:12px; cursor:pointer; }
+.crm-calendar-navigation-dialog { position:fixed; inset:0 auto 0 0; width:min(280px,90vw); max-width:none; height:100dvh; max-height:none; margin:0; padding:0; border:0; border-right:1px solid #454545; background:#0b0b0b; color:#efefed; overflow:auto; }
+.crm-calendar-navigation-dialog::backdrop { background:#0009; }
+.crm-calendar-navigation-dialog .crm-platinum-sidebar { display:block; min-height:100%; border:0; padding:16px; }
+.crm-calendar-navigation-dialog .crm-platinum-logo { width:100px; margin:12px auto 20px; }
+.crm-calendar-navigation-dialog .crm-platinum-sidebar nav,.crm-calendar-navigation-dialog .crm-platinum-sidebar-actions { display:grid; width:100%; }
+.crm-calendar-navigation-dialog .crm-platinum-sidebar button { width:100%; }
+.crm-calendar-navigation-dialog .crm-calendar-menu-close { justify-content:flex-end; }
+@media(max-width:750px) { .crm-calendar-menu-open { padding:5px; left:8px; top:8px; }.crm-calendar-menu-open span { display:none; } }

@@ -8,6 +8,7 @@ import type { CrmAvailabilitySlot, CrmCalendarEvent, CrmJob } from "@/lib/crm/ty
 import { changeCalendarDay, monthAppointmentDetails, monthDayEvents, publishedCalendarRanges } from "@/lib/crm/staff-month-calendar";
 import { calendarHour, calendarHourState, calendarHourOccupied, changeCalendarHour, calendarDayState, changeCalendarDayHours } from "@/lib/crm/staff-calendar-slots";
 import { weekCalendarDays, shiftCalendarWeek, weekTimeBounds, weekDayLayout } from "@/lib/crm/staff-week-calendar";
+import { calendarEventSalePresentation } from "@/lib/crm/calendar-event-sales";
 import { JessicaWorkingRanges } from "./JessicaWorkingRanges";
 import styles from "./StaffWeekCalendar.module.css";
 
@@ -53,7 +54,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   useEffect(() => {
     // Size the grid to the actual remaining viewport, independent of its contents.
     const fit = () => {
-      if (section.current) section.current.style.setProperty("--calendar-height", `${Math.max(160, window.innerHeight - section.current.getBoundingClientRect().top - 16)}px`);
+      if (section.current) section.current.style.setProperty("--calendar-height", `${Math.max(160, window.innerHeight - section.current.getBoundingClientRect().top - 8)}px`);
     };
     fit(); window.addEventListener("resize", fit);
     const observer = new ResizeObserver(fit);
@@ -120,16 +121,16 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12} ${minute < 720 ? "AM" : "PM"}`;
   return <section ref={section} className={styles.calendar} aria-label="Appointment calendar">
     <header className={styles.header}>
-      <div><h1>Calendar</h1><p>Consultations &amp; public booking · Pacific time</p></div>
-      <div className={styles.navigation}><button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, -1))} aria-label="Previous week"><ChevronLeft /></button><h2>{weekLabel}</h2><button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, 1))} aria-label="Next week"><ChevronRight /></button><button type="button" disabled={saving} onClick={() => onDateChange(losAngelesDateString())}>Today</button></div>
+      <div className={styles.navigation}>
+        <button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, -1))} aria-label="Previous week"><ChevronLeft /><span>Last week</span></button>
+        <button type="button" disabled={saving} onClick={() => onDateChange(losAngelesDateString())}>This week</button>
+        <button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, 1))} aria-label="Next week"><span>Next week</span><ChevronRight /></button>
+      </div>
+      <h2 className={styles.weekLabel}>{weekLabel}</h2>
+      <button className={styles.hoursButton} type="button" aria-label="Working hours" disabled={saving || loading} onClick={() => setShowHours(true)}>Working hours</button>
     </header>
-    <div className={styles.toolbar}>
-      <span>One-hour slots · Jessica · Unpublished hours are blocked</span>
-      <button type="button" aria-label="Working hours" disabled={saving || loading} onClick={() => setShowHours(true)}>Working hours</button>
-      <span className={styles.legend}><i /> Available <i /> Blocked <i /> Appointment</span>
-    </div>
-    <div className={styles.status} role={error ? "alert" : "status"}>
-      <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Circle: toggle availability · Slot: book appointment · Day circle: toggle the day’s unbooked hours.")}</span>
+    <div className={`${styles.status} ${error || hasDrafts ? styles.statusVisible : styles.statusQuiet}`} role={error ? "alert" : "status"}>
+      <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Circle: toggle availability. Slot: book appointment. Day circle: toggle the day’s unbooked hours.")}</span>
       {error && <button type="button" disabled={saving} onClick={() => setReload(value => value + 1)}>Reload calendar</button>}
     </div>
     <div className={styles.weekHeader}>
@@ -162,9 +163,11 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
           })}
           {layout.map(({ event, top, height, overlap }) => {
             const details = monthAppointmentDetails(event, jobs);
+            const sale = calendarEventSalePresentation(event);
+            const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "NOT SOLD" : "";
             const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
-            return <button type="button" key={event.id} className={styles.appointment} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)`, left: 0, width: "100%" }} aria-label={`${details.name}, ${date} ${time}. City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
-              <strong>{details.name}</strong><span className={styles.appointmentTime}>{time}{overlap ? " · Overlap" : ""}</span><span><small>City</small> {details.city}</span><span><small>Product</small> {details.product}</span><span><small>Lead Type</small> {details.leadType}</span>
+            return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)`, left: 0, width: "100%" }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
+              <span className={styles.appointmentTime}>{saleLabel && <b className={styles.saleBadge}>{saleLabel}</b>}{time}{overlap ? " · Overlap" : ""}</span><strong>{details.name}</strong><span><small>City</small> {details.city}</span><span><small>Product</small> {details.product}</span><span><small>Lead Type</small> {details.leadType}</span>
             </button>;
           })}
         </article>;
