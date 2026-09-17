@@ -47,10 +47,9 @@
 .availabilityToggle:hover::before { box-shadow:0 0 0 3px #ffffff12; }
 .hourSlot .availabilityToggle { position:absolute; top:1px; right:2px; z-index:2; }
 .slotStatus { position:absolute; left:9px; bottom:6px; color:#b2dfc5; font-size:10px; pointer-events:none; }
-.appointment { z-index:3; position:absolute; box-sizing:border-box; min-width:0; min-height:0; display:flex; flex-direction:column; justify-content:space-evenly; gap:0; background:#d7d7d2; color:#1e1e1c; border:1px solid #c5c5bf; border-radius:7px; padding:3px 7px; text-align:left; font-size:clamp(8px,1.7cqh,12px)!important; line-height:1.05; overflow:hidden; }
+.appointment { z-index:3; position:absolute; box-sizing:border-box; min-width:0; min-height:0; display:flex; flex-direction:column; justify-content:space-evenly; gap:0; background:#d7d7d2; color:#1e1e1c; border:1px solid #c5c5bf; border-radius:7px; padding:3px 7px; text-align:left; font-size:clamp(8px,calc(100cqh / var(--hour-count) * .17),14px)!important; line-height:1.1; overflow:hidden; }
 .appointment strong,.appointment span { display:block; flex:0 1 auto; min-height:0; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appointment small { font-size:.85em; color:#51514d; }
-.appointmentTime { font-size:.85em; color:#51514d; }
 .blockDay { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:4px; height:28px; color:#efefed; border:1px solid #777; border-radius:5px; background:#292929; font-size:12px!important; }
 .dialog { box-sizing:border-box; width:min(640px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); margin:auto; padding:20px; border:1px solid #484843; border-radius:14px; background:#1d1d1b; color:#fbfbfa; font-family:var(--crm-ui-font,Arial); overflow:auto; }
 .dialog::backdrop { background:#000b; }
@@ -94,7 +93,7 @@
 @media(max-width:400px) { .header { gap:3px; }.navigation { gap:2px; }.navigation svg { width:14px; }.weekLabel { font-size:10px; }.hoursButton { max-width:48px; } }
 
 .appointment[data-sale=sold] { background:#b6e1c7; border-color:#79d7a7; color:#163624; }
-.saleBadge { display:inline; font-size:1em; font-weight:750; margin-right:7px; letter-spacing:.04em; }
+.appointment .saleBadge { font-size:.75em; font-weight:750; letter-spacing:.04em; }
 .appointment[data-sale=sold] .saleBadge { color:#185335; }
 .appointment[data-sale=unsold] { border-left:3px solid #947746; }
 .appointment[data-sale=unsold] .saleBadge { color:#6b4a19; }

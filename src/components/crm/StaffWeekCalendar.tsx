@@ -167,7 +167,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
             const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "NOT SOLD" : "";
             const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
             return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)`, left: 0, width: "100%" }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
-              <span className={styles.appointmentTime}>{saleLabel && <b className={styles.saleBadge}>{saleLabel}</b>}{time}{overlap ? " · Overlap" : ""}</span><strong>{details.name}</strong><span><small>City</small> {details.city}</span><span><small>Product</small> {details.product}</span><span><small>Lead Type</small> {details.leadType}</span>
+              {saleLabel && <span className={styles.saleBadge}>{saleLabel}</span>}<strong>{details.name}</strong><span>{details.city}</span><span>{details.product}</span>
             </button>;
           })}
         </article>;
