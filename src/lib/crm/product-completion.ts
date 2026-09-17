@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
-import { getMeasureNeededMeta, objectMeta } from "./measure-needed-state";
+import { objectMeta } from "./measure-needed-state";
 import type { CrmCustomerProduct } from "./types";
 
 const uuid = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
@@ -28,14 +28,13 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
     const checks = previous.product_type === productType ? previous : {};
     if (objectMeta(checks[input.step]).at) return { recorded: true, step: input.step, productIds: [input.records[0].id] };
     if (job.updated_at !== input.records[0].updatedAt) throw new CrmAuthError(409, "This job changed. Refresh before trying again.");
-    if (input.step === "ordered") {
-      const measure = getMeasureNeededMeta(meta);
-      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") throw new CrmAuthError(409, "Submit the required technical measure before marking this product ordered.");
-    }
+    // Staff are recording an order that already happened. Readiness gates belong
+    // to order submission; recording this fact must not clear or require a measure.
     const at = new Date().toISOString();
     const next = { ...meta, product_workflow_checks: { ...checks, product_type: productType, [input.step]: { at, by: actor.email, user_id: actor.userId || null, source: "staff_job_status" } } };
     const { data: saved, error: saveError } = await supabase.from("crm_jobs").update({ meta: next }).eq("id", job.id).eq("updated_at", job.updated_at).select("id").maybeSingle();
-    if (saveError || !saved) throw new CrmAuthError(409, "The job changed before the check could be saved. Refresh and try again.");
+    if (saveError) throw new CrmAuthError(502, "The manual status could not be saved. Try again.");
+    if (!saved) throw new CrmAuthError(409, "The job changed before the check could be saved. Refresh and try again.");
     return { recorded: true, step: input.step, productIds: [input.records[0].id] };
   }
   const { data, error } = await supabase.from("crm_customer_products").select("*").in("id", input.records.map(record => record.id));
@@ -45,8 +44,8 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
   if (products.some(product => product.bookkeeping_entry_id ? product.bookkeeping_entry_id !== input.bookkeepingEntryId : product.quote_id ? product.quote_id !== input.quoteId : !product.job_id || product.job_id !== input.jobId) || new Set(products.map(product => product.product_type.trim().toLowerCase())).size !== 1) throw new CrmAuthError(409, "These products do not belong to the selected job and product type.");
   const done = (product: CrmCustomerProduct) => input.step === "ordered" ? Boolean(objectMeta(product.meta).ordered_at || product.status?.toLowerCase() === "ordered") : Boolean(objectMeta(product.meta).shipped_at || objectMeta(product.meta).received_at || ["shipped", "received", "delivered"].includes((product.status || "").toLowerCase()));
   for (const product of products) if (!done(product) && product.updated_at !== input.records.find(record => record.id === product.id)!.updatedAt) throw new CrmAuthError(409, "This product changed. Refresh before trying again.");
-  // Resolve parent links as well as product.job_id so imported product rows
-  // cannot bypass an outstanding technical measure on their quote's job.
+  // Verify linked records without applying order-submission prerequisites.
+  // A manual completion records an existing order; it does not place one.
   if (input.step === "ordered") {
     const jobIds = new Set<string>();
     const quoteIds = new Set<string>();
@@ -71,9 +70,7 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
       if (quote.job_id) jobIds.add(quote.job_id);
     }
     for (const id of jobIds) {
-      const job = await parent("crm_jobs", id);
-      const measure = getMeasureNeededMeta(job.meta);
-      if (measure.status === "needed" || measure.form_status === "draft" || measure.form_status === "awaiting_signature") throw new CrmAuthError(409, "Submit the required technical measure before marking this product ordered.");
+      await parent("crm_jobs", id);
     }
   }
   const at = new Date().toISOString();
@@ -82,7 +79,8 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
     const meta = objectMeta(product.meta);
     const next = { ...meta, [`${input.step}_at`]: at, workflow_checks: { ...objectMeta(meta.workflow_checks), [input.step]: { at, by: actor.email, user_id: actor.userId || null, source: "staff_job_status" } } };
     const { data: saved, error: saveError } = await supabase.from("crm_customer_products").update({ meta: next }).eq("id", product.id).eq("updated_at", product.updated_at).select("id").maybeSingle();
-    if (saveError || !saved) throw new CrmAuthError(409, "Not all products could be saved. Refresh to see any completed updates before retrying.");
+    if (saveError) throw new CrmAuthError(502, "The manual status could not be saved. Refresh to see any completed updates before retrying.");
+    if (!saved) throw new CrmAuthError(409, "Not all products could be saved. Refresh to see any completed updates before retrying.");
   }
   return { recorded: true, step: input.step, productIds: products.map(product => product.id) };
 }

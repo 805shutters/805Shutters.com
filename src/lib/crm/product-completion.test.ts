@@ -66,11 +66,14 @@ describe("staff product completion",()=>{
     if(reason==="entry precedence")product.bookkeeping_entry_id=entryId;
     await expect(completeProductMilestone(db.client,input,actor)).rejects.toBeInstanceOf(CrmAuthError);expect(db.writes).toHaveLength(0);
   });
-  it.each(["direct","quote","ledger"])("enforces the technical-measure guard through %s links",async link=>{
+  it.each(["direct","quote","ledger"])("records an already placed order through %s links without changing outstanding prerequisites",async link=>{
     const db=database();db.tables.crm_jobs[0].meta={measure_needed:{status:"needed",form_status:"awaiting_signature"}};
     if(link!=="direct")for(const product of db.tables.crm_customer_products)product.job_id=null;
     if(link==="ledger")for(const product of db.tables.crm_customer_products){product.quote_id=null;product.bookkeeping_entry_id=entryId;}
-    await expect(completeProductMilestone(db.client,{...input,bookkeepingEntryId:link==="ledger"?entryId:undefined},actor)).rejects.toThrow("technical measure");expect(db.writes).toHaveLength(0);
+    await completeProductMilestone(db.client,{...input,bookkeepingEntryId:link==="ledger"?entryId:undefined},actor);
+    expect(db.writes).toHaveLength(2);
+    expect(db.tables.crm_jobs[0].meta.measure_needed).toEqual({status:"needed",form_status:"awaiting_signature"});
+    expect(db.tables.crm_customer_products.every(p=>p.meta.ordered_at)).toBe(true);
   });
   it("reports partial write failures and retries only unfinished records",async()=>{
     const db=database();db.controls.failId=p2;
@@ -115,20 +118,30 @@ describe("job-derived product completion", () => {
     db.tables.crm_jobs[0].product_interest = "Blinds";
     expect(overview(db).products[0]).toMatchObject({ ordered: false, shipped: false });
   });
+  it.each(["needed", "draft", "awaiting_signature"])("records manual order with a %s measure and retains its reminder", async state => {
+    const db = setup();
+    const measure = { status: "needed", form_status: state };
+    db.tables.crm_jobs[0].meta.measure_needed = measure;
+    db.tables.crm_jobs[0].deposit_paid = 0;
+    await completeProductMilestone(db.client, { ...fallback, step: "ordered" }, actor);
+    expect(overview(db).products[0]).toMatchObject({ ordered: true, shipped: false });
+    expect(db.tables.crm_jobs[0].meta.measure_needed).toEqual(measure);
+    expect(db.tables.crm_jobs[0].deposit_paid).toBe(0);
+    expect(db.tables.crm_jobs[0].status).toBe("sold");
+  });
   it("keeps independently saved order and shipment checks", async () => {
     const db = setup();
     await completeProductMilestone(db.client, { ...fallback, step: "ordered" }, actor);
     await completeProductMilestone(db.client, { ...fallback, records: [{ id: fallback.records[0].id, updatedAt: db.tables.crm_jobs[0].updated_at }] }, actor);
     expect(overview(db).products[0]).toMatchObject({ ordered: true, shipped: true });
   });
-  it.each(["stale", "deleted", "missing", "write conflict", "measure"])("rejects %s without painting or saving a check", async reason => {
+  it.each(["stale", "deleted", "missing", "write conflict"])("rejects %s without painting or saving a check", async reason => {
     const db = setup();
     if (reason === "stale") db.tables.crm_jobs[0].updated_at = "2026-09-18";
     if (reason === "deleted") db.tables.crm_jobs[0].meta.deleted_at = timestamp;
     if (reason === "missing") db.tables.crm_jobs = [];
     if (reason === "write conflict") db.controls.failId = jobId;
-    if (reason === "measure") db.tables.crm_jobs[0].meta.measure_needed = { status: "needed" };
-    await expect(completeProductMilestone(db.client, { ...fallback, step: reason === "measure" ? "ordered" : "shipped" }, actor)).rejects.toBeInstanceOf(CrmAuthError);
+    await expect(completeProductMilestone(db.client, { ...fallback, step: "shipped" }, actor)).rejects.toBeInstanceOf(CrmAuthError);
     expect(db.writes).toHaveLength(0);
   });
   it("rejects mismatched and mixed synthetic targets", () => {
