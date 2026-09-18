@@ -19,6 +19,10 @@ additional omissions beyond the 61 imported product families.
 - Windsong (8 colors × 2 cell sizes) and Breeze (5 colors × 2 cell sizes) existed
   in source data but could not pass any offered light-control filter. Both editors
   now offer Woven and preserve it when selecting either series.
+- Both editors expose the source's Woven Cordless and Woven Cordless TDBU
+  operating systems for 3/4-inch and 1 1/4-inch single cells. The production
+  check caught these exact system identities missing from the menu; regression
+  coverage now checks offered controls as well as source-to-fabric routes.
 - The 3/4-inch single-cell map omitted the flame-resistant program, hiding 18
   additional color/cell offerings. That source-backed route is restored.
 - All 191 active honeycomb colors, spanning 678 supported color/cell combinations,

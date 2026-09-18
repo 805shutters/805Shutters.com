@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { normanHoneycombV2Source } from "@/lib/quote-v2/generated/norman-honeycomb-v2.generated";
 import { expectedHoneycombProgramId, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { priceQuoteV2Selection } from "@/lib/quote-v2/engine";
-import { HONEYCOMB_LIGHT_CONTROL } from "./quoteConstants";
+import { HONEYCOMB_LIGHT_CONTROL, getHoneycombOperatingSystemsFor } from "./quoteConstants";
 import { getMtsProductColorRows } from "./productColorCatalog";
 import { getMtsProductColorRows as getV1Rows } from "@/mts-quote-v1/lib/productColorCatalog";
+import { getHoneycombOperatingSystemsFor as getV1Systems } from "@/mts-quote-v1/lib/quoteConstants";
 
 // Independent input is the manufacturer workbook, not the picker's own list.
 const offerings = normanHoneycombV2Source.activeColors.flatMap(color =>
@@ -12,6 +13,16 @@ const offerings = normanHoneycombV2Source.activeColors.flatMap(color =>
 );
 
 describe("every current Honeycomb workbook offering reaches its correct grid", () => {
+  it("offers the source's Woven systems in both editors only at supported cells", () => {
+    for (const getSystems of [getHoneycombOperatingSystemsFor, getV1Systems]) {
+      for (const cell of ['3/4" Single Cell', '1 1/4" Single Cell']) {
+        expect(getSystems(cell)).toEqual(expect.arrayContaining(["Woven Cordless", "Woven Cordless TDBU"]));
+      }
+      for (const cell of ['9/16" Single Cell', '3/4" Double Cell', "SmartFit with Frame"]) {
+        expect(getSystems(cell).some(system => system.startsWith("Woven"))).toBe(false);
+      }
+    }
+  });
   for (const [engine, rowsFor] of [["current", getMtsProductColorRows], ["v1", getV1Rows]] as const) {
     it(`${engine}: all 191 colors survive an offered light-control filter at every supported cell size`, () => {
       expect(normanHoneycombV2Source.activeColors).toHaveLength(191);
@@ -34,6 +45,7 @@ describe("every current Honeycomb workbook offering reaches its correct grid", (
   }
   it("prices every restored Woven color/cell through authoritative validation", () => {
     for (const {color,cell} of offerings.filter(({color}) => /Windsong|Breeze/.test(color.family))) {
+      expect(getHoneycombOperatingSystemsFor(cell)).toContain("Woven Cordless");
       const programId = expectedHoneycombProgramId(color.family, color.customerColorCode, cell)!;
       const result = priceQuoteV2Selection({
         selection: {manufacturerId:"norman",productId:"honeycomb",programId,

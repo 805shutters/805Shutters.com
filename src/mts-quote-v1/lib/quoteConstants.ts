@@ -1639,13 +1639,18 @@ export const HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS = [
 ] as const;
 
 // SmartFit-with-Frame sizes (Norman "Decoflex") only take the SmartFit
-// family; every other size offers all 14 systems.
+// family; other sizes offer the 14 common systems plus applicable woven profiles.
 export function getHoneycombOperatingSystemsFor(
   cellSize: string | null | undefined
 ): readonly string[] {
-  return isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(cellSize))
-    ? HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS
-    : HONEYCOMB_OPERATING_SYSTEMS;
+  const size = canonicalizeHoneycombCellSize(cellSize);
+  if (isHoneycombFrameCellSize(size)) return HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS;
+  // The source has separate Woven Cordless profiles for these single cells.
+  // Expose their exact identities so V2 never treats a woven shade as SmartRise.
+  if (size === '3/4" Single Cell' || size === '1 1/4" Single Cell') {
+    return [...HONEYCOMB_OPERATING_SYSTEMS, "Woven Cordless", "Woven Cordless TDBU"];
+  }
+  return HONEYCOMB_OPERATING_SYSTEMS;
 }
 
 export function isHoneycombChainOperatingSystem(os: string | null | undefined): boolean {
@@ -1656,6 +1661,8 @@ export function isHoneycombCordlessPoleOperatingSystem(os: string | null | undef
   return Boolean(
     os &&
       (os === "SmartRise Cordless" ||
+        os === "Woven Cordless" ||
+        os === "Woven Cordless TDBU" ||
         os === "Cordless TDBU" ||
         os === "Cordless Day & Night" ||
         os.startsWith("SmartFit"))
@@ -1672,7 +1679,7 @@ export function isHoneycombDayNightOperatingSystem(os: string | null | undefined
 
 // Norman only offers "2 on 1" shades for these systems (live-verified).
 export function honeycombOperatingSystemAllows2On1(os: string | null | undefined): boolean {
-  return os === "SmartRise Cordless" || os === "Cord Loop" || os === "SmartRelease";
+  return os === "SmartRise Cordless" || os === "Woven Cordless" || os === "Cord Loop" || os === "SmartRelease";
 }
 
 // Rail colors from the Norman order form (dplHRFinish, 19 options).
