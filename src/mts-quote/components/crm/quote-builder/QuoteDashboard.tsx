@@ -21,7 +21,7 @@ import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import { loadAllSalesQuotes, searchQuotes } from "@mts/lib/quoteSearch";
-import { createQuoteV2Alternative, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
+import { createQuoteV2Alternative, createQuoteV2Draft, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
@@ -173,6 +173,8 @@ export function QuoteDashboard({
     if (isSearching) setActiveFilter("all");
   }, [isSearching]);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [newNormanQuote, setNewNormanQuote] = useState(false);
+  const normanDraftRequest = useRef<string | null>(null);
   const [portfolioQuote, setPortfolioQuote] = useState<SalesQuote | null>(null);
   const [appointmentQuoteIds, setAppointmentQuoteIds] = useState<Record<string, string>>({});
   const copyQuoteRequests = useRef(new Map<string, string>());
@@ -184,6 +186,7 @@ export function QuoteDashboard({
 
   useEffect(() => {
     if (!newQuoteRequest) return;
+    setNewNormanQuote(false);
     setShowNewQuoteDialog(true);
   }, [newQuoteRequest]);
 
@@ -483,6 +486,23 @@ export function QuoteDashboard({
   // Create new quote
   const createQuote = useMutation({
     mutationFn: async (formData: NewQuoteData) => {
+      if (newNormanQuote) {
+        // The existing server draft path preserves historical quote rows and
+        // guarantees all subsequent selections use server-owned pricing.
+        normanDraftRequest.current ??= quoteV2RequestKey("norman-draft");
+        const created = await createQuoteV2Draft(supabase, {
+          customerName: formData.customerName,
+          customerPhone: formData.customerPhone || null,
+          customerEmail: formData.customerEmail || null,
+          customerAddress: formData.customerAddress || null,
+          idempotencyKey: normanDraftRequest.current,
+        });
+        const { data, error } = await supabase.from("sales_quotes").select("*").eq("id", created.quoteId).single();
+        if (error) throw error;
+        const quote = data as SalesQuote | null;
+        if (quote?.quote_v2_backend !== true) throw new Error("The Norman draft did not retain its server pricing mode.");
+        return quote;
+      }
       const submittedAccountId = quoteOperatorMode ? ACCOUNT_IDS.SHUTTERS_805 : formData.accountId;
       const account = QUOTE_ACCOUNTS.find((a) => a.id === submittedAccountId) || QUOTE_ACCOUNTS[0];
       const { data: session } = await supabase.auth.getSession();
@@ -521,6 +541,7 @@ export function QuoteDashboard({
       setActiveQuote(quote.id);
       setActiveTab("builder");
       setShowNewQuoteDialog(false);
+      normanDraftRequest.current = null;
       toast.success(`Quote ${quote.quote_number} created`);
     },
     onError: (error) => {
@@ -871,7 +892,8 @@ export function QuoteDashboard({
         isFetching={isFetching}
         onRetry={() => void refetch()}
         onOpen={handleOpenQuote}
-        onNewQuote={() => setShowNewQuoteDialog(true)}
+        onNewQuote={() => { setNewNormanQuote(false); setShowNewQuoteDialog(true); }}
+        onNewNormanQuote={() => { setNewNormanQuote(true); normanDraftRequest.current = null; setShowNewQuoteDialog(true); }}
         onOpenTools={() => onOpenQuoteTools?.()}
       /> : <>
 
@@ -983,11 +1005,12 @@ export function QuoteDashboard({
       {/* New Quote Dialog */}
       <NewQuoteDialog
         open={showNewQuoteDialog}
+        title={newNormanQuote ? "New Norman quote" : "New Quote"}
         customers={crmCustomers}
         onClose={() => setShowNewQuoteDialog(false)}
         onSubmit={(data) => createQuote.mutate(data)}
         isPending={createQuote.isPending}
-        accountOptions={visibleAccounts}
+        accountOptions={newNormanQuote ? QUOTE_ACCOUNTS.filter(account => account.id === ACCOUNT_IDS.SHUTTERS_805) : visibleAccounts}
       />
 
       <QuotePortfolioDialog

@@ -1,4 +1,4 @@
-import { CITYLIGHTS_FINISH_BY_CODE } from "@/lib/quote/norman-current-assortment";
+import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS } from "@/lib/quote/norman-current-assortment";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import {
@@ -5061,7 +5061,7 @@ export function DesignCard({
       product_type: lineItem.product_type,
       options_json: {
         ...partnerOptions,
-        ...(lineItem.product_type === "Roman Shades"
+        ...(["Roman Shades", "Mini Blinds", "Wood Blinds"].includes(lineItem.product_type)
           ? { side_by_side: "No" }
           : {}),
         side_by_side_match_line_id: null,
@@ -5115,7 +5115,7 @@ export function DesignCard({
       clearReciprocalSideBySidePartner(targetPreviousPartner, target.lineId);
     }
 
-    const romanPair = lineItem.product_type === "Roman Shades";
+    const romanPair = ["Roman Shades", "Mini Blinds", "Wood Blinds"].includes(lineItem.product_type);
     const defaultPosition =
       lineItem.product_type === "Honeycomb Shades" ? "Left Shade" : null;
     const sourcePosition =
@@ -8625,7 +8625,7 @@ function ShadesAndBlindsOptions({
 
     if (
       authoritativeV2 &&
-      productType === "Roman Shades" &&
+      ["Roman Shades", "Mini Blinds", "Wood Blinds"].includes(productType) &&
       field === "json:side_by_side"
     ) {
       const enabled = value === "Yes" || value === true;
@@ -10022,7 +10022,7 @@ function ShadesAndBlindsOptions({
           { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount"] },
           { key: "depth", label: "Shelf Depth", field: "json:shelf_depth", type: "number", min: 2, max: 4, step: "0.125", unit: "in" },
           { key: "product", label: "Accompanying Product", field: "json:accompanying_product_id", type: "select", options: ["none", "honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds", "faux_wood", "smartprivacy_faux", "synchrony_vertical"] },
-          { key: "color", label: "Shelf Color", field: "json:color", type: "select", options: ["Pure White", "Extra White", "Silk White", "Bright White", "Pearl", "Ivory Lace", "Creamy", "Crisp Linen", "Bisque", "String", "Natural Linen", "Chateau Brown", "Sea Mist", "Gray Black", "Aura White", "Ice", "Clay", "Decorator’s White", "Taupe Gray", "Classic Black", "Winchester White", "2010", "Golden Oak", "Goldenrod", "Wenge", "Old Teak", "Black Walnut", "Red Oak", "Rich Walnut", "Auburn", "Matte Black", "Pretzel", "Toffee", "Driftwood", "Sumatra", "Silver Gray", "French Oak", "TS White", "True White", "Chiffon", "Rustic Gray", "Limed White", "Natural"] },
+          { key: "color", label: "Shelf Color", field: "json:color", type: "select", options: PALLADIAN_COLORS },
         ];
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
@@ -11363,6 +11363,7 @@ function ShadesAndBlindsOptions({
       case "Mini Blinds": {
         const slatSize = getFieldValue(design, "json:slat_size");
         return [
+          ...(authoritativeV2 ? [{ key: "side_by_side", label: "Side by Side", field: "json:side_by_side", type: "yes-no" as const, noFirst: true }] : []),
           {
             key: "mount",
             label: "Mount Type",
@@ -11412,6 +11413,7 @@ function ShadesAndBlindsOptions({
 
       case "Wood Blinds":
         return [
+          ...(authoritativeV2 ? [{ key: "side_by_side", label: "Side by Side", field: "json:side_by_side", type: "yes-no" as const, noFirst: true }] : []),
           {
             key: "mount",
             label: "Mount Type",
@@ -11997,6 +11999,7 @@ function ShadesAndBlindsOptions({
   const showSideBySidePairSelector =
     authoritativeV2 &&
     ((productType === "Roman Shades" && romanSideBySideEnabled) ||
+      (["Mini Blinds", "Wood Blinds"].includes(productType) && romanSideBySideEnabled) ||
       (productType === "Honeycomb Shades" &&
       stringOption(optionsJson, "honeycomb_application") === "Side-by-Side") ||
       (productType === "Vertical Blinds" &&

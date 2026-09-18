@@ -476,3 +476,28 @@ describe("Quote V2 cross-line side-by-side rules", () => {
     );
   });
 });
+
+
+describe("current Norman blind side-by-side orders", () => {
+  function pair(productId: string, changes: SelectionRecord = {}): QuoteSelectedDesignLine[] {
+    const c = { side_by_side: true, mount_type: "Inside Mount", slat_size: '1"', fabric_color_code: "7021", light_control: "SmartPrivacy" };
+    return [line("a", productId, {...c, side_by_side_match_line_id:"b"}), line("b", productId, {...c, ...changes, side_by_side_match_line_id:"a"})].map(l => ({...l, selectedDesign: {...l.selectedDesign, catalogAsOf:"2026-09-18"}}));
+  }
+  it.each(["citylights_aluminum", "wood_blinds"])("checks actual measured height and exact finish for %s", product => {
+    expect(validateQuoteSelectionRelationships(pair(product))).toEqual([]);
+    const lines = pair(product);
+    lines[1] = {...lines[1], selectedDesign: {...lines[1].selectedDesign, heightInches:60.0625, configuration: {...lines[1].selectedDesign.configuration, ordered_height:60}}};
+    expect(validateQuoteSelectionRelationships(lines).some(i => i.ruleId.endsWith("match.ordered_height"))).toBe(true);
+    for (const changes of [{fabric_color_code:"7022"}, {mount_type:"Outside Mount"}, {slat_size:'2"'}]) {
+      expect(validateQuoteSelectionRelationships(pair(product, changes)).length).toBeGreaterThan(0);
+    }
+  });
+  it("requires matching one-inch CityLights route types but not wood route settings", () => {
+    expect(validateQuoteSelectionRelationships(pair("citylights_aluminum",{light_control:"Regular Route Holes"})).some(i=>i.ruleId.endsWith("match.light_control"))).toBe(true);
+    expect(validateQuoteSelectionRelationships(pair("wood_blinds",{light_control:null}))).toEqual([]);
+  });
+  it("preserves the pre-effective-date blind rule set", () => {
+    const lines=pair("wood_blinds",{fabric_color_code:"different"}).map(l=>({...l, selectedDesign:{...l.selectedDesign,catalogAsOf:"2026-07-20"}}));
+    expect(validateQuoteSelectionRelationships(lines)).toEqual([]);
+  });
+});

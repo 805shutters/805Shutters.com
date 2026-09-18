@@ -12,9 +12,11 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 - Retain existing catalog IDs. Keep discontinued colors and SmartFold reverse-side image identities readable. CityLights half-inch configurations are discontinued from August 1.
 - SmartFold: 15 ordering fabrics, collection/control-specific appendix limits, Louise cordless height of 72 inches, narrow cordless limits, fold-height constraints, tall-Louise valance requirements, inside-only Light Guard, and three valance price schedules. October-specific motor revision remains date-controlled.
 - SmartDrape: add F1603, F1604 and F1868; route the ten Essentials fabrics to their source grid; enforce motor/stack/mount, pocket, area, left-motor location, wall hardware and keystone conditions. Derive shim quantity by mounting-bracket count, with separate manual/motorized breakpoints. The uncovered motorized center-opening bracket interval over 94¼ through 94½ inches is blocked for manufacturer clarification.
+- New Norman quote: explicit desktop entry point creates a server-owned draft through the existing authenticated API and preserves a stable request key on retries. Existing drafts retain their original pricing mode.
+- CityLights and wood side-by-side pairs: validate reciprocal saved line references, actual ordered height, mount, slat size and exact color code; one-inch CityLights also requires matching route type. Rules are effective-date controlled.
 - CityLights: reconcile 30 one-inch and 22 two-inch colors, derive finish charges from the color code, enforce net dimensions and narrow-blind center tilt, and reject incompatible controls/side brackets.
 - Wood blinds: derive designer/premium charges by code, provide priced Designer Crown/Contempo/Linear valances, and enforce net dimensions and narrow center tilt. Add dealer-guide ND108 Rustic Gray. Retain conflicting legacy ND118 as unavailable for new ordering without rewriting historical quotes.
-- Palladian Shelf: expose the product, validate length/depth/inside mount, and require a linked selected eligible Norman line for the with-product grid.
+- Palladian Shelf: expose the product, require source-listed finish, valid depth and inside mount, and link a selected eligible Norman product across different line families for the with-product grid.
 - Roman: price both common-valance shade widths independently and preserve both motors. Fabric width and manual area checks apply to each shade rather than the whole opening.
 - Shared motorization: derive versioned assembly/accessory records on the server; discard client-supplied allocations; enforce compatible family and panel capacity; charge the panel once across line quantities; reassign its owner when the former owner is removed. Mixed large dual-motor Honeycomb loads remain blocked pending manufacturer guidance.
 - Derive and persist 36W/65W adapter requirements across supported Honeycomb, Roman and SmartFold lines, preserving the narrow dual-motor Honeycomb exception. Unknown DC power-source labels are rejected.
@@ -31,17 +33,19 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 | SmartFold | Multi-shade common-valance model and complete mounting/accessory combinations; current dealer and production comparisons. |
 | PerfectSheer | Motor tube/factory AA-fabric-to-F-color mapping, complete mounting/valance combinations and dealer comparison. |
 | SmartDrape | Complete motor/accessory contract, track extensions and conflicting bracket interval; dealer and production comparison. |
-| CityLights | Complete mounting and side-by-side order constraints; current dealer and production comparison. |
+| CityLights | Complete mounting and multi-blind side-by-side groups beyond pairs; current dealer and production comparison. |
 | Wood Blinds | Common valances, cutouts, keystone locations and complete mounting constraints; account reconciliation of ND108/ND118. |
 | Ultimate Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
-| Palladian Shelf | Complete finish/installation reconciliation and current dealer/production comparison. |
+| Palladian Shelf | Current dealer comparison and production verification of both price schedules and linked product persistence. |
 | Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
 
 ## Evidence and release state
 
-- Full automated suite: 4,224 passed, 28 skipped on September 18; subsequent edits require the release rerun recorded with the release evidence.
+- Follow-up automated suite: 4,231 passed, 28 skipped on September 18. The deployment command repeats required release checks.
+- Initial implementation commit `da2501e9` was pushed and deployed to the 805 Vercel project; canonical production and `805-one.vercel.app` responded successfully.
+- Production verification quote `805-0310` saved and reopened Louise F1709, 36 × 60, cordless, 7-inch fold and 6-inch fabric valance. It exposed the legacy draft route: selection persistence passed, but pricing remained incomplete at $0. This is not verified live pricing.
 - Browser verification uses the real CRM DesignCard in a local fixture. Louise saved/reopened with the same stable identity; SmartDrape F1868 appears; ND108 is selectable and ND118 is disabled. This is local verification, not a saved production quote.
 - Authoritative backend integration tests exercise panel allocation, quantity, removal, overload, Roman component prices and serialization/reopening.
 - Norman's authenticated session expired; the login handoff is pending. No current dealer-price comparison or current account-fee verification is claimed.

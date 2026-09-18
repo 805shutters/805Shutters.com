@@ -17,6 +17,7 @@ interface NewQuoteDialogProps {
   isPending?: boolean;
   accountOptions?: readonly QuoteAccountOption[];
   customers?: CrmCustomer[];
+  title?: string;
 }
 
 export interface NewQuoteData {
@@ -34,6 +35,7 @@ export function NewQuoteDialog({
   isPending,
   accountOptions = QUOTE_ACCOUNTS,
   customers = EMPTY_CUSTOMERS,
+  title = "New Quote",
 }: NewQuoteDialogProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -135,7 +137,7 @@ export function NewQuoteDialog({
       <section className="crm-slot-form-panel">
         <div className="crm-slot-form-head">
           <div>
-            <p className="eyebrow">New Quote</p>
+            <p className="eyebrow">{title}</p>
             <h2 id="nq-modal-title">Customer Details</h2>
           </div>
           <button

@@ -14,6 +14,7 @@ type Props = {
   onRetry: () => void;
   onOpen: (quote: QuoteTableRow) => void;
   onNewQuote: () => void;
+  onNewNormanQuote?: () => void;
   onOpenTools: () => void;
 };
 
@@ -26,7 +27,7 @@ function Status({ quote }: { quote: QuoteTableRow }) {
   </span>;
 }
 
-export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onNewQuote, onOpenTools }: Props) {
+export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onNewQuote, onNewNormanQuote, onOpenTools }: Props) {
   const [filter, setFilter] = useState<StaffQuoteFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -42,6 +43,7 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
       <div><h1>Quotes</h1><p>Prepare, follow up, and close.</p></div>
       <div className={styles.actions}>
         <button type="button" onClick={onOpenTools}>Quote tools</button>
+        {onNewNormanQuote && <button type="button" onClick={onNewNormanQuote}><Plus size={17} /> New Norman quote</button>}
         <button type="button" className={styles.primary} onClick={onNewQuote}><Plus size={17} /> New quote</button>
       </div>
     </header>

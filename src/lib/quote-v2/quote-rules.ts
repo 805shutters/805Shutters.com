@@ -22,7 +22,7 @@ export interface QuoteSelectedDesignLine {
   readonly selectedDesign: SelectionContext;
 }
 
-type RelationshipKind = "roman" | "vertical" | "honeycomb";
+type RelationshipKind = "roman" | "vertical" | "honeycomb" | "citylights" | "wood";
 
 interface MatchField {
   readonly key: string;
@@ -89,8 +89,17 @@ const HONEYCOMB_MATCH_FIELDS: readonly MatchField[] = [
   { key: "cell_size", label: "cell size" },
 ] as const;
 
+const BLIND_MATCH_FIELDS: readonly MatchField[] = [
+  { key: "ordered_height", label: "ordered height" },
+  { key: "mount_type", label: "mount type" },
+  { key: "slat_size", label: "slat size" },
+  { key: "fabric_color_code", label: "exact color code" },
+];
+
 function relationshipKind(context: SelectionContext): RelationshipKind | null {
   const product = normalizeIdentity(context.productId);
+  if (product === "citylights aluminum" && context.catalogAsOf >= "2026-08-01") return "citylights";
+  if (product === "wood blinds" && context.catalogAsOf >= "2026-09-01") return "wood";
   if (product === "roman") return "roman";
   if (product === "synchrony vertical") return "vertical";
   if (product === "honeycomb") return "honeycomb";
@@ -102,6 +111,7 @@ function evidenceValue(
   key: string,
   aliases: readonly string[] = [],
 ): SelectionValue | undefined {
+  if (key === "ordered_height") return context.heightInches;
   for (const candidate of [key, ...aliases]) {
     const configurationValue = context.configuration[candidate];
     if (
@@ -146,6 +156,8 @@ function selectedValue(value: SelectionValue | undefined): SelectionValue {
 }
 
 function sourceFor(kind: RelationshipKind) {
+  if (kind === "citylights") return { sourceId: "norman-citylights-guide-2026-08-01" as SourceManifestId, page: 17 };
+  if (kind === "wood") return { sourceId: "norman-wood-blinds-guide-2026-09-01" as SourceManifestId, page: 18 };
   if (kind === "roman") return ROMAN_SOURCE;
   if (kind === "honeycomb") return HONEYCOMB_SOURCE;
   return VERTICAL_SOURCE;
@@ -328,7 +340,10 @@ function validateMatchingEvidence(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const fields =
-    kind === "roman"
+    kind === "wood" ? BLIND_MATCH_FIELDS : kind === "citylights" ? [
+      ...BLIND_MATCH_FIELDS,
+      ...(normalizeIdentity(evidenceValue(line.selectedDesign, "slat_size")).startsWith("1") ? [{ key: "light_control", label: "slat route type" }] : []),
+    ] : kind === "roman"
       ? ROMAN_MATCH_FIELDS
       : kind === "honeycomb"
         ? HONEYCOMB_MATCH_FIELDS

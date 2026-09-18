@@ -2559,7 +2559,7 @@ export function QuoteBuilder({
                   sideBySideLineOptions={lineItems.flatMap((candidate) => {
                     if (
                       candidate.id === item.id ||
-                      candidate.product_type !== item.product_type
+                      (item.product_type !== "Palladian Shelf" && candidate.product_type !== item.product_type)
                     ) {
                       return [];
                     }

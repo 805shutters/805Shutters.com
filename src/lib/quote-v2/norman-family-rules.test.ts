@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateNormanFamilyRules } from "./norman-family-rules";
 import { quoteV2CatalogVersionFor } from "./catalog";
 import type { SelectionContext } from "./core";
-import { CITYLIGHTS_CURRENT_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
+import { CITYLIGHTS_CURRENT_COLORS, PALLADIAN_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { getMtsProductColorRows } from "@mts/lib/productColorCatalog";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
@@ -63,6 +63,17 @@ describe("Norman current family source rules", () => {
     for(const pid of ["none","faux_wood","smartprivacy_faux","synchrony_vertical"]) {
       expect(rules({...selection("palladian_shelf",36,1.5,{accompanying_product_id:pid}),programId:"palladian_shelf_palladian_shelf_with_product"})).toContain("norman.palladian_shelf.with_product_eligibility");
     }
+  });
+
+  it("requires source-listed Palladian finishes, depth and inside mount", () => {
+    for (const color of PALLADIAN_COLORS) {
+      expect(rules(selection("palladian_shelf",96,1.5,{color,shelf_depth:4,mount_type:"Inside Mount"}))).toEqual([]);
+    }
+    expect(rules(selection("palladian_shelf",96.0625,1.5,{}))).toEqual(expect.arrayContaining([
+      "norman.palladian_shelf.width", "norman.palladian_shelf.depth", "norman.palladian_shelf.mount", "norman.palladian_shelf.color",
+    ]));
+    for (const depth of [1.9375, 4.0625, "invalid"]) expect(rules(selection("palladian_shelf",36,1.5,{shelf_depth:depth}))).toContain("norman.palladian_shelf.depth");
+    expect(rules(selection("palladian_shelf",36,1.5,{shelf_depth:2,color:"Pure White",mount_type:"Semi Inside Mount"}))).toContain("norman.palladian_shelf.mount");
   });
 
   it("charges CityLights finish and wood designer colors from the actual fabric code",()=>{

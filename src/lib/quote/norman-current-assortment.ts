@@ -26,3 +26,6 @@ export const CITYLIGHTS_FINISH_BY_CODE: Readonly<Record<string, string>> = {
 };
 export const WOOD_DESIGNER_CODES = ["ND080", "ND617", "ND053", "ND017", "ND091", "ND246"] as const;
 export const WOOD_PREMIUM_CODES = ["1003", "1501", "1502", "1301", "1109", "1111", "1203", "1204", "1112", "1114"] as const;
+
+// September retail guide, PDF page 37. Preserve the printed 2010 identity.
+export const PALLADIAN_COLORS = ["Pure White", "Extra White", "Silk White", "Bright White", "Pearl", "Ivory Lace", "Creamy", "Crisp Linen", "Bisque", "String", "Natural Linen", "Chateau Brown", "Sea Mist", "Gray Black", "Aura White", "Ice", "Clay", "Decorator’s White", "Taupe Gray", "Classic Black", "Winchester White", "2010", "Golden Oak", "Goldenrod", "Wenge", "Old Teak", "Black Walnut", "Red Oak", "Rich Walnut", "Auburn", "Matte Black", "Pretzel", "Toffee", "Driftwood", "Sumatra", "Silver Gray", "French Oak", "TS White", "True White", "Chiffon", "Rustic Gray", "Limed White", "Natural"] as const;

@@ -1,6 +1,6 @@
 import type { SelectionContext, SelectionValue, ValidationIssue } from "./core";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
-import { citylightsColorSlatSizes, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
+import { citylightsColorSlatSizes, PALLADIAN_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
 
 const normalized = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -129,8 +129,9 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     const source = "norman-retail-guide-2026-09";
     if (w > 96 || w <= 0) add("width", source, 37, "Palladian shelf length cannot exceed 96 inches.");
     const depth = Number(value("shelf_depth"));
-    if (value("shelf_depth") !== undefined && (depth < 2 || depth > 4)) add("depth", source, 37, "Palladian shelf depth must be between 2 and 4 inches.");
-    if (value("mount_type") && !inside) add("mount", source, 37, "Palladian shelves are inside mount only.");
+    if (!Number.isFinite(depth) || depth < 2 || depth > 4) add("depth", source, 37, "Palladian shelf depth must be between 2 and 4 inches.");
+    if (!["inside", "inside_mount", "im", "ib"].includes(text("mount_type"))) add("mount", source, 37, "Palladian shelves are inside mount only.");
+    if (!PALLADIAN_COLORS.some(color => normalized(color) === text("color", "shelf_color"))) add("color", source, 37, "Choose one of the 43 Palladian finishes listed in the September guide.");
     const accompanying = text("accompanying_product_id");
     if (context.programId?.endsWith("_with_product") && (!accompanying || accompanying === "none" || ["faux_wood", "smartprivacy_faux", "synchrony_vertical"].includes(accompanying))) add("with_product_eligibility", source, 37, "The with-product price requires an accompanying eligible Norman product. All faux-wood and Synchrony vertical blinds use the without-product price.");
   }
