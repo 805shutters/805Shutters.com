@@ -1,13 +1,14 @@
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { buildJobTrackingView, type JobTrackingViewItem } from "./job-tracking-view";
 import { objectMeta } from "./measure-needed-state";
+import { wholeJobRecordId, wholeJobWorkflowChecks } from "./whole-job-workflow";
 import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 
 export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed", "paid"] as const;
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
-export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[] };
-export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
+export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[]; wholeJob?: boolean };
+export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
 
 function productProgress(product: CrmCustomerProduct): ProductProgress {
   const meta = objectMeta(product.meta);
@@ -25,6 +26,54 @@ function productProgress(product: CrmCustomerProduct): ProductProgress {
     ordered: Boolean(meta.ordered_at || status === "ordered"),
     shipped: Boolean(meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)),
     installed: Boolean(meta.installed_at || status === "installed")
+  };
+}
+
+function wholeJobProgress(source: JobTrackingViewItem): ProductProgress {
+  const standalone = Boolean(source.row && source.row.source !== "crm_quote");
+  const rowQuoteId = source.row?.source === "crm_quote" ? source.row.quoteId || source.row.id : undefined;
+  const quoteId = source.quote?.id || rowQuoteId;
+  const kind = standalone ? "bookkeeping" : quoteId ? "quote" : "job";
+  const id = standalone ? source.row!.id : quoteId || source.job?.id || source.row?.jobId || source.id;
+  const updatedAt = standalone
+    ? source.row!.sourceUpdatedAt || source.row!.costRecordUpdatedAt
+    : quoteId
+      ? source.quote?.updated_at || (source.row?.source === "crm_quote" ? source.row.sourceUpdatedAt || source.row.costRecordUpdatedAt : undefined)
+      : source.job?.updated_at;
+  const meta = standalone
+    ? source.row!.meta
+    : quoteId
+      ? source.quote?.meta ?? (source.row?.source === "crm_quote" ? source.row.meta : undefined)
+      : source.job?.meta;
+  const checks = wholeJobWorkflowChecks(meta);
+  return {
+    id: wholeJobRecordId(kind, id),
+    name: "Whole job",
+    quantity: null,
+    records: [{ id: wholeJobRecordId(kind, id), updatedAt: updatedAt || "" }],
+    ordered: Boolean(source.orderedAt || objectMeta(checks.ordered).at),
+    shipped: Boolean(objectMeta(checks.shipped).at),
+    installed: false,
+    wholeJob: true
+  };
+}
+
+export function productCompletionSourceLinks(item: OperationsItem, product: ProductProgress) {
+  const source = item.source;
+  const standalone = Boolean(source.row && source.row.source !== "crm_quote");
+  if (product.wholeJob && standalone) {
+    return {
+      ...(source.row!.quoteId ? { quoteId: source.row!.quoteId } : {}),
+      ...(source.row!.jobId ? { jobId: source.row!.jobId } : {}),
+      bookkeepingEntryId: source.row!.id
+    };
+  }
+  const quoteId = source.quote?.id || source.row?.quoteId || (source.row?.source === "crm_quote" ? source.row.id : undefined);
+  const jobId = source.job?.id || source.row?.jobId || source.quote?.job_id;
+  return {
+    ...(quoteId ? { quoteId } : {}),
+    ...(jobId ? { jobId } : {}),
+    ...(standalone ? { bookkeepingEntryId: source.row!.id } : {})
   };
 }
 
@@ -55,7 +104,7 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
       shipped: items.every(item => item.shipped),
       installed: items.every(item => item.installed)
     }));
-    return { source, products: progress, quote: Boolean(source.quote), sold: source.isSale,
+    return { source, products: progress, wholeJob: wholeJobProgress(source), quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
       paid: source.isSale && source.progress.payment === "settled",
       complete: source.progress.stage === "complete",
@@ -64,18 +113,18 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
 }
 
 export function stepComplete(item: OperationsItem, step: WorkflowStep): boolean {
-  return step === "ordered" || step === "shipped" ? item.products.length > 0 && item.products.every(product => product[step]) : item[step];
+  return step === "ordered" || step === "shipped" ? (item.products.length ? item.products.every(product => product[step]) : item.wholeJob[step]) : item[step];
 }
 export function workflowSummary(items: OperationsItem[], step: WorkflowStep) {
   const eligible = items.filter(item => !item.archived && (["quote", "sold"].includes(step) || item.sold));
   if (step === "ordered" || step === "shipped") {
-    const products = eligible.flatMap(item => item.products);
-    return { done: products.filter(product => product[step]).length, total: products.length, unit: "product types", unknown: eligible.filter(item => !item.products.length).length };
+    const checks = eligible.flatMap(item => item.products.length ? item.products : [item.wholeJob]);
+    return { done: checks.filter(check => check[step]).length, total: checks.length, unit: "product groups / jobs", unknown: 0 };
   }
   return { done: eligible.filter(item => stepComplete(item, step)).length, total: eligible.length, unit: "jobs", unknown: 0 };
 }
 export function attentionDetail(item: OperationsItem, step: WorkflowStep) {
-  if (step === "ordered" || step === "shipped") return item.products.length ? item.products.filter(product => !product[step]).map(product => product.name).join(", ") + (step === "ordered" ? " · Order not confirmed" : " · Shipment not confirmed") : "Product breakdown needs review";
+  if (step === "ordered" || step === "shipped") return item.products.length ? item.products.filter(product => !product[step]).map(product => product.name).join(", ") + (step === "ordered" ? " · Order not confirmed" : " · Shipment not confirmed") : step === "ordered" ? "Whole-job order not confirmed" : "Whole-job shipment not confirmed";
   if (step === "quote") return "Quote not recorded";
   if (step === "sold") return "Sale not recorded · Review quote";
   if (step === "installed") return item.source.nextAction || "Installation not confirmed";

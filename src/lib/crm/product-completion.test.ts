@@ -7,7 +7,7 @@ import { CrmAuthError, requireCrmUser } from "./auth";
 import { completeProductMilestone, parseProductCompletion } from "./product-completion";
 import { buildCustomerFiles } from "./customer-files";
 import { buildOperationsItems } from "./operations-overview";
-import type { CrmDashboardData, CrmJob } from "./types";
+import type { CrmBookkeepingRow, CrmDashboardData, CrmJob } from "./types";
 import { POST } from "@/app/api/crm/operations/product-completion/route";
 
 vi.mock("@/lib/crm/auth", async original => ({ ...await original<typeof import("./auth")>(), requireCrmUser: vi.fn() }));
@@ -152,6 +152,75 @@ describe("job-derived product completion", () => {
   });
 });
 
+describe("productless whole-job completion", () => {
+  const quoteFallback = { step: "ordered", quoteId, jobId, records: [{ id: `whole-job-quote-${quoteId}`, updatedAt: timestamp }] };
+  const ledgerFallback = { step: "shipped", bookkeepingEntryId: entryId, jobId, records: [{ id: `whole-job-bookkeeping-${entryId}`, updatedAt: timestamp }] };
+
+  function setup() {
+    const db = database();
+    Object.assign(db.tables.crm_quotes[0], { updated_at: timestamp, customer_name: "Quote customer", status: "sold", sold_at: timestamp, created_at: timestamp, meta: { keep: true } });
+    Object.assign(db.tables.crm_jobs[0], { updated_at: timestamp, created_at: timestamp, customer_name: "Job customer", status: "sold", product_interest: null });
+    Object.assign(db.tables.crm_quote_bookkeeping_entries[0], { updated_at: timestamp, meta: { keep: true } });
+    db.tables.crm_customer_products = [];
+    return db;
+  }
+
+  function quoteOverview(db: ReturnType<typeof database>) {
+    return buildOperationsItems({ jobs: [], customerFiles: [], quotes: structuredClone(db.tables.crm_quotes), customerProducts: [], bookkeepingRows: [], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData);
+  }
+
+  function ledgerOverview(db: ReturnType<typeof database>) {
+    const parent = db.tables.crm_quote_bookkeeping_entries[0];
+    const row = { id: parent.id, costRecordId: parent.id, costRecordUpdatedAt: parent.updated_at, meta: structuredClone(parent.meta), costMeta: structuredClone(parent.meta), source: "manual", quoteId: null, jobId: parent.job_id, customerName: "Ledger customer", soldDate: timestamp, total: 0, depositDue: 0, depositPaid: 0, balancePaid: 0, paidTotal: 0, creditIn: 0, creditOut: 0, cogs: 0, balance: 0, kenCut: 0, kenCutOverride: null, advertisingReserve: 0, mikeProfit: 0 } as unknown as CrmBookkeepingRow;
+    return buildOperationsItems({ jobs: [], customerFiles: [], quotes: [], customerProducts: [], bookkeepingRows: [row], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData)[0];
+  }
+
+  it("does not invent a product type for a productless job", () => {
+    const db = setup();
+    const files = buildCustomerFiles({ jobs: structuredClone(db.tables.crm_jobs) as CrmJob[], quotes: [], bookkeepingRows: [], customers: [], products: [], contracts: [] });
+    expect(files.flatMap(file => file.products)).toEqual([]);
+  });
+
+  it.each(["ordered", "shipped"])("persists a quote-only %s fallback and rebuilds only that circle after reload", async step => {
+    const db = setup();
+    db.tables.crm_quotes.push({ ...structuredClone(db.tables.crm_quotes[0]), id: p1, customer_name: "Sibling quote", meta: {}, job_id: jobId });
+    expect(quoteOverview(db).map(item => item.wholeJob)).toMatchObject([{ ordered: false, shipped: false }, { ordered: false, shipped: false }]);
+    await completeProductMilestone(db.client, { ...quoteFallback, step }, actor);
+    expect(db.writes).toHaveLength(1);
+    expect(db.writes[0].table).toBe("crm_quotes");
+    const reloaded = quoteOverview(db);
+    expect(reloaded.find(item => item.source.quote?.id === quoteId)?.wholeJob).toMatchObject({ [step]: true, [step === "ordered" ? "shipped" : "ordered"]: false });
+    expect(reloaded.find(item => item.source.quote?.id === p1)?.wholeJob).toMatchObject({ ordered: false, shipped: false });
+  });
+
+  it("persists independent ordered and shipped checks on an exact standalone ledger parent and rebuilds both circles", async () => {
+    const db = setup();
+    await completeProductMilestone(db.client, { ...ledgerFallback, step: "ordered" }, actor);
+    await completeProductMilestone(db.client, { ...ledgerFallback, records: [{ ...ledgerFallback.records[0], updatedAt: db.tables.crm_quote_bookkeeping_entries[0].updated_at }] }, actor);
+    expect(db.tables.crm_quote_bookkeeping_entries[0].meta.whole_job_workflow_checks).toMatchObject({ ordered: { by: actor.email }, shipped: { by: actor.email } });
+    expect(db.tables.crm_quotes[0].meta.whole_job_workflow_checks).toBeUndefined();
+    expect(ledgerOverview(db).wholeJob).toMatchObject({ ordered: true, shipped: true });
+  });
+
+  it("rejects an inferred quote ID for a standalone ledger row whose stored quote link is null", async () => {
+    const db = setup();
+    db.tables.crm_quote_bookkeeping_entries[0].quote_id = null;
+    await expect(completeProductMilestone(db.client, { ...ledgerFallback, quoteId }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(db.writes).toHaveLength(0);
+  });
+
+  it.each(["missing", "stale", "wrong parent", "deleted"])("rejects a %s whole-job parent without a write", async reason => {
+    const db = setup();
+    const body: any = structuredClone(quoteFallback);
+    if (reason === "missing") db.tables.crm_quotes = [];
+    if (reason === "stale") body.records[0].updatedAt = "2026-09-15T12:00:00.000Z";
+    if (reason === "wrong parent") body.quoteId = p1;
+    if (reason === "deleted") db.tables.crm_quotes[0].meta.deleted_at = timestamp;
+    await expect(completeProductMilestone(db.client, body, actor)).rejects.toBeInstanceOf(CrmAuthError);
+    expect(db.writes).toHaveLength(0);
+  });
+});
+
 describe('product invoice costs',()=>{
   const invoice={amount:1200,reference:'INV-123',includedInCogs:false,expectedUpdatedAt:timestamp,requestId:'61111111-1111-4111-8111-111111111111'};
   function setupCost(){const db=database();Object.assign(db.tables.crm_quotes[0],{updated_at:timestamp,materials_cost:300});return db;}
@@ -160,6 +229,30 @@ describe('product invoice costs',()=>{
     expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);expect(db.tables.crm_customer_products.every(p=>p.meta.ordered_at)).toBe(true);
     await saveProductOrderCost(db.client,{...input,invoice},actor);expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
     expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta))).toMatchObject([{amount:1200,reference:'INV-123',records:[p1,p2]}]);
+  });
+  it('records an explicit zero-dollar invoice and completes the order',async()=>{
+    const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:0,reference:'NO CHARGE'}},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(300);
+    expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta))).toMatchObject([{amount:0,reference:'NO CHARGE'}]);
+    expect(db.tables.crm_customer_products.every(p=>p.meta.ordered_at)).toBe(true);
+  });
+  it('can retry the same invoice request after a compare-and-set failure',async()=>{
+    const db=setupCost();db.controls.failId=quoteId;
+    await expect(saveProductOrderCost(db.client,{...input,invoice},actor)).rejects.toThrow('job changed');
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(300);
+    db.controls.failId='';
+    await saveProductOrderCost(db.client,{...input,invoice},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
+  });
+  it('rolls up and retries a productless whole-job invoice without double counting',async()=>{
+    const db=setupCost();db.tables.crm_customer_products=[];db.tables.crm_quotes[0].meta={keep:true};
+    const fallback={step:'ordered',quoteId,jobId,records:[{id:`whole-job-quote-${quoteId}`,updatedAt:timestamp}]};
+    await saveProductOrderCost(db.client,{...fallback,invoice},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
+    expect(db.tables.crm_quotes[0].meta.whole_job_workflow_checks.ordered).toMatchObject({by:actor.email});
+    await saveProductOrderCost(db.client,{...fallback,invoice},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
+    expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta))).toMatchObject([{amount:1200,records:[`whole-job-quote-${quoteId}`]}]);
   });
   it('updates existing invoice by the difference and keeps unrelated COGS',async()=>{
     const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice},actor);

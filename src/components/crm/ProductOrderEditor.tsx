@@ -6,7 +6,13 @@ import { orderCostKey, productOrderCosts, allocatedOrderCost, type ProductOrderI
 import type { WorkflowAction } from './OperationsOverview';
 import styles from './OperationsOverview.module.css';
 
-export function orderCostParent(item:OperationsItem) { return item.source.row?.costRecordId ? {meta:item.source.row.costMeta, updated_at:item.source.row.costRecordUpdatedAt} : item.source.quote || item.source.job; }
+export function orderCostParent(item:OperationsItem) {
+  const { row, quote, job } = item.source;
+  if (row?.costRecordId) return {meta:row.costMeta, updated_at:row.costRecordUpdatedAt};
+  if (quote) return quote;
+  if (row?.source === 'crm_quote') return {meta:row.meta, updated_at:row.sourceUpdatedAt};
+  return job;
+}
 export function ProductOrderEditor({item,product,onSave,onClose,orderEmails}:{orderEmails:CrmOrderCogsEmail[];item:OperationsItem;product:ProductProgress;onSave:WorkflowAction;onClose:()=>void}) {
   const parent=orderCostParent(item);const costs=productOrderCosts(parent?.meta);const old=costs[orderCostKey(product.records)];
   const emails=orderEmails.filter(e=>['matched','needs_review'].includes(e.match_status) && e.extracted_order_amount!==null && (item.source.row?.costRecordId && e.matched_bookkeeping_entry_id===item.source.row.costRecordId || item.source.quote && e.matched_quote_id===item.source.quote.id || !item.source.quote && !item.source.row && e.matched_job_id===item.source.job?.id && !e.matched_quote_id && !e.matched_bookkeeping_entry_id));

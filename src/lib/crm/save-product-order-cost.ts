@@ -2,7 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmAuthError } from './auth';
 import { objectMeta } from './measure-needed-state';
 import { allocatedOrderCost, nextProductCogs, orderCostKey, productOrderCosts, type ProductOrderInvoiceInput } from './product-order-cost';
-import { completeProductMilestone, parseProductCompletion } from './product-completion';
+import { completeProductMilestone, loadWholeJobCompletionParent, parseProductCompletion } from './product-completion';
+import { wholeJobWorkflowChecks } from './whole-job-workflow';
 
 const uuid = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
 export async function saveProductOrderCost(db: SupabaseClient, value: unknown, actor: {email:string;userId?:string}) {
@@ -24,7 +25,11 @@ export async function saveProductOrderCost(db: SupabaseClient, value: unknown, a
   const replay = previous?.requestId === invoice.requestId;
   if(replay && (previous.amount!==invoice.amount || previous.reference!==invoice.reference.trim())) throw new CrmAuthError(409,'This request was already saved with different invoice details. Reopen the editor.');
   const generated = input.records[0].id.startsWith('job-product-');
-  if(generated) {
+  const wholeJob = await loadWholeJobCompletionParent(db,input);
+  if(wholeJob) {
+    const alreadyComplete=Boolean(objectMeta(wholeJobWorkflowChecks(wholeJob.row.meta)[input.step]).at);
+    if(!replay && !alreadyComplete && wholeJob.row.updated_at !== input.records[0].updatedAt) throw new CrmAuthError(409,'The source changed. Refresh the job.');
+  } else if(generated) {
     const job = table === 'crm_jobs' ? parent : await load('crm_jobs',input.jobId!);
     if((table !== 'crm_jobs' && parent.job_id !== job.id) || (!replay && job.updated_at !== input.records[0].updatedAt)) throw new CrmAuthError(409,'The product changed. Refresh the job.');
   } else {
@@ -62,7 +67,8 @@ export async function saveProductOrderCost(db: SupabaseClient, value: unknown, a
   }
   // Costs use one compare-and-set on the sale. A partial milestone failure is
   // recoverable: the request id prevents its invoice from being added twice.
-  if(generated && table==='crm_jobs') {
+  const sameCompletionParent = wholeJob ? wholeJob.table===table && wholeJob.target.id===parentId : generated && table==='crm_jobs';
+  if(sameCompletionParent) {
     const fresh = await load(table,parentId); input.records[0].updatedAt=fresh.updated_at;
   }
   await completeProductMilestone(db,input,actor);

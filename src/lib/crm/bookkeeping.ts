@@ -540,6 +540,7 @@ function buildEntryRow(
 
   return {
     id: entry.id,
+    sourceUpdatedAt: entry.updated_at,
     costRecordId: entry.id, costRecordUpdatedAt: entry.updated_at, costMeta: entry.meta,
     meta: entry.meta,
     sourceSoldDate: entry.sold_date,
@@ -668,6 +669,7 @@ function buildQuoteRow(
 
   return {
     id: quote.id,
+    sourceUpdatedAt: quote.updated_at,
     costRecordId: entry?.id, costRecordUpdatedAt: entry?.updated_at, costMeta: entry?.meta,
     meta: quote.meta,
     sourceSoldDate: Object.hasOwn(quote, "source_sold_at")

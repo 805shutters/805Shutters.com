@@ -10,7 +10,7 @@ import appointmentStyles from "./CalendarAppointmentModal.module.css";
 import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
 
-import { buildOperationsItems } from "@/lib/crm/operations-overview";
+import { buildOperationsItems, productCompletionSourceLinks } from "@/lib/crm/operations-overview";
 import { calendarSlotState } from "@/lib/crm/calendar-slot-state";
 import { StaffWeekCalendar } from "./StaffWeekCalendar";
 import { customerProductOrderLabel } from "@/lib/crm/technical-measure-orders";
@@ -1130,10 +1130,10 @@ export function CrmApp({
     if (product[step] && !invoice) { setTrackingDetailId(source.id); return; }
     setBusy(true);
     try {
-      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, invoice, costEntryId: invoice ? source.row?.costRecordId : undefined, records: product.records, quoteId: source.quote?.id || source.row?.quoteId || undefined, jobId: source.job?.id || source.row?.jobId || source.quote?.job_id || undefined, bookkeepingEntryId: source.row && source.row.source !== "crm_quote" ? source.row.id : undefined }) });
+      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, invoice, costEntryId: invoice ? source.row?.costRecordId : undefined, records: product.records, ...productCompletionSourceLinks(item, product) }) });
       const fresh = await refresh();
       const savedItem = fresh && buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id);
-      const saved = savedItem?.products.find(candidate => candidate.id === product.id);
+      const saved = savedItem && (savedItem.products.find(candidate => candidate.id === product.id) || (savedItem.wholeJob.id === product.id ? savedItem.wholeJob : undefined));
       if (invoice && (!savedItem || productOrderCosts(orderCostParent(savedItem)?.meta)[orderCostKey(product.records)]?.amount !== invoice.amount)) throw new Error("Invoice saving could not be verified. Refresh the job before trying again.");
       if (!saved?.[step]) throw new Error("The update was saved but completion could not be verified. Refresh the job before trying again.");
       return `${product.name} marked ${step} for ${source.customerName}.`;

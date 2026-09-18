@@ -180,8 +180,10 @@ export function buildCustomerFiles({
 
     if (!file.products.length) {
       for (const job of file.jobs) {
+        const productType = typeof job.product_interest === "string" ? job.product_interest.trim() : "";
+        if (!productType) continue;
         const savedChecks = objectMeta(objectMeta(job.meta).product_workflow_checks);
-        const checks = savedChecks.product_type === (job.product_interest || "Window Treatments") ? savedChecks : {};
+        const checks = savedChecks.product_type === productType ? savedChecks : {};
         pushUnique(file.products, `job-product-${job.id}`, {
           id: `job-product-${job.id}`,
           created_at: job.created_at,
@@ -191,7 +193,7 @@ export function buildCustomerFiles({
           quote_id: null,
           bookkeeping_entry_id: null,
           room: null,
-          product_type: job.product_interest || "Window Treatments",
+          product_type: productType,
           description: job.notes || job.next_action || null,
           width: null,
           height: null,

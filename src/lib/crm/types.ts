@@ -399,6 +399,8 @@ export type CrmOrderCogsEmail = {
 export type CrmBookkeepingRow = {
   costRecordId?: string;
   costRecordUpdatedAt?: string;
+  /** Updated timestamp of the authoritative quote or ledger source row. */
+  sourceUpdatedAt?: string;
   costMeta?: Record<string, unknown> | null;
   operationalProgress?: JobProgress;
   id: string;
