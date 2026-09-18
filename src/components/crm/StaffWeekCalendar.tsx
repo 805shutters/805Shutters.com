@@ -14,9 +14,9 @@ import styles from "./StaffWeekCalendar.module.css";
 
 type Snapshot = { month: string; revision: string; ranges: CrmAvailabilitySlot[] };
 type Selection = { date: string; time: string; startAt: string; endAt: string; availableOwners?: string[] };
-type Props = { session: Session; events: CrmCalendarEvent[]; jobs: CrmJob[]; anchorDate: string; onDateChange: (date: string) => void; onSelectSlot: (slot: Selection) => void; onOpenEvent: (event: CrmCalendarEvent) => void };
+type Props = { session: Session; events: CrmCalendarEvent[]; jobs: CrmJob[]; anchorDate: string; onDateChange: (date: string) => void; onSelectSlot: (slot: Selection) => void; onOpenEvent: (event: CrmCalendarEvent) => void; onClose: () => void };
 
-export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateChange, onSelectSlot, onOpenEvent }: Props) {
+export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateChange, onSelectSlot, onOpenEvent, onClose }: Props) {
   const month = anchorDate.slice(0, 7);
   const days = weekCalendarDays(anchorDate);
   const week = days[0];
@@ -127,7 +127,10 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
         <button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, 1))} aria-label="Next week"><span>Next week</span><ChevronRight /></button>
       </div>
       <h2 className={styles.weekLabel}>{weekLabel}</h2>
-      <button className={styles.hoursButton} type="button" aria-label="Working hours" disabled={saving || loading} onClick={() => setShowHours(true)}>Working hours</button>
+      <div className={styles.headerActions}>
+        <button className={styles.hoursButton} type="button" aria-label="Working hours" disabled={saving || loading} onClick={() => setShowHours(true)}>Working hours</button>
+        <button className={styles.closeButton} type="button" aria-label="Return to CRM home" title="Return to CRM home" onClick={onClose}><X aria-hidden="true" /></button>
+      </div>
     </header>
     <div className={`${styles.status} ${error || hasDrafts ? styles.statusVisible : styles.statusQuiet}`} role={error ? "alert" : "status"}>
       <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Circle: toggle availability. Slot: book appointment. Day circle: toggle the day’s unbooked hours.")}</span>

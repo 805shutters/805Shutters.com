@@ -3713,6 +3713,7 @@ export function CrmApp({
             onDateChange={setCalendarDate}
             onSelectSlot={setSelectedCalendarSlot}
             onOpenEvent={setViewingCalendarEvent}
+            onClose={() => openTab("tracking")}
           />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
