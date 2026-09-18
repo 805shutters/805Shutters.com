@@ -70,6 +70,8 @@ export async function sendSms(input: {
   to: string | null | undefined;
   body: string;
   statusCallback?: string | null;
+  timeoutMs?: number;
+  rejectRedirects?: boolean;
 }): Promise<SmsResult> {
   const to = toE164(input.to);
   if (!to) return { sent: false, skipped: "invalid or missing destination phone" };
@@ -88,6 +90,8 @@ export async function sendSms(input: {
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: "POST",
+      ...(input.rejectRedirects ? { redirect: "error" as const } : {}),
+      ...(input.timeoutMs ? { signal: AbortSignal.timeout(input.timeoutMs) } : {}),
       headers: {
         Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
         "Content-Type": "application/x-www-form-urlencoded",

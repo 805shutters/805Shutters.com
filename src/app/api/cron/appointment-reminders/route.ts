@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
-import { runDayBeforeAppointmentReminders } from "@/lib/crm/calendar-notifications";
+import { APPOINTMENT_SERVICE, processAppointmentCustomerNotifications } from "@/lib/crm/appointment-customer-delivery";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function requireCronAccess(request: NextRequest) {
-  const secret = process.env.APPOINTMENT_REMINDER_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret) return;
-  if ((request.headers.get("authorization") || "") !== `Bearer ${secret}`) {
+  const secrets = [process.env.APPOINTMENT_REMINDER_CRON_SECRET, process.env.CRON_SECRET].filter(Boolean);
+  if (!secrets.some(secret => request.headers.get("authorization") === `Bearer ${secret}`)) {
     throw new CrmAuthError(401, "Appointment reminder cron is not authorized.");
   }
 }
@@ -18,9 +18,11 @@ async function run(request: NextRequest) {
     requireCronAccess(request);
     const supabase = getSupabaseServiceClient();
     if (!supabase) throw new CrmAuthError(503, "Database is not configured.");
-    return NextResponse.json(await runDayBeforeAppointmentReminders(supabase));
+    const result = await processAppointmentCustomerNotifications(supabase, "reminder", { dryRun: request.nextUrl.searchParams.get("dry_run") === "true" });
+    return NextResponse.json(result, { status: result.status === "failed" ? 503 : 200 });
   } catch (error) {
-    return crmAuthErrorResponse(error);
+    const response = crmAuthErrorResponse(error);
+    return NextResponse.json({ service: APPOINTMENT_SERVICE, status: "failed" }, { status: response.status });
   }
 }
 
