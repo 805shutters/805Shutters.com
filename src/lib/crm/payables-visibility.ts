@@ -69,6 +69,7 @@ export function restrictDashboardPayablesForViewer(data: CrmDashboardData, email
 
   return {
     ...data,
+    ownerPayablesLedger: undefined,
     bookkeepingRows: data.bookkeepingRows.map(sanitizeBookkeepingRow),
     bookkeepingTotals: safeBookkeepingTotals as CrmDashboardData["bookkeepingTotals"],
     customerFiles: data.customerFiles.map((file) => ({

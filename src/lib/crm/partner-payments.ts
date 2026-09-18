@@ -195,10 +195,18 @@ function createEarnedItem({
   };
 }
 
-export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
+export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[], equalOwners = false) {
   const items: EarnedItem[] = [];
 
   for (const row of rows) {
+    if (equalOwners) {
+      const closedAt = paidInFullDate(row);
+      if (closedAt) for (const person of ["ken", "mike", "jessica"] as const) {
+        const item = createEarnedItem({ row, person, amount: partnerPaymentAmountForRow(person, row), closedAt });
+        if (item) items.push(item);
+      }
+      continue;
+    }
     const kenClosedAt = closedKenJobDate(row);
     if (kenClosedAt) {
       const kenItem = createEarnedItem({
@@ -656,15 +664,17 @@ export function buildPartnerPaymentLedger({
   kenPayments,
   commissionPayments,
   kenAllocations = [],
-  commissionAllocations = []
+  commissionAllocations = [],
+  earningsModel
 }: {
   rows: CrmBookkeepingRow[];
   kenPayments: CrmKenPayment[];
   commissionPayments: CrmCommissionPayment[];
   kenAllocations?: CrmKenPaymentAllocation[];
   commissionAllocations?: CrmCommissionPaymentAllocation[];
+  earningsModel?: "equal_owners_v1";
 }): CrmPartnerPaymentLedger {
-  const earnedItems = buildPartnerPaymentEarnedItems(rows);
+  const earnedItems = buildPartnerPaymentEarnedItems(rows, earningsModel === "equal_owners_v1");
   const soldEarningsByPerson = buildSoldEarningsByPerson(rows);
   const workingByPerson: Record<CrmPaymentPerson, WorkingItem[]> = {
     ken: [],

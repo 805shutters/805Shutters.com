@@ -13,6 +13,7 @@ function person(person: "ken" | "mike" | "jessica", amount: number) {
 
 function dashboard() {
   return {
+    ownerPayablesLedger: { privateOwnerLedger: true },
     bookkeepingRows: [{ mikeProfit: 400, remainingProfitBeforeJessica: 500 }],
     bookkeepingTotals: { mikeProfit: 400 },
     customerFiles: [{ bookkeepingRows: [{ mikeProfit: 400, remainingProfitBeforeJessica: 500 }] }],
@@ -49,6 +50,7 @@ describe("payables earnings visibility", () => {
   it("allows a standard CRM user only their own earnings and omits restricted fields", () => {
     const result = restrictDashboardPayablesForViewer(dashboard(), "jessica@805shutters.com");
     expect(result.partnerPaymentLedger.people.jessica.soldEarned).toBe(300);
+    expect(result.ownerPayablesLedger).toBeUndefined();
     expect(result.partnerPaymentLedger.people.mike.earningsAccess).toBe("restricted");
     expect(Object.hasOwn(result.partnerPaymentLedger.people.mike, "soldEarned")).toBe(false);
     expect(Object.hasOwn(result.partnerPaymentLedger.people.mike, "items")).toBe(false);
@@ -71,6 +73,7 @@ describe("payables earnings visibility", () => {
   it("returns no earnings to an unauthenticated or invalid identity", () => {
     for (const email of [null, "invalid@example.com"]) {
       const result = restrictDashboardPayablesForViewer(dashboard(), email);
+      expect(result.ownerPayablesLedger).toBeUndefined();
       expect(Object.values(result.partnerPaymentLedger.people).every((entry) => entry.earningsAccess === "restricted")).toBe(true);
       expect(result.partnerPaymentLedger.activeItems).toEqual([]);
       expect(result.partnerPaymentLedger.history).toEqual([]);

@@ -1,3 +1,4 @@
+import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MODEL } from "./owner-payables";
 import { BookingError, writeCalendarWithRoutes } from "@/lib/booking/scheduling";
 import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
 import {businessEventToActivity} from "./business-events";
@@ -1312,6 +1313,7 @@ export function buildDashboardData({
     commissionPaymentAllocations,
     commissionSummary,
     partnerPaymentLedger,
+    ownerPayablesLedger: buildOwnerPayablesLedger({ rows: bookkeepingRows, kenPayments, commissionPayments, kenAllocations: kenPaymentAllocations, commissionAllocations: commissionPaymentAllocations }),
     accountability: buildAccountabilityQueue(bookkeepingRows),
     vendorOrderTasks: readyToOrderTasks(vendorOrderTasks, liveJobs, liveQuotes, bookkeepingRows),
     summary: buildDashboardSummaryMetrics({
@@ -4767,7 +4769,8 @@ export async function createPartnerPaymentBatch(
     }
   }
   const selectedKeys = selectedPaymentItemKeys(payload);
-  const personLedger = dashboard.partnerPaymentLedger.people[person];
+  const equalOwners = payload.payment_model === OWNER_PAYABLES_MODEL;
+  const personLedger = (equalOwners ? dashboard.ownerPayablesLedger! : dashboard.partnerPaymentLedger).people[person];
   const activeItems = personLedger.activeItems;
   const selectedItemsByKey = new Map<string, CrmPartnerPaymentLedgerItem>();
   const ledgerMatchedKeys = new Set<string>();
@@ -4783,7 +4786,7 @@ export async function createPartnerPaymentBatch(
         ledgerMatchedKeys.add(item.itemKey);
         addSelectedItem(item);
       });
-    dashboard.bookkeepingRows
+    (equalOwners ? [] : dashboard.bookkeepingRows)
       .map((row) => buildUnpaidPartnerPaymentItemForRow(person, row))
       .filter((item): item is CrmPartnerPaymentLedgerItem => Boolean(item))
       .filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
@@ -4800,9 +4803,13 @@ export async function createPartnerPaymentBatch(
   }
 
   const grossPayableAmount = Math.round(selectedItems.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
-  const advanceApplied = resolvePartnerPaymentAdvanceOffset(person, grossPayableAmount, personLedger.advanceBalance);
+  const advanceApplied = equalOwners ? 0 : resolvePartnerPaymentAdvanceOffset(person, grossPayableAmount, personLedger.advanceBalance);
   const payableAmount = Math.round((grossPayableAmount - advanceApplied) * 100) / 100;
-  const amount = resolveFullPartnerPaymentAmount(payload.amount, payableAmount);
+  if (equalOwners && selectedKeys && selectedItems.length !== selectedKeys.size) throw new CrmAuthError(409, "A selected job is no longer payable. Reload Payables.");
+  let amount: number;
+  try {
+    amount = equalOwners ? resolveOwnerPaymentAmount(payload.amount, payableAmount, personLedger.owed) : resolveFullPartnerPaymentAmount(payload.amount, payableAmount);
+  } catch (error) { throw new CrmAuthError(400, error instanceof Error ? error.message : "Invalid amount."); }
   const paidOn = optionalText(payload.paid_on) || selectedItems[0]?.closedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
   const note = optionalText(payload.note);
@@ -4810,7 +4817,7 @@ export async function createPartnerPaymentBatch(
     person,
     paymentId: "00000000-0000-0000-0000-000000000000",
     items: selectedItems,
-    amount: grossPayableAmount,
+    amount: equalOwners ? amount : grossPayableAmount,
     actor
   });
 
@@ -4821,6 +4828,7 @@ export async function createPartnerPaymentBatch(
   const meta = {
     createdBy: actor.email,
     batchSource: "unified_payment_ledger",
+    paymentModel: equalOwners ? OWNER_PAYABLES_MODEL : "legacy",
     kenBuyoutApplied: person === "ken",
     selectedItemCount: selectedItems.length,
     selectedItemKeys: selectedItems.map((item) => item.itemKey),
@@ -4915,7 +4923,7 @@ export async function createPartnerPaymentBatch(
         remainingAfter: refreshedDashboard.kenPayoff.payoffRemaining
       })
     : null;
-  const receiptEmail =
+  const receiptEmail = equalOwners ? undefined :
     !idempotentReplay && (person !== "ken" || reconciliation?.ok)
       ? await sendPartnerPaymentReceiptEmail({
           paymentId: String(payment.id),

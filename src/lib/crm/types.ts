@@ -688,6 +688,7 @@ export type CrmPartnerJobLedgerItem = {
 };
 
 export type CrmPartnerPaymentLedgerItem = {
+  accountCreditApplied?: number;
   id: string;
   itemKey: string;
   person: CrmPaymentPerson;
@@ -954,6 +955,7 @@ export type CrmDashboardData = {
   commissionPaymentAllocations: CrmCommissionPaymentAllocation[];
   commissionSummary: CrmCommissionSummary;
   partnerPaymentLedger: CrmPartnerPaymentLedger;
+  ownerPayablesLedger?: CrmPartnerPaymentLedger;
   fulfillment?: import("./fulfillment").FulfillmentData;
   ownedActions?: import("./owned-actions").OwnedAction[];
   accountability: CrmAccountabilityItem[];
