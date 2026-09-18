@@ -1,6 +1,8 @@
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { buildJobTrackingView, type JobTrackingViewItem } from "./job-tracking-view";
 import { objectMeta } from "./measure-needed-state";
+import { customerQuoteProductName } from "./customer-quote-branding";
+import { getProduct } from "@/lib/quote/catalog";
 import { wholeJobRecordId, wholeJobWorkflowChecks } from "./whole-job-workflow";
 import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 
@@ -8,7 +10,135 @@ export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed"
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
 export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[]; wholeJob?: boolean };
-export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
+export type HeaderProduct = { id: string; name: string; quantity: number };
+export type HeaderProductSource = "signed_snapshot" | "accepted_quote_lines";
+export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; headerProducts: HeaderProduct[]; headerProductSource: HeaderProductSource | null; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
+
+type EvidenceLine = { id: string; name: string; quantity: number };
+const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const positiveQuantity = (value: unknown): number | null => Number.isSafeInteger(value) && Number(value) > 0 ? Number(value) : null;
+
+function groupEvidenceLines(lines: EvidenceLine[]): HeaderProduct[] {
+  const groups = new Map<string, HeaderProduct>();
+  for (const line of lines) {
+    const name = line.name.trim().replace(/\s+/g, " ");
+    const id = name.toLocaleLowerCase();
+    const existing = groups.get(id);
+    groups.set(id, existing ? { ...existing, quantity: existing.quantity + line.quantity } : { id, name, quantity: line.quantity });
+  }
+  return [...groups.values()];
+}
+
+function snapshotHeaderProducts(source: JobTrackingViewItem): HeaderProduct[] | null {
+  for (const contract of source.contracts) {
+    if (objectMeta(contract.meta).deleted_at) continue;
+    const snapshot = record(objectMeta(contract.meta).contract_snapshot);
+    if (snapshot.schema !== "805_signed_quote_contract_v1") continue;
+    const lines = snapshot.lines;
+    if (!contract.signed_at && typeof snapshot.signedAt !== "string") return [];
+    if (!Array.isArray(lines) || !lines.length) return [];
+    const evidence: EvidenceLine[] = [];
+    for (const value of lines) {
+      const line = record(value);
+      const id = typeof line.lineItemId === "string" ? line.lineItemId.trim() : "";
+      const name = typeof line.productName === "string" ? line.productName.trim() : "";
+      const quantity = positiveQuantity(line.quantity);
+      if (!id || !name || quantity === null || objectMeta(line.meta).deleted_at) return [];
+      evidence.push({ id, name, quantity });
+    }
+    return groupEvidenceLines(evidence);
+  }
+  return null;
+}
+
+function quoteLineProductName(line: Record<string, unknown>, legacyMts: boolean): string | null {
+  const designs = Array.isArray(line.designs) ? line.designs.map(record) : [];
+  const selectedId = typeof line.selected_design_id === "string" ? line.selected_design_id : typeof line.selectedDesignId === "string" ? line.selectedDesignId : null;
+  const selected = selectedId ? designs.find(design => design.id === selectedId) : null;
+  const direct = line.productName ?? line.product_name ?? line.product_type;
+  const selectedName = selected?.productName ?? selected?.product_name ?? selected?.product_type;
+  const breakdown = record(selected?.price_breakdown);
+  const legacyProductType = breakdown.source === "mts_805_bookkeeping" ? breakdown.productType : null;
+  const legacyNotes = legacyMts ? line.notes : null;
+  if (designs.length && !selected && !direct && !legacyNotes) return null;
+  const productId = typeof selected?.product_id === "string" ? selected.product_id : null;
+  const catalogName = productId ? getProduct(productId)?.name : null;
+  const raw = [direct, legacyNotes, selectedName, legacyProductType, catalogName].find(value => typeof value === "string" && value.trim());
+  return typeof raw === "string" ? customerQuoteProductName(raw) : null;
+}
+
+function selectedQuoteLineQuantities(rawLines: unknown[], selection: string[]): Map<string, number> | null {
+  if (!selection.length || new Set(selection).size !== selection.length) return null;
+  const lines = new Map<string, Record<string, unknown>>();
+  for (const value of rawLines) {
+    const line = record(value);
+    if (objectMeta(line.meta).deleted_at) continue;
+    const id = typeof line.id === "string" ? line.id : "";
+    if (!id) continue;
+    if (lines.has(id)) return null;
+    lines.set(id, line);
+  }
+
+  const quantities = new Map<string, number>();
+  for (const selectedId of selection) {
+    const exactLine = lines.get(selectedId);
+    if (exactLine) {
+      const quantity = positiveQuantity(exactLine.quantity);
+      if (quantity !== 1) return null;
+      quantities.set(selectedId, 1);
+      continue;
+    }
+
+    const expanded = /^(.*)#([1-9]\d*)$/.exec(selectedId);
+    if (!expanded) return null;
+    const line = lines.get(expanded[1]);
+    const quantity = positiveQuantity(line?.quantity);
+    const unit = Number(expanded[2]);
+    if (!line || quantity === null || quantity === 1 || unit > quantity) return null;
+    quantities.set(expanded[1], (quantities.get(expanded[1]) || 0) + 1);
+  }
+  return quantities;
+}
+
+function quoteHeaderProducts(source: JobTrackingViewItem): HeaderProduct[] | null {
+  const quote = source.quote as (typeof source.quote & { lineItems?: unknown; line_items?: unknown; source_sold_at?: string | null }) | undefined;
+  const acceptedStatus = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"]);
+  const accepted = quote && Object.hasOwn(quote, "source_sold_at")
+    ? Boolean(quote.source_sold_at)
+    : Boolean(quote && (quote.signed_at || quote.sold_at || quote.approved_at || quote.customer_signature || acceptedStatus.has(quote.status)));
+  if (!quote || !accepted || objectMeta(quote.meta).deleted_at) return null;
+  const rawLines = Array.isArray(quote.lineItems) ? quote.lineItems : Array.isArray(quote.line_items) ? quote.line_items : null;
+  if (!rawLines?.length) return null;
+  const meta = objectMeta(quote.meta);
+  const partial = objectMeta(meta.partial_acceptance);
+  const materialized = partial.role === "current";
+  const rawSelection = objectMeta(meta.signed_selection).lineItemIds;
+  const selection = Array.isArray(rawSelection) && rawSelection.every(id => typeof id === "string") ? rawSelection as string[] : null;
+  if (!materialized && Array.isArray(rawSelection) && !selection?.length) return [];
+  const selectedQuantities = selection && !materialized ? selectedQuoteLineQuantities(rawLines, selection) : null;
+  if (selection && !materialized && !selectedQuantities) return [];
+  const legacyMts = meta.legacy_quote_system === "mts_sales_quote" || typeof meta.mts_quote_id === "string";
+  const evidence: EvidenceLine[] = [];
+  for (const value of rawLines) {
+    const line = record(value);
+    if (objectMeta(line.meta).deleted_at) continue;
+    const id = typeof line.id === "string" ? line.id : "";
+    const selectedQuantity = selectedQuantities?.get(id);
+    if (selectedQuantities && selectedQuantity === undefined) continue;
+    const storedQuantity = positiveQuantity(line.quantity);
+    const name = quoteLineProductName(line, legacyMts);
+    if (!id || storedQuantity === null || !name) return [];
+    evidence.push({ id, name, quantity: selectedQuantity ?? storedQuantity });
+  }
+  return evidence.length ? groupEvidenceLines(evidence) : [];
+}
+
+export function contractHeaderProducts(source: JobTrackingViewItem): { products: HeaderProduct[]; source: HeaderProductSource | null } {
+  const snapshot = snapshotHeaderProducts(source);
+  if (snapshot !== null) return { products: snapshot, source: snapshot.length ? "signed_snapshot" : null };
+  const quote = quoteHeaderProducts(source);
+  return quote?.length ? { products: quote, source: "accepted_quote_lines" } : { products: [], source: null };
+}
 
 function productProgress(product: CrmCustomerProduct): ProductProgress {
   const meta = objectMeta(product.meta);
@@ -104,7 +234,8 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
       shipped: items.every(item => item.shipped),
       installed: items.every(item => item.installed)
     }));
-    return { source, products: progress, wholeJob: wholeJobProgress(source), quote: Boolean(source.quote), sold: source.isSale,
+    const header = contractHeaderProducts(source);
+    return { source, products: progress, headerProducts: header.products, headerProductSource: header.source, wholeJob: wholeJobProgress(source), quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
       paid: source.isSale && source.progress.payment === "settled",
       complete: source.progress.stage === "complete",

@@ -67,10 +67,13 @@
 .headerDate strong { color:#fbfbfa; font-weight:500; }
 .headerProducts { min-width:0; }
 .productPills { display:flex; align-items:center; gap:7px; min-width:0; overflow-x:auto; scrollbar-width:thin; white-space:nowrap; }
-.productPill { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; border:1px solid #4a4d49; border-radius:20px; padding:6px 9px; color:#d1d4d0; background:#272927; font-size:11px; line-height:1; }
-.productPill b { color:#fbfbfa; font-size:13px; font-variant-numeric:tabular-nums; }
+.productPill { display:inline-flex; align-items:center; gap:7px; flex-shrink:0; min-height:34px; border:1px solid #555752; border-radius:7px; padding:5px 10px; color:#d1d4d0; background:#151615; font-size:11px; line-height:1; }
+.productPill:hover { border-color:#898b85; background:#292b29; }
+.productPill:focus-visible { outline:2px solid #75dfab; outline-offset:2px; }
+.productPill[aria-expanded=true] { border-color:#75dfab; background:#242824; }
+.productPill b { min-width:1ch; color:#fbfbfa; font-size:16px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
 .productPill > span { display:block; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.unknownPill { color:#a7aaa6; }
+.unknownPill { color:#c1c4be; background:#202120; }
 .jobHeaderContent > .jobLinks { align-self:center; flex-wrap:nowrap; }
 .jobCard > .rowFeedback { margin:0; padding:10px 22px; border-bottom:1px solid #3b3d3b; background:#272725; }
 .statusTable { width:calc(100% - 24px); margin:18px 12px 20px; border-spacing:0; border-collapse:separate; table-layout:fixed; }

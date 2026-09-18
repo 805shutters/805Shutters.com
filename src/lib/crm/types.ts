@@ -70,6 +70,8 @@ export type CrmDeletedJob = Pick<CrmJob, "id" | "customer_name" | "product_inter
 };
 
 export type CrmQuote = {
+  /** Read-only dashboard projection; mutation loaders remain authoritative. */
+  lineItems?: CrmQuoteLineItem[];
   id: string;
   created_at: string;
   updated_at: string;

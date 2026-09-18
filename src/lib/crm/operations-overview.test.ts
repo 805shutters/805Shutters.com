@@ -1,13 +1,178 @@
 import { describe, expect, it } from "vitest";
 import { buildOperationsItems, buildPerformanceMetrics, formatOperationsDate, productCompletionSourceLinks, workflowSummary } from "./operations-overview";
-import type { CrmBookkeepingRow, CrmCustomerFile, CrmCustomerProduct, CrmDashboardData, CrmJob, CrmQuote } from "./types";
+import type { CrmBookkeepingRow, CrmCustomerContract, CrmCustomerFile, CrmCustomerProduct, CrmDashboardData, CrmJob, CrmQuote } from "./types";
 
 const quote = (overrides: Partial<CrmQuote> = {}): CrmQuote => ({ id: "q1", job_id: "j1", created_at: "2026-09-01T12:00:00Z", status: "sent", sent_at: "2026-09-14T18:00:00Z", quote_total: 1000, meta: {}, ...overrides } as CrmQuote);
 const data = (overrides: Partial<CrmDashboardData> = {}): CrmDashboardData => ({ jobs: [], quotes: [], bookkeepingRows: [], customerFiles: [], customerProducts: [], orderCogsEmails: [], installationInvoiceEmails: [], bookkeepingPayments: [], ...overrides } as CrmDashboardData);
 const product = (overrides: Partial<CrmCustomerProduct> = {}): CrmCustomerProduct => ({ id: "p1", quote_id: "q1", job_id: "j1", bookkeeping_entry_id: null, product_type: "Shutters", status: "ordered", meta: {}, ...overrides } as CrmCustomerProduct);
+const contract = (overrides: Partial<CrmCustomerContract> = {}): CrmCustomerContract => ({
+  id: "c1", quote_id: "q1", job_id: "j1", bookkeeping_entry_id: null, signed_at: "2026-09-15T18:00:00Z", status: "sold", meta: {}, ...overrides
+} as CrmCustomerContract);
+const snapshot = (lines: Array<{ lineItemId: string; productName: string; quantity: number }>) => ({
+  schema: "805_signed_quote_contract_v1", signedAt: "2026-09-15T18:00:00Z", lines
+});
 const now = new Date("2026-09-16T19:00:00Z");
 
 describe("operations overview source integrity", () => {
+  it("projects exact signed snapshot quantities into separate header products", () => {
+    const signed = contract({ meta: { contract_snapshot: snapshot([
+      { lineItemId: "line-1", productName: "Plantation Shutters", quantity: 2 },
+      { lineItemId: "line-2", productName: "Plantation Shutters", quantity: 1 },
+      { lineItemId: "line-3", productName: "Roller Shades", quantity: 4 }
+    ]) } });
+    const file = { id: "file-1", customer: null, customerName: "Avery", jobs: [], quotes: [quote()], bookkeepingRows: [], products: [], contracts: [signed], notes: [] } as unknown as CrmCustomerFile;
+    const item = buildOperationsItems(data({ quotes: [quote()], customerFiles: [file], customerContracts: [signed] }))[0];
+
+    expect(item.headerProducts).toEqual([
+      { id: "plantation shutters", name: "Plantation Shutters", quantity: 3 },
+      { id: "roller shades", name: "Roller Shades", quantity: 4 }
+    ]);
+    expect(item.headerProductSource).toBe("signed_snapshot");
+    expect(item.products).toEqual([]);
+  });
+
+  it("prefers the signed snapshot and never adds duplicate quote or customer-product fallback", () => {
+    const signed = contract({ meta: { contract_snapshot: snapshot([
+      { lineItemId: "line-1", productName: "Shutters", quantity: 2 }
+    ]) } });
+    const quoted = quote({ status: "sold", signed_at: "2026-09-15", meta: { signed_selection: { lineItemIds: ["line-1"] } }, lineItems: [{ id: "line-1", quantity: 2, selected_design_id: "design-a", designs: [{ id: "design-a", product_id: "shutters" }] }] } as unknown as Partial<CrmQuote>);
+    const file = { id: "file-1", customer: null, customerName: "Avery", jobs: [], quotes: [quoted], bookkeepingRows: [], products: [], contracts: [signed], notes: [] } as unknown as CrmCustomerFile;
+    const item = buildOperationsItems(data({ quotes: [quoted], customerFiles: [file], customerContracts: [signed], customerProducts: [product({ quantity: 9 })] }))[0];
+
+    expect(item.headerProducts).toEqual([{ id: "shutters", name: "Shutters", quantity: 2 }]);
+    expect(item.products[0].quantity).toBe(9);
+  });
+
+  it("uses only accepted units from a legacy signed quote and ignores design alternatives", () => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15",
+      meta: { signed_selection: { lineItemIds: ["shade-line#2", "shutter-line"] } },
+      lineItems: [
+        { id: "shade-line", quantity: 3, selected_design_id: "shade-a", designs: [{ id: "shade-a", product_id: "roller" }, { id: "shade-b", product_id: "honeycomb" }] },
+        { id: "shutter-line", quantity: 1, selected_design_id: "shutter-a", designs: [{ id: "shutter-a", product_id: "onyx_shutters" }] }
+      ]
+    } as unknown as Partial<CrmQuote>);
+    const item = buildOperationsItems(data({ quotes: [quoted] }))[0];
+
+    expect(item.headerProducts).toEqual([
+      { id: "roller shades", name: "Roller Shades", quantity: 1 },
+      { id: "shutters", name: "Shutters", quantity: 1 }
+    ]);
+    expect(item.headerProductSource).toBe("accepted_quote_lines");
+  });
+
+  it("sums every expanded snapshot row when lineItemId repeats", () => {
+    const signed = contract({ meta: { contract_snapshot: snapshot([
+      { lineItemId: "shade-line", productName: "Roller Shades", quantity: 1 },
+      { lineItemId: "shade-line", productName: "Roller Shades", quantity: 1 },
+      { lineItemId: "shade-line", productName: "Roller Shades", quantity: 1 }
+    ]) } });
+    const file = { id: "file-1", customer: null, customerName: "Avery", jobs: [], quotes: [quote()], bookkeepingRows: [], products: [], contracts: [signed], notes: [] } as unknown as CrmCustomerFile;
+    const item = buildOperationsItems(data({ quotes: [quote()], customerFiles: [file], customerContracts: [signed] }))[0];
+
+    expect(item.headerProducts).toEqual([{ id: "roller shades", name: "Roller Shades", quantity: 3 }]);
+  });
+
+  it("does not let native customer notes override selected product identity", () => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15",
+      lineItems: [{ id: "line-1", quantity: 1, notes: "Customer wants the cord on the left", selected_design_id: "design-a", designs: [{ id: "design-a", product_id: "roller" }] }]
+    } as unknown as Partial<CrmQuote>);
+
+    expect(buildOperationsItems(data({ quotes: [quoted] }))[0].headerProducts).toEqual([
+      { id: "roller shades", name: "Roller Shades", quantity: 1 }
+    ]);
+  });
+
+  it("does not invent a label from an unknown product id", () => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15",
+      lineItems: [{ id: "line-1", quantity: 1, selected_design_id: "design-a", designs: [{ id: "design-a", product_id: "unknown_product" }] }]
+    } as unknown as Partial<CrmQuote>);
+
+    expect(buildOperationsItems(data({ quotes: [quoted] }))[0].headerProducts).toEqual([]);
+  });
+
+  it("uses legacy MTS productType before catalog identity and permits legacy product notes", () => {
+    const mtsDesign = { id: "design-a", product_id: "roller", price_breakdown: { source: "mts_805_bookkeeping", productType: "Legacy Woven Woods" } };
+    const breakdownQuote = quote({ status: "sold", signed_at: "2026-09-15", meta: { mts_quote_id: "mts-1" }, lineItems: [{ id: "line-1", quantity: 1, selected_design_id: "design-a", designs: [mtsDesign] }] } as unknown as Partial<CrmQuote>);
+    const notesQuote = quote({ id: "q2", status: "sold", signed_at: "2026-09-15", meta: { legacy_quote_system: "mts_sales_quote" }, lineItems: [{ id: "line-2", quantity: 1, notes: "Legacy Solar Shades", selected_design_id: "design-b", designs: [{ id: "design-b", product_id: "unknown-product" }] }] } as unknown as Partial<CrmQuote>);
+
+    expect(buildOperationsItems(data({ quotes: [breakdownQuote, notesQuote] })).map(item => item.headerProducts)).toEqual([
+      [{ id: "legacy woven woods", name: "Legacy Woven Woods", quantity: 1 }],
+      [{ id: "legacy solar shades", name: "Legacy Solar Shades", quantity: 1 }]
+    ]);
+  });
+
+  it.each([
+    ["duplicate", ["shade-line#1", "shade-line#1"]],
+    ["unknown", ["missing-line"]],
+    ["suffix outside quantity", ["shade-line#4"]],
+    ["zero suffix", ["shade-line#0"]],
+    ["malformed suffix", ["shade-line#two"]],
+    ["unsuffixed expanded line", ["shade-line"]]
+  ])("fails closed for %s stored selections", (_case, lineItemIds) => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15", meta: { signed_selection: { lineItemIds } },
+      lineItems: [{ id: "shade-line", quantity: 3, selected_design_id: "shade-a", designs: [{ id: "shade-a", product_id: "roller" }] }]
+    } as unknown as Partial<CrmQuote>);
+
+    const item = buildOperationsItems(data({ quotes: [quoted] }))[0];
+    expect(item.headerProducts).toEqual([]);
+    expect(item.headerProductSource).toBeNull();
+  });
+
+  it("ignores an unselected malformed alternative before requiring its design or quantity", () => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15", meta: { signed_selection: { lineItemIds: ["good-line"] } },
+      lineItems: [
+        { id: "bad-line", quantity: null, selected_design_id: null, designs: [] },
+        { id: "good-line", quantity: 1, selected_design_id: "good-design", designs: [{ id: "good-design", product_id: "onyx_shutters" }] }
+      ]
+    } as unknown as Partial<CrmQuote>);
+
+    expect(buildOperationsItems(data({ quotes: [quoted] }))[0].headerProducts).toEqual([
+      { id: "shutters", name: "Shutters", quantity: 1 }
+    ]);
+  });
+
+  it("bypasses stale stored selection only for a materialized current partition", () => {
+    const quoted = quote({
+      status: "sold", signed_at: "2026-09-15",
+      meta: { signed_selection: { lineItemIds: ["stale-expanded-id"] }, partial_acceptance: { role: "current" } },
+      lineItems: [{ id: "current-line", quantity: 1, selected_design_id: "design-a", designs: [{ id: "design-a", product_id: "roller" }] }]
+    } as unknown as Partial<CrmQuote>);
+
+    expect(buildOperationsItems(data({ quotes: [quoted] }))[0].headerProducts).toEqual([
+      { id: "roller shades", name: "Roller Shades", quantity: 1 }
+    ]);
+  });
+
+  it("skips future, deleted, and malformed contract evidence instead of inventing quantities", () => {
+    const future = contract({ id: "future", signed_at: null, meta: { contract_snapshot: { schema: "805_future_quote_contract_v1", lines: [{ lineItemId: "future-line", productName: "Blinds", quantity: 8 }] } } });
+    const deleted = contract({ id: "deleted", meta: { deleted_at: "2026-09-16", contract_snapshot: snapshot([{ lineItemId: "deleted-line", productName: "Shades", quantity: 5 }]) } });
+    const malformed = contract({ id: "malformed", meta: { contract_snapshot: snapshot([{ lineItemId: "bad-line", productName: "Shutters", quantity: 0 }]) } });
+    const file = { id: "file-1", customer: null, customerName: "Avery", jobs: [], quotes: [quote()], bookkeepingRows: [], products: [], contracts: [future, deleted, malformed], notes: [] } as unknown as CrmCustomerFile;
+    const item = buildOperationsItems(data({ quotes: [quote()], customerFiles: [file], customerContracts: [future, deleted, malformed], customerProducts: [product({ quantity: 1, meta: { source: "crm_job" } })] }))[0];
+
+    expect(item.headerProducts).toEqual([]);
+    expect(item.headerProductSource).toBeNull();
+    expect(item.products[0].quantity).toBeNull();
+  });
+
+  it("does not treat an unsold quote attached to a ledger row as an accepted contract", () => {
+    const quoted = quote({ status: "sent", signed_at: null, sold_at: null, approved_at: null, lineItems: [{ id: "line-1", quantity: 6, product_type: "Shutters" }] } as unknown as Partial<CrmQuote>);
+    const row = {
+      id: "q1", source: "crm_quote", quoteId: "q1", jobId: "j1", customerName: "Avery", soldDate: null,
+      total: 1000, depositDue: 0, depositPaid: 0, balancePaid: 0, paidTotal: 0, creditIn: 0, creditOut: 0,
+      cogs: 0, balance: 1000, kenCut: 0, kenCutOverride: null, advertisingReserve: 0, mikeProfit: 0
+    } as unknown as CrmBookkeepingRow;
+    const item = buildOperationsItems(data({ quotes: [quoted], bookkeepingRows: [row] }))[0];
+
+    expect(item.headerProducts).toEqual([]);
+    expect(item.headerProductSource).toBeNull();
+  });
+
   it("groups linked records by exact product type and sums known quantities once", () => {
     const shutters = product({ quantity: 2 });
     const blinds = product({ id: "p2", product_type: "Shutters / Blinds", quantity: 3 });

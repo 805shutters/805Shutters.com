@@ -5,6 +5,7 @@ vi.mock("./sold-installer-delivery", () => ({
 }));
 import {
   assertMikePaymentAdmin,
+  attachDashboardQuoteLineEvidence,
   buildDashboardData,
   cancelCrmCalendarEvent,
   createCrmJobExpense,
@@ -735,6 +736,28 @@ describe("readyToOrderTasks", () => {
       [{ id: task.quoteId, job_id: task.jobId, status: "sold" }],
       [{ jobId: task.jobId, quoteId: task.quoteId, status: "ordered" }],
     )).toEqual([]);
+  });
+});
+
+describe("dashboard quote line evidence", () => {
+  it("attaches exact line designs to their quote without borrowing sibling alternatives", () => {
+    const quotes = [quote({ id: "quote-a" }), quote({ id: "quote-b" })];
+    const projected = attachDashboardQuoteLineEvidence(
+      quotes,
+      [
+        { id: "line-a", quote_id: "quote-a", quantity: 2, sort_order: 2 },
+        { id: "line-b", quote_id: "quote-b", quantity: 9, sort_order: 1 }
+      ] as never[],
+      [
+        { id: "design-a", line_item_id: "line-a", product_id: "roller", sort_order: 1 },
+        { id: "design-b", line_item_id: "line-b", product_id: "shutters", sort_order: 1 }
+      ] as never[]
+    );
+
+    expect(projected[0].lineItems).toEqual([
+      expect.objectContaining({ id: "line-a", quantity: 2, designs: [expect.objectContaining({ id: "design-a" })] })
+    ]);
+    expect(projected[0].lineItems?.[0].designs).not.toContainEqual(expect.objectContaining({ id: "design-b" }));
   });
 });
 

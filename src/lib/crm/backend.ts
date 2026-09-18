@@ -77,6 +77,8 @@ import {
   CrmPartnerPaymentLedgerItem,
   CrmPaymentPerson,
   CrmQuote,
+  CrmQuoteDesign,
+  CrmQuoteLineItem,
   CrmQuoteStatus,
   CrmVendorOrderTask,
   crmJobStatuses,
@@ -1702,10 +1704,30 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
   };
 }
 
+export function attachDashboardQuoteLineEvidence(
+  quotes: CrmQuote[],
+  lines: CrmQuoteLineItem[],
+  designs: CrmQuoteDesign[]
+): CrmQuote[] {
+  const designsByLine = new Map<string, CrmQuoteDesign[]>();
+  for (const design of designs) designsByLine.set(design.line_item_id, [...(designsByLine.get(design.line_item_id) || []), design]);
+  const linesByQuote = new Map<string, CrmQuoteLineItem[]>();
+  for (const line of lines) {
+    const projected = { ...line, designs: (designsByLine.get(line.id) || []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)) };
+    linesByQuote.set(line.quote_id, [...(linesByQuote.get(line.quote_id) || []), projected]);
+  }
+  return quotes.map(quote => ({
+    ...quote,
+    lineItems: (linesByQuote.get(quote.id) || []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+  }));
+}
+
 export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const [
     jobsResult,
     quotesResult,
+    quoteLinesResult,
+    quoteDesignsResult,
     eventsResult,
     customersResult,
     productsResult,
@@ -1732,6 +1754,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     // Read complete ledgers so old jobs and payments cannot fall outside a row cap.
     loadCompleteCrmTable(supabase, "crm_jobs", "created_at"),
     loadCompleteCrmTable(supabase, "crm_quotes", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_quote_line_items", "created_at"),
+    loadCompleteCrmTable(supabase, "crm_quote_designs", "created_at"),
     loadCompleteCrmTable(supabase, "crm_calendar_events", "start_at"),
     loadCompleteCrmTable(supabase, "crm_customers", "latest_sold_date"),
     loadCompleteCrmTable(supabase, "crm_customer_products", "created_at"),
@@ -1822,9 +1846,15 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const jobs = ((jobsResult.data || []) as CrmJob[]).map(hydrateLeadSource).filter(
     (job) => !hasDeleteTombstone((job as { meta?: unknown }).meta)
   );
-  const quotes = ((quotesResult.data || []) as CrmQuote[]).filter(
+  const sourceQuotes = ((quotesResult.data || []) as CrmQuote[]).filter(
     (quote) => !hasDeleteTombstone(quote.meta)
   );
+  if (quoteLinesResult.error || quoteDesignsResult.error) {
+    console.warn("CRM contract line evidence could not be loaded.", quoteLinesResult.error?.message || quoteDesignsResult.error?.message);
+  }
+  const quotes = quoteLinesResult.error || quoteDesignsResult.error
+    ? sourceQuotes
+    : attachDashboardQuoteLineEvidence(sourceQuotes, quoteLinesResult.data as CrmQuoteLineItem[], quoteDesignsResult.data as CrmQuoteDesign[]);
   const events = (eventsResult.data || []) as CrmCalendarEvent[];
   const customers = ((customersResult.data || []) as CrmCustomer[]).filter(
     (customer) => !hasDeleteTombstone(customer.meta)

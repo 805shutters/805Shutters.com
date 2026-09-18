@@ -70,6 +70,10 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
     if (contractId) contractButtons.current.get(contractId)?.focus();
     setContractId(null);
   }
+  function toggleContract(itemId: string, trigger?: HTMLButtonElement) {
+    if (trigger) contractButtons.current.set(itemId, trigger);
+    setContractId(current => current === itemId ? null : itemId);
+  }
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -125,9 +129,9 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
           </div>
           <div className={styles.headerProducts}>
             <span className={styles.headerLabel}>Product quantities</span>
-            <div className={styles.productPills}>{item.products.length ? item.products.map(product => <span className={styles.productPill} key={product.id} title={`${product.quantity ?? "Unknown quantity"} · ${product.name}`}><b>{product.quantity ?? "Qty needed"}</b><span>{product.name}</span></span>) : <span className={`${styles.productPill} ${styles.unknownPill}`} title="Product details needed">Product details needed</span>}</div>
+            <div className={styles.productPills}>{item.headerProducts.length ? item.headerProducts.map(product => <button type="button" className={styles.productPill} key={product.id} title={`${product.quantity} · ${product.name} · Open contract`} aria-label={`Open contract for ${item.source.customerName}: ${product.quantity} ${product.name}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={event => toggleContract(item.source.id, event.currentTarget)}><b>{product.quantity}</b><span>{product.name}</span></button>) : <button type="button" className={`${styles.productPill} ${styles.unknownPill}`} aria-label={`Review contract quantities for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={event => toggleContract(item.source.id, event.currentTarget)}>Review contract</button>}</div>
           </div>
-          <div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div>
+          <div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={event => toggleContract(item.source.id, event.currentTarget)}><FileText size={14} aria-hidden="true" />Contract</button></div>
         </div>
       </header>
       {feedbackId === item.source.id && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{error || notice}</p>}
