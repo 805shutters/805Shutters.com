@@ -1,3 +1,4 @@
+import { productOrderCosts } from "./product-order-cost";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
@@ -1192,13 +1193,15 @@ async function recordOrderCogsAuditFallback(
   });
 }
 
-function reviewStatus(extraction: ExtractedOrderCogs, match: OrderCogsMatch) {
+export function reviewStatus(extraction: ExtractedOrderCogs, match: OrderCogsMatch) {
   if (!extraction.orderAmount || extraction.amountConfidence < AUTO_APPLY_MIN_AMOUNT_CONFIDENCE) {
     return { status: "needs_review" as const, reason: "Order total could not be confidently extracted.", canApply: false };
   }
   if (match.status !== "matched" || !match.candidate) {
     return { status: match.status, reason: match.reason, canApply: false };
   }
+  const manualCosts = Object.values(productOrderCosts(match.candidate.meta));
+  if (extraction.orderNumber && manualCosts.some(cost => !cost.emailId && cost.reference.trim().toLowerCase() === extraction.orderNumber!.trim().toLowerCase())) return { status: "needs_review" as const, reason: "This order reference already has a manually recorded product cost. Reconcile its invoice before adding COGS.", canApply: false };
   return { status: "matched" as const, reason: match.reason, canApply: true };
 }
 

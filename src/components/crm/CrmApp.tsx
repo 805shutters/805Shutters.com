@@ -2,6 +2,8 @@
 
 import { ContractsWorkspace } from "./ContractsWorkspace";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
+import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
+import { orderCostParent } from "./ProductOrderEditor";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
 import appointmentStyles from "./CalendarAppointmentModal.module.css";
@@ -1096,7 +1098,7 @@ export function CrmApp({
     } finally { setBusy(false); }
   }
 
-  const updateWorkflowCheck: WorkflowAction = async (item, step, product) => {
+  const updateWorkflowCheck: WorkflowAction = async (item, step, product, invoice) => {
     if (!session) throw new Error("Sign in again before updating a job.");
     const source = item.source;
     const financialSource = Boolean(source.row || (source.quote && source.isSale));
@@ -1125,12 +1127,14 @@ export function CrmApp({
       return `Installation completed today for ${source.customerName}.`;
     }
     if (!product) throw new Error("Open the job to add its product details first.");
-    if (product[step]) { setTrackingDetailId(source.id); return; }
+    if (product[step] && !invoice) { setTrackingDetailId(source.id); return; }
     setBusy(true);
     try {
-      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, records: product.records, quoteId: source.quote?.id || source.row?.quoteId || undefined, jobId: source.job?.id || source.row?.jobId || source.quote?.job_id || undefined, bookkeepingEntryId: source.row && source.row.source !== "crm_quote" ? source.row.id : undefined }) });
+      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, invoice, costEntryId: invoice ? source.row?.costRecordId : undefined, records: product.records, quoteId: source.quote?.id || source.row?.quoteId || undefined, jobId: source.job?.id || source.row?.jobId || source.quote?.job_id || undefined, bookkeepingEntryId: source.row && source.row.source !== "crm_quote" ? source.row.id : undefined }) });
       const fresh = await refresh();
-      const saved = fresh && buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id)?.products.find(candidate => candidate.id === product.id);
+      const savedItem = fresh && buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id);
+      const saved = savedItem?.products.find(candidate => candidate.id === product.id);
+      if (invoice && (!savedItem || productOrderCosts(orderCostParent(savedItem)?.meta)[orderCostKey(product.records)]?.amount !== invoice.amount)) throw new Error("Invoice saving could not be verified. Refresh the job before trying again.");
       if (!saved?.[step]) throw new Error("The update was saved but completion could not be verified. Refresh the job before trying again.");
       return `${product.name} marked ${step} for ${source.customerName}.`;
     } catch (error) {

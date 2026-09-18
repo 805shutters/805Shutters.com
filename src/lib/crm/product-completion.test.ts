@@ -1,3 +1,5 @@
+import { saveProductOrderCost } from "./save-product-order-cost";
+import { productOrderCosts } from "./product-order-cost";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -147,5 +149,47 @@ describe("job-derived product completion", () => {
   it("rejects mismatched and mixed synthetic targets", () => {
     expect(() => parseProductCompletion({ ...fallback, jobId: quoteId })).toThrow();
     expect(() => parseProductCompletion({ ...fallback, records: [...fallback.records, input.records[0]] })).toThrow();
+  });
+});
+
+describe('product invoice costs',()=>{
+  const invoice={amount:1200,reference:'INV-123',includedInCogs:false,expectedUpdatedAt:timestamp,requestId:'61111111-1111-4111-8111-111111111111'};
+  function setupCost(){const db=database();Object.assign(db.tables.crm_quotes[0],{updated_at:timestamp,materials_cost:300});return db;}
+  it('saves one amount for a product group and does not add it again on retry',async()=>{
+    const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);expect(db.tables.crm_customer_products.every(p=>p.meta.ordered_at)).toBe(true);
+    await saveProductOrderCost(db.client,{...input,invoice},actor);expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
+    expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta))).toMatchObject([{amount:1200,reference:'INV-123',records:[p1,p2]}]);
+  });
+  it('updates existing invoice by the difference and keeps unrelated COGS',async()=>{
+    const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice},actor);
+    await saveProductOrderCost(db.client,{...input,records:db.tables.crm_customer_products.map(p=>({id:p.id,updatedAt:p.updated_at})),invoice:{...invoice,amount:1400,expectedUpdatedAt:db.tables.crm_quotes[0].updated_at,requestId:'71111111-1111-4111-8111-111111111111'}},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(1700);
+  });
+  it('allocates a previously recorded cost without adding to the total',async()=>{
+    const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,includedInCogs:true}},actor);expect(db.tables.crm_quotes[0].materials_cost).toBe(300);
+  });
+  it.each(['stale','wrong product','over allocation','invalid amount','foreign financial parent'])('rejects %s without any changes',async reason=>{
+    const db=setupCost();const body:any={...input,invoice:{...invoice}};
+    if(reason==='stale')body.invoice.expectedUpdatedAt='2025-01-01';
+    if(reason==='wrong product')db.tables.crm_customer_products[1].quote_id=entryId;
+    if(reason==='over allocation')body.invoice.includedInCogs=true;
+    if(reason==='invalid amount')body.invoice.amount=NaN;
+    if(reason==='foreign financial parent'){body.costEntryId=entryId;db.tables.crm_quote_bookkeeping_entries[0].quote_id=jobId;}
+    await expect(saveProductOrderCost(db.client,body,actor)).rejects.toBeInstanceOf(CrmAuthError);expect(db.writes).toHaveLength(0);
+  });
+  it.each([true,false])('uses a matched email once, already applied=%s',async applied=>{
+    const db=setupCost();const emailId='81111111-1111-4111-8111-111111111111';db.tables.crm_order_cogs_emails=[{id:emailId,matched_quote_id:quoteId,match_status:'matched',applied_at:applied?timestamp:null,extracted_order_amount:250,gmail_message_id:'gmail1'}];
+    await saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,emailId}},actor);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(applied?300:550);expect(db.tables.crm_quotes[0].meta.orderCogsMessageIds).toContain('gmail1');
+    await saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,emailId}},actor);expect(db.tables.crm_quotes[0].materials_cost).toBe(applied?300:550);
+  });
+  it('does not offer a skipped duplicate invoice for a second allocation',async()=>{
+    const db=setupCost();const emailId='81111111-1111-4111-8111-111111111111';db.tables.crm_order_cogs_emails=[{id:emailId,matched_quote_id:quoteId,match_status:'skipped',applied_at:null,extracted_order_amount:250,gmail_message_id:'duplicate',raw:{duplicateApplied:true}}];
+    await expect(saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,emailId}},actor)).rejects.toThrow('exact sale');expect(db.writes).toHaveLength(0);
+  });
+  it('rejects invoice email belonging to another customer',async()=>{
+    const db=setupCost();const emailId='81111111-1111-4111-8111-111111111111';db.tables.crm_order_cogs_emails=[{id:emailId,matched_quote_id:jobId,match_status:'matched',applied_at:timestamp,extracted_order_amount:250,gmail_message_id:'gmail1'}];
+    await expect(saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,emailId}},actor)).rejects.toThrow('exact sale');expect(db.writes).toHaveLength(0);
   });
 });

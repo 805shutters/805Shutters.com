@@ -397,6 +397,9 @@ export type CrmOrderCogsEmail = {
 };
 
 export type CrmBookkeepingRow = {
+  costRecordId?: string;
+  costRecordUpdatedAt?: string;
+  costMeta?: Record<string, unknown> | null;
   operationalProgress?: JobProgress;
   id: string;
   meta?: Record<string, unknown> | null;

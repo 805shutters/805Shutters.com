@@ -6,8 +6,10 @@ import type { CrmDashboardData } from "@/lib/crm/types";
 import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
-import { InlineJobCost, type SaveJobCost } from "./InlineJobCost";
+import { type SaveJobCost } from "./InlineJobCost";
 import { InlineJobContract } from "./InlineJobContract";
+import { ProductOrderEditor, orderCostParent } from "./ProductOrderEditor";
+import { productOrderCosts, orderCostKey, allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
 import styles from "./OperationsOverview.module.css";
 
 function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
@@ -49,18 +51,19 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
   </section>;
 }
 
-const statusColumns = ["Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid", "Cost of goods"];
+const statusColumns = ["Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid"];
 
 type WorkflowActionStep = WorkflowStep | "deposit";
-export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => Promise<string | void>;
+export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress, invoice?: ProductOrderInvoiceInput) => Promise<string | void>;
 function CompletionButton({ done, label, disabled, saving, onClick }: { done: boolean; label: string; disabled: boolean; saving?: boolean; onClick: () => void }) {
   return <button type="button" className={styles.completionButton} aria-label={label} title={label} aria-pressed={done} aria-busy={saving || undefined} disabled={disabled} onClick={onClick}>{saving ? <LoaderCircle className={styles.savingMark} size={24} aria-hidden="true" /> : <CompletionMark done={done} />}</button>;
 }
 function ProductChecks({ item, step, disabled, pending, onAction }: { item: OperationsItem; step: "ordered" | "shipped"; disabled: boolean; pending: string | null; onAction: (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => void }) {
   if (!item.products.length) return <><span className={styles.pending}>Product details needed</span>{step === "ordered" && item.source.orderedAt && <small>Job order recorded · Verify product breakdown</small>}</>;
-  return <div className={styles.productChecks}>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span></div>)}<small className={styles.productCount}>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small></div>;
+  return <div className={styles.productChecks}>{item.products.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.name}</span>{<small aria-hidden={step === "shipped"} style={step === "shipped" ? {visibility:"hidden"} : undefined}>{productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)] ? currency(productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)].amount) : "Enter invoice"}</small>}</div>)}<small className={styles.productCount}>{item.products.filter(product => product[step]).length} of {item.products.length} complete</small></div>;
 }
-export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost }) {
+export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost }) {
+  const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
   const contractButtons = useRef(new Map<string, HTMLButtonElement>());
   function closeContract() {
@@ -74,6 +77,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: 
   const lock = useRef(false);
   async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
     if (lock.current || busy) return;
+    if (step === "ordered" && product) { setOrderEditor({item,product}); return; }
     setFeedbackId(item.source.id);
     lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
     try { const message = await onAction(item, step, product); if (message) setNotice(message); }
@@ -102,6 +106,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: 
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     <div className={styles.jobList}>{visible.map(item => <article className={styles.jobCard} key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
       <header className={styles.jobHeader}><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div>{feedbackId === item.source.id && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{error || notice}</p>}</header>
+      <JobFinancialStrip item={item} />
       <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by product type for {item.source.customerName}.</caption><thead><tr>{statusColumns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody><tr>
       <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
       <td data-label="Sold">{mark(item, "sold")}</td>
@@ -109,13 +114,23 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onSaveCost }: 
       <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
       <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
       <td data-label="Balance paid">{mark(item, "paid")}<small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
-    <td data-label="Cost of goods"><InlineJobCost item={item.source} busy={disabled} onSave={onSaveCost} /></td>
+
       </tr></tbody></table>
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}
     </article>)}</div>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || []} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
   </section>;
 }
 
 export function BackToStatus({ onClick }: { onClick: () => void }) { return <button className={styles.back} type="button" onClick={onClick}><ArrowLeft size={16} /> Back to job status</button>; }
+
+function JobFinancialStrip({item}:{item:OperationsItem}) {
+  const source=item.source; const costs=productOrderCosts(orderCostParent(item)?.meta); const assigned=allocatedOrderCost(orderCostParent(item)?.meta);
+  const cogs=source.cogs ?? (source.row || source.quote ? null : assigned);const install=source.row?.installationInvoiceAmount ?? null;
+  const profit=source.total!==null && cogs!==null && install!==null ? source.total-cogs-install : null;
+  const margin=source.total!==null && source.total>0 && cogs!==null ? (source.total-cogs)/source.total*100 : null;
+  const values:[string,string,string?][]=[['Contract total',source.total===null?'—':currency(source.total)],['Deposit collected',source.depositReceived===null?'—':currency(source.depositReceived)],['Balance due',source.balanceOutstanding===null?'—':currency(source.balanceOutstanding)],['Cost of goods',cogs===null?'—':currency(cogs)],['Installation cost',install===null?'—':currency(install)],['Profit',profit===null?'—':currency(profit),'Before buyout'],['Margin',margin===null?'—':`${margin.toFixed(1)}%`,'Contract less COGS'],['10% buyout',source.total===null?'—':currency(source.total*.1),'Of contract total']];
+  return <section aria-label={`Finances for ${source.customerName}`} className={styles.financialStrip}><div className={styles.financialMetrics}>{values.map(([label,value,note])=><div key={label}><span>{label}</span><strong className={label==='Profit'?styles.completeText:undefined}>{value}</strong>{note&&<small>{note}</small>}</div>)}</div>{cogs!==null && cogs-assigned>.005 && <small className={styles.unassignedCost}>{currency(cogs-assigned)} existing COGS not yet assigned to products</small>}{Object.keys(costs).length>0 && <small className={styles.unassignedCost}>Product invoices: {currency(assigned)} · Profit = contract − COGS − installation cost</small>}</section>;
+}
