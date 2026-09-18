@@ -58,7 +58,7 @@ describe("send catalog effective dates", () => {
   it.each([
     ["roller", "2026-09-01", "805-v2-norman-roller-2026-08-01-msrp-r1-pg4-2026-09-r2"],
     ["roman", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-assortment-2026-09-r1"],
-    ["citylights_aluminum", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-assortment-2026-09-r1"],
+    ["citylights_aluminum", "2026-09-01", "805-v2-norman-2026-07-msrp-r1-citylights-2026-08-r1"],
     ["perfectsheer", "2026-08-11", "805-v2-norman-2026-07-msrp-r1-assortment-2026-08-11-r1"],
     ["roller", "2026-08-31", "805-v2-norman-roller-2026-08-01-msrp-r1"],
     ["polar_all_seasons_screen", "2026-09-10", "805-v2-polar-all-seasons-2026-07-retail-cost-freight-r2"],

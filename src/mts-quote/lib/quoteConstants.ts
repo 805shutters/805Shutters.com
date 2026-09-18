@@ -88,6 +88,8 @@ export const PRODUCT_TYPES = [
   "Wood Blinds",
   "Vertical Blinds",
   "Smart Drapes",
+  "SmartFold Shades",
+  "Palladian Shelf",
   "Drapery Tracks",
   "Tension Shades",
   "Retractable Screens",
@@ -2115,7 +2117,7 @@ export function getVerticalColorsForGroup(fabricGroup: string): readonly string[
 }
 
 // Smart Drape Options
-export const SMARTDRAPE_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
+export const SMARTDRAPE_MOUNT_TYPES = ["Outside Mount"] as const;
 export const SMARTDRAPE_SHADE_TYPES = [
   "Light Filtering",
   "Room Darkening",
@@ -2204,6 +2206,7 @@ export const SMARTDRAPE_STACK_OPTIONS = [
   "Stack Left",
   "Side by Side",
   "Traveling Center Stack",
+  "Center Stack",
   "Center Opening",
 ] as const;
 

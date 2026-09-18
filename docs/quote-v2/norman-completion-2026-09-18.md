@@ -1,0 +1,51 @@
+# Norman catalog implementation and verification ledger — September 18, 2026
+
+Status: implementation in progress. This ledger does not certify universal live pricing.
+
+The current catalog contains 14 Norman families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
+
+The inventory includes 1,288 retained fabric/color identities, of which 1,278 are available to the picker; 678 Honeycomb color/cell routes; and 544 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Complete current assortment discovery still requires the authenticated Norman dealer catalog.
+
+## Implemented changes
+
+- Pin September 10 SmartFold guide and size appendix, August 1 CityLights guide, September 1 Normandy wood-blind guide, and September 16 motorization guide. All 45 manifest artifacts were hash-verified against local originals.
+- Retain existing catalog IDs. Keep discontinued colors and SmartFold reverse-side image identities readable. CityLights half-inch configurations are discontinued from August 1.
+- SmartFold: 15 ordering fabrics, collection/control-specific appendix limits, Louise cordless height of 72 inches, narrow cordless limits, fold-height constraints, tall-Louise valance requirements, inside-only Light Guard, and three valance price schedules. October-specific motor revision remains date-controlled.
+- SmartDrape: add F1603, F1604 and F1868; route the ten Essentials fabrics to their source grid; enforce motor/stack/mount, pocket, area, left-motor location, wall hardware and keystone conditions. Derive shim quantity by mounting-bracket count, with separate manual/motorized breakpoints. The uncovered motorized center-opening bracket interval over 94¼ through 94½ inches is blocked for manufacturer clarification.
+- CityLights: reconcile 30 one-inch and 22 two-inch colors, derive finish charges from the color code, enforce net dimensions and narrow-blind center tilt, and reject incompatible controls/side brackets.
+- Wood blinds: derive designer/premium charges by code, provide priced Designer Crown/Contempo/Linear valances, and enforce net dimensions and narrow center tilt. Add dealer-guide ND108 Rustic Gray. Retain conflicting legacy ND118 as unavailable for new ordering without rewriting historical quotes.
+- Palladian Shelf: expose the product, validate length/depth/inside mount, and require a linked selected eligible Norman line for the with-product grid.
+- Roman: price both common-valance shade widths independently and preserve both motors. Fabric width and manual area checks apply to each shade rather than the whole opening.
+- Shared motorization: derive versioned assembly/accessory records on the server; discard client-supplied allocations; enforce compatible family and panel capacity; charge the panel once across line quantities; reassign its owner when the former owner is removed. Mixed large dual-motor Honeycomb loads remain blocked pending manufacturer guidance.
+- Derive and persist 36W/65W adapter requirements across supported Honeycomb, Roman and SmartFold lines, preserving the narrow dual-motor Honeycomb exception. Unknown DC power-source labels are rejected.
+- Keep dealer cost, suggested retail, customer selling policy and saved snapshots separate. No selling-price policy change was made.
+
+## Family exceptions
+
+| Family | Unresolved before complete live certification |
+|---|---|
+| Honeycomb | Remaining specialty and Day & Night combinations, complete shared-accessory rules, current dealer comparisons and production persistence. |
+| Vertical Honeycomb | Full vertical operating, stacking and rail configuration rules; manual-quote gate retained. |
+| Roller | Remaining dual/common-valance/coupled accessories; current dealer and production comparisons. |
+| Roman | Remaining accessory combinations; current dealer comparison and actual production save/reopen of common valance and shared panels. |
+| SmartFold | Multi-shade common-valance model and complete mounting/accessory combinations; current dealer and production comparisons. |
+| PerfectSheer | Motor tube/factory AA-fabric-to-F-color mapping, complete mounting/valance combinations and dealer comparison. |
+| SmartDrape | Complete motor/accessory contract, track extensions and conflicting bracket interval; dealer and production comparison. |
+| CityLights | Complete mounting and side-by-side order constraints; current dealer and production comparison. |
+| Wood Blinds | Common valances, cutouts, keystone locations and complete mounting constraints; account reconciliation of ND108/ND118. |
+| Ultimate Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
+| SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
+| Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
+| Palladian Shelf | Complete finish/installation reconciliation and current dealer/production comparison. |
+| Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
+
+## Evidence and release state
+
+- Full automated suite: 4,224 passed, 28 skipped on September 18; subsequent edits require the release rerun recorded with the release evidence.
+- Browser verification uses the real CRM DesignCard in a local fixture. Louise saved/reopened with the same stable identity; SmartDrape F1868 appears; ND108 is selectable and ND118 is disabled. This is local verification, not a saved production quote.
+- Authoritative backend integration tests exercise panel allocation, quantity, removal, overload, Roman component prices and serialization/reopening.
+- Norman's authenticated session expired; the login handoff is pending. No current dealer-price comparison or current account-fee verification is claimed.
+- Existing dealer policy is still the July 21 account fixture. Current factors, freight, oversize and processing-fee scope need account verification. The different-dealer pricing PDF remains quarantined.
+- No family is newly labelled “verified live” by this ledger. Existing limited/blocked runtime statuses remain intact.
+
+Row-level working results are generated into `outputs/norman-completion/`: `programs.csv`, `grid-rows.csv`, `fabrics-colors.csv`, `honeycomb-color-cell-routes.csv`, `options.csv`, and `summary.json`. `norman-completion-audit.test.ts` exports the current code catalog when `NORMAN_AUDIT_EXPORT` is set. The comparison script records PDF page matches for every grid row. Raw dealer files and private local evidence are not part of the published source changes.

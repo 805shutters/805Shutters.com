@@ -203,6 +203,7 @@ const PRODUCT_TYPE_TO_COLOR_PRODUCT: Record<string, string[]> = {
   "Honeycomb Shades": ["honeycomb"],
   "Sheer Shades": ["perfectsheer"],
   "Smart Drapes": ["smartdrape"],
+  "SmartFold Shades": ["smartfold"],
   "Vertical Blinds": ["synchrony_vertical"],
   "Mini Blinds": ["citylights_aluminum"],
   "Wood Blinds": ["wood_blinds"],
@@ -232,7 +233,7 @@ export function supportsMtsProductColorSearch(
   _optionsJson: Record<string, unknown> = {},
 ): boolean {
   if (field === "fabric") {
-    return ["Roman Shades", "Honeycomb Shades", "Sheer Shades", "Smart Drapes"].includes(productType ?? "");
+    return ["Roman Shades", "Honeycomb Shades", "Sheer Shades", "Smart Drapes", "SmartFold Shades"].includes(productType ?? "");
   }
 
   if (field === "json:color") {
@@ -470,6 +471,8 @@ export function getMtsGridKeyForCatalogProgram(
   if (productType === "Sheer Shades") {
     return programId.startsWith("perfectsheer_") ? "light_filtering" : PRODUCT_COLOR_UNKNOWN_GRID;
   }
+
+  if (productType === "SmartFold Shades") return programId === "smartfold_smartfold_shades" ? "smartfold" : PRODUCT_COLOR_UNKNOWN_GRID;
 
   if (productType === "Smart Drapes") {
     if (!programId.startsWith("smartdrape_")) return PRODUCT_COLOR_UNKNOWN_GRID;

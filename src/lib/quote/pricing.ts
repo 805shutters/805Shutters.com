@@ -756,6 +756,7 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (componentWidths !== undefined) {
     const supportedMultiComponentProduct =
       product.id === "roller" ||
+      product.id === "roman" ||
       product.id === "faux_wood" ||
       product.id === "smartprivacy_faux" ||
       product.id === "lotus_faux_wood_blinds";
@@ -1055,8 +1056,14 @@ export function priceDesign(input: PriceInput): PriceResult {
       kind: "flat",
       detail: units > 1 ? `${motorPrice} x ${units}` : undefined,
     });
-    perWindowCents += amountCents;
-    if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
+    const sharedPanel = opt.id === "power_distribution_panel" || opt.id === "dc_power_distribution_panel";
+    if (sharedPanel) {
+      onceCents += amountCents;
+      if (wholesaleAmountCents != null) wholesaleOnceCents += wholesaleAmountCents;
+    } else {
+      perWindowCents += amountCents;
+      if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
+    }
   }
 
   const quantity = normalizeQuantity(input.quantity);

@@ -53,6 +53,112 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+    "id": "norman-smartfold-minmax-2026-09-10",
+    "manufacturer": "Norman",
+    "kind": "restriction_workbook",
+    "format": "xlsx",
+    "fileName": "SmartFold MinMax Appendix 2026-09-10.xlsx",
+    "title": "SmartFold MinMax Appendix",
+    "revision": "2026-08-13; effective 2026-09-10",
+    "effectiveDate": "2026-09-10",
+    "effectiveDateEvidence": "Revision Log row 6 dates Louise and rechargeable battery area updates effective September 10, 2026.",
+    "receivedDate": "2026-09-18",
+    "modifiedDate": null,
+    "sha256": "e3a32b8596cd4cfe5696aa319bee11db8844e611b38c89300b368d3b5c1d4676",
+    "authorities": [
+      "restrictions"
+    ],
+    "sheetNames": [
+      "Revision Log",
+      "Single&Common"
+    ]
+  },
+  {
+    "id": "norman-smartfold-guide-2026-09-10",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "SmartFold Guide 2026-09-10.pdf",
+    "title": "SmartFold Guide",
+    "revision": "2026-09-10",
+    "effectiveDate": "2026-09-10",
+    "effectiveDateEvidence": "Page 2 dates September changes 2026-09-10 and October motor changes 2026-10-01; each rule retains its effective date.",
+    "receivedDate": "2026-09-18",
+    "modifiedDate": null,
+    "sha256": "15ce45a1f490c4b88a737b06c6f903fdd416152df41ad808d8c6caed7f3714dd",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 39,
+    "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
+  },
+  {
+    "id": "norman-citylights-guide-2026-08-01",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Citylights Aluminum Blinds Program Guide 2026-08-01.pdf",
+    "title": "Citylights Aluminum Blinds Program Guide",
+    "revision": "2026-08-01",
+    "effectiveDate": "2026-08-01",
+    "effectiveDateEvidence": "Page 2 dates half-inch discontinuation and new 2-inch colors August 1, 2026.",
+    "receivedDate": "2026-09-18",
+    "modifiedDate": null,
+    "sha256": "f9228276c8eddd569b7297b0d69187e5488d7d341cd6ea59f77892e7f46dd916",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 20,
+    "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
+  },
+  {
+    "id": "norman-wood-blinds-guide-2026-09-01",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Ultimate Wood Blinds Guide 2026-09-01.pdf",
+    "title": "Ultimate Wood Blinds Guide",
+    "revision": "2026-09-01",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Page 2 dates mounting changes September 1, 2026.",
+    "receivedDate": "2026-09-18",
+    "modifiedDate": null,
+    "sha256": "ccad35711bce47f7dbe1455fcc0152e7fb7ebd37ebfff1689fff840e44c0a43d",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 25,
+    "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
+  },
+  {
+    "id": "norman-motorization-guide-2026-09-16",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Motorization Guide 2026-09-16.pdf",
+    "title": "Motorization Guide",
+    "revision": "2026-09-16",
+    "effectiveDate": "2026-09-16",
+    "effectiveDateEvidence": "Revision log dates updates September 16, 2026; individual product rules use their stated effective dates.",
+    "receivedDate": "2026-09-18",
+    "modifiedDate": null,
+    "sha256": "85c5fd2c0d813c879d22776b73f23132243454376b15e52c9451b4cb1f20c1b8",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 96,
+    "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
+  },
+
+  {
     id: "norman-retail-guide-2026-07",
     manufacturer: "Norman",
     kind: "price_book",

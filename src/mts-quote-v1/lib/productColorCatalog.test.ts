@@ -16,7 +16,7 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(getMtsProductColorRows("Roman Shades")).toHaveLength(201);
     expect(getMtsProductColorRows("Honeycomb Shades")).toHaveLength(191);
     expect(getMtsProductColorRows("Sheer Shades")).toHaveLength(31);
-    expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(74);
+    expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(77);
     expect(getMtsProductColorRows("Vertical Blinds")).toHaveLength(42);
     expect(getMtsProductColorRows("Mini Blinds")).toHaveLength(33);
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "SmartPrivacy" })).toHaveLength(16);

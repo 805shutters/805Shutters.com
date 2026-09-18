@@ -115,6 +115,36 @@
       "sha256": "2a54ee5ba2a85cad4c30e489e1887ef497046c622e27851fba299731681029ed"
     },
     {
+      "sourceId": "norman-smartfold-minmax-2026-09-10",
+      "fileName": "SmartFold MinMax Appendix 2026-09-10.xlsx",
+      "byteLength": 29522,
+      "sha256": "e3a32b8596cd4cfe5696aa319bee11db8844e611b38c89300b368d3b5c1d4676"
+    },
+    {
+      "sourceId": "norman-smartfold-guide-2026-09-10",
+      "fileName": "SmartFold Guide 2026-09-10.pdf",
+      "byteLength": 3322928,
+      "sha256": "15ce45a1f490c4b88a737b06c6f903fdd416152df41ad808d8c6caed7f3714dd"
+    },
+    {
+      "sourceId": "norman-citylights-guide-2026-08-01",
+      "fileName": "Citylights Aluminum Blinds Program Guide 2026-08-01.pdf",
+      "byteLength": 1740538,
+      "sha256": "f9228276c8eddd569b7297b0d69187e5488d7d341cd6ea59f77892e7f46dd916"
+    },
+    {
+      "sourceId": "norman-wood-blinds-guide-2026-09-01",
+      "fileName": "Ultimate Wood Blinds Guide 2026-09-01.pdf",
+      "byteLength": 2407254,
+      "sha256": "ccad35711bce47f7dbe1455fcc0152e7fb7ebd37ebfff1689fff840e44c0a43d"
+    },
+    {
+      "sourceId": "norman-motorization-guide-2026-09-16",
+      "fileName": "Motorization Guide 2026-09-16.pdf",
+      "byteLength": 6705549,
+      "sha256": "85c5fd2c0d813c879d22776b73f23132243454376b15e52c9451b4cb1f20c1b8"
+    },
+    {
       "sourceId": "norman-retail-guide-2026-07",
       "fileName": "2026Jul Retail Price Guide (1).pdf",
       "byteLength": 16583230,

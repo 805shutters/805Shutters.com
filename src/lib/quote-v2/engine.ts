@@ -1,3 +1,5 @@
+import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, WOOD_PREMIUM_CODES } from "@/lib/quote/norman-current-assortment";
+import { romanComponentWidths } from "./norman-assemblies";
 import { calculateCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
 import {
   catalog,
@@ -477,6 +479,23 @@ export function authoritativeAutomaticSurchargeSelections(
     if (valance) details.valance = valance;
   }
 
+  const colorCode = String(selection.configuration.fabric_color_code ?? "").toUpperCase();
+  if (selection.productId === "citylights_aluminum" && colorCode) {
+    details.slat_finish = CITYLIGHTS_FINISH_BY_CODE[colorCode] ?? "standard";
+    delete details.fabric_surcharge_id;
+  }
+  if (selection.productId === "wood_blinds" && colorCode) {
+    details.color = WOOD_DESIGNER_CODES.some(c => c === colorCode) ? "designer" : WOOD_PREMIUM_CODES.some(c => c === colorCode) ? "premium" : "standard";
+    delete details.fabric_surcharge_id;
+  }
+  if (selection.productId === "smartdrape") {
+    // Manual guide p21 and September motor guide p50 count brackets separately.
+    const w = selection.widthInches;
+    const motorized = /motor/i.test(String(selection.configuration.control_type ?? selection.configuration.lift_system ?? ""));
+    const centerOpening = /center.?opening/i.test(String(selection.configuration.stack_option ?? ""));
+    const secondBoundary = motorized ? centerOpening ? 94.25 : 94.5 : 94.375;
+    details.aluminum_shim_quantity = w <= 72 ? 2 : w <= secondBoundary ? 3 : w <= 144 ? 4 : w <= 197.875 ? 6 : w <= 286.75 ? 9 : 12;
+  }
   return deriveAutomaticSurcharges(selection.productId, details).map(
     (entry) => ({ id: entry.id, units: entry.units ?? 1 }),
   );
@@ -683,9 +702,9 @@ function priceInputContractIssues(
   if (input.heightInches !== selection.heightInches) {
     mismatches.heightInches = `${selection.heightInches} != ${input.heightInches}`;
   }
-  if (selection.productId === "roller") {
+  if (selection.productId === "roller" || selection.productId === "roman") {
     const expectedComponentWidths =
-      rollerComponentOrderWidthsForPricing(selection) ?? [];
+      (selection.productId === "roman" ? romanComponentWidths(selection) : rollerComponentOrderWidthsForPricing(selection)) ?? [];
     const actualComponentWidths = Array.isArray(input.componentWidthsInches)
       ? input.componentWidthsInches.map(Number)
       : [];
@@ -708,7 +727,7 @@ function priceInputContractIssues(
         )
       : null;
   const canonicalShadeMotorization =
-    selection.productId === "honeycomb" || selection.productId === "roman"
+    selection.productId === "honeycomb" || selection.productId === "roman" || selection.productId === "smartfold"
       ? canonicalNormanShadeMotorizationSelectionsFromConfiguration(selection)
       : null;
   if (
@@ -834,7 +853,7 @@ function catalogCostRetail(
   const onceLineIds = new Set(
     source.surchargeLines
       .filter(
-        (line) => findProductSurcharge(product, line.id)?.per === "once",
+        (line) => findProductSurcharge(product, line.id)?.per === "once" || /^motor:(smart_motorization|automate_home):power_distribution_panel$/.test(line.id),
       )
       .map((line) => line.id),
   );

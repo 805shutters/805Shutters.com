@@ -1,3 +1,5 @@
+import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
+import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
 import type {
   SelectionContext,
   SelectionRecord,
@@ -30,10 +32,10 @@ export interface SourceBackedMotorLimits {
 export type NormanShadeMotorizationResolution =
   | {
       readonly ok: true;
-      readonly productId: "honeycomb" | "roman";
+      readonly productId: "honeycomb" | "roman" | "smartfold";
       readonly family: NormanShadeMotorFamily;
       readonly powerSource: string;
-      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night";
+      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night" | "smartfold";
       readonly limits: readonly SourceBackedMotorLimits[];
       readonly canonicalSelections: readonly CanonicalMotorizationSelection[];
       readonly sourcePages: readonly number[];
@@ -53,7 +55,7 @@ export type NormanShadeMotorizationResolution =
     };
 
 type MotorConfig = Readonly<{
-  productId: "honeycomb" | "roman";
+  productId: "honeycomb" | "roman" | "smartfold";
   lift: string;
   application: string;
   powerSource: string;
@@ -173,7 +175,7 @@ function parseCanonicalSelections(
 
 function motorConfig(
   context: SelectionContext,
-  productId: "honeycomb" | "roman",
+  productId: "honeycomb" | "roman" | "smartfold",
 ): MotorConfig {
   const canonicalValue = value(context, "motorization_selections");
   return {
@@ -650,6 +652,9 @@ function resolveHoneycomb(
         ),
       );
     }
+    if (context.catalogAsOf >= "2026-09-18" && lowVoltage && config.dcPowerSupply && !["direct building low voltage", "dc distribution panel"].includes(config.dcPowerSupply)) {
+      issues.push(issue("honeycomb.motorization.dc_power_supply_unknown", 13, { dc_power_supply: config.dcPowerSupply }, "Select Direct Building Low Voltage or DC Distribution Panel for Norman Smart DC motors."));
+    }
     if (lowVoltage && !config.dcPowerSupply) {
       issues.push(
         issue(
@@ -661,7 +666,7 @@ function resolveHoneycomb(
       );
     } else if (
       lowVoltage &&
-      config.dcPowerSupply.includes("distribution panel")
+      config.dcPowerSupply.includes("distribution panel") && !hasPanelAllocation(context)
     ) {
       issues.push(
         issue(
@@ -812,6 +817,14 @@ function resolveHoneycomb(
     );
   }
 
+  if (config.dcPowerSupply.includes("distribution panel")) {
+    canonicalSelections.push(...panelSelections(context, family === "automate_home" ? "automate_home" : "smart_motorization"));
+  }
+  if (context.productId === "roman" && normalized(value(context, "shade_type")).includes("common valance")) {
+    for (let i = 0; i < canonicalSelections.length; i++) {
+      if (canonicalSelections[i].role === "base_motor") canonicalSelections[i] = { ...canonicalSelections[i], units: 2 };
+    }
+  }
   issues.push(
     ...validateControlAndPosition(context, config, family, sourcePages),
     ...dimensionIssues(context, [limits], "honeycomb.motorization.dimension"),
@@ -858,6 +871,17 @@ function resolveHoneycomb(
   };
 }
 
+function panelSelections(context: SelectionContext, group: string): CanonicalMotorizationSelection[] {
+  const record = context.configuration.norman_order_record_v1 as SelectionRecord | undefined;
+  if (!record || typeof record !== "object" || Array.isArray(record) || record.version !== 1 || record.family !== (group === "automate_home" ? "automate_home" : "norman_smart")) return [];
+  return record.chargePanel === true ? [canonicalSelection(group, "power_distribution_panel", "power_supply")] : [];
+}
+
+function hasPanelAllocation(context: SelectionContext): boolean {
+  const record = context.configuration.norman_order_record_v1 as SelectionRecord | undefined;
+  return Boolean(record && typeof record === "object" && !Array.isArray(record) && record.version === 1 && typeof record.ownerLineId === "string" && Array.isArray(record.connectedLineIds));
+}
+
 function resolveRoman(
   context: SelectionContext,
   config: MotorConfig,
@@ -899,7 +923,7 @@ function resolveRoman(
   let sourcePages: readonly number[];
   let derivedAdapterWattage: 36 | 65 | undefined;
 
-  if (shadeType.includes("common valance")) {
+  if (shadeType.includes("common valance") && !context.configuration.norman_assembly_v1) {
     issues.push(
       issue(
         "roman.motorization.common_valance_price_topology_incomplete",
@@ -929,6 +953,9 @@ function resolveRoman(
         ),
       );
     }
+    if (context.catalogAsOf >= "2026-09-18" && lowVoltage && config.dcPowerSupply && !["direct building low voltage", "dc distribution panel"].includes(config.dcPowerSupply)) {
+      issues.push(issue("roman.motorization.dc_power_supply_unknown", 21, { dc_power_supply: config.dcPowerSupply }, "Select Direct Building Low Voltage or DC Distribution Panel for Norman Smart DC motors."));
+    }
     if (lowVoltage && !config.dcPowerSupply) {
       issues.push(
         issue(
@@ -940,7 +967,7 @@ function resolveRoman(
       );
     } else if (
       lowVoltage &&
-      config.dcPowerSupply.includes("distribution panel")
+      config.dcPowerSupply.includes("distribution panel") && !hasPanelAllocation(context)
     ) {
       issues.push(
         issue(
@@ -1021,7 +1048,7 @@ function resolveRoman(
         );
         includedAccessories.push("External battery charging kit");
       } else if (config.dcPowerSupply.includes("distribution panel")) {
-        issues.push(
+        if (!hasPanelAllocation(context)) issues.push(
           issue(
             "roman.motorization.shared_dc_panel_allocation_incomplete",
             70,
@@ -1084,6 +1111,14 @@ function resolveRoman(
     );
   }
 
+  if (config.dcPowerSupply.includes("distribution panel")) {
+    canonicalSelections.push(...panelSelections(context, family === "automate_home" ? "automate_home" : "smart_motorization"));
+  }
+  if (context.productId === "roman" && normalized(value(context, "shade_type")).includes("common valance")) {
+    for (let i = 0; i < canonicalSelections.length; i++) {
+      if (canonicalSelections[i].role === "base_motor") canonicalSelections[i] = { ...canonicalSelections[i], units: 2 };
+    }
+  }
   issues.push(
     ...validateControlAndPosition(context, config, family, sourcePages),
     ...dimensionIssues(context, [limits], "roman.motorization.dimension"),
@@ -1130,17 +1165,62 @@ function resolveRoman(
   };
 }
 
+function resolveSmartFold(context: SelectionContext, config: MotorConfig): NormanShadeMotorizationResolution {
+  const issues: ValidationIssue[] = [];
+  const add = (id: string, page: number, explanation: string) => issues.push({ severity: "hard_block", ruleId: `smartfold.motorization.${id}`, source: sourceProvenance("norman-motorization-guide-2026-09-16", { page }), selectedValues: { ...context.configuration }, explanation });
+  const autowand = config.powerSource === "autowand" || config.lift === "autowand";
+  const family = autowand ? "autowand" : familyForPowerSource(config.powerSource);
+  const rechargeable = config.powerSource.includes("rechargeable battery");
+  const ac = config.powerSource.includes("ac adapter");
+  const dc = config.powerSource.includes("dc low voltage");
+  const fabric = SMARTFOLD_FABRICS.find(f => f.code === String(value(context, "fabric_color_code")).toUpperCase());
+  const adapter36 = SMARTFOLD_LIMITS.find(row => row.collection === fabric?.collection && row.mode === "ac_36w");
+  const derivedAdapterWattage: 36 | 65 = adapter36 && context.widthInches * context.heightInches > adapter36.maxArea * 144 ? 65 : 36;
+  if (ac && adapter36) issues.push({ severity: "auto_derive", ruleId: "smartfold.motorization.ac_adapter_wattage_derived", source: sourceProvenance("norman-smartfold-minmax-2026-09-10", { sheet: "Single&Common", range: adapter36.range }), selectedValues: { width: context.widthInches, height: context.heightInches }, derivedValues: { ac_adapter_wattage: derivedAdapterWattage }, explanation: `The ${derivedAdapterWattage}W adapter follows the fabric-specific area limit.` });
+  if (!autowand && (family !== "norman_smart" || (!rechargeable && !ac && !dc) || config.powerSource.includes("charging wand"))) add("power_source", 56, "SmartFold requires Norman Smart AC Adapter, rechargeable battery with AC charger, DC low voltage, or AutoWand.");
+  const components: CanonicalMotorizationSelection[] = [canonicalSelection(autowand ? "autowand" : "smart_motorization", autowand ? "autowand" : "motor", "base_motor")];
+  const controller = controllerSelection(autowand ? "autowand" : "norman_smart", config.remoteType);
+  if (controller) components.push(controller);
+  if (config.hubRequired === true && !autowand) components.push(canonicalSelection("smart_motorization", "hub", "hub"));
+  if (dc && config.dcPowerSupply && !["direct building low voltage", "dc distribution panel"].includes(config.dcPowerSupply)) add("dc_power_supply_unknown", 58, "Select Direct Building Low Voltage or DC Distribution Panel for Norman Smart DC motors.");
+  if (dc && !config.dcPowerSupply) add("dc_power_supply", 58, "Select direct low-voltage wiring or an allocated distribution panel.");
+  if (dc && config.dcPowerSupply.includes("distribution panel")) {
+    if (!hasPanelAllocation(context)) add("panel_allocation", 58, "Connect the shade to a capacity-checked shared panel on this quote.");
+    components.push(...panelSelections(context, "smart_motorization"));
+  }
+  const limits: SourceBackedMotorLimits = { id: autowand ? "autowand" : rechargeable ? "rechargeable" : "ac_dc", minWidth: autowand ? 22 : rechargeable ? 24 : 16, maxWidth: 96, minHeight: Number(value(context, "fold_size")) === 8 ? 15.125 : Number(value(context, "fold_size")) === 7 ? 13.625 : 12, maxHeight: 96, sourcePage: autowand ? 93 : 56 };
+  const oldIssues = [...validateControlAndPosition(context, config, autowand ? "autowand" : "norman_smart", [limits.sourcePage]), ...dimensionIssues(context, [limits], "smartfold.motorization.dimension"), ...canonicalContractIssues(config, components, [limits.sourcePage])];
+  issues.push(...oldIssues.map(i => ({ ...i, source: sourceProvenance("norman-motorization-guide-2026-09-16", { page: limits.sourcePage }) })));
+  if (context.catalogAsOf < "2026-10-01" && normalized(value(context, "motor_revision")).includes("october")) issues.push({ severity: "hard_block", ruleId: "smartfold.motorization.revision_not_effective", source: sourceProvenance("norman-smartfold-guide-2026-09-10", { page: 2 }), selectedValues: { motor_revision: value(context, "motor_revision") ?? null }, explanation: "The October SmartFold motor upgrade is not effective before October 1, 2026." });
+  if (issues.some(i=>i.severity==="hard_block")) return {ok:false,issues,limits:[limits],canonicalSelections:components,sourcePages:[limits.sourcePage]};
+  return {ok:true,productId:"smartfold",family:autowand?"autowand":"norman_smart",powerSource:config.powerSource,mode:"smartfold",limits:[limits],canonicalSelections:components,sourcePages:[limits.sourcePage],includedAccessories:rechargeable||autowand?["One charging kit per three motors, minimum one per order"]:[],issues,...(ac?{derivedAdapterWattage}:{})};
+}
+
 export function resolveNormanShadeMotorization(
   context: SelectionContext,
 ): NormanShadeMotorizationResolution | null {
-  if (context.productId !== "honeycomb" && context.productId !== "roman") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold") {
     return null;
   }
   const config = motorConfig(context, context.productId);
-  if (!isMotorized(config)) return null;
-  return context.productId === "honeycomb"
+  if (!isMotorized(config) && config.lift !== "autowand") return null;
+  if (context.productId === "smartfold") return resolveSmartFold(context, config);
+  const resolution = context.productId === "honeycomb"
     ? resolveHoneycomb(context, config)
     : resolveRoman(context, config);
+  if (context.catalogAsOf < "2026-09-16") return resolution;
+  // September's motor update adds pages while retaining these HC/Roman size
+  // tables. Historical snapshots keep their July source locations.
+  const page = (n: number) => n >= 60 ? n + 5 : n >= 18 ? n + 2 : n >= 9 ? n + 1 : n;
+  return {
+    ...resolution,
+    limits: resolution.limits?.map(limit => ({ ...limit, sourcePage: page(limit.sourcePage) })),
+    sourcePages: resolution.sourcePages?.map(page),
+    issues: resolution.issues.map(i => ({ ...i, source: sourceProvenance("norman-motorization-guide-2026-09-16", {
+      ...(i.source.page ? { page: page(i.source.page) } : {}),
+      ...(i.source.pages ? { pages: i.source.pages.map(page) } : {}),
+    }) })),
+  } as NormanShadeMotorizationResolution;
 }
 
 export function validateNormanShadeMotorization(
@@ -1163,7 +1243,7 @@ export function motorFamilyForNormanShadeSelection(
 ): NormanShadeMotorFamily | null {
   const resolution = resolveNormanShadeMotorization(context);
   if (resolution?.ok) return resolution.family;
-  if (context.productId !== "honeycomb" && context.productId !== "roman") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold") {
     return null;
   }
   return familyForPowerSource(

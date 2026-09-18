@@ -1,4 +1,6 @@
+import { romanComponentWidths } from "./norman-assemblies";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
+import { validateNormanFamilyRules } from "./norman-family-rules";
 import { findFall2026RollerCollection } from "@/lib/quote/norman-roller-fall-2026";
 import {
   isNormanMicroSlatSize,
@@ -1361,7 +1363,9 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
 
   const isDayNight = shadeType === "day night";
   const isCommonValance = shadeType === "common valance";
-  const area = (context.widthInches * context.heightInches) / 144;
+  const panelWidths = romanComponentWidths(context) ?? [context.widthInches];
+  const widestPanel = Math.max(...panelWidths);
+  const area = (widestPanel * context.heightInches) / 144;
   let minWidth = 12;
   let maxWidth = 96;
   let minHeight = 24;
@@ -1384,13 +1388,13 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
       );
     }
     maxWidth = headrail.includes("1.5") || headrail.includes("1 1 2") ? 50 : 96;
-    maxArea = context.widthInches <= 50 ? 33 : 64;
+    maxArea = widestPanel <= 50 ? 33 : 64;
   } else if (lift.includes("smartrelease") || lift.includes("smart release")) {
     maxArea = 52;
   }
 
   if (!motorized) {
-    if (context.widthInches < minWidth || context.widthInches > maxWidth) {
+    if (panelWidths.some(width => width < minWidth || width > maxWidth)) {
       issues.push(
         issue(
           "hard_block",
@@ -1412,7 +1416,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         ),
       );
     }
-    if (area > maxArea) {
+    if (panelWidths.some(width => width * context.heightInches / 144 > ((lift.includes("continuous") || lift.includes("cord loop")) ? (width <= 50 ? 33 : 64) : maxArea))) {
       issues.push(
         issue(
           "hard_block",
@@ -1605,7 +1609,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
 
   if (fabric) {
     const rawMax = Number.parseFloat(fabric.maxWidth);
-    if (Number.isFinite(rawMax) && context.widthInches > rawMax) {
+    if (Number.isFinite(rawMax) && widestPanel > rawMax) {
       const acknowledgment = normalized(configValue(context, "fabric_join_acknowledgment"));
       const selectedOrientation = normalized(configValue(context, "fabric_orientation"));
       const selectedIsRailroaded =
@@ -1625,7 +1629,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
             "hard_block",
             "roman.fabric.not_joinable",
             { ...ROMAN_GUIDE, pages: [12, 13] },
-            { widthInches: context.widthInches, fabricMaxWidthInches: rawMax, clothCode: fabric.clothCode },
+            { widthInches: widestPanel, fabricMaxWidthInches: rawMax, clothCode: fabric.clothCode },
             "This fabric is not joinable and the selected width exceeds its documented fabric width.",
           ),
         );
@@ -1635,7 +1639,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
             "hard_block",
             "roman.fabric.orientation_ack_required",
             { ...ROMAN_GUIDE, pages: [12, 13] },
-            { widthInches: context.widthInches, fabricMaxWidthInches: rawMax, fabric_orientation: configValue(context, "fabric_orientation") ?? null },
+            { widthInches: widestPanel, fabricMaxWidthInches: rawMax, fabric_orientation: configValue(context, "fabric_orientation") ?? null },
             "A railroad, seam, or railroad-and-seam acknowledgment is required when the order exceeds the usable fabric width.",
           ),
         );
@@ -2346,6 +2350,8 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
+  issues.push(...validateNormanFamilyRules(context));
+  if (context.productId === "smartfold") issues.push(...validateNormanShadeMotorization(context));
   const withdrawal = normanColorWithdrawal(
     context.productId,
     configValue(context, "fabric_color_code"),
@@ -2366,15 +2372,15 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       !Array.isArray(entry) && "id" in entry && entry.id === NORMAN_MICRO_SLAT_SURCHARGE_ID,
   );
   if (
-    context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-09-01" &&
+    context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-08-01" &&
     (isNormanMicroSlatSize(configValue(context, "slat_size")) || hasMicroSurcharge)
   ) {
     issues.push(issue(
       "hard_block",
-      "norman.citylights.micro_slats.unverified",
-      { sourceId: "norman-retail-guide-2026-09", page: 35 },
+      "norman.citylights.micro_slats.discontinued",
+      { sourceId: "norman-citylights-guide-2026-08-01", page: 2 },
       { slat_size: text(configValue(context, "slat_size")) },
-      "Norman's September 2026 retail guide no longer supplies the Micro 1/2-inch slat surcharge. Current price and orderability require manufacturer confirmation; the option is not free.",
+      "Norman discontinued CityLights 1/2-inch blinds effective August 1, 2026. Historical configurations remain readable; select a current 1-inch or 2-inch blind for a new quote.",
     ));
   }
   switch (context.productId) {

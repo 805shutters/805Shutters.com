@@ -1,5 +1,6 @@
 import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
 import { normanColorWithdrawal } from "./norman-assortment-2026-09";
+import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, citylightsColorSlatSizes, SMARTFOLD_FABRICS, SMARTDRAPE_ESSENTIALS_CODES } from "./norman-current-assortment";
 import { getProduct } from "./catalog";
 import {
   NORMAN_ROLLER_COLOR_CODE_DETAIL,
@@ -376,6 +377,56 @@ const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.m
   };
 });
 
+// Apply current dealer-guide corrections after assigning IDs: historical
+// swatch references must not shift when an offering is retired or added.
+for (const row of generatedProductColorOptions) {
+  if (row.productId === "citylights_aluminum") {
+    row.fabricType = `Available in ${citylightsColorSlatSizes(row.colorCode).join(" & ")}`;
+    row.automaticDetails = { slat_finish: CITYLIGHTS_FINISH_BY_CODE[row.colorCode] ?? "standard" };
+    row.sourcePage = "Citylights Aluminum Blinds Program Guide 2026-08-01.pdf#page=10";
+    row.sourceNote = "August 2026 dealer guide: 30 one-inch and 22 two-inch colors; half-inch discontinued.";
+  }
+  if (row.productId === "wood_blinds" && WOOD_DESIGNER_CODES.some(c => c === row.colorCode)) row.automaticDetails = { fabric_surcharge_id: "designer_color" };
+  if (row.productId === "wood_blinds" && row.colorCode === "ND118") {
+    row.available = false;
+    row.sourceNote = "Legacy public swatch code conflicts with the September dealer guide, which lists Rustic Gray as ND108. Retained for historical quotes; account reconciliation pending.";
+  }
+  if (row.productId === "smartfold") {
+    const fabric = SMARTFOLD_FABRICS.find((value) => value.code === row.colorCode);
+    row.available = Boolean(fabric);
+    if (fabric) row.collection = fabric.collection;
+    row.sourcePage = "SmartFold Guide 2026-09-10.pdf#page=5";
+    row.sourceNote = fabric ? "September dealer guide ordering fabric" : "Reverse-side swatch image; not a separate orderable fabric. Historical reference retained.";
+  }
+  if (row.productId === "smartdrape" && SMARTDRAPE_ESSENTIALS_CODES.some((code) => code === row.colorCode)) {
+    row.programId = "smartdrape_smartdrape_lakeshore_stripe";
+  }
+}
+
+const additionalSmartDrapeColors: ProductColorOption[] = [
+  { code: "F1603", name: "Light Gray", collection: "Room Darkening", fabricType: "Room Darkening", page: 26 },
+  { code: "F1604", name: "Cottonwood", collection: "Room Darkening", fabricType: "Room Darkening", page: 26 },
+  { code: "F1868", name: "Leather Brown", collection: "Plain", fabricType: "Light Filtering", page: 25 },
+].map(({ code, name, collection, fabricType, page }) => ({
+  id: `smartdrape:dealer-2026-09:${code.toLowerCase()}`,
+  productId: "smartdrape", collection, publicCollection: collection,
+  fabricType, colorCode: code, colorName: name, publicColorName: name,
+  frStatus: "", imageUrl: "", sourcePage: `PS-SD Guide.pdf#page=${page}`, sourcePageModified: null,
+  sourceNote: `September dealer guide, page ${page}; absent from public swatch cards.`,
+  programId: "smartdrape_smartdrape_light_filtering", selectionMode: "program", requiresProgram: false,
+  available: true, automaticDetails: automaticDetails("smartdrape", collection, fabricType),
+  searchText: `smartdrape ${collection} ${fabricType} ${code} ${name}`.toLowerCase(),
+}));
+
+const additionalWoodColors: ProductColorOption[] = [{
+  id: "wood_blinds:dealer-2026-09:nd108", productId: "wood_blinds", collection: "", publicCollection: "",
+  fabricType: "Stain", colorCode: "ND108", colorName: "Rustic Gray", publicColorName: "Rustic Gray",
+  frStatus: "", imageUrl: "", sourcePage: "Ultimate Wood Blinds Guide.pdf#page=9", sourcePageModified: null,
+  sourceNote: "September 1 dealer guide pages 9 and 10 list ND108. Legacy public ND118 identity remains quarantined, not silently renamed.",
+  programId: "wood_blinds_2in_and_2_1_2in_slats", selectionMode: "program", requiresProgram: false,
+  available: true, automaticDetails: {}, searchText: "wood blinds stain nd108 rustic gray",
+}];
+
 const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors.map((row, index) => ({
   id: optionId({ ...row, productId: NORMAN_ROLLER_PRODUCT_ID }, index),
   productId: NORMAN_ROLLER_PRODUCT_ID,
@@ -405,6 +456,8 @@ export const productColorOptions = [
   ...honeycombDealerColorOptions,
   ...verticalHoneycombDealerColorOptions,
   ...generatedProductColorOptions,
+  ...additionalSmartDrapeColors,
+  ...additionalWoodColors,
   ...romanDealerColorOptions,
 ] as const;
 

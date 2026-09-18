@@ -9,6 +9,8 @@ import type {
 import { quoteV2CatalogVersionFor } from "./catalog";
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "norman_order_record_v1",
+  "norman_assembly_v1",
   "authoritative_price_status",
   "authoritative_price_error",
   "authoritative_price_breakdown",

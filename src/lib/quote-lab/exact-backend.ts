@@ -1,3 +1,5 @@
+import { deriveNormanOrderRecords, romanComponentWidths } from "@/lib/quote-v2/norman-assemblies";
+import { resolveNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { sourceProvenance } from "@/lib/quote-v2/source-manifest";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
@@ -54,6 +56,8 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   "Wood Blinds": "wood_blinds",
   "Vertical Blinds": "synchrony_vertical",
   "Smart Drapes": "smartdrape",
+  "SmartFold Shades": "smartfold",
+  "Palladian Shelf": "palladian_shelf",
   "Drapery Tracks": "polar_drapery_track",
   "Tension Shades": "polar_tension_shade",
   "Retractable Screens": "polar_all_seasons_screen",
@@ -199,6 +203,13 @@ function resolveV2ProgramId(
   const product = getProduct(productId);
   if (!product) return null;
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
+
+  if (productId === "palladian_shelf") {
+    const accompanying = textOption(options, "accompanying_product_id");
+    if (!accompanying) return null;
+    const eligible = ["honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds"].includes(accompanying);
+    return `palladian_shelf_palladian_shelf_${eligible ? "with" : "without"}_product`;
+  }
 
   const selectedFabricProgram = textOption(options, "fabric_program_id");
   // An explicit selected code is authoritative even when it is unknown. Passing
@@ -393,7 +404,9 @@ function exactPriceInput(
       authoritativeSelection?.heightInches ??
       decimalMeasurement(line.height_whole, line.height_fraction),
     componentWidthsInches:
-      productId === "roller" && authoritativeSelection
+      productId === "roman" && authoritativeSelection
+        ? romanComponentWidths(authoritativeSelection) ?? undefined
+        : productId === "roller" && authoritativeSelection
         ? rollerComponentOrderWidthsForPricing(
             authoritativeSelection,
           ) ?? undefined
@@ -1197,12 +1210,24 @@ function repriceExactQuoteBuilderV2(
     }
     return { ...entry, prepared };
   });
-  const relationshipIssues = validateQuoteSelectionRelationships(
+  const assemblyIssues = deriveNormanOrderRecords(selectedPrepared.map(entry => ({ lineId: entry.line.id, selection: entry.prepared.selection })));
+  // Rebuild exact motor components on the server from the validated scalar
+  // selections. Persist the result in the price snapshot; never trust a browser
+  // supplied assembly or shared-panel charge allocation.
+  for (const prepared of preparedDesigns) {
+    if (prepared.selection.catalogAsOf < "2026-09-18") continue;
+    const motor = resolveNormanShadeMotorization(prepared.selection);
+    if (motor?.canonicalSelections) {
+      prepared.selection.configuration = { ...prepared.selection.configuration, motorization_selections: [...motor.canonicalSelections] };
+      prepared.priceInput = { ...prepared.priceInput, motorization: canonicalMotorizationPriceSelections(motor.canonicalSelections) };
+    }
+  }
+  const relationshipIssues = [...assemblyIssues, ...validateQuoteSelectionRelationships(
     selectedPrepared.map((entry) => ({
       lineId: entry.line.id,
       selectedDesign: entry.prepared.selection,
     })),
-  );
+  )];
   const relationshipIssuesByLine = new Map<string, typeof relationshipIssues>();
   for (const validationIssue of relationshipIssues) {
     const lineId = validationIssue.selectedValues.lineId;

@@ -26,6 +26,7 @@ const FABRIC_SURCHARGE_DETAIL_ID = "fabric_surcharge_id";
 
 const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, SurchargeSelectionSpec>>> = {
   citylights_aluminum: {
+    light_control: { privacy: "privacy" },
     slat_size: {
       "1_2": "micro_1_2in_slats",
       "2": "2in_slats_smartprivacy_included_textured_slats",
@@ -34,6 +35,7 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
       metallic: "metallic_slats_matte_finishes_perforated_slats",
       matte: "metallic_slats_matte_finishes_perforated_slats",
       perforated: "metallic_slats_matte_finishes_perforated_slats",
+      textured: "2in_slats_smartprivacy_included_textured_slats",
     },
   },
   faux_wood: {
@@ -148,6 +150,12 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
   },
   smartfold: {
     valance: {
+      curved_fascia: "smartfold_fascia_wood_valance",
+      square_fascia: "smartfold_fascia_wood_valance",
+      modern_wood: "smartfold_fascia_wood_valance",
+      "4_5_inch_fabric": "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance",
+      "6_inch_fabric": "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance",
+      "8_inch_fabric": "smartfold_8in_fabric_valance",
       fascia_wood: "smartfold_fascia_wood_valance",
       fabric_3_1_2_4_1_2_6: "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance",
       fabric_8: "smartfold_8in_fabric_valance",
@@ -161,6 +169,7 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
     valance: {
       designer_crown: "valance_surcharge_designer_crown",
       contempo: "valance_surcharge_contempo",
+      linear: "valance_surcharge_contempo",
     },
     cut_out_sides: {
       one: { id: "cut_out", units: 1 },
@@ -264,6 +273,7 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
 const CHECKBOX_SURCHARGE_ID_CANDIDATES: Record<string, string[]> = {
   shim: ["shim"],
   aluminum_shim: ["aluminum_shim"],
+  long_l_bracket: ["long_l_bracket"],
   keystone: ["keystone"],
   magnetic_hold_down: ["magnetic_hold_down"],
   side_mount_bracket: ["side_mount_bracket", "side_mount_bracket_available_in_2in_only"],
@@ -328,6 +338,9 @@ export function deriveAutomaticSurcharges(productId: string, details: DetailReco
       }
     }
   };
+
+  if (productId === "smartdrape" && isSelected(source.aluminum_shim) && Number(source.aluminum_shim_quantity) > 0) add("aluminum_shim", Number(source.aluminum_shim_quantity));
+  if (productId === "smartfold" && Number(source.shim_quantity) > 0) add("shim", Number(source.shim_quantity));
 
   const lightGuard = text(source.light_guard);
   if (lightGuard && lightGuard !== "none" && (LIGHT_GUARD_SURCHARGE_IDS as readonly string[]).includes(lightGuard)) {

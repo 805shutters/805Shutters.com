@@ -15,18 +15,18 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1284);
+    expect(productColorOptions).toHaveLength(1288);
     expect(getProductColorOptions("roller")).toHaveLength(440);
     expect(getProductColorOptions("roman")).toHaveLength(202);
     expect(getProductColorOptions("honeycomb")).toHaveLength(191);
     expect(getProductColorOptions("vertical_honeycomb")).toHaveLength(191);
-    expect(getProductColorOptions("smartdrape")).toHaveLength(74);
+    expect(getProductColorOptions("smartdrape")).toHaveLength(77);
     expect(getProductColorOptions("perfectsheer")).toHaveLength(32);
     expect(getProductColorOptions("smartfold")).toHaveLength(21);
     expect(getProductColorOptions("synchrony_vertical")).toHaveLength(42);
     expect(getProductColorOptions("faux_wood")).toHaveLength(16);
     expect(getProductColorOptions("smartprivacy_faux")).toHaveLength(16);
-    expect(getProductColorOptions("wood_blinds")).toHaveLength(26);
+    expect(getProductColorOptions("wood_blinds")).toHaveLength(27);
     expect(getProductColorOptions("citylights_aluminum")).toHaveLength(33);
   });
 

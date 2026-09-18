@@ -37,6 +37,12 @@ export function quoteV2CatalogVersionFor(
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
   }
+  if (["honeycomb", "roman", "smartfold", "citylights_aluminum", "wood_blinds", "perfectsheer", "smartdrape", "palladian_shelf"].includes(productId) && asOf >= "2026-09-18") {
+    return `${QUOTE_V2_CATALOG_VERSION}-norman-completion-2026-09-18-r1`;
+  }
+  if (productId === "citylights_aluminum" && asOf >= "2026-08-01") {
+    return `${QUOTE_V2_CATALOG_VERSION}-citylights-2026-08-r1`;
+  }
   if (productId === "roller" && asOf >= "2026-09-01") {
     return `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-pg4-2026-09-r2`;
   }

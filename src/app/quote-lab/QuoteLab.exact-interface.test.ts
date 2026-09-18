@@ -23,7 +23,7 @@ describe("Quote Lab exact interface contract", () => {
   it("exposes every V4 production quote category", () => {
     expect(PRODUCT_TYPES).toEqual([
       "Shutters", "Roller Shades", "Roman Shades", "Honeycomb Shades", "Sheer Shades",
-      "Mini Blinds", "Faux Wood Blinds", "Wood Blinds", "Vertical Blinds", "Smart Drapes",
+      "Mini Blinds", "Faux Wood Blinds", "Wood Blinds", "Vertical Blinds", "Smart Drapes", "SmartFold Shades", "Palladian Shelf",
       "Drapery Tracks", "Tension Shades", "Retractable Screens", "Awnings", "Vinyl Blinds",
     ]);
   });

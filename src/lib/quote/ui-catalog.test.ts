@@ -43,13 +43,13 @@ describe("buildUiCatalog", () => {
     expect(ui.products.find((p) => p.id === "roman")!.fabricColors).toHaveLength(202);
     expect(ui.products.find((p) => p.id === "honeycomb")!.fabricColors).toHaveLength(191);
     expect(ui.products.find((p) => p.id === "vertical_honeycomb")!.fabricColors).toHaveLength(191);
-    expect(ui.products.find((p) => p.id === "smartdrape")!.fabricColors).toHaveLength(74);
+    expect(ui.products.find((p) => p.id === "smartdrape")!.fabricColors).toHaveLength(77);
     expect(ui.products.find((p) => p.id === "perfectsheer")!.fabricColors).toHaveLength(32);
     expect(ui.products.find((p) => p.id === "smartfold")!.fabricColors).toHaveLength(21);
     expect(ui.products.find((p) => p.id === "synchrony_vertical")!.fabricColors).toHaveLength(42);
     expect(ui.products.find((p) => p.id === "faux_wood")!.fabricColors).toHaveLength(16);
     expect(ui.products.find((p) => p.id === "smartprivacy_faux")!.fabricColors).toHaveLength(16);
-    expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors).toHaveLength(26);
+    expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors).toHaveLength(27);
     expect(ui.products.find((p) => p.id === "citylights_aluminum")!.fabricColors).toHaveLength(33);
     expect(ui.products.find((p) => p.id === "roman")!.fabricColors.find((row) => row.colorCode === "F1064")).toMatchObject({
       collection: "Solids",

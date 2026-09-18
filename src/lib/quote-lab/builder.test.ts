@@ -38,8 +38,8 @@ describe("Quote Lab builder model", () => {
       "sundance_aluminum_2",
     ]);
     expect(quoteLabDefaultProduct(products, "Vinyl Blinds").id).toBe("lotus_vinyl_blinds");
-    expect(quoteLabProductType("smartfold")).toBe("Honeycomb Shades");
-    expect(quoteLabProductType("palladian_shelf")).toBeNull();
+    expect(quoteLabProductType("smartfold")).toBe("SmartFold Shades");
+    expect(quoteLabProductType("palladian_shelf")).toBe("Palladian Shelf");
   });
 
   it("creates and copies isolated lines without reusing identifiers", () => {

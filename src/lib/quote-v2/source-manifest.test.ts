@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(40);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(45);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(40);
+    ).toBe(45);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(40);
+    ).toBe(45);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -70,6 +70,10 @@ describe("quote V2 source manifest", () => {
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({
+      "SmartFold Guide 2026-09-10.pdf": "15ce45a1f490c4b88a737b06c6f903fdd416152df41ad808d8c6caed7f3714dd",
+      "Citylights Aluminum Blinds Program Guide 2026-08-01.pdf": "f9228276c8eddd569b7297b0d69187e5488d7d341cd6ea59f77892e7f46dd916",
+      "Ultimate Wood Blinds Guide 2026-09-01.pdf": "ccad35711bce47f7dbe1455fcc0152e7fb7ebd37ebfff1689fff840e44c0a43d",
+      "Motorization Guide 2026-09-16.pdf": "85c5fd2c0d813c879d22776b73f23132243454376b15e52c9451b4cb1f20c1b8",
       "Roller Shade Guide 2026-09-16.pdf": "81114d0186dff48a54848d315059f52330ee506e589a49a5e3df11aed0c896fc",
       "Roller Shade Guide 2026-09.pdf": "e9cc15ce95e5d0c2305b639df612af39e7f17fb316d001631e3c3cbff36e0b2e",
       "Roman Shade Guide 2026-09.pdf": "d312848c45bf49ee3c06a6ae11f3f7b4cd7b53d88984f114598154c54628d151",

@@ -37,10 +37,10 @@ describe("source-backed Norman assortment withdrawals", () => {
     expect(getRomanFabricColorsForCategory("Taylor").join(" ")).toContain("F0211");
   });
 
-  it.each(['1/2"', "1_2", "1/2 in"])("quarantines a saved Micro slat configuration (%s)", (slat) => {
+  it.each(['1/2"', "1_2", "1/2 in"])("rejects a discontinued Micro slat configuration (%s)", (slat) => {
     const context = selection("citylights_aluminum", "2026-09-01", { slat_size: slat });
-    expect(withdrawalIssues(context)).toEqual([expect.objectContaining({ severity: "hard_block", source: expect.objectContaining({ sourceId: "norman-retail-guide-2026-09" }) })]);
-    expect(withdrawalIssues({ ...context, catalogAsOf: "2026-08-31" })).toEqual([]);
+    expect(withdrawalIssues(context)).toEqual([expect.objectContaining({ severity: "hard_block", source: expect.objectContaining({ sourceId: "norman-citylights-guide-2026-08-01" }) })]);
+    expect(withdrawalIssues({ ...context, catalogAsOf: "2026-07-31" })).toEqual([]);
   });
 
   it("cannot recover the obsolete Micro surcharge by directly selecting its retained catalog ID", () => {

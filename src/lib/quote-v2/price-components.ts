@@ -974,7 +974,7 @@ export function buildAuthoritativePriceComponents(
       {
         id: priceLineId,
         label: sourceLine?.label ?? `${motor.groupId} ${motor.optionId}`,
-        category: "accessory",
+        category: motor.optionId === "power_distribution_panel" ? "order_charge" : "accessory",
         status: "priced",
         basis: "flat",
         selectionBindings: [
@@ -987,7 +987,7 @@ export function buildAuthoritativePriceComponents(
         source: input.motorSources?.[priceLineId] ?? null,
         priceLineId,
         units: motor.units,
-        billingScope: "per_window",
+        billingScope: motor.optionId === "power_distribution_panel" ? "once_per_line" : "per_window",
       },
       sourceLines,
       retailLines,

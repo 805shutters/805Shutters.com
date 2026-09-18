@@ -287,6 +287,8 @@ function validateOrderAdapterWattage(
     }
     const mustUpgrade = resolved.filter((entry) => {
       if (entry.resolution.derivedAdapterWattage !== 36) return false;
+      const record = entry.line.selectedDesign.configuration.norman_order_record_v1 as SelectionRecord | undefined;
+      if (record && typeof record === "object" && !Array.isArray(record) && record.version === 1 && record.adapterWatts === 65) return false;
       return !(
         productId === "honeycomb" &&
         (entry.resolution.mode === "tdbu" ||

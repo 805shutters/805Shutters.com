@@ -1,0 +1,98 @@
+import { describe, expect, it } from "vitest";
+import { validateNormanFamilyRules } from "./norman-family-rules";
+import { quoteV2CatalogVersionFor } from "./catalog";
+import type { SelectionContext } from "./core";
+import { CITYLIGHTS_CURRENT_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
+import { getMtsProductColorRows } from "@mts/lib/productColorCatalog";
+import { getProductColorOptions } from "@/lib/quote/product-color-options";
+import { authoritativeAutomaticSurchargeSelections } from "./engine";
+
+function selection(productId: string, width = 36, height = 60, configuration: SelectionContext["configuration"] = {}): SelectionContext {
+  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration, options: {}, catalogAsOf: "2026-09-18", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-18") };
+}
+const rules = (s: SelectionContext) => validateNormanFamilyRules(s).map((r) => r.ruleId);
+
+describe("Norman current family source rules", () => {
+  it("reconciles all CityLights colors for both current slat sizes", () => {
+    for (const [size, codes] of [[1, CITYLIGHTS_CURRENT_COLORS.oneInch], [2, CITYLIGHTS_CURRENT_COLORS.twoInch]] as const) {
+      expect(getMtsProductColorRows("Mini Blinds", { slat_size: `${size}\"` }).map((r) => r.colorCode).sort()).toEqual([...codes].sort());
+      for (const code of codes) expect(rules(selection("citylights_aluminum", 36, 60, { slat_size: `${size}\"`, fabric_color_code: code }))).toEqual([]);
+    }
+    expect(rules(selection("citylights_aluminum", 36, 60, { slat_size: '2"', fabric_color_code: "7113" }))).toContain("norman.citylights_aluminum.color_slat");
+  });
+  it.each([
+    [1,9,10,true], [1,8.9375,10,false], [1,78,92,true], [1,78,96,false],
+    [2,10.5,16,true], [2,10.4375,16,false], [2,72,96,true], [2,72.0625,96,false],
+  ])("checks CityLights %s-inch at %s x %s", (size,w,h,valid) => {
+    expect(rules(selection("citylights_aluminum", w,h, { slat_size: String(size), mount_type: "Outside Mount" })).length === 0).toBe(valid);
+  });
+  it("applies CityLights inside-mount deduction before checking net width", () => {
+    expect(rules(selection("citylights_aluminum", 9.375,10,{slat_size:'1"',mount_type:"Inside Mount"}))).toEqual([]);
+    expect(rules(selection("citylights_aluminum", 9.3125,10,{slat_size:'1"',mount_type:"Inside Mount"}))).toContain("norman.citylights_aluminum.dimensions");
+  });
+  it("retains reverse-image IDs while exposing exactly 15 SmartFold ordering fabrics", () => {
+    const rows=getProductColorOptions("smartfold");
+    expect(rows).toHaveLength(21);
+    expect(rows.filter((r)=>r.available).map((r)=>r.colorCode).sort()).toEqual(SMARTFOLD_FABRICS.map((f)=>f.code).sort());
+    expect(getMtsProductColorRows("SmartFold Shades")).toHaveLength(15);
+  });
+  it.each([[19,48,true],[19,48.0625,false],[19.0625,72,true],[24,72,true],[24,72.0625,false],[24.0625,96,true]])("checks SmartFold cordless width bands at %s x %s",(w,h,valid)=>{
+    expect(rules(selection("smartfold",w,h,{lift_system:"PrecisionLift Cordless",fabric_color_code:"F1794"})).length===0).toBe(valid);
+  });
+  it("enforces Louise September height and actual valance size",()=>{
+    expect(rules(selection("smartfold",60,72,{lift_system:"PrecisionLift Cordless",fabric_color_code:"F1709"}))).toEqual([]);
+    expect(rules(selection("smartfold",60,72.0625,{lift_system:"PrecisionLift Cordless",fabric_color_code:"F1709",valance:"6-inch Fabric"}))).toContain("norman.smartfold.louise_cordless_height");
+    expect(rules(selection("smartfold",60,84,{lift_system:"Continuous Cord Loop",fabric_color_code:"F1709",valance:"4.5-inch Fabric"}))).toContain("norman.smartfold.louise_valance");
+    expect(rules(selection("smartfold",60,84,{lift_system:"Continuous Cord Loop",fabric_color_code:"F1709",valance:"6-inch Fabric"}))).toEqual([]);
+  });
+  it.each(["F1603","F1604"])("adds missing SmartDrape %s with the room-darkening charge",code=>{
+    const row=getProductColorOptions("smartdrape").find(r=>r.colorCode===code)!;
+    expect(row.available).toBe(true);
+    expect(authoritativeAutomaticSurchargeSelections(selection("smartdrape",36,60,row.automaticDetails))).toContainEqual({id:"room_darkening",units:1});
+  });
+  it("charges every SmartFold valance selection on its correct grid",()=>{
+    for(const [valance,id] of [["Curved Fascia","smartfold_fascia_wood_valance"],["Modern Wood","smartfold_fascia_wood_valance"],["6-inch Fabric","smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance"],["8-inch Fabric","smartfold_8in_fabric_valance"]]) {
+      expect(authoritativeAutomaticSurchargeSelections(selection("smartfold",36,60,{valance}))).toContainEqual({id,units:1});
+    }
+  });
+  it("does not confuse PerfectSheer retail grid bounds with product limits",()=>{
+    expect(rules(selection("perfectsheer",98,98,{lift_system:"Continuous Cord Loop"}))).toEqual([]);
+    expect(rules(selection("perfectsheer",98.0625,98,{lift_system:"Continuous Cord Loop"}))).toContain("norman.perfectsheer.dimensions");
+  });
+  it("requires eligible accompanying product for discounted Palladian pricing",()=>{
+    for(const pid of ["none","faux_wood","smartprivacy_faux","synchrony_vertical"]) {
+      expect(rules({...selection("palladian_shelf",36,1.5,{accompanying_product_id:pid}),programId:"palladian_shelf_palladian_shelf_with_product"})).toContain("norman.palladian_shelf.with_product_eligibility");
+    }
+  });
+
+  it("charges CityLights finish and wood designer colors from the actual fabric code",()=>{
+    for(const code of ["7102","7103","7105","7402","7109","7403","7027","7111","7031","7205"]) {
+      expect(authoritativeAutomaticSurchargeSelections(selection("citylights_aluminum",36,60,{fabric_color_code:code,slat_finish:"Standard"}))).toContainEqual({id:"metallic_slats_matte_finishes_perforated_slats",units:1});
+    }
+    expect(authoritativeAutomaticSurchargeSelections(selection("citylights_aluminum",36,60,{fabric_color_code:"7029"}))).toContainEqual({id:"2in_slats_smartprivacy_included_textured_slats",units:1});
+    for(const code of ["ND080","ND617","ND053","ND017","ND091","ND246"]) {
+      expect(authoritativeAutomaticSurchargeSelections(selection("wood_blinds",36,60,{fabric_color_code:code,color:"Standard"}))).toContainEqual({id:"designer_color",units:1});
+    }
+    expect(authoritativeAutomaticSurchargeSelections(selection("wood_blinds",36,60,{valance:"Linear"}))).toContainEqual({id:"valance_surcharge_contempo",units:1});
+  });
+  it.each([[72,2],[72.0625,3],[94.375,3],[94.4375,4],[144,4],[144.0625,6],[197.875,6],[197.9375,9],[286.75,9],[286.8125,12]])("charges SmartDrape shims per bracket at track width %s",(width,qty)=>{
+    expect(authoritativeAutomaticSurchargeSelections(selection("smartdrape",width,60,{aluminum_shim:true}))).toContainEqual({id:"aluminum_shim",units:qty});
+  });
+  it("keeps SmartDrape motor, stack and mounting choices compatible",()=>{
+    expect(rules(selection("smartdrape",30,60,{control_type:"Motorized",motor_type:"Norman Smart Rechargeable Battery",stack_option:"Center Opening"}))).toEqual([]);
+    expect(rules(selection("smartdrape",29.9375,60,{control_type:"Motorized",motor_type:"Norman Smart Rechargeable Battery",stack_option:"Center Opening"}))).toContain("norman.smartdrape.dimensions");
+    expect(rules(selection("smartdrape",36,60,{control_type:"Motorized",motor_type:"Automate Home",stack_option:"Side by Side"}))).toEqual(expect.arrayContaining(["norman.smartdrape.stack_control","norman.smartdrape.motor_family"]));
+    expect(rules(selection("smartdrape",36,60,{installation_method:"Ceiling Pocket Mount",pocket_depth_inches:4.875,pocket_height_inches:4.625}))).toEqual([]);
+    expect(rules(selection("smartdrape",36,60,{installation_method:"Ceiling Mount",aluminum_shim:true}))).toContain("norman.smartdrape.wall_accessories");
+  });
+  it("uses the dealer Rustic Gray code without rewriting historical identities",()=>{
+    const rows=getProductColorOptions("wood_blinds");
+    expect(rows.find(r=>r.colorCode==="ND108")).toMatchObject({available:true,colorName:"Rustic Gray"});
+    expect(rows.find(r=>r.colorCode==="ND118")).toMatchObject({available:false});
+    expect(rules(selection("wood_blinds",36,60,{fabric_color_code:"ND118"}))).toContain("norman.wood_blinds.legacy_color_conflict");
+  });
+  it("enforces center-opening SmartDrape area and left motor position",()=>{
+    expect(rules(selection("smartdrape",354.375,144,{control_type:"Motorized",motor_type:"Norman Smart AC Adapter",stack_option:"Center Opening",control_side:"Right"}))).toEqual(expect.arrayContaining(["norman.smartdrape.area","norman.smartdrape.motor_position"]));
+  });
+
+});

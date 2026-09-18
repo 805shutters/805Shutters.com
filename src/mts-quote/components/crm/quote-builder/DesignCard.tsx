@@ -1,3 +1,4 @@
+import { CITYLIGHTS_FINISH_BY_CODE } from "@/lib/quote/norman-current-assortment";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import {
@@ -162,7 +163,6 @@ import {
   PERFECTSHEER_LIFT_SYSTEMS,
   MINI_BLIND_MOUNT_TYPES,
   MINI_BLIND_SLAT_SIZES,
-  MINI_BLIND_FINISHES,
   FAUX_WOOD_MOUNT_TYPES,
   FAUX_WOOD_SLAT_SIZES,
   FAUX_WOOD_PRODUCT_LINES,
@@ -293,7 +293,6 @@ import { getCatalogRestrictionWarnings } from "@mts/lib/catalogRestrictionWarnin
 import {
   getMiniBlindAutomaticSurcharges,
   getMiniBlindDefaultLightControl,
-  getMiniBlindFinishFromColor,
   getMiniBlindLightControlOptions,
   getMiniBlindSpecWarnings,
 } from "@mts/lib/miniBlindOptions";
@@ -1354,6 +1353,8 @@ const CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE: Readonly<Record<string, Readonly<R
     "Vertical Blinds": "synchrony_vertical",
     "Wood Blinds": "wood_blinds",
     "Smart Drapes": "smartdrape",
+    "SmartFold Shades": "smartfold",
+    "Palladian Shelf": "palladian_shelf",
   },
   lotus: {
     "Mini Blinds": "lotus_mini_blinds",
@@ -1365,6 +1366,7 @@ const CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE: Readonly<Record<string, Readonly<R
 };
 
 const MOTOR_UI_SUPPORTED_PRODUCT_IDS = new Set([
+  "smartfold",
   "honeycomb",
   "perfectsheer",
   "roller",
@@ -9989,8 +9991,39 @@ function ShadesAndBlindsOptions({
     }
   }, [productType, design?.fabric, design?.options_json, onUpdate]);
 
+  const optionsJson = (design?.options_json as Record<string, unknown>) || {};
   const getGridOptions = (): GridOption[] => {
     switch (productType) {
+      case "SmartFold Shades": {
+        const fabricCode = String(optionsJson.fabric_color_code ?? "");
+        const louise = ["F1708", "F1709", "F1710", "F1711"].includes(fabricCode);
+        const tallLouise = louise && measurementToInches(_lineItem.height_whole, _lineItem.height_fraction) > 72;
+        const motorOptions: GridOption[] = design?.lift_system === "Motorized" ? [
+          { key: "motor_type", label: "Power Source", field: "motor_type", type: "select", options: ["Norman Smart Rechargeable Battery (AC Charger)", "Norman Smart AC Adapter", "Norman Smart DC Low Voltage", "AutoWand"] },
+          ...(design.motor_type !== "AutoWand" ? [
+            { key: "remote", label: "Remote", field: "remote_type", type: "select", options: ROMAN_REMOTES_NORMAN } as GridOption,
+            { key: "hub", label: "Hub Required", field: "json:hub_required", type: "yes-no", noFirst: true } as GridOption,
+          ] : []),
+        ] : [];
+        return [
+          { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount", "Outside Mount"] },
+          { key: "fabric", label: "Fabric", field: "fabric", type: "select", options: [] },
+          { key: "lift", label: "Lift System", field: "lift_system", type: "select", options: tallLouise ? ["Continuous Cord Loop", "Motorized"] : ["PrecisionLift Cordless", "Continuous Cord Loop", "Motorized"] },
+          { key: "fold", label: "Fold Size", field: "json:fold_size", type: "buttons", options: ["6", "7", "8"] },
+          { key: "valance", label: "Valance", field: "valance", type: "select", options: tallLouise ? ["6-inch Fabric", "8-inch Fabric"] : ["No Valance", "Curved Fascia", "Square Fascia", "Modern Wood", "4.5-inch Fabric", "6-inch Fabric", "8-inch Fabric"] },
+          { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "yes-no", noFirst: true },
+          { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
+          { key: "shim", label: "Shims", field: "json:shim_quantity", type: "number", min: 0, step: "1" },
+          ...motorOptions,
+        ];
+      }
+      case "Palladian Shelf":
+        return [
+          { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount"] },
+          { key: "depth", label: "Shelf Depth", field: "json:shelf_depth", type: "number", min: 2, max: 4, step: "0.125", unit: "in" },
+          { key: "product", label: "Accompanying Product", field: "json:accompanying_product_id", type: "select", options: ["none", "honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds", "faux_wood", "smartprivacy_faux", "synchrony_vertical"] },
+          { key: "color", label: "Shelf Color", field: "json:color", type: "select", options: ["Pure White", "Extra White", "Silk White", "Bright White", "Pearl", "Ivory Lace", "Creamy", "Crisp Linen", "Bisque", "String", "Natural Linen", "Chateau Brown", "Sea Mist", "Gray Black", "Aura White", "Ice", "Clay", "Decorator’s White", "Taupe Gray", "Classic Black", "Winchester White", "2010", "Golden Oak", "Goldenrod", "Wenge", "Old Teak", "Black Walnut", "Red Oak", "Rich Walnut", "Auburn", "Matte Black", "Pretzel", "Toffee", "Driftwood", "Sumatra", "Silver Gray", "French Oak", "TS White", "True White", "Chiffon", "Rustic Gray", "Limed White", "Natural"] },
+        ];
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
         const shadeType = getFieldValue(design, "shade_type");
@@ -11356,7 +11389,7 @@ function ShadesAndBlindsOptions({
             label: "Slat Finish",
             field: "json:slat_finish",
             type: "buttons",
-            options: MINI_BLIND_FINISHES,
+            options: [CITYLIGHTS_FINISH_BY_CODE[String(optionsJson.fabric_color_code ?? "")] ?? "Standard"],
           },
           {
             key: "light_control",
@@ -11400,6 +11433,8 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: [] as readonly string[],
           },
+          { key: "valance", label: "Valance", field: "valance", type: "buttons", options: ["No Valance", "Designer Crown", "Contempo", "Linear"] },
+          { key: "side_mount_bracket", label: "Side Mount Bracket", field: "json:side_mount_bracket", type: "yes-no", noFirst: true },
         ];
 
       case "Vertical Blinds": {
@@ -11503,7 +11538,7 @@ function ShadesAndBlindsOptions({
             label: "Stack Option",
             field: "json:stack_option",
             type: "buttons",
-            options: SMARTDRAPE_STACK_OPTIONS,
+            options: controlType === "Motorized" ? ["Stack Right", "Stack Left", "Center Stack", "Center Opening"] : ["Stack Right", "Stack Left", "Side by Side", "Traveling Center Stack"],
           },
           {
             key: "control_type",
@@ -11520,7 +11555,7 @@ function ShadesAndBlindsOptions({
             label: "Control Side",
             field: "json:control_side",
             type: "buttons",
-            options: SMARTDRAPE_CONTROL_SIDES,
+            options: controlType === "Motorized" ? ["Left"] : SMARTDRAPE_CONTROL_SIDES,
           },
         ];
 
@@ -11531,7 +11566,7 @@ function ShadesAndBlindsOptions({
             label: "Motor Type",
             field: "motor_type",
             type: "select",
-            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+            options: ["Norman Smart Rechargeable Battery", "Norman Smart AC Adapter"],
           });
           options.push({
             key: "hub_required",
@@ -11545,10 +11580,15 @@ function ShadesAndBlindsOptions({
             label: "Remote Type",
             field: "remote_type",
             type: "select",
-            options: ["15-Channel Remote", "5-Channel Wall Switch"] as readonly string[],
+            options: ROMAN_REMOTES_NORMAN,
           });
         }
 
+        options.push({ key: "installation_method", label: "Installation", field: "json:installation_method", type: "select", options: ["Wall Mount", "Ceiling Mount", "Ceiling Pocket Mount"] });
+        if (optionsJson.installation_method === "Ceiling Pocket Mount") options.push(
+          { key: "pocket_depth", label: "Pocket Depth", field: "json:pocket_depth_inches", type: "number", min: 0, step: "0.0625", unit: "in" },
+          { key: "pocket_height", label: "Pocket Height", field: "json:pocket_height_inches", type: "number", min: 0, max: 4.625, step: "0.0625", unit: "in" },
+        );
         return options;
       }
 
@@ -11558,16 +11598,23 @@ function ShadesAndBlindsOptions({
   };
 
   const gridOptions = getGridOptions();
+  if (authoritativeV2 && ["Honeycomb Shades", "Roman Shades", "SmartFold Shades"].includes(productType) && /motor|autowand/i.test(String(design?.lift_system))) {
+    gridOptions.push({ key: "motor_position", label: "Motor Position", field: "json:motor_position", type: "buttons", options: ["Left", "Right"] });
+    if (/low voltage|12v/i.test(String(design?.motor_type))) {
+      const automate = /automate|12v/i.test(String(design?.motor_type));
+      gridOptions.push({ key: "dc_power_supply", label: "Power Supply", field: "json:dc_power_supply", type: "select", options: automate ? ["External Battery Pack", "DC Distribution Panel"] : ["Direct Building Low Voltage", "DC Distribution Panel"] });
+      if (/distribution panel/i.test(String(optionsJson.dc_power_supply))) gridOptions.push({ key: "shared_power_panel_id", label: "Connect to Shared Panel", field: "json:shared_power_panel_id", type: "select", options: Array.from({ length: 50 }, (_, i) => `Panel ${i + 1}`) });
+    }
+  }
   if (["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(productType)) {
     gridOptions.push({
       key: "control_side",
       label: "Wand Side (from inside the room)",
       field: "json:control_side",
       type: "buttons",
-      options: ["Left", "Right"],
+      options: ["Wood Blinds", "Mini Blinds"].includes(productType) && measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) - (design?.mount_type === "Inside Mount" ? 0.375 : 0) < 15 ? ["Center"] : ["Left", "Right"],
     });
   }
-  const optionsJson = (design?.options_json as Record<string, unknown>) || {};
 
 
   const handleRollerFabricSelect = (fabricColor: MtsRollerFabricColor) => {
@@ -11707,7 +11754,7 @@ function ShadesAndBlindsOptions({
     }
 
     if (productType === "Mini Blinds") {
-      nextJson.slat_finish = getMiniBlindFinishFromColor(fabricColor.colorName);
+      nextJson.slat_finish = CITYLIGHTS_FINISH_BY_CODE[fabricColor.colorCode] ?? "Standard";
     }
 
     onUpdateFields({
@@ -12025,6 +12072,15 @@ function ShadesAndBlindsOptions({
         >
           <strong>Motorization complete:</strong> {rollerPowerConfiguration} · Priced motor: {rollerPricedMotor}
         </div>
+      ) : null}
+
+      {productType === "Palladian Shelf" && optionsJson.accompanying_product_id !== "none" ? (
+        <label className="block text-sm">Accompanying quote line
+          <select className="mt-1 block w-full rounded border p-2" value={String(optionsJson.accompanying_line_id ?? "")} onChange={event => onUpdateFields({ options_json: { ...optionsJson, accompanying_line_id: event.target.value || null } })}>
+            <option value="">Select quote line</option>
+            {sideBySideLineOptions.filter(row => row.lineId !== _lineItem.id).map(row => <option key={row.lineId} value={row.lineId}>{row.label}</option>)}
+          </select>
+        </label>
       ) : null}
 
       {showSideBySidePairSelector ? (
