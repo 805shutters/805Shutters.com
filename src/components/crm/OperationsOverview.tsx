@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search } from "lucide-react";
 import type { CrmDashboardData } from "@/lib/crm/types";
-import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
+import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
 import { type SaveJobCost } from "./InlineJobCost";
@@ -104,8 +104,33 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
     <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Click a circle to update</small></span></header>
     <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
-    <div className={styles.jobList}>{visible.map(item => <article className={styles.jobCard} key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
-      <header className={styles.jobHeader}><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><small>{item.products.length ? `${item.products.length} product types` : "Product details needed"}</small>{item.source.progress.stage === "attention" && <small>Needs review · {item.source.progress.nextAction}</small>}<div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div>{feedbackId === item.source.id && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{error || notice}</p>}</header>
+    <div className={styles.jobList}>{visible.map(item => {
+      const saleDate = formatOperationsDate(item.source.soldDate);
+      const contactLine = `${item.source.phone || "Phone needed"} · ${item.source.email || "Email needed"}`;
+      return <article className={styles.jobCard} key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
+      <header className={styles.jobHeader}>
+        <div className={styles.jobHeaderContent}>
+          <div className={styles.jobIdentity}>
+            <button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button>
+            <small title={item.source.project || "Project needed"}>{item.source.project || "Project needed"}</small>
+            {item.source.progress.stage === "attention" && <small className={styles.attentionLine} title={`Needs review · ${item.source.progress.nextAction || "Next action needed"}`}>Needs review · {item.source.progress.nextAction || "Next action needed"}</small>}
+          </div>
+          <div className={styles.headerContact}>
+            <span title={item.source.address || "Address needed"}>{item.source.address || "Address needed"}</span>
+            <span title={contactLine}>{contactLine}</span>
+          </div>
+          <div className={styles.headerDate}>
+            <span className={styles.headerLabel}>Sale date</span>
+            <strong title={saleDate || "Sale date needed"}>{saleDate || "Sale date needed"}</strong>
+          </div>
+          <div className={styles.headerProducts}>
+            <span className={styles.headerLabel}>Product quantities</span>
+            <div className={styles.productPills}>{item.products.length ? item.products.map(product => <span className={styles.productPill} key={product.id} title={`${product.quantity ?? "Unknown quantity"} · ${product.name}`}><b>{product.quantity ?? "Qty needed"}</b><span>{product.name}</span></span>) : <span className={`${styles.productPill} ${styles.unknownPill}`} title="Product details needed">Product details needed</span>}</div>
+          </div>
+          <div className={styles.jobLinks}><button type="button" className={styles.openLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" ref={button => { if (button) contractButtons.current.set(item.source.id, button); else contractButtons.current.delete(item.source.id); }} className={styles.openLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={() => setContractId(contractId === item.source.id ? null : item.source.id)}><FileText size={14} aria-hidden="true" />Contract</button></div>
+        </div>
+      </header>
+      {feedbackId === item.source.id && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{error || notice}</p>}
       <JobFinancialStrip item={item} />
       <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by product type for {item.source.customerName}.</caption><thead><tr>{statusColumns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody><tr>
       <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
@@ -117,7 +142,8 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
 
       </tr></tbody></table>
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}
-    </article>)}</div>
+    </article>;
+    })}</div>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || []} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>

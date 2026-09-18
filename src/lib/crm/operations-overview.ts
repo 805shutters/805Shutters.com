@@ -6,16 +6,22 @@ import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed", "paid"] as const;
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
-export type ProductProgress = { id: string; name: string; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[] };
+export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[] };
 export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
 
 function productProgress(product: CrmCustomerProduct): ProductProgress {
   const meta = objectMeta(product.meta);
   const status = (product.status || "").toLowerCase();
+  const quantity = product.quantity === 1 && (
+    meta.source === "crm_job" ||
+    (meta.source === "self_booking" && meta.windowCount == null)
+  )
+    ? null
+    : Number.isInteger(product.quantity) && product.quantity > 0 ? product.quantity : null;
   // Each milestone needs its own source evidence; payment or a later workflow
   // marker must never fabricate a manufacturer order or shipment.
   return {
-    id: product.id, name: product.product_type.trim() || "Product type needed", records: [{ id: product.id, updatedAt: product.updated_at }],
+    id: product.id, name: product.product_type.trim() || "Product type needed", quantity, records: [{ id: product.id, updatedAt: product.updated_at }],
     ordered: Boolean(meta.ordered_at || status === "ordered"),
     shipped: Boolean(meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)),
     installed: Boolean(meta.installed_at || status === "installed")
@@ -40,7 +46,15 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
       const key = product.product_type.trim().toLowerCase() || "unknown";
       grouped.set(key, [...(grouped.get(key) || []), productProgress(product)]);
     }
-    const progress = [...grouped].map(([id, items]) => ({ id, name: items[0].name, records: items.flatMap(item => item.records), ordered: items.every(item => item.ordered), shipped: items.every(item => item.shipped), installed: items.every(item => item.installed) }));
+    const progress = [...grouped].map(([id, items]) => ({
+      id,
+      name: items[0].name,
+      quantity: items.every(item => typeof item.quantity === "number") ? items.reduce((total, item) => total + item.quantity!, 0) : null,
+      records: items.flatMap(item => item.records),
+      ordered: items.every(item => item.ordered),
+      shipped: items.every(item => item.shipped),
+      installed: items.every(item => item.installed)
+    }));
     return { source, products: progress, quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
       paid: source.isSale && source.progress.payment === "settled",
@@ -68,6 +82,19 @@ export function attentionDetail(item: OperationsItem, step: WorkflowStep) {
   return item.source.balanceOutstanding === null ? "Balance needs verification" : `${currency(item.source.balanceOutstanding)} remaining`;
 }
 export const currency = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(amount);
+
+/** Date-only values are business dates; timestamps are displayed in Los Angeles. */
+export function formatOperationsDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const parsed = new Date(`${value}T12:00:00Z`);
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return null;
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(parsed);
+  }
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" }).format(parsed);
+}
 
 /** Date-only values are LA business dates; never reinterpret them as UTC. */
 function businessDate(value: string | null | undefined, now: Date): string | null {
