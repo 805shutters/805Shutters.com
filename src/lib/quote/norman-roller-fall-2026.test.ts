@@ -26,7 +26,9 @@ const isNew = (program: string | null) => program?.endsWith("_fall_2026");
 describe("Norman Fall 2026 additive release", () => {
   it("preserves all 350 original rows, original programs and all legacy MTS grid cells", () => {
     const oldColors = normanRollerJulyFabricColors;
-    expect(digest(normanRollerFabricColors.filter((row) => !isNew(row.programId)))).toBe(baseline.publishedColors);
+    // F1561 retains its identity but was withdrawn in the September 16 guide.
+    expect(normanRollerFabricColors.find(row => row.colorCode === "F1561")?.available).toBe(false);
+    expect(digest(normanRollerFabricColors.filter((row) => !isNew(row.programId)).map(row => row.colorCode === "F1561" ? { ...row, available: true } : row))).toBe(baseline.publishedColors);
     expect(oldColors).toHaveLength(350);
     expect(digest(oldColors)).toBe(baseline.colors);
     const original = originalCatalog.products.find((product) => product.id === "roller")!;
@@ -43,8 +45,8 @@ describe("Norman Fall 2026 additive release", () => {
   it("finds every new SKU by code, canonical name, alias and category through both search paths", () => {
     expect(release.colors).toHaveLength(90);
     expect(new Set(release.colors.map((row) => row.collection)).size).toBe(19);
-    expect(searchMtsRollerFabricColors("")).toHaveLength(440);
-    expect(searchNormanRollerFabrics("")).toHaveLength(440);
+    expect(searchMtsRollerFabricColors("")).toHaveLength(439);
+    expect(searchNormanRollerFabrics("")).toHaveLength(439);
     for (const row of release.colors) {
       for (const query of [row.colorCode, `${row.collection} ${row.colorName}`, `${row.collection} ${row.publicColorName}`, `${row.category} ${row.colorCode}`]) {
         expect(searchMtsRollerFabricColors(query).some((match) => match.colorCode === row.colorCode), query).toBe(true);

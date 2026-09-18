@@ -29,7 +29,8 @@ describe("Norman roller fabric color catalog", () => {
     const unavailable = normanRollerFabricColors.filter((row) => !row.available);
     const collections: string[] = normanRollerFabricColors.map((row) => row.collection);
     const colorCodes: string[] = normanRollerFabricColors.map((row) => row.colorCode);
-    expect(unavailable).toEqual([]);
+    expect(unavailable).toEqual([expect.objectContaining({ colorCode: "F1561", collection: "Emery", available: false })]);
+    expect(searchNormanRollerFabrics("F1561")).toEqual([]);
     expect(collections).not.toContain("Luxe");
     expect(colorCodes).not.toContain("F0818");
     expect(colorCodes).not.toContain("F11714");

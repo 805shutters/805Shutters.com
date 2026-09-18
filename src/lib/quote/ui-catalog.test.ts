@@ -23,7 +23,7 @@ describe("buildUiCatalog", () => {
   it("exposes every Norman roller fabric color with verified pricing availability", () => {
     const roller = ui.products.find((p) => p.id === "roller")!;
     expect(roller.fabricColors).toHaveLength(440);
-    expect(roller.fabricColors.filter((row) => row.available)).toHaveLength(440);
+    expect(roller.fabricColors.filter((row) => row.available)).toHaveLength(439);
     expect(roller.fabricColors.find((row) => row.colorCode === "F1515")).toMatchObject({
       collection: "Garden",
       colorName: "Ecru",

@@ -3,6 +3,14 @@ export const NORMAN_MICRO_SLAT_SURCHARGE_ID = "micro_1_2in_slats";
 
 export const NORMAN_ASSORTMENT_WITHDRAWALS = [
   {
+    productId: "roller",
+    colorCode: "F1561",
+    effectiveFrom: "2026-09-01",
+    sourceId: "norman-roller-guide-2026-09-16",
+    page: 2,
+    explanation: "Norman discontinued Emery Maize F1561 effective September 1, 2026 (September 16 guide revision, pages 2 and 77). Select a current fabric.",
+  },
+  {
     productId: "roman",
     colorCode: "F0210",
     effectiveFrom: "2026-09-01",

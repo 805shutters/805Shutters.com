@@ -165,18 +165,21 @@ const HONEYCOMB_PROGRAMS_BY_CELL_SIZE: Record<string, string[]> = {
     "honeycomb_flame_resistant_fabrics",
   ],
   "3/4": [
+    "honeycomb_flame_resistant_fabrics",
     "honeycomb_3_8in_cordless_single_and_3_4in_single",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2",
     "honeycomb_3_4in_cordless_double_and_1_1_4in_single",
   ],
   '3/4"': [
+    "honeycomb_flame_resistant_fabrics",
     "honeycomb_3_8in_cordless_single_and_3_4in_single",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2",
     "honeycomb_3_4in_cordless_double_and_1_1_4in_single",
   ],
   "3/4 single": [
+    "honeycomb_flame_resistant_fabrics",
     "honeycomb_3_8in_cordless_single_and_3_4in_single",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
     "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2",
@@ -702,6 +705,10 @@ function matchesLightControl(row: ProductColorOption, lightControl: string | nul
   const normalized = normalize(lightControl);
   if (!normalized || normalized.includes("n/a")) return true;
   const haystack = normalize(`${row.fabricType} ${row.collection} ${row.colorName} ${row.searchText}`);
+  // Norman lists Windsong and Breeze as Woven, separately from LF/RD.
+  if (normalized === "woven") {
+    return haystack.includes("windsong") || haystack.includes("breeze");
+  }
   if (normalized.includes("room darkening")) {
     return haystack.includes("room darkening") || haystack.includes("blackout");
   }

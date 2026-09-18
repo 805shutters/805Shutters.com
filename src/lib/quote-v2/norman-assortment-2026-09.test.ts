@@ -18,6 +18,7 @@ function withdrawalIssues(context: SelectionContext) {
 
 describe("source-backed Norman assortment withdrawals", () => {
   it.each([
+    ["roller", "F1561", "2026-09-01", "2026-08-31", "norman-roller-guide-2026-09-16"],
     ["roman", "F0210", "2026-09-01", "2026-08-31", "norman-roman-guide-2026-09"],
     ["perfectsheer", "F1364", "2026-08-11", "2026-08-10", "norman-perfectsheer-smartdrape-guide-2026-09"],
   ] as const)("blocks %s %s on its effective date while retaining historical identity", (product, code, start, before, source) => {

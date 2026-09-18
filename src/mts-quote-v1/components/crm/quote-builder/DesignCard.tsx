@@ -1369,6 +1369,7 @@ function withJsonField(
 
 function getLightControlFromProductColor(row: ProductColorOption): string | null {
   const type = `${row.fabricType} ${row.collection}`.toLowerCase();
+  if (type.includes("windsong") || type.includes("breeze")) return "Woven";
   if (type.includes("room darkening") || type.includes("blackout")) return "Room Darkening";
   if (type.includes("light filtering") || type.includes("sheer")) return "Light Filtering";
   return null;

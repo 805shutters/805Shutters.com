@@ -146,7 +146,7 @@ describe("September Norman Roller PG4 supplement", () => {
     expect(normanRollerV2Source.offerings).toHaveLength(373);
     expect(normanRollerV2Source.metadata.effectiveFrom).toBe("2026-08-01");
     expect(quoteV2CatalogVersionFor("roller", "2026-08-31")).toBe("805-v2-norman-roller-2026-08-01-msrp-r1");
-    expect(quoteV2CatalogVersionFor("roller", "2026-09-01")).toContain("pg4-2026-09-r1");
+    expect(quoteV2CatalogVersionFor("roller", "2026-09-01")).toContain("pg4-2026-09-r2");
     const oldSelection = { ...context("Amelia", "F1484", "2026-08-01"), programId: "roller_cordless_fabric_price_group_2_pg2" };
     expect(resolveRollerMatrixProfile(oldSelection).ok).toBe(true);
     expect(blocks(oldSelection)).toEqual([]);

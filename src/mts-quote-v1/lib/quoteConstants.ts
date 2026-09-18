@@ -1754,7 +1754,7 @@ export const HONEYCOMB_LIFT_SYSTEMS = [
   "Motorized",
   "Top Down-Bottom Up",
 ] as const;
-export const HONEYCOMB_LIGHT_CONTROL = ["Light Filtering", "Room Darkening", "Blackout"] as const;
+export const HONEYCOMB_LIGHT_CONTROL = ["Light Filtering", "Room Darkening", "Blackout", "Woven"] as const;
 export const HONEYCOMB_APPLICATIONS = [
   "Standard",
   "Side-by-Side",

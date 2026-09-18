@@ -429,6 +429,27 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20Shade%20Guide.pdf"
   },
   {
+    "id": "norman-roller-guide-2026-09-16",
+    "manufacturer": "Norman",
+    "kind": "product_guide",
+    "format": "pdf",
+    "fileName": "Roller Shade Guide 2026-09-16.pdf",
+    "title": "Norman September 16 Roller Shade Guide",
+    "revision": "September 16, 2026",
+    "effectiveDate": "2026-09-01",
+    "effectiveDateEvidence": "Guide revision log p2 effective 9/1/2026",
+    "receivedDate": "2026-09-17",
+    "modifiedDate": null,
+    "sha256": "81114d0186dff48a54848d315059f52330ee506e589a49a5e3df11aed0c896fc",
+    "authorities": [
+      "assortment",
+      "restrictions",
+      "options"
+    ],
+    "pageCount": 77,
+    "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20Shade%20Guide.pdf"
+  },
+  {
     "id": "norman-roller-minmax-appendix-2026-09",
     "manufacturer": "Norman",
     "kind": "restriction_workbook",
