@@ -27,10 +27,13 @@ describe("staff month calendar", () => {
   it("rejects reversed hours", () => {
     expect(() => changeCalendarDay([], "2026-09-18", true,"17:00","09:00")).toThrow("end time");
   });
-  it("uses the local date and excludes canceled/rescheduled records", () => {
-    const event = appointment({start_at:"2026-09-19T01:00:00Z",end_at:"2026-09-19T02:00:00Z"});
-    expect(monthDayEvents([event,appointment({status:"canceled"}),appointment({status:"rescheduled"})], "2026-09-18")).toEqual([event]);
-    expect(monthDayEvents([event],"2026-09-19")).toEqual([]);
+  it("uses the local date, includes appointment statuses, and excludes canceled records", () => {
+    const scheduled = appointment({id:"scheduled",start_at:"2026-09-19T01:00:00Z",end_at:"2026-09-19T02:00:00Z"});
+    const complete = appointment({id:"complete",status:"complete"});
+    const rescheduled = appointment({id:"rescheduled",status:"rescheduled"});
+    const canceled = appointment({id:"canceled",status:"canceled"});
+    expect(monthDayEvents([scheduled,complete,rescheduled,canceled], "2026-09-18")).toEqual([complete,rescheduled,scheduled]);
+    expect(monthDayEvents([scheduled],"2026-09-19")).toEqual([]);
   });
   it("retains multiple appointments and multi-day busy blocks in day details", () => {
     const events = [appointment(), appointment({id:"b"}), appointment({id:"c",event_type:"block",start_at:"2026-09-17T07:00:00Z",end_at:"2026-09-19T07:00:00Z"})];

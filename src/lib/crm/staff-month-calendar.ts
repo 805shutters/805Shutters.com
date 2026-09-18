@@ -29,7 +29,9 @@ export function changeCalendarDay(ranges: CrmAvailabilitySlot[], date: string, a
 }
 
 export function monthDayEvents(events: CrmCalendarEvent[], date: string) {
-  return events.filter(event => event.status !== "canceled" && event.status !== "rescheduled" &&
+  // booking_admin_reschedule moves the same row to its current start/end and marks
+  // it rescheduled; it is not a historical copy of the appointment at its old time.
+  return events.filter(event => event.status !== "canceled" &&
     losAngelesDateString(new Date(event.start_at)) <= date &&
     losAngelesDateString(new Date(Date.parse(event.end_at) - 1)) >= date)
     .sort((a, b) => a.start_at.localeCompare(b.start_at));
