@@ -52,33 +52,41 @@
 .toolbar button[aria-pressed=true] { background:#e5e4e2; color:#0b0b0b; }
 .toolbar label { color:#b8b6ae; width:280px; max-width:100%; display:flex; align-items:center; gap:9px; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:0 12px; min-width:0; }
 .toolbar input { width:100%; min-width:0; max-width:100%; color:#fbfbfa; background:transparent; border:0; padding:12px 0; font-size:13px; }
-.statusTable { width:100%; border-spacing:0; border-collapse:separate; table-layout:fixed; background:#1d1d1b; border:1px solid #343330; border-radius:14px; overflow:hidden; }
-.statusTable thead th { background:#111110; color:#b8b6ae; font-size:11px; padding:7px 14px; text-align:left; font-weight:500; }
-.statusTable thead th:first-child { width:16%; }
-.statusTable thead th:nth-child(2) { width:8%; }
-.statusTable thead th:nth-child(3) { width:6%; }
-.statusTable thead th:nth-child(4) { width:12%; }
-.statusTable thead th:nth-child(5),.statusTable thead th:nth-child(6) { width:14%; }
-.statusTable thead th:nth-child(7),.statusTable thead th:nth-child(8) { width:9%; }
-.statusTable td,.statusTable tbody th { text-align:left; vertical-align:top; padding:24px 14px; border-top:1px solid #343330; overflow-wrap:anywhere; }
-.statusTable tbody tr:hover { background:#282724; }
-.statusTable small { display:block; font-size:12px; font-weight:400; color:#b8b6ae; margin-top:9px; line-height:1.5; }
+.jobList { display:grid; gap:18px; }
+.jobCard { min-width:0; border:1px solid #3b3d3b; border-radius:14px; overflow:hidden; background:#202120; }
+.jobHeader { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px 20px; padding:18px 22px; border-bottom:1px solid #3b3d3b; }
+.jobHeader > .customerLink { grid-column:1; justify-self:start; }
+.jobHeader > small { grid-column:1; color:#a7aaa6; font-size:12px; line-height:1.5; }
+.jobHeader > .jobLinks { grid-column:2; grid-row:1/3; align-self:center; }
+.jobHeader > .rowFeedback { grid-column:1/-1; }
+.statusTable { width:calc(100% - 24px); margin:18px 12px 20px; border-spacing:0; border-collapse:separate; table-layout:fixed; }
+.statusTable thead th { width:12.5%; color:#bec1bb; font-size:12px; line-height:1.4; height:28px; padding:0 6px 10px; text-align:center; font-weight:500; }
+.statusTable td { text-align:center; vertical-align:top; padding:0 6px; overflow-wrap:anywhere; }
+.statusTable th + th, .statusTable td + td { border-left:1px solid #383b37; }
+.statusTable small { display:block; font-size:12px; font-weight:400; color:#b8b6ae; margin-top:5px; line-height:1.4; }
+.productChecks { display:flex; flex-direction:column; align-items:center; }
+.productChecks .productCount { margin-top:10px; font-size:11px; }
 .customerLink { text-align:left; background:none; border:0; padding:0; font-weight:600 !important; font-size:16px !important; }
 .openLink { display:flex; align-items:center; gap:8px; background:none; border:0; padding:0; margin-top:18px; font-size:12px !important; color:#d6d5cf !important; }
-.product { display:flex; align-items:center; gap:9px; margin-top:15px; font-size:14px; font-weight:400; }
+.product { display:flex; flex-direction:column; align-items:center; gap:3px; width:100%; font-size:12px; line-height:16px; font-weight:400; }
+.product + .product { margin-top:9px; }
+.product > span { overflow-wrap:anywhere; max-width:100%; }
 .completeText { color:#75dfab; }
 .pending { font-size:12px; color:#b8b6ae; }
 .empty { padding:28px 8px; font-size:14px; color:#b8b6ae; display:flex; align-items:center; gap:10px; }
 .back { margin-bottom:18px; cursor:pointer; }
 .srOnly { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
-@media(max-width:1200px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .stages { grid-template-columns:repeat(3,minmax(0,1fr)); } .statusTable thead { display:none; } .statusTable,.statusTable tbody { display:block; } .statusTable tr { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid #343330; } .statusTable tbody th { width:auto; grid-column:1/-1; } .statusTable td { border:0; padding-top:12px; } .statusTable td::before { content:attr(data-label); display:block; color:#b8b6ae; font-size:12px; margin-bottom:12px; } }
-@media(max-width:600px) { .heading { align-items:flex-start; } .heading > span { display:none; } .metrics { gap:10px; } .metric { padding:16px 12px; } .metric strong { font-size:24px; } .metric > div { gap:5px; } .ring { width:36px; height:36px; } .stages { gap:8px; } .stage { padding:14px 9px; } .sectionHeading { flex-wrap:wrap; } .attention { padding:16px; } .attentionRow { grid-template-columns:30px 1fr; gap:10px; } .attentionRow button { grid-column:2; justify-self:start; } .statusTable tr { grid-template-columns:repeat(2,minmax(0,1fr)); } .toolbar label { width:100%; } .toolbar input { width:100%; } }
+@media(max-width:1200px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .stages { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) { .heading { align-items:flex-start; } .heading > span { display:none; } .metrics { gap:10px; } .metric { padding:16px 12px; } .metric strong { font-size:24px; } .metric > div { gap:5px; } .ring { width:36px; height:36px; } .stages { gap:8px; } .stage { padding:14px 9px; } .sectionHeading { flex-wrap:wrap; } .attention { padding:16px; } .attentionRow { grid-template-columns:30px 1fr; gap:10px; } .attentionRow button { grid-column:2; justify-self:start; } .toolbar label { width:100%; } .toolbar input { width:100%; } }
 @media(prefers-reduced-motion:reduce) { .metric { transition:none; } .metric:hover { transform:none; } }
 
 .toolbar input::placeholder { color:#b8b6ae; opacity:1; }
 .toolbar label svg { flex-shrink:0; }
 
-.workspace .completionButton { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; min-height:36px; flex:none; padding:4px; background:transparent; border:0; border-radius:50%; vertical-align:middle; }
+.workspace .completionButton { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; min-height:44px; flex:none; padding:2px; background:transparent; border:0; border-radius:50%; vertical-align:middle; }
+.completionButton .mark { width:40px; height:40px; border-color:#646862; }
+.completionButton .mark.done { border-color:#75dfab; }
+.completionButton .mark svg { width:22px; height:22px; }
 .workspace .completionButton:hover:not(:disabled) { background:#45443f; }
 .workspace .completionButton:focus-visible { outline:2px solid #75dfab; outline-offset:3px; }
 .workspace .completionButton:disabled { cursor:wait; opacity:.5; }
@@ -88,8 +96,7 @@
 
 .jobLinks { display:flex; align-items:center; flex-wrap:wrap; gap:8px 18px; }
 .jobLinks .openLink[aria-expanded=true] { color:#75dfab!important; }
-.statusTable .contractRow { background:#111110; }
-.statusTable .contractRow > td { padding:16px; }
+.contractRow { background:#111110; border-top:1px solid #3b3d3b; padding:16px; }
 .contractPanel { min-width:0; }
 .contractHeader { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
 .contractHeader h2 { margin:0; color:#fbfbfa; font:500 16px/1.4 var(--crm-ui-font); }
@@ -97,12 +104,8 @@
 .contractHeader a,.contractHeader button { display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid #45443f; border-radius:6px; background:#202020; color:#e5e4e2; text-decoration:none; font-size:12px; }
 .contractPanel p { color:#b8b6ae; font-size:13px; padding:12px; }
 .contractFrame { display:block; width:100%; height:1000px; border:0; border-radius:6px; background:#fff; color-scheme:light; }
-@media(max-width:1200px) { .statusTable .contractRow { display:block; }.statusTable .contractRow > td { display:block; width:100%; }.statusTable .contractRow > td::before { display:none; } }
-@media(max-width:600px) { .statusTable .contractRow > td { padding:8px; } }
-
-.statusTable thead th:nth-child(9) { width:12%; }
-.costCell { min-width:0; }
-.costButton { display:inline-flex; align-items:center; gap:5px; border:1px solid #55544f; border-radius:6px; background:#30302d; padding:8px; font-size:12px!important; }
+.costCell { min-width:0; display:flex; flex-direction:column; align-items:center; }
+.costButton { display:inline-flex; align-items:center; gap:5px; border:1px solid #55544f; border-radius:6px; background:#30302d; padding:8px; min-height:44px; justify-content:center; font-size:12px!important; }
 .costButton:disabled { opacity:.5; cursor:not-allowed; }
 .costForm { display:grid; gap:8px; margin-top:12px; min-width:0; }
 .costForm label { font-size:12px; color:#b8b6ae; }
@@ -113,9 +116,26 @@
 .costForm button:disabled { opacity:.5; }
 .costForm p { font-size:12px; color:#ffcfba; margin:0; }
 
-/* Repeat a slim column key between customer records. */
-.statusTable .repeatHeader > td { background:#111110; color:#b8b6ae; font-size:11px; font-weight:500; line-height:1.4; padding:7px 14px; }
-@media(max-width:1200px) { .statusTable .repeatHeader { display:none; } }
-
 .rowFeedback { color:#d6d5cf; font-size:12px; font-weight:400; line-height:1.5; margin:12px 0 0; }
 .rowFeedback[role=alert] { color:#ffcfba; }
+
+.jobHeader .openLink { margin-top:0; padding:8px 10px; border:1px solid #4a4d49; border-radius:7px; }
+.costForm { width:100%; text-align:left; }
+@media(max-width:900px) {
+  .statusTable thead { display:none; }
+  .statusTable, .statusTable tbody { display:block; }
+  .statusTable tr { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px 0; }
+  .statusTable td { display:block; }
+  .statusTable td, .statusTable td + td { border-left:0; }
+  .statusTable td:not(:nth-child(4n+1)) { border-left:1px solid #383b37; }
+  .statusTable td::before { content:attr(data-label); display:block; height:36px; color:#bec1bb; font-size:12px; line-height:1.4; padding-bottom:10px; }
+}
+@media(max-width:600px) {
+  .jobHeader { padding:16px; gap:8px; }
+  .jobHeader > .jobLinks { grid-column:1/-1; grid-row:auto; }
+  .statusTable { width:calc(100% - 16px); margin:16px 8px; }
+  .statusTable tr { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .statusTable td:not(:nth-child(4n+1)) { border-left:0; }
+  .statusTable td:nth-child(even) { border-left:1px solid #383b37; }
+  .contractRow { padding:8px; }
+}
