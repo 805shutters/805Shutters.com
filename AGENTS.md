@@ -2,7 +2,7 @@
 
 ## Coding Agent
 
-- Use Codex directly for coding work in this repository. Hermes is no longer used.
+- Use Codex directly with the latest, most capable model available to this account. Verify the current model catalog rather than retaining an older model pin; never silently downgrade. Hermes is no longer used.
 - A coding request from Mike includes authorization to complete the full verified production workflow unless he explicitly says `draft`, `do not push`, or `do not deploy`.
 - Do not stop after editing files. Keep working until the change passes validation, is committed and pushed, and the production deployment is verified.
 
