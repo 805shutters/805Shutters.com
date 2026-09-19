@@ -1,3 +1,4 @@
+import { SYNCHRONY_DEALER_COLOR_CODES } from "@/lib/quote/norman-synchrony";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
@@ -67,9 +68,8 @@ const authoritativeV2VerticalRows: ProductColorOption[] = VERTICAL_COLORS.map(
       collection,
       publicCollection: collection,
       fabricType: "Vertical vane",
-      // The guide does not print stable color codes; collection + name is the
-      // source identity, so the name is retained in the code slot as well.
-      colorCode: colorName,
+      // Preserve row IDs while adding the verified September dealer ordering code.
+      colorCode: SYNCHRONY_DEALER_COLOR_CODES[collection]?.[colorName] ?? colorName,
       colorName,
       publicColorName: colorName,
       frStatus: "",

@@ -1,4 +1,4 @@
-import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "./norman-synchrony";
+import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED, SYNCHRONY_DEALER_COLOR_CODES } from "./norman-synchrony";
 import { normanContractColors } from "./norman-contract";
 import { sanClementeColors } from "./norman-san-clemente";
 import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
@@ -386,6 +386,7 @@ for (const row of generatedProductColorOptions) {
   if (row.productId === "synchrony_vertical") {
     const group = SYNCHRONY_ACTIVE_COLLECTIONS.find(group => group.collection === row.collection && group.colors.includes(row.colorName));
     row.available = Boolean(group);
+    row.colorCode = SYNCHRONY_DEALER_COLOR_CODES[row.collection]?.[row.colorName] ?? row.colorCode;
     row.sourcePage = "Vertical Blinds Guide.pdf#page=9";
     row.sourceNote = group ? "June 26, 2026 dealer guide current collection/color identity." : "Discontinued by the June 26, 2026 dealer guide; retained for historical quotes.";
   }
@@ -467,9 +468,9 @@ const additionalSynchronyColors: ProductColorOption[] = [
 ].filter(row => !generatedProductColorOptions.some(existing => existing.productId === "synchrony_vertical" && existing.collection === row.collection && existing.colorName === row.colorName)).map(row => ({
   id: `synchrony_vertical:dealer-2026-06:${slug(row.collection)}:${slug(row.colorName)}`,
   productId: "synchrony_vertical", collection: row.collection, publicCollection: row.collection,
-  fabricType: "PVC", colorCode: "", colorName: row.colorName, publicColorName: row.colorName,
+  fabricType: "PVC", colorCode: SYNCHRONY_DEALER_COLOR_CODES[row.collection]?.[row.colorName] ?? "", colorName: row.colorName, publicColorName: row.colorName,
   frStatus: "", imageUrl: "", sourcePage: "Vertical Blinds Guide.pdf#page=9", sourcePageModified: null,
-  sourceNote: row.available ? "June 26, 2026 dealer guide; color code not printed. Collection and color are the ordering identity." : "Discontinued in current dealer guide; retained for historical identification.",
+  sourceNote: row.available ? "June 26 guide identity and exact color code verified in live Norman ordering dropdowns September 19, 2026." : "Discontinued in current dealer guide; retained for historical identification.",
   programId: `synchrony_vertical_synchrony_vertical_blind_price_group_${row.priceGroup.slice(-1)}_pg${row.priceGroup.slice(-1)}`,
   selectionMode: "fabric", requiresProgram: false, available: row.available, automaticDetails: {},
   searchText: `${row.collection} ${row.colorName} synchrony`.toLowerCase(),

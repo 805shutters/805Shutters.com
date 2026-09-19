@@ -5,7 +5,7 @@ import { validateSelection } from "./rules";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
 import { quoteV2CatalogVersionFor } from "./catalog";
 import type { SelectionContext } from "./core";
-import { synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
+import { SYNCHRONY_DEALER_COLOR_CODES, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
 import { describe, expect, it } from "vitest";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { getProduct, getProgram } from "@/lib/quote/catalog";
@@ -20,6 +20,7 @@ describe("Synchrony complete June dealer assortment", () => {
       const matches = colors.filter(c => c.collection === offering.collection && c.colorName === offering.colorName && c.available);
       expect(matches, `${offering.collection}: ${offering.colorName}`).toHaveLength(1);
       const group = offering.priceGroup!.slice(-1);
+      expect(matches[0].colorCode).toBe(SYNCHRONY_DEALER_COLOR_CODES[offering.collection][offering.colorName]);
       expect(matches[0].programId).toBe(`synchrony_vertical_synchrony_vertical_blind_price_group_${group}_pg${group}`);
       expect(getProgram(getProduct("synchrony_vertical")!, matches[0].programId!)?.grid.prices.length).toBeGreaterThan(0);
       expect(getVerticalColorsForGroup(offering.collection)).toContain(`${offering.colorName} Collection: ${offering.collection}`);
@@ -65,12 +66,12 @@ describe("Synchrony hardware and accessory conditions", () => {
 
 it.each(getMtsProductColorRows("Vertical Blinds", {quote_v2_backend:true}))("server-prices and reopens $collection / $colorName with derived shims", (color) => {
  const retail = [261,319,354,423][Number(color.programId!.slice(-1))-1];
- const design = {id:"d",line_item_id:"l",variant:"A",supplier:"Norman",mount_type:"Outside Mount",product_type:"Vertical Blinds",options_json:{quote_v2_backend:true,catalog_product_id:"synchrony_vertical",quote_lab_product_id:"synchrony_vertical",catalog_program_id:"synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",quote_lab_program_id:"synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",fabric_program_id:color.programId,fabric_color_id:color.id,fabric_color_name:color.colorName,fabric_color_collection:color.collection,fabric_group:color.collection,vertical_color:color.colorName,stack_option:"Stack Left",draw_direction:"Left Draw",control_type:"Cordless Wand Operation",vertical_shim_layers:2,vertical_hardware_color:"Nature",vertical_wand_drop_inches:49,shim_quantity:99}} as unknown as SalesQuoteDesign;
+ const design = {id:"d",line_item_id:"l",variant:"A",supplier:"Norman",mount_type:"Outside Mount",product_type:"Vertical Blinds",options_json:{quote_v2_backend:true,catalog_product_id:"synchrony_vertical",quote_lab_product_id:"synchrony_vertical",catalog_program_id:"synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",quote_lab_program_id:"synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",fabric_program_id:color.programId,fabric_color_id:color.id,fabric_color_code:color.colorCode,fabric_color_name:color.colorName,fabric_color_collection:color.collection,fabric_group:color.collection,vertical_color:color.colorName,stack_option:"Stack Left",draw_direction:"Left Draw",control_type:"Cordless Wand Operation",vertical_shim_layers:2,vertical_hardware_color:"Nature",vertical_wand_drop_inches:49,shim_quantity:99}} as unknown as SalesQuoteDesign;
  const input = {lines:[{id:"l",quote_id:"audit",room_name:"Office",product_type:"Vertical Blinds",width_whole:36,width_fraction:"0",height_whole:60,height_fraction:"0",quantity:1,sort_order:0} as SalesQuoteLineItem],designs:[design],selectedVariantByLine:{l:"A"}};
  const result = repriceExactQuoteBuilderForServerDate(input,"2026-09-19");
  if (!("backend" in result) || result.backend!=="v2") throw new Error("Expected V2");
  expect(result.designs[0].result).toMatchObject({ok:true,base:retail});
- expect(result.designs[0].selection.configuration).toMatchObject({vertical_shim_layers:2,vertical_hardware_color:"Nature",vertical_wand_drop_inches:49});
+ expect(result.designs[0].selection.configuration).toMatchObject({fabric_color_code:color.colorCode,vertical_shim_layers:2,vertical_hardware_color:"Nature",vertical_wand_drop_inches:49});
  expect(result.designs[0].snapshot).not.toBeNull();
  const priced = result.designs[0].result;
  if (!priced.ok) throw new Error("Expected valid Synchrony pricing");

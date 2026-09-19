@@ -22,7 +22,7 @@ export interface SourceManifestEntry {
   id: string;
   manufacturer: string;
   kind: SourceDocumentKind;
-  format: "pdf" | "xlsx" | "xls" | "png";
+  format: "pdf" | "xlsx" | "xls" | "png" | "json";
   fileName: string;
   title: string;
   revision: string;
@@ -52,6 +52,25 @@ export interface SourceManifestEntry {
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
+  {
+  "id": "norman-synchrony-dealer-assortment-2026-09-19",
+  "manufacturer": "Norman",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "Norman Synchrony dealer assortment 2026-09-19.json",
+  "title": "Synchrony live dealer ordering assortment",
+  "revision": "Observed September 19, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "The live order form provides no effective date; this is observed availability only. June guide supplies revision dates.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "sha256": "2b208f87ee926b6fc90eb6a5af3f360ed78d765d8a398fc8c15e9b920a05f66f",
+  "authorities": [
+    "assortment",
+    "options"
+  ],
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/ProductOnly/QB_Order.asp"
+},
   {
   "id": "norman-contract-faux-2024-05-29",
   "manufacturer": "Norman",

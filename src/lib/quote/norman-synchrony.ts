@@ -75,3 +75,73 @@ export function synchronyDefaultHardware(color: string): string {
   return "Nature";
 }
 export function synchronyBracketCount(width: number): number { return width <= 48 ? 2 : width <= 78 ? 3 : 4; }
+
+/** Visible dealer collection/color dropdowns, observed September 19, 2026. */
+export const SYNCHRONY_DEALER_COLOR_CODES: Readonly<Record<string, Readonly<Record<string,string>>>> = {
+  "Adobe": {
+    "Bright White": "8077",
+    "Latte": "8518",
+    "Pure White": "8078",
+    "Shark Fin": "8115",
+    "Taupe": "8992"
+  },
+  "Classic": {
+    "Metropolitan": "8120",
+    "Pearl": "8076",
+    "Pure White": "8071",
+    "Sea Mist": "8119",
+    "Silk White": "8075"
+  },
+  "Faux Wood": {
+    "Chestnut": "8987",
+    "Driftwood": "8997",
+    "Limed White": "8988",
+    "Oak": "8986",
+    "Silver Birch": "8989"
+  },
+  "Flaxen": {
+    "Honey Wheat": "8978",
+    "Magnetic Gray": "8979",
+    "Mustard Green": "8980",
+    "Platinum": "8981"
+  },
+  "Grasscloth": {
+    "Botanical Garden": "8973"
+  },
+  "Linen": {
+    "Chic Gray": "8994",
+    "Dusty Blue": "8993",
+    "Merlot": "8995",
+    "Metropolitan": "8974",
+    "Pure White": "8078",
+    "Wheat": "8998"
+  },
+  "S-Curved": {
+    "Metropolitan": "8123",
+    "Pearl": "8080",
+    "Pure White": "8078",
+    "Sea Mist": "8122",
+    "Silk White": "8079"
+  },
+  "Sandblasted": {
+    "Bright White": "8073",
+    "Crisp Linen": "8074",
+    "Designer White": "8072",
+    "Taupe Gray": "8121"
+  },
+  "Shantung": {
+    "Bright White": "8077",
+    "Cement": "8116",
+    "Latte": "8518",
+    "Laurel Pink": "8311",
+    "Lilac": "8117",
+    "Metropolitan": "8124",
+    "Pure White": "8078"
+  },
+  "Willow": {
+    "Birch": "8982",
+    "Burnished Clay": "8985",
+    "Mist": "8996",
+    "Natural Gray": "8983"
+  }
+};

@@ -72,7 +72,7 @@ Row-level working results are generated into `outputs/norman-completion/`: `prog
 
 The current dealer binder lists separate Contract Cordless Faux Wood and 3½-inch Contract Vertical specifications. They now have separate CRM destinations in the 18-family inventory. Current price schedules are absent. The Contract Vertical request form requires 50 blinds minimum; its quotation-request route has not been submitted. The fully-inside depth conflict is retained as a hard block with exact source attribution. Contract aluminum installation documents still require a current assortment/orderability source before inclusion.
 
-All 50 source artifacts match their pinned SHA-256 and byte counts. The original pinned September retail PDF and a later download differ in bytes; the existing lock is preserved, and the grid audit remains independently matched against the later extracted September text.
+All 51 source artifacts match their pinned SHA-256 and byte counts. The original pinned September retail PDF and a later download differ in bytes; the existing lock is preserved, and the grid audit remains independently matched against the later extracted September text.
 
 Local Contract UI evidence: Pure White 6016, 2½-inch embossed, Designer Crown valance, right wand, semi-inside bracket-flush mount, 3-inch recess and hold-down brackets saved/reopened. Vertical Pure White 8071, White 2058 headrail, semi-inside mount, 3-inch recess, two shim layers and quantity 50 saved/reopened. These are local checks, not production pricing certification.
 
@@ -85,3 +85,7 @@ Contract release `9e8ce155` deployed September 19; 4,371 tests passed / 28 skipp
 The same production reopen retained Palladian Winchester White 2010, depth 2⅛ inches, default measurements, supported weight 20 pounds and the linked Office SmartFold line. Missing-depth draft save is fixed. This proves selection persistence; it does not certify the account price.
 
 Synchrony local CRM controls retained S-Curved Pure White, outside mount, left stack/draw, wand control, Nature hardware, 49-inch wand and two shim layers after saving/reopening. Color results now support keyboard selection as well as pointer selection.
+
+Synchrony release `8a94eedf` deployed September 19; release suite 4,426 passed / 28 skipped, typecheck/build passed. A subsequent authenticated portal pass independently matched all 46 current colors in all ten collections and recovered their exact ordering codes. These codes preserve existing picker identities and are pinned in an immutable observed-assortment source. The portal supplies no effective date; the observation date is not represented as a manufacturer effective date.
+
+The unsubmitted Synchrony comparison uses 36 × 60 S-Curved Pure White, outside mount, Nature hardware, 49-inch wand and four shims. The portal's base and shim amounts equal 30% of the matching September retail amounts. The existing CRM dealer factor differs. Account applicability and policy scope remain unresolved; no dealer-cost or customer selling policy has changed.
