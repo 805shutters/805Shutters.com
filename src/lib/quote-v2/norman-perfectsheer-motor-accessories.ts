@@ -43,6 +43,16 @@ export function perfectsheerMotorAccessories(context: SelectionContext) {
   else component("dc_connection_harness",harnesses);
   if(repeaters && !(smart || automate))add("repeater",43,"Repeaters require Norman Smart or Automate Home motorization.");
   else component("repeater",repeaters);
+  const remote = norm(c.remote_type);
+  const remoteQuantityExplicit = c.perfectsheer_remote_quantity != null && c.perfectsheer_remote_quantity !== "";
+  const remoteQuantity = remoteQuantityExplicit ? count("perfectsheer_remote_quantity",Number.MAX_SAFE_INTEGER,automate?76:43) : remote ? context.quantity : 0;
+  if(remoteQuantityExplicit && (wand || !motorized || !remote))add("remote_quantity",automate?76:43,"Select the compatible remote type before specifying how many controls to supply for this line.");
+  const remoteChannel = c.perfectsheer_remote_channel == null || c.perfectsheer_remote_channel === "" ? 1 : Number(c.perfectsheer_remote_channel);
+  const maxChannel = automate && remote.includes("15 channel") ? 15 : 5;
+  if(c.perfectsheer_remote_channel != null && (!(smart || automate) || !remote || !Number.isSafeInteger(remoteChannel) || remoteChannel < 1 || remoteChannel > maxChannel))add("remote_channel",automate?76:43,`Choose a shade channel from 1 through ${maxChannel} for its selected control. Channel zero on the 15-channel remote operates all shades; it is not an individual shade channel.`);
+  const ringSets=count("perfectsheer_color_ring_sets",Number.MAX_SAFE_INTEGER,43);
+  if(ringSets && !(smart && remote.includes("smartdial")))add("color_rings",43,"Additional four-color ring sets require a Norman SmartDial G2 remote.");
+  else component("color_rings_for_smartdial_g2_remote",ringSets);
   const solar=yes(c.perfectsheer_solar_panel);
   if(solar && !(automate && battery))add("solar",74,"Solar panels require Automate ARC with its standard rechargeable battery.");
   else if(solar)component("solar_panel",context.quantity);
@@ -59,6 +69,7 @@ export function perfectsheerMotorAccessories(context: SelectionContext) {
     repeaterPowerAdapter:repeaters?automate?"Required; not included":"Included black adapter":null,
     extension:cables?{quantity:cables,length:wand?118:78.74,color:wand?c.perfectsheer_extension_color??null:battery?"Black":adapterWatts===36?"White":adapterWatts===65?"Black":null,adapterWatts:wand?null:battery?36:adapterWatts,adapterCompatibility:wand?"AutoWand":battery?"36W":adapterWatts?`${adapterWatts}W`:null}:null,
     wand:wand?{length:c.perfectsheer_wand_length??null,color:c.perfectsheer_wand_color??null,ringIncluded:true,hookIncluded:true,installedOnDoor:yes(c.perfectsheer_installed_on_door),additionalDoorFabricDeductionEachSide:yes(c.perfectsheer_installed_on_door)?.0625:0}:null,
+    controller:smart||automate?{type:c.remote_type??null,quantity:remoteQuantity,quantityExplicit:remoteQuantityExplicit,channel:remoteChannel,maxChannel,color:automate?"White":"Black",includedHolder:smart&&remote.includes("basic remote")?"Black":null,defaultRing:smart&&remote.includes("smartdial")?"Black":null,extraFourColorRingSets:ringSets,existingRemoteWorkOrder:c.existing_remote_work_order_number??null}:null,
     quantityBasis:"per_line",
   }};
 }

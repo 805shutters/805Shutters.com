@@ -564,6 +564,10 @@ interface GridOptionYesNo {
   noFirst?: boolean;
 }
 
+interface GridOptionText {
+  key: string; label: string; field: string; type: "text"; placeholder?: string;
+}
+
 interface GridOptionNumber {
   key: string;
   label: string;
@@ -576,7 +580,7 @@ interface GridOptionNumber {
   unit?: string;
 }
 
-type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo | GridOptionNumber;
+type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo | GridOptionNumber | GridOptionText;
 type GridSelectGroup = { label: string; items: readonly string[] };
 type OptionSlotRequirement = "mandatory" | "optional";
 
@@ -2907,7 +2911,7 @@ function OptionSlot({
 }) {
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
-  const isDirectSelect = option.type === "select" || option.type === "number";
+  const isDirectSelect = option.type === "select" || option.type === "number" || option.type === "text";
   const isInlineChoice = (!isDirectSelect && renderSelectedDirect) || isYesNo || (option.type === "buttons" && option.options.length <= 2);
   const showConfirmedCard = selected && !renderSelectedDirect && !isOpen;
 
@@ -4090,6 +4094,13 @@ function GridSelect({
       </Select>
     </div>
   );
+}
+
+function GridTextInput({label,value,onChange,placeholder}:{label:string;value:string|null;onChange:(value:string|null)=>void;placeholder?:string}) {
+  const [draft,setDraft]=useState(value??"");
+  useEffect(()=>setDraft(value??""),[value]);
+  const commit=()=>{const next=draft.trim();if(next!==(value??""))onChange(next||null);};
+  return <Input aria-label={label} value={draft} placeholder={placeholder} maxLength={120} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();e.currentTarget.blur();}}} className="quote-style-input h-7 text-xs" />;
 }
 
 function GridNumberInput({
@@ -6976,6 +6987,8 @@ function ShutterDesignOptions({
       );
     }
 
+    if (opt.type === "text") return <GridTextInput label={opt.label} value={value} placeholder={opt.placeholder} onChange={v=>handleUpdate(opt.field,v)} />;
+
     if (opt.type === "number") {
       return (
         <GridNumberInput
@@ -7018,7 +7031,7 @@ function ShutterDesignOptions({
       requirement={requirement}
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
-      renderSelectedDirect={mobilePresentation || opt.type === "select" || opt.type === "number"}
+      renderSelectedDirect={mobilePresentation || opt.type === "select" || opt.type === "number" || opt.type === "text"}
     >
       {renderOptionControl(opt)}
     </OptionSlot>
@@ -9839,8 +9852,12 @@ function ShadesAndBlindsOptions({
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
       return;
     }
+    if (productType === "Sheer Shades" && field === "remote_type") {
+      onUpdateFields({remote_type:typeof value === "string"?value:null,options_json:{...currentJson,motorization_selections:null,perfectsheer_remote_channel:null,perfectsheer_color_ring_sets:null}});
+      return;
+    }
     if (productType === "Sheer Shades" && field === "motor_type") {
-      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null,perfectsheer_wand_length:null,perfectsheer_installed_on_door:null,perfectsheer_extra_charging_kits:null,perfectsheer_extension_cables:null,perfectsheer_extension_color:null,perfectsheer_extra_harnesses:null,perfectsheer_repeaters:null,perfectsheer_solar_panel:null}});
+      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null,perfectsheer_wand_length:null,perfectsheer_installed_on_door:null,perfectsheer_extra_charging_kits:null,perfectsheer_extension_cables:null,perfectsheer_extension_color:null,perfectsheer_extra_harnesses:null,perfectsheer_repeaters:null,perfectsheer_solar_panel:null,perfectsheer_remote_quantity:null,perfectsheer_remote_channel:null,perfectsheer_color_ring_sets:null,existing_remote_work_order_number:null}});
       return;
     }
     if (productType === "Sheer Shades" && field === "json:perfectsheer_installed_on_door") {
@@ -11357,7 +11374,7 @@ function ShadesAndBlindsOptions({
           options.push(psChoice("perfectsheer_tube_diameter","Tube Diameter",["1.75","2"]));
           const psPower = String(design?.motor_type ?? "");
           const psWand = /autowand/i.test(psPower), psSmart = /norman smart/i.test(psPower), psAutomate = /automate/i.test(psPower), psBattery = /rechargeable|arc/i.test(psPower), psDc = /low voltage/i.test(psPower);
-          const psCount = (key:string,label:string,max:number): GridOption => ({key,label,field:`json:${key}`,type:"number",min:0,max,step:"1",placeholder:"0"});
+          const psCount = (key:string,label:string,max:number): GridOptionNumber => ({key,label,field:`json:${key}`,type:"number",min:0,max,step:"1",placeholder:"0"});
           if (psWand || psSmart && psBattery) options.push(psCount("perfectsheer_extra_charging_kits","Extra Charging Kits for This Line",_lineItem.quantity || 1));
           if (psWand || psSmart && (psBattery || /ac adapter/i.test(psPower))) options.push(psCount("perfectsheer_extension_cables","Extension Cables for This Line",psWand?(_lineItem.quantity || 1):Number.MAX_SAFE_INTEGER));
           if (psDc) options.push(psCount("perfectsheer_extra_harnesses","Extra DC Harnesses for This Line",Number.MAX_SAFE_INTEGER));
@@ -11371,6 +11388,11 @@ function ShadesAndBlindsOptions({
           if (!/autowand/i.test(String(design?.motor_type))) {
             options.push({key:"hub_required",label:"Hub Required",field:"json:hub_required",type:"yes-no",noFirst:true});
             options.push({key:"remote_type",label:"Remote Type",field:"remote_type",type:"select",options:/automate/i.test(String(design?.motor_type)) ? ["15-Channel Remote","5-Channel Wall Switch"] : ["SmartDial Remote","Basic Remote"]});
+            if(design?.remote_type) {
+              options.push({...psCount("perfectsheer_remote_quantity","Remote Controls for This Line",Number.MAX_SAFE_INTEGER),placeholder:String(_lineItem.quantity||1)}, {key:"perfectsheer_remote_channel",label:"Shade Remote Channel",field:"json:perfectsheer_remote_channel",type:"number",min:1,max:/15.channel/i.test(design.remote_type)?15:5,step:"1",placeholder:"1"});
+              if(/smartdial/i.test(design.remote_type))options.push(psCount("perfectsheer_color_ring_sets","Extra SmartDial Color Ring Sets",Number.MAX_SAFE_INTEGER));
+              if(Number(optionsJson.perfectsheer_remote_quantity)===0 && optionsJson.perfectsheer_remote_quantity!=null)options.push({key:"existing_remote_work_order_number",label:"Existing Remote Work Order",field:"json:existing_remote_work_order_number",type:"text",placeholder:"Prior Norman work-order number"});
+            }
           }
         }
 
@@ -12152,6 +12174,8 @@ function ShadesAndBlindsOptions({
       );
     }
 
+    if (opt.type === "text") return <GridTextInput label={opt.label} value={value} placeholder={opt.placeholder} onChange={v=>commitOptionUpdate(opt.field,v)} />;
+
     if (opt.type === "number") {
       return (
         <GridNumberInput
@@ -12195,7 +12219,7 @@ function ShadesAndBlindsOptions({
       renderSelectedDirect={
         mobilePresentation ||
         shouldRenderMotorizationControlDirect(opt.field) ||
-        opt.type === "number" ||
+        opt.type === "number" || opt.type === "text" ||
         (opt.type === "select" &&
           opt.field !== "json:back_fabric_color" &&
           !supportsMtsProductColorSearch(productType, opt.field, optionsJson) &&

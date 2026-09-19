@@ -209,6 +209,10 @@ function compatibleMotorControllerSelected(
   const remote = normalizeIdentity(
     evidenceValue(context, "remote_type", ["motor_remote_type"]),
   );
+  if(context.productId === "perfectsheer" && context.catalogAsOf >= "2026-09-19") {
+    const quantity=evidenceValue(context,"perfectsheer_remote_quantity");
+    if(quantity != null && quantity !== "" && !(Number.isSafeInteger(Number(quantity)) && Number(quantity)>0))return false;
+  }
   if (family === "norman_smart") {
     return remote.includes("smartdial") || remote.includes("basic remote");
   }

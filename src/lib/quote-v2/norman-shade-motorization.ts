@@ -1235,8 +1235,12 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
   const limits: SourceBackedMotorLimits = {id:`${motorFamily}-${tube}-${dc?"dc":ac?"ac":"battery"}`,minWidth:motorFamily === "autowand" ? 22 : motorFamily === "automate_home" ? dc ? 17 : 26 : battery ? 24 : 16,maxWidth:motorFamily === "norman_smart" && tube === 1.75 ? 96 : 109,minHeight:12,maxHeight:120,sourcePage:page,...(maxAreaSqFt ? {maxAreaSqFt}:{})};
   const group = motorFamily === "autowand" ? "autowand" : motorFamily === "automate_home" ? "automate_home" : "smart_motorization";
   const components = [canonicalSelection(group,motorFamily === "autowand" ? "autowand" : motorFamily === "automate_home" ? dc ? "low_voltage_dc_motor" : "motor_rechargeable_battery_pack" : "motor","base_motor")];
+  const accessories = perfectsheerMotorAccessories(context);
   const controller=controllerSelection(motorFamily,config.remoteType);
-  if(controller) components.push(controller);
+  const suppliedControl = accessories?.record.controller;
+  if(controller && suppliedControl?.quantityExplicit) {
+    if(suppliedControl.quantity > 0)components.push({...controller,units:suppliedControl.quantity,billingScope:"once_per_line"});
+  } else if(controller) components.push(controller);
   if(config.hubRequired === true && motorFamily !== "autowand") components.push(canonicalSelection(group,"hub","hub"));
   const includedAccessories: string[] = [];
   if(dc) {
@@ -1248,7 +1252,6 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
       components.push(...panelSelections(context,group));
     }
   } else if(battery || motorFamily === "autowand") includedAccessories.push(motorFamily === "automate_home" ? "One charging kit per shade" : "One compatible charging kit per three motors, minimum one per order");
-  const accessories = perfectsheerMotorAccessories(context);
   if(accessories) {components.push(...accessories.selections);issues.push(...accessories.issues);}
   const shared = [...validateControlAndPosition(context,config,motorFamily,[page]),...dimensionIssues({...context,widthInches:width},[limits],"perfectsheer.motorization.dimension"),...canonicalContractIssues(config,components,[page])];
   issues.push(...shared.map(i=>({...i,source:sourceProvenance(sourceId,{page})})));

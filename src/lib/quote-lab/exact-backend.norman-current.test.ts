@@ -29,6 +29,22 @@ describe("Current Norman production configurations",()=>{
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(result);
  });
 
+ it("prices an explicit remote quantity once and preserves channel and rings on reopening",()=>{
+  const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_tube_diameter:2,motor_position:"Right",hub_required:false});
+  q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart AC Adapter";q.designs[0].remote_type="SmartDial Remote";q.lines[0].quantity=3;
+  const base=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  q.designs[0].options_json={...q.designs[0].options_json,perfectsheer_remote_quantity:1,perfectsheer_remote_channel:5,perfectsheer_color_ring_sets:2};
+  const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok).toBe(true);expect(d.result.validationIssues?.filter(i=>i.severity==="hard_block")).toEqual([]);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid control pricing");
+  expect(d.result.total-b.result.total).toBe(-2*268+2*43);
+  expect(d.selection.configuration.motorization_selections).toContainEqual({groupId:"smart_motorization",optionId:"smartdial_g2_remote",role:"controller",units:1,billingScope:"once_per_line"});
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{controller:{quantity:1,channel:5,defaultRing:"Black",extraFourColorRingSets:2}}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toEqual(expect.arrayContaining(["Remote Controls for This Line: 1","Shade Remote Channel: 5","Extra SmartDial Color Ring Sets: 2"]));
+ });
  it("charges extra motor accessories once for the line instead of once per shade",()=>{
   const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_tube_diameter:2,motor_position:"Right",hub_required:false});
   q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart Rechargeable Battery (AC Charger)";q.designs[0].remote_type="Basic Remote";q.lines[0].quantity=3;

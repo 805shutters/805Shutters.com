@@ -3,9 +3,28 @@ import type { SelectionContext } from "./core";
 import { perfectsheerMotorAccessories, PERFECTSHEER_WAND_LENGTHS } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerHardware } from "./norman-perfectsheer-hardware";
 import { resolveNormanShadeMotorization } from "./norman-shade-motorization";
+import { validateQuoteSelectionRelationships } from "./quote-rules";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
 const shade=(c:SelectionContext["configuration"]={},quantity=3):SelectionContext=>({manufacturerId:"Norman",productId:"perfectsheer",programId:"perfectsheer_perfectsheer_shades_light_filtering",catalogVersion:"test",catalogAsOf:"2026-09-19",widthInches:36,heightInches:60,quantity,options:{},configuration:{fabric_color_code:"F1179",light_control:"Light Filtering",lift_system:"Motorized",motor_type:"Norman Smart Rechargeable Battery (AC Charger)",mount_type:"Inside Mount",motor_position:"Right",remote_type:"Basic Remote",hub_required:false,perfectsheer_tube_diameter:2,...c}});
 describe("PerfectSheer motor accessories",()=>{
+ it("validates each controller channel limit and SmartDial ring compatibility",()=>{
+  for(const [motor_type,remote_type,max] of [["Norman Smart AC Adapter","Basic Remote",5],["Norman Smart AC Adapter","SmartDial Remote",5],["Automate Home ARC Rechargeable Battery","15-Channel Remote",15],["Automate Home ARC Rechargeable Battery","5-Channel Wall Switch",5]] as const){
+   for(const channel of [1,max])expect(perfectsheerMotorAccessories(shade({motor_type,remote_type,perfectsheer_remote_channel:channel}))?.issues).toEqual([]);
+   for(const channel of [0,max+1,1.5])expect(perfectsheerMotorAccessories(shade({motor_type,remote_type,perfectsheer_remote_channel:channel}))?.issues.map(i=>i.ruleId)).toContain("perfectsheer.accessory.remote_channel");
+  }
+  expect(perfectsheerMotorAccessories(shade({remote_type:"SmartDial Remote",perfectsheer_color_ring_sets:2}))?.selections).toContainEqual({groupId:"smart_motorization",optionId:"color_rings_for_smartdial_g2_remote",role:"accessory",units:2,billingScope:"once_per_line"});
+  expect(perfectsheerMotorAccessories(shade({perfectsheer_color_ring_sets:1}))?.issues.map(i=>i.ruleId)).toContain("perfectsheer.accessory.color_rings");
+ });
+ it("requires a supplied compatible control somewhere on the quote or prior-order evidence",()=>{
+  const a=shade({perfectsheer_remote_quantity:0}),b=shade({perfectsheer_remote_quantity:1});
+  const lines=[{lineId:"a",selectedDesign:a},{lineId:"b",selectedDesign:b}];
+  const required=()=>validateQuoteSelectionRelationships(lines).filter(i=>i.ruleId==="norman.motorization.quote.controller_required");
+  expect(required()).toEqual([]);
+  b.configuration={...b.configuration,perfectsheer_remote_quantity:0};expect(required()).toHaveLength(1);
+  a.configuration={...a.configuration,existing_remote_work_order_number:"WO-verified"};expect(required()).toEqual([]);
+  expect(resolveNormanShadeMotorization(a)?.canonicalSelections?.some(c=>c.role==="controller")).toBe(false);
+  for(const quantity of [-1,1.5,"invalid"])expect(perfectsheerMotorAccessories(shade({perfectsheer_remote_quantity:quantity}))?.issues.length).toBeGreaterThan(0);
+ });
  it("retains each documented wand length, door deduction and default magnets",()=>{
   for(const length of PERFECTSHEER_WAND_LENGTHS){
    const s=shade({motor_type:"AutoWand",remote_type:null,perfectsheer_wand_color:"2058 White",perfectsheer_wand_length:length,perfectsheer_installed_on_door:"Yes",perfectsheer_extension_cables:1,perfectsheer_extension_color:"Black"});
