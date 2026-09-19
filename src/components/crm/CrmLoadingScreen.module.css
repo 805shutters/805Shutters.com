@@ -16,6 +16,9 @@
 .content { width: 100%; text-align: center; }
 .logoFrame { position: relative; display: grid; place-items: center; width: 192px; height: 192px; margin: 0 auto 30px; }
 .brand { display: block; width: 118px; height: auto; object-fit: contain; filter: brightness(0) invert(1); }
+/* Center the visible artwork, compensating for the official PNG's transparent
+   padding: canvas 1144×1080, artwork bounds (146,145)–(972,661). */
+.logoFrame .brand { transform: translate(1.136364%, 12.685185%); }
 .indicator {
   position: absolute;
   inset: 0;
