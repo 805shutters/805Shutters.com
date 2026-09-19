@@ -84,6 +84,25 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     if (netWidth < 6.5 || netWidth > 96 || h < 16 || h > 96 || netWidth * h > 64 * 144) add("dimensions", source, 7, "Normandy wood blinds require net width 6½–96 inches, height 16–96 inches and area up to 64 square feet. Inside mount deducts ⅜ inch from ordered width.");
     if (netWidth < 15 && value("control_side") && text("control_side") !== "center") add("narrow_center_tilt", source, 7, "Wood blinds under 15 inches net width have center wand tilt and no lift function.");
     if (/motor|cord_loop/.test(control)) add("control", source, 7, "Ultimate Normandy wood blinds use cordless lift and wand tilt.");
+    const cutoutSides = ["left", "right"].filter(side => !["", "none"].includes(text(`wood_cutout_${side}_type`)));
+    if (["one", "two"].includes(text("cut_out_sides")) && cutoutSides.length === 0) add("cutout_details", source, 19, "Specify each cut-out side, type, width and measurements from the top of the headrail.");
+    if (cutoutSides.length && /common|2_on|two_on|3_on|three_on/.test(text("application", "shade_type"))) add("cutout_common", source, 19, "Common-valance cut-outs require verified outer-blind positions. Use a single blind until the assembly positions are recorded.");
+    for (const side of cutoutSides) {
+      const kind = text(`wood_cutout_${side}_type`);
+      const slat = text("slat_size");
+      const largeSlat = ["2_1_2", "2_5", "2_1_2_in"].includes(slat);
+      if (!["2", "2_in", "2_1_2", "2_5", "2_1_2_in"].includes(slat)) add(`cutout_${side}_slat`, source, 19, "Select the 2-inch or 2½-inch slat size before configuring cut-outs.");
+      const cutWidth = Number(value(`wood_cutout_${side}_width`));
+      const top = Number(value(`wood_cutout_${side}_top`));
+      const bottom = Number(value(`wood_cutout_${side}_bottom`));
+      const maxWidth = netWidth <= 8.875 ? 0.375 : netWidth <= 17.25 ? 1.375 : netWidth <= 21.375 ? 2.875 : 4.875;
+      if (!Number.isFinite(cutWidth) || cutWidth < 0.125 || cutWidth > maxWidth) add(`cutout_${side}_width`, source, 19, `The ${side} cut-out width must be ⅛–${maxWidth} inches for this net blind width.`);
+      if (kind === "corner_bottom") {
+        if (!Number.isFinite(top) || top < 1.5 || top > h - (largeSlat ? 2.75 : 2.25)) add(`cutout_${side}_height`, source, 19, `Measure from the headrail top to the ${side} cut-out top: minimum 1½ inches; leave ${largeSlat ? "2¾" : "2¼"} inches to the ordered blind height.`);
+      } else if (kind === "side_middle") {
+        if (!Number.isFinite(top) || !Number.isFinite(bottom) || top < 1.5 || top > bottom - (largeSlat ? 2.25 : 1.75) || bottom < (largeSlat ? 4 : 3.5) || bottom > h - (largeSlat ? 3 : 2.5)) add(`cutout_${side}_height`, source, 20, `Record both ${side} cut-out heights from the headrail top, within the selected slat's middle cut-out limits.`);
+      } else add(`cutout_${side}_type`, source, 19, "Each side can have one Corner (Bottom) or Side (Middle) cut-out.");
+    }
   }
 
   if (context.productId === "perfectsheer" && context.catalogAsOf >= "2026-09-01") {

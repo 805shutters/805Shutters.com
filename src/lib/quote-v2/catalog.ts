@@ -37,6 +37,9 @@ export function quoteV2CatalogVersionFor(
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
   }
+  if (productId === "wood_blinds" && asOf >= "2026-09-19") {
+    return `${QUOTE_V2_CATALOG_VERSION}-norman-wood-cutouts-2026-09-19-r1`;
+  }
   if (["honeycomb", "roman", "smartfold", "citylights_aluminum", "wood_blinds", "perfectsheer", "smartdrape", "palladian_shelf"].includes(productId) && asOf >= "2026-09-18") {
     return `${QUOTE_V2_CATALOG_VERSION}-norman-completion-2026-09-18-r1`;
   }

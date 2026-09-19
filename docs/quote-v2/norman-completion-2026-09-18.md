@@ -15,6 +15,7 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 - New Norman quote: explicit desktop entry point creates a server-owned draft through the existing authenticated API and preserves a stable request key on retries. Existing drafts retain their original pricing mode.
 - CityLights and wood side-by-side pairs: validate reciprocal saved line references, actual ordered height, mount, slat size and exact color code; one-inch CityLights also requires matching route type. Rules are effective-date controlled.
 - CityLights: reconcile 30 one-inch and 22 two-inch colors, derive finish charges from the color code, enforce net dimensions and narrow-blind center tilt, and reject incompatible controls/side brackets.
+- Wood cut-outs: retain each side, corner/middle type, width and headrail-referenced heights. Enforce slat-specific dimensional limits, derive the $99-per-side surcharge, clear obsolete measurements, preserve customer-visible measurements and verify serialization. Common-valance cut-outs remain an explicit assembly exception.
 - Wood blinds: derive designer/premium charges by code, provide priced Designer Crown/Contempo/Linear valances, and enforce net dimensions and narrow center tilt. Add dealer-guide ND108 Rustic Gray. Retain conflicting legacy ND118 as unavailable for new ordering without rewriting historical quotes.
 - Palladian Shelf: expose the product, require source-listed finish, valid depth and inside mount, and link a selected eligible Norman product across different line families for the with-product grid.
 - Roman: price both common-valance shade widths independently and preserve both motors. Fabric width and manual area checks apply to each shade rather than the whole opening.
@@ -34,7 +35,7 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 | PerfectSheer | Motor tube/factory AA-fabric-to-F-color mapping, complete mounting/valance combinations and dealer comparison. |
 | SmartDrape | Complete motor/accessory contract, track extensions and conflicting bracket interval; dealer and production comparison. |
 | CityLights | Complete mounting and multi-blind side-by-side groups beyond pairs; current dealer and production comparison. |
-| Wood Blinds | Common valances, cutouts, keystone locations and complete mounting constraints; account reconciliation of ND108/ND118. |
+| Wood Blinds | Common valances and their outer-position cutouts, keystone locations and complete mounting constraints; account reconciliation of ND108/ND118. |
 | Ultimate Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
@@ -43,12 +44,14 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 
 ## Evidence and release state
 
-- Follow-up automated suite: 4,231 passed, 28 skipped on September 18. The deployment command repeats required release checks.
+- Deployed follow-up `63b5a5b8`: 4,262 tests passed, 28 skipped on September 19; typecheck and build passed. The new measured wood cut-out increment is tested locally and is not yet deployed.
 - Initial implementation commit `da2501e9` was pushed and deployed to the 805 Vercel project; canonical production and `805-one.vercel.app` responded successfully.
 - Production verification quote `805-0310` saved and reopened Louise F1709, 36 × 60, cordless, 7-inch fold and 6-inch fabric valance. It exposed the legacy draft route: selection persistence passed, but pricing remained incomplete at $0. This is not verified live pricing.
+- Production native quote `805-0312` saved and reopened Louise F1709, 36 × 60, quantity one, cordless, 7-inch fold, 6-inch fabric valance, no Light Guard and no premium hem bar. The authoritative endpoint retains a blocked status because the product restriction review is incomplete. The equivalent backend fixture computes $761 retail but correctly withholds a sendable snapshot. This is persistence proof, not live pricing certification.
 - Browser verification uses the real CRM DesignCard in a local fixture. Louise saved/reopened with the same stable identity; SmartDrape F1868 appears; ND108 is selectable and ND118 is disabled. This is local verification, not a saved production quote.
+- Local CRM wood cut-out controls saved and reopened a left middle cut-out, width 1 inch, top 20 inches and bottom 30 inches from the headrail.
 - Authoritative backend integration tests exercise panel allocation, quantity, removal, overload, Roman component prices and serialization/reopening.
-- Norman's authenticated session expired; the login handoff is pending. No current dealer-price comparison or current account-fee verification is claimed.
+- Norman authenticated account R00743 is available. Its displayed billing identity differs from 805, so account applicability is awaiting owner confirmation before any dealer-price policy change. One unsubmitted Woodlore Americas comparison is recorded privately; the current pricing binder still has blank base rates.
 - Existing dealer policy is still the July 21 account fixture. Current factors, freight, oversize and processing-fee scope need account verification. The different-dealer pricing PDF remains quarantined.
 - No family is newly labelled “verified live” by this ledger. Existing limited/blocked runtime statuses remain intact.
 

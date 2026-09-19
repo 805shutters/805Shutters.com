@@ -106,4 +106,28 @@ describe("Norman current family source rules", () => {
     expect(rules(selection("smartdrape",354.375,144,{control_type:"Motorized",motor_type:"Norman Smart AC Adapter",stack_option:"Center Opening",control_side:"Right"}))).toEqual(expect.arrayContaining(["norman.smartdrape.area","norman.smartdrape.motor_position"]));
   });
 
+  it.each([[8.875,.375],[17.25,1.375],[21.375,2.875],[21.4375,4.875]])("checks wood cut-out width at net blind width %s", (width, maximum) => {
+    const config = { mount_type:"Inside Mount", slat_size:'2"', wood_cutout_left_type:"Corner (Bottom)", wood_cutout_left_width:maximum, wood_cutout_left_top:1.5 };
+    expect(rules(selection("wood_blinds",width+.375,60,config))).toEqual([]);
+    expect(rules(selection("wood_blinds",width+.375,60,{...config,wood_cutout_left_width:maximum+.0625}))).toContain("norman.wood_blinds.cutout_left_width");
+  });
+  it.each([['2"',2.25,1.75,3.5,2.5],['2.5"',2.75,2.25,4,3]])("checks wood %s corner and middle cut-out heights", (slat, cornerOffset, middleGap, bottomMin, bottomOffset) => {
+    const base = { slat_size:slat, wood_cutout_left_type:"Corner (Bottom)", wood_cutout_left_width:.125, wood_cutout_left_top:60-Number(cornerOffset) };
+    expect(rules(selection("wood_blinds",36,60,base))).toEqual([]);
+    expect(rules(selection("wood_blinds",36,60,{...base,wood_cutout_left_top:60-Number(cornerOffset)+.0625}))).toContain("norman.wood_blinds.cutout_left_height");
+    const middle = {...base,wood_cutout_left_type:"Side (Middle)",wood_cutout_left_top:1.5,wood_cutout_left_bottom:bottomMin};
+    expect(rules(selection("wood_blinds",36,60,middle))).toEqual([]);
+    expect(rules(selection("wood_blinds",36,60,{...middle,wood_cutout_left_bottom:Number(bottomMin)-.0625}))).toContain("norman.wood_blinds.cutout_left_height");
+    expect(rules(selection("wood_blinds",36,60,{...middle,wood_cutout_left_top:60-Number(bottomOffset)-Number(middleGap),wood_cutout_left_bottom:60-Number(bottomOffset)}))).toEqual([]);
+    expect(rules(selection("wood_blinds",36,60,{...middle,wood_cutout_left_top:60-Number(bottomOffset)-Number(middleGap)+.0625,wood_cutout_left_bottom:60-Number(bottomOffset)}))).toContain("norman.wood_blinds.cutout_left_height");
+  });
+  it("prices measured wood cut-out sides and rejects incomplete details", () => {
+    const config = { slat_size:'2"', cut_out_sides:"two", wood_cutout_left_type:"Corner (Bottom)", wood_cutout_left_width:1,wood_cutout_left_top:20 };
+    expect(authoritativeAutomaticSurchargeSelections(selection("wood_blinds",36,60,config))).toContainEqual({id:"cut_out",units:1});
+    expect(authoritativeAutomaticSurchargeSelections(selection("wood_blinds",36,60,{...config,wood_cutout_right_type:"Side (Middle)"}))).toContainEqual({id:"cut_out",units:2});
+    expect(rules(selection("wood_blinds",36,60,{cut_out_sides:"one"}))).toContain("norman.wood_blinds.cutout_details");
+    expect(rules(selection("wood_blinds",36,60,{wood_cutout_left_type:"Corner (Bottom)"}))).toEqual(expect.arrayContaining(["norman.wood_blinds.cutout_left_width","norman.wood_blinds.cutout_left_height","norman.wood_blinds.cutout_left_slat"]));
+    expect(rules({...selection("wood_blinds",36,60,{cut_out_sides:"one"}),catalogAsOf:"2026-07-21"})).toEqual([]);
+  });
+
 });

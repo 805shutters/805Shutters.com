@@ -71,6 +71,14 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["shared_power_panel_id", "Shared power panel"],
   ["fold_size", "Fold size"],
   ["shelf_depth", "Shelf depth"],
+  ["wood_cutout_left_type", "Left cut-out"],
+  ["wood_cutout_left_width", "Left cut-out width"],
+  ["wood_cutout_left_top", "Left cut-out top from headrail"],
+  ["wood_cutout_left_bottom", "Left cut-out bottom from headrail"],
+  ["wood_cutout_right_type", "Right cut-out"],
+  ["wood_cutout_right_width", "Right cut-out width"],
+  ["wood_cutout_right_top", "Right cut-out top from headrail"],
+  ["wood_cutout_right_bottom", "Right cut-out bottom from headrail"],
   ["installation_method", "Installation method"],
   ["pocket_depth_inches", "Ceiling pocket depth"],
   ["pocket_height_inches", "Ceiling pocket height"],
@@ -232,6 +240,11 @@ export function customerConfigurationFromSelection(
   const source = plainRecord(selection.configuration) ?? {};
   const selections: Partial<Record<V2CustomerConfigurationKey, SelectionValue>> = {};
   for (const [key] of V2_CUSTOMER_CONFIGURATION_FIELDS) {
+    const cutoutMeasurement = /^wood_cutout_(left|right)_(width|top|bottom)$/.exec(key);
+    if (cutoutMeasurement) {
+      const kind = String(source[`wood_cutout_${cutoutMeasurement[1]}_type`] ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      if (!["corner_bottom", "side_middle"].includes(kind) || (cutoutMeasurement[2] === "bottom" && kind !== "side_middle")) continue;
+    }
     const raw = key === "expedited" ? selection.options.expedited : source[key];
     if (raw === undefined) continue;
     const safe = sanitizedValue(key, raw);

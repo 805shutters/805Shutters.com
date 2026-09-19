@@ -3363,6 +3363,7 @@ function DeferredTextInput({
 
 function DeferredNumberInput({
   value,
+  label,
   onCommit,
   onClear,
   commitOnChange = false,
@@ -3373,6 +3374,7 @@ function DeferredNumberInput({
   max,
 }: {
   value: number | string | null | undefined;
+  label?: string;
   onCommit: (value: number) => void;
   onClear?: () => void;
   commitOnChange?: boolean;
@@ -3462,6 +3464,7 @@ function DeferredNumberInput({
   return (
     <Input
       type="number"
+      aria-label={label}
       step={step}
       min={min}
       max={max}
@@ -4108,6 +4111,7 @@ function GridNumberInput({
       )}
       <div className="flex items-center gap-1.5">
         <DeferredNumberInput
+          label={label}
           value={value}
           onCommit={onChange}
           onClear={onClear}
@@ -8582,6 +8586,18 @@ function ShadesAndBlindsOptions({
     const currentJson = (design?.options_json as Record<string, unknown>) || {};
     const emptyValue = value === null || value === undefined || value === "";
 
+    if (authoritativeV2 && productType === "Wood Blinds" && /^json:wood_cutout_(left|right)_type$/.test(field)) {
+      const key = field.slice(5);
+      const prefix = key.replace(/_type$/, "");
+      onUpdateFields({ options_json: {
+        ...currentJson, [key]: value,
+        ...(value !== "Side (Middle)" ? { [`${prefix}_bottom`]: null } : {}),
+        ...(value === "None" || emptyValue ? { [`${prefix}_width`]: null, [`${prefix}_top`]: null } : {}),
+        cut_out_sides: null,
+      } });
+      return;
+    }
+
     if (
       authoritativeV2 &&
       field === "json:side_by_side_position" &&
@@ -11437,6 +11453,19 @@ function ShadesAndBlindsOptions({
           },
           { key: "valance", label: "Valance", field: "valance", type: "buttons", options: ["No Valance", "Designer Crown", "Contempo", "Linear"] },
           { key: "side_mount_bracket", label: "Side Mount Bracket", field: "json:side_mount_bracket", type: "yes-no", noFirst: true },
+          ...(authoritativeV2 ? ["left", "right"].flatMap((side): GridOption[] => {
+            const label = side === "left" ? "Left" : "Right";
+            const kind = String(optionsJson[`wood_cutout_${side}_type`] ?? "None");
+            const fields: GridOption[] = [{ key: `wood_cutout_${side}_type`, label: `${label} Cut-out`, field: `json:wood_cutout_${side}_type`, type: "buttons", options: ["None", "Corner (Bottom)", "Side (Middle)"] }];
+            if (kind !== "None") {
+              fields.push(
+                { key: `wood_cutout_${side}_width`, label: `${label} cut-out width`, field: `json:wood_cutout_${side}_width`, type: "number", min: 0.125, max: 4.875, step: "0.0625", unit: "in" },
+                { key: `wood_cutout_${side}_top`, label: `${label} cut-out top from headrail`, field: `json:wood_cutout_${side}_top`, type: "number", min: 1.5, step: "0.0625", unit: "in" },
+              );
+              if (kind === "Side (Middle)") fields.push({ key: `wood_cutout_${side}_bottom`, label: `${label} cut-out bottom from headrail`, field: `json:wood_cutout_${side}_bottom`, type: "number", min: 3.5, step: "0.0625", unit: "in" });
+            }
+            return fields;
+          }) : []),
         ];
 
       case "Vertical Blinds": {

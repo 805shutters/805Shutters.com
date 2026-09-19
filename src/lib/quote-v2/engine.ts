@@ -488,6 +488,12 @@ export function authoritativeAutomaticSurchargeSelections(
     details.color = WOOD_DESIGNER_CODES.some(c => c === colorCode) ? "designer" : WOOD_PREMIUM_CODES.some(c => c === colorCode) ? "premium" : "standard";
     delete details.fabric_surcharge_id;
   }
+  if (selection.productId === "wood_blinds" && selection.catalogAsOf >= "2026-09-01") {
+    const count = [details.wood_cutout_left_type, details.wood_cutout_right_type]
+      .filter(kind => kind === "corner_bottom" || kind === "side_middle").length;
+    // Charge measured sides, never a client-provided surcharge count.
+    details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
+  }
   if (selection.productId === "smartdrape") {
     // Manual guide p21 and September motor guide p50 count brackets separately.
     const w = selection.widthInches;
