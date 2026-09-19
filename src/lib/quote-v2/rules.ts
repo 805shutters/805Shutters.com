@@ -1,3 +1,4 @@
+import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
 import { validateVerticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { expectedVerticalHoneycombProgramId } from "./catalog";
 import { SYNCHRONY_HARDWARE_COLORS, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
@@ -1915,6 +1916,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
   }
   issues.push(...validateHoneycombMultiFabricPricing(context));
   issues.push(...validateVerticalHoneycombHardware(context));
+  issues.push(...validateHoneycombHardware(context));
   issues.push(...validateNormanShadeMotorization(context));
   return issues;
 }

@@ -37,7 +37,7 @@ export function validateVerticalHoneycombHardware(s: SelectionContext): Validati
   if (!Number.isInteger(v.layers) || v.layers < 0 || v.layers > 2 || v.predrilled && v.layers !== 0) add("shim_layers",49,"Choose zero, one or two shim layers; pre-drilled top mounting cannot use shims.");
   if (v.dayNight) add("day_night_price_dimensions",38,"Vertical Day & Night requires a dealer comparison of the two individual pricing widths before a customer price can be issued.");
   const requested = (value: unknown) => !["", "none", "no", "false", "0"].includes(normalizeIdentity(String(value ?? "")));
-  if (["hold_downs", "magnetic_hold_down", "light_guard", "basic_light_guard", "light_guard_rails", "poles"].some(key => requested(s.configuration[key]))) add("horizontal_accessory",45,"Hold-downs, Light Guard and operating poles are not offered for Vertical Honeycomb.");
+  if (["hold_downs", "magnetic_hold_down", "light_guard", "basic_light_guard", "light_guard_rails", "poles", "honeycomb_light_guard", "honeycomb_side_mount_kit", "honeycomb_shim_layers"].some(key => requested(s.configuration[key]))) add("horizontal_accessory",45,"Hold-downs, Light Guard and operating poles are not offered for Vertical Honeycomb.");
   // The vertical retail page does not price the horizontal cut-out charge.
   if (["yes","true"].includes(normalizeIdentity(s.configuration.cutout))) add("cutout_price",46,"Vertical baseboard rail cut-outs require dealer confirmation of the applicable charge; the horizontal cut-out charge is not assumed.");
   return issues;

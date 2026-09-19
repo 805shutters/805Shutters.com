@@ -170,3 +170,60 @@ describe("Vertical Honeycomb splice and unavailable selections",()=>{
 });
 
 it.each(["hold_downs","magnetic_hold_down","light_guard","poles"])("rejects incompatible vertical %s",key=>{const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,[key]:"Yes"};expect(price(q).result.ok).toBe(false);});
+
+function horizontalQuote(options: Record<string,unknown> = {}, lift="SmartRise Cordless") {
+ const q=verticalQuote();q.designs[0].lift_system=lift;
+ q.designs[0].options_json={...q.designs[0].options_json,honeycomb_application:"Standard",split_splice:null,vertical_mounting:null,...options};return q;
+}
+describe("Honeycomb accessory charges and persistence",()=>{
+ it("charges both poles, the separate Light Guard, and width-derived shims",()=>{
+  const q=horizontalQuote({poles:"Pole with Attachment",honeycomb_pole_length:"60",honeycomb_pole_quantity:"2",honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"3058 White",honeycomb_shim_layers:"2"});
+  const d=price(q);expect(d.result).toMatchObject({ok:true,total:666});
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{mountingBracketCount:2,shimQuantity:4,pole:{quantity:2,length:"60",head:"Movable",holderIncluded:true}}});
+  const saved=JSON.parse(JSON.stringify(q));saved.designs[0].options_json={...saved.designs[0].options_json,...d.selection.configuration};expect(price(saved)).toEqual(d);
+  expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ")).toContain("Pole length: 60");
+ });
+ it("charges a Light Guard and an attachment independently despite their shared retail price identifier",()=>{
+  expect(price(horizontalQuote({poles:"Attachment Only",honeycomb_pole_quantity:1,honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"3212 Black Ink"})).result).toMatchObject({ok:true,total:505});
+ });
+ it("charges magnetic hold-downs only once per shade",()=>{
+  const q=horizontalQuote({hold_downs:"Magnetic",honeycomb_magnet_color:"Black",honeycomb_shim_layers:2});q.designs[0].mount_type="Outside Mount";expect(price(q).result).toMatchObject({ok:true,total:471});
+ });
+ it.each([[43,2],[43.0625,3],[72,3],[72.0625,4],[101,4],[101.0625,5]])("derives cordless mounting brackets at %s",(w,count)=>{
+  const q=horizontalQuote({honeycomb_shim_layers:1});q.lines[0].width_whole=Math.floor(w);q.lines[0].width_fraction=w%1?"1/16":"0";
+  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{mountingBracketCount:count,shimQuantity:count}});
+ });
+ it.each([
+  [{poles:"Pole with Attachment",honeycomb_pole_length:48}],
+  [{poles:"Attachment Only",honeycomb_pole_quantity:3}],
+  [{honeycomb_light_guard:"Yes",honeycomb_light_guard_color:"invented"}],
+  [{honeycomb_shim_layers:3}],
+  [{hold_downs:"Magnetic"}],
+ ])("rejects invalid hardware %j",opts=>expect(price(horizontalQuote(opts)).result.ok).toBe(false));
+ it("rejects forged saved quantities",()=>{
+  const q=horizontalQuote({honeycomb_shim_layers:1,shim_quantity:999,norman_assembly_v1:{hardware:{shimQuantity:999}}});expect(price(q).result).toMatchObject({ok:true,total:429});
+ });
+ it("does not offer SmartFit inside-mount shims or hold-downs",()=>{
+  expect(price(horizontalQuote({slope_angle_degrees:0,honeycomb_shim_layers:1},"SmartFit")).result.ok).toBe(false);
+  expect(price(horizontalQuote({slope_angle_degrees:0,hold_downs:"Standard"},"SmartFit")).result.ok).toBe(false);
+ });
+});
+
+
+describe("Honeycomb side support kit",()=>{
+ it("charges the support kit once and distinguishes a true side installation",()=>{
+  const q=horizontalQuote({installation_method:"Side Mount"});
+  expect(price(q).result).toMatchObject({ok:true,total:438});
+  expect(price(q).selection.configuration.norman_assembly_v1).toMatchObject({hardware:{sideMountSupportKit:true,regularSupportBracketsRequired:false}});
+ });
+ it("permits a wider support kit only with regular mounting brackets",()=>{
+  const q=horizontalQuote({honeycomb_side_mount_kit:"Yes",installation_method:"Regular Support Brackets"});q.lines[0].width_whole=38;
+  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{sideMountSupportKit:true,regularSupportBracketsRequired:true}});
+  q.designs[0].options_json={...q.designs[0].options_json,installation_method:"Side Mount"};expect(price(q).result.ok).toBe(false);
+ });
+ it("rejects outside-mount kits and unknown accessory choices",()=>{
+  const q=horizontalQuote({honeycomb_side_mount_kit:"Yes"});q.designs[0].mount_type="Outside Mount";expect(price(q).result.ok).toBe(false);
+  expect(price(horizontalQuote({honeycomb_light_guard:"invented"})).result.ok).toBe(false);
+ });
+});

@@ -807,7 +807,7 @@ export function normalizeHoneycombSystem(
   if (application.includes("specialty shape")) return "specialty_shape";
   if (
     application.includes("patio door vertical") &&
-    application.includes("day night")
+    combined.includes("day night")
   )
     return "patio_door_vertical_day_night";
   if (application.includes("patio door vertical")) return "patio_door_vertical";

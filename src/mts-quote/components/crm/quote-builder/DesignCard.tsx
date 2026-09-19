@@ -1,3 +1,4 @@
+import { HONEYCOMB_GUARD_COLORS, HONEYCOMB_MAGNET_COLORS } from "@/lib/quote-v2/norman-honeycomb-hardware";
 import { SMARTDRAPE_CEILING_ATTACHMENTS, smartdrapeKeystoneChoices } from "@/lib/quote-v2/norman-smartdrape-hardware";
 import { SMARTDRAPE_CHARGING_WAND_LENGTHS } from "@/lib/quote-v2/norman-smartdrape-motor-accessories";
 import { SMARTDRAPE_HEADRAIL_COLORS, SMARTDRAPE_CHARGING_WAND_COLORS, smartdrapeSecondColors } from "@/lib/quote-v2/norman-smartdrape";
@@ -9405,6 +9406,13 @@ function ShadesAndBlindsOptions({
       const frameApplication = Boolean(
         application && (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application),
       );
+      if (authoritativeV2 && (frameApplication || application === "Specialty Shapes" || application === "Motorized Skylights")) {
+        nextJson.honeycomb_shim_layers = "0"; nextJson.honeycomb_mounting_plate = null;
+        nextJson.honeycomb_light_guard = "No"; nextJson.honeycomb_light_guard_color = null;
+        nextJson.honeycomb_side_mount_kit = "No"; nextJson.installation_method = null;
+        nextJson.hold_downs = null; nextJson.honeycomb_magnet_color = null;
+        if (!frameApplication) { nextJson.poles = null; nextJson.honeycomb_pole_quantity = null; nextJson.honeycomb_pole_length = null; }
+      }
       const frameCellSize = getHoneycombCellSizeForApplication(application);
       const allowedFrameTypes = getHoneycombFrameTypesForApplication(application || "");
       const patch: Partial<SalesQuoteDesign> = {};
@@ -9500,6 +9508,7 @@ function ShadesAndBlindsOptions({
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null; nextJson.rear_cell_size = null; nextJson.day_night_top_layer = null;
         nextJson.poles = null; nextJson.chain_location = null; nextJson.chain_length = null; nextJson.hub_required = null;
+        nextJson.honeycomb_side_mount_kit = null; nextJson.installation_method = null; nextJson.honeycomb_shim_layers = null; nextJson.honeycomb_mounting_plate = null; nextJson.honeycomb_light_guard = null; nextJson.honeycomb_light_guard_color = null; nextJson.honeycomb_pole_length = null; nextJson.honeycomb_pole_quantity = null;
         nextJson.hold_downs = null; nextJson.magnetic_hold_down = false; nextJson.light_guard = null; nextJson.basic_light_guard = false; nextJson.light_guard_rails = null;
         if (!['3/4" Single Cell', '1 1/4" Single Cell'].includes(String(nextJson.cell_size))) nextJson.cell_size = null;
       }
@@ -9688,9 +9697,28 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Honeycomb Shades" && authoritativeV2 && ["json:installation_method", "json:honeycomb_side_mount_kit", "json:honeycomb_light_guard", "json:poles"].includes(field)) {
+      const nextJson = {...currentJson, [field.slice(5)]:value};
+      if (field === "json:installation_method" && value === "Side Mount") nextJson.honeycomb_side_mount_kit = "Yes";
+      if (field === "json:honeycomb_side_mount_kit" && value !== "Yes" && currentJson.installation_method === "Side Mount") nextJson.installation_method = "Regular Support Brackets";
+      if (field === "json:honeycomb_light_guard" && value !== "Yes") nextJson.honeycomb_light_guard_color = null;
+      if (field === "json:poles" && value !== "Pole with Attachment") nextJson.honeycomb_pole_length = null;
+      if (field === "json:poles" && (!value || value === "None")) nextJson.honeycomb_pole_quantity = null;
+      onUpdateFields({options_json:nextJson}); return;
+    }
+    if (productType === "Honeycomb Shades" && authoritativeV2 && field === "shade_type") {
+      onUpdateFields({shade_type:value as string | null,options_json:{...currentJson,...(value === "2 on 1" ? {honeycomb_shim_layers:"0",honeycomb_light_guard:"No",honeycomb_light_guard_color:null} : {})}}); return;
+    }
     if (productType === "Honeycomb Shades" && field === "lift_system") {
       const nextOs = typeof value === "string" ? value : null;
       let nextJson = { ...currentJson };
+      if (authoritativeV2) {
+        if (nextOs?.startsWith("SmartFit") || currentJson.honeycomb_application === "Motorized Skylights" || currentJson.honeycomb_application === "Specialty Shapes") nextJson.hold_downs = null;
+        if (nextOs?.startsWith("SmartFit") && (design?.mount_type === "Inside Mount" || nextOs.includes("Sloped"))) nextJson.honeycomb_shim_layers = "0";
+        if (!nextOs?.startsWith("SmartFit")) nextJson.honeycomb_mounting_plate = null;
+        if (nextOs?.startsWith("SmartFit")) {nextJson.honeycomb_side_mount_kit = "No"; nextJson.installation_method = null;}
+        if (!isHoneycombCordlessPoleOperatingSystem(nextOs)) {nextJson.honeycomb_pole_quantity = null; nextJson.honeycomb_pole_length = null;}
+      }
       if (!isHoneycombChainOperatingSystem(nextOs)) {
         nextJson.chain_location = null;
         nextJson.chain_length = null;
@@ -9777,10 +9805,11 @@ function ShadesAndBlindsOptions({
       const nextMount = typeof value === "string" ? value : null;
       onUpdateFields({
         mount_type: nextMount,
-        // Hold downs are an outside-mount option at Norman.
-        ...(nextMount !== "Outside Mount"
-          ? { options_json: { ...currentJson, hold_downs: null } }
-          : {}),
+        // Changing mount clears incompatible magnetic hold-downs and inside-only accessories.
+        options_json: {...currentJson,
+          ...(nextMount !== "Outside Mount" ? {hold_downs:null} : {honeycomb_light_guard:"No",honeycomb_light_guard_color:null,honeycomb_side_mount_kit:"No",installation_method:null}),
+          ...(authoritativeV2 && nextMount === "Inside Mount" && design?.lift_system?.startsWith("SmartFit") ? {honeycomb_shim_layers:"0"} : {}),
+        },
       });
       return;
     }
@@ -11379,14 +11408,34 @@ function ShadesAndBlindsOptions({
           options: HONEYCOMB_RAIL_COLORS,
         });
 
-        // Hold downs are an outside-mount option at Norman.
-        if (mountType === "Outside Mount" && !verticalApplication) {
+        const hardwareHoldAllowed = !verticalApplication && !specialtyShapeApplication && !operatingSystem?.startsWith("SmartFit") && application !== "Motorized Skylights";
+        if (authoritativeV2 && !verticalApplication) {
+          const smartfit = ["SmartFit", "SmartFit Dual Shade"].includes(operatingSystem || "");
+          const frame = (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application);
+          const shimAllowed = !specialtyShapeApplication && application !== "Motorized Skylights" && !frame && operatingSystem !== "SmartFit for Sloped Windows" && !(smartfit && mountType === "Inside Mount") && design?.shade_type !== "2 on 1";
+          if (shimAllowed) options.push({key:"honeycomb_shim_layers",label:"Shim Layers",field:"json:honeycomb_shim_layers",type:"buttons",options:["0","1","2"]});
+          if (smartfit && !frame) options.push({key:"honeycomb_mounting_plate",label:"Mounting Plate",field:"json:honeycomb_mounting_plate",type:"select",options: ['3/4" Double Cell','1 1/4" Single Cell'].includes(cellSize || "") ? ["With Mounting Plate"] : ["With Mounting Plate","Without Mounting Plate"]});
+          if (honeycombOptions.poles && honeycombOptions.poles !== "None") {
+            options.push({key:"honeycomb_pole_quantity",label:"Pole or Attachment Quantity",field:"json:honeycomb_pole_quantity",type:"select",options:["1","2"]});
+            if (honeycombOptions.poles === "Pole with Attachment") options.push({key:"honeycomb_pole_length",label:"Pole Length",field:"json:honeycomb_pole_length",type:"select",options:["36","60"]});
+          }
+          if (mountType === "Inside Mount" && !frame && !specialtyShapeApplication && design?.shade_type !== "2 on 1" && application !== "Motorized Skylights") {
+            options.push({key:"honeycomb_light_guard",label:"Light Guard",field:"json:honeycomb_light_guard",type:"yes-no",noFirst:true});
+            if (honeycombOptions.honeycomb_light_guard === "Yes") options.push({key:"honeycomb_light_guard_color",label:"Light Guard Finish",field:"json:honeycomb_light_guard_color",type:"select",options:HONEYCOMB_GUARD_COLORS});
+          }
+          if (mountType === "Inside Mount" && hardwareHoldAllowed) {
+            options.push({key:"honeycomb_side_mount_kit",label:"Side Mount Support Kit",field:"json:honeycomb_side_mount_kit",type:"yes-no",noFirst:true});
+            options.push({key:"installation_method",label:"Bracket Installation",field:"json:installation_method",type:"select",options: measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) <= 37 ? ["Regular Support Brackets","Side Mount"] : ["Regular Support Brackets"]});
+          }
+          if (honeycombOptions.hold_downs === "Magnetic") options.push({key:"honeycomb_magnet_color",label:"Magnetic Catch Finish",field:"json:honeycomb_magnet_color",type:"select",options:HONEYCOMB_MAGNET_COLORS});
+        }
+        if (authoritativeV2 ? hardwareHoldAllowed : mountType === "Outside Mount") {
           options.push({
             key: "hold_downs",
             label: "Hold Down Brackets",
             field: "json:hold_downs",
             type: "buttons",
-            options: HONEYCOMB_HOLD_DOWNS,
+            options: authoritativeV2 && mountType === "Inside Mount" ? ["None", "Standard"] : HONEYCOMB_HOLD_DOWNS,
           });
         }
 

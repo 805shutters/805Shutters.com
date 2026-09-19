@@ -1,3 +1,4 @@
+import { honeycombHardware } from "./norman-honeycomb-hardware";
 import { verticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { deriveSmartdrapePairs } from "./norman-smartdrape-tracks";
 import { honeycombDualFabrics } from "./norman-honeycomb-dual";
@@ -42,6 +43,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     if (vertical) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: vertical.record};
     const honeycomb = honeycombDualFabrics(selection);
     if (honeycomb) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: honeycomb.record};
+    const hcHardware = honeycombHardware(selection);
+    if (hcHardware) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: {...(honeycomb?.record ?? {version: 1, type: "honeycomb_hardware"}), hardware: hcHardware.record}};
     const smartdrape = smartdrapeComponents(selection);
     if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
     const smartfold = smartfoldHardware(selection);
