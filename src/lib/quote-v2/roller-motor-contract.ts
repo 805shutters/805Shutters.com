@@ -34,6 +34,7 @@ export type CanonicalMotorizationSelection = Readonly<{
   optionId: string;
   role: CanonicalMotorizationRole;
   units: number;
+  billingScope?: "once_per_line";
 }>;
 
 export type RollerMotorizationContractResult = Readonly<{
@@ -719,11 +720,12 @@ export function resolveRollerMotorizationContract(
 
 export function canonicalMotorizationPriceSelections(
   selections: readonly CanonicalMotorizationSelection[],
-): Array<{ groupId: string; optionId: string; units: number }> {
-  return selections.map(({ groupId, optionId, units }) => ({
+): Array<{ groupId: string; optionId: string; units: number; billingScope?: "once_per_line" }> {
+  return selections.map(({ groupId, optionId, units, billingScope }) => ({
     groupId,
     optionId,
     units,
+    ...(billingScope ? {billingScope} : {}),
   }));
 }
 

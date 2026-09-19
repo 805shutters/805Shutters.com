@@ -109,6 +109,7 @@ export type PriceComponentMotorSelection = Readonly<{
   optionId: string;
   role: PriceComponentMotorRole;
   units: number;
+  billingScope?: "once_per_line";
 }>;
 
 export type BuildAuthoritativePriceComponentsInput = Readonly<{
@@ -974,7 +975,7 @@ export function buildAuthoritativePriceComponents(
       {
         id: priceLineId,
         label: sourceLine?.label ?? `${motor.groupId} ${motor.optionId}`,
-        category: motor.optionId === "power_distribution_panel" ? "order_charge" : "accessory",
+        category: (motor.optionId === "power_distribution_panel" || motor.billingScope === "once_per_line") ? "order_charge" : "accessory",
         status: "priced",
         basis: "flat",
         selectionBindings: [
@@ -987,7 +988,7 @@ export function buildAuthoritativePriceComponents(
         source: input.motorSources?.[priceLineId] ?? null,
         priceLineId,
         units: motor.units,
-        billingScope: motor.optionId === "power_distribution_panel" ? "once_per_line" : "per_window",
+        billingScope: (motor.optionId === "power_distribution_panel" || motor.billingScope === "once_per_line") ? "once_per_line" : "per_window",
       },
       sourceLines,
       retailLines,

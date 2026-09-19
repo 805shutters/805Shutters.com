@@ -1,3 +1,4 @@
+import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerHardware, validatePerfectsheerHardware } from "./norman-perfectsheer-hardware";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { PERFECTSHEER_COORDINATION } from "./generated/norman-perfectsheer-coordination.generated";
@@ -38,6 +39,7 @@ export function perfectsheerComponents(context: SelectionContext) {
     motorMounting: autowand ? {tubeDiameter: Number.isFinite(tube) ? tube : null, bracketClass, sourceId:"norman-motorization-guide-2026-09-16",sourcePage:90} : null,
     finishedShadeWidth: finishedWidth,
     hardware: perfectsheerHardware(context)?.record ?? null,
+    motorAccessories: perfectsheerMotorAccessories(context)?.record ?? null,
     fabric: fabric ? {
       customerFabricCode: fabric.customerFabricCode, customerColorCode: fabric.customerColorCode,
       factoryFabricCode: fabric.factoryFabricCode, factoryColorCode: fabric.factoryColorCode, opacity: fabric.opacity,
@@ -65,7 +67,7 @@ export function validatePerfectsheerComponents(context: SelectionContext): Valid
   const record = perfectsheerComponents(context);
   if (!record) return [];
   const c = context.configuration;
-  const issues: ValidationIssue[] = [...validatePerfectsheerHardware(context)];
+  const issues: ValidationIssue[] = [...validatePerfectsheerHardware(context), ...(/motor|autowand/.test(norm(c.lift_system)) ? [] : perfectsheerMotorAccessories(context)?.issues ?? [])];
   const add = (id: string, page: number, explanation: string) => issues.push({ severity: "hard_block", ruleId: `norman.perfectsheer.${id}`, source: sourceProvenance("norman-perfectsheer-smartdrape-guide-2026-09", { page }), selectedValues: { ...c }, explanation });
   const choice = (key: string, values: readonly string[], page: number, required = false) => {
     if ((required || explicit(c[key])) && !values.some(v => norm(v) === norm(c[key]))) add(key, page, `Select ${key.replace("perfectsheer_", "").replaceAll("_", " ")} from the current PerfectSheer choices.`);

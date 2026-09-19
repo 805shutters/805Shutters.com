@@ -59,7 +59,9 @@ export type SurchargeSelection = {
 export type MotorizationSelection = {
   groupId: string;
   optionId: string;
-  /** Quantity of this motor component per window. Default 1. */
+  /** Server-authorized shared accessory charge, once for the selected line. */
+  billingScope?: "once_per_line";
+  /** Quantity of this motor component per window, or per line with billingScope. Default 1. */
   units?: number;
 };
 
@@ -1061,7 +1063,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       detail: units > 1 ? `${motorPrice} x ${units}` : undefined,
     });
     const sharedPanel = opt.id === "power_distribution_panel" || opt.id === "dc_power_distribution_panel";
-    if (sharedPanel) {
+    if (sharedPanel || sel.billingScope === "once_per_line") {
       onceCents += amountCents;
       if (wholesaleAmountCents != null) wholesaleOnceCents += wholesaleAmountCents;
     } else {

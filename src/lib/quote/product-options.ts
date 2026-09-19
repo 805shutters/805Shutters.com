@@ -1,3 +1,4 @@
+import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
 import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
 import { PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "../quote-v2/norman-perfectsheer";
 import { SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "../quote-v2/norman-smartfold-valance";
@@ -864,6 +865,10 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("perfectsheer_magnet_color", "Magnet catch finish", PERFECTSHEER_MAGNET_COLORS),
     contractChoice("perfectsheer_shim_layers", "Shim layers", ["0","1","2","3"]),
     contractChoice("perfectsheer_tube_diameter", "Tube diameter", ["1.75","2"]),
+    contractChoice("perfectsheer_wand_length", "AutoWand length", PERFECTSHEER_WAND_LENGTHS),
+    contractChoice("perfectsheer_installed_on_door", "Installed on door", ["No","Yes"]),
+    contractChoice("perfectsheer_solar_panel", "Solar panel per shade", ["No","Yes"]),
+    contractChoice("perfectsheer_extension_color", "AutoWand extension color", ["White","Black"]),
     contractChoice("perfectsheer_wand_color", "AutoWand color", PERFECTSHEER_WAND_COLORS),
     contractChoice("perfectsheer_chain_unobstructed", "Unobstructed below tension device", ["No","Yes"]),
     ...installationFields,

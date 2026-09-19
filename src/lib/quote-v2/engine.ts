@@ -769,6 +769,7 @@ function priceInputContractIssues(
         groupId: string;
         optionId: string;
         units?: number;
+        billingScope?: "once_per_line";
       }[],
     ) =>
       entries
@@ -776,6 +777,7 @@ function priceInputContractIssues(
           groupId: entry.groupId,
           optionId: entry.optionId,
           units: Number(entry.units ?? 1),
+          billingScope: entry.billingScope ?? "per_window",
         }))
         .sort((left, right) =>
           `${left.groupId}/${left.optionId}`.localeCompare(
@@ -883,7 +885,7 @@ function catalogCostRetail(
   const onceLineIds = new Set(
     source.surchargeLines
       .filter(
-        (line) => findProductSurcharge(product, line.id)?.per === "once" || /^motor:(smart_motorization|automate_home):power_distribution_panel$/.test(line.id),
+        (line) => findProductSurcharge(product, line.id)?.per === "once" || (Array.isArray(selection.configuration.motorization_selections) && selection.configuration.motorization_selections.some(m => m && typeof m === "object" && !Array.isArray(m) && m.billingScope === "once_per_line" && line.id === `motor:${m.groupId}:${m.optionId}`)) || /^motor:(smart_motorization|automate_home):power_distribution_panel$/.test(line.id),
       )
       .map((line) => line.id),
   );

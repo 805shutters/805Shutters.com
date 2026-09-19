@@ -1,3 +1,4 @@
+import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerFabric, perfectsheerComponents, PERFECTSHEER_POWER_SOURCES } from "./norman-perfectsheer";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
@@ -169,7 +170,8 @@ function parseCanonicalSelections(
     ) {
       return null;
     }
-    parsed.push({ groupId, optionId, role, units });
+    if (source.billingScope != null && source.billingScope !== "once_per_line") return null;
+    parsed.push({ groupId, optionId, role, units, ...(source.billingScope === "once_per_line" ? {billingScope: "once_per_line" as const} : {}) });
   }
   return parsed;
 }
@@ -334,7 +336,7 @@ function controllerSelection(
 }
 
 function canonicalIdentity(entry: CanonicalMotorizationSelection): string {
-  return `${entry.groupId}/${entry.optionId}/${entry.role}/${entry.units}`;
+  return `${entry.groupId}/${entry.optionId}/${entry.role}/${entry.units}/${entry.billingScope ?? "per_window"}`;
 }
 
 function sameCanonicalSelections(
@@ -1244,6 +1246,8 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
       components.push(...panelSelections(context,group));
     }
   } else if(battery || motorFamily === "autowand") includedAccessories.push(motorFamily === "automate_home" ? "One charging kit per shade" : "One compatible charging kit per three motors, minimum one per order");
+  const accessories = perfectsheerMotorAccessories(context);
+  if(accessories) {components.push(...accessories.selections);issues.push(...accessories.issues);}
   const shared = [...validateControlAndPosition(context,config,motorFamily,[page]),...dimensionIssues({...context,widthInches:width},[limits],"perfectsheer.motorization.dimension"),...canonicalContractIssues(config,components,[page])];
   issues.push(...shared.map(i=>({...i,source:sourceProvenance(sourceId,{page})})));
   const result = {issues,limits:[limits],canonicalSelections:components,sourcePages:[page]};

@@ -1,3 +1,4 @@
+import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
 import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
 import { validateNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
 import { PERFECTSHEER_POWER_SOURCES, PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "@/lib/quote-v2/norman-perfectsheer";
@@ -9838,7 +9839,11 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "Sheer Shades" && field === "motor_type") {
-      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null}});
+      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null,perfectsheer_wand_length:null,perfectsheer_installed_on_door:null,perfectsheer_extra_charging_kits:null,perfectsheer_extension_cables:null,perfectsheer_extension_color:null,perfectsheer_extra_harnesses:null,perfectsheer_repeaters:null,perfectsheer_solar_panel:null}});
+      return;
+    }
+    if (productType === "Sheer Shades" && field === "json:perfectsheer_installed_on_door") {
+      onUpdateFields({options_json:{...currentJson,perfectsheer_installed_on_door:value,...(value === "Yes" && currentJson.perfectsheer_magnetic_hold_down == null ? {perfectsheer_magnetic_hold_down:"Yes"} : {})}});
       return;
     }
     if (productType === "Sheer Shades" && field === "json:perfectsheer_light_guard") {
@@ -11329,6 +11334,19 @@ function ShadesAndBlindsOptions({
         if (liftSystem === "Motorized") {
           options.push({key:"motor_type",label:"Power Source",field:"motor_type",type:"select",options:PERFECTSHEER_POWER_SOURCES});
           options.push(psChoice("perfectsheer_tube_diameter","Tube Diameter",["1.75","2"]));
+          const psPower = String(design?.motor_type ?? "");
+          const psWand = /autowand/i.test(psPower), psSmart = /norman smart/i.test(psPower), psAutomate = /automate/i.test(psPower), psBattery = /rechargeable|arc/i.test(psPower), psDc = /low voltage/i.test(psPower);
+          const psCount = (key:string,label:string,max:number): GridOption => ({key,label,field:`json:${key}`,type:"number",min:0,max,step:"1",placeholder:"0"});
+          if (psWand || psSmart && psBattery) options.push(psCount("perfectsheer_extra_charging_kits","Extra Charging Kits for This Line",_lineItem.quantity || 1));
+          if (psWand || psSmart && (psBattery || /ac adapter/i.test(psPower))) options.push(psCount("perfectsheer_extension_cables","Extension Cables for This Line",psWand?(_lineItem.quantity || 1):Number.MAX_SAFE_INTEGER));
+          if (psDc) options.push(psCount("perfectsheer_extra_harnesses","Extra DC Harnesses for This Line",Number.MAX_SAFE_INTEGER));
+          if (psSmart || psAutomate) options.push(psCount("perfectsheer_repeaters","Repeaters for This Line",psAutomate?2:5),{key:"perfectsheer_motor_network",label:"Motor Network Number",field:"json:perfectsheer_motor_network",type:"number",min:1,step:"1",placeholder:"1"});
+          if (psAutomate && psBattery) options.push(psChoice("perfectsheer_solar_panel","Solar Panel per Shade",["No","Yes"]));
+          if (psWand) {
+            options.push(psChoice("perfectsheer_wand_length","AutoWand Length",PERFECTSHEER_WAND_LENGTHS),psChoice("perfectsheer_installed_on_door","Installed on Door",["No","Yes"]));
+            if (Number(optionsJson.perfectsheer_extension_cables)>0) options.push(psChoice("perfectsheer_extension_color","AutoWand Extension Color",["White","Black"]));
+          }
+
           if (!/autowand/i.test(String(design?.motor_type))) {
             options.push({key:"hub_required",label:"Hub Required",field:"json:hub_required",type:"yes-no",noFirst:true});
             options.push({key:"remote_type",label:"Remote Type",field:"remote_type",type:"select",options:/automate/i.test(String(design?.motor_type)) ? ["15-Channel Remote","5-Channel Wall Switch"] : ["SmartDial Remote","Basic Remote"]});

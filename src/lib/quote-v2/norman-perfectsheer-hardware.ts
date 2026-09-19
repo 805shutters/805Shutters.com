@@ -17,7 +17,8 @@ export function perfectsheerHardware(context: SelectionContext) {
   const validLayers=Number.isInteger(layers)&&layers>=0&&layers<=3;
   const guard=norm(c.perfectsheer_light_guard ?? "None");
   const activeGuard=guard!=="none";
-  const magnetic=yes(c.perfectsheer_magnetic_hold_down);
+  const door=norm(c.motor_type)==="autowand" && yes(c.perfectsheer_installed_on_door);
+  const magnetic=c.perfectsheer_magnetic_hold_down == null ? door : yes(c.perfectsheer_magnetic_hold_down);
   return {
     validLayers,
     record:{
