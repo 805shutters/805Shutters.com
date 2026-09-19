@@ -227,3 +227,8 @@ describe("Honeycomb side support kit",()=>{
   expect(price(horizontalQuote({honeycomb_light_guard:"invented"})).result.ok).toBe(false);
  });
 });
+
+ it("rejects a Skylight rail override unavailable for its included Light Guard",()=>{
+  const q=horizontalQuote({honeycomb_application:"Motorized Skylights",rail_color:"Agave"},"Motorized");
+  expect(price(q).result.validationIssues.some(i=>i.ruleId==="honeycomb.hardware.skylight_guard_color")).toBe(true);
+ });

@@ -38,7 +38,7 @@ export function honeycombHardware(s: SelectionContext) {
   const sourceColor = findHoneycombColor(String(c.fabric_collection ?? ""), String(c.fabric_color_code ?? ""));
   const skylightRail = normanHoneycombV2Source.motorizedSkylightColors.find(row => row.family === sourceColor?.family && row.customerColorCode === sourceColor?.customerColorCode)?.coordination.rail;
   const railOverride = !["", "default"].includes(normalizeIdentity(c.rail_color)) ? HONEYCOMB_GUARD_COLORS.find(v => normalizeIdentity(v).endsWith(normalizeIdentity(c.rail_color))) : undefined;
-  const guardColor = skylight ? railOverride ?? skylightRail ?? null : c.honeycomb_light_guard_color ?? null;
+  const guardColor = skylight ? (!["", "default"].includes(normalizeIdentity(c.rail_color)) ? railOverride ?? null : skylightRail ?? null) : c.honeycomb_light_guard_color ?? null;
   const sideMount = /side mount/.test(normalizeIdentity(c.installation_method));
   const sideKit = sideMount || yes(c.honeycomb_side_mount_kit);
   const sideAllowed = inside && !system?.startsWith("smartfit") && !skylight && !specialty;
@@ -88,6 +88,7 @@ export function validateHoneycombHardware(s: SelectionContext): ValidationIssue[
   if (h.magnetic && !HONEYCOMB_MAGNET_COLORS.some(v => v === (c.honeycomb_magnet_color ?? "Nickel-Plated"))) add("magnet_color",45,"Choose a documented magnetic catch finish.");
   if ((yes(c.shim) || Number(c.shims)>0 || Number(c.shim_quantity)>0) && c.honeycomb_shim_layers == null) add("legacy_shims",48,"Reconfirm shim layers so the correct bracket-based quantity can be priced.");
   if ((yes(c.light_guard_rails) || yes(c.basic_light_guard) || c.light_guard && !["none","no"].includes(normalizeIdentity(c.light_guard))) && !h.guardSelected) add("legacy_guard",45,"Reconfirm the Light Guard and its finish before repricing.");
+  if (yes(c.side_mount_bracket) && !h.sideKit) add("legacy_side_mount",6,"Reconfirm the side-mount support kit before repricing.");
   if (yes(c.magnetic_hold_down) && !h.magnetic) add("legacy_magnet",45,"Reconfirm the magnetic hold-down selection before repricing.");
   return issues;
 }
