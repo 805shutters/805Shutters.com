@@ -4,6 +4,7 @@ import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorks
 
 import { ContractsWorkspace } from "./ContractsWorkspace";
 import { SquareFinanceWorkspace } from "./SquareFinanceWorkspace";
+import { CrmLoadingScreen } from "./CrmLoadingScreen";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
 import { orderCostParent } from "./ProductOrderEditor";
@@ -3047,14 +3048,7 @@ export function CrmApp({
   }
 
   if (loading && !data) {
-    return (
-      <div className="crm-app-shell">
-        <section className="crm-login-panel">
-          <p className="eyebrow">805 CRM</p>
-          <h1>Loading CRM.</h1>
-        </section>
-      </div>
-    );
+    return <CrmLoadingScreen />;
   }
 
   if (!session) {
