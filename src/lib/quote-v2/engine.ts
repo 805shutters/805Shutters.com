@@ -1,3 +1,4 @@
+import { verticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { smartdrapeVanePacks } from "./norman-smartdrape-vane-packs";
 import { honeycombDualFabrics, honeycombFabricHasPremium } from "./norman-honeycomb-dual";
 import { findHoneycombColor } from "./catalog";
@@ -504,6 +505,12 @@ export function authoritativeAutomaticSurchargeSelections(
     // Charge measured sides, never a client-provided surcharge count.
     details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
   }
+  const vertical = verticalHoneycombHardware(selection);
+  if (vertical) {
+    delete details.shims; delete details.fabric_surcharge_id;
+    details.shim_quantity = vertical.record.shimQuantity;
+    details.shim = vertical.record.shimQuantity > 0;
+  }
   const perfectsheer = perfectsheerHardware(selection);
   if (perfectsheer) {Object.assign(details,perfectsheer.surchargeDetails);delete details.shims;details.keystone_quantity=perfectsheerValance(selection)?.count??0;details.keystone=Number(details.keystone_quantity)>0;}
   const smartfold = smartfoldHardware(selection);
@@ -536,11 +543,12 @@ export function authoritativeAutomaticSurchargeSelections(
   }
   const sdExtras=smartdrapeVanePacks(selection);
   if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
-  const currentHoneycomb = selection.productId === "honeycomb" && selection.catalogAsOf >= "2026-09-19";
+  const currentHoneycomb = ["honeycomb", "vertical_honeycomb"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19";
+  const hcPremiumId = selection.productId === "vertical_honeycomb" ? "room_darkening_sheer_fr_essentials_fabric_surcharge" : "room_darkening";
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
   const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!currentHoneycomb||entry.id!=="room_darkening")&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(sdExtras?.selections??[]),...(currentHoneycomb&&hcPremium?[{id:"room_darkening",units:1}]:[])].filter(entry => {
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(sdExtras?.selections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
@@ -1224,7 +1232,7 @@ function priceComponentSource(
     ? program.sourcePages
     : product.pages;
   return sourceProvenance(
-    ["synchrony_vertical","smartdrape"].includes(product.id) && asOf && asOf >= "2026-09-19"
+    ["synchrony_vertical","smartdrape","vertical_honeycomb"].includes(product.id) && asOf && asOf >= "2026-09-19"
       ? "norman-retail-guide-2026-09"
       : (program?.sourceId as SourceManifestId | undefined) ?? contractSourceId(product.id),
     pages.length > 0 ? { pages } : {},
@@ -1251,7 +1259,7 @@ function surchargePriceComponentSource(
     } satisfies ValidationIssue["source"];
   }
   return surcharge?.sourcePages?.length
-    ? sourceProvenance(["synchrony_vertical","smartdrape"].includes(product.id) && fallback.sourceId === "norman-retail-guide-2026-09" ? "norman-retail-guide-2026-09" : contractSourceId(product.id), {
+    ? sourceProvenance(["synchrony_vertical","smartdrape","vertical_honeycomb"].includes(product.id) && fallback.sourceId === "norman-retail-guide-2026-09" ? "norman-retail-guide-2026-09" : contractSourceId(product.id), {
         pages: surcharge.sourcePages,
       })
     : fallback;

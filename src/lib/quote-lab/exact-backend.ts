@@ -1,3 +1,4 @@
+import { expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
 import { perfectsheerValancePriceWidth } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { smartfoldValancePriceWidth } from "@/lib/quote-v2/norman-smartfold-valance";
 import { palladianProductEligible } from "@/lib/quote/norman-current-assortment";
@@ -1062,8 +1063,14 @@ function repriceExactQuoteBuilderV2(
     if (!line) {
       throw new Error(`Line item ${design.line_item_id} was not found for design ${design.id}.`);
     }
-    const productId = resolveV2ProductId(line, design);
-    const programId = resolveV2ProgramId(productId, design);
+    let productId = resolveV2ProductId(line, design);
+    let programId = resolveV2ProgramId(productId, design);
+    const honeycombOptions = (design.options_json ?? {}) as Record<string, unknown>;
+    if (catalogAsOf >= "2026-09-19" && ["honeycomb", "vertical_honeycomb"].includes(productId) &&
+        (productId === "vertical_honeycomb" || honeycombOptions.honeycomb_application === "Patio Door Vertical")) {
+      productId = "vertical_honeycomb";
+      programId = expectedVerticalHoneycombProgramId(String(honeycombOptions.fabric_color_collection ?? design.fabric ?? ""), String(honeycombOptions.fabric_color_code ?? ""), String(honeycombOptions.cell_size ?? ""));
+    }
     let selection = adaptExactInterfaceSelection(line, design, {
       productId,
       programId,

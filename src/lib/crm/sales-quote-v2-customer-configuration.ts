@@ -228,6 +228,8 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["honeycomb_panel_net_heights", "Panel net heights"],
   ["stacking_configuration", "Stacking"],
   ["vertical_stacking", "Stacking"],
+  ["vertical_mounting", "Vertical mounting"],
+  ["vertical_shim_layers", "Shim layers"],
   ["vertical_left_width_inches", "Left panel width"],
   ["vertical_right_width_inches", "Right panel width"],
   ["split_splice", "Split or splice"],

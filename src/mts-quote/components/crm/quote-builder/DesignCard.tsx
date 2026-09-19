@@ -2206,6 +2206,7 @@ export function buildCleanCatalogSelectionOptions(
     catalog_product_type: product.productType ?? null,
     surcharges: [],
     [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+    ...(product.id === "vertical_honeycomb" ? {honeycomb_application: "Patio Door Vertical"} : {}),
     ...(quoteOnly ? polarQuoteOnlyOptions(product.id) : {}),
     ...(isLotusFauxWoodProductId(product.id)
       ? lotusFauxWoodConfigurationForProgram(programId)
@@ -2276,7 +2277,7 @@ export function buildCatalogSelectionPatch(
     panel_config: null,
     mount_type: null,
     shade_type: null,
-    lift_system: null,
+    lift_system: product.id === "vertical_honeycomb" ? "Patio Door Vertical" : null,
     valance: null,
     fabric: null,
     motor_type: null,
@@ -9388,6 +9389,11 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (authoritativeV2 && productType === "Honeycomb Shades" && field === "json:vertical_mounting" && value === "Pre-Drilled Headrail") {
+      onUpdateFields({options_json: {...currentJson, vertical_mounting: value, vertical_shim_layers: "0"}});
+      return;
+    }
+
     // Honeycomb Shades cascades — mirror Norman's dependency rules with
     // validity-based clearing (see docs/norman-honeycomb-order-map.md).
     if (productType === "Honeycomb Shades" && field === "json:honeycomb_application") {
@@ -9488,7 +9494,17 @@ function ShadesAndBlindsOptions({
         nextJson.specialty_right_leg_height = null;
         nextJson.non_operable = null;
       }
+      if (authoritativeV2 && application === "Patio Door Vertical") {
+        patch.lift_system = "Patio Door Vertical";
+        patch.motor_type = null; patch.remote_type = null; patch.shade_type = null;
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null; nextJson.rear_cell_size = null; nextJson.day_night_top_layer = null;
+        nextJson.poles = null; nextJson.chain_location = null; nextJson.chain_length = null; nextJson.hub_required = null;
+        if (!['3/4" Single Cell', '1 1/4" Single Cell'].includes(String(nextJson.cell_size))) nextJson.cell_size = null;
+      }
       if (application !== "Patio Door Vertical") {
+        nextJson.vertical_mounting = null;
+        nextJson.vertical_shim_layers = null;
         nextJson.split_splice = null;
         nextJson.split_location = null;
         nextJson.vertical_left_width_inches = null;
@@ -9568,7 +9584,7 @@ function ShadesAndBlindsOptions({
       }
 
       // Frame (SmartFit/Decoflex) sizes only take the SmartFit systems.
-      const allowedSystems = getHoneycombOperatingSystemsFor(nextSize);
+      const allowedSystems = authoritativeV2 && nextJson.honeycomb_application === "Patio Door Vertical" ? ["Patio Door Vertical", "Patio Door Vertical Day & Night"] : getHoneycombOperatingSystemsFor(nextSize);
       if (design?.lift_system && !allowedSystems.includes(design.lift_system)) {
         patch.lift_system = null;
         patch.motor_type = null;
@@ -10848,6 +10864,7 @@ function ShadesAndBlindsOptions({
         const mountType = getFieldValue(design, "mount_type");
         const honeycombOptions = (design?.options_json as Record<string, unknown>) || {};
         const application = String(honeycombOptions.honeycomb_application || "");
+        const verticalApplication = authoritativeV2 && application === "Patio Door Vertical";
         const specialtyShapeApplication = authoritativeV2 && application === "Specialty Shapes";
         const slopedFrameApplication =
           authoritativeV2 && application === "SmartFit for Sloped Windows with Frame";
@@ -10878,7 +10895,7 @@ function ShadesAndBlindsOptions({
             field: "json:cell_size",
             type: "select",
             options: withStoredValue(
-              specialtyShapeApplication
+              verticalApplication ? ['3/4" Single Cell', '1 1/4" Single Cell'] : specialtyShapeApplication
                 ? HONEYCOMB_CELL_SIZES.filter(
                     (size) => size !== '1 1/4" Single Cell' && size !== '3/4" Double Cell',
                   )
@@ -10893,7 +10910,7 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: withStoredValue(
               motorizationEligibleControlOptions(
-                getHoneycombOperatingSystemsFor(cellSize),
+                verticalApplication ? ["Patio Door Vertical", "Patio Door Vertical Day & Night"] : getHoneycombOperatingSystemsFor(cellSize),
                 motorizationEligibility,
               ),
               motorizationEligibility.eligible ? operatingSystem : null,
@@ -10907,7 +10924,7 @@ function ShadesAndBlindsOptions({
             label: "Application",
             field: "json:honeycomb_application",
             type: "select",
-            options: HONEYCOMB_APPLICATIONS,
+            options: selectedCatalogProductId === "vertical_honeycomb" ? ["Patio Door Vertical"] : HONEYCOMB_APPLICATIONS,
           });
         }
 
@@ -11220,6 +11237,8 @@ function ShadesAndBlindsOptions({
         }
 
         if (authoritativeV2 && application === "Patio Door Vertical") {
+          if (mountType === "Inside Mount") options.push({key: "vertical_mounting", label: "Vertical Mounting", field: "json:vertical_mounting", type: "select", options: ["Pre-Drilled Headrail", "Installation Brackets"]});
+          if (mountType !== "Inside Mount" || honeycombOptions.vertical_mounting !== "Pre-Drilled Headrail") options.push({key: "vertical_shim_layers", label: "Shim Layers", field: "json:vertical_shim_layers", type: "buttons", options: ["0", "1", "2"]});
           options.push({
             key: "split_splice",
             label: "Stack Configuration",

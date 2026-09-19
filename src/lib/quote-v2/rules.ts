@@ -1,3 +1,5 @@
+import { validateVerticalHoneycombHardware } from "./norman-honeycomb-vertical";
+import { expectedVerticalHoneycombProgramId } from "./catalog";
 import { SYNCHRONY_HARDWARE_COLORS, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
 import { validateHoneycombMultiFabricPricing } from "./norman-honeycomb-dual";
 import { romanComponentWidths } from "./norman-assemblies";
@@ -1785,7 +1787,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
     normalizedCell.includes("smartfit") || normalizedCell.includes("decoflex")
       ? normalizeIdentity('3/8" Single Cell')
       : normalizedCell;
-  const expectedProgramId = expectedHoneycombProgramId(collection, colorCode, cellSize);
+  const expectedProgramId = context.productId === "vertical_honeycomb" && context.catalogAsOf >= "2026-09-19" ? expectedVerticalHoneycombProgramId(collection, colorCode, cellSize) : expectedHoneycombProgramId(collection, colorCode, cellSize);
   if (color && expectedProgramId && context.programId !== expectedProgramId) {
     issues.push(
       issue(
@@ -1872,7 +1874,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
   }
   const dayNight = lift.includes("day night") || application.includes("day night");
   const smartfitDual = context.catalogAsOf >= "2026-09-19" && `${lift} ${application}`.includes("smartfit") && `${lift} ${application}`.includes("dual");
-  if (normalizeIdentity(color?.family) === "sheer" && !dayNight && !smartfitDual) {
+  if (normalizeIdentity(color?.family) === "sheer" && !dayNight && !smartfitDual && context.catalogAsOf < "2026-09-19") {
     issues.push(
       issue(
         "hard_block",
@@ -1912,6 +1914,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
     }
   }
   issues.push(...validateHoneycombMultiFabricPricing(context));
+  issues.push(...validateVerticalHoneycombHardware(context));
   issues.push(...validateNormanShadeMotorization(context));
   return issues;
 }
@@ -2359,7 +2362,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
   // eligibility and quantity checks in the order assembly validator.
   if (context.productId === "palladian_shelf" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
   if (context.productId.startsWith("sundance_")) return "manual_quote_required";
-  if (context.productId === "vertical_honeycomb") return "manual_quote_required";
+  if (context.productId === "vertical_honeycomb") return context.catalogAsOf >= "2026-09-19" ? "documented_limited" : "manual_quote_required";
   // The pinned July 2026 Motorization Guide now supplies exact motor-family,
   // power, control, accessory, and size rules. Unsupported or incomplete
   // configurations remain fail-closed through structured hard blocks rather

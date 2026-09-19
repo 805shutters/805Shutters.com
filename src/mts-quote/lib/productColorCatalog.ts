@@ -1,3 +1,4 @@
+import { expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
 import { SYNCHRONY_DEALER_COLOR_CODES } from "@/lib/quote/norman-synchrony";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import {
@@ -560,7 +561,7 @@ function rowMatchesMtsContext(
         if (
           liftSystem &&
           normalize(exactColor?.family) === "sheer" &&
-          !normalize(liftSystem).includes("day night") && !smartfitDual
+          !normalize(liftSystem).includes("day night") && !smartfitDual && honeycombWorkbookCellSize(selectedCellSize || "") === honeycombWorkbookCellSize('9/16" Single Cell')
         ) {
           return false;
         }
@@ -641,7 +642,8 @@ function contextualizeMtsProductColorRow(
     ? exactHoneycombColor(row.colorCode)
     : undefined;
   const selectedCellSize = stringOption(optionsJson, "cell_size");
-  const programId = getHoneycombContextProgram(row, selectedCellSize);
+  const vertical = isAuthoritativeV2(optionsJson) && stringOption(optionsJson, "honeycomb_application") === "Patio Door Vertical";
+  const programId = vertical ? expectedVerticalHoneycombProgramId(exactColor?.family ?? row.collection, row.colorCode, selectedCellSize) : getHoneycombContextProgram(row, selectedCellSize);
   const effectiveProgramId = programId ?? row.programId;
   if ((!programId || programId === row.programId) && !exactColor) return row;
   return {
@@ -653,6 +655,7 @@ function contextualizeMtsProductColorRow(
           fabricType: exactColor.family,
         }
       : {}),
+    ...(vertical ? {productId: "vertical_honeycomb"} : {}),
     programId: effectiveProgramId,
     requiresProgram: !effectiveProgramId,
     searchText: `${row.searchText} ${effectiveProgramId ?? ""} ${getMtsGridKeyForCatalogProgram(productType, effectiveProgramId) ?? ""}`,

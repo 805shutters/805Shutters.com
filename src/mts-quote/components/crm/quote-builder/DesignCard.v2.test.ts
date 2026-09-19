@@ -1462,3 +1462,8 @@ describe("contract control-side selection", () => {
     expect(options.control_side).toBe("Right");
   });
 });
+
+it("initializes an exact Vertical Honeycomb product with its valid application and operating system",()=>{
+ const patch=buildCatalogSelectionPatch({},catalogProduct("vertical_honeycomb","Norman",[],{productType:"Honeycomb Shades"}));
+ expect(patch).toMatchObject({lift_system:"Patio Door Vertical",options_json:{honeycomb_application:"Patio Door Vertical"}});
+});

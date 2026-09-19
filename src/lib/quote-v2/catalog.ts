@@ -34,6 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === "vertical_honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`;
   if (productId === "honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-dual-2026-09-19-r1`;
   if (productId === "smartdrape" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartdrape-mounting-2026-09-19-r3`;
   if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-controls-2026-09-19-r7`;
@@ -286,6 +287,17 @@ export function findHoneycombColor(
       (normalizeIdentity(row.customerColorCode) === wanted ||
         normalizeIdentity(row.factoryColorCode) === wanted),
   );
+}
+
+export function expectedVerticalHoneycombProgramId(collection: string | null | undefined, code: string | null | undefined, cell: string | null | undefined): string | null {
+  const color = findHoneycombColor(collection, code);
+  if (!color || !color.cellSizes.some(size => normalizeIdentity(size) === normalizeIdentity(cell))) return null;
+  const vertical = normanHoneycombV2Source.verticalColors.find(row => row.family === color.family && row.customerColorCode === color.customerColorCode);
+  if (!vertical || !vertical.availableCells.some(size => normalizeIdentity(`${size} Cell`) === normalizeIdentity(cell))) return null;
+  if (!["3 4 single cell", "1 1 4 single cell"].includes(normalizeIdentity(cell))) return null;
+  return /flame resistant|fr essentials/i.test(color.family)
+    ? "vertical_honeycomb_flame_resistant_fabrics_3_4in_single_only"
+    : "vertical_honeycomb_3_4in_single_and_1_1_4in_single_vertical";
 }
 
 export function expectedHoneycombProgramId(

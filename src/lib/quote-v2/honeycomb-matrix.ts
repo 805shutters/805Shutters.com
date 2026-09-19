@@ -650,6 +650,7 @@ const SYSTEM_FABRIC_COMPATIBILITY: Readonly<
     "windsong",
   ],
   patio_door_vertical: [
+    "sheer",
     "light_filtering",
     "room_darkening",
     "designer_lf",
@@ -658,6 +659,7 @@ const SYSTEM_FABRIC_COMPATIBILITY: Readonly<
     "fr_essentials",
   ],
   patio_door_vertical_day_night: [
+    "sheer",
     "light_filtering",
     "room_darkening",
     "designer_lf",
