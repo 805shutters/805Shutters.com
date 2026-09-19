@@ -10068,7 +10068,9 @@ function ShadesAndBlindsOptions({
           { key: "lift", label: "Lift System", field: "lift_system", type: "select", options: tallLouise ? ["Continuous Cord Loop", "Motorized"] : ["PrecisionLift Cordless", "Continuous Cord Loop", "Motorized"] },
           { key: "fold", label: "Fold Size", field: "json:fold_size", type: "buttons", options: ["6", "7", "8"] },
           { key: "valance", label: "Valance", field: "valance", type: "select", options: tallLouise ? ["6-inch Fabric", "8-inch Fabric"] : ["No Valance", "Curved Fascia", "Square Fascia", "Modern Wood", "4.5-inch Fabric", "6-inch Fabric", "8-inch Fabric"] },
-          { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: design?.mount_type === "Outside Mount" ? "buttons" : "yes-no", options: design?.mount_type === "Outside Mount" ? ["No"] : undefined, noFirst: true },
+          design?.mount_type === "Outside Mount"
+            ? { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "buttons", options: ["No"] }
+            : { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "yes-no", noFirst: true },
           ...(optionsJson.basic_light_guard === "Yes" ? [{ key:"light_guard_color",label:"Light Guard Color",field:"json:smartfold_light_guard_color",type:"select",options:SMARTFOLD_LIGHT_GUARD_COLORS } as GridOption] : []),
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
           { key:"hold_down",label:"Hold-Downs",field:"json:smartfold_hold_down",type:"select",options:SMARTFOLD_HOLD_DOWNS },
