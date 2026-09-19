@@ -1,3 +1,4 @@
+import { SMARTDRAPE_HEADRAIL_COLORS, SMARTDRAPE_CHARGING_WAND_COLORS, smartdrapeSecondColors } from "@/lib/quote-v2/norman-smartdrape";
 import { perfectsheerSavedCommonForDisplay, PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
 import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
@@ -9178,18 +9179,18 @@ function ShadesAndBlindsOptions({
       field === "json:control_type"
     ) {
       const nextControl = typeof value === "string" ? value : null;
-      const nextJson =
-        nextControl === "Motorized"
-          ? { ...currentJson, control_type: nextControl }
-          : {
-              ...clearMotorizationOptions(currentJson),
-              control_type: nextControl,
-            };
-      onUpdateFields({
-        motor_type: nextControl === "Motorized" ? design?.motor_type ?? null : null,
-        remote_type: nextControl === "Motorized" ? design?.remote_type ?? null : null,
-        options_json: nextJson,
-      });
+      const nextJson = {
+        ...clearMotorizationOptions(currentJson),
+        control_type: nextControl,
+        control_side: nextControl === "Motorized" ? "Left" : null,
+        stack_option: null,
+        hub_required: null,
+        smartdrape_wand_color: null,
+        wand_drop_inches: null,
+        smartdrape_charging_wand_color: null,
+        motorization_selections: null,
+      };
+      onUpdateFields({ motor_type: null, remote_type: null, options_json: nextJson });
       return;
     }
 
@@ -9851,6 +9852,13 @@ function ShadesAndBlindsOptions({
     if (productType === "SmartFold Shades" && field === "json:premium_hem_bar") {
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
       return;
+    }
+    if (productType === "Smart Drapes" && field === "json:stack_option") {
+      const side=currentJson.control_type === "Motorized"?"Left":value === "Stack Left"?"Right":value === "Stack Right"?"Left":value === "Traveling Center Stack"?"Both":null;
+      onUpdateFields({options_json:{...currentJson,stack_option:value,control_side:side}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:vane_style") {
+      onUpdateFields({options_json:{...currentJson,vane_style:value,smartdrape_second_color:null}});return;
     }
     if (productType === "Sheer Shades" && field === "remote_type") {
       onUpdateFields({remote_type:typeof value === "string"?value:null,options_json:{...currentJson,motorization_selections:null,perfectsheer_remote_channel:null,perfectsheer_color_ring_sets:null}});
@@ -11781,7 +11789,7 @@ function ShadesAndBlindsOptions({
             label: "Control Side",
             field: "json:control_side",
             type: "buttons",
-            options: controlType === "Motorized" ? ["Left"] : SMARTDRAPE_CONTROL_SIDES,
+            options: controlType === "Motorized" ? ["Left"] : optionsJson.stack_option === "Stack Left" ? ["Right"] : optionsJson.stack_option === "Stack Right" ? ["Left"] : optionsJson.stack_option === "Traveling Center Stack" ? ["Both"] : SMARTDRAPE_CONTROL_SIDES,
           },
         ];
 
@@ -11810,6 +11818,11 @@ function ShadesAndBlindsOptions({
           });
         }
 
+        const sdChoice=(key:string,label:string,choices:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options:choices});
+        options.push(sdChoice("vane_style","Vane Colors",["Single Color","Alternating"]),sdChoice("smartdrape_headrail_color","Headrail and Hardware Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]));
+        if(optionsJson.vane_style === "Alternating")options.push(sdChoice("smartdrape_second_color","Second Alternating Fabric",smartdrapeSecondColors(optionsJson.fabric_color_code)));
+        if(controlType === "Motorized")options.push(sdChoice("smartdrape_charging_wand_color","Charging Wand Color",["Default",...SMARTDRAPE_CHARGING_WAND_COLORS]));
+        else options.push(sdChoice("smartdrape_wand_color","Tilt Wand Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]),{key:"wand_drop_inches",label:"Wand Drop from Headrail",field:"json:wand_drop_inches",type:"number",min:12,max:90,step:"0.0625",unit:"in",placeholder:"Default"});
         options.push({ key: "installation_method", label: "Installation", field: "json:installation_method", type: "select", options: ["Wall Mount", "Ceiling Mount", "Ceiling Pocket Mount"] });
         if (optionsJson.installation_method === "Ceiling Pocket Mount") options.push(
           { key: "pocket_depth", label: "Pocket Depth", field: "json:pocket_depth_inches", type: "number", min: 0, step: "0.0625", unit: "in" },
@@ -11831,6 +11844,11 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
+  const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? validateNormanFamilyRules({
+    productId:"smartdrape",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??"smartdrape_smartdrape_light_filtering"),
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context), ...validateNormanShadeMotorization(context).filter(i=>i.severity === "hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.includes("panel_allocation"))])({
     productId:"perfectsheer",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"perfectsheer_perfectsheer_shades_light_filtering",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
@@ -12330,6 +12348,7 @@ function ShadesAndBlindsOptions({
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">

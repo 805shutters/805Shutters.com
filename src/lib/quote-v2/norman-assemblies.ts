@@ -1,3 +1,4 @@
+import { smartdrapeComponents } from "./norman-smartdrape";
 import { derivePerfectsheerMatching, PERFECTSHEER_MATCHING_KEY } from "./norman-perfectsheer-matching";
 import { derivePerfectsheerCommonValances, perfectsheerCommon } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
@@ -33,6 +34,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     delete configuration[NORMAN_ASSEMBLY_KEY];
     delete configuration[PERFECTSHEER_MATCHING_KEY];
     selection.configuration = configuration;
+    const smartdrape = smartdrapeComponents(selection);
+    if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
     const smartfold = smartfoldHardware(selection);
     if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
     const perfectsheer = perfectsheerComponents(selection);

@@ -1,3 +1,4 @@
+import { SMARTDRAPE_COORDINATION } from "@/lib/quote-v2/generated/norman-smartdrape-coordination.generated";
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
@@ -11,6 +12,25 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("server-prices and persists all 77 SmartDrape colors, including alternating colors and hardware overrides",()=>{
+  for(const row of SMARTDRAPE_COORDINATION){
+   const q=currentQuote("smartdrape","Smart Drapes",row.customerColorCode,{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",smartdrape_headrail_color:"4534 Brass",smartdrape_wand_color:"3058 White",wand_drop_inches:48,light_control:row.category.includes("Room")?"Room Darkening":"Light Filtering"});
+   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type=row.category.replace(":","");
+   const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+   if(!("backend" in priced)||priced.backend!=="v2")throw new Error("Expected V2");
+   const d=priced.designs[0];expect(d.result.ok,row.customerColorCode+JSON.stringify(d.result.validationIssues)).toBe(true);
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabrics:[{customerColorCode:row.customerColorCode,factoryColorCode:row.factoryColorCode}],coordination:{headrail:"4534 Brass"},wand:{color:"3058 White",drop:48}});
+   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  }
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",smartdrape_headrail_color:"4534 Brass",smartdrape_wand_color:"3058 White",vane_style:"Alternating",smartdrape_second_color:"F1128"});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  expect(p.designs[0].result.ok).toBe(true);
+  expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({alternating:true,fabrics:[{customerColorCode:"F1124"},{customerColorCode:"F1128"}]});
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(p.designs[0].selection));expect(customer.join(" ")).not.toMatch(/factoryColor|coordinationRange/);
+  expect(customer).toContain("Second Alternating Fabric: F1128");
+ });
  it("prices the shared PerfectSheer valance once at the full width and retains both shades",()=>{
   const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_wood_finish:"003 Silk White",perfectsheer_common_valance_id:"1",perfectsheer_common_position:1,perfectsheer_common_gap_after:2,control_side:"Left",perfectsheer_valance_joinery:"Keystone",perfectsheer_keystone_count:1});
   q.designs[0].lift_system="Continuous Cord Loop";q.designs[0].valance="Modern Wood Valance";
