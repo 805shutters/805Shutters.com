@@ -3,6 +3,7 @@
 import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
 
 import { ContractsWorkspace } from "./ContractsWorkspace";
+import { SquareFinanceWorkspace } from "./SquareFinanceWorkspace";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
 import { orderCostParent } from "./ProductOrderEditor";
@@ -127,7 +128,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
+type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -3171,6 +3172,7 @@ export function CrmApp({
           />
         )
       ) : null}
+      {activeTab === "square" && session ? <SquareFinanceWorkspace session={session} /> : null}
       {dashboardRefreshError && <p role="alert" className="crm-feedback-banner">{dashboardRefreshError}</p>}
       {data?.loadWarnings?.map((warning) => <p role="status" className="crm-feedback-banner" key={warning}>{warning}</p>)}
       {activeTab === "tools" ? <header className="crm-topbar">

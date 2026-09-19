@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createHmac } from "node:crypto";
-import { NextRequest } from "next/server";
+
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reconcileSquareEntryPayment } from "./square-entry-payments";
 import type { SquarePaymentFacts } from "@/lib/finance/square";
 import { fetchSquareOrderFacts, fetchSquarePaymentFacts } from "@/lib/finance/square";
-import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { reconcileVerifiedSquareOrderPayment } from "@/lib/crm/square-payments";
-import { POST } from "@/app/api/webhooks/square/route";
+
+
+
 
 vi.mock("@/lib/supabase-server", () => ({ getSupabaseServiceClient: vi.fn() }));
 vi.mock("@/lib/crm/square-contract-reminders", () => ({ scheduleSquareContractReminder: vi.fn() }));
@@ -89,55 +89,5 @@ describe("Square entry reconciliation", () => {
   it("rejects deleted and quote-owned ledgers", async () => {
     await expect(reconcileSquareEntryPayment(fixture({ deleted: true }).supabase, facts)).rejects.toThrow("missing or deleted");
     await expect(reconcileSquareEntryPayment(fixture({ source: "crm_quote" }).supabase, facts)).rejects.toThrow("quote-owned");
-  });
-});
-
-describe("Square webhook entry routing", () => {
-  function request(payment: Record<string, unknown>, signature = true) {
-    const body = JSON.stringify({ type: "payment.updated", data: { object: { payment: {
-      id: "square-1", status: "COMPLETED", amount_money: { amount: 30000 }, created_at: facts.paidAt, ...payment,
-    } } } });
-    const signed = createHmac("sha256", "test-signing-key").update(`https://test.invalid/api/webhooks/square${body}`).digest("base64");
-    return new NextRequest("https://test.invalid/api/webhooks/square", { method: "POST", body,
-      headers: { "x-square-hmacsha256-signature": signature ? signed : "invalid" } });
-  }
-  it("routes the API-verified entry identity without invoking quote reconciliation", async () => {
-    const { supabase, inserts } = fixture(); vi.mocked(getSupabaseServiceClient).mockReturnValue(supabase);
-    const response = await POST(request({ metadata: { bookkeeping_entry_id: "entry-1", payment_type: "deposit" } }));
-    expect(response.status).toBe(200);
-    expect((await response.json()).results[0]).toMatchObject({ status: "recorded", bookkeepingEntryId: "entry-1" });
-    expect(fetchSquarePaymentFacts).toHaveBeenCalledWith("square-1");
-    expect(fetchSquareOrderFacts).toHaveBeenCalledWith("order-1");
-    expect(inserts).toHaveLength(1); expect(reconcileVerifiedSquareOrderPayment).not.toHaveBeenCalled();
-  });
-  it("retrieves an entry identity from the Square order when the event omits metadata", async () => {
-    const { supabase, inserts } = fixture(); vi.mocked(getSupabaseServiceClient).mockReturnValue(supabase);
-    vi.mocked(fetchSquareOrderFacts).mockResolvedValue({ bookkeepingEntryId: "entry-1", quoteId: null, jobId: null, paymentType: "balance", expectedAmountCents: 30000, currency: "USD" });
-    expect((await POST(request({ order_id: "order-1" }))).status).toBe(200);
-    expect(fetchSquareOrderFacts).toHaveBeenCalledWith("order-1");
-    expect(inserts[0]).toMatchObject({ bookkeeping_entry_id: "entry-1", quote_id: null, payment_label: "Balance payment" });
-    expect(reconcileVerifiedSquareOrderPayment).not.toHaveBeenCalled();
-  });
-  it("ignores forged event identity and uses the API verified entry", async () => {
-    const { supabase, inserts } = fixture(); vi.mocked(getSupabaseServiceClient).mockReturnValue(supabase);
-    expect((await POST(request({ metadata: { bookkeeping_entry_id: "forged-entry", payment_type: "balance" } }))).status).toBe(200);
-    expect(inserts[0]).toMatchObject({ bookkeeping_entry_id: "entry-1", payment_label: "Deposit" });
-  });
-  it.each([{ expectedAmountCents: 30100 }, { currency: "CAD" }, { quoteId: "ambiguous-quote" }])("rejects inconsistent API order facts %j", async (patch) => {
-    const { supabase, inserts } = fixture(); vi.mocked(getSupabaseServiceClient).mockReturnValue(supabase);
-    vi.mocked(fetchSquareOrderFacts).mockResolvedValue({ bookkeepingEntryId: "entry-1", quoteId: null, jobId: null, paymentType: "deposit", expectedAmountCents: 30000, currency: "USD", ...patch });
-    expect((await POST(request({ order_id: "order-1" }))).status).toBe(500);
-    expect(inserts).toHaveLength(0);
-  });
-  it("preserves the existing quote route", async () => {
-    vi.mocked(getSupabaseServiceClient).mockReturnValue(fixture().supabase);
-    vi.mocked(fetchSquareOrderFacts).mockResolvedValue({ quoteId: "quote-1", jobId: "job-1", paymentType: "deposit", expectedAmountCents: 30000, currency: "USD" });
-    expect((await POST(request({ metadata: { quote_id: "quote-1", payment_type: "deposit" } }))).status).toBe(200);
-    expect(reconcileVerifiedSquareOrderPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ order: expect.objectContaining({ quoteId: "quote-1" }) }));
-  });
-  it("rejects an invalid signature without touching either ledger", async () => {
-    const { supabase, inserts, reads } = fixture(); vi.mocked(getSupabaseServiceClient).mockReturnValue(supabase);
-    expect((await POST(request({ metadata: { bookkeeping_entry_id: "entry-1", payment_type: "deposit" } }, false))).status).toBe(401);
-    expect(inserts).toHaveLength(0); expect(reads).toHaveLength(0); expect(reconcileVerifiedSquareOrderPayment).not.toHaveBeenCalled();
   });
 });

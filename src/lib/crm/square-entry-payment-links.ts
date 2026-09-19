@@ -1,3 +1,4 @@
+import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
@@ -82,6 +83,10 @@ export async function sendSquareEntryPaymentLink(
   if (!(amount > 0)) throw new CrmAuthError(400, paymentType === "deposit" ? "No deposit is currently due." : "No remaining balance is currently due.");
   verifySquarePaymentConfirmation(amount, recipient, confirmation);
   const link = await createSquarePaymentLink({
+    bookkeepingEntryId: entry.id, amountCents: dollarsToCents(amount), paymentType,
+    title: `${paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters`, buyerEmail: recipient,
+  });
+  await trackSquarePaymentRequest(supabase, link, {
     bookkeepingEntryId: entry.id, amountCents: dollarsToCents(amount), paymentType,
     title: `${paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters`, buyerEmail: recipient,
   });

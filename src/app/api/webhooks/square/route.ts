@@ -1,80 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import {
-  verifySquareWebhookSignature,
-  extractSquarePaymentFacts,
-  getSquareWebhookConfig,
-  isSquarePaidPaymentEvent,
-  isSquareWebhookTestPayment,
-} from "@/lib/finance/square";
-import { SquareReconcileResult } from "@/lib/crm/square-payments";
-import { reconcileSquareApiPayment } from "@/lib/crm/square-api-reconciliation";
+import { after, NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServiceClient } from '@/lib/supabase-server';
+import { verifySquareWebhookSignature, getSquareWebhookConfig, squareEnvironment, extractSquarePaymentFacts, isSquareWebhookTestPayment } from '@/lib/finance/square';
+import { record, text } from '@/lib/finance/square-reporting';
+import { syncSquareFinance } from '@/lib/crm/square-finance';
 
-export const runtime = "nodejs";
+export const runtime = 'nodejs';
+export const maxDuration = 120;
 
-// Square webhook: signature-verified + idempotent. When a customer pays a deposit
-// or balance via Square, record a credit_card payment on the quote's bookkeeping
-// entry (tagged with the Square payment id) so the ledger + alert boxes update.
 export async function POST(request: NextRequest) {
-  const supabase = getSupabaseServiceClient();
-  if (!supabase) return new NextResponse("Service unavailable", { status: 503 });
-
+  const db = getSupabaseServiceClient();
+  if (!db) return new NextResponse('Service unavailable', { status: 503 });
   const raw = await request.text();
-  const signature =
-    request.headers.get("x-square-hmacsha256-signature") ??
-    request.headers.get("x-square-hmac-signature");
   const { webhookUrl, signingKey } = getSquareWebhookConfig();
-  if (!verifySquareWebhookSignature(webhookUrl, signingKey, raw, signature)) {
-    return new NextResponse("Invalid signature", { status: 401 });
-  }
-
+  if (!verifySquareWebhookSignature(webhookUrl, signingKey, raw, request.headers.get('x-square-hmacsha256-signature') || request.headers.get('x-square-hmac-signature'))) return new NextResponse('Invalid signature', { status: 401 });
   let payload: unknown;
-  try {
-    payload = JSON.parse(raw);
-  } catch {
-    return new NextResponse("Bad JSON", { status: 400 });
-  }
-
-  const root = payload as { events?: unknown[] } | null;
-  const events = Array.isArray(root?.events) ? (root!.events as unknown[]) : Array.isArray(payload) ? (payload as unknown[]) : [payload];
-  const results: SquareReconcileResult[] = [];
-  const errors: string[] = [];
-
-  for (const event of events) {
-    if (!isSquarePaidPaymentEvent(event)) continue;
+  try { payload = JSON.parse(raw); } catch { return new NextResponse('Bad JSON', { status: 400 }); }
+  const events = Array.isArray(record(payload).events) ? record(payload).events as unknown[] : Array.isArray(payload) ? payload : [payload];
+  for (const value of events) {
+    const event = record(value), eventType = text(event.type);
+    if (!/^(payment\.(created|updated)|refund\.(created|updated)|dispute\.(created|state.updated)|payout\.(sent|paid|failed))$/.test(eventType)) continue;
     const facts = extractSquarePaymentFacts(event);
-    if (!facts || facts.amountCents <= 0) continue;
-
-    try {
-      if (isSquareWebhookTestPayment(facts)) {
-        results.push({
-          status: "skipped",
-          reason: "Authenticated Square provider test event; no CRM financial record was changed.",
-          quoteId: null,
-          squarePaymentId: facts.squarePaymentId,
-          amount: facts.amountCents / 100,
-        });
-        continue;
-      }
-      // Never trust customer, order, quote, job, intent, status, or amount copied
-      // into the event. Re-read the completed payment from Square's API before
-      // matching and recording it.
-      const result = await reconcileSquareApiPayment(supabase, facts);
-      results.push(result);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown Square webhook processing error.";
-      errors.push(message);
-      console.error("square webhook processing failed", {
-        squarePaymentId: facts.squarePaymentId,
-        orderId: facts.orderId,
-        error: message,
-      });
-    }
+    if (facts && isSquareWebhookTestPayment(facts)) continue;
+    const id = text(event.event_id), data = record(event.data), merchantId = text(event.merchant_id);
+    const kind = eventType.split('.')[0];
+    const objectId = text(data.id) || text(record(record(data.object)[kind]).id);
+    if (!id || !objectId || !merchantId) return new NextResponse('Event identity is required', { status: 400 });
+    const result = await db.from('crm_square_events').upsert({ environment: squareEnvironment(), id, event_type: eventType, merchant_id: merchantId, object_id: objectId }, { onConflict: 'environment,id', ignoreDuplicates: true });
+    if (result.error) return new NextResponse('Event could not be stored. Retry required.', { status: 503 });
   }
-
-  if (errors.length) {
-    return NextResponse.json({ received: false, results, errors }, { status: 500 });
-  }
-
-  return NextResponse.json({ received: true, results });
+  // Acknowledge only after durable storage. Scheduled recovery covers interrupted workers.
+  after(async () => { try { await syncSquareFinance(db, 40000); } catch { console.error('Square event worker requires recovery; see connection health.'); } });
+  return NextResponse.json({ received: true });
 }

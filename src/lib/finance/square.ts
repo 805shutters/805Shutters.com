@@ -82,7 +82,7 @@ export function verifySquareWebhookSignature(
   }
 }
 
-export type SquarePaymentLink = { id: string; url: string };
+export type SquarePaymentLink = { id: string; url: string; orderId?: string };
 export type SquarePaymentLinkInput = {
   amountCents: number;
   title: string;
@@ -145,10 +145,10 @@ export async function createSquarePaymentLink(input: SquarePaymentLinkInput): Pr
     const detail = await res.text();
     throw new Error(`Square payment link failed (${res.status}): ${detail.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { payment_link?: { id?: string; url?: string }; paymentLink?: { id?: string; url?: string } };
+  const data = (await res.json()) as { payment_link?: { id?: string; url?: string; order_id?: string }; paymentLink?: { id?: string; url?: string; order_id?: string } };
   const link = data.payment_link ?? data.paymentLink;
   if (!link?.id || !link.url) throw new Error("Square did not return a payment link URL.");
-  return { id: link.id, url: link.url };
+  return { id: link.id, url: link.url, ...(link.order_id ? { orderId: link.order_id } : {}) };
 }
 
 /** Extract the payment facts from a Square webhook event. Square's payload shape
@@ -372,6 +372,7 @@ export async function fetchSquareOrderFacts(
   if (!accessToken) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN).");
 
   const res = await fetch(`${squareOrdersUrl()}/${encodeURIComponent(orderId)}`, {
+    signal: AbortSignal.timeout(10000),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Square-Version": SQUARE_VERSION,

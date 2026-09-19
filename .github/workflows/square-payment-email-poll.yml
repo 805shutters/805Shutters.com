@@ -1,4 +1,4 @@
-name: Poll Square payment emails
+name: Recover Square finance records
 
 on:
   schedule:
@@ -13,13 +13,14 @@ jobs:
   poll-square-payments:
     runs-on: ubuntu-latest
     steps:
-      - name: Process Square payment receipts
+      - name: Recover payments directly from Square
         env:
           SQUARE_PAYMENT_EMAIL_CRON_SECRET: ${{ secrets.SQUARE_PAYMENT_EMAIL_CRON_SECRET }}
         run: |
           test -n "${SQUARE_PAYMENT_EMAIL_CRON_SECRET}"
           curl --fail-with-body --silent --show-error \
             --retry 2 \
+            --max-time 125 \
             --request POST \
             --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
-            https://805-one.vercel.app/api/cron/square-payment-emails
+            https://805-one.vercel.app/api/cron/square-payment-emails/

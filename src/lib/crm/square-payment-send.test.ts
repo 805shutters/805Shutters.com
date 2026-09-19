@@ -6,6 +6,7 @@ import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/squar
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
 
+vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn() }));
 vi.mock("@/lib/crm/public-quote", () => ({ ensureShareToken: vi.fn(), loadPublicQuoteByToken: vi.fn() }));
 vi.mock("@/lib/finance/square", () => ({

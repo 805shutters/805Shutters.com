@@ -4,14 +4,14 @@ import { computeSelectionTotal, loadPublicQuoteByToken } from "@/lib/crm/public-
 import {
   createSquareWalletPayment,
   dollarsToCents,
-  fetchSquarePaymentFacts,
   isSquareConfigured,
 } from "@/lib/finance/square";
 import { crmAuthErrorResponse, CrmAuthError } from "@/lib/crm/auth";
 import { amountDueForPaymentType, type QuotePaymentType } from "@/lib/crm/quote-payment-state";
-import { reconcileSquareApiPayment } from "@/lib/crm/square-api-reconciliation";
+import { syncSquareFinance } from "@/lib/crm/square-finance";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -100,8 +100,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     // Reconcile immediately so the contract ledger updates without depending
     // on webhook timing. The verified webhook remains the retry/fallback path.
     try {
-      const facts = await fetchSquarePaymentFacts(payment.paymentId);
-      await reconcileSquareApiPayment(supabase, facts);
+      await syncSquareFinance(supabase, 45000, payment.paymentId);
     } catch (error) {
       console.error("Square wallet payment completed; immediate CRM reconciliation will retry by webhook", {
         squarePaymentId: payment.paymentId,

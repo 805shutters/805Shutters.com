@@ -8,6 +8,7 @@ import { sendSquareEntryPaymentLink } from "./square-entry-payment-links";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
 import { sendEmail } from "@/lib/notify/email";
 
+vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn().mockResolvedValue({ recorded: true }) }));
 vi.mock("@/lib/crm/auth", async (original) => ({ ...await original<typeof import("@/lib/crm/auth")>(), requireCrmUser: vi.fn() }));
 vi.mock("@/lib/finance/square", async (original) => ({

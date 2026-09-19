@@ -304,17 +304,9 @@ export async function reconcileRecentSquarePayments(
   supabase: CrmSupabaseClient,
   lookbackDays = 7,
 ) {
-  const begin = new Date(Date.now() - lookbackDays * 86_400_000).toISOString();
-  const payments = await listRecentCompletedSquarePayments(begin);
-  const results: SquareReconcileResult[] = [];
-  for (const payment of payments) {
-    results.push(await reconcileSquareApiPayment(supabase, payment));
-  }
-  return {
-    checked: payments.length,
-    recorded: results.filter((result) => result.status === "recorded").length,
-    duplicates: results.filter((result) => result.status === "duplicate").length,
-    review: results.filter((result) => result.status === "skipped").length,
-    results,
-  };
+  // Older cron callers share the canonical finance worker; email/name matching
+  // no longer independently posts customer credits.
+  void lookbackDays;
+  const { syncSquareFinance } = await import('./square-finance');
+  return syncSquareFinance(supabase);
 }

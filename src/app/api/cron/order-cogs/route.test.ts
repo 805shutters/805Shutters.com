@@ -30,11 +30,7 @@ function dependencies(): OrderCogsCronDependencies {
       emails: [],
     })),
     reconcileSquarePayments: vi.fn(async () => ({
-      checked: 1,
-      recorded: 1,
-      duplicates: 0,
-      review: 0,
-      results: [],
+      status: "synced",
     })),
     processPeerPayments: vi.fn(async () => ({
       mailbox: "805shutters@gmail.com",

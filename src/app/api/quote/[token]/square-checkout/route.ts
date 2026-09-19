@@ -1,3 +1,4 @@
+import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { computeSelectionTotal, loadPublicQuoteByToken } from "@/lib/crm/public-quote";
@@ -43,6 +44,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     }
 
     const link = await createSquarePaymentLink({
+      amountCents: dollarsToCents(amount),
+      title: `${body.paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters${pub.quoteNumber ? ` (${pub.quoteNumber})` : ""}`,
+      quoteId: pub.id,
+      jobId: quoteIdentity.job_id,
+      paymentType: body.paymentType,
+      selectedLineIds,
+    });
+    await trackSquarePaymentRequest(supabase, link, {
       amountCents: dollarsToCents(amount),
       title: `${body.paymentType === "deposit" ? "Deposit" : "Order balance"} — 805 Shutters${pub.quoteNumber ? ` (${pub.quoteNumber})` : ""}`,
       quoteId: pub.id,

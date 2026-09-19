@@ -1,3 +1,4 @@
+import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { collectCrmPages } from "@/lib/crm/pagination";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity } from "@/lib/brand-identity";
@@ -146,6 +147,15 @@ export async function sendSquareOrderPaymentLink(
     throw new CrmAuthError(502, "The exact CRM job for this payment link could not be verified.");
   }
   const link = await createSquarePaymentLink({
+    amountCents: dollarsToCents(amount),
+    title: `${label} — 805 Shutters${publicQuote.quoteNumber ? ` (${publicQuote.quoteNumber})` : ""}`,
+    quoteId,
+    jobId: quoteIdentity.job_id,
+    paymentType,
+    buyerEmail: customerEmail,
+    idempotencyKey: delivery?.idempotencyKey,
+  });
+  await trackSquarePaymentRequest(supabase, link, {
     amountCents: dollarsToCents(amount),
     title: `${label} — 805 Shutters${publicQuote.quoteNumber ? ` (${publicQuote.quoteNumber})` : ""}`,
     quoteId,

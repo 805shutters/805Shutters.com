@@ -70,6 +70,7 @@ export async function sendSms(input: {
   to: string | null | undefined;
   body: string;
   statusCallback?: string | null;
+  timeoutMs?: number;
 }): Promise<SmsResult> {
   const to = toE164(input.to);
   if (!to) return { sent: false, skipped: "invalid or missing destination phone" };
@@ -93,6 +94,7 @@ export async function sendSms(input: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
+      ...(input.timeoutMs ? { signal: AbortSignal.timeout(input.timeoutMs) } : {}),
     });
     const data = (await res.json().catch(() => ({}))) as {
       sid?: string;
