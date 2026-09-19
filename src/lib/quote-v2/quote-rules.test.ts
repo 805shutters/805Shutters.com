@@ -488,7 +488,7 @@ describe("current Norman blind side-by-side orders", () => {
     const lines = pair(product);
     lines[1] = {...lines[1], selectedDesign: {...lines[1].selectedDesign, heightInches:60.0625, configuration: {...lines[1].selectedDesign.configuration, ordered_height:60}}};
     expect(validateQuoteSelectionRelationships(lines).some(i => i.ruleId.endsWith("match.ordered_height"))).toBe(true);
-    for (const changes of [{fabric_color_code:"7022"}, {mount_type:"Outside Mount"}, {slat_size:'2"'}]) {
+    for (const changes of [{fabric_color_code:"7022"}, {mount_type:"Outside Mount"}, {slat_size:'2"'}] as SelectionRecord[]) {
       expect(validateQuoteSelectionRelationships(pair(product, changes)).length).toBeGreaterThan(0);
     }
   });
@@ -497,7 +497,7 @@ describe("current Norman blind side-by-side orders", () => {
     expect(validateQuoteSelectionRelationships(pair("wood_blinds",{light_control:null}))).toEqual([]);
   });
   it("preserves the pre-effective-date blind rule set", () => {
-    const lines=pair("wood_blinds",{fabric_color_code:"different"}).map(l=>({...l, selectedDesign:{...l.selectedDesign,catalogAsOf:"2026-07-20"}}));
+    const lines=pair("wood_blinds",{fabric_color_code:"different"}).map(l=>({...l, selectedDesign:{...l.selectedDesign,catalogAsOf:"2026-07-20" as const}}));
     expect(validateQuoteSelectionRelationships(lines)).toEqual([]);
   });
 });
