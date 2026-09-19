@@ -932,7 +932,7 @@ export function priceDesign(input: PriceInput): PriceResult {
     if (sc.widthGraduated) {
       // Valance-style charge priced by window width (round up), plus a per-foot
       // overage beyond the largest listed width.
-      const chargeWidth = product.id === "smartfold" && /^smartfold_.*valance$/.test(sc.id) ? input.valanceWidthInches ?? W : W;
+      const chargeWidth = ((product.id === "smartfold" && /^smartfold_.*valance$/.test(sc.id)) || (product.id === "perfectsheer" && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance"].includes(sc.id))) ? input.valanceWidthInches ?? W : W;
       if (!Number.isFinite(chargeWidth) || chargeWidth <= 0) return fail("INVALID_DIMENSIONS", "Valance width must be a positive finite number.", warnings);
       const graduatedCents = widthGraduatedCents(sc.widthGraduated, chargeWidth);
       if (graduatedCents == null) {

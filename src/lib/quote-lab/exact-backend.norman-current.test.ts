@@ -11,6 +11,24 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("prices the shared PerfectSheer valance once at the full width and retains both shades",()=>{
+  const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_wood_finish:"003 Silk White",perfectsheer_common_valance_id:"1",perfectsheer_common_position:1,perfectsheer_common_gap_after:2,control_side:"Left",perfectsheer_valance_joinery:"Keystone",perfectsheer_keystone_count:1});
+  q.designs[0].lift_system="Continuous Cord Loop";q.designs[0].valance="Modern Wood Valance";
+  q.lines.push({...q.lines[0],id:"right",width_whole:42});
+  q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,perfectsheer_common_position:2,perfectsheer_common_gap_after:0,control_side:"Right"}});
+  q.selectedVariantByLine.right="A";
+  const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in result) || result.backend!=="v2")throw new Error("Expected V2 backend");
+  for(const d of result.designs)expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+  const left=result.designs[0],right=result.designs[1];
+  if(!left.result.ok||!right.result.ok)throw new Error("Expected valid common valance");
+  expect(left.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? "")).map(c=>[c.priceLineId,c.catalogAmount])).toEqual(expect.arrayContaining([["keystone",73],["wood_valance",232]]));
+  expect(right.result.components.filter(c=>["wood_valance","keystone"].includes(c.priceLineId ?? ""))).toEqual([]);
+  expect(left.selection.configuration.perfectsheer_common_valance_v1).toMatchObject({orderedWidths:[36,42],orderSpan:80});
+  const reopened=JSON.parse(JSON.stringify(q));for(let i=0;i<2;i++)reopened.designs[i].options_json={...reopened.designs[i].options_json,...result.designs[i].selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(result);
+ });
+
  it("charges extra motor accessories once for the line instead of once per shade",()=>{
   const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_tube_diameter:2,motor_position:"Right",hub_required:false});
   q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart Rechargeable Battery (AC Charger)";q.designs[0].remote_type="Basic Remote";q.lines[0].quantity=3;

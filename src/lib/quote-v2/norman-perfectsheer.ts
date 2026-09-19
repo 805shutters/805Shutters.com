@@ -1,3 +1,4 @@
+import { perfectsheerValance, perfectsheerCommon, validatePerfectsheerValance } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerHardware, validatePerfectsheerHardware } from "./norman-perfectsheer-hardware";
 import type { SelectionContext, ValidationIssue } from "./core";
@@ -19,18 +20,19 @@ export function perfectsheerFabric(code: unknown) {
 export function perfectsheerComponents(context: SelectionContext) {
   if (context.productId !== "perfectsheer" || context.catalogAsOf < "2026-09-19") return null;
   const c = context.configuration;
+  const common=perfectsheerCommon(context);
   const fabric = perfectsheerFabric(c.fabric_color_code);
   const type = norm(c.valance);
   const wood = ["wood", "modern wood valance"].includes(type);
   const fabricValance = ["fabric", "fabric valance"].includes(type);
   const valance = wood ? "Modern Wood Valance" : fabricValance ? "Fabric Valance" : "Curved Fascia with Fabric";
-  const height = wood ? 4.5 : explicit(c.perfectsheer_valance_height) ? Number(c.perfectsheer_valance_height) : context.heightInches > 72 ? 4.5 : 3.5;
+  const height = typeof common?.valanceHeight === "number" ? common.valanceHeight : wood ? 4.5 : explicit(c.perfectsheer_valance_height) ? Number(c.perfectsheer_valance_height) : context.heightInches > 72 ? 4.5 : 3.5;
   const large = height === 4.5;
   const motor = /motor|autowand/.test(norm(c.lift_system));
   const power = norm(c.motor_type);
   const autowand = /autowand/.test(power + norm(c.lift_system));
-  const tube = Number(c.perfectsheer_tube_diameter);
-  const bracketClass = autowand && [1.75,2].includes(tube) ? context.heightInches > (tube === 1.75 ? 84 : 72) ? "large" : "small" : wood ? null : large ? "large" : "small";
+  const tube = Number(common?.tubeDiameter ?? c.perfectsheer_tube_diameter);
+  const bracketClass = typeof common?.bracketClass === "string" ? common.bracketClass : autowand && [1.75,2].includes(tube) ? context.heightInches > (tube === 1.75 ? 84 : 72) ? "large" : "small" : wood ? null : large ? "large" : "small";
   const finishedWidth = context.widthInches - (["inside mount", "inside", "semi inside mount", "semi inside", "im", "ib"].includes(norm(c.mount_type)) ? .125 : 0);
   const defaultChain = context.heightInches <= 20 ? 9 : context.heightInches <= 30 ? 16 : context.heightInches <= 42 ? 24 : context.heightInches <= 55 ? 36 : context.heightInches <= 69 ? 48 : context.heightInches <= 95 ? 60 : 84;
   const chain = /cord.*loop/.test(norm(c.lift_system));
@@ -52,7 +54,7 @@ export function perfectsheerComponents(context: SelectionContext) {
       autoWandColor: /autowand/.test(power + norm(c.lift_system)) ? c.perfectsheer_wand_color ?? null : null,
       sourceId: "norman-ps-sd-coordination-2026-08-11", sourceSheet: "PerfectSheer", sourceRange: fabric.coordinationRange,
     } : null,
-    valance: { type: valance, height, bracketClass, fabricColorCode: wood ? null : explicit(c.perfectsheer_valance_fabric) ? c.perfectsheer_valance_fabric : fabric?.customerColorCode ?? null, woodFinish: wood ? c.perfectsheer_wood_finish ?? null : null },
+    valance: { ...perfectsheerValance(context)?.record, type: valance, height, bracketClass, fabricColorCode: wood ? null : explicit(c.perfectsheer_valance_fabric) ? c.perfectsheer_valance_fabric : fabric?.customerColorCode ?? null, woodFinish: wood ? c.perfectsheer_wood_finish ?? null : null },
     mounting: {
       installation: c.perfectsheer_installation ?? null,
       minimumInsideDepth: .75,
@@ -67,7 +69,7 @@ export function validatePerfectsheerComponents(context: SelectionContext): Valid
   const record = perfectsheerComponents(context);
   if (!record) return [];
   const c = context.configuration;
-  const issues: ValidationIssue[] = [...validatePerfectsheerHardware(context), ...(/motor|autowand/.test(norm(c.lift_system)) ? [] : perfectsheerMotorAccessories(context)?.issues ?? [])];
+  const issues: ValidationIssue[] = [...validatePerfectsheerValance(context), ...validatePerfectsheerHardware(context), ...(/motor|autowand/.test(norm(c.lift_system)) ? [] : perfectsheerMotorAccessories(context)?.issues ?? [])];
   const add = (id: string, page: number, explanation: string) => issues.push({ severity: "hard_block", ruleId: `norman.perfectsheer.${id}`, source: sourceProvenance("norman-perfectsheer-smartdrape-guide-2026-09", { page }), selectedValues: { ...c }, explanation });
   const choice = (key: string, values: readonly string[], page: number, required = false) => {
     if ((required || explicit(c[key])) && !values.some(v => norm(v) === norm(c[key]))) add(key, page, `Select ${key.replace("perfectsheer_", "").replaceAll("_", " ")} from the current PerfectSheer choices.`);

@@ -1,3 +1,4 @@
+import { derivePerfectsheerCommonValances, perfectsheerCommon } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerComponents } from "./norman-perfectsheer";
 import { deriveSmartfoldSideBySide, type SmartfoldOrderLine } from "./norman-smartfold-side-by-side";
@@ -43,6 +44,11 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     }};
   }
   issues.push(...deriveSmartfoldCommonValances(lines));
+  issues.push(...derivePerfectsheerCommonValances(lines));
+  for (const {selection} of lines) {
+    const components=perfectsheerComponents(selection);
+    if(components) selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:components};
+  }
   issues.push(...deriveSmartfoldSideBySide(lines));
   for (const {selection} of lines) {
     const valance=smartfoldValance(selection);
@@ -101,18 +107,18 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
         const total = lines.filter(other => other.selection.productId === "palladian_shelf" && other.selection.programId?.endsWith("_with_product") && other.selection.configuration.accompanying_line_id === id).reduce((sum, other) => sum + other.selection.quantity, 0);
         if (total > t.quantity) fail("quantity", 6, "Total custom shelves linked to this line cannot exceed its blind/shade quantity. Shelf quantity is a line total, not an amount per shade.");
       }
-      const common=smartfoldCommonValance(t);
+      const common=smartfoldCommonValance(t) ?? perfectsheerCommon(t);
       if (basis === "default" && shelf.widthInches !== (typeof common?.orderSpan === "number" ? common.orderSpan : t.widthInches)) fail("opening_width", 5, "Default shelf width must match the accompanying product's ordered opening width, including the full common-valance span.");
       if (common) {
         const total=lines.filter(other=>{
           if(other.selection.productId!=="palladian_shelf" || !other.selection.programId?.endsWith("_with_product"))return false;
           const linked=lines.find(candidate=>candidate.lineId===other.selection.configuration.accompanying_line_id);
-          return linked && smartfoldCommonValance(linked.selection)?.assemblyId===common.assemblyId;
+          return linked && linked.selection.productId===t.productId && (smartfoldCommonValance(linked.selection) ?? perfectsheerCommon(linked.selection))?.assemblyId===common.assemblyId;
         }).reduce((sum,other)=>sum+other.selection.quantity,0);
         if(total>t.quantity)fail("common_quantity",6,"Shelves linked to shades under the same common valance cannot exceed the common-valance assembly quantity.");
       }
-      if (/common valance/.test(application) || smartfoldCommonValance(t)) {
-        const widths = smartfoldCommonValance(t)?.orderedWidths ?? tc.common_valance_panel_widths;
+      if (/common valance/.test(application) || common) {
+        const widths = common?.orderedWidths ?? tc.common_valance_panel_widths;
         if (!Array.isArray(widths) || widths.length < 2 || widths.some(width => typeof width !== "number" || !Number.isFinite(width) || width <= 0)) fail("common_widths", 8, "Record every blind/shade width in the common-valance assembly before pairing a shelf.");
         else if ((widths as number[]).reduce((sum, width) => sum + width, 0) >= 96) fail("common_width", 8, "The sum of ordered blind/shade widths under a common valance must be less than 96 inches.");
       }

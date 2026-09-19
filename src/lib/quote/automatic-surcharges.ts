@@ -346,7 +346,7 @@ export function deriveAutomaticSurcharges(productId: string, details: DetailReco
   if (productId === "smartdrape" && isSelected(source.aluminum_shim) && Number(source.aluminum_shim_quantity) > 0) add("aluminum_shim", Number(source.aluminum_shim_quantity));
   if (["smartfold", "synchrony_vertical", "perfectsheer"].includes(productId) && Number(source.shim_quantity) > 0) add("shim", Number(source.shim_quantity));
 
-  if (productId === "smartfold" && Number(source.keystone_quantity) > 0) add("keystone", Number(source.keystone_quantity));
+  if (["smartfold","perfectsheer"].includes(productId) && Number(source.keystone_quantity) > 0) add("keystone", Number(source.keystone_quantity));
 
   const lightGuard = text(source.light_guard);
   if (lightGuard && lightGuard !== "none" && (LIGHT_GUARD_SURCHARGE_IDS as readonly string[]).includes(lightGuard)) {

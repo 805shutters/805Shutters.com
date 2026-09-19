@@ -1,3 +1,4 @@
+import { perfectsheerValance, perfectsheerCommon, perfectsheerValancePriceWidth } from "./norman-perfectsheer-valance";
 import { perfectsheerHardware } from "./norman-perfectsheer-hardware";
 import { smartfoldValance, smartfoldCommonValance, smartfoldValancePriceWidth } from "./norman-smartfold-valance";
 import { synchronyBracketCount } from "@/lib/quote/norman-synchrony";
@@ -499,7 +500,7 @@ export function authoritativeAutomaticSurchargeSelections(
     details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
   }
   const perfectsheer = perfectsheerHardware(selection);
-  if (perfectsheer) {Object.assign(details,perfectsheer.surchargeDetails);delete details.shims;}
+  if (perfectsheer) {Object.assign(details,perfectsheer.surchargeDetails);delete details.shims;details.keystone_quantity=perfectsheerValance(selection)?.count??0;details.keystone=Number(details.keystone_quantity)>0;}
   const smartfold = smartfoldHardware(selection);
   if (smartfold) {
     Object.assign(details, smartfoldAccessorySelections(selection));
@@ -523,6 +524,8 @@ export function authoritativeAutomaticSurchargeSelections(
     details.aluminum_shim_quantity = w <= 72 ? 2 : w <= secondBoundary ? 3 : w <= 144 ? 4 : w <= 197.875 ? 6 : w <= 286.75 ? 9 : 12;
   }
   return deriveAutomaticSurcharges(selection.productId, details).filter(entry => {
+    const psCommon=perfectsheerCommon(selection);
+    if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
     return !common || common.chargeSharedOptions === true || !(/^smartfold_.*valance$/.test(entry.id) || entry.id === "basic_light_guard" || entry.id === "keystone");
   }).map(
@@ -746,6 +749,7 @@ function priceInputContractIssues(
       )}], got [${actualComponentWidths.join(", ")}]`;
     }
   }
+  if (selection.productId === "perfectsheer" && input.valanceWidthInches !== perfectsheerValancePriceWidth(selection)) mismatches.valanceWidthInches="Valance price width must match the server-derived common/custom valance.";
   if (selection.productId === "smartfold" && input.valanceWidthInches !== smartfoldValancePriceWidth(selection)) mismatches.valanceWidthInches="Valance price width must match the server-derived common/custom valance.";
   if (inputQuantity !== selection.quantity) {
     mismatches.quantity = `${selection.quantity} != ${inputQuantity}`;

@@ -1,3 +1,4 @@
+import { perfectsheerCommon } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerFabric, perfectsheerComponents, PERFECTSHEER_POWER_SOURCES } from "./norman-perfectsheer";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
@@ -1207,7 +1208,7 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
   const ac = config.powerSource.includes("ac adapter");
   const dc = /low voltage|12v/.test(config.powerSource);
   const battery = config.powerSource.includes("rechargeable") || config.powerSource.includes("arc");
-  const tube = Number(value(context,"perfectsheer_tube_diameter"));
+  const tube = Number(perfectsheerCommon(context)?.tubeDiameter ?? value(context,"perfectsheer_tube_diameter"));
   const fabric = perfectsheerFabric(value(context,"fabric_color_code"));
   const width = perfectsheerComponents(context)?.finishedShadeWidth ?? context.widthInches;
   const area = width * context.heightInches / 144;

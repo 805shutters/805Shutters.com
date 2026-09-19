@@ -1,3 +1,4 @@
+import { perfectsheerSavedCommonForDisplay, PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
 import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
 import { validateNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
@@ -9854,8 +9855,16 @@ function ShadesAndBlindsOptions({
       onUpdateFields({options_json:{...currentJson,perfectsheer_magnetic_hold_down:value,perfectsheer_magnet_color:null,magnetic_hold_down:false}});
       return;
     }
+    if (productType === "Sheer Shades" && field === "json:perfectsheer_common_valance_id") {
+      onUpdateFields({options_json:{...currentJson,perfectsheer_common_valance_id:value === "None"?null:value,perfectsheer_common_position:null,perfectsheer_common_gap_after:null}});
+      return;
+    }
+    if (productType === "Sheer Shades" && field === "mount_type") {
+      onUpdateFields({mount_type:typeof value === "string"?value:null,options_json:{...currentJson,perfectsheer_valance_returns:null,perfectsheer_valance_return_size:null}});
+      return;
+    }
     if (productType === "Sheer Shades" && field === "valance") {
-      onUpdateFields({valance:typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_valance_height:null,perfectsheer_valance_fabric:null,perfectsheer_wood_finish:null}});
+      onUpdateFields({valance:typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_valance_height:null,perfectsheer_valance_fabric:null,perfectsheer_wood_finish:null,perfectsheer_valance_returns:null,perfectsheer_valance_return_size:null,perfectsheer_valance_width:null,perfectsheer_valance_joinery:null,perfectsheer_keystone_count:null,perfectsheer_keystone_layout:null,perfectsheer_keystone_location_1:null,perfectsheer_keystone_location_2:null,perfectsheer_keystone_location_3:null,perfectsheer_keystone_location_4:null,perfectsheer_keystone_location_5:null}});
       return;
     }
 
@@ -11319,6 +11328,18 @@ function ShadesAndBlindsOptions({
         );
         if (["Modern Wood Valance","wood"].includes(design?.valance ?? "")) options.push(psChoice("perfectsheer_wood_finish","Wood Valance Finish",PERFECTSHEER_WOOD_FINISHES));
         else options.push(psChoice("perfectsheer_valance_fabric","Valance Fabric Override",["Default",...PERFECTSHEER_FABRIC_CODES]));
+        const psDimension=(key:string,label:string,min:number,max?:number):GridOption=>({key,label,field:`json:${key}`,type:"number",min,max,step:"0.125",unit:"in",placeholder:"Default"});
+        options.push(psChoice("perfectsheer_common_valance_id","Common Valance Group",["None",...Array.from({length:50},(_,i)=>String(i+1))]));
+        if (optionsJson.perfectsheer_common_valance_id && optionsJson.perfectsheer_common_valance_id !== "None") options.push(psChoice("perfectsheer_common_position","Shade Position from Left",["1","2","3","4","5","6"]),psDimension("perfectsheer_common_gap_after","Gap After This Shade",0,12));
+        options.push(psDimension("perfectsheer_valance_width","Custom Valance Width",.125),psChoice("perfectsheer_valance_joinery","Valance Joinery",PERFECTSHEER_JOINERY));
+        if (["Modern Wood Valance","wood","Fabric Valance","fabric"].includes(design?.valance ?? "") && ["Semi Inside Mount","Outside Mount"].includes(design?.mount_type ?? "")) {
+          options.push(psChoice("perfectsheer_valance_returns","Valance Returns",PERFECTSHEER_RETURNS));
+          if(optionsJson.perfectsheer_valance_returns && optionsJson.perfectsheer_valance_returns!=="None")options.push(psDimension("perfectsheer_valance_return_size",design?.mount_type === "Outside Mount"?"Return Extension Beyond Standard":"Custom Return Length",design?.mount_type === "Outside Mount"?.125:["Fabric Valance","fabric"].includes(design?.valance??"")?1.125:.5,design?.mount_type === "Outside Mount"?1:4.5));
+        }
+        if(optionsJson.perfectsheer_valance_joinery === "Keystone") {
+          options.push(psChoice("perfectsheer_keystone_count","Keystone Quantity",["1","2","3","4","5"]),psChoice("perfectsheer_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]));
+          if(optionsJson.perfectsheer_keystone_layout === "Custom")for(let i=1;i<=Math.min(5,Number(optionsJson.perfectsheer_keystone_count)||1);i++)options.push(psDimension(`perfectsheer_keystone_location_${i}`,`Keystone ${i} from Left`,18));
+        }
         if (liftSystem === "Continuous Cord Loop") options.push(
           psChoice("control_side","Control Side",["Right","Left"]),
           {key:"perfectsheer_chain_length",label:"Custom Cord Length",field:"json:perfectsheer_chain_length",type:"number",min:9,max:280,step:"0.125",unit:"in",placeholder:"Default"},
@@ -11791,7 +11812,7 @@ function ShadesAndBlindsOptions({
   const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context), ...validateNormanShadeMotorization(context).filter(i=>i.severity === "hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.includes("panel_allocation"))])({
     productId:"perfectsheer",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"perfectsheer_perfectsheer_shades_light_filtering",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,...perfectsheerSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
     productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",

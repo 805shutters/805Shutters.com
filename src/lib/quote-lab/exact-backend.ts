@@ -1,3 +1,4 @@
+import { perfectsheerValancePriceWidth } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { smartfoldValancePriceWidth } from "@/lib/quote-v2/norman-smartfold-valance";
 import { palladianProductEligible } from "@/lib/quote/norman-current-assortment";
 import { deriveNormanOrderRecords, romanComponentWidths } from "@/lib/quote-v2/norman-assemblies";
@@ -421,7 +422,7 @@ function exactPriceInput(
               .map(Number)
               .filter((width) => Number.isFinite(width) && width > 0)
         : undefined,
-    valanceWidthInches: authoritativeSelection ? smartfoldValancePriceWidth(authoritativeSelection) : undefined,
+    valanceWidthInches: authoritativeSelection ? (perfectsheerValancePriceWidth(authoritativeSelection) ?? smartfoldValancePriceWidth(authoritativeSelection)) : undefined,
     quantity:
       authoritativeSelection?.quantity ??
       Math.max(1, Math.floor(Number(line.quantity) || 1)),
@@ -1280,7 +1281,7 @@ function repriceExactQuoteBuilderV2(
     }) => {
     const authoritativePriceInput: PriceInput = {
       ...priceInput,
-      ...(selection.productId === "smartfold" && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
+      ...(["smartfold","perfectsheer"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:perfectsheerValancePriceWidth(selection) ?? smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
       programId: programId ?? undefined,
     };
     const result = priceQuoteV2Selection({
