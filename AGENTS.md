@@ -2,7 +2,7 @@
 
 ## Coding Agent
 
-- Use Hermes with provider `openai-codex` and model `gpt-5.6-sol` for coding work in this repository.
+- Use Codex directly for coding work in this repository. Hermes is no longer used.
 - A coding request from Mike includes authorization to complete the full verified production workflow unless he explicitly says `draft`, `do not push`, or `do not deploy`.
 - Do not stop after editing files. Keep working until the change passes validation, is committed and pushed, and the production deployment is verified.
 
