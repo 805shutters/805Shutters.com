@@ -1,3 +1,4 @@
+import { eligibleBeforeCutoff, pacificDate, nextKenDueDate } from "./ken-monthly-ledger";
 import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MODEL } from "./owner-payables";
 import { BookingError, writeCalendarWithRoutes } from "@/lib/booking/scheduling";
 import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
@@ -1252,7 +1253,9 @@ export function buildDashboardData({
   const sourceJobStatusById = new Map(jobs.map((job) => [job.id, job.status]));
   const statusBookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs).map((row) => ({
     ...row,
-    jobStatus: row.jobId ? sourceJobStatusById.get(row.jobId) || null : null
+    jobStatus: row.jobId ? sourceJobStatusById.get(row.jobId) || null : null,
+    completedAt: sourceQuotes.find(quote => quote.id === row.quoteId)?.installed_at || row.installationMatchedAt || null,
+    jobClosedAt: (jobs.find(job => job.id === row.jobId)?.meta?.closedAt as string | undefined) || (row.meta?.closedAt as string | undefined) || null
   }));
   const liveQuotes = projectLiveQuoteStatuses(contractProjectedQuotes, statusBookkeepingRows);
   const bookkeepingRows = projectBookkeepingRowContacts(statusBookkeepingRows, liveJobs, liveQuotes, customers);
@@ -1271,6 +1274,17 @@ export function buildDashboardData({
     kenAllocations: kenPaymentAllocations,
     commissionAllocations: commissionPaymentAllocations
   });
+  const ownerPayablesLedger = buildOwnerPayablesLedger({ rows: bookkeepingRows, kenPayments, commissionPayments, kenAllocations: kenPaymentAllocations, commissionAllocations: commissionPaymentAllocations, now });
+  // Every Ken view uses the same reconciliation; owner projections stay intact.
+  partnerPaymentLedger.people.ken = ownerPayablesLedger.people.ken;
+  partnerPaymentLedger.activeItems = [...partnerPaymentLedger.activeItems.filter(item => item.person !== "ken"), ...ownerPayablesLedger.people.ken.activeItems];
+  partnerPaymentLedger.history = [...partnerPaymentLedger.history.filter(batch => batch.person !== "ken"), ...ownerPayablesLedger.history.filter(batch => batch.person === "ken")];
+  partnerPaymentLedger.kenBuyout = ownerPayablesLedger.kenBuyout;
+  partnerPaymentLedger.kenMonthly = ownerPayablesLedger.kenMonthly;
+  Object.assign(kenPayoff, { recordedPayments: ownerPayablesLedger.kenBuyout.totalPaid, kenPaid: ownerPayablesLedger.kenBuyout.totalPaid,
+    payoffRemaining: ownerPayablesLedger.kenBuyout.remainingBalance, payoffPct: ownerPayablesLedger.kenBuyout.paidPct,
+    isPaidOff: ownerPayablesLedger.kenBuyout.remainingBalance === 0, kenOwed: ownerPayablesLedger.people.ken.owed,
+    kenAccruedCompleted: ownerPayablesLedger.people.ken.earned, completedJobs: ownerPayablesLedger.people.ken.jobCount });
   const customerFiles = buildCustomerFiles({
     customers,
     products,
@@ -1313,7 +1327,7 @@ export function buildDashboardData({
     commissionPaymentAllocations,
     commissionSummary,
     partnerPaymentLedger,
-    ownerPayablesLedger: buildOwnerPayablesLedger({ rows: bookkeepingRows, kenPayments, commissionPayments, kenAllocations: kenPaymentAllocations, commissionAllocations: commissionPaymentAllocations }),
+    ownerPayablesLedger,
     accountability: buildAccountabilityQueue(bookkeepingRows),
     vendorOrderTasks: readyToOrderTasks(vendorOrderTasks, liveJobs, liveQuotes, bookkeepingRows),
     summary: buildDashboardSummaryMetrics({
@@ -2073,6 +2087,7 @@ export async function updateCrmJob(
     ...(existing.meta || {}),
     ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
     ...(hasSoldDate ? { sold_at: payload.sold_at } : {}),
+    ...(patch.status === "closed" && existing.status !== "closed" ? { closedAt: updatedAt } : {}),
     lastUpdatedBy: actor.email,
     lastUpdatedAt: updatedAt
   };
@@ -4609,7 +4624,8 @@ function paymentAllocationRows({
         quoteNumber: item.quoteNumber,
         total: item.total,
         owedAmount: item.owedAmount,
-        expectedExplicitPaidAmount: Math.round(Math.max(item.paidAmount - item.legacyPaidAmount, 0) * 100) / 100
+        ...(person === "ken" ? { eligibleAt: item.eligibleAt || null, dueDate: item.dueDate || null } : {}),
+        expectedExplicitPaidAmount: item.rawExplicitPaidAmount ?? Math.round(Math.max(item.paidAmount - item.legacyPaidAmount, 0) * 100) / 100
       }
     });
   }
@@ -4770,7 +4786,7 @@ export async function createPartnerPaymentBatch(
   }
   const selectedKeys = selectedPaymentItemKeys(payload);
   const equalOwners = payload.payment_model === OWNER_PAYABLES_MODEL;
-  const personLedger = (equalOwners ? dashboard.ownerPayablesLedger! : dashboard.partnerPaymentLedger).people[person];
+  const personLedger = (equalOwners || person === "ken" ? dashboard.ownerPayablesLedger! : dashboard.partnerPaymentLedger).people[person];
   const activeItems = personLedger.activeItems;
   const selectedItemsByKey = new Map<string, CrmPartnerPaymentLedgerItem>();
   const ledgerMatchedKeys = new Set<string>();
@@ -4786,7 +4802,7 @@ export async function createPartnerPaymentBatch(
         ledgerMatchedKeys.add(item.itemKey);
         addSelectedItem(item);
       });
-    (equalOwners ? [] : dashboard.bookkeepingRows)
+    (equalOwners || person === "ken" ? [] : dashboard.bookkeepingRows)
       .map((row) => buildUnpaidPartnerPaymentItemForRow(person, row))
       .filter((item): item is CrmPartnerPaymentLedgerItem => Boolean(item))
       .filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
@@ -4811,6 +4827,14 @@ export async function createPartnerPaymentBatch(
     amount = equalOwners ? resolveOwnerPaymentAmount(payload.amount, payableAmount, personLedger.owed) : resolveFullPartnerPaymentAmount(payload.amount, payableAmount);
   } catch (error) { throw new CrmAuthError(400, error instanceof Error ? error.message : "Invalid amount."); }
   const paidOn = optionalText(payload.paid_on) || selectedItems[0]?.closedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const paymentCutoffAt = person === "ken" ? new Date().toISOString() : null;
+  if (person === "ken") {
+    const cutoff = paidOn === pacificDate(paymentCutoffAt!) ? paymentCutoffAt! : paidOn;
+    if (!Number.isFinite(Date.parse(paidOn)) || paidOn > pacificDate(paymentCutoffAt!)) throw new CrmAuthError(400, "Use the actual payment date, no later than today.");
+    if (selectedItems.some(item => !item.eligibleAt || !eligibleBeforeCutoff(item.eligibleAt, cutoff))) {
+      throw new CrmAuthError(409, "A selected job was not eligible before this payment cutoff. Review its payment, completion and closure dates.");
+    }
+  }
   const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
   const note = optionalText(payload.note);
   const allocations = paymentAllocationRows({
@@ -4841,11 +4865,14 @@ export async function createPartnerPaymentBatch(
     ...(person === "ken"
       ? {
           paymentRequestId,
+          paymentCutoffAt: paidOn === pacificDate(paymentCutoffAt!) ? paymentCutoffAt : paidOn,
+          dueDate: selectedItems.reduce((date, item) => item.dueDate && item.dueDate > date ? item.dueDate : date, selectedItems[0]?.dueDate || nextKenDueDate(paidOn)),
+          eligibilitySnapshot: selectedItems.map(item => ({ itemKey: item.itemKey, eligibleAt: item.eligibleAt, dueDate: item.dueDate })),
           buyoutLedgerApplication: {
             amount,
             target: dashboard.kenPayoff.payoffTarget,
-            remainingBefore: dashboard.kenPayoff.payoffRemaining,
-            remainingAfter: Math.round(Math.max(dashboard.kenPayoff.payoffRemaining - amount, 0) * 100) / 100,
+            remainingBefore: dashboard.ownerPayablesLedger!.kenBuyout.remainingBalance,
+            remainingAfter: Math.round(Math.max(dashboard.ownerPayablesLedger!.kenBuyout.remainingBalance - amount, 0) * 100) / 100,
             paymentPolicy: "Exactly 10% of every closed job whose Ken allocation remains unpaid.",
             semantics: "The crm_ken_payments batch is the shared source for payable allocations and buyout payoff reduction."
           }
@@ -4918,7 +4945,7 @@ export async function createPartnerPaymentBatch(
   const refreshedDashboard = await loadCrmDashboardData(supabase);
   const reconciliation = person === "ken"
     ? reconcileKenBuyoutApplication({
-        remainingBefore: dashboard.kenPayoff.payoffRemaining,
+        remainingBefore: dashboard.ownerPayablesLedger!.kenBuyout.remainingBalance,
         paymentAmount: amount,
         remainingAfter: refreshedDashboard.kenPayoff.payoffRemaining
       })

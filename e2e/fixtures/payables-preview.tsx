@@ -7,7 +7,7 @@ import { payableFixtureRow } from './payables-data';
 
 function Preview() {
   const [rows, setRows] = useState([
-    payableFixtureRow({ id:'sample-1', customerName:'Sample completed job', quoteNumber:'DEMO-101', total:10000, cogs:4000, installationInvoiceAmount:1000 }),
+    payableFixtureRow({ id:'sample-1', jobClosedAt:'2026-09-10T18:00:00Z', payments:[{...payableFixtureRow().payments[0],amount:10000}], customerName:'Sample completed job', quoteNumber:'DEMO-101', total:10000, cogs:4000, installationInvoiceAmount:1000 }),
     payableFixtureRow({ id:'sample-2', customerName:'Sample pending job', quoteNumber:'DEMO-102', total:6000, cogs:2000, installationInvoiceAmount:500, isPaidInFull:false, status:'sold', liveStatus:'sold' }),
   ]);
   const [commissionPayments, setCommissionPayments] = useState<CrmCommissionPayment[]>([]);
@@ -19,14 +19,15 @@ function Preview() {
   async function pay(request: OwnerPaymentRequest) {
     if(fail) throw new Error('Sample save failure. No payment recorded.');
     const now = new Date().toISOString();
-    const meta = {advancePayment:request.advance, selectedItemAllocations:(request.item_ids || []).map(item_key=>({item_key, person:request.person, source:'manual', amount:request.amount, customer_name:rows.find(row=>item_key.endsWith(row.id))?.customerName}))};
+    const selected = ledger.people[request.person].items.filter(item => request.item_ids?.includes(item.itemKey));
+    const meta = {advancePayment:request.advance, ...(request.person === 'ken' ? {paymentCutoffAt:now,dueDate:selected[0]?.dueDate} : {}), selectedItemAllocations:(request.item_ids || []).map(item_key=>({item_key, person:request.person, source:'manual', amount:request.amount, customer_name:rows.find(row=>item_key.endsWith(row.id))?.customerName, meta:{eligibleAt:selected.find(item=>item.itemKey===item_key)?.eligibleAt,dueDate:selected.find(item=>item.itemKey===item_key)?.dueDate}}))};
     const payment = {id:crypto.randomUUID(),created_at:now,updated_at:now,amount:request.amount,paid_on:request.paid_on,period_month:null,note:request.note,created_by_email:'sample@example.test',meta};
     if(request.person==='ken') setKenPayments(current=>[...current,payment]);
     else setCommissionPayments(current=>[...current,{...payment,recipient:request.person as 'mike'|'jessica'}]);
   }
   return <><aside style={{padding:'10px 28px',color:'#bbb',font:'13px Arial'}}>Local QA · sample data only <label style={{marginLeft:20}}><input type="checkbox" checked={readOnly} onChange={event=>setReadOnly(event.target.checked)}/> Read only</label><label style={{marginLeft:20}}><input type="checkbox" checked={fail} onChange={event=>setFail(event.target.checked)}/> Simulate save failure</label></aside><PayablesWorkspace rows={rows} ledger={ledger} busy={false} canEdit={!readOnly} activePerson={person} onPersonChange={setPerson} onPay={pay} onReadiness={async request=>{
     if(fail) throw new Error('Sample save failure. No readiness change recorded.');
-    setRows(current=>current.map(row=>row.id===request.id?{...row,meta:{...row.meta,ownerPayableReadiness:{ready:request.ready,reason:request.reason,updatedAt:new Date().toISOString()}}}:row));
+    setRows(current=>current.map(row=>row.id===request.id?{...row,meta:{...row.meta,[request.person === "ken" ? "kenPayableReadiness" : "ownerPayableReadiness"]:{ready:request.ready,reason:request.reason,updatedAt:new Date().toISOString()}}}:row));
   }}/></>;
 }
 createRoot(document.getElementById('root')!).render(<Preview/>);

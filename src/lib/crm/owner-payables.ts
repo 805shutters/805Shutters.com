@@ -1,3 +1,4 @@
+import { reconcileKenMonthlyLedger } from "./ken-monthly-ledger";
 import { effectiveBookkeepingStatus } from "./bookkeeping";
 import { buildPartnerPaymentLedger } from "./partner-payments";
 import type { CrmBookkeepingRow } from "./types";
@@ -49,9 +50,9 @@ export function projectOwnerPayableRows(rows: CrmBookkeepingRow[]) {
   });
 }
 
-export function buildOwnerPayablesLedger(input: Parameters<typeof buildPartnerPaymentLedger>[0]) {
+export function buildOwnerPayablesLedger(input: Parameters<typeof buildPartnerPaymentLedger>[0] & { now?: Date | string }) {
   const ledger = buildPartnerPaymentLedger({ ...input, earningsModel: OWNER_PAYABLES_MODEL, rows: projectOwnerPayableRows(input.rows) });
-  for (const person of ["ken", "mike", "jessica"] as const) {
+  for (const person of ["mike", "jessica"] as const) {
     const account = ledger.people[person];
     // Preserve every historical payment, including payments larger than the new
     // 50% entitlement. Excess remains an account credit, never discarded.
@@ -76,7 +77,7 @@ export function buildOwnerPayablesLedger(input: Parameters<typeof buildPartnerPa
     account.paid = payableMoney(account.items.reduce((sum, item) => sum + item.paidAmount, 0));
   }
   ledger.activeItems = ledger.activeItems.filter(item => item.remainingAmount > 0);
-  return ledger;
+  return reconcileKenMonthlyLedger(ledger, input);
 }
 
 export function resolveOwnerPaymentAmount(value: unknown, allocationRemaining: number, accountRemaining: number) {

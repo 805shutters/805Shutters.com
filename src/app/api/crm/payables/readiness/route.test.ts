@@ -27,6 +27,12 @@ describe('payable readiness correction',()=>{
     expect(filters).toContainEqual(['id','row-1']);expect(filters).toContainEqual(['updated_at',current.updated_at]);
     expect(mocks.audit).toHaveBeenCalledOnce();expect(mocks.load).toHaveBeenCalledTimes(2);
   });
+  it('records a Ken-only correction with audit context without changing owner readiness',async()=>{
+    current.meta.ownerPayableReadiness={ready:false,reason:'Owner hold',updatedAt:'older'};
+    expect((await PATCH(request({person:'ken',expected_revision:'older'}))).status).toBe(200);
+    expect(writes[0]).toMatchObject({payload:{meta:{ownerPayableReadiness:{ready:false},kenPayableReadiness:{ready:true,reason:'Payment reconciled'}}}});
+    expect(mocks.audit).toHaveBeenCalledWith(expect.anything(),expect.anything(),expect.objectContaining({metadata:{person:'ken'}}));
+  });
   it('rejects a stale revision without writing',async()=>{
     current.meta.ownerPayableReadiness={ready:false,updatedAt:'newer'};
     expect((await PATCH(request())).status).toBe(409);expect(writes).toHaveLength(0);

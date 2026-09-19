@@ -406,7 +406,7 @@ function metadataPaymentPerson(value: unknown): CrmPaymentPerson | null {
   return value === "ken" || value === "mike" || value === "jessica" ? value : null;
 }
 
-function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
+export function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
   const meta = payment.meta || {};
   return (
     metadataPaymentPerson(meta.partnerPaymentPerson) ||
@@ -424,7 +424,7 @@ function kenPaymentAppliesToBuyout(payment: CrmKenPayment, person: CrmPaymentPer
   return meta.batchSource === "unified_payment_ledger" && roundCents(payment.amount) === INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT;
 }
 
-function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
+export function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
   const person = paymentPersonFromKenPayment(payment);
 
   return {
@@ -481,7 +481,7 @@ function metadataAllocationSource(value: unknown): CrmBookkeepingRow["source"] {
   return value === "crm_quote" || value === "legacy_sheet" || value === "manual" ? value : "manual";
 }
 
-function paymentMetadataAllocations(
+export function paymentMetadataAllocations(
   paymentId: string,
   person: CrmPaymentPerson,
   meta: Record<string, unknown> | null | undefined
@@ -507,6 +507,8 @@ function paymentMetadataAllocations(
         customerName: optionalString(record.customer_name) || optionalString(record.customerName) || itemKey,
         quoteNumber: optionalString(meta.quoteNumber),
         closedAt: optionalString(record.closed_at) || optionalString(record.closedAt),
+        eligibleAt: optionalString(meta.eligibleAt),
+        dueDate: optionalString(meta.dueDate),
         total: optionalNumber(meta.total),
         amount,
         source: metadataAllocationSource(record.source),
@@ -522,7 +524,7 @@ function paymentMetadataAllocations(
     .filter((allocation): allocation is CrmPartnerPaymentHistoryAllocation => Boolean(allocation));
 }
 
-function explicitAllocationHistory(
+export function explicitAllocationHistory(
   allocation: CrmKenPaymentAllocation | CrmCommissionPaymentAllocation
 ): CrmPartnerPaymentHistoryAllocation {
   const meta = allocation.meta && typeof allocation.meta === "object" ? allocation.meta : {};
@@ -532,6 +534,8 @@ function explicitAllocationHistory(
     customerName: allocation.customer_name,
     quoteNumber: optionalString(meta.quoteNumber),
     closedAt: allocation.closed_at,
+    eligibleAt: optionalString(meta.eligibleAt),
+    dueDate: optionalString(meta.dueDate),
     total: optionalNumber(meta.total),
     amount: roundCents(allocation.amount),
     source: allocation.source,

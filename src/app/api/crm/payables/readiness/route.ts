@@ -20,16 +20,18 @@ export async function PATCH(request: NextRequest) {
     const id = row.source === "crm_quote" ? row.quoteId : row.id;
     const { data: existing, error } = await supabase.from(table).select("id,meta,updated_at").eq("id", id).single();
     if (error || !existing) throw new CrmAuthError(404, "The source record could not be loaded.");
-    const previous = existing.meta?.ownerPayableReadiness;
+    if (payload.person && payload.person !== "ken") throw new CrmAuthError(400, "Unsupported readiness scope.");
+    const field = payload.person === "ken" ? "kenPayableReadiness" : "ownerPayableReadiness";
+    const previous = existing.meta?.[field] || (payload.person === "ken" ? existing.meta?.ownerPayableReadiness : undefined);
     if ((previous?.updatedAt || null) !== payload.expected_revision) throw new CrmAuthError(409, "Readiness changed. Reload the job before saving.");
     const correction = { ready: payload.ready, reason: payload.reason.trim(), updatedAt: new Date().toISOString(), updatedBy: email };
-    const meta = { ...existing.meta, ownerPayableReadiness: correction };
+    const meta = { ...existing.meta, [field]: correction };
     const { data: saved, error: saveError } = await supabase.from(table).update({ meta }).eq("id", id)
       .eq("updated_at", existing.updated_at).select("id,meta").maybeSingle();
     if (saveError || !saved) throw new CrmAuthError(409, "The job changed before the correction could be saved. Reload Payables.");
     await recordCrmActivity(supabase, actor, {
       entityType: row.source === "crm_quote" ? "quote" : "bookkeeping_entry", entityId: String(id),
-      action: "payables_readiness", before: previous || null, after: correction
+      action: "payables_readiness", metadata: { person: payload.person || "owners" }, before: previous || null, after: correction
     });
     return NextResponse.json({ dashboard: await loadCrmDashboardData(supabase) });
   } catch (error) { return crmAuthErrorResponse(error); }
