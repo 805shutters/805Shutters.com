@@ -29,6 +29,19 @@ describe("Current Norman production configurations",()=>{
   reopened.designs[0].options_json={...reopened.designs[0].options_json,...first.designs[0].selection.configuration};
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
  });
+ it.each(getProductColorOptions("smartfold").filter(c=>c.available))("routes SmartFold $colorCode through its grid with saved accessories",color=>{
+  const q=currentQuote("smartfold","SmartFold Shades",color.colorCode,{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:3,smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Nickel-Plated",smartfold_pole:"60-inch Cordless Operating Pole"});
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  const priced=first.designs[0];
+  expect(priced.result).toMatchObject({ok:true,base:606,unitPrice:941,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"magnetic_hold_down",amount:28}),expect.objectContaining({id:"cordless_operating_pole",amount:89})])});
+  expect(priced.selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,fulfillmentQuantity:1,retailCharge:0});
+  const customer=customerConfigurationFromSelection(priced.selection);
+  expect(v2CustomerConfigurationOptions(customer)).toEqual(expect.arrayContaining(["Mounting method: Top Mount with Raceway","Shim layers: 3","Hold-downs: Magnetic","Magnet catch color: Nickel-Plated","Additional pole per shade: 60-inch Cordless Operating Pole"]));
+  expect(customer.selections).not.toHaveProperty("norman_order_record_v1");
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...priced.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+ });
  it("retains measured wood cut-outs and derives their price after serialization",()=>{
   const q=currentQuote("wood_blinds","Wood Blinds","ND001",{slat_size:'2"',cut_out_sides:"two",wood_cutout_left_type:"Corner (Bottom)",wood_cutout_left_width:1,wood_cutout_left_top:20});
   const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");

@@ -4,14 +4,14 @@ import type { SelectionContext, SelectionValue, ValidationIssue } from "./core";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { citylightsColorSlatSizes, PALLADIAN_COLORS, PALLADIAN_LEGACY_COLORS, palladianProductEligible, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
-import { validateSmartfoldHardware } from "./norman-smartfold-hardware";
+import { validateSmartfoldHardware, validateSmartfoldAccessories } from "./norman-smartfold-hardware";
 
 const normalized = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "premium"].includes(normalized(value));
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context)];
+  const issues: ValidationIssue[] = [...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];
@@ -44,7 +44,7 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     const valance = text("valance");
     const valanceHeight = Number(value("valance_height", "valance_height_inches"));
     if (louise && h > 72 && !(valance === "fabric_8" || ["6_inch_fabric", "8_inch_fabric"].includes(valance) || (valance.includes("fabric") && [6, 8].includes(valanceHeight)))) add("louise_valance", source, 15, "Louise over 72 inches high requires a 6-inch or 8-inch fabric valance. Specify the actual valance height.");
-    if (enabled(value("light_guard", "basic_light_guard")) && !inside) add("light_guard_mount", source, 22, "SmartFold Light Guard is available for inside mount only.");
+    if ((enabled(value("light_guard", "basic_light_guard")) || text("light_guard") === "basic_light_guard") && !inside) add("light_guard_mount", source, 22, "SmartFold Light Guard is available for inside mount only.");
     const fullFold = Number(value("fold_size"));
     if (enabled(value("full_fold_required")) && ((fullFold === 7 && h < 13.625) || (fullFold === 8 && h < 15.125))) add("full_fold_height", source, 23, "A full 7-inch fold requires at least 13⅝ inches height; a full 8-inch fold requires at least 15⅛ inches.");
     if (fabric) {

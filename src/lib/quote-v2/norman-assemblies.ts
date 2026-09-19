@@ -157,5 +157,13 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };
     }
   }
+  const cordlessSmartfold = lines.filter(({selection}) => selection.productId === "smartfold" && selection.catalogAsOf >= "2026-09-19" && /cordless/i.test(String(selection.configuration.lift_system ?? selection.configuration.control_type))).sort((a,b)=>a.lineId.localeCompare(b.lineId));
+  for (const row of cordlessSmartfold) {
+    row.selection.configuration = { ...row.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: {
+      version:1, type:"smartfold_complimentary_pole", sourceId:"norman-smartfold-guide-2026-09-10",sourcePage:21,
+      ownerLineId:cordlessSmartfold[0].lineId, connectedLineIds:cordlessSmartfold.map(r=>r.lineId),
+      pole:"30-inch Fiberglass Pole", orderQuantity:1, fulfillmentQuantity:row.lineId===cordlessSmartfold[0].lineId?1:0, retailCharge:0,
+    }};
+  }
   return issues;
 }

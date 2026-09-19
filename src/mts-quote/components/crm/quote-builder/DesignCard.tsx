@@ -1,5 +1,5 @@
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
-import { SMARTFOLD_INSTALLATIONS } from "@/lib/quote-v2/norman-smartfold-hardware";
+import { SMARTFOLD_INSTALLATIONS, SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "@/lib/quote-v2/norman-smartfold-hardware";
 import { NormanContractDesignOptions } from "@/components/crm/NormanContractDesignOptions";
 import { isNormanContractProduct } from "@/lib/quote/norman-contract";
 import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
@@ -9815,6 +9815,29 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "SmartFold Shades" && field === "mount_type") {
+      const outside=value === "Outside Mount";
+      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,...(outside?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null}:{})}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "lift_system") {
+      const motor=value === "Motorized";
+      const cordless=/cordless/i.test(String(value));
+      onUpdateFields({lift_system:typeof value === "string" ? value : null,motor_type:motor?design?.motor_type??null:null,remote_type:motor?design?.remote_type??null:null,options_json:{...(motor?currentJson:clearMotorizationOptions(currentJson)),...(!cordless?{smartfold_pole:"None",additional_fiberglass_pole:false,cordless_operating_pole:false,pole_attachment_only:false}:{})}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "json:smartfold_hold_down") {
+      onUpdateFields({options_json:{...currentJson,smartfold_hold_down:value,magnetic_hold_down:false,...(value !== "Magnetic"?{smartfold_magnet_color:null}:{})}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "json:smartfold_pole") {
+      onUpdateFields({options_json:{...currentJson,smartfold_pole:value,additional_fiberglass_pole:false,cordless_operating_pole:false,pole_attachment_only:false}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "json:basic_light_guard") {
+      onUpdateFields({options_json:{...currentJson,basic_light_guard:value,light_guard:"none",...(value !== "Yes"?{smartfold_light_guard_color:null}:{})}});
+      return;
+    }
     if (productType === "Vertical Blinds" && authoritativeV2 && field === "mount_type") {
       const mountType = typeof value === "string" ? value : null;
       onUpdateFields({
@@ -10045,8 +10068,12 @@ function ShadesAndBlindsOptions({
           { key: "lift", label: "Lift System", field: "lift_system", type: "select", options: tallLouise ? ["Continuous Cord Loop", "Motorized"] : ["PrecisionLift Cordless", "Continuous Cord Loop", "Motorized"] },
           { key: "fold", label: "Fold Size", field: "json:fold_size", type: "buttons", options: ["6", "7", "8"] },
           { key: "valance", label: "Valance", field: "valance", type: "select", options: tallLouise ? ["6-inch Fabric", "8-inch Fabric"] : ["No Valance", "Curved Fascia", "Square Fascia", "Modern Wood", "4.5-inch Fabric", "6-inch Fabric", "8-inch Fabric"] },
-          { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "yes-no", noFirst: true },
+          { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: design?.mount_type === "Outside Mount" ? "buttons" : "yes-no", options: design?.mount_type === "Outside Mount" ? ["No"] : undefined, noFirst: true },
+          ...(optionsJson.basic_light_guard === "Yes" ? [{ key:"light_guard_color",label:"Light Guard Color",field:"json:smartfold_light_guard_color",type:"select",options:SMARTFOLD_LIGHT_GUARD_COLORS } as GridOption] : []),
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
+          { key:"hold_down",label:"Hold-Downs",field:"json:smartfold_hold_down",type:"select",options:SMARTFOLD_HOLD_DOWNS },
+          ...(optionsJson.smartfold_hold_down === "Magnetic" ? [{key:"magnet_color",label:"Magnet Catch Color",field:"json:smartfold_magnet_color",type:"select",options:SMARTFOLD_MAGNET_COLORS} as GridOption] : []),
+          ...(/cordless/i.test(String(design?.lift_system)) ? [{key:"pole",label:"Additional Pole per Shade",field:"json:smartfold_pole",type:"select",options:SMARTFOLD_POLES} as GridOption] : []),
           { key: "shim", label: "Shim Layers", field: "json:smartfold_shim_layers", type: "buttons", options: ["0", "1", "2", "3"] },
           ...motorOptions,
         ];
@@ -11661,6 +11688,11 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
+  const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
+    productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   if (authoritativeV2 && ["Honeycomb Shades", "Roman Shades", "SmartFold Shades"].includes(productType) && /motor|autowand/i.test(String(design?.lift_system))) {
     gridOptions.push({ key: "motor_position", label: "Motor Position", field: "json:motor_position", type: "buttons", options: ["Left", "Right"] });
     if (/low voltage|12v/i.test(String(design?.motor_type))) {
@@ -12143,6 +12175,8 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
+      {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">
         <p>Inside mount only. Order a separate shelf for Faux Wood, San Clemente, Synchrony and SmartDrape. Default paired measurements include a 1/32-inch shelf width deduction; custom finished measurements have no deduction.</p>
         {palladianIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-amber-900">{palladianIssues.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}

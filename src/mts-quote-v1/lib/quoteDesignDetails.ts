@@ -159,6 +159,10 @@ function humanizeKey(key: string): string {
     vertical_shim_layers: "Shim Layers per Bracket",
     smartfold_installation: "Mounting Method",
     smartfold_shim_layers: "Shim Layers",
+    smartfold_hold_down: "Hold-Downs",
+    smartfold_magnet_color: "Magnet Catch Color",
+    smartfold_pole: "Additional Pole per Shade",
+    smartfold_light_guard_color: "Light Guard Color",
   };
   if (labels[key]) return labels[key];
   return key

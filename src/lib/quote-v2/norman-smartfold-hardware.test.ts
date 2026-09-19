@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SelectionContext } from "./core";
 import { quoteV2CatalogVersionFor } from "./catalog";
-import { smartfoldHardware, validateSmartfoldHardware, SMARTFOLD_INSTALLATIONS } from "./norman-smartfold-hardware";
+import { smartfoldHardware, validateSmartfoldHardware, SMARTFOLD_INSTALLATIONS, validateSmartfoldAccessories, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_LIGHT_GUARD_COLORS } from "./norman-smartfold-hardware";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
 
@@ -10,6 +10,38 @@ function shade(width = 36, configuration: SelectionContext["configuration"] = {}
 }
 
 describe("SmartFold source hardware counts and saved charges", () => {
+  it.each([["30-inch Fiberglass Pole","additional_fiberglass_pole"],["58-inch Fiberglass Pole","additional_fiberglass_pole"],["36-inch Cordless Operating Pole","cordless_operating_pole"],["60-inch Cordless Operating Pole","cordless_operating_pole"],["Pole Attachment Only","pole_attachment_only"]])("maps %s to its sole additional accessory charge",(pole,id)=>{
+    const s=shade(36,{smartfold_pole:pole});
+    expect(validateSmartfoldAccessories(s)).toEqual([]);
+    expect(authoritativeAutomaticSurchargeSelections(s)).toEqual([{id,units:1}]);
+    s.configuration={...s.configuration,lift_system:"Motorized"};
+    expect(validateSmartfoldAccessories(s).map(i=>i.ruleId)).toContain("norman.smartfold.pole_control");
+  });
+  it("validates every current magnet/Light Guard color and maps hold-downs",()=>{
+    expect(SMARTFOLD_MAGNET_COLORS).toHaveLength(14);
+    for(const color of SMARTFOLD_MAGNET_COLORS){
+      const s=shade(36,{smartfold_hold_down:"Magnetic",smartfold_magnet_color:color});
+      expect(validateSmartfoldAccessories(s)).toEqual([]);
+      expect(authoritativeAutomaticSurchargeSelections(s)).toEqual([{id:"magnetic_hold_down",units:1}]);
+    }
+    for(const color of SMARTFOLD_LIGHT_GUARD_COLORS) expect(validateSmartfoldAccessories(shade(36,{basic_light_guard:"Yes",smartfold_light_guard_color:color}))).toEqual([]);
+    for(const hold of ["None","Traditional"]) expect(authoritativeAutomaticSurchargeSelections(shade(36,{smartfold_hold_down:hold}))).toEqual([]);
+    expect(validateSmartfoldAccessories(shade(36,{smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Red"})).map(i=>i.ruleId)).toContain("norman.smartfold.magnet_color");
+    expect(validateSmartfoldAccessories(shade(36,{basic_light_guard:"Yes"})).map(i=>i.ruleId)).toContain("norman.smartfold.light_guard_color");
+    expect(validateSmartfoldAccessories(shade(36,{magnetic_hold_down:true})).map(i=>i.ruleId)).toContain("norman.smartfold.legacy_accessory");
+  });
+  it("assigns one complimentary pole for the whole cordless order regardless of quantity",()=>{
+    const rows=[{lineId:"b",selection:shade()},{lineId:"a",selection:shade()}];
+    rows[0].selection.quantity=10;
+    deriveNormanOrderRecords(rows);
+    expect(rows[0].selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,fulfillmentQuantity:0,ownerLineId:"a",retailCharge:0});
+    expect(rows[1].selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,fulfillmentQuantity:1,ownerLineId:"a",retailCharge:0});
+    const reopened=JSON.parse(JSON.stringify(rows));deriveNormanOrderRecords(reopened);expect(reopened).toEqual(rows);
+    rows.pop();deriveNormanOrderRecords(rows);
+    expect(rows[0].selection.configuration.norman_order_record_v1).toMatchObject({ownerLineId:"b",fulfillmentQuantity:1});
+    rows[0].selection.configuration={...rows[0].selection.configuration,lift_system:"Continuous Cord Loop"};deriveNormanOrderRecords(rows);
+    expect(rows[0].selection.configuration.norman_order_record_v1).toBeUndefined();
+  });
   it.each([[8,2],[40,2],[40.0625,3],[80,3],[80.0625,4],[96,4]])("charges back/wall hardware at %s inches", (width,count) => {
     for (const layers of [0,1,2,3]) {
       const s=shade(width,{smartfold_shim_layers:layers,shim_quantity:999,shim:true,shims:true});

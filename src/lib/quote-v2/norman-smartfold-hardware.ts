@@ -4,6 +4,10 @@ import { sourceProvenance } from "./source-manifest";
 
 export const SMARTFOLD_HARDWARE_DATE = "2026-09-19";
 export const SMARTFOLD_INSTALLATIONS = ["Top Mount with Raceway", "Back / Wall Mount with Raceway"] as const;
+export const SMARTFOLD_HOLD_DOWNS = ["None", "Traditional", "Magnetic"] as const;
+export const SMARTFOLD_MAGNET_COLORS = ["Nickel-Plated", "Pure White", "Silk White", "Bisque", "Pearl", "Bright Brass", "Antique Brass", "Black", "Crisp Linen", "String", "Sea Mist", "Stone Gray", "Brown Gray", "Taupe Gray"] as const;
+export const SMARTFOLD_POLES = ["None", "30-inch Fiberglass Pole", "58-inch Fiberglass Pole", "36-inch Cordless Operating Pole", "60-inch Cordless Operating Pole", "Pole Attachment Only"] as const;
+export const SMARTFOLD_LIGHT_GUARD_COLORS = ["3058 White", "3012 Bianca", "3094 Cottage White", "3578 Sahara", "3463 Chocolate", "3129 Silver", "3212 Black Ink"] as const;
 const normalize = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /** September guide pp24,37–38. Counts are per shade, before line quantity. */
@@ -57,5 +61,35 @@ export function validateSmartfoldHardware(context: SelectionContext): Validation
   if (!hardware.validLayers) add("shim_layers", 38, "Select zero, one, two or three shim layers. Hardware quantities are calculated from the finished shade width and mounting method.");
   const fold = Number(context.configuration.fold_size);
   if (![6, 7, 8].includes(fold)) add("fold_size", 9, "Select a 6-inch, 7-inch or 8-inch fold.");
+  return issues;
+}
+
+export function smartfoldAccessorySelections(context: SelectionContext) {
+  const c=context.configuration;
+  const holdDown=normalize(c.smartfold_hold_down || "None");
+  const pole=normalize(c.smartfold_pole || "None");
+  return {
+    magnetic_hold_down: holdDown === "magnetic",
+    additional_fiberglass_pole: /^(30|58) inch fiberglass pole$/.test(pole),
+    cordless_operating_pole: /^(36|60) inch cordless operating pole$/.test(pole),
+    pole_attachment_only: pole === "pole attachment only",
+  };
+}
+
+export function validateSmartfoldAccessories(context: SelectionContext): ValidationIssue[] {
+  if (context.productId !== "smartfold" || context.catalogAsOf < SMARTFOLD_HARDWARE_DATE) return [];
+  const c=context.configuration;
+  const issues: ValidationIssue[]=[];
+  const add=(rule:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.smartfold.${rule}`,source:sourceProvenance("norman-smartfold-guide-2026-09-10",{page}),selectedValues:{...c},explanation});
+  const contains=(values:readonly string[],value:unknown)=>values.some(v=>normalize(v)===normalize(value));
+  if (c.smartfold_hold_down && !contains(SMARTFOLD_HOLD_DOWNS,c.smartfold_hold_down)) add("hold_down",20,"Select no hold-down, traditional hold-downs or magnetic hold-downs.");
+  if (normalize(c.smartfold_hold_down)==="magnetic" && !contains(SMARTFOLD_MAGNET_COLORS,c.smartfold_magnet_color)) add("magnet_color",20,"Select the magnetic catch color. Nickel-Plated is the manufacturer default.");
+  if (c.smartfold_pole && !contains(SMARTFOLD_POLES,c.smartfold_pole)) add("pole",21,"Select one additional pole or one pole attachment per shade.");
+  if (c.smartfold_pole && normalize(c.smartfold_pole)!=="none" && !normalize(c.lift_system ?? c.control_type).includes("cordless")) add("pole_control",21,"SmartFold operating poles and attachments are available for PrecisionLift Cordless shades only.");
+  const active=smartfoldAccessorySelections(context);
+  for(const key of Object.keys(active) as (keyof typeof active)[]) {
+    if (["yes","true","on"].includes(normalize(c[key])) && !active[key]) add("legacy_accessory",21,"Reconfirm the saved hold-down or pole choice before repricing this current configuration.");
+  }
+  if ([c.basic_light_guard,c.light_guard].some(value=>["yes","true","basic","basic light guard"].includes(normalize(value))) && !contains(SMARTFOLD_LIGHT_GUARD_COLORS,c.smartfold_light_guard_color)) add("light_guard_color",22,"Select a current Light Guard color.");
   return issues;
 }

@@ -1,4 +1,5 @@
 import { CONTRACT_FAUX, CONTRACT_VERTICAL, CONTRACT_VALANCES, CONTRACT_FITS, CONTRACT_VERTICAL_FITS } from "./norman-contract";
+import { SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "../quote-v2/norman-smartfold-hardware";
 import { PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "./norman-current-assortment";
 import { SAN_CLEMENTE_HONEYCOMB, SAN_CLEMENTE_FAUX } from "./norman-san-clemente";
 import {
@@ -887,6 +888,10 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_installation", "Mounting method", ["Top Mount with Raceway", "Back / Wall Mount with Raceway"]),
     contractChoice("smartfold_shim_layers", "Shim layers", ["0", "1", "2", "3"]),
     contractChoice("fold_size", "Fold size", ["6", "7", "8"]),
+    contractChoice("smartfold_hold_down", "Hold-downs", SMARTFOLD_HOLD_DOWNS),
+    contractChoice("smartfold_magnet_color", "Magnet catch color", SMARTFOLD_MAGNET_COLORS),
+    contractChoice("smartfold_pole", "Additional pole per shade", SMARTFOLD_POLES),
+    contractChoice("smartfold_light_guard_color", "Light Guard color", SMARTFOLD_LIGHT_GUARD_COLORS),
     ...shadeControlFields,
     { id: "fabric_category", label: "Fabric category", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
     {
