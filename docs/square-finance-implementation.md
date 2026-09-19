@@ -18,11 +18,11 @@ authorized one payment SMS to 805-298-5555 for each new completed payment.
 - [x] Add authenticated Square workspace and payment/payout drilldowns.
 - [x] Complete job finance and payment-request views.
 - [x] Add owner-only payment SMS to 805-298-5555 with duplicate protection and delivery callbacks.
-- [ ] Verify live SMS configuration; no historical/test payment alert is authorized.
+- [x] Verify live SMS configuration; no historical/test payment alert is authorized.
 - [x] Validate migration and financial invariants in an isolated database.
-- [ ] Run focused tests, full suite, typecheck, build, and browser verification.
+- [x] Run focused tests, full suite, typecheck, build, and browser verification.
 - [x] Review payment behavior, migration, authentication, and secret changes.
-- [ ] Apply reviewed migration, publish intended changes, and verify production.
+- [x] Apply reviewed migration, publish intended changes, and verify production.
 - [ ] Configure production webhook, verify delivery, reconcile history, and report exceptions.
 
 ## Invariants
@@ -154,3 +154,20 @@ an assertion from Square that funds reached the bank. No production secret value
 has been changed during implementation.
 
 Production migration applied and read back successfully: all Square tables have RLS enabled; the 50 existing Square credits ($81,897.42) and seven email credits ($13,921.55) remain unchanged. Zero owner alerts were queued.
+
+## Live verification
+
+Commit 69733d783082e4ec640b442dc6d3fc407290e17f deployed to the 805 Vercel
+project. The release gate passed 4,318 tests (28 skipped), typecheck, and build.
+The authenticated /crm/square/ page loaded for 805shutters@gmail.com. Refresh from
+Square succeeded and verified merchant ML8D19B62TKYQ / location L2ZQK8P58PJRM.
+The first import linked three recent existing credits totaling $5,689.07, including
+Mary Ann and Sinae, without adding new customer credits. The live health page confirms
+SMS configuration is present. No new payment alert has been sent or delivered yet.
+
+The public 805-one.vercel.app alias redirects to www.805shutters.com even with a
+trailing slash. The recovery workflow now calls the canonical www URL directly and
+requires a recognized JSON sync status, so redirects cannot masquerade as success.
+The Square developer-console session expired during verification; its login page
+is preserved for Mike to sign in. Webhook subscription setup still requires that
+session. Historical payment and payout pagination remains in progress.
