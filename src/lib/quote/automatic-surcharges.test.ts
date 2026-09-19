@@ -8,6 +8,15 @@ function ok<T extends { ok: boolean }>(result: T): Extract<T, { ok: true }> {
 }
 
 describe("deriveAutomaticSurcharges", () => {
+  it.each([
+    ["Modern Wood Valance", "wood_valance"],
+    ["modern_wood_valance", "wood_valance"],
+    ["Fabric Valance", "3_1_2in_and_4_1_2in_fabric_valance"],
+    ["fabric_valance", "3_1_2in_and_4_1_2in_fabric_valance"],
+  ])("prices the PerfectSheer valance choice %s", (valance, id) => {
+    expect(deriveAutomaticSurcharges("perfectsheer", { valance })).toEqual([{ id }]);
+  });
+
   it("adds Roller LightGuard 360 from structured details and prices it from the catalog", () => {
     const surcharges = deriveAutomaticSurcharges("roller", { light_guard: "lightguard_360" });
     expect(surcharges).toEqual([{ id: "lightguard_360" }]);
