@@ -7,7 +7,7 @@ const icons={credit_card:CreditCard,apple_pay:Smartphone,check:NotebookPen,cash:
 const today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'America/Los_Angeles'});
 const money=(cents:number,currency='USD')=>new Intl.NumberFormat('en-US',{style:'currency',currency}).format(cents/100);
 const displayDate=(v:string)=>!v?'Date unavailable':new Date(v.length===10?`${v}T12:00:00`:v).toLocaleString('en-US',{timeZone:'America/Los_Angeles',dateStyle:'medium',...(v.length===10?{}:{timeStyle:'short'})});
-const statusLabel=(s:string)=>({UNVERIFIED:'Clearance unverified',RECEIVED:'Received · not deposited',DEPOSITED:'Deposited · awaiting clearance',CLEARED:'Cleared',RETURNED:'Returned · credit removed',RECORDED:'Recorded',COMPLETED:'Completed',APPROVED:'Approved',PENDING:'Pending',FAILED:'Failed',CANCELED:'Canceled'}[s]||s);
+const statusLabel=(s:string)=>({ADJUSTMENT:'Ledger correction',UNVERIFIED:'Clearance unverified',RECEIVED:'Received · not deposited',DEPOSITED:'Deposited · awaiting clearance',CLEARED:'Cleared',RETURNED:'Returned · credit removed',RECORDED:'Recorded',COMPLETED:'Completed',APPROVED:'Approved',PENDING:'Pending',FAILED:'Failed',CANCELED:'Canceled'}[s]||s);
 export function PaymentMethodTag({method}:{method:HubMethod}) { const Icon=icons[method]; return <span className="hub-method" data-method={method}><Icon size={14} aria-hidden="true"/>{method==='check'?'Check':paymentMethods[method]}</span>; }
 
 export function PaymentHubFeed({rows,targets,token,canReview,query,onSquare,onReload,onOpenChange}:{

@@ -8,7 +8,7 @@ User selected design A: colored method tags with line icons. Each receipt also s
 - [x] Combine Square and ledger receipts by exact IDs, newest first; add method and purpose filters.
 - [x] Record manual receipts and track checks through receipt, deposit, clearance, return with owner audit.
 - [x] Regression tests, additional financial safety review, desktop/tablet preview.
-- [ ] Main release gate and authenticated production verification.
+- [x] Main release gate and authenticated production verification (see verification below).
 
 ## Financial invariants
 - Provider imports and linked ledger credits are one displayed payment, never deduplicated by matching names or amounts.
@@ -25,3 +25,8 @@ User selected design A: colored method tags with line icons. Each receipt also s
 +- No migration or new provider credentials are required. No production receipt or check state was changed during testing.
 +- Focused tests cover purpose evidence, exact deduplication, mixed payment methods, form controls, return balance math, audit history, stale updates, idempotency and owner authorization. Desktop, 820px tablet and 390px phone previews were inspected.
 +- Apple Pay classification uses Square wallet evidence or our exact structured checkout note; card entry method alone does not prove Apple Pay. Reference: https://developer.squareup.com/reference/square/objects/CardPaymentDetails
+
+## Production verification
+Main implementation: 16a3e768, deployed to the 805 Vercel project. The authenticated `/crm/payment-hub/` rendered 415 records, with 34 checks, 4 cash, 20 Zelle, 1 Venmo, 6 Apple Pay and 306 Square/Card classifications at verification time (44 other records). Method and Balance filters worked; check details kept historical clearance unverified. No production financial changes were submitted.
+
+Live verification exposed older explicit Deposit adjustment / Balance payment adjustment records. Their purpose is now read from the existing label or `adjustmentKind`; negative ledger corrections stay visibly distinct from received payments.

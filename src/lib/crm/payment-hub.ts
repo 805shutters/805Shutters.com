@@ -17,9 +17,13 @@ const str = (v: unknown) => typeof v === 'string' ? v : '';
 export function ledgerPurpose(p: HubLedger): HubPurpose {
   const explicit = str(hubRecord(p.meta?.payment_hub).purpose || p.meta?.square_payment_type).toLowerCase();
   if (Object.hasOwn(paymentPurposes, explicit)) return explicit as HubPurpose;
+  if (p.meta?.paymentTargetAdjustment === true) {
+    if (p.meta.adjustmentKind === 'deposit_paid') return 'deposit';
+    if (p.meta.adjustmentKind === 'balance_paid') return 'balance';
+  }
   const label = p.payment_label?.trim().toLowerCase() || '';
-  if (/^(?:square\s+)?deposit(?:\s+payment)?$/.test(label)) return 'deposit';
-  if (/^(?:square\s+)?(?:balance|final)(?:\s+payment)?$/.test(label)) return 'balance';
+  if (/^(?:square\s+)?deposit(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'deposit';
+  if (/^(?:square\s+)?(?:balance|final)(?:\s+payment)?(?:\s+adjustment)?$/.test(label)) return 'balance';
   if (/^(?:progress|partial|custom)(?:\s+payment)?$/.test(label)) return 'progress';
   if (/^(?:full payment|paid in full)$/.test(label)) return 'full';
   return 'unspecified';
@@ -65,7 +69,7 @@ export function buildPaymentHub(input: {
     if (used.has(p.id)) continue;
     const hub = hubRecord(p.meta?.payment_hub), check = hubRecord(hub.check);
     const method=ledgerMethod(p), original=Number(check.original_amount_cents);
-    rows.push({id:`ledger:${p.id}`,ledger:p,customer:name(p),method,purposes:[ledgerPurpose(p)],occurredAt:p.paid_at || p.created_at || '',dateIsRecorded:!p.paid_at,recordedAt:p.created_at,amountCents:Number.isSafeInteger(original)&&original>0?original:Math.round(Number(p.amount)*100),creditCents:Math.round(Number(p.amount)*100),feeCents:null,currency:'USD',status:method==='check'?str(check.status)||'UNVERIFIED':'RECORDED',detail:method==='check'?str(check.number)?`Check #${str(check.number)}`:'Check clearance not verified':p.external_source==='square_email'?'Email record — provider match unverified':'CRM receipt',reference:str(hub.reference)||p.notes||p.payment_label});
+    rows.push({id:`ledger:${p.id}`,ledger:p,customer:name(p),method,purposes:[ledgerPurpose(p)],occurredAt:p.paid_at || p.created_at || '',dateIsRecorded:!p.paid_at,recordedAt:p.created_at,amountCents:Number.isSafeInteger(original)&&original>0?original:Math.round(Number(p.amount)*100),creditCents:Math.round(Number(p.amount)*100),feeCents:null,currency:'USD',status:Number(p.amount)<0?'ADJUSTMENT':method==='check'?str(check.status)||'UNVERIFIED':'RECORDED',detail:Number(p.amount)<0?'Ledger correction — not a new receipt':method==='check'?str(check.number)?`Check #${str(check.number)}`:'Check clearance not verified':p.external_source==='square_email'?'Email record — provider match unverified':'CRM receipt',reference:str(hub.reference)||p.notes||p.payment_label});
   }
   // Date-only receipts stay on their actual business date; do not invent a time.
   const localTimestamp = (v: string) => new Date(v).toLocaleString('sv-SE',{timeZone:'America/Los_Angeles'}).replace(' ','T');

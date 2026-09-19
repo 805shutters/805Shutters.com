@@ -32,3 +32,11 @@ it('places a newly recorded receipt first without inventing a received time or p
  const i=input();i.payments=[ledger('fresh',{created_at:'2026-09-19T19:00:00Z'}),ledger('history',{paid_at:'2025-01-01',created_at:'2026-09-19T20:00:00Z'})];
  const rows=buildPaymentHub(i);expect(rows.map(r=>r.id)).toEqual(['ledger:fresh','square:s1','ledger:history']);expect(rows[0].occurredAt).toBe('2026-09-19');
 });
+
+it('uses explicit historical deposit/balance adjustments and distinguishes negative corrections from receipts',()=>{
+ expect(ledgerPurpose(ledger('a',{payment_label:'Deposit adjustment'}))).toBe('deposit');
+ expect(ledgerPurpose(ledger('b',{payment_label:'Balance payment adjustment'}))).toBe('balance');
+ expect(ledgerPurpose(ledger('c',{payment_label:'Other',meta:{paymentTargetAdjustment:true,adjustmentKind:'balance_paid'}}))).toBe('balance');
+ const i=input();i.objects=[];i.payments=[ledger('correction',{amount:-25,payment_label:'Deposit adjustment'})];
+ expect(buildPaymentHub(i)[0]).toMatchObject({amountCents:-2500,creditCents:-2500,status:'ADJUSTMENT',purposes:['deposit']});
+});
