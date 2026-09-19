@@ -207,3 +207,15 @@ company/customer ownership must not be inferred from names or amounts. The seven
 existing email credits retain their original values and need exact provider
 evidence before linking. No refund records or pending payments were present in
 this snapshot. No owner texts were queued for the historical import.
+
+## Square Payments activity home — September 19
+
+- [x] Replace the separate blue/paper theme with the website CRM black/platinum palette and shared typography.
+- [x] Rename the navigation/page to Square Payments and default to Transactions.
+- [x] Show all imported transactions newest first, with customer, time, amount, fee, and status.
+- [x] Refresh the visible owner's feed from Square every minute using the existing authenticated, leased processor; read-only users refresh the displayed records only.
+- [x] Pause automatic refresh while hidden, on other finance tabs, or during a payment review. Preserve existing rows on errors and prevent overlapping requests.
+- [x] Verify six focused interaction tests plus desktop, iPad, and phone previews.
+- [ ] Pass full release checks, publish, and verify the authenticated production home.
+
+Safety review: no payment, allocation, credential, migration, or notification rules change. Automatic checks reuse the existing owner-only sync route and database lease. Review forms pause polling; no new synthetic financial events or messages are sent.
