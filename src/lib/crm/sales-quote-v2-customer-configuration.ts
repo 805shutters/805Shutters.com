@@ -73,6 +73,11 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["dc_power_supply", "Power supply"],
   ["shared_power_panel_id", "Shared power panel"],
   ["fold_size", "Fold size"],
+  ["perfectsheer_light_guard", "Light Guard"],
+  ["perfectsheer_light_guard_color", "Light Guard Finish"],
+  ["perfectsheer_magnetic_hold_down", "Magnetic Hold-Down"],
+  ["perfectsheer_magnet_color", "Magnet Catch Finish"],
+  ["perfectsheer_shim_layers", "Shim Layers"],
   ["perfectsheer_installation", "Mounting Method"],
   ["perfectsheer_valance_height", "Valance Height"],
   ["perfectsheer_valance_fabric", "Valance Fabric Override"],
@@ -383,6 +388,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
   return [
     `Manufacturer: ${title(configuration.manufacturerId)}`,
     ...V2_CUSTOMER_CONFIGURATION_FIELDS.flatMap(([key, fallbackLabel]) => {
+      if (configuration.selections.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return [];
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
       if (key === "temporary_shade") return selected === true ? ["Complementary temporary paper shade: Free"] : [];

@@ -1,3 +1,4 @@
+import { perfectsheerHardware } from "./norman-perfectsheer-hardware";
 import { smartfoldValance, smartfoldCommonValance, smartfoldValancePriceWidth } from "./norman-smartfold-valance";
 import { synchronyBracketCount } from "@/lib/quote/norman-synchrony";
 import { smartfoldHardware, smartfoldAccessorySelections } from "./norman-smartfold-hardware";
@@ -497,6 +498,8 @@ export function authoritativeAutomaticSurchargeSelections(
     // Charge measured sides, never a client-provided surcharge count.
     details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
   }
+  const perfectsheer = perfectsheerHardware(selection);
+  if (perfectsheer) {Object.assign(details,perfectsheer.surchargeDetails);delete details.shims;}
   const smartfold = smartfoldHardware(selection);
   if (smartfold) {
     Object.assign(details, smartfoldAccessorySelections(selection));

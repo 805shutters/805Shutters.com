@@ -1,3 +1,4 @@
+import { perfectsheerHardware, validatePerfectsheerHardware } from "./norman-perfectsheer-hardware";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { PERFECTSHEER_COORDINATION } from "./generated/norman-perfectsheer-coordination.generated";
 import { sourceProvenance } from "./source-manifest";
@@ -36,6 +37,7 @@ export function perfectsheerComponents(context: SelectionContext) {
     version: 1, type: "perfectsheer_components", sourceId: "norman-perfectsheer-smartdrape-guide-2026-09", sourcePages: [32,34,35,40,41,42],
     motorMounting: autowand ? {tubeDiameter: Number.isFinite(tube) ? tube : null, bracketClass, sourceId:"norman-motorization-guide-2026-09-16",sourcePage:90} : null,
     finishedShadeWidth: finishedWidth,
+    hardware: perfectsheerHardware(context)?.record ?? null,
     fabric: fabric ? {
       customerFabricCode: fabric.customerFabricCode, customerColorCode: fabric.customerColorCode,
       factoryFabricCode: fabric.factoryFabricCode, factoryColorCode: fabric.factoryColorCode, opacity: fabric.opacity,
@@ -63,7 +65,7 @@ export function validatePerfectsheerComponents(context: SelectionContext): Valid
   const record = perfectsheerComponents(context);
   if (!record) return [];
   const c = context.configuration;
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...validatePerfectsheerHardware(context)];
   const add = (id: string, page: number, explanation: string) => issues.push({ severity: "hard_block", ruleId: `norman.perfectsheer.${id}`, source: sourceProvenance("norman-perfectsheer-smartdrape-guide-2026-09", { page }), selectedValues: { ...c }, explanation });
   const choice = (key: string, values: readonly string[], page: number, required = false) => {
     if ((required || explicit(c[key])) && !values.some(v => norm(v) === norm(c[key]))) add(key, page, `Select ${key.replace("perfectsheer_", "").replaceAll("_", " ")} from the current PerfectSheer choices.`);

@@ -36,6 +36,12 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("shows the current PerfectSheer guard without a contradictory legacy default", () => {
+    const design = miniBlindDesign();design.product_type="Sheer Shades";
+    design.options_json={perfectsheer_light_guard:"Premium Wood Light Guard",perfectsheer_light_guard_color:"049 Stone Gray",light_guard:"none",basic_light_guard:false};
+    const details=getQuoteDesignDetails(design);
+    expect(details.filter(d=>d.label==="Light Guard")).toEqual([{label:"Light Guard",value:"Premium Wood Light Guard"}]);
+  });
   it("hides authoritative pricing metadata while preserving product options", () => {
     const design = miniBlindDesign();
     design.options_json = {

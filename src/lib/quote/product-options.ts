@@ -1,3 +1,4 @@
+import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
 import { PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "../quote-v2/norman-perfectsheer";
 import { SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "../quote-v2/norman-smartfold-valance";
 import { CONTRACT_FAUX, CONTRACT_VERTICAL, CONTRACT_VALANCES, CONTRACT_FITS, CONTRACT_VERTICAL_FITS } from "./norman-contract";
@@ -857,6 +858,11 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("perfectsheer_valance_height", "Valance height", ["Default","3.5","4.5"]),
     contractChoice("perfectsheer_valance_fabric", "Valance fabric override", ["Default",...PERFECTSHEER_FABRIC_CODES]),
     contractChoice("perfectsheer_wood_finish", "Wood valance finish", PERFECTSHEER_WOOD_FINISHES),
+    contractChoice("perfectsheer_light_guard", "Light Guard", PERFECTSHEER_LIGHT_GUARDS),
+    contractChoice("perfectsheer_light_guard_color", "Light Guard finish", [...PERFECTSHEER_BASIC_GUARD_COLORS,...PERFECTSHEER_WOOD_GUARD_COLORS]),
+    contractChoice("perfectsheer_magnetic_hold_down", "Magnetic hold-down", ["No","Yes"]),
+    contractChoice("perfectsheer_magnet_color", "Magnet catch finish", PERFECTSHEER_MAGNET_COLORS),
+    contractChoice("perfectsheer_shim_layers", "Shim layers", ["0","1","2","3"]),
     contractChoice("perfectsheer_tube_diameter", "Tube diameter", ["1.75","2"]),
     contractChoice("perfectsheer_wand_color", "AutoWand color", PERFECTSHEER_WAND_COLORS),
     contractChoice("perfectsheer_chain_unobstructed", "Unobstructed below tension device", ["No","Yes"]),

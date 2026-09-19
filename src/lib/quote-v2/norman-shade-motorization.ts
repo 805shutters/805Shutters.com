@@ -1298,6 +1298,7 @@ export function canonicalNormanShadeMotorizationSelectionsFromConfiguration(
 export function motorFamilyForNormanShadeSelection(
   context: SelectionContext,
 ): NormanShadeMotorFamily | null {
+  if (context.productId === "perfectsheer" && context.catalogAsOf < "2026-09-19") return null;
   const resolution = resolveNormanShadeMotorization(context);
   if (resolution?.ok) return resolution.family;
   if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer") {

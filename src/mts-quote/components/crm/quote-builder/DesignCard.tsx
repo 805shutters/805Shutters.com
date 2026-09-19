@@ -1,3 +1,4 @@
+import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
 import { validateNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
 import { PERFECTSHEER_POWER_SOURCES, PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "@/lib/quote-v2/norman-perfectsheer";
 import { smartfoldSavedCommonValanceForDisplay, SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "@/lib/quote-v2/norman-smartfold-valance";
@@ -9840,6 +9841,14 @@ function ShadesAndBlindsOptions({
       onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null}});
       return;
     }
+    if (productType === "Sheer Shades" && field === "json:perfectsheer_light_guard") {
+      onUpdateFields({options_json:{...currentJson,perfectsheer_light_guard:value,perfectsheer_light_guard_color:null,light_guard:null,basic_light_guard:false,premium_wood_light_guard:false}});
+      return;
+    }
+    if (productType === "Sheer Shades" && field === "json:perfectsheer_magnetic_hold_down") {
+      onUpdateFields({options_json:{...currentJson,perfectsheer_magnetic_hold_down:value,perfectsheer_magnet_color:null,magnetic_hold_down:false}});
+      return;
+    }
     if (productType === "Sheer Shades" && field === "valance") {
       onUpdateFields({valance:typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_valance_height:null,perfectsheer_valance_fabric:null,perfectsheer_wood_finish:null}});
       return;
@@ -11310,6 +11319,11 @@ function ShadesAndBlindsOptions({
           {key:"perfectsheer_chain_length",label:"Custom Cord Length",field:"json:perfectsheer_chain_length",type:"number",min:9,max:280,step:"0.125",unit:"in",placeholder:"Default"},
           psChoice("perfectsheer_chain_unobstructed","Unobstructed Below Tension Device",["No","Yes"]),
         );
+        options.push(psChoice("perfectsheer_light_guard","Light Guard",PERFECTSHEER_LIGHT_GUARDS));
+        if (["Basic Light Guard","Premium Wood Light Guard"].includes(String(optionsJson.perfectsheer_light_guard))) options.push(psChoice("perfectsheer_light_guard_color","Light Guard Finish",optionsJson.perfectsheer_light_guard === "Basic Light Guard" ? PERFECTSHEER_BASIC_GUARD_COLORS : PERFECTSHEER_WOOD_GUARD_COLORS));
+        options.push(psChoice("perfectsheer_magnetic_hold_down","Magnetic Hold-Down",["No","Yes"]));
+        if (optionsJson.perfectsheer_magnetic_hold_down === "Yes") options.push(psChoice("perfectsheer_magnet_color","Magnet Catch Finish",PERFECTSHEER_MAGNET_COLORS));
+        options.push(psChoice("perfectsheer_shim_layers","Shim Layers",["0","1","2","3"]));
         if (/autowand/i.test(String(design?.motor_type))) options.push(psChoice("perfectsheer_wand_color","AutoWand Color",PERFECTSHEER_WAND_COLORS));
 
         if (liftSystem === "Motorized") {

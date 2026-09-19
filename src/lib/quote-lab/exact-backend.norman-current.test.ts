@@ -11,6 +11,21 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("charges PerfectSheer hardware per shade and persists customer choices",()=>{
+  const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_light_guard:"Premium Wood Light Guard",perfectsheer_light_guard_color:"049 Stone Gray",perfectsheer_magnetic_hold_down:"Yes",perfectsheer_magnet_color:"Black",perfectsheer_shim_layers:3});
+  q.designs[0].lift_system="Continuous Cord Loop";q.lines[0].quantity=2;
+  const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in priced) || priced.backend!=="v2") throw new Error("Expected V2 backend");
+  const d=priced.designs[0];expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+  if (!d.result.ok) throw new Error("Expected hardware price");
+  expect(d.result.unitPrice-d.result.base).toBe(117+28+6*7);
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({hardware:{shimQuantity:6,lightGuard:{sideBlockCount:2,topBlockCount:1}}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection));
+  expect(customer).toEqual(expect.arrayContaining(["Light Guard: Premium Wood Light Guard","Light Guard Finish: 049 Stone Gray","Shim Layers: 3","Magnet Catch Finish: Black"]));
+  expect(customer.join(" ")).not.toMatch(/sourcePages|quantityBasis|shimQuantity|factoryColorCode/);
+ });
  it("server-prices PerfectSheer motor components and retains tube selection after reopening",()=>{
   const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_tube_diameter:2,motor_position:"Right",hub_required:false});
   q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart AC Adapter";q.designs[0].remote_type="Basic Remote";

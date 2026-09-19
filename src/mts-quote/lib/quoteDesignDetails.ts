@@ -100,6 +100,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || isInternalOptionKey(key)) return;
+    if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
       const surchargeText = value
@@ -197,6 +198,11 @@ function humanizeKey(key: string): string {
     smartfold_valance_fabric_code: "Valance Fabric Code",
     smartfold_wood_valance_color: "Wood Valance Finish",
     smartfold_chain_color: "Chain Color",
+    perfectsheer_light_guard: "Light Guard",
+    perfectsheer_light_guard_color: "Light Guard Finish",
+    perfectsheer_magnetic_hold_down: "Magnetic Hold-Down",
+    perfectsheer_magnet_color: "Magnet Catch Finish",
+    perfectsheer_shim_layers: "Shim Layers",
     perfectsheer_installation: "Mounting Method",
     perfectsheer_valance_height: "Valance Height",
     perfectsheer_valance_fabric: "Valance Fabric Override",
