@@ -1,3 +1,5 @@
+import { smartdrapeVanePacks } from "./norman-smartdrape-vane-packs";
+import { smartdrapeHardware } from "./norman-smartdrape-hardware";
 import { perfectsheerValance, perfectsheerCommon, perfectsheerValancePriceWidth } from "./norman-perfectsheer-valance";
 import { perfectsheerHardware } from "./norman-perfectsheer-hardware";
 import { smartfoldValance, smartfoldCommonValance, smartfoldValancePriceWidth } from "./norman-smartfold-valance";
@@ -31,6 +33,7 @@ import {
   type ISODate,
   type ProductRuleStatus,
   type SelectionContext,
+  type SelectionRecord,
   type ValidationIssue,
 } from "./core";
 import {
@@ -523,7 +526,15 @@ export function authoritativeAutomaticSurchargeSelections(
     const secondBoundary = motorized ? centerOpening ? 94.25 : 94.5 : 94.375;
     details.aluminum_shim_quantity = w <= 72 ? 2 : w <= secondBoundary ? 3 : w <= 144 ? 4 : w <= 197.875 ? 6 : w <= 286.75 ? 9 : 12;
   }
-  return deriveAutomaticSurcharges(selection.productId, details).filter(entry => {
+  const sdHardware=smartdrapeHardware(selection);
+  if(sdHardware){
+    Object.assign(details,sdHardware.surchargeDetails);
+    const pair=selection.configuration.smartdrape_pair_v1;
+    if(pair&&typeof pair==="object"&&!Array.isArray(pair)&&(pair as SelectionRecord).chargeCenterKeystone===true){details.keystone_quantity=Number(details.keystone_quantity)+1;details.keystone=true;}
+  }
+  const sdExtras=smartdrapeVanePacks(selection);
+  if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand"),...(sdExtras?.selections??[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
@@ -1206,7 +1217,7 @@ function priceComponentSource(
     ? program.sourcePages
     : product.pages;
   return sourceProvenance(
-    product.id === "synchrony_vertical" && asOf && asOf >= "2026-09-19"
+    ["synchrony_vertical","smartdrape"].includes(product.id) && asOf && asOf >= "2026-09-19"
       ? "norman-retail-guide-2026-09"
       : (program?.sourceId as SourceManifestId | undefined) ?? contractSourceId(product.id),
     pages.length > 0 ? { pages } : {},
@@ -1233,7 +1244,7 @@ function surchargePriceComponentSource(
     } satisfies ValidationIssue["source"];
   }
   return surcharge?.sourcePages?.length
-    ? sourceProvenance(product.id === "synchrony_vertical" && fallback.sourceId === "norman-retail-guide-2026-09" ? "norman-retail-guide-2026-09" : contractSourceId(product.id), {
+    ? sourceProvenance(["synchrony_vertical","smartdrape"].includes(product.id) && fallback.sourceId === "norman-retail-guide-2026-09" ? "norman-retail-guide-2026-09" : contractSourceId(product.id), {
         pages: surcharge.sourcePages,
       })
     : fallback;
@@ -1317,7 +1328,7 @@ function baselinePriceComponent(
     programId: baselineProgramId,
     // The selected fabric was validated above; this is a program-only baseline lookup.
     ...(selectedProgram.id.endsWith("_fall_2026") ? { fabric: undefined } : {}),
-  });
+  }, selection.catalogAsOf);
   if (!baselineSourceResult.ok) return null;
   const baselineRetailResult = catalogCostRetail(
     baselineSourceResult,
@@ -1732,7 +1743,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     effectivePriceBasis === "dealer_net" &&
     SOURCE_COST_PLUS_PRODUCTS.has(selection.productId)
       ? dealerNetSourceBreakdown(authoritativePriceInput)
-      : priceDesign(authoritativePriceInput);
+      : priceDesign(authoritativePriceInput, selection.catalogAsOf);
   const scheduledCostResult =
     effectivePriceBasis === "dealer_net"
       ? sourceResult

@@ -8,7 +8,7 @@ import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
 
 function selection(productId: string, width = 36, height = 60, configuration: SelectionContext["configuration"] = {}): SelectionContext {
-  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration: productId === "palladian_shelf" ? {shelf_supported_weight_lbs: 20, ...configuration} : productId === "smartfold" ? {mount_type:"Outside Mount",smartfold_installation:"Back / Wall Mount with Raceway",smartfold_shim_layers:0,fold_size:6,...configuration} : configuration, options: {}, catalogAsOf: "2026-09-19", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-19") };
+  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration: productId === "smartdrape" ? {installation_method:"Wall Mount",...configuration} : productId === "palladian_shelf" ? {shelf_supported_weight_lbs: 20, ...configuration} : productId === "smartfold" ? {mount_type:"Outside Mount",smartfold_installation:"Back / Wall Mount with Raceway",smartfold_shim_layers:0,fold_size:6,...configuration} : configuration, options: {}, catalogAsOf: "2026-09-19", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-19") };
 }
 const rules = (s: SelectionContext) => validateNormanFamilyRules(s).map((r) => r.ruleId);
 

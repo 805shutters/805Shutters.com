@@ -1,3 +1,4 @@
+import { deriveSmartdrapePairs } from "./norman-smartdrape-tracks";
 import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { smartdrapeComponents } from "./norman-smartdrape";
 import { derivePerfectsheerMatching, PERFECTSHEER_MATCHING_KEY } from "./norman-perfectsheer-matching";
@@ -49,6 +50,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       motorPositions: ["left", "right"], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
   }
+  issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));
   issues.push(...derivePerfectsheerCommonValances(lines));
   issues.push(...derivePerfectsheerMatching(lines));

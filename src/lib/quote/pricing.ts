@@ -1,3 +1,4 @@
+import { smartdrapeCurrentPriceProgram } from "./norman-smartdrape-pricing";
 import { findFall2026RollerCollection, fall2026RollerProgramId, FALL_2026_ROLLER_PROGRAM_TO_GRID } from "./norman-roller-fall-2026";
 import { NORMAN_MICRO_SLAT_SURCHARGE_ID } from "./norman-assortment-2026-09";
 // Pure pricing engine for Norman window treatments.
@@ -712,7 +713,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   };
 }
 
-export function priceDesign(input: PriceInput): PriceResult {
+export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult {
   const warnings: string[] = [];
   if (input.productId === "citylights_aluminum" && input.surcharges?.some((entry) => entry.id === NORMAN_MICRO_SLAT_SURCHARGE_ID)) {
     return fail("SURCHARGE_NO_PRICE", "Norman's September 2026 guide no longer supplies a Micro 1/2-inch slat price. This option requires current manufacturer confirmation.", warnings);
@@ -739,7 +740,7 @@ export function priceDesign(input: PriceInput): PriceResult {
 
   const progOrFail = resolveProgram(product, input, warnings);
   if ("ok" in progOrFail) return progOrFail; // PriceFailure has ok:false
-  const prog = progOrFail;
+  const prog = smartdrapeCurrentPriceProgram(progOrFail, sourceAsOf);
   if (prog.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${prog.name} requires a manual price because the source does not provide a usable price.`, warnings);
   }
@@ -995,6 +996,8 @@ export function priceDesign(input: PriceInput): PriceResult {
         ? 1
         : automaticUnits ?? Math.max(1, Math.round(Number(sel.units) || 1));
       amountCents = toCents(sc.value) * units;
+      // September retail p24 explicitly applies the RD premium to the extra vane pack.
+      if (product.id === "smartdrape" && sourceAsOf && sourceAsOf >= "2026-09-19" && sc.id.startsWith("additional_vanes_pack_of_6_length_") && surchargeIds.has("room_darkening")) amountCents = Math.round(amountCents * 1.2);
       if (sc.minimumCharge != null) amountCents = Math.max(amountCents, toCents(sc.minimumCharge));
       if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
       if (units > 1) detail = `${sc.value} x ${units} ${sc.per}s`;

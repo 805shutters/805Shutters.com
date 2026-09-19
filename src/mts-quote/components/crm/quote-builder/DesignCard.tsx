@@ -1,3 +1,4 @@
+import { SMARTDRAPE_CEILING_ATTACHMENTS, smartdrapeKeystoneChoices } from "@/lib/quote-v2/norman-smartdrape-hardware";
 import { SMARTDRAPE_CHARGING_WAND_LENGTHS } from "@/lib/quote-v2/norman-smartdrape-motor-accessories";
 import { SMARTDRAPE_HEADRAIL_COLORS, SMARTDRAPE_CHARGING_WAND_COLORS, smartdrapeSecondColors } from "@/lib/quote-v2/norman-smartdrape";
 import { perfectsheerSavedCommonForDisplay, PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
@@ -5023,6 +5024,7 @@ export function DesignCard({
     slatSize: stringOption(currentOptions, "slat_size"),
   });
   const catalogRestrictionWarnings = getCatalogRestrictionWarnings({
+    sourceAsOf: typeof currentDesign?.quote_v2_selection?.catalogAsOf === "string" ? currentDesign.quote_v2_selection.catalogAsOf : new Date().toISOString().slice(0,10),
     productId:
       stringOption(currentOptions, "catalog_product_id") ||
       stringOption(currentOptions, "quote_lab_product_id") ||
@@ -9186,6 +9188,11 @@ function ShadesAndBlindsOptions({
         control_side: nextControl === "Motorized" ? "Left" : null,
         stack_option: null,
         hub_required: null,
+        application: null,
+        smartdrape_pair_id: null,
+        smartdrape_pair_position: null,
+        smartdrape_center_keystone: null,
+        smartdrape_extra_wands: null,
         smartdrape_wand_color: null,
         wand_drop_inches: null,
         smartdrape_charging_wand_color: null,
@@ -9196,6 +9203,7 @@ function ShadesAndBlindsOptions({
         smartdrape_color_ring_sets: null,
         smartdrape_hub_quantity: null,
         smartdrape_repeaters: null,
+        smartdrape_motor_network: null,
         existing_remote_work_order_number: null,
         motorization_selections: null,
       };
@@ -9860,6 +9868,29 @@ function ShadesAndBlindsOptions({
     }
     if (productType === "SmartFold Shades" && field === "json:premium_hem_bar") {
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
+      return;
+    }
+    if (productType === "Smart Drapes" && field === "json:application") {
+      onUpdateFields({options_json:{...currentJson,application:value,smartdrape_pair_id:null,smartdrape_pair_position:null,smartdrape_center_keystone:null,stack_option:null,control_side:null}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:smartdrape_pair_position") {
+      onUpdateFields({options_json:{...currentJson,smartdrape_pair_position:value,stack_option:value === "Right"?"Stack Right":"Stack Left",control_side:value === "Right"?"Left":"Right"}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:installation_method") {
+      onUpdateFields({options_json:{...currentJson,installation_method:value,smartdrape_ceiling_attachment:null,pocket_depth_inches:null,pocket_height_inches:null,aluminum_shim:null,long_l_bracket:null}});return;
+    }
+    if (productType === "Smart Drapes" && ["json:long_l_bracket","json:aluminum_shim"].includes(field)) {
+      onUpdateFields({options_json:{...currentJson,[field.slice(5)]:value,...([true,"Yes"].includes(value as string|boolean)?{[field==="json:long_l_bracket"?"aluminum_shim":"long_l_bracket"]:null}:{})}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:smartdrape_keystone_joints") {
+      onUpdateFields({options_json:{...currentJson,smartdrape_keystone_joints:value,keystone:null,keystone_quantity:null}});return;
+    }
+    if (productType === "Smart Drapes" && ["json:smartdrape_extra_vane_packs", "json:smartdrape_extra_wands"].includes(field)) {
+      const nextJson = { ...currentJson, [field.slice(5)]: value };
+      for (const key of Object.keys(nextJson)) {
+        if (field === "json:smartdrape_extra_wands" ? key === "additional_wand" : key.startsWith("additional_vanes_pack_of_6_length_")) delete nextJson[key];
+      }
+      onUpdateFields({ options_json: nextJson });
       return;
     }
     if (productType === "Smart Drapes" && field === "motor_type") {
@@ -11793,7 +11824,7 @@ function ShadesAndBlindsOptions({
             label: "Stack Option",
             field: "json:stack_option",
             type: "buttons",
-            options: controlType === "Motorized" ? ["Stack Right", "Stack Left", "Center Stack", "Center Opening"] : ["Stack Right", "Stack Left", "Side by Side", "Traveling Center Stack"],
+            options: controlType === "Motorized" ? ["Stack Right", "Stack Left", "Center Stack", "Center Opening"] : optionsJson.application === "Side by Side" ? [optionsJson.smartdrape_pair_position === "Right" ? "Stack Right" : "Stack Left", "Traveling Center Stack"] : ["Stack Right", "Stack Left", "Traveling Center Stack"],
           },
           {
             key: "control_type",
@@ -11840,6 +11871,10 @@ function ShadesAndBlindsOptions({
         }
 
         const sdChoice=(key:string,label:string,choices:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options:choices});
+        if(controlType !== "Motorized") {
+          options.push(sdChoice("application","Shade Application",["Single Shade","Side by Side"]));
+          if(optionsJson.application === "Side by Side")options.push(sdChoice("smartdrape_pair_id","Side-by-Side Group",["1","2","3","4","5","6","7","8","9","10"]),sdChoice("smartdrape_pair_position","Position in Pair",["Left","Right"]),sdChoice("smartdrape_center_keystone","Keystone at Center Join",["No","Yes"]));
+        }
         options.push(sdChoice("vane_style","Vane Colors",["Single Color","Alternating"]),sdChoice("smartdrape_headrail_color","Headrail and Hardware Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]));
         if(optionsJson.vane_style === "Alternating")options.push(sdChoice("smartdrape_second_color","Second Alternating Fabric",smartdrapeSecondColors(optionsJson.fabric_color_code)));
         if(controlType === "Motorized") {
@@ -11857,8 +11892,14 @@ function ShadesAndBlindsOptions({
           }
         } else options.push(sdChoice("smartdrape_wand_color","Tilt Wand Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]),{key:"wand_drop_inches",label:"Wand Drop from Headrail",field:"json:wand_drop_inches",type:"number",min:12,max:90,step:"0.0625",unit:"in",placeholder:"Default"});
         options.push({ key: "installation_method", label: "Installation", field: "json:installation_method", type: "select", options: ["Wall Mount", "Ceiling Mount", "Ceiling Pocket Mount"] });
+        options.push({key:"smartdrape_extra_vane_packs",label:"Extra Vane Packs per Shade",field:"json:smartdrape_extra_vane_packs",type:"number",min:0,step:"1",placeholder:"0"});
+        if(Number(optionsJson.smartdrape_extra_vane_packs)>0)options.push(sdChoice("smartdrape_vane_pack_style","Extra Vane Pack Contents",["A — First, Middle and Last Vanes","B — Middle Vanes Only"]));
+        if(controlType !== "Motorized")options.push({key:"smartdrape_extra_wands",label:"Extra Tilt Wands per Shade",field:"json:smartdrape_extra_wands",type:"number",min:0,step:"1",placeholder:"0"});
+        options.push(sdChoice("smartdrape_keystone_joints","Keystones at Track Joints",smartdrapeKeystoneChoices(measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),controlType === "Motorized")));
+        if(optionsJson.installation_method === "Wall Mount")options.push(sdChoice("long_l_bracket","Long L Brackets",["No","Yes"]),sdChoice("aluminum_shim","Aluminum Shims",["No","Yes"]));
+        if(optionsJson.installation_method === "Ceiling Mount")options.push(sdChoice("smartdrape_ceiling_attachment","Ceiling Attachment",SMARTDRAPE_CEILING_ATTACHMENTS));
         if (optionsJson.installation_method === "Ceiling Pocket Mount") options.push(
-          { key: "pocket_depth", label: "Pocket Depth", field: "json:pocket_depth_inches", type: "number", min: 0, step: "0.0625", unit: "in" },
+          { key: "pocket_depth", label: "Pocket Depth", field: "json:pocket_depth_inches", type: "number", min: controlType === "Motorized" ? 5.125 : 4.875, step: "0.0625", unit: "in" },
           { key: "pocket_height", label: "Pocket Height", field: "json:pocket_height_inches", type: "number", min: 0, max: 4.625, step: "0.0625", unit: "in" },
         );
         return options;

@@ -12,6 +12,44 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("prices room-darkening vane packs with the extra 20 percent and persists their contents",()=>{
+  const q=currentQuote("smartdrape","Smart Drapes","F1604",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",light_control:"Room Darkening"});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Room Darkening";q.lines[0].quantity=2;
+  const base=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  q.designs[0].options_json={...q.designs[0].options_json,smartdrape_extra_vane_packs:2,smartdrape_vane_pack_style:"B — Middle Vanes Only",smartdrape_extra_wands:1};
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2"||!("backend"in base)||base.backend!=="v2")throw new Error("Expected V2");
+  const d=p.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);if(!d.result.ok||!b.result.ok)throw new Error("Expected prices");
+  expect(Math.round((d.result.total-b.result.total)*100)).toBe(147400);
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({extraVanesAndWands:{extraWands:1,vanePacks:{quantity:2,priceHeight:60,middle:[{quantity:6,color:"F1604"}]}}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
+ });
+ it("server-prices paired SmartDrape tracks independently and charges their center keystone once",()=>{
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",application:"Side by Side",smartdrape_pair_id:"1",smartdrape_pair_position:"Left",smartdrape_keystone_joints:"1",smartdrape_center_keystone:"Yes"});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.lines[0].width_whole=100;
+  q.lines.push({...q.lines[0],id:"right",width_whole:150});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,smartdrape_pair_position:"Right",stack_option:"Stack Right",control_side:"Left"}});q.selectedVariantByLine.right="A";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs.map(d=>d.result.ok?d.result.components.filter(c=>c.priceLineId==="keystone").map(c=>c.catalogAmount):[])).toEqual([[146],[73]]);
+  expect(p.designs[0].selection.configuration.smartdrape_pair_v1).toMatchObject({orderedWidths:[100,150],openCenterGap:2.25,chargeCenterKeystone:true});
+  const reopened=JSON.parse(JSON.stringify(q));for(let i=0;i<2;i++)reopened.designs[i].options_json={...reopened.designs[i].options_json,...p.designs[i].selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
+ });
+ it("prices each SmartDrape joint and shim from source geometry and persists pocket heights",()=>{
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount"});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.lines[0].width_whole=190;q.lines[0].quantity=2;
+  const base=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  q.designs[0].options_json={...q.designs[0].options_json,smartdrape_keystone_joints:"1, 2",aluminum_shim:"Yes"};
+  const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(b.result.ok).toBe(true);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid hardware");
+  expect(d.result.total-b.result.total).toBe(2*(2*73+6*28));
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:{smartJointCount:2,shimQuantity:6,keystoneJoints:[1,2]}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toContain("Keystones at Track Joints: 1, 2");
+  q.designs[0].options_json={...q.designs[0].options_json,aluminum_shim:null,installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.75};
+  const pocket=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend" in pocket)||pocket.backend!=="v2")throw new Error("Expected V2");
+  expect(pocket.designs[0].result.ok).toBe(true);expect(pocket.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({mounting:{shadeHeight:57.625,pocket:{hangStripHeight:2.375}}});
+ });
  it("prices SmartDrape motors and whole-line accessories with a persisted USB-C allocation",()=>{
   const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Motorized",stack_option:"Stack Left",control_side:"Left",installation_method:"Wall Mount",hub_required:true});
   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.designs[0].motor_type="Norman Smart Rechargeable Battery";q.designs[0].remote_type="SmartDial Remote";q.lines[0].quantity=3;

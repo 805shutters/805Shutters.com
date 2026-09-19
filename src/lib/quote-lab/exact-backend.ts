@@ -1281,7 +1281,7 @@ function repriceExactQuoteBuilderV2(
     }) => {
     const authoritativePriceInput: PriceInput = {
       ...priceInput,
-      ...(["smartfold","perfectsheer"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:perfectsheerValancePriceWidth(selection) ?? smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
+      ...(["smartfold","perfectsheer","smartdrape"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:perfectsheerValancePriceWidth(selection) ?? smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
       programId: programId ?? undefined,
     };
     const result = priceQuoteV2Selection({

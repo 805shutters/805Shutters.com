@@ -1,3 +1,4 @@
+import { smartdrapeCurrentPriceProgram } from "@/lib/quote/norman-smartdrape-pricing";
 import { getProduct } from "@/lib/quote/catalog";
 
 export type CatalogRestrictionWarning = {
@@ -6,6 +7,7 @@ export type CatalogRestrictionWarning = {
 };
 
 export type CatalogRestrictionWarningInput = {
+  sourceAsOf?: string;
   productId: string | null | undefined;
   programId: string | null | undefined;
   fabricName?: string | null | undefined;
@@ -44,14 +46,15 @@ export function getCatalogRestrictionWarnings(
     }];
   }
   if (!input.programId) return [];
-  const program = product.programs.find((candidate) => candidate.id === input.programId);
-  if (!program) {
+  const sourceProgram = product.programs.find((candidate) => candidate.id === input.programId);
+  if (!sourceProgram) {
     return [{
       id: "catalog-program-required",
       message: `Select an exact ${product.name} price program before dimensional restrictions can be checked.`,
     }];
   }
 
+  const program=smartdrapeCurrentPriceProgram(sourceProgram,input.sourceAsOf);
   const warnings: CatalogRestrictionWarning[] = [];
   if (program.minWidth != null && input.widthInches < program.minWidth) {
     warnings.push({
