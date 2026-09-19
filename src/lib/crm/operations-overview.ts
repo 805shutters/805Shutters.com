@@ -1,3 +1,4 @@
+import { shipmentEvidence, type ShipmentEvidence } from "./shipment-evidence";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { buildJobTrackingView, type JobTrackingViewItem } from "./job-tracking-view";
 import { objectMeta } from "./measure-needed-state";
@@ -8,7 +9,7 @@ import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed", "paid"] as const;
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
-export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[]; wholeJob?: boolean };
+export type ProductProgress = { shipments?: ShipmentEvidence[]; undatedShipments?: number; id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[]; wholeJob?: boolean };
 export type HeaderProduct = { id: string; name: string; quantity: number };
 export type HeaderProductSource = "signed_snapshot" | "accepted_quote_lines";
 export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; headerProducts: HeaderProduct[]; headerProductSource: HeaderProductSource | null; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean; closed: boolean };
@@ -103,6 +104,8 @@ function productProgress(product: CrmCustomerProduct): ProductProgress {
   // marker must never fabricate a manufacturer order or shipment.
   return {
     id: product.id, name: product.product_type.trim() || "Product type needed", quantity, records: [{ id: product.id, updatedAt: product.updated_at }],
+    shipments: shipmentEvidence(meta),
+    undatedShipments: (meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)) && !shipmentEvidence(meta).length ? 1 : 0,
     ordered: Boolean(meta.ordered_at || status === "ordered"),
     shipped: Boolean(meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)),
     installed: Boolean(meta.installed_at || status === "installed")
@@ -180,6 +183,8 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
       name: items[0].name,
       quantity: items.every(item => typeof item.quantity === "number") ? items.reduce((total, item) => total + item.quantity!, 0) : null,
       records: items.flatMap(item => item.records),
+      undatedShipments: items.reduce((count, item) => count + (item.undatedShipments || 0), 0),
+      shipments: [...new Map(items.flatMap(item => item.shipments || []).map(shipment => [JSON.stringify(shipment), shipment])).values()],
       ordered: items.every(item => item.ordered),
       shipped: items.every(item => item.shipped),
       installed: items.every(item => item.installed)

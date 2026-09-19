@@ -374,3 +374,41 @@ describe("automatic order email uses the same product invoice workflow", () => {
     expect(id).toMatch(/^[a-f0-9-]{36}$/);
   });
 });
+
+describe("confirmed shipment dates", () => {
+  const shipment = { shippedOn: "2026-09-10", mailbox: "805@805shutters.com", messageId: "1a0b8ca64c60954b", orderReference: "8880985478" };
+  it("stores actual dispatch separately from processing time and retries without rewriting", async () => {
+    const db = database();
+    const request = { ...input, step: "shipped", shipment };
+    await completeProductMilestone(db.client, request, actor);
+    expect(db.tables.crm_customer_products[0].meta.shipping_confirmation).toMatchObject(shipment);
+    expect(db.tables.crm_customer_products[0].meta.shipped_at).not.toBe(shipment.shippedOn);
+    await completeProductMilestone(db.client, request, actor);
+    expect(db.writes).toHaveLength(2);
+  });
+  it("backfills dated evidence without changing existing completion timestamps or other milestones", async () => {
+    const db = database();
+    db.tables.crm_customer_products.forEach(p => { p.meta.shipped_at = timestamp; p.meta.installed_at = timestamp; });
+    await completeProductMilestone(db.client, { ...input, step: "shipped", shipment }, actor);
+    expect(db.tables.crm_customer_products[0].meta).toMatchObject({ shipped_at: timestamp, installed_at: timestamp, shipping_confirmation: shipment });
+  });
+  it("updates only explicitly selected products in a partial shipment", async () => {
+    const db = database();
+    await completeProductMilestone(db.client, { ...input, step: "shipped", shipment, records: [input.records[0]] }, actor);
+    expect(db.writes).toHaveLength(1);
+    expect(db.tables.crm_customer_products[1].meta.shipped_at).toBeUndefined();
+  });
+  it.each(["stale", "conflict"])("rejects %s evidence before any product is changed", async reason => {
+    const db = database();
+    if (reason === "stale") db.tables.crm_customer_products[1].updated_at = "2026-09-18";
+    else db.tables.crm_customer_products[1].meta.shipping_confirmation = { ...shipment, shippedOn: "2026-09-09" };
+    await expect(completeProductMilestone(db.client, { ...input, step: "shipped", shipment }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(db.writes).toHaveLength(0);
+  });
+  it.each([{ shippedOn: "2026-02-30" }, { shippedOn: "2099-01-01" }, { mailbox: "805shutters@gmail.com" }, { messageId: "" }, { orderReference: "" }])("rejects invalid source/date %j", override => {
+    expect(() => parseProductCompletion({ ...input, step: "shipped", shipment: { ...shipment, ...override } })).toThrow();
+  });
+  it("rejects shipment evidence on generated product or whole-job records", () => {
+    expect(() => parseProductCompletion({ step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp }], shipment })).toThrow();
+  });
+});

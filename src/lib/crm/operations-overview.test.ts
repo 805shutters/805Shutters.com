@@ -325,3 +325,19 @@ it('shows financial closure and the paid check without inventing installed evide
  expect(item).toMatchObject({closed:true,paid:true,installed:false,complete:false});
  expect(item.source.depositOutstanding).toBe(0);
 });
+
+describe("shipment date display evidence", () => {
+  const shipment = { shippedOn: "2026-09-10", mailbox: "805@805shutters.com", messageId: "samplemessage123", orderReference: "WO-123" };
+  it("keeps partial shipments incomplete and lists only confirmed dispatch dates", () => {
+    const item = buildOperationsItems(data({quotes:[quote()],customerProducts:[product({meta:{shipped_at:"2026-09-18",shipping_confirmation:shipment}}),product({id:"p2",status:null})]}))[0];
+    expect(item.products[0]).toMatchObject({shipped:false,shipments:[shipment]});
+  });
+  it("deduplicates dates/evidence while retaining an undated completed product warning", () => {
+    const item = buildOperationsItems(data({quotes:[quote()],customerProducts:[product({meta:{shipped_at:"2026-09-18",shipping_confirmation:shipment}}),product({id:"p2",meta:{shipped_at:"2026-09-18",shipping_confirmation:shipment}}),product({id:"p3",status:"shipped"})]}))[0];
+    expect(item.products[0]).toMatchObject({shipped:true,shipments:[shipment],undatedShipments:1});
+  });
+  it("never treats the checkbox time or delivery time as a ship date", () => {
+    const item = buildOperationsItems(data({quotes:[quote()],customerProducts:[product({meta:{shipped_at:"2026-09-18",received_at:"2026-09-19"}})]}))[0];
+    expect(item.products[0]).toMatchObject({shipped:true,shipments:[],undatedShipments:1});
+  });
+});

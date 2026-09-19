@@ -1,5 +1,7 @@
 "use client";
 
+import { ProductShipmentEditor } from "./ProductShipmentEditor";
+import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search } from "lucide-react";
@@ -55,15 +57,20 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
 const statusColumns = ["Quote", "Sold", "Deposit", "Ordered", "Shipped", "Installed", "Balance paid"];
 
 type WorkflowActionStep = WorkflowStep | "deposit";
-export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress, invoice?: ProductOrderInvoiceInput) => Promise<string | void>;
+export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress, invoice?: ProductOrderInvoiceInput, shipment?: ShipmentEvidence) => Promise<string | void>;
 function CompletionButton({ done, label, disabled, saving, onClick }: { done: boolean; label: string; disabled: boolean; saving?: boolean; onClick: () => void }) {
   return <button type="button" className={styles.completionButton} aria-label={label} title={label} aria-pressed={done} aria-busy={saving || undefined} disabled={disabled} onClick={onClick}>{saving ? <LoaderCircle className={styles.savingMark} size={24} aria-hidden="true" /> : <CompletionMark done={done} />}</button>;
 }
 export function ProductChecks({ item, step, disabled, pending, onAction }: { item: OperationsItem; step: "ordered" | "shipped"; disabled: boolean; pending: string | null; onAction: (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => void }) {
   const checks = item.products.length ? item.products : [item.wholeJob];
-  return <div className={styles.productChecks}>{checks.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.wholeJob ? "Whole job" : product.name}</span>{step === "ordered" ? <small>{productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)] ? currency(productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)].amount) : "Enter invoice"}</small> : <small aria-hidden="true" style={{visibility:"hidden"}}>Shipment</small>}</div>)}{item.products.length ? <small className={styles.productCount}>{`${checks.filter(product => product[step]).length} of ${checks.length} complete`}</small> : null}</div>;
+  return <div className={styles.productChecks}>{checks.map(product => <div className={styles.product} key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : product.name} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span className={product[step] ? styles.completeText : undefined}>{product.wholeJob ? "Whole job" : product.name}</span>{step === "ordered" ? <small>{productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)] ? currency(productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)].amount) : "Enter invoice"}</small> : <ShipmentDates product={product} />}</div>)}{item.products.length ? <small className={styles.productCount}>{`${checks.filter(product => product[step]).length} of ${checks.length} complete`}</small> : null}</div>;
+}
+export function ShipmentDates({ product }: { product: ProductProgress }) {
+  const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn))].sort();
+  return <small className={styles.shipmentDates}>{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
 }
 export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost }) {
+  const [shipmentEditor, setShipmentEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
   const contractButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -83,6 +90,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
   async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
     if (lock.current || busy) return;
     if (step === "ordered" && product) { setOrderEditor({item,product}); return; }
+    if (step === "shipped" && product && product.records.every(record => /^[a-f\d-]{36}$/i.test(record.id))) { setShipmentEditor({item,product}); return; }
     setFeedbackId(item.source.id);
     lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
     try { const message = await onAction(item, step, product); if (message) setNotice(message); }
@@ -152,6 +160,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
     </article>;
     })}</div>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    {shipmentEditor && <ProductShipmentEditor item={shipmentEditor.item} product={shipmentEditor.product} onSave={onAction} onClose={() => setShipmentEditor(null)} />}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || []} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
   </section>;

@@ -35,7 +35,8 @@ describe("CRM customer contract route", () => {
 
   it("keeps historical editing explicit without using a builder for contract views", () => {
     expect(source).toContain('if (tab === "contract")');
-    expect(source).toContain('setBuilderVersion("current")');
+    expect(source).toContain('setBuilderQuoteId(null)');
+    expect(source).toContain('setQuoteWorkspaceOpenRequest((request) => ({');
     expect(source).toContain("<OriginalV1QuoteBuilderPanel");
     expect(source).not.toContain("readOnlyLegacyQuoteId");
     expect(source).not.toContain("Historical quote opened read-only");

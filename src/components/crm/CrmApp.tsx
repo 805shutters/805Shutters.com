@@ -129,7 +129,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "payoff";
+type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -1105,7 +1105,7 @@ export function CrmApp({
     } finally { setBusy(false); }
   }
 
-  const updateWorkflowCheck: WorkflowAction = async (item, step, product, invoice) => {
+  const updateWorkflowCheck: WorkflowAction = async (item, step, product, invoice, shipment) => {
     if (!session) throw new Error("Sign in again before updating a job.");
     const source = item.source;
     const financialSource = Boolean(source.row || (source.quote && source.isSale));
@@ -1134,14 +1134,15 @@ export function CrmApp({
       return `Installation completed today for ${source.customerName}.`;
     }
     if (!product) throw new Error("Open the job to add its product details first.");
-    if (product[step] && !invoice) { setTrackingDetailId(source.id); return; }
+    if (product[step] && !invoice && !shipment) { setTrackingDetailId(source.id); return; }
     setBusy(true);
     try {
-      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, invoice, costEntryId: invoice ? source.row?.costRecordId : undefined, records: product.records, ...productCompletionSourceLinks(item, product) }) });
+      await crmFetch(session, "/api/crm/operations/product-completion", { method: "POST", body: JSON.stringify({ step, invoice, shipment, costEntryId: invoice ? source.row?.costRecordId : undefined, records: product.records, ...productCompletionSourceLinks(item, product) }) });
       const fresh = await refresh();
       const savedItem = fresh && buildOperationsItems(fresh).find(candidate => candidate.source.id === source.id);
       const saved = savedItem && (savedItem.products.find(candidate => candidate.id === product.id) || (savedItem.wholeJob.id === product.id ? savedItem.wholeJob : undefined));
       if (invoice && (!savedItem || productOrderCosts(orderCostParent(savedItem)?.meta)[orderCostKey(product.records)]?.amount !== invoice.amount)) throw new Error("Invoice saving could not be verified. Refresh the job before trying again.");
+      if (shipment && !saved?.shipments?.some(value => value.shippedOn === shipment.shippedOn && value.orderReference === shipment.orderReference)) throw new Error("The shipment date could not be verified. Refresh before retrying.");
       if (!saved?.[step]) throw new Error("The update was saved but completion could not be verified. Refresh the job before trying again.");
       return `${product.name} marked ${step} for ${source.customerName}.`;
     } catch (error) {
@@ -3615,112 +3616,6 @@ export function CrmApp({
 
       {activeTab === "payments" && !financialViewBlocked && !isMikePaymentAdminEmail(user?.email) ? (
         <PartnerPaymentsView ledger={data?.partnerPaymentLedger} activePerson={activePaymentPerson} onPersonChange={openPaymentLedger} busy={busy} onPay={recordPartnerPaymentBatch} />
-      ) : null}
-
-      {activeTab === "orders" ? (
-        <section className="crm-workspace crm-workspace-wide">
-          <CollapsiblePanel title="New Quote / Sold Job">
-            <form className="crm-form" onSubmit={createQuote}>
-              <label>
-                Job
-                <select name="job_id" required>
-                  <option value="">Choose job</option>
-                  {jobs.map((job) => (
-                    <option value={job.id} key={job.id}>
-                      {job.customer_name} - {job.product_interest}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Status
-                  <select className="crm-status-select" data-status="sold" name="status" defaultValue="sold">
-                    {crmQuoteStatuses.map((status) => (
-                      <option value={status} key={status}>
-                        {status.replace("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Sold By
-                  <select name="sold_by" defaultValue="Mike">
-                    {ownerOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <label>
-                Quote Number
-                <input name="quote_number" placeholder="805-1001" />
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Quote Total
-                  <input name="quote_total" type="number" min="0" step="0.01" required />
-                </label>
-                <label>
-                  COGS
-                  <input name="materials_cost" type="number" min="0" step="0.01" />
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Deposit Paid
-                  <input name="deposit_paid" type="number" min="0" step="0.01" />
-                </label>
-                <label>
-                  Balance Paid
-                  <input name="balance_paid" type="number" min="0" step="0.01" />
-                </label>
-              </div>
-              <label>
-                Payment Type
-                <select name="payment_type" defaultValue="other">
-                  {paymentTypes.map((item) => (
-                    <option value={item.value} key={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Manufacturer
-                  <input name="manufacturer_name" placeholder="Norman, Alta, Horizon..." />
-                </label>
-                <label>
-                  Order #
-                  <input name="manufacturer_order_ref" placeholder="Manufacturer order" />
-                </label>
-              </div>
-              <label>
-                Order Link
-                <input name="manufacturer_order_url" placeholder="https://..." />
-              </label>
-              <label>
-                Notes
-                <textarea name="notes" rows={4} placeholder="Fabric, vendor, payment notes, commission notes..." />
-              </label>
-              <button type="submit" disabled={busy}>
-                Save Quote
-              </button>
-            </form>
-          </CollapsiblePanel>
-
-          <OrderBoard
-            quotes={quotes}
-            onUpdate={updateQuote}
-            busy={busy}
-            onOpenBuilder={(quoteId) => {
-              setBuilderVersion("current");
-              setBuilderQuoteId(quoteId);
-            }}
-            onOpenContract={openQuoteContract}
-          />
-        </section>
       ) : null}
 
       {activeTab === "calendar" && session ? (
@@ -13850,137 +13745,6 @@ function bookkeepingGroupTotals(rows: CrmBookkeepingRow[]) {
   );
 }
 
-function OrderBoard({
-  quotes,
-  onUpdate,
-  busy,
-  onOpenBuilder,
-  onOpenContract
-}: {
-  quotes: CrmQuote[];
-  onUpdate: (event: FormEvent<HTMLFormElement>, quote: CrmQuote) => Promise<void>;
-  busy: boolean;
-  onOpenBuilder: (quoteId: string) => void;
-  onOpenContract: (quoteId: string) => void;
-}) {
-  return (
-    <section className="crm-ledger">
-      <div className="crm-section-head">
-        <div>
-          <p className="eyebrow">Orders</p>
-          <h2>Sold Job Tracking</h2>
-        </div>
-      </div>
-      <div className="crm-order-grid">
-        {quotes.map((quote) => (
-          <article className="crm-order-card" key={quote.id}>
-            <div className="crm-order-card-head">
-              <div>
-                <h3>{quote.customer_name || "Linked job"}</h3>
-                <span>{quote.quote_number || quote.id.slice(0, 8)}</span>
-              </div>
-              <strong>{toCurrency(quote.quote_total)}</strong>
-            </div>
-            <div className="crm-quote-actions" role="group" aria-label="Quote actions">
-              <button
-                type="button"
-                className="crm-quote-action-button crm-quote-action-button--primary"
-                onClick={() => onOpenBuilder(quote.id)}
-                aria-label="Open quote builder"
-              >
-                Builder
-              </button>
-              <button
-                type="button"
-                className="crm-quote-action-button"
-                onClick={() => onOpenContract(quote.id)}
-                disabled={busy}
-                aria-label="Open quote contract"
-              >
-                Contract
-              </button>
-            </div>
-            {customerProductOrderLabel(quote.meta) ? <p>{customerProductOrderLabel(quote.meta)}</p> : null}
-            <form className="crm-order-form" onSubmit={(event) => onUpdate(event, quote)}>
-              <div className="crm-field-row">
-                <label>
-                  Status
-                  <select className="crm-status-select" data-status={quote.status} name="status" defaultValue={quote.status}>
-                    {crmQuoteStatuses.map((status) => (
-                      <option value={status} key={status}>
-                        {status.replace("_", " ")}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  COGS
-                  <input name="materials_cost" type="number" min="0" step="0.01" defaultValue={quote.materials_cost || ""} />
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Quote Total
-                  <input name="quote_total" type="number" min="0" step="0.01" defaultValue={quote.quote_total || ""} />
-                </label>
-                <label>
-                  Sold By
-                  <select name="sold_by" defaultValue={quote.sold_by || "Unassigned"}>
-                    {ownerOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Add Payment
-                  <input name="payment_amount" type="number" min="0" step="0.01" placeholder="0" />
-                </label>
-                <label>
-                  Payment Type
-                  <select name="payment_type" defaultValue="other">
-                    {paymentTypes.map((item) => (
-                      <option value={item.value} key={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Manufacturer
-                  <input name="manufacturer_name" defaultValue={quote.manufacturer_name || ""} />
-                </label>
-                <label>
-                  Order #
-                  <input name="manufacturer_order_ref" defaultValue={quote.manufacturer_order_ref || ""} />
-                </label>
-              </div>
-              <label>
-                Order Link
-                <input name="manufacturer_order_url" defaultValue={quote.manufacturer_order_url || ""} />
-              </label>
-              <label>
-                Document Link
-                <input name="manufacturer_document_url" defaultValue={quote.manufacturer_document_url || ""} />
-              </label>
-              <label>
-                Notes
-                <textarea name="notes" rows={3} defaultValue={quote.notes || ""} />
-              </label>
-              <button type="submit" disabled={busy}>
-                Update Order
-              </button>
-            </form>
-          </article>
-        ))}
-        {!quotes.length ? <p className="crm-empty">No quotes or sold jobs yet.</p> : null}
-      </div>
-    </section>
-  );
-}
 
 const AVAILABILITY_SLOTS = bookingSlotTimes.map((time) => ({
   time,

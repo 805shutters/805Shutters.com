@@ -1,3 +1,5 @@
+import { isShipmentEvidence, type ShipmentEvidence } from "./shipment-evidence";
+import { losAngelesDateString } from "@/lib/booking/availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
 import { objectMeta } from "./measure-needed-state";
@@ -5,7 +7,7 @@ import type { CrmCustomerProduct } from "./types";
 import { parseWholeJobRecordId, wholeJobWorkflowChecks, type WholeJobRecord } from "./whole-job-workflow";
 
 const uuid = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
-export type ProductCompletionInput = { step: "ordered" | "shipped"; records: { id: string; updatedAt: string }[]; quoteId?: string; jobId?: string; bookkeepingEntryId?: string };
+export type ProductCompletionInput = { shipment?: ShipmentEvidence; step: "ordered" | "shipped"; records: { id: string; updatedAt: string }[]; quoteId?: string; jobId?: string; bookkeepingEntryId?: string };
 
 export function parseProductCompletion(value: unknown): ProductCompletionInput {
   const body = value as Partial<ProductCompletionInput> | null;
@@ -20,7 +22,8 @@ export function parseProductCompletion(value: unknown): ProductCompletionInput {
     (wholeJob[0].kind === "job" && (body.jobId !== wholeJob[0].id || body.quoteId || body.bookkeepingEntryId)) ||
     (wholeJob[0].kind === "quote" && (body.quoteId !== wholeJob[0].id || body.bookkeepingEntryId)) ||
     (wholeJob[0].kind === "bookkeeping" && body.bookkeepingEntryId !== wholeJob[0].id))) throw new CrmAuthError(400, "Refresh to load the exact linked source.");
-  return body as ProductCompletionInput;
+  if (body.shipment !== undefined && (body.step !== "shipped" || !isShipmentEvidence(body.shipment) || body.shipment.shippedOn > losAngelesDateString(new Date()) || body.records.some(record => !uuid.test(record.id)))) throw new CrmAuthError(400, "Use a confirmed shipment date, the 805 shipping mailbox, and exact product records.");
+  return { ...body, ...(body.shipment ? { shipment: { shippedOn: body.shipment.shippedOn, mailbox: body.shipment.mailbox, messageId: body.shipment.messageId, orderReference: body.shipment.orderReference.trim() } } : {}) } as ProductCompletionInput;
 }
 
 export async function loadWholeJobCompletionParent(supabase: SupabaseClient, input: ProductCompletionInput) {
@@ -76,7 +79,13 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
   if (products.length !== input.records.length || products.some(product => objectMeta(product.meta).deleted_at)) throw new CrmAuthError(404, "A product was removed. Refresh the job before updating.");
   if (products.some(product => product.bookkeeping_entry_id ? product.bookkeeping_entry_id !== input.bookkeepingEntryId : product.quote_id ? product.quote_id !== input.quoteId : !product.job_id || product.job_id !== input.jobId) || new Set(products.map(product => product.product_type.trim().toLowerCase())).size !== 1) throw new CrmAuthError(409, "These products do not belong to the selected job and product type.");
   const done = (product: CrmCustomerProduct) => input.step === "ordered" ? Boolean(objectMeta(product.meta).ordered_at || product.status?.toLowerCase() === "ordered") : Boolean(objectMeta(product.meta).shipped_at || objectMeta(product.meta).received_at || ["shipped", "received", "delivered"].includes((product.status || "").toLowerCase()));
-  for (const product of products) if (!done(product) && product.updated_at !== input.records.find(record => record.id === product.id)!.updatedAt) throw new CrmAuthError(409, "This product changed. Refresh before trying again.");
+  const needsWrite = (product: CrmCustomerProduct) => {
+    if (!input.shipment) return !done(product);
+    const prior = objectMeta(objectMeta(product.meta).shipping_confirmation);
+    if (prior.shippedOn && (prior.shippedOn !== input.shipment.shippedOn || prior.orderReference !== input.shipment.orderReference)) throw new CrmAuthError(409, "A different shipment is already recorded. Review the source before changing it.");
+    return !prior.shippedOn;
+  };
+  for (const product of products) if (needsWrite(product) && product.updated_at !== input.records.find(record => record.id === product.id)!.updatedAt) throw new CrmAuthError(409, "This product changed. Refresh before trying again.");
   // Verify linked records without applying order-submission prerequisites.
   // A manual completion records an existing order; it does not place one.
   if (input.step === "ordered") {
@@ -106,9 +115,9 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
   }
   const at = new Date().toISOString();
   for (const product of products) {
-    if (done(product)) continue;
+    if (!needsWrite(product)) continue;
     const meta = objectMeta(product.meta);
-    const next = { ...meta, [`${input.step}_at`]: at, workflow_checks: { ...objectMeta(meta.workflow_checks), [input.step]: { at, by: actor.email, user_id: actor.userId || null, source: "staff_job_status" } } };
+    const next = { ...meta, ...(input.shipment ? { shipping_confirmation: { ...input.shipment, recordedAt: at, recordedBy: actor.email } } : {}), [`${input.step}_at`]: meta[`${input.step}_at`] || at, workflow_checks: { ...objectMeta(meta.workflow_checks), [input.step]: objectMeta(objectMeta(meta.workflow_checks)[input.step]).at ? objectMeta(meta.workflow_checks)[input.step] : { at, by: actor.email, user_id: actor.userId || null, source: input.shipment ? "shipping_email" : "staff_job_status" } } };
     const { data: saved, error: saveError } = await supabase.from("crm_customer_products").update({ meta: next }).eq("id", product.id).eq("updated_at", product.updated_at).select("id").maybeSingle();
     if (saveError) throw new CrmAuthError(502, "The manual status could not be saved. Refresh to see any completed updates before retrying.");
     if (!saved) throw new CrmAuthError(409, "Not all products could be saved. Refresh to see any completed updates before retrying.");
