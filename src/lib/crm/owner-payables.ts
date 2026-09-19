@@ -1,3 +1,4 @@
+import { installationCost } from "./installation-estimate";
 import { reconcileKenMonthlyLedger } from "./ken-monthly-ledger";
 import { effectiveBookkeepingStatus } from "./bookkeeping";
 import { buildPartnerPaymentLedger } from "./partner-payments";
@@ -8,7 +9,7 @@ export const payableMoney = (value: number) => Math.round(value * 100) / 100;
 
 export function ownerPayableFinancials(row: CrmBookkeepingRow) {
   const buyout = payableMoney(row.total * 0.1);
-  const installation = payableMoney(row.installationInvoiceAmount || 0);
+  const installation = payableMoney(installationCost(row).amount ?? row.installationInvoiceAmount ?? 0);
   const profit = payableMoney(row.total - row.cogs - installation - buyout);
   // Split integer cents without creating an extra cent on odd-cent jobs.
   const mike = Math.floor(Math.round(Math.max(profit, 0) * 100) / 2) / 100;

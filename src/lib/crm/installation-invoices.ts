@@ -109,6 +109,8 @@ export type InstallationInvoiceMatch = {
 };
 
 export type ProcessInstallationInvoiceOptions = {
+  /** Daily invoice reconciliation: cost only, exact identifiers, verified mailbox. */
+  costsOnly?: boolean;
   mailbox?: string;
   query?: string;
   maxResults?: number;
@@ -264,10 +266,10 @@ export async function getBrokeredGmailAccessToken(mailbox: string) {
   throw new CrmAuthError(502, `805 Gmail token broker rejected the configured operation (HTTP ${result.status}). Verify its supported contract.`);
 }
 
-export async function get805GmailAccessToken() {
+export async function get805GmailAccessToken(mailbox?: string) {
   const credentials = googleOAuthCredentials();
   if (!credentials) {
-    const accessToken = await getBrokeredGmailAccessToken(normalizedMailbox());
+    const accessToken = await getBrokeredGmailAccessToken(mailbox || normalizedMailbox());
     if (accessToken) return accessToken;
 
     throw new CrmAuthError(
@@ -326,15 +328,15 @@ async function gmailFetch<T>(path: string, accessToken: string) {
   return (await response.json()) as T;
 }
 
-async function listGmailMessageIds(accessToken: string, query: string, maxResults: number) {
+async function listGmailMessageIds(accessToken: string, query: string, maxResults: number, allPages = false) {
   const messages: Array<{ id: string; threadId?: string }> = [];
   let pageToken: string | undefined;
   let pages = 0;
 
-  while (messages.length < maxResults && pages < 5) {
+  while (allPages || (messages.length < maxResults && pages < 5)) {
     const params = new URLSearchParams({
       q: query,
-      maxResults: String(Math.min(100, maxResults - messages.length))
+      maxResults: String(allPages ? 100 : Math.min(100, maxResults - messages.length))
     });
     if (pageToken) params.set("pageToken", pageToken);
 
@@ -343,6 +345,7 @@ async function listGmailMessageIds(accessToken: string, query: string, maxResult
     pageToken = data.nextPageToken;
     pages += 1;
     if (!pageToken) break;
+    if (allPages && pages >= 100) throw new CrmAuthError(422, "Invoice search exceeds 10,000 messages; narrow the date range before processing.");
   }
 
   return messages;
@@ -906,6 +909,35 @@ function isTrustedMtsInvoiceSource(subject: string | null | undefined, from: str
   );
 }
 
+export function installationInvoiceTotal(text: string): number | null {
+  // A remaining balance is not the installation expense. Do not guess from
+  // amount-due labels or the largest dollar figure in an email.
+  const amounts = [...text.matchAll(/(?:\b(?:invoice\s+(?:total|amount)|grand\s+total|final\s+invoice\s+(?:price|amount))|^total)\s*[:\-]?\s*\$?\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{2})?)(?![0-9.])/gim)].map(match => Number(match[1].replace(/,/g, ""))).filter(amount => Number.isFinite(amount) && amount > 0);
+  const unique = [...new Set(amounts)];
+  return unique.length === 1 ? unique[0] : null;
+}
+
+export function exactInstallationInvoiceMatch(input: {
+  extraction: ExtractedInstallationInvoice;
+  contractNumber: string | null;
+  candidates: InstallationInvoiceCandidate[];
+  subject: string;
+  from: string;
+}): InstallationInvoiceMatch {
+  const { extraction, candidates, contractNumber, from, subject } = input;
+  const sender = (/<([^>]+)>/.exec(from)?.[1] || from).trim().toLowerCase();
+  const mtsIdentity = /mts installations/i.test(`${subject} ${extraction.text}`);
+  const trusted = mtsIdentity && (sender === "quickbooks@notification.intuit.com" || sender.endsWith("@mtsinstallations.com") || sender === "mtsshutters@gmail.com" || sender === "mtsagent101@gmail.com");
+  const review = (reason: string): InstallationInvoiceMatch => ({ candidate: null, status: "needs_review", confidence: 0, reason });
+  if (!trusted) return review("Verify MTS invoice sender and business identity.");
+  if (!extraction.invoiceNumber || !/\d/.test(extraction.invoiceNumber) || (!contractNumber && !extraction.mtsJobNumber)) return review("Invoice number and exact contract or MTS job reference required; customer name alone is insufficient.");
+  const matches = candidates.filter(candidate => candidate.source !== "job" &&
+    (!contractNumber || candidate.quoteNumber === contractNumber) &&
+    (!extraction.mtsJobNumber || candidate.mtsJobNumbers.includes(extraction.mtsJobNumber) || Boolean(contractNumber && candidate.quoteNumber === contractNumber && !candidate.mtsJobNumbers.length)));
+  if (matches.length !== 1) return review("Invoice identifiers do not identify one exact bookkeeping target.");
+  return { candidate: matches[0], status: "matched", confidence: 1, reason: "MTS invoice matched by exact contract/job reference." };
+}
+
 export function matchInstallationInvoiceToTargetCandidate(input: {
   subject?: string | null;
   from?: string | null;
@@ -978,25 +1010,38 @@ export function matchInstallationInvoiceToTargetCandidate(input: {
   return null;
 }
 
-async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
+async function loadInvoiceCandidates(supabase: CrmSupabaseClient, complete = false) {
+  type PageResult = { data: unknown[] | null; error: { message: string } | null };
+  interface PageQuery extends PromiseLike<PageResult> { limit(n: number): PageQuery; order(column: string): PageQuery; range(start: number, end: number): PageQuery; }
+  const read = async (query: PageQuery, limit: number) => {
+    if (!complete) return await query.limit(limit);
+    const rows = [];
+    for (let offset = 0; offset < 10000; offset += 500) {
+      const result = await query.order("id").range(offset, offset + 499);
+      if (result.error) return result;
+      rows.push(...(result.data || []));
+      if ((result.data || []).length < 500) return { data: rows, error: null };
+    }
+    throw new CrmAuthError(422, "Installation invoice matching exceeded its record limit; review required.");
+  };
   const [entriesResult, quotesResult, jobsResult] = await Promise.all([
-    supabase
+    read(supabase
       .from("crm_quote_bookkeeping_entries")
       .select(
         "id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,sales_owner,installation_invoice_amount,installation_match_status"
       )
       .order("sold_date", { ascending: false, nullsFirst: false })
-      .limit(INVOICE_CANDIDATE_LIMIT),
-    supabase
+      , INVOICE_CANDIDATE_LIMIT),
+    read(supabase
       .from("crm_quotes")
       .select("id,job_id,quote_number,status,quote_total,materials_cost,sold_by,sold_at,approved_at,ordered_at")
       .in("status", ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"])
-      .limit(500),
-    supabase
+      , 500),
+    read(supabase
       .from("crm_jobs")
       .select("id,customer_name,status,estimated_total,meta")
       .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
-      .limit(500)
+      , 500)
   ]);
 
   if (entriesResult.error || quotesResult.error || jobsResult.error) {
@@ -1578,6 +1623,46 @@ async function applyInstallationInvoice(
   throw new CrmAuthError(400, "Installation invoice matched a job that has no ledger target.");
 }
 
+export async function applyInstallationInvoiceCostOnly(
+  supabase: CrmSupabaseClient,
+  candidate: InstallationInvoiceCandidate,
+  extraction: ExtractedInstallationInvoice,
+  message: GmailMessage,
+  actorEmail?: string
+) {
+  if (!extraction.invoiceAmount || !extraction.invoiceNumber) throw new CrmAuthError(422, "Verified invoice total and number required.");
+  const table = "crm_quote_bookkeeping_entries";
+  let query = supabase.from(table).select("*");
+  query = candidate.entryId ? query.eq("id", candidate.entryId) : query.eq("quote_id", candidate.quoteId!);
+  const fresh = await query.maybeSingle();
+  if (fresh.error) throw new CrmAuthError(502, "Could not reread installation ledger.");
+  if (fresh.data && (fresh.data.quote_id !== candidate.quoteId || fresh.data.job_id !== candidate.jobId)) throw new CrmAuthError(409, "Invoice target changed; review required.");
+  if (fresh.data?.installation_invoice_document_id === message.id && Number(fresh.data.installation_invoice_amount) === extraction.invoiceAmount) return;
+  if (fresh.data && (Number(fresh.data.installation_invoice_amount) > 0 || fresh.data.installation_invoice_document_id || Number(fresh.data.installation_invoice_paid_amount) > 0)) throw new CrmAuthError(409, "An actual invoice/payment is already recorded; review before replacing it.");
+  const now = new Date().toISOString();
+  const patch = {
+    installation_invoice_amount: extraction.invoiceAmount,
+    installation_invoice_document_id: message.id,
+    installation_invoice_number: extraction.invoiceNumber,
+    installation_invoice_url: gmailUrl(message),
+    installation_match_status: "matched",
+    installation_matched_at: now,
+    meta: { ...(fresh.data?.meta || {}), installationInvoiceSource: "gmail", installationInvoiceMessageId: message.id, installationInvoiceAppliedBy: actorEmail || "daily-installation-invoices", installationInvoiceAppliedAt: now }
+  };
+  let saved;
+  if (fresh.data) {
+    if (!fresh.data.updated_at) throw new CrmAuthError(409, "Ledger revision missing; review required.");
+    saved = await supabase.from(table).update(patch).eq("id", fresh.data.id).eq("updated_at", fresh.data.updated_at).select("id").single();
+  } else {
+    if (candidate.entryId || !candidate.quoteId) throw new CrmAuthError(409, "Invoice target no longer exists.");
+    // Insert, never upsert: a concurrent bookkeeping record must not be overwritten.
+    saved = await supabase.from(table).insert({ quote_id: candidate.quoteId, job_id: candidate.jobId, source: "crm_quote", customer_name: candidate.customerName, total_amount: candidate.totalAmount, cogs_amount: candidate.cogsAmount, sold_date: candidate.soldDate?.slice(0, 10) || null, ...patch }).select("id").single();
+  }
+  if (saved.error || !saved.data) throw new CrmAuthError(409, "Installation cost was not saved; reload the ledger before retrying.");
+  const verified = await supabase.from(table).select("installation_invoice_amount,installation_invoice_document_id,installation_invoice_number").eq("id", saved.data.id).single();
+  if (verified.error || Number(verified.data?.installation_invoice_amount) !== extraction.invoiceAmount || verified.data?.installation_invoice_document_id !== message.id || verified.data?.installation_invoice_number !== extraction.invoiceNumber) throw new CrmAuthError(502, "Installation cost write needs reconciliation; readback did not verify it.");
+}
+
 async function applyCompletedServiceReport(
   supabase: CrmSupabaseClient,
   candidate: InstallationInvoiceCandidate,
@@ -1631,13 +1716,17 @@ export async function processInstallationInvoiceInbox(
   supabase: CrmSupabaseClient,
   options: ProcessInstallationInvoiceOptions = {}
 ): Promise<ProcessInstallationInvoiceResult> {
-  const mailbox = normalizedMailbox(options.mailbox);
-  const query = resolveInstallationInvoiceGmailQuery(mailbox, options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY);
+  const mailbox = options.costsOnly ? (options.mailbox || process.env.INSTALLATION_INVOICE_MAILBOX || DEFAULT_INSTALLATION_INVOICE_MAILBOX).trim().toLowerCase() : normalizedMailbox(options.mailbox);
+  const query = options.costsOnly ? (options.query || `in:anywhere newer_than:30d (invoice OR "amount due") "MTS Installations" -in:trash -in:spam`) : resolveInstallationInvoiceGmailQuery(mailbox, options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY);
   const maxResults = maxResultsValue(options.maxResults);
-  const accessToken = await get805GmailAccessToken();
+  const accessToken = await get805GmailAccessToken(options.costsOnly ? mailbox : undefined);
+  if (options.costsOnly) {
+    const profile = await gmailFetch<{ emailAddress: string }>("profile", accessToken);
+    if (profile.emailAddress?.toLowerCase() !== mailbox) throw new CrmAuthError(409, `Installation inbox mismatch: expected ${mailbox}; authenticated ${profile.emailAddress || "unknown"}. No invoices changed.`);
+  }
   const messageRefs = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
-    : await listGmailMessageIds(accessToken, query, maxResults);
+    : await listGmailMessageIds(accessToken, query, maxResults, options.costsOnly);
   const messageIds = messageRefs.map((message) => message.id).filter(Boolean);
 
   const result: ProcessInstallationInvoiceResult = {
@@ -1666,6 +1755,7 @@ export async function processInstallationInvoiceInbox(
     result.auditTableAvailable = false;
     result.auditError = existingResult.error.message;
   }
+  if (options.costsOnly && existingResult.error) throw new CrmAuthError(503, "Invoice audit history is unavailable; no costs changed.");
   const existingRecords = result.auditTableAvailable
     ? new Map(
         (existingResult.data || []).map((row) => [
@@ -1677,14 +1767,14 @@ export async function processInstallationInvoiceInbox(
         ])
       )
     : new Map<string, { matchStatus: string; appliedAt: string | null }>();
-  const candidates = await loadInvoiceCandidates(supabase);
+  const candidates = await loadInvoiceCandidates(supabase, options.costsOnly);
   const appliedCandidateKeys = new Set<string>();
 
   for (const messageId of messageIds) {
     const existingRecord = existingRecords.get(messageId);
     if (
       existingRecord &&
-      (!options.target || existingRecord.appliedAt || existingRecord.matchStatus === "matched" || existingRecord.matchStatus === "skipped")
+      (existingRecord.appliedAt || existingRecord.matchStatus === "matched" || (!options.costsOnly && (!options.target || existingRecord.matchStatus === "skipped")))
     ) {
       result.skipped += 1;
       continue;
@@ -1707,6 +1797,7 @@ export async function processInstallationInvoiceInbox(
         attachmentNames: names
       });
       const isCompletedServiceReport = serviceReport.isCompletedServiceReport;
+      if (options.costsOnly && isCompletedServiceReport) { result.skipped += 1; continue; }
       let extraction: ExtractedInstallationInvoice | null = null;
       let authenticatedContractNumber: string | null = null;
       let match: InstallationInvoiceMatch;
@@ -1736,6 +1827,10 @@ export async function processInstallationInvoiceInbox(
           attachmentText: pdfExtraction.text,
           attachmentNames: names
         });
+        if (options.costsOnly) {
+          extraction.invoiceAmount = installationInvoiceTotal(extraction.text);
+          extraction.amountConfidence = extraction.invoiceAmount === null ? 0 : 1;
+        }
         authenticatedContractNumber =
           extraction.contractNumber || (await resolveMtsProjectNumber(extraction.mtsJobNumber));
         match = matchInstallationInvoiceToCandidate({
@@ -1769,6 +1864,7 @@ export async function processInstallationInvoiceInbox(
               })
             : null;
         if (selectedTargetMatch) match = selectedTargetMatch;
+        if (options.costsOnly) match = exactInstallationInvoiceMatch({ extraction, contractNumber: authenticatedContractNumber, candidates: await loadInvoiceCandidates(supabase, true), subject, from });
         decision = autoApplyDecision(match, extraction);
         if (await hasProcessedInvoiceNumber(supabase, extraction.invoiceNumber)) {
           decision = {
@@ -1795,7 +1891,8 @@ export async function processInstallationInvoiceInbox(
         if (isCompletedServiceReport) {
           await applyCompletedServiceReport(supabase, candidate, serviceReport, message, options.actorEmail);
         } else if (extraction) {
-          await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
+          if (options.costsOnly) await applyInstallationInvoiceCostOnly(supabase, candidate, extraction, message, options.actorEmail);
+          else await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
         }
         if (!isCompletedServiceReport && candidateKey) appliedCandidateKeys.add(candidateKey);
         appliedAt = new Date().toISOString();
@@ -1844,6 +1941,7 @@ export async function processInstallationInvoiceInbox(
         }
       }, result.auditTableAvailable, result.auditError);
 
+      if (options.costsOnly && invoice.raw?.auditTableFallback) throw new CrmAuthError(502, "Invoice audit failed; reconcile the saved invoice before retrying.");
       result.invoices.push(invoice);
       result.processed += 1;
       if (invoice.match_status === "matched") {

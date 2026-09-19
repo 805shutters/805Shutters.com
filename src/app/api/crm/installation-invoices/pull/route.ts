@@ -8,6 +8,7 @@ import {
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function payloadRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     const target = installationTargetFromPayload(payload);
     const result = await processInstallationInvoiceInbox(supabase, {
       actorEmail: email,
+      costsOnly: payload.costsOnly === true,
       maxResults: typeof payload.maxResults === "number" ? payload.maxResults : undefined,
       query: typeof payload.query === "string" && payload.query.trim() ? payload.query.trim() : targetedInstallationQuery(target),
       messageIds: Array.isArray(payload.messageIds)

@@ -5,6 +5,7 @@ import { processInstallationInvoiceInbox } from "@/lib/crm/installation-invoices
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 function requireCronAccess(request: NextRequest) {
   const secret = process.env.INSTALLATION_INVOICE_CRON_SECRET || process.env.CRON_SECRET;
@@ -23,7 +24,8 @@ async function run(request: NextRequest) {
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
 
     const result = await observeIntegration(supabase, "installation-invoices", () => processInstallationInvoiceInbox(supabase, {
-      actorEmail: "installation-invoice-cron"
+      actorEmail: "installation-invoice-cron",
+      costsOnly: request.nextUrl.searchParams.get("mode") === "costs-only"
     }));
 
     return NextResponse.json(result);

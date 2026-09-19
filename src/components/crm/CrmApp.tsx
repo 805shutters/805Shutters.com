@@ -1399,7 +1399,7 @@ export function CrmApp({
         errors: number;
       }>(session, "/api/crm/installation-invoices/pull", {
         method: "POST",
-        body: JSON.stringify({})
+        body: JSON.stringify({ costsOnly: true })
       });
       await refresh();
       setMessage(

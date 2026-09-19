@@ -436,6 +436,7 @@ export type CrmBookkeepingRow = {
   mikeProfit: number;
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationInvoiceDocumentId: string | null;
+  installationEstimate?: import("./installation-estimate").InstallationEstimate;
   installationInvoiceAmount: number;
   installationInvoiceNumber: string | null;
   installationInvoiceUrl: string | null;

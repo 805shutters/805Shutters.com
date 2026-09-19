@@ -1,3 +1,4 @@
+import { installationEstimate } from "./installation-estimate";
 import {
   CrmAccountabilityItem,
   CrmBookkeepingCredit,
@@ -170,7 +171,7 @@ export function buildBookkeepingRows({
       );
     });
 
-  return [...entryRows, ...quoteRows].sort((a, b) => {
+  return [...entryRows, ...quoteRows].map(row => ({ ...row, installationEstimate: installationEstimate(row.quoteId ? quoteById.get(row.quoteId) : null) })).sort((a, b) => {
     const at = a.soldDate ? Date.parse(a.soldDate) : 0;
     const bt = b.soldDate ? Date.parse(b.soldDate) : 0;
     return bt - at;
