@@ -1,3 +1,4 @@
+import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -796,11 +797,12 @@ export function QuoteBuilder({
   } = useQuery({
     queryKey: designsQueryKey,
     queryFn: async () => {
-      if (lineItemIds.length === 0) return [];
+      const currentLineIds = currentQuoteLineIds(queryClient, lineItemsQueryKey);
+      if (currentLineIds.length === 0) return [];
       const { data, error } = await (supabase as any)
         .from("sales_quote_designs")
         .select("*")
-        .in("line_item_id", lineItemIds);
+        .in("line_item_id", currentLineIds);
       if (error) throw error;
       const rows = (data || []) as SalesQuoteDesign[];
       return rows;
@@ -810,11 +812,7 @@ export function QuoteBuilder({
   });
 
   const refreshServerOwnedV2Rows = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: quoteQueryKey }),
-      queryClient.invalidateQueries({ queryKey: lineItemsQueryKey }),
-      queryClient.invalidateQueries({ queryKey: designsQueryKey }),
-    ]);
+    await refreshQuoteV2Rows(queryClient, quoteQueryKey, lineItemsQueryKey, designsQueryKey);
   };
 
   const updateServerOwnedV2QuoteCache = (
@@ -1517,9 +1515,15 @@ export function QuoteBuilder({
 
       return { previousDesigns, editSequence };
     },
-    onError: (_error, _design, context) => {
-      if (context?.previousDesigns && context.editSequence === designEditSequence.current) {
-        queryClient.setQueryData(designsQueryKey, context.previousDesigns);
+    onError: async (_error, _design, context) => {
+      if (context?.editSequence === designEditSequence.current) {
+        if (serverOwnedV2) {
+          // The structure may have committed before pricing rejected an
+          // incomplete size. Never replace that saved selection with stale UI.
+          await refreshServerOwnedV2Rows();
+        } else if (context.previousDesigns) {
+          queryClient.setQueryData(designsQueryKey, context.previousDesigns);
+        }
       }
       toast.error(
         _error instanceof Error ? _error.message : "Design could not be saved",
