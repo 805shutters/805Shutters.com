@@ -69,6 +69,7 @@ export function restrictDashboardPayablesForViewer(data: CrmDashboardData, email
 
   return {
     ...data,
+    ownerPayablesLedger: undefined,
     bookkeepingRows: data.bookkeepingRows.map(sanitizeBookkeepingRow),
     bookkeepingTotals: safeBookkeepingTotals as CrmDashboardData["bookkeepingTotals"],
     customerFiles: data.customerFiles.map((file) => ({
@@ -80,6 +81,7 @@ export function restrictDashboardPayablesForViewer(data: CrmDashboardData, email
     commissionSummary: sanitizeCommissionSummary(data.commissionSummary),
     partnerPaymentLedger: {
       ...data.partnerPaymentLedger,
+      kenMonthly: ownPerson === "ken" ? data.partnerPaymentLedger.kenMonthly : undefined,
       people: Object.fromEntries(
         Object.entries(people).map(([person, ledger]) => [person, sanitizePerson(ledger)])
       ) as typeof people,

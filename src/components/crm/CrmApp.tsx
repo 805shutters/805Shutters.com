@@ -1,5 +1,7 @@
 "use client";
 
+import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
+
 import { ContractsWorkspace } from "./ContractsWorkspace";
 import { CrmNavigation, crmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
@@ -138,6 +140,7 @@ type QuoteWorkspaceOpenRequest = {
   historicalPriceLock: Extract<SalesQuoteV2RouteResolution, { status: "ready" }>["historicalPriceLock"];
 };
 type PartnerPaymentRequest = {
+  payment_model?: "equal_owners_v1";
   person: CrmPaymentPerson;
   paid_on?: string | null;
   period_month?: string | null;
@@ -2612,7 +2615,7 @@ export function CrmApp({
   }
 
   async function recordPartnerPaymentBatch(payload: PartnerPaymentRequest) {
-    if (!session) return;
+    if (!session) throw new Error("CRM session is required.");
 
     setBusy(true);
     setMessage(null);
@@ -2637,6 +2640,15 @@ export function CrmApp({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function savePayableReadiness(payload: PayableReadinessRequest) {
+    if (!session) throw new Error("CRM session is required.");
+    setBusy(true);
+    try {
+      const result = await crmFetch<{ dashboard: CrmDashboardData }>(session, "/api/crm/payables/readiness", { method: "PATCH", body: JSON.stringify(payload) });
+      setData(result.dashboard);
+    } finally { setBusy(false); }
   }
 
   async function markPartnerPaymentPaid(
@@ -3586,9 +3598,12 @@ export function CrmApp({
         </section>
       ) : null}
 
-      {activeTab === "payments" && !financialViewBlocked ? (
-        <PartnerPaymentsView
-          ledger={data?.partnerPaymentLedger}
+      {activeTab === "payments" && !financialViewBlocked && isMikePaymentAdminEmail(user?.email) ? (
+        <PayablesWorkspace
+          rows={data?.bookkeepingRows || []}
+          ledger={data?.ownerPayablesLedger}
+          canEdit={isMikePaymentAdminEmail(user?.email)}
+          onReadiness={savePayableReadiness}
           activePerson={activePaymentPerson}
           onPersonChange={openPaymentLedger}
           busy={busy}
@@ -3596,6 +3611,10 @@ export function CrmApp({
         />
       ) : null}
 
+
+      {activeTab === "payments" && !financialViewBlocked && !isMikePaymentAdminEmail(user?.email) ? (
+        <PartnerPaymentsView ledger={data?.partnerPaymentLedger} activePerson={activePaymentPerson} onPersonChange={openPaymentLedger} busy={busy} onPay={recordPartnerPaymentBatch} />
+      ) : null}
 
       {activeTab === "orders" ? (
         <section className="crm-workspace crm-workspace-wide">
@@ -3713,6 +3732,7 @@ export function CrmApp({
             onDateChange={setCalendarDate}
             onSelectSlot={setSelectedCalendarSlot}
             onOpenEvent={setViewingCalendarEvent}
+            onClose={() => openTab("tracking")}
           />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal

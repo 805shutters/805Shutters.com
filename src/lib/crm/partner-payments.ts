@@ -195,10 +195,18 @@ function createEarnedItem({
   };
 }
 
-export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
+export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[], equalOwners = false) {
   const items: EarnedItem[] = [];
 
   for (const row of rows) {
+    if (equalOwners) {
+      const closedAt = paidInFullDate(row);
+      if (closedAt) for (const person of ["ken", "mike", "jessica"] as const) {
+        const item = createEarnedItem({ row, person, amount: partnerPaymentAmountForRow(person, row), closedAt });
+        if (item) items.push(item);
+      }
+      continue;
+    }
     const kenClosedAt = closedKenJobDate(row);
     if (kenClosedAt) {
       const kenItem = createEarnedItem({
@@ -398,7 +406,7 @@ function metadataPaymentPerson(value: unknown): CrmPaymentPerson | null {
   return value === "ken" || value === "mike" || value === "jessica" ? value : null;
 }
 
-function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
+export function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
   const meta = payment.meta || {};
   return (
     metadataPaymentPerson(meta.partnerPaymentPerson) ||
@@ -416,7 +424,7 @@ function kenPaymentAppliesToBuyout(payment: CrmKenPayment, person: CrmPaymentPer
   return meta.batchSource === "unified_payment_ledger" && roundCents(payment.amount) === INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT;
 }
 
-function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
+export function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
   const person = paymentPersonFromKenPayment(payment);
 
   return {
@@ -473,7 +481,7 @@ function metadataAllocationSource(value: unknown): CrmBookkeepingRow["source"] {
   return value === "crm_quote" || value === "legacy_sheet" || value === "manual" ? value : "manual";
 }
 
-function paymentMetadataAllocations(
+export function paymentMetadataAllocations(
   paymentId: string,
   person: CrmPaymentPerson,
   meta: Record<string, unknown> | null | undefined
@@ -499,6 +507,8 @@ function paymentMetadataAllocations(
         customerName: optionalString(record.customer_name) || optionalString(record.customerName) || itemKey,
         quoteNumber: optionalString(meta.quoteNumber),
         closedAt: optionalString(record.closed_at) || optionalString(record.closedAt),
+        eligibleAt: optionalString(meta.eligibleAt),
+        dueDate: optionalString(meta.dueDate),
         total: optionalNumber(meta.total),
         amount,
         source: metadataAllocationSource(record.source),
@@ -514,7 +524,7 @@ function paymentMetadataAllocations(
     .filter((allocation): allocation is CrmPartnerPaymentHistoryAllocation => Boolean(allocation));
 }
 
-function explicitAllocationHistory(
+export function explicitAllocationHistory(
   allocation: CrmKenPaymentAllocation | CrmCommissionPaymentAllocation
 ): CrmPartnerPaymentHistoryAllocation {
   const meta = allocation.meta && typeof allocation.meta === "object" ? allocation.meta : {};
@@ -524,6 +534,8 @@ function explicitAllocationHistory(
     customerName: allocation.customer_name,
     quoteNumber: optionalString(meta.quoteNumber),
     closedAt: allocation.closed_at,
+    eligibleAt: optionalString(meta.eligibleAt),
+    dueDate: optionalString(meta.dueDate),
     total: optionalNumber(meta.total),
     amount: roundCents(allocation.amount),
     source: allocation.source,
@@ -656,15 +668,17 @@ export function buildPartnerPaymentLedger({
   kenPayments,
   commissionPayments,
   kenAllocations = [],
-  commissionAllocations = []
+  commissionAllocations = [],
+  earningsModel
 }: {
   rows: CrmBookkeepingRow[];
   kenPayments: CrmKenPayment[];
   commissionPayments: CrmCommissionPayment[];
   kenAllocations?: CrmKenPaymentAllocation[];
   commissionAllocations?: CrmCommissionPaymentAllocation[];
+  earningsModel?: "equal_owners_v1";
 }): CrmPartnerPaymentLedger {
-  const earnedItems = buildPartnerPaymentEarnedItems(rows);
+  const earnedItems = buildPartnerPaymentEarnedItems(rows, earningsModel === "equal_owners_v1");
   const soldEarningsByPerson = buildSoldEarningsByPerson(rows);
   const workingByPerson: Record<CrmPaymentPerson, WorkingItem[]> = {
     ken: [],

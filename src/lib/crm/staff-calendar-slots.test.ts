@@ -47,7 +47,8 @@ describe("hourly staff calendar controls", () => {
     }
     expect(calendarHourOccupied(events, date, at("08:00"), at("09:00"))).toBe(false);
     expect(calendarHourOccupied(events, date, at("12:00"), at("13:00"))).toBe(false);
-    expect(calendarHourOccupied([event("09:00", "10:00", "canceled"), event("09:00", "10:00", "rescheduled")], date, at("09:00"), at("10:00"))).toBe(false);
+    expect(calendarHourOccupied([event("09:00", "10:00", "canceled")], date, at("09:00"), at("10:00"))).toBe(false);
+    expect(calendarHourOccupied([event("09:00", "10:00", "rescheduled")], date, at("09:00"), at("10:00"))).toBe(true);
   });
   it("retains public booking duration and half-hour start validation", () => {
     const opts = { now: new Date("2035-09-30T12:00Z"), appointmentDurationMinutes: 120 };
@@ -83,7 +84,7 @@ describe("minimal calendar day availability", () => {
   });
   it("opens only displayed unbooked hours and preserves other dates", () => {
     const original=[range("14:00","15:00","2035-10-02")];
-    const appts=[event("09:30","10:30")];
+    const appts=[event("09:30","10:30", "rescheduled")];
     const before=JSON.stringify(appts);
     const next=changeCalendarDayHours(original,appts,date,hours);
     expect(next).toEqual([{start_at:at("08:00"),end_at:at("09:00")},{start_at:at("11:00"),end_at:at("12:00")},{start_at:at("14:00","2035-10-02"),end_at:at("15:00","2035-10-02")}]);

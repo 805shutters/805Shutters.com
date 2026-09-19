@@ -1,0 +1,28 @@
+import { test, expect } from '@playwright/test';
+test('monthly ledger, scoped readiness, payment amount, audit history, mobile layout', async ({ page }) => {
+ await page.goto('http://127.0.0.1:4215/e2e/fixtures/payables.html');
+ await expect(page.getByRole('heading',{name:/Next payment:/})).toBeVisible();
+ const job=page.locator('article').filter({has:page.getByRole('heading',{name:'Sample completed job',exact:true})});
+ await job.getByRole('button',{name:'Record or review 10% buyout payment for Sample completed job',exact:true}).click();
+ await expect(job.getByRole('spinbutton',{name:'Amount',exact:true})).toHaveValue('1000.00');
+ await job.getByRole('spinbutton',{name:'Amount',exact:true}).fill('250');
+ await job.getByRole('textbox',{name:'Reference / reason'}).fill('Sample partial payment');
+ await job.getByRole('button',{name:'Record payment',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('10% buyout payment recorded');
+ await expect(job).toContainText('$250.00 recorded');
+ await expect(job).toContainText('$750.00');
+ await page.getByRole('combobox',{name:/Recipient/}).selectOption('ken');
+ await expect(page.getByRole('cell',{name:/ach · Sample partial payment/})).toBeVisible();
+ const pending=page.locator('article').filter({has:page.getByRole('heading',{name:'Sample pending job',exact:true})});
+ await pending.getByRole('button',{name:'Review buyout readiness'}).click();
+ await pending.getByRole('combobox',{name:/Status/}).selectOption('ready');
+ await pending.getByRole('textbox',{name:'Reference / reason'}).fill('Sample reconciled completion');
+ await pending.getByRole('button',{name:'Save readiness'}).click();
+ await expect(page.getByRole('status')).toContainText('Readiness correction saved');
+ await expect(pending.getByRole('button',{name:'Review readiness for Sample pending job',exact:true})).toHaveAttribute('aria-pressed','false');
+ await page.screenshot({path:'/tmp/ken-monthly-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ await expect(page.getByRole('heading',{name:/Next payment:/})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:'/tmp/ken-monthly-mobile.png',fullPage:true});
+});

@@ -447,6 +447,8 @@ export type CrmBookkeepingRow = {
   isInstallationInvoicePaid: boolean;
   installationMatchStatus: CrmInstallationMatchStatus;
   installationMatchedAt: string | null;
+  completedAt?: string | null;
+  jobClosedAt?: string | null;
   isInstallationComplete: boolean;
   // Work is done but no MTS installer invoice has been matched yet, so the
   // installation cost is unknown and Mike/Jessica payouts must not finalize.
@@ -688,6 +690,11 @@ export type CrmPartnerJobLedgerItem = {
 };
 
 export type CrmPartnerPaymentLedgerItem = {
+  eligibleAt?: string | null;
+  dueDate?: string | null;
+  reviewReason?: string | null;
+  rawExplicitPaidAmount?: number;
+  accountCreditApplied?: number;
   id: string;
   itemKey: string;
   person: CrmPaymentPerson;
@@ -713,6 +720,8 @@ export type CrmPartnerPaymentLedgerItem = {
 };
 
 export type CrmPartnerPaymentHistoryAllocation = {
+  eligibleAt?: string | null;
+  dueDate?: string | null;
   id: string;
   itemKey: string;
   customerName: string;
@@ -738,6 +747,11 @@ export type CrmPartnerPaymentHistoryAllocation = {
 };
 
 export type CrmPartnerPaymentHistoryBatch = {
+  recordedAmount?: number;
+  reconciliation?: { status: "confirmed_duplicate" | "review" | "payment"; matchedBatchIds: string[]; reason: string };
+  paymentCutoffAt?: string | null;
+  dueDate?: string | null;
+  dateReviewRequired?: boolean;
   id: string;
   person: CrmPaymentPerson;
   source: "ken_payment" | "commission_payment";
@@ -804,6 +818,11 @@ export type CrmPartnerPaymentLedger = {
   activeItems: CrmPartnerPaymentLedgerItem[];
   history: CrmPartnerPaymentHistoryBatch[];
   kenBuyout: CrmKenBuyoutLedger;
+  kenMonthly?: {
+    dueDate: string; total: number; recordedTotal: number; excludedDuplicates: number;
+    items: CrmPartnerPaymentLedgerItem[];
+    review: { id: string; label: string; reason: string }[];
+  };
 };
 
 export type CrmCommissionMonthlySummary = {
@@ -954,6 +973,7 @@ export type CrmDashboardData = {
   commissionPaymentAllocations: CrmCommissionPaymentAllocation[];
   commissionSummary: CrmCommissionSummary;
   partnerPaymentLedger: CrmPartnerPaymentLedger;
+  ownerPayablesLedger?: CrmPartnerPaymentLedger;
   fulfillment?: import("./fulfillment").FulfillmentData;
   ownedActions?: import("./owned-actions").OwnedAction[];
   accountability: CrmAccountabilityItem[];
