@@ -387,6 +387,7 @@ for (const row of generatedProductColorOptions) {
     const group = SYNCHRONY_ACTIVE_COLLECTIONS.find(group => group.collection === row.collection && group.colors.includes(row.colorName));
     row.available = Boolean(group);
     row.colorCode = SYNCHRONY_DEALER_COLOR_CODES[row.collection]?.[row.colorName] ?? row.colorCode;
+    row.searchText = `${row.searchText} ${row.colorCode}`.toLowerCase();
     row.sourcePage = "Vertical Blinds Guide.pdf#page=9";
     row.sourceNote = group ? "June 26, 2026 dealer guide current collection/color identity." : "Discontinued by the June 26, 2026 dealer guide; retained for historical quotes.";
   }
@@ -473,7 +474,7 @@ const additionalSynchronyColors: ProductColorOption[] = [
   sourceNote: row.available ? "June 26 guide identity and exact color code verified in live Norman ordering dropdowns September 19, 2026." : "Discontinued in current dealer guide; retained for historical identification.",
   programId: `synchrony_vertical_synchrony_vertical_blind_price_group_${row.priceGroup.slice(-1)}_pg${row.priceGroup.slice(-1)}`,
   selectionMode: "fabric", requiresProgram: false, available: row.available, automaticDetails: {},
-  searchText: `${row.collection} ${row.colorName} synchrony`.toLowerCase(),
+  searchText: `${row.collection} ${row.colorName} ${SYNCHRONY_DEALER_COLOR_CODES[row.collection]?.[row.colorName] ?? ""} synchrony`.toLowerCase(),
 }));
 
 export const productColorOptions = [

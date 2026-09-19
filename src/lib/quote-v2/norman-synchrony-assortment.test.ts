@@ -1,4 +1,4 @@
-import { getMtsProductColorRows } from "@mts/lib/productColorCatalog";
+import { getMtsProductColorRows, searchMtsProductColors } from "@mts/lib/productColorCatalog";
 import { repriceExactQuoteBuilderForServerDate } from "@/lib/quote-lab/exact-backend";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { validateSelection } from "./rules";
@@ -7,7 +7,7 @@ import { quoteV2CatalogVersionFor } from "./catalog";
 import type { SelectionContext } from "./core";
 import { SYNCHRONY_DEALER_COLOR_CODES, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
 import { describe, expect, it } from "vitest";
-import { getProductColorOptions } from "@/lib/quote/product-color-options";
+import { getProductColorOptions, searchProductColorOptions } from "@/lib/quote/product-color-options";
 import { getProduct, getProgram } from "@/lib/quote/catalog";
 import { getVerticalColorsForGroup } from "@mts/lib/quoteConstants";
 import { synchronyVerticalActiveColors, synchronyVerticalDiscontinuedColors } from "./catalog";
@@ -21,6 +21,9 @@ describe("Synchrony complete June dealer assortment", () => {
       expect(matches, `${offering.collection}: ${offering.colorName}`).toHaveLength(1);
       const group = offering.priceGroup!.slice(-1);
       expect(matches[0].colorCode).toBe(SYNCHRONY_DEALER_COLOR_CODES[offering.collection][offering.colorName]);
+      const code = matches[0].colorCode;
+      expect(searchProductColorOptions("synchrony_vertical", code).some(row => row.id === matches[0].id)).toBe(true);
+      expect(searchMtsProductColors("Vertical Blinds", { quote_v2_backend: true }, code).some(row => row.collection === offering.collection && row.colorName === offering.colorName)).toBe(true);
       expect(matches[0].programId).toBe(`synchrony_vertical_synchrony_vertical_blind_price_group_${group}_pg${group}`);
       expect(getProgram(getProduct("synchrony_vertical")!, matches[0].programId!)?.grid.prices.length).toBeGreaterThan(0);
       expect(getVerticalColorsForGroup(offering.collection)).toContain(`${offering.colorName} Collection: ${offering.collection}`);

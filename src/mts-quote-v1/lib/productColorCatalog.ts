@@ -82,7 +82,7 @@ const authoritativeV2VerticalRows: ProductColorOption[] = VERTICAL_COLORS.map(
       requiresProgram: !programId,
       available: true,
       automaticDetails: {},
-      searchText: `${collection} ${colorName} ${programId ?? ""} ${index}`.toLowerCase(),
+      searchText: `${collection} ${colorName} ${SYNCHRONY_DEALER_COLOR_CODES[collection]?.[colorName] ?? ""} ${programId ?? ""} ${index}`.toLowerCase(),
     };
   },
 );

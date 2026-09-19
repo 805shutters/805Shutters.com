@@ -1,3 +1,4 @@
+import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
@@ -1434,9 +1435,8 @@ export function QuoteBuilder({
   const upsertDesign = useMutation({
     scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationKey: quoteDesignMutationKey,
-    mutationFn: async (
-      design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
-    ) => {
+    mutationFn: async (edit: QuoteDesignEdit) => {
+      let design = edit.design;
       if (serverOwnedV2) {
         const latestDesigns =
           queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ??
@@ -1446,6 +1446,7 @@ export function QuoteBuilder({
             row.line_item_id === design.line_item_id &&
             row.variant === design.variant,
         );
+        design = applyQuoteDesignEdit(edit, existing);
         const designId = existing?.id ?? crypto.randomUUID();
         await mutateAndRepriceServerOwnedV2(
           [
@@ -1476,10 +1477,12 @@ export function QuoteBuilder({
       if (selectionError) throw selectionError;
       return savedDesign.id as string;
     },
-    onMutate: async (design) => {
+    onMutate: async (edit) => {
       const editSequence = ++designEditSequence.current;
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
       const previousDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey);
+      const latest = previousDesigns?.find(row => row.line_item_id === edit.design.line_item_id && row.variant === edit.design.variant);
+      const design = applyQuoteDesignEdit(edit, latest);
 
       queryClient.setQueryData<SalesQuoteDesign[]>(designsQueryKey, (current = []) => {
         const index = current.findIndex(
@@ -2581,7 +2584,9 @@ export function QuoteBuilder({
                       },
                     ];
                   })}
-                  onUpdateDesign={(design) => upsertDesign.mutate(design)}
+                  onUpdateDesign={(design) => upsertDesign.mutate(serverOwnedV2
+                    ? captureQuoteDesignEdit(design, designs.find(row => row.line_item_id === design.line_item_id && row.variant === design.variant))
+                    : { design })}
                   onSaveLinePrice={(variant, price) => saveLinePrice(item.id, variant, price)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}
