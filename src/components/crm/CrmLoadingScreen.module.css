@@ -1,47 +1,32 @@
-:global(body):has(.screen) {
-  margin: 0;
-  background: #0b0b0b;
-}
-
+:global(body):has(.screen) { margin: 0; background: #090a0a; }
 .screen:global(.crm-app-shell) {
   box-sizing: border-box;
+  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 24px;
-  background: #0b0b0b;
+  padding: 64px 24px 88px;
+  background: radial-gradient(ellipse at center, #222724 0%, #111412 30%, #090a0a 70%);
   color: #efefed;
   font-family: Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
 }
-
-.card {
-  box-sizing: border-box;
-  width: min(100%, 440px);
-  padding: 36px 28px;
-  border: 1px solid #414343;
-  border-radius: 18px;
-  background: #202222;
-  text-align: center;
-  box-shadow: 0 24px 80px #0004;
-}
-
-.brand { display: block; width: 116px; height: auto; margin: 0 auto; object-fit: contain; filter: brightness(0) invert(1); }
+.content { width: 100%; text-align: center; }
+.logoFrame { position: relative; display: grid; place-items: center; width: 192px; height: 192px; margin: 0 auto 30px; }
+.brand { display: block; width: 118px; height: auto; object-fit: contain; filter: brightness(0) invert(1); }
 .indicator {
-  box-sizing: border-box;
-  width: 38px;
-  height: 38px;
-  margin: 30px auto 24px;
-  border: 3px solid #444a47;
-  border-top-color: #75dcae;
-  border-right-color: #75dcae;
+  position: absolute;
+  inset: 0;
+  border: 1px solid #535d573b;
+  border-top-color: #b8c5bd;
+  border-right-color: #88958d60;
   border-radius: 50%;
-  animation: turn 1.2s linear infinite;
+  animation: orbit 7s linear infinite;
 }
-.card .title { margin: 0; color: #efefed; font: 500 clamp(20px, 4vw, 25px)/1.25 Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; letter-spacing: -.6px; text-transform: none; }
-.card .description { margin: 10px 0 0; color: #afb4b2; font-size: 14px; line-height: 1.5; }
-@keyframes turn { to { transform: rotate(360deg); } }
+.content .title { margin: 0; color: #efefed; font: 500 22px/1.25 Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; letter-spacing: -.5px; text-transform: none; }
+.content .description { margin: 10px 0 0; color: #aeb4b1; font-size: 13px; line-height: 1.5; }
+.screen .footer { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 20px; right: 20px; margin: 0; color: #a2aaa5; font-size: 10px; line-height: 1.5; letter-spacing: 2.3px; text-align: center; text-transform: uppercase; }
+@keyframes orbit { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .indicator { animation: none; } }
-@media (max-width: 480px) { .screen:global(.crm-app-shell) { padding: 18px; } .card { padding: 30px 20px; } }
