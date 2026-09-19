@@ -53,6 +53,16 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+    id: "norman-palladian-guide-2026-09-01", manufacturer: "Norman", kind: "product_guide", format: "pdf",
+    fileName: "Palladian Shelf Guide 2026-09-01.pdf", title: "Palladian Shelf Guide", revision: "September 1, 2026",
+    effectiveDate: "2026-09-01", effectiveDateEvidence: "Page 2 revision log: September 1, 2026 adds Roller LightGuard 360 and Cassette availability.",
+    receivedDate: "2026-09-19", modifiedDate: null, pageCount: 8,
+    sha256: "4a5cca3dcff4a61bb96aded6e2a9f79a8c70e3a4b8ee650a4d900bba9d40bf8d",
+    authorities: ["assortment", "restrictions", "options"],
+    sourceUrl: "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Other/Norman/Palladian%20Shelf/Palladian%20Shelf%20Guide.pdf",
+  },
+
+  {
     id: "norman-san-clemente-guide-2025-11-19", manufacturer: "Norman", kind: "product_guide", format: "pdf",
     fileName: "San Clemente Guide.pdf", title: "San Clemente Program Reference Guide", revision: "November 2025",
     effectiveDate: "2025-11-19", effectiveDateEvidence: "Page 2 revision log: November 19, 2025 drawing update; G2 assortment March 1, 2025 and G1 discontinued April 30, 2025.",

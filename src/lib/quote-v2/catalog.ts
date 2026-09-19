@@ -33,6 +33,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r1`;
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
   if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {

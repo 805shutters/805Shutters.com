@@ -41,7 +41,7 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 | Ultimate Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
-| Palladian Shelf | Current dealer comparison and production verification of both price schedules and linked product persistence. |
+| Palladian Shelf | September guide rules now normalized, including 42 coded finishes, minimum width, depth increments, support weight, paired-product eligibility, quantity and default/custom deductions. Current dealer comparison and production verification of both price schedules and linked-product persistence remain. |
 | San Clemente Honeycomb | Current base, TDBU and pole/attachment price schedules; dealer-account applicability and production persistence. |
 | San Clemente Faux Wood | Current base and optional side-bracket price schedules; dealer-account applicability and production persistence. |
 | Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
@@ -49,7 +49,7 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 ## Evidence and release state
 
 - Wood cut-out release `7d61abdc`: deployed September 19; 4,271 tests passed, 28 skipped; typecheck and build passed. `805-one.vercel.app` redirects successfully to the verified canonical site.
-- San Clemente increment: local real-CRM controls saved/reopened C4127T Room Darkening, Cordless TDBU, flush mount, 2-inch recess and one 36-inch pole; also White 6008 faux wood, flush side mount and 3½-inch recess. Separate source/program mapping, boundaries and blocked pricing tested for all 11 colors. Full suite: 4,300 tests passed, 28 skipped; typecheck/build passed. Publication pending.
+- San Clemente increment: local real-CRM controls saved/reopened C4127T Room Darkening, Cordless TDBU, flush mount, 2-inch recess and one 36-inch pole; also White 6008 faux wood, flush side mount and 3½-inch recess. Separate source/program mapping, boundaries and blocked pricing tested for all 11 colors. Full suite: 4,300 tests passed, 28 skipped; typecheck/build passed. Release `480af54b` deployed September 19.
 - Initial implementation commit `da2501e9` was pushed and deployed to the 805 Vercel project; canonical production and `805-one.vercel.app` responded successfully.
 - Production verification quote `805-0310` saved and reopened Louise F1709, 36 × 60, cordless, 7-inch fold and 6-inch fabric valance. It exposed the legacy draft route: selection persistence passed, but pricing remained incomplete at $0. This is not verified live pricing.
 - Production native quote `805-0312` saved and reopened Louise F1709, 36 × 60, quantity one, cordless, 7-inch fold, 6-inch fabric valance, no Light Guard and no premium hem bar. The authoritative endpoint retains a blocked status because the product restriction review is incomplete. The equivalent backend fixture computes $761 retail but correctly withholds a sendable snapshot. This is persistence proof, not live pricing certification.
@@ -61,3 +61,9 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 - No family is newly labelled “verified live” by this ledger. Existing limited/blocked runtime statuses remain intact.
 
 Row-level working results are generated into `outputs/norman-completion/`: `programs.csv`, `grid-rows.csv`, `fabrics-colors.csv`, `honeycomb-color-cell-routes.csv`, `options.csv`, and `summary.json`. `norman-completion-audit.test.ts` exports the current code catalog when `NORMAN_AUDIT_EXPORT` is set. The comparison script records PDF page matches for every grid row. Raw dealer files and private local evidence are not part of the published source changes.
+
+## Newly discovered Contract Sales scope
+
+The current dealer binder also lists separate Contract Cordless Faux Wood and 3½-inch Contract Vertical specifications. These are absent from the 16-family inventory above and must receive separate CRM destinations; they are not covered by Ultimate or Synchrony certification. Current price schedules are absent. The Contract Vertical request form requires 50 blinds minimum; its documented quotation-request route has not been submitted. Contract aluminum installation documents require a current assortment/orderability source before inclusion.
+
+Palladian local UI evidence: Winchester White 2010, 2⅛-inch depth, custom measurements, 20-pound support weight and separately ordered shelf saved/reopened. A new server-derived assembly retains finish code 066, quantity and deduction basis. This is local persistence evidence, not production certification.

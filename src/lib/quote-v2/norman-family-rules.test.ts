@@ -8,7 +8,7 @@ import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
 
 function selection(productId: string, width = 36, height = 60, configuration: SelectionContext["configuration"] = {}): SelectionContext {
-  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration, options: {}, catalogAsOf: "2026-09-18", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-18") };
+  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration: productId === "palladian_shelf" ? {shelf_supported_weight_lbs: 20, ...configuration} : configuration, options: {}, catalogAsOf: "2026-09-19", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-19") };
 }
 const rules = (s: SelectionContext) => validateNormanFamilyRules(s).map((r) => r.ruleId);
 
@@ -60,7 +60,7 @@ describe("Norman current family source rules", () => {
     expect(rules(selection("perfectsheer",98.0625,98,{lift_system:"Continuous Cord Loop"}))).toContain("norman.perfectsheer.dimensions");
   });
   it("requires eligible accompanying product for discounted Palladian pricing",()=>{
-    for(const pid of ["none","faux_wood","smartprivacy_faux","synchrony_vertical"]) {
+    for(const pid of ["none","faux_wood","smartprivacy_faux","synchrony_vertical","smartdrape","san_clemente_honeycomb","san_clemente_faux_wood","vertical_honeycomb","unknown"]) {
       expect(rules({...selection("palladian_shelf",36,1.5,{accompanying_product_id:pid}),programId:"palladian_shelf_palladian_shelf_with_product"})).toContain("norman.palladian_shelf.with_product_eligibility");
     }
   });

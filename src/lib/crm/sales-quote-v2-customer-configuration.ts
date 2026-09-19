@@ -71,6 +71,8 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["shared_power_panel_id", "Shared power panel"],
   ["fold_size", "Fold size"],
   ["shelf_depth", "Shelf depth"],
+  ["shelf_measurement_basis", "Shelf measurements"],
+  ["shelf_supported_weight_lbs", "Supported shade weight (lb)"],
   ["wood_cutout_left_type", "Left cut-out"],
   ["wood_cutout_left_width", "Left cut-out width"],
   ["wood_cutout_left_top", "Left cut-out top from headrail"],

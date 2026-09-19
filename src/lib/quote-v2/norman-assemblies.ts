@@ -1,3 +1,4 @@
+import { palladianProductEligible, PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
 import { resolveNormanShadeMotorization } from "./norman-shade-motorization";
@@ -52,12 +53,56 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
     }
   }
   for (const line of lines) {
-    if (line.selection.productId !== "palladian_shelf" || !line.selection.programId?.endsWith("_with_product")) continue;
-    const id = line.selection.configuration.accompanying_line_id;
+    const shelf = line.selection;
+    if (shelf.productId !== "palladian_shelf") continue;
+    const current = shelf.catalogAsOf >= "2026-09-19";
+    const withProduct = shelf.programId?.endsWith("_with_product");
+    const c = shelf.configuration;
+    const id = c.accompanying_line_id;
     const target = lines.find(l => l.lineId === id && l.lineId !== line.lineId);
-    if (!target || target.selection.productId !== line.selection.configuration.accompanying_product_id || !["honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds"].includes(target.selection.productId)) {
-      issues.push({ severity: "hard_block", ruleId: "norman.palladian.accompanying_line_required", source: sourceProvenance("norman-retail-guide-2026-09", { page: 37 }), selectedValues: { lineId: line.lineId, accompanyingLineId: id ?? null }, explanation: "The with-product shelf rate requires a linked, selected eligible Norman product on this quote." });
+    const fail = (rule: string, page: number, explanation: string) => issues.push({
+      severity: "hard_block", ruleId: `norman.palladian.${rule}`,
+      source: sourceProvenance(current ? "norman-palladian-guide-2026-09-01" : "norman-retail-guide-2026-09", { page: current ? page : 37 }),
+      selectedValues: { lineId: line.lineId, accompanyingLineId: id ?? null }, explanation,
+    });
+    const oldEligible = target && ["honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds"].includes(target.selection.productId);
+    if (withProduct && (!target || target.selection.productId !== c.accompanying_product_id || !(current ? palladianProductEligible(target.selection.productId) : oldEligible))) {
+      fail("accompanying_line_required", 6, "The with-product shelf rate requires a linked, selected eligible Norman product on this quote.");
+      continue;
     }
+    if (!current) continue;
+    const basis = withProduct ? normalizeIdentity(c.shelf_measurement_basis) : "custom";
+    let specialty = false;
+    if (withProduct && target) {
+      const t = target.selection;
+      const tc = t.configuration;
+      const application = [tc.application, tc.honeycomb_application, tc.honeycomb_operating_system, tc.lift_system, tc.shade_type].map(normalizeIdentity).join(" ");
+      specialty = t.productId === "honeycomb" && /specialty/.test(application);
+      if (t.productId === "honeycomb" && (/frame/.test(application) && /smartfit|smart fit|sloped/.test(application) || /skylight/.test(application) && /motor/.test(application))) fail("honeycomb_application", 6, "Framed SmartFit, framed sloped Honeycomb and motorized skylight shades require a separately ordered shelf.");
+      if (!["inside", "inside mount", "im", "ib"].includes(normalizeIdentity(tc.mount_type))) fail("accompanying_mount", 5, "A paired Palladian shelf requires an inside-mounted blind or shade.");
+      if (basis === "custom") {
+        const total = lines.filter(other => other.selection.productId === "palladian_shelf" && other.selection.programId?.endsWith("_with_product") && other.selection.configuration.accompanying_line_id === id).reduce((sum, other) => sum + other.selection.quantity, 0);
+        if (total > t.quantity) fail("quantity", 6, "Total custom shelves linked to this line cannot exceed its blind/shade quantity. Shelf quantity is a line total, not an amount per shade.");
+      }
+      if (basis === "default" && shelf.widthInches !== t.widthInches) fail("opening_width", 5, "Default shelf width must match the accompanying product's ordered opening width.");
+      if (/common valance/.test(application)) {
+        const widths = tc.common_valance_panel_widths;
+        if (!Array.isArray(widths) || widths.length < 2 || widths.some(width => typeof width !== "number" || !Number.isFinite(width) || width <= 0)) fail("common_widths", 8, "Record every blind/shade width in the common-valance assembly before pairing a shelf.");
+        else if ((widths as number[]).reduce((sum, width) => sum + width, 0) >= 96) fail("common_width", 8, "The sum of ordered blind/shade widths under a common valance must be less than 96 inches.");
+      }
+    }
+    // Derived afresh, never copied from browser-provided assembly records.
+    shelf.configuration = { ...c, ...(!withProduct ? { shelf_measurement_basis: "Custom" } : {}), [NORMAN_ASSEMBLY_KEY]: {
+      version: 1, type: "palladian_shelf", accompanyingLineId: withProduct ? id ?? null : null,
+      measurementBasis: basis, orderedWidth: shelf.widthInches,
+      finishedShelfWidth: shelf.widthInches - (withProduct && basis === "default" ? 1 / 32 : 0),
+      shelfDepth: c.shelf_depth ?? null, faceWidth: 1.5, trapezoidalBlockWidth: Number(c.shelf_depth) - 0.5, shelfQuantity: shelf.quantity,
+      finishCode: PALLADIAN_FINISHES.find(finish => normalizeIdentity(finish.name) === normalizeIdentity(c.color ?? c.shelf_color))?.code ?? null,
+      supportedWeightLbs: c.shelf_supported_weight_lbs ?? null,
+      shadeHeightDeduction: withProduct && basis === "default" && !specialty ? "factory_when_ordered_on_same_line" : "none",
+      shadeHeightOrigin: specialty ? "top_of_shelf" : "ordered_opening",
+      sourceId: "norman-palladian-guide-2026-09-01", sourcePages: [5, 6, 8],
+    }};
   }
   const groups = new Map<string, typeof lines[number][]>();
   for (const line of lines) {

@@ -1,6 +1,7 @@
+import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
 import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
 import { isSanClementeProduct } from "@/lib/quote/norman-san-clemente";
-import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS } from "@/lib/quote/norman-current-assortment";
+import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "@/lib/quote/norman-current-assortment";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import {
@@ -3043,7 +3044,7 @@ function ConfirmedOptionStrip({
           title={`${option.label}: ${value}`}
         >
           <span className="quote-confirmed-option-chip__label">{option.label}</span>
-          <span className="quote-confirmed-option-chip__value">{value}</span>
+          <span className="quote-confirmed-option-chip__value">{option.field === "json:accompanying_product_id" ? (value === "none" ? "Shelf ordered separately" : getProduct(value)?.name ?? value) : value}</span>
         </button>
       ))}
     </div>
@@ -10041,7 +10042,9 @@ function ShadesAndBlindsOptions({
         return [
           { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount"] },
           { key: "depth", label: "Shelf Depth", field: "json:shelf_depth", type: "number", min: 2, max: 4, step: "0.125", unit: "in" },
-          { key: "product", label: "Accompanying Product", field: "json:accompanying_product_id", type: "select", options: ["none", "honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds", "faux_wood", "smartprivacy_faux", "synchrony_vertical"] },
+          { key: "product", label: "Accompanying Product", field: "json:accompanying_product_id", type: "select", options: ["none", ...PALLADIAN_WITH_PRODUCT_IDS] },
+          { key: "basis", label: "Shelf measurements", field: "json:shelf_measurement_basis", type: "select", options: optionsJson.accompanying_product_id === "none" ? ["Custom"] : ["Default", "Custom"] },
+          { key: "load", label: "Supported shade weight", field: "json:shelf_supported_weight_lbs", type: "number", min: 0, max: 50, step: "0.1", unit: "lb" },
           { key: "color", label: "Shelf Color", field: "json:color", type: "select", options: PALLADIAN_COLORS },
         ];
       case "Roller Shades": {
@@ -11632,6 +11635,13 @@ function ShadesAndBlindsOptions({
     }
   };
 
+  const palladianIssues = productType === "Palladian Shelf" ? validateNormanFamilyRules({
+    productId: "palladian_shelf", manufacturerId: "Norman", catalogVersion: "", catalogAsOf: "2026-09-19",
+    programId: optionsJson.accompanying_product_id === "none" ? "palladian_shelf_without_product" : "palladian_shelf_with_product",
+    quantity: _lineItem.quantity, widthInches: measurementToInches(_lineItem.width_whole, _lineItem.width_fraction),
+    heightInches: measurementToInches(_lineItem.height_whole, _lineItem.height_fraction), options: {},
+    configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   const gridOptions = getGridOptions();
   if (authoritativeV2 && ["Honeycomb Shades", "Roman Shades", "SmartFold Shades"].includes(productType) && /motor|autowand/i.test(String(design?.lift_system))) {
     gridOptions.push({ key: "motor_position", label: "Motor Position", field: "json:motor_position", type: "buttons", options: ["Left", "Right"] });
@@ -11867,6 +11877,11 @@ function ShadesAndBlindsOptions({
       );
     }
 
+    if (productType === "Palladian Shelf" && opt.field === "json:accompanying_product_id") {
+      return <select aria-label="Accompanying Product" className="w-full rounded border p-2" value={value ?? ""} onChange={e => {
+        onUpdateFields({ options_json: { ...optionsJson, accompanying_product_id: e.target.value, accompanying_line_id: null, ...(e.target.value === "none" ? { shelf_measurement_basis: "Custom" } : {}) } });
+      }}><option value="">Select</option><option value="none">Shelf ordered separately</option>{PALLADIAN_WITH_PRODUCT_IDS.map(id => <option key={id} value={id}>{getProduct(id)?.name ?? id}</option>)}</select>;
+    }
     if (opt.type === "select") {
       if (opt.field === "json:back_fabric_color" && productType === "Roman Shades") {
         const backFabric = stringOption(optionsJson, "back_fabric");
@@ -12110,11 +12125,15 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
-      {productType === "Palladian Shelf" && optionsJson.accompanying_product_id !== "none" ? (
+      {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">
+        <p>Inside mount only. Order a separate shelf for Faux Wood, San Clemente, Synchrony and SmartDrape. Default paired measurements include a 1/32-inch shelf width deduction; custom finished measurements have no deduction.</p>
+        {palladianIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-amber-900">{palladianIssues.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
+      </div>}
+      {productType === "Palladian Shelf" && optionsJson.accompanying_product_id && optionsJson.accompanying_product_id !== "none" ? (
         <label className="block text-sm">Accompanying quote line
           <select className="mt-1 block w-full rounded border p-2" value={String(optionsJson.accompanying_line_id ?? "")} onChange={event => onUpdateFields({ options_json: { ...optionsJson, accompanying_line_id: event.target.value || null } })}>
             <option value="">Select quote line</option>
-            {sideBySideLineOptions.filter(row => row.lineId !== _lineItem.id).map(row => <option key={row.lineId} value={row.lineId}>{row.label}</option>)}
+            {sideBySideLineOptions.filter(row => row.lineId !== _lineItem.id && (row.design.options_json?.catalog_product_id ?? row.design.options_json?.quote_lab_product_id) === optionsJson.accompanying_product_id && row.design.supplier === "Norman").map(row => <option key={row.lineId} value={row.lineId}>{row.label}</option>)}
           </select>
         </label>
       ) : null}

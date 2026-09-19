@@ -1,3 +1,4 @@
+import { palladianProductEligible } from "@/lib/quote/norman-current-assortment";
 import { deriveNormanOrderRecords, romanComponentWidths } from "@/lib/quote-v2/norman-assemblies";
 import { resolveNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
@@ -207,7 +208,7 @@ function resolveV2ProgramId(
   if (productId === "palladian_shelf") {
     const accompanying = textOption(options, "accompanying_product_id");
     if (!accompanying) return null;
-    const eligible = ["honeycomb", "vertical_honeycomb", "roller", "roman", "smartfold", "perfectsheer", "smartdrape", "citylights_aluminum", "wood_blinds"].includes(accompanying);
+    const eligible = palladianProductEligible(accompanying);
     return `palladian_shelf_palladian_shelf_${eligible ? "with" : "without"}_product`;
   }
 

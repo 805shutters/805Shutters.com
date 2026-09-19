@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(46);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(47);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(46);
+    ).toBe(47);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(46);
+    ).toBe(47);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -70,6 +70,7 @@ describe("quote V2 source manifest", () => {
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({
+      "Palladian Shelf Guide 2026-09-01.pdf": "4a5cca3dcff4a61bb96aded6e2a9f79a8c70e3a4b8ee650a4d900bba9d40bf8d",
       "San Clemente Guide.pdf": "39fdc0fe46188ef773edd9ff8833312664a895e3ff799c3b26643cda6840f7e1",
       "SmartFold Guide 2026-09-10.pdf": "15ce45a1f490c4b88a737b06c6f903fdd416152df41ad808d8c6caed7f3714dd",
       "Citylights Aluminum Blinds Program Guide 2026-08-01.pdf": "f9228276c8eddd569b7297b0d69187e5488d7d341cd6ea59f77892e7f46dd916",

@@ -1,3 +1,4 @@
+import { PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "./norman-current-assortment";
 import { SAN_CLEMENTE_HONEYCOMB, SAN_CLEMENTE_FAUX } from "./norman-san-clemente";
 import {
   findPriceableProductSurcharge,
@@ -978,16 +979,10 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     ...installationFields,
   ],
   palladian_shelf: [
-    {
-      id: "shelf_type",
-      label: "Shelf type",
-      type: "select",
-      options: [
-        { value: "standard", label: "Standard" },
-        { value: "deep", label: "Deep" },
-      ],
-    },
-    { id: "color", label: "Color", type: "select", options: [{ value: "white", label: "White" }, { value: "painted", label: "Painted" }, { value: "custom", label: "Custom" }] },
+    { id: "mount_type", label: "Mount", type: "select", options: [{ value: "Inside Mount", label: "Inside mount" }] },
+    { id: "shelf_measurement_basis", label: "Shelf measurements", type: "select", options: [{ value: "Default", label: "Opening measurements (factory deductions)" }, { value: "Custom", label: "Custom finished measurements" }] },
+    { id: "accompanying_product_id", label: "Accompanying product", type: "select", options: [{ value: "none", label: "Shelf ordered separately" }, ...PALLADIAN_WITH_PRODUCT_IDS.map(value => ({ value, label: getProduct(value)?.name ?? value }))] },
+    { id: "color", label: "Shelf color", type: "select", options: PALLADIAN_COLORS.map(value => ({ value, label: value })) },
   ],
 };
 

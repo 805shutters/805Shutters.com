@@ -1,7 +1,7 @@
 import { validateSanClemente } from "./norman-san-clemente-rules";
 import type { SelectionContext, SelectionValue, ValidationIssue } from "./core";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
-import { citylightsColorSlatSizes, PALLADIAN_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
+import { citylightsColorSlatSizes, PALLADIAN_COLORS, PALLADIAN_LEGACY_COLORS, palladianProductEligible, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
 
 const normalized = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -146,14 +146,27 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
   }
 
   if (context.productId === "palladian_shelf") {
-    const source = "norman-retail-guide-2026-09";
-    if (w > 96 || w <= 0) add("width", source, 37, "Palladian shelf length cannot exceed 96 inches.");
+    const currentGuide = context.catalogAsOf >= "2026-09-19";
+    const source = currentGuide ? "norman-palladian-guide-2026-09-01" : "norman-retail-guide-2026-09";
+    const page = currentGuide ? 5 : 37;
+    if (w > 96 || w <= 0) add("width", source, page, "Palladian shelf length cannot exceed 96 inches.");
     const depth = Number(value("shelf_depth"));
-    if (!Number.isFinite(depth) || depth < 2 || depth > 4) add("depth", source, 37, "Palladian shelf depth must be between 2 and 4 inches.");
-    if (!["inside", "inside_mount", "im", "ib"].includes(text("mount_type"))) add("mount", source, 37, "Palladian shelves are inside mount only.");
-    if (!PALLADIAN_COLORS.some(color => normalized(color) === text("color", "shelf_color"))) add("color", source, 37, "Choose one of the 43 Palladian finishes listed in the September guide.");
+    if (!Number.isFinite(depth) || depth < 2 || depth > 4) add("depth", source, page, "Palladian shelf depth must be between 2 and 4 inches.");
+    if (!["inside", "inside_mount", "im", "ib"].includes(text("mount_type"))) add("mount", source, page, "Palladian shelves are inside mount only.");
+    if (!(context.catalogAsOf >= "2026-09-19" ? PALLADIAN_COLORS : PALLADIAN_LEGACY_COLORS).some(color => normalized(color) === text("color", "shelf_color"))) add("color", source, currentGuide ? 7 : 37, "Choose a current Palladian finish; Winchester White 2010 is one finish (066).");
     const accompanying = text("accompanying_product_id");
-    if (context.programId?.endsWith("_with_product") && (!accompanying || accompanying === "none" || ["faux_wood", "smartprivacy_faux", "synchrony_vertical"].includes(accompanying))) add("with_product_eligibility", source, 37, "The with-product price requires an accompanying eligible Norman product. All faux-wood and Synchrony vertical blinds use the without-product price.");
+    if (context.catalogAsOf >= "2026-09-19") {
+      const current = "norman-palladian-guide-2026-09-01";
+      if (w < 6) add("minimum_width", current, 5, "Palladian shelf width must be at least 6 inches.");
+      if (Number.isFinite(depth) && Math.abs(depth * 8 - Math.round(depth * 8)) > 0.000001) add("depth_increment", current, 5, "Palladian shelf depth must be ordered in ⅛-inch increments.");
+      const load = Number(value("shelf_supported_weight_lbs"));
+      if (value("shelf_supported_weight_lbs") == null || !Number.isFinite(load) || load < 0 || load > 50) add("load", current, 5, "Record the supported blind/shade weight; the shelf supports no more than 50 pounds.");
+      if (context.programId?.endsWith("_with_product")) {
+        if (!palladianProductEligible(accompanying)) add("with_product_eligibility", current, 6, "The paired-product price requires an eligible Honeycomb, Roman, Roller, PerfectSheer, Normandy Wood, CityLights or SmartFold product. Order a separate shelf for other products.");
+        if (!["default", "custom"].includes(text("shelf_measurement_basis"))) add("measurement_basis", current, 5, "Choose default opening measurements or custom finished shelf measurements.");
+      }
+    }
+    if (context.catalogAsOf < "2026-09-19" && context.programId?.endsWith("_with_product") && (!accompanying || accompanying === "none" || ["faux_wood", "smartprivacy_faux", "synchrony_vertical"].includes(accompanying))) add("with_product_eligibility", source, page, "The with-product price requires an accompanying eligible Norman product. All faux-wood and Synchrony vertical blinds use the without-product price.");
   }
   return issues;
 }
