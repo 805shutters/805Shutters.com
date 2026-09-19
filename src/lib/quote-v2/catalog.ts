@@ -34,6 +34,7 @@ export function quoteV2CatalogVersionFor(
   asOf: string,
 ): string {
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r1`;
+  if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
   if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
@@ -100,6 +101,8 @@ export type CatalogColorOffering = {
 };
 
 export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStatus>> = {
+  norman_contract_faux_wood: "manual_quote_required",
+  norman_contract_vertical: "manual_quote_required",
   san_clemente_honeycomb: "manual_quote_required",
   san_clemente_faux_wood: "manual_quote_required",
   // The four supplied Norman product guides have normalized V2 rule sets.

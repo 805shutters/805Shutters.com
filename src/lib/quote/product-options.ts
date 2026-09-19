@@ -1,3 +1,4 @@
+import { CONTRACT_FAUX, CONTRACT_VERTICAL, CONTRACT_VALANCES, CONTRACT_FITS, CONTRACT_VERTICAL_FITS } from "./norman-contract";
 import { PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "./norman-current-assortment";
 import { SAN_CLEMENTE_HONEYCOMB, SAN_CLEMENTE_FAUX } from "./norman-san-clemente";
 import {
@@ -486,7 +487,26 @@ const shutterFields: QuoteDetailField[] = [
   ...installationFields,
 ];
 
+const contractChoice = (id: string, label: string, choices: readonly string[]): QuoteDetailField => ({id,label,type:"select",options:choices.map(value=>({value,label:value}))});
+const contractFields = (vertical: boolean): QuoteDetailField[] => [
+  contractChoice("mount_type","Mount",["Inside Mount","Outside Mount"]),
+  contractChoice("lift_system","Control",[vertical?"Wand":"Cordless"]),
+  contractChoice("slat_size","Slat size",vertical?['3.5"']:['2"','2.5"']),
+  contractChoice("control_side","Wand side",["Left","Right"]),
+  contractChoice("contract_mount_fit","Mount fit",vertical?CONTRACT_VERTICAL_FITS:CONTRACT_FITS),
+  contractChoice("contract_wand_drop_inches","Wand drop",(vertical?[34,49,61]:[11.75,17.75,29.75,38.25,47.25]).map(String)),
+  ...(vertical?[
+    contractChoice("contract_headrail_color","Headrail color",["2003 Silk White","2058 White"]),
+    contractChoice("contract_shim_layers","Shim layers",["0","1","2"]),
+  ]:[
+    contractChoice("valance","Valance",CONTRACT_VALANCES),
+    contractChoice("contract_hold_down_brackets","Hold-down brackets",["No","Yes"]),
+    contractChoice("contract_spacer_blocks","Spacer blocks",["No","Yes"]),
+  ]),
+];
 const productDetails: Record<string, QuoteDetailField[]> = {
+  [CONTRACT_FAUX]: contractFields(false),
+  [CONTRACT_VERTICAL]: contractFields(true),
   [SAN_CLEMENTE_HONEYCOMB]: [
     { id: "lift_system", label: "Lift", type: "select", options: ["Cordless", "Cordless TDBU"].map(value => ({ value, label: value })) },
     { id: "cell_size", label: "Cell", type: "select", options: [{ value: '9/16" Single', label: '9/16" Single' }] },

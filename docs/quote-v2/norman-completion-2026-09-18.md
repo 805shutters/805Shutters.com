@@ -2,11 +2,13 @@
 
 Status: implementation in progress. This ledger does not certify universal live pricing.
 
-The current catalog contains 16 Norman families and 50 programs, including two newly discovered San Clemente families and their three unpriced programs. The original import contained 14 families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
+The current catalog contains 18 Norman families and 53 programs, including two newly discovered San Clemente families and two Contract Sales families with six unpriced programs. The original import contained 14 families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
 
-The inventory includes 1,299 retained fabric/color identities, of which 1,289 are available to the picker; 678 Honeycomb color/cell routes; and 555 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Authenticated dealer discovery continues; San Clemente was absent from the original import.
+The inventory includes 1,314 retained fabric/color identities, of which 1,302 are available to the picker; 678 Honeycomb color/cell routes; and 574 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Authenticated dealer discovery continues; San Clemente was absent from the original import.
 
 ## Implemented changes
+
+- Contract Sales: separate 2-inch and 2.5-inch cordless faux-wood programs and 3.5-inch vertical program; 13 active color/slat identities and two discontinued 6018 identities. Dedicated CRM controls and server validation cover net deductions, dimensions, area, wand drops, mounting, valance returns and hardware. Server records derive bracket counts, vane length and valance dimensions; vertical minimum 50 applies across the order. No project rates are invented.
 
 - San Clemente: add separate HG006 Light Filtering, HG006BO Room Darkening and B5W20 Faux Wood destinations, all ten current G2 fabrics and White 6008. Dedicated CRM controls preserve product identity, net dimensions, two cordless honeycomb lifts, depth, fixed faux-wood slat/wand/valance, bracket conditions and optional pole quantities. Source-backed configuration is available; prices remain blocked until the San Clemente base and surcharge schedules are supplied.
 
@@ -19,7 +21,7 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 - CityLights: reconcile 30 one-inch and 22 two-inch colors, derive finish charges from the color code, enforce net dimensions and narrow-blind center tilt, and reject incompatible controls/side brackets.
 - Wood cut-outs: retain each side, corner/middle type, width and headrail-referenced heights. Enforce slat-specific dimensional limits, derive the $99-per-side surcharge, clear obsolete measurements, preserve customer-visible measurements and verify serialization. Common-valance cut-outs remain an explicit assembly exception.
 - Wood blinds: derive designer/premium charges by code, provide priced Designer Crown/Contempo/Linear valances, and enforce net dimensions and narrow center tilt. Add dealer-guide ND108 Rustic Gray. Retain conflicting legacy ND118 as unavailable for new ordering without rewriting historical quotes.
-- Palladian Shelf: expose the product, require source-listed finish, valid depth and inside mount, and link a selected eligible Norman product across different line families for the with-product grid.
+- Palladian Shelf: reconcile all 42 September coded finishes, 6-inch minimum, 1/8-inch depth increments, 50-pound load, eligible companions, linked quantities, common-valance width limit and default/custom deductions. Incomplete depth stays nullable in derived records so a draft can be saved before all options are entered.
 - Roman: price both common-valance shade widths independently and preserve both motors. Fabric width and manual area checks apply to each shade rather than the whole opening.
 - Shared motorization: derive versioned assembly/accessory records on the server; discard client-supplied allocations; enforce compatible family and panel capacity; charge the panel once across line quantities; reassign its owner when the former owner is removed. Mixed large dual-motor Honeycomb loads remain blocked pending manufacturer guidance.
 - Derive and persist 36W/65W adapter requirements across supported Honeycomb, Roman and SmartFold lines, preserving the narrow dual-motor Honeycomb exception. Unknown DC power-source labels are rejected.
@@ -42,8 +44,10 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
 | Palladian Shelf | September guide rules now normalized, including 42 coded finishes, minimum width, depth increments, support weight, paired-product eligibility, quantity and default/custom deductions. Current dealer comparison and production verification of both price schedules and linked-product persistence remain. |
-| San Clemente Honeycomb | Current base, TDBU and pole/attachment price schedules; dealer-account applicability and production persistence. |
-| San Clemente Faux Wood | Current base and optional side-bracket price schedules; dealer-account applicability and production persistence. |
+| San Clemente Honeycomb | Current base, TDBU and pole/attachment price schedules and dealer-account applicability. Production selection save/reopen passed. |
+| San Clemente Faux Wood | Current base and optional side-bracket price schedules and dealer-account applicability. Production selection save/reopen passed. |
+| Contract Faux Wood | Current project base, valance, hardware and freight quote; dealer applicability and production persistence. |
+| Contract Vertical | Current project rates and optional charges; fully-inside depth source conflict (table ¾ versus drawing 3¾ inches); dealer applicability and production persistence. |
 | Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
 
 ## Evidence and release state
@@ -62,8 +66,14 @@ The inventory includes 1,299 retained fabric/color identities, of which 1,289 ar
 
 Row-level working results are generated into `outputs/norman-completion/`: `programs.csv`, `grid-rows.csv`, `fabrics-colors.csv`, `honeycomb-color-cell-routes.csv`, `options.csv`, and `summary.json`. `norman-completion-audit.test.ts` exports the current code catalog when `NORMAN_AUDIT_EXPORT` is set. The comparison script records PDF page matches for every grid row. Raw dealer files and private local evidence are not part of the published source changes.
 
-## Newly discovered Contract Sales scope
+## Contract Sales source exceptions
 
-The current dealer binder also lists separate Contract Cordless Faux Wood and 3½-inch Contract Vertical specifications. These are absent from the 16-family inventory above and must receive separate CRM destinations; they are not covered by Ultimate or Synchrony certification. Current price schedules are absent. The Contract Vertical request form requires 50 blinds minimum; its documented quotation-request route has not been submitted. Contract aluminum installation documents require a current assortment/orderability source before inclusion.
+The current dealer binder lists separate Contract Cordless Faux Wood and 3½-inch Contract Vertical specifications. They now have separate CRM destinations in the 18-family inventory. Current price schedules are absent. The Contract Vertical request form requires 50 blinds minimum; its quotation-request route has not been submitted. The fully-inside depth conflict is retained as a hard block with exact source attribution. Contract aluminum installation documents still require a current assortment/orderability source before inclusion.
+
+All 50 source artifacts match their pinned SHA-256 and byte counts. The original pinned September retail PDF and a later download differ in bytes; the existing lock is preserved, and the grid audit remains independently matched against the later extracted September text.
+
+Local Contract UI evidence: Pure White 6016, 2½-inch embossed, Designer Crown valance, right wand, semi-inside bracket-flush mount, 3-inch recess and hold-down brackets saved/reopened. Vertical Pure White 8071, White 2058 headrail, semi-inside mount, 3-inch recess, two shim layers and quantity 50 saved/reopened. These are local checks, not production pricing certification.
+
+Palladian release `dafc50e2` and saved-row refresh release `0ca940de` were deployed September 19. The latter passed 4,338 tests with 28 skipped plus typecheck/build. Production quote `805-0312` retained both San Clemente configurations after reopening. A new Palladian row immediately displayed its correct product identity. Subsequent dimension entry exposed the missing-depth fingerprint defect; its fix has a regression test and is included with the Contract increment.
 
 Palladian local UI evidence: Winchester White 2010, 2⅛-inch depth, custom measurements, 20-pound support weight and separately ordered shelf saved/reopened. A new server-derived assembly retains finish code 066, quantity and deduction basis. This is local persistence evidence, not production certification.

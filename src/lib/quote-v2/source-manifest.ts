@@ -53,6 +53,69 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+  "id": "norman-contract-faux-2024-05-29",
+  "manufacturer": "Norman",
+  "kind": "product_guide",
+  "format": "pdf",
+  "fileName": "Contract Cordless Faux Wood Blind Product Specifications.pdf",
+  "title": "Contract Cordless Faux Wood Blind Product Specifications",
+  "revision": "M",
+  "effectiveDate": "2024-05-29",
+  "effectiveDateEvidence": "Effective date printed on specification pages.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "pageCount": 17,
+  "sha256": "df9eeb465da4dfe8c3f36a9c715b3af8d87375a4cf8d4a26745c047804ca9def",
+  "authorities": [
+    "assortment",
+    "restrictions",
+    "options"
+  ],
+  "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/Commercial/Contract%20Cordless%20Faux%20Wood%20Blind%20Product%20Specifications.pdf"
+},
+  {
+  "id": "norman-contract-vertical-2024-11-01",
+  "manufacturer": "Norman",
+  "kind": "product_guide",
+  "format": "pdf",
+  "fileName": "Contract Vertical Blind Product Specifications.pdf",
+  "title": "Contract Vertical Blind Product Specifications",
+  "revision": "B",
+  "effectiveDate": "2024-11-01",
+  "effectiveDateEvidence": "Effective date printed on specification pages.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "pageCount": 11,
+  "sha256": "8c36f24afb4c7c828f974a59f4c6b20e6962b6f10c5cfb650b3eec09d44ac1a4",
+  "authorities": [
+    "assortment",
+    "restrictions",
+    "options"
+  ],
+  "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/Commercial/3.5''%20Contract%20Vertical%20Blind%20Product%20Specifications.pdf"
+},
+  {
+  "id": "norman-contract-request-2021-12-01",
+  "manufacturer": "Norman",
+  "kind": "product_guide",
+  "format": "pdf",
+  "fileName": "Contract Quotation Request Form.pdf",
+  "title": "Contract Quotation Request Form",
+  "revision": "December 1, 2021",
+  "effectiveDate": "2021-12-01",
+  "effectiveDateEvidence": "Date printed on request form, page 1.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "pageCount": 1,
+  "sha256": "526ffb35f412c68437d9049cc073f5c71df348a8d1e59f22d66449f22383be7e",
+  "authorities": [
+    "restrictions",
+    "freight"
+  ],
+  "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/Commercial/Contract%20Quotation%20Request%20Form.pdf"
+},
+
+  {
     id: "norman-palladian-guide-2026-09-01", manufacturer: "Norman", kind: "product_guide", format: "pdf",
     fileName: "Palladian Shelf Guide 2026-09-01.pdf", title: "Palladian Shelf Guide", revision: "September 1, 2026",
     effectiveDate: "2026-09-01", effectiveDateEvidence: "Page 2 revision log: September 1, 2026 adds Roller LightGuard 360 and Cassette availability.",

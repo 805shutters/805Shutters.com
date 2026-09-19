@@ -60,6 +60,10 @@ function Preview() {
       setDesigns([{...initial,product_type:"Faux Wood Blinds",lift_system:"Cordless",options_json:{quote_v2_backend:true,catalog_product_id:"san_clemente_faux_wood",quote_lab_product_id:"san_clemente_faux_wood",catalog_program_id:"san_clemente_b5w20",quote_lab_program_id:"san_clemente_b5w20"}}]);
       setLine({...item,product_type:"Faux Wood Blinds",selected_design_id:initial.id});
     }}>San Clemente Faux Wood fixture</button>
+    {[{id:"norman_contract_faux_wood",type:"Faux Wood Blinds",program:"norman_contract_faux_2",label:"Contract Faux fixture"},{id:"norman_contract_vertical",type:"Vertical Blinds",program:"norman_contract_vertical_3_5",label:"Contract Vertical fixture"}].map(product=><button key={product.id} onClick={()=>{
+      setDesigns([{...initial,product_type:product.type,mount_type:null,lift_system:null,valance:null,options_json:{quote_v2_backend:true,catalog_product_id:product.id,quote_lab_product_id:product.id,catalog_program_id:product.program,quote_lab_program_id:product.program}}]);
+      setLine({...item,product_type:product.type,selected_design_id:initial.id});
+    }}>{product.label}</button>)}
     <p>Local test data. Uses the CRM design card; saves only in this browser.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}>
       <button onClick={() => { localStorage.setItem(storageKey, JSON.stringify({design, designs, line, locked})); setMessage("Saved locally"); }}>Save fixture</button>

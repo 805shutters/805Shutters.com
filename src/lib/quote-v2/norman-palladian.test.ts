@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SelectionContext } from "./core";
+import { createSelectionFingerprint } from "./core";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
 import { validateNormanFamilyRules } from "./norman-family-rules";
 import { PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
@@ -12,6 +13,19 @@ const paired = (config: SelectionContext["configuration"] = {}) => [line("shelf"
 const rules = (rows: ReturnType<typeof paired>) => deriveNormanOrderRecords(rows).map(issue => issue.ruleId);
 
 describe("Palladian current dealer guide", () => {
+  it.each([undefined, null, "", "invalid"])("keeps an incomplete draft serializable when depth is %s", depth => {
+    const shelf = line("shelf", "palladian_shelf", { shelf_depth: depth ?? null });
+    if (depth === undefined) {
+      const configuration = { ...shelf.selection.configuration };
+      delete configuration.shelf_depth;
+      shelf.selection.configuration = configuration;
+    }
+    shelf.selection.programId = "palladian_shelf_palladian_shelf_without_product";
+    deriveNormanOrderRecords([shelf]);
+    expect(shelf.selection.configuration.norman_assembly_v1).toMatchObject({ trapezoidalBlockWidth: null });
+    expect(() => createSelectionFingerprint(shelf.selection)).not.toThrow();
+    expect(validateNormanFamilyRules(shelf.selection).length).toBeGreaterThan(0);
+  });
   it("pins all 42 distinct coded finishes including 066", () => {
     expect(PALLADIAN_FINISHES).toHaveLength(42);
     expect(new Set(PALLADIAN_FINISHES.map(f => f.code)).size).toBe(42);

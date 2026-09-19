@@ -1,4 +1,6 @@
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
+import { NormanContractDesignOptions } from "@/components/crm/NormanContractDesignOptions";
+import { isNormanContractProduct } from "@/lib/quote/norman-contract";
 import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
 import { isSanClementeProduct } from "@/lib/quote/norman-san-clemente";
 import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "@/lib/quote/norman-current-assortment";
@@ -1553,7 +1555,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id)) {
+  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -5949,7 +5951,9 @@ export function DesignCard({
         {manufacturerOptionsRoute.status === "manual_quote" ? (
           <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
+          manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
+            <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+          ) : manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
             <SanClementeDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : isShutters ? (
             <ShutterDesignOptions

@@ -1,3 +1,4 @@
+import { normanContractColors } from "./norman-contract";
 import { sanClementeColors } from "./norman-san-clemente";
 import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
 import { normanColorWithdrawal } from "./norman-assortment-2026-09";
@@ -454,6 +455,7 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
 
 export const productColorOptions = [
   ...sanClementeColors,
+  ...normanContractColors,
   ...rollerProductColorOptions,
   ...honeycombDealerColorOptions,
   ...verticalHoneycombDealerColorOptions,

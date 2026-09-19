@@ -1,3 +1,4 @@
+import { deriveNormanContractOrderRecords } from "./norman-contract-rules";
 import { palladianProductEligible, PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
@@ -16,7 +17,7 @@ export function romanComponentWidths(context: SelectionContext): number[] | null
 
 /** Input is the server's explicitly selected designs, never unselected alternatives. */
 export function deriveNormanOrderRecords(lines: readonly { lineId: string; selection: SelectionContext }[]): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...deriveNormanContractOrderRecords(lines)];
   // Earlier catalogs retain their original unsupported-assembly behavior.
   lines = lines.filter(({ selection }) => selection.manufacturerId.toLowerCase() === "norman" && selection.catalogAsOf >= "2026-09-18");
   for (const { selection } of lines) {
@@ -96,7 +97,9 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
       version: 1, type: "palladian_shelf", accompanyingLineId: withProduct ? id ?? null : null,
       measurementBasis: basis, orderedWidth: shelf.widthInches,
       finishedShelfWidth: shelf.widthInches - (withProduct && basis === "default" ? 1 / 32 : 0),
-      shelfDepth: c.shelf_depth ?? null, faceWidth: 1.5, trapezoidalBlockWidth: Number(c.shelf_depth) - 0.5, shelfQuantity: shelf.quantity,
+      shelfDepth: c.shelf_depth ?? null, faceWidth: 1.5,
+      trapezoidalBlockWidth: c.shelf_depth != null && c.shelf_depth !== "" && Number.isFinite(Number(c.shelf_depth)) ? Number(c.shelf_depth) - 0.5 : null,
+      shelfQuantity: shelf.quantity,
       finishCode: PALLADIAN_FINISHES.find(finish => normalizeIdentity(finish.name) === normalizeIdentity(c.color ?? c.shelf_color))?.code ?? null,
       supportedWeightLbs: c.shelf_supported_weight_lbs ?? null,
       shadeHeightDeduction: withProduct && basis === "default" && !specialty ? "factory_when_ordered_on_same_line" : "none",
