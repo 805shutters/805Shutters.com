@@ -66,7 +66,9 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
   perfectsheer: {
     valance: {
       wood: "wood_valance",
+      modern_wood_valance: "wood_valance",
       fabric: "3_1_2in_and_4_1_2in_fabric_valance",
+      fabric_valance: "3_1_2in_and_4_1_2in_fabric_valance",
     },
   },
   roller: {

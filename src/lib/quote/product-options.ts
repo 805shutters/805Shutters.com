@@ -1,3 +1,4 @@
+import { PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "../quote-v2/norman-perfectsheer";
 import { SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "../quote-v2/norman-smartfold-valance";
 import { CONTRACT_FAUX, CONTRACT_VERTICAL, CONTRACT_VALANCES, CONTRACT_FITS, CONTRACT_VERTICAL_FITS } from "./norman-contract";
 import { SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "../quote-v2/norman-smartfold-hardware";
@@ -851,7 +852,13 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     ...mountFields,
     ...shadeControlFields,
     { id: "light_control", label: "Light control", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
-    { id: "valance", label: "Valance", type: "select", options: [{ value: "standard", label: "Standard" }, { value: "wood", label: "Wood" }, { value: "fabric", label: "Fabric" }] },
+    contractChoice("valance", "Valance", PERFECTSHEER_VALANCES),
+    contractChoice("perfectsheer_installation", "Mounting method", ["Top Mount","Back Mount"]),
+    contractChoice("perfectsheer_valance_height", "Valance height", ["Default","3.5","4.5"]),
+    contractChoice("perfectsheer_valance_fabric", "Valance fabric override", ["Default",...PERFECTSHEER_FABRIC_CODES]),
+    contractChoice("perfectsheer_wood_finish", "Wood valance finish", PERFECTSHEER_WOOD_FINISHES),
+    contractChoice("perfectsheer_wand_color", "AutoWand color", PERFECTSHEER_WAND_COLORS),
+    contractChoice("perfectsheer_chain_unobstructed", "Unobstructed below tension device", ["No","Yes"]),
     ...installationFields,
   ],
   smartdrape: [

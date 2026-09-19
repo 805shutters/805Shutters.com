@@ -1,3 +1,4 @@
+import { perfectsheerComponents } from "./norman-perfectsheer";
 import { deriveSmartfoldSideBySide, type SmartfoldOrderLine } from "./norman-smartfold-side-by-side";
 import { deriveNormanContractOrderRecords } from "./norman-contract-rules";
 import { palladianProductEligible, PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
@@ -30,6 +31,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     selection.configuration = configuration;
     const smartfold = smartfoldHardware(selection);
     if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
+    const perfectsheer = perfectsheerComponents(selection);
+    if (perfectsheer) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: perfectsheer };
     const widths = romanComponentWidths(selection);
     if (widths) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: {
       version: 1, type: "roman_common_valance", panelWidths: widths,

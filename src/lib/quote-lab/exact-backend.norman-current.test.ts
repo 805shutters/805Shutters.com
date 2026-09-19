@@ -11,6 +11,22 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("preserves PerfectSheer ordering identity, factory aliases, valance charges and customer choices",()=>{
+  const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_installation:"Back Mount",perfectsheer_wood_finish:"003 Silk White",perfectsheer_chain_length:90,perfectsheer_chain_unobstructed:"Yes",norman_assembly_v1:{fabric:{factoryColorCode:"FORGED"}}});
+  q.designs[0].lift_system="Continuous Cord Loop";q.designs[0].valance="Modern Wood Valance";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  const d=first.designs[0];expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabric:{customerFabricCode:"AA0326",customerColorCode:"F1179",factoryFabricCode:"AA0335",factoryColorCode:"F1359"},valance:{type:"Modern Wood Valance",height:4.5,woodFinish:"003 Silk White"},chain:{length:90}});
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection));
+  expect(customer).toEqual(expect.arrayContaining(["Wood Valance Finish: 003 Silk White","Custom Cord Length: 90"]));
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+  reopened.designs[0].options_json.perfectsheer_wood_finish="Unknown";
+  const invalid=repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19");
+  if (!("backend" in invalid) || invalid.backend!=="v2") throw new Error("Expected V2 backend");
+  expect(invalid.designs[0].result.validationIssues?.some(i=>i.ruleId==="norman.perfectsheer.perfectsheer_wood_finish")).toBe(true);
+ });
  it("prices two different SmartFold shade widths with one common valance and preserves shared charges",()=>{
   const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,smartfold_valance_joinery:"Square Keystone",smartfold_keystone_count:1,basic_light_guard:"Yes",smartfold_light_guard_color:"3058 White"});
   q.lines.push({...q.lines[0],id:"second",width_whole:42,sort_order:1});

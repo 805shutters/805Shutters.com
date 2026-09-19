@@ -1,3 +1,4 @@
+import { PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "@/lib/quote-v2/norman-perfectsheer";
 import { smartfoldSavedCommonValanceForDisplay, SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "@/lib/quote-v2/norman-smartfold-valance";
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
 import { SMARTFOLD_INSTALLATIONS, SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "@/lib/quote-v2/norman-smartfold-hardware";
@@ -9833,6 +9834,15 @@ function ShadesAndBlindsOptions({
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
       return;
     }
+    if (productType === "Sheer Shades" && field === "lift_system" && value !== "Continuous Cord Loop") {
+      onUpdateFields({lift_system: typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_chain_length:null,perfectsheer_chain_unobstructed:null}});
+      return;
+    }
+    if (productType === "Sheer Shades" && field === "valance") {
+      onUpdateFields({valance:typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_valance_height:null,perfectsheer_valance_fabric:null,perfectsheer_wood_finish:null}});
+      return;
+    }
+
     if (productType === "SmartFold Shades" && field === "valance") {
       onUpdateFields({valance:typeof value === "string"?value:null,options_json:{...currentJson,smartfold_fascia_style:null,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null,smartfold_wood_valance_color:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,smartfold_valance_width:null,smartfold_valance_joinery:null,smartfold_keystone_count:null,smartfold_keystone_layout:null,smartfold_keystone_location_1:null,smartfold_keystone_location_2:null,smartfold_keystone_location_3:null}});
       return;
@@ -11285,6 +11295,21 @@ function ShadesAndBlindsOptions({
           },
         ];
 
+        const psChoice = (key: string, label: string, values: readonly string[]): GridOption => ({key,label,field:`json:${key}`,type:"select",options:values});
+        options.push(
+          psChoice("perfectsheer_installation","Mounting Method",["Top Mount","Back Mount"]),
+          {key:"valance",label:"Valance",field:"valance",type:"select",options:PERFECTSHEER_VALANCES},
+          psChoice("perfectsheer_valance_height","Valance Height",["Modern Wood Valance","wood"].includes(design?.valance ?? "") || measurementToInches(_lineItem.height_whole,_lineItem.height_fraction) > 72 ? ["Default","4.5"] : ["Default","3.5","4.5"]),
+        );
+        if (["Modern Wood Valance","wood"].includes(design?.valance ?? "")) options.push(psChoice("perfectsheer_wood_finish","Wood Valance Finish",PERFECTSHEER_WOOD_FINISHES));
+        else options.push(psChoice("perfectsheer_valance_fabric","Valance Fabric Override",["Default",...PERFECTSHEER_FABRIC_CODES]));
+        if (liftSystem === "Continuous Cord Loop") options.push(
+          psChoice("control_side","Control Side",["Right","Left"]),
+          {key:"perfectsheer_chain_length",label:"Custom Cord Length",field:"json:perfectsheer_chain_length",type:"number",min:9,max:280,step:"0.125",unit:"in",placeholder:"Default"},
+          psChoice("perfectsheer_chain_unobstructed","Unobstructed Below Tension Device",["No","Yes"]),
+        );
+        if (/autowand/i.test(String(design?.motor_type))) options.push(psChoice("perfectsheer_wand_color","AutoWand Color",PERFECTSHEER_WAND_COLORS));
+
         // Show motorization options if Motorized is selected
         if (liftSystem === "Motorized") {
           options.push({
@@ -11750,6 +11775,11 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
+  const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? validateNormanFamilyRules({
+    productId:"perfectsheer",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"perfectsheer_perfectsheer_shades_light_filtering",
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
     productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
@@ -12241,6 +12271,7 @@ function ShadesAndBlindsOptions({
       {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">
         <p>Inside mount only. Order a separate shelf for Faux Wood, San Clemente, Synchrony and SmartDrape. Default paired measurements include a 1/32-inch shelf width deduction; custom finished measurements have no deduction.</p>

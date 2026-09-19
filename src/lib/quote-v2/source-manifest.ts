@@ -53,6 +53,30 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+  "id": "norman-ps-sd-coordination-2026-08-11",
+  "manufacturer": "Norman",
+  "kind": "color_workbook",
+  "format": "xlsx",
+  "fileName": "PS-SD Color Coordination.xlsx",
+  "title": "PerfectSheer and SmartDrape Color Coordination",
+  "revision": "PerfectSheer August 11, 2026",
+  "effectiveDate": "2026-08-11",
+  "effectiveDateEvidence": "PerfectSheer A2 records August 11, 2026 removal of Silver F1364; A3 records February 12 bracket coordination change. This entry normalizes PerfectSheer only.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "8c0adc07c0adcad07368dc4f715c497bf17f54e558edbcb6220a9206a8461b62",
+  "authorities": [
+    "assortment",
+    "options"
+  ],
+  "sheetNames": [
+    "SmartDrape",
+    "PerfectSheer",
+    "Fabric Color List-SmartDrape",
+    "Fabric Color List-PerfectSheer"
+  ]
+},
+  {
   "id": "norman-synchrony-dealer-assortment-2026-09-19",
   "manufacturer": "Norman",
   "kind": "dealer_portal_snapshot",

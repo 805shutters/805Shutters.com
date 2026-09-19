@@ -115,6 +115,12 @@
       "sha256": "2a54ee5ba2a85cad4c30e489e1887ef497046c622e27851fba299731681029ed"
     },
     {
+      "sourceId": "norman-ps-sd-coordination-2026-08-11",
+      "fileName": "PS-SD Color Coordination.xlsx",
+      "byteLength": 43126,
+      "sha256": "8c0adc07c0adcad07368dc4f715c497bf17f54e558edbcb6220a9206a8461b62"
+    },
+    {
       "sourceId": "norman-synchrony-dealer-assortment-2026-09-19",
       "fileName": "Norman Synchrony dealer assortment 2026-09-19.json",
       "byteLength": 1970,
