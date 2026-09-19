@@ -1,3 +1,4 @@
+import { allocateReceivedMoney } from "./payment-allocation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 
@@ -21,10 +22,6 @@ function roundMoney(value: number) {
 
 function sumAmounts(rows: Array<{ amount?: number | string | null }>) {
   return roundMoney(rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0));
-}
-
-function isDepositPayment(payment: QuoteLedgerPayment) {
-  return String(payment.payment_label || "").toLowerCase().includes("deposit");
 }
 
 export function unavailableQuotePaymentState(): QuotePaymentState {
@@ -51,7 +48,7 @@ export function quotePaymentState(input: {
 }): QuotePaymentState {
   const payments = input.payments || [];
   const paidTotal = sumAmounts(payments);
-  const depositPaid = sumAmounts(payments.filter(isDepositPayment));
+  const { depositPaid } = allocateReceivedMoney(paidTotal, input.depositRequired);
   const creditIn = sumAmounts(input.creditsIn || []);
   const creditOut = sumAmounts(input.creditsOut || []);
   const outstanding = roundMoney(Math.max(input.total - paidTotal - creditIn + creditOut, 0));

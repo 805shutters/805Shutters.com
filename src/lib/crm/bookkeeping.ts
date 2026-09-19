@@ -1,4 +1,5 @@
 import { installationEstimate } from "./installation-estimate";
+import { allocateReceivedMoney } from "./payment-allocation";
 import {
   CrmAccountabilityItem,
   CrmBookkeepingCredit,
@@ -509,9 +510,7 @@ function buildEntryRow(
   const total = Number(entry.total_amount) || 0;
   const depositPayments = payments.filter(isDepositPayment);
   const balancePayments = payments.filter((payment) => !isDepositPayment(payment));
-  const depositPaid = sumPayments(depositPayments);
-  const balancePaid = sumPayments(balancePayments);
-  const paidTotal = roundCents(depositPaid + balancePaid);
+  const { depositPaid, balancePaid, paidTotal } = allocateReceivedMoney(sumPayments(payments), entryDepositDue(entry, total));
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
   const cogs = Number(entry.cogs_amount) || 0;
@@ -557,9 +556,9 @@ function buildEntryRow(
     total,
     depositDue: entryDepositDue(entry, total),
     depositPaid,
-    depositPaymentType: latestPaymentType(depositPayments),
+    depositPaymentType: latestPaymentType(depositPayments.length ? depositPayments : payments),
     balancePaid,
-    balancePaymentType: latestPaymentType(balancePayments),
+    balancePaymentType: latestPaymentType(balancePayments.length ? balancePayments : payments),
     paidTotal,
     creditIn,
     creditOut,
@@ -634,11 +633,7 @@ function buildQuoteRow(
   // paid-in-full. Now collected = recorded payments only.
   const depositPayments = payments.filter(isDepositPayment);
   const balancePayments = payments.filter((payment) => !isDepositPayment(payment));
-  const explicitDepositPaid = sumPayments(depositPayments);
-  const explicitBalancePaid = sumPayments(balancePayments);
-  const depositPaid = explicitDepositPaid;
-  const balancePaid = explicitBalancePaid;
-  const paidTotal = roundCents(depositPaid + balancePaid);
+  const { depositPaid, balancePaid, paidTotal } = allocateReceivedMoney(sumPayments(payments), Number(quote.deposit_required) || 0);
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
   const { otherExpenses, expensesTotal, remakeTotal } = splitRemakeExpenses(expenses);
@@ -690,9 +685,9 @@ function buildQuoteRow(
     // hardcoded 50%. 0 when no deposit was set.
     depositDue: roundCents(Number(quote.deposit_required) || 0),
     depositPaid,
-    depositPaymentType: latestPaymentType(depositPayments),
+    depositPaymentType: latestPaymentType(depositPayments.length ? depositPayments : payments),
     balancePaid,
-    balancePaymentType: latestPaymentType(balancePayments),
+    balancePaymentType: latestPaymentType(balancePayments.length ? balancePayments : payments),
     paidTotal,
     creditIn,
     creditOut,

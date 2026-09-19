@@ -1208,3 +1208,15 @@ describe("deposit/balance only count recorded money (H7/M10/L16)", () => {
     expect(row.balance).toBe(4000);
   });
 });
+
+describe('consistent receipt allocation',()=>{
+ it.each(['credit_card','cash','check','zelle','venmo','other'] as const)('credits a generic %s receipt toward the deposit and closes only at zero balance',method=>{
+  const sold=quote({id:'consistent',status:'sold',quote_total:1000,deposit_required:500});
+  const receipt=payment({quote_id:sold.id,amount:500,payment_label:'Full payment',payment_type:method});
+  const [partial]=rowsFrom({quotes:[sold],payments:[receipt]});
+  expect(partial).toMatchObject({depositPaid:500,balancePaid:0,paidTotal:500,balance:500,isPaidInFull:false});
+  const [paid]=rowsFrom({quotes:[sold],payments:[receipt,payment({id:'second',quote_id:sold.id,amount:500,payment_label:'Square payment',payment_type:method})]});
+  expect(paid).toMatchObject({depositPaid:500,balancePaid:500,paidTotal:1000,balance:0,isPaidInFull:true});
+  expect(effectiveBookkeepingStatus(paid)).toBe('closed');
+ });
+});

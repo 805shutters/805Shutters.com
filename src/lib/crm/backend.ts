@@ -1,3 +1,4 @@
+import { allocateReceivedMoney } from "./payment-allocation";
 import { eligibleBeforeCutoff, pacificDate, nextKenDueDate } from "./ken-monthly-ledger";
 import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MODEL } from "./owner-payables";
 import { BookingError, writeCalendarWithRoutes } from "@/lib/booking/scheduling";
@@ -407,12 +408,15 @@ async function recordPaymentTargetAdjustments(
   if (error) throw new CrmAuthError(502, "Payment adjustment could not read the current ledger.");
 
   const payments = (data || []) as Array<{ payment_label?: unknown; amount?: unknown }>;
-  const currentDepositPaid = sumAmounts(
-    payments.filter((payment) => String(payment.payment_label || "").toLowerCase().includes("deposit"))
-  );
-  const currentBalancePaid = sumAmounts(
-    payments.filter((payment) => !String(payment.payment_label || "").toLowerCase().includes("deposit"))
-  );
+  const total = isQuote ? toMoney(target.quote.quote_total) : toMoney(target.entry.total_amount);
+  const required = isQuote ? toMoney(target.quote.deposit_required) : toMoney(target.entry.meta?.deposit_required ?? total * 0.5);
+  const { depositPaid: currentDepositPaid, balancePaid: currentBalancePaid } = allocateReceivedMoney(sumAmounts(payments), required);
+  const requestedDeposit = hasPayloadKey(payload, "deposit_paid_target") ? toMoney(payload.deposit_paid_target) : currentDepositPaid;
+  const requestedBalance = hasPayloadKey(payload, "balance_paid_target") ? toMoney(payload.balance_paid_target) : currentBalancePaid;
+  const allocated = allocateReceivedMoney(requestedDeposit + requestedBalance, required);
+  if (Math.abs(allocated.depositPaid - requestedDeposit) > .005 || Math.abs(allocated.balancePaid - requestedBalance) > .005) {
+    throw new CrmAuthError(409, "Received payments cover the required deposit first. Correct the required deposit or the total receipt amount instead.");
+  }
   const paymentType =
     normalizePaymentType(optionalText(payload.payment_type)) ||
     (target.kind === "entry" ? target.entry.payment_type : null) ||

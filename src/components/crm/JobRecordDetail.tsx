@@ -18,6 +18,7 @@ export function JobRecordDetail({item,disabled,onEdit,onFulfillment}:{item:JobTr
   const stage=JOB_TRACKING_STAGES.find(s=>s.id===item.stageId)!;
   const canEdit=Boolean(item.row||(item.quote&&item.isSale));
   const canSend=canEdit&&item.isSale&&Boolean(item.email);
+  const financiallyClosed=item.isSale&&(item.total??0)>0&&item.balanceOutstanding!==null&&item.balanceOutstanding<=.005;
   const net=(item.row?.creditOut||0)-(item.row?.creditIn||0);
   const adjusted=item.total===null?null:Math.round((item.total+net)*100)/100;
   const products=(item.file?.products||[]).filter(p=>p.quote_id ? p.quote_id===(item.quote?.id||item.row?.quoteId) : p.bookkeeping_entry_id ? item.row?.source!=="crm_quote"&&p.bookkeeping_entry_id===item.row?.id : false);
@@ -25,13 +26,13 @@ export function JobRecordDetail({item,disabled,onEdit,onFulfillment}:{item:JobTr
   return <article className={styles.record} aria-label={`Job for ${item.customerName}`}>
     <header className={styles.header}>
       <div><span className={styles.eyebrow}>CUSTOMER FILE · {item.project}</span><h2>{item.customerName}</h2><div className={styles.contact}><span>{item.phone||"Phone not recorded"}</span><button disabled={disabled} onClick={()=>onEdit("email")}>{item.email||"Add customer email"}</button></div></div>
-      <div className={styles.status}><button disabled={disabled} onClick={()=>onEdit("stage")}>{stage.label}<ChevronDown size={15}/></button><button disabled={disabled||!item.isSale} onClick={()=>onEdit("sold_date")}>{item.isSale?`Sold ${date(item.soldDate)}`:"Not sold"}</button></div>
+      <div className={styles.status}>{financiallyClosed&&<span className={styles.complete}><Check size={15}/>Closed · Paid in full</span>}<button disabled={disabled} onClick={()=>onEdit("stage")}>{stage.label}<ChevronDown size={15}/></button><button disabled={disabled||!item.isSale} onClick={()=>onEdit("sold_date")}>{item.isSale?`Sold ${date(item.soldDate)}`:"Not sold"}</button></div>
     </header>
     <div className={styles.metrics}>
       <section><span>{net?"Adjusted total":"Sale total"}</span><strong>{money(adjusted)}</strong><small>{net?`Contract ${money(item.total)} · Net adjustments ${money(net)}`:"Original contract value"}</small></section>
       <section><span>Cost of goods</span><button className={styles.amount} disabled={disabled||!canEdit} onClick={()=>onEdit("cogs")}>{money(item.cogs)}</button><small>Press amount to edit vendor cost</small></section>
       <section><span>Deposit remaining</span><strong>{money(item.depositOutstanding)}</strong><small>Received {money(item.depositReceived)} / {money(item.depositRequired)}</small>{item.depositOutstanding===0&&<span className={styles.complete}><Check size={15}/>Deposit covered</span>}</section>
-      <section><span>Total outstanding</span><strong>{money(item.balanceOutstanding)}</strong><small>Includes any unpaid deposit</small>{item.balanceOutstanding===0&&<span className={styles.complete}><Check size={15}/>Paid in full</span>}</section>
+      <section><span>Total outstanding</span><strong>{money(item.balanceOutstanding)}</strong><small>Includes any unpaid deposit</small>{financiallyClosed&&<span className={styles.complete}><Check size={15}/>Paid in full</span>}</section>
     </div>
     <div className={styles.actions}>
       <button className={styles.primary} disabled={disabled||!canEdit} onClick={()=>onEdit("payment",item.depositOutstanding&&item.depositOutstanding>0?"deposit":"balance")}>Record payment</button>

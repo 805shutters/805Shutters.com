@@ -11,7 +11,7 @@ export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", so
 export type ProductProgress = { id: string; name: string; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: { id: string; updatedAt: string }[]; wholeJob?: boolean };
 export type HeaderProduct = { id: string; name: string; quantity: number };
 export type HeaderProductSource = "signed_snapshot" | "accepted_quote_lines";
-export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; headerProducts: HeaderProduct[]; headerProductSource: HeaderProductSource | null; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean };
+export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; headerProducts: HeaderProduct[]; headerProductSource: HeaderProductSource | null; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean; closed: boolean };
 
 type EvidenceLine = { id: string; name: string; quantity: number };
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -187,7 +187,8 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
     const header = contractHeaderProducts(source);
     return { source, products: progress, headerProducts: header.products, headerProductSource: header.source, wholeJob: wholeJobProgress(source), quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
-      paid: source.isSale && source.progress.payment === "settled",
+      paid: source.isSale && (source.total ?? 0) > 0 && ["settled", "overpaid"].includes(source.progress.payment),
+      closed: source.isSale && (source.total ?? 0) > 0 && source.balanceOutstanding !== null && source.balanceOutstanding <= 0.005,
       complete: source.progress.stage === "complete",
       archived: ["lost", "archived"].includes(source.stageId) };
   });

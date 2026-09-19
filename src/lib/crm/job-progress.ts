@@ -87,7 +87,7 @@ export function deriveJobProgress(input: Input): JobProgress {
   if (fulfillment?.held) blockers.push("A vendor or customer hold remains open");
   if (fulfillment?.openVisits.length) blockers.push("A service or return visit remains open");
   const cleanComplete = (!fulfillment?.hasEvidence || fulfillment.complete) && complete && !serviceOpen && payment === "settled" && missingSources.length === 0 && measure.status !== "needed";
-  if (recordedStage && terminal.has(recordedStage) && input.isSale && !cleanComplete) conflicts.push(`Recorded ${recordedStage}; purchased work, service or settlement still needs verification`);
+  if (recordedStage && terminal.has(recordedStage) && input.isSale && !cleanComplete && !(recordedStage === "closed" && objectMeta(job?.meta?.payment_progress).source === "customer-payment-ledger")) conflicts.push(`Recorded ${recordedStage}; purchased work, service or settlement still needs verification`);
   let stage: JobProgress["stage"];
   if (partial || serviceOpen || fulfillment?.held || (complete && fulfillment?.hasEvidence && !fulfillment.complete) || conflicts.length || (input.isSale && payment === "unknown")) stage = "attention";
   else if (status === "lost" || status === "archived") stage = status;

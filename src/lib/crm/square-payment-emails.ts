@@ -1,3 +1,4 @@
+import { allocateReceivedMoney } from "./payment-allocation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { getBrokeredGmailAccessToken } from "@/lib/crm/installation-invoices";
@@ -255,17 +256,11 @@ export function parseSquarePaymentEmail(message: GmailMessage): SquarePaymentEma
   };
 }
 
-function sumPayments(payments: PaymentRow[], deposit: boolean) {
-  return roundMoney(payments
-    .filter((payment) => String(payment.payment_label || "").toLowerCase().includes("deposit") === deposit)
-    .reduce((sum, payment) => sum + roundMoney(payment.amount), 0));
-}
-
 function quotePaymentAmounts(quote: QuoteRow, payments: PaymentRow[], creditsIn: CreditRow[], creditsOut: CreditRow[]) {
   const total = roundMoney(quote.quote_total);
   const depositRequired = roundMoney(quote.deposit_required);
   const paidTotal = roundMoney(payments.reduce((sum, payment) => sum + roundMoney(payment.amount), 0));
-  const depositPaid = sumPayments(payments, true);
+  const { depositPaid } = allocateReceivedMoney(paidTotal, depositRequired);
   const creditIn = roundMoney(creditsIn.reduce((sum, credit) => sum + roundMoney(credit.amount), 0));
   const creditOut = roundMoney(creditsOut.reduce((sum, credit) => sum + roundMoney(credit.amount), 0));
   const outstanding = roundMoney(Math.max(total - paidTotal - creditIn + creditOut, 0));

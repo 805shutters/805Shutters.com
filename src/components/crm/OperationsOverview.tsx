@@ -100,14 +100,15 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
   const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
   const visible = items.filter(item => {
-    if (filter === "active" && (item.archived || (item.complete))) return false;
+    if (filter === "active" && (item.archived || item.closed || item.complete)) return false;
+    if (filter === "closed" && !item.closed) return false;
     if (filter === "completed" && !(item.complete)) return false;
     if ((filter === "ordered" || filter === "shipped") && (item.archived || !item.sold || stepComplete(item, filter))) return false;
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
   return <section className={styles.workspace} aria-labelledby="job-status-title" aria-busy={busy}>
     <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Click a circle to update</small></span></header>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     <div className={styles.jobList}>{visible.map(item => {
       const saleDate = formatOperationsDate(item.source.soldDate);
@@ -118,6 +119,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
           <div className={styles.jobIdentity}>
             <button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button>
             <small title={item.source.project || "Project needed"}>{item.source.project || "Project needed"}</small>
+            {item.closed && <small className={styles.completeText}>Closed · Paid in full</small>}
             {item.source.progress.stage === "attention" && <small className={styles.attentionLine} title={`Needs review · ${item.source.progress.nextAction || "Next action needed"}`}>Needs review · {item.source.progress.nextAction || "Next action needed"}</small>}
           </div>
           <div className={styles.headerContact}>

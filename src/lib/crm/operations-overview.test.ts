@@ -318,3 +318,10 @@ describe("operations overview source integrity", () => {
     expect(metrics.missingQuoteDates).toBe(1);
   });
 });
+
+it('shows financial closure and the paid check without inventing installed evidence',()=>{
+ const sold=quote({status:'sold',quote_total:1000,deposit_required:500,balance_due:0});
+ const item=buildOperationsItems(data({quotes:[sold],bookkeepingRows:[{id:'q1',quoteId:'q1',jobId:'j1',source:'crm_quote',status:'sold',total:1000,depositDue:500,depositPaid:500,balancePaid:500,paidTotal:1000,balance:0} as CrmBookkeepingRow]}))[0];
+ expect(item).toMatchObject({closed:true,paid:true,installed:false,complete:false});
+ expect(item.source.depositOutstanding).toBe(0);
+});

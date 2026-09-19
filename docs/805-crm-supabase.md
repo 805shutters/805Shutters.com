@@ -454,3 +454,26 @@ When the dedicated service-role key is present, `/api/booking` creates:
 After the CRM calendar event is saved, `/api/booking` attempts customer SMS confirmation when Twilio is configured, customer email confirmation when an email is supplied and Resend is configured, a staff email to `805@805shutters.com`, admin staff texts through `CRM_APPOINTMENT_ALERT_SMS_NUMBERS`, an assigned-salesperson text through `JESSICA_805_SALES_SMS_NUMBER` or `MIKE_805_SALES_SMS_NUMBER`, and the optional booking webhook alert. Notification failures are logged but do not cancel a successfully saved booking.
 
 Unavailable dates and times are greyed out based on existing CRM calendar events. Sundays and past dates are not bookable by default.
+
+## Customer payment progress
+
+Every recorded receipt contributes to the configured deposit first, then the
+remaining balance, regardless of its original purpose label or tender. Original
+payment records, provider IDs, amounts, dates and fees remain intact. The same
+allocation drives bookkeeping, customer files, green payment checks, and public
+payment-link amounts. A partial receipt labeled Balance never closes a job.
+
+Migration `20260919210000_consistent_customer_payment_progress.sql` synchronizes
+payment progress in the same database transaction as receipt/credit insertion,
+correction, transfer, or removal. It marks a fully covered sold quote paid and its
+parent job closed only after every sold ledger under that parent is settled;
+pending alternatives do not count as sold ledgers. Returned checks, negative
+corrections, credit transfers and increased contract amounts reopen a closure
+created by this workflow. Receipt/provider deduplication remains enforced.
+
+`payment_progress` metadata and activity events preserve the settlement evidence
+and previous status. Closure dates are observed at reconciliation, not backdated.
+Payment closure never writes product/installation completion or erases next actions.
+Job status has a Closed filter and customer files show Closed / Paid in full;
+Completed continues to require fulfillment evidence. Unmatched provider payments
+must be linked to the exact customer ledger before they can affect that file.
