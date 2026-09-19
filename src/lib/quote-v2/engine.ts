@@ -1,4 +1,6 @@
 import { smartdrapeVanePacks } from "./norman-smartdrape-vane-packs";
+import { honeycombDualFabrics, honeycombFabricHasPremium } from "./norman-honeycomb-dual";
+import { findHoneycombColor } from "./catalog";
 import { smartdrapeHardware } from "./norman-smartdrape-hardware";
 import { perfectsheerValance, perfectsheerCommon, perfectsheerValancePriceWidth } from "./norman-perfectsheer-valance";
 import { perfectsheerHardware } from "./norman-perfectsheer-hardware";
@@ -534,7 +536,11 @@ export function authoritativeAutomaticSurchargeSelections(
   }
   const sdExtras=smartdrapeVanePacks(selection);
   if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand"),...(sdExtras?.selections??[])].filter(entry => {
+  const currentHoneycomb = selection.productId === "honeycomb" && selection.catalogAsOf >= "2026-09-19";
+  const hcDual = honeycombDualFabrics(selection);
+  const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
+  const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!currentHoneycomb||entry.id!=="room_darkening")&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(sdExtras?.selections??[]),...(currentHoneycomb&&hcPremium?[{id:"room_darkening",units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
@@ -733,6 +739,7 @@ function priceInputContractIssues(
   const surchargeIssues = surchargeContractIssues(selection, input);
   const inputQuantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const mismatches: Record<string, string | number | null> = {};
+  if (input.honeycombFabricComponents !== undefined) mismatches.honeycombFabricComponents = "Honeycomb fabric grid components are derived by the server, never supplied by a caller.";
   if (input.productId !== selection.productId) {
     mismatches.productId = `${selection.productId} != ${input.productId}`;
   }
@@ -1298,6 +1305,20 @@ function baselinePriceComponent(
   if (!baselineProgram) return null;
   const source = priceComponentSource(product, baselineProgram, selection.catalogAsOf);
 
+  // Each SmartFit fabric has its own construction/fabric baseline. Resolve both
+  // before summing; using the front program twice misprices mixed woven groups.
+  if (priceInput.honeycombFabricComponents) {
+    const components = priceInput.honeycombFabricComponents.map(component => {
+      const program = getProgram(product, component.programId)!;
+      return {...component, programId: programPriceComposition(product, program).baselineProgramId ?? program.id};
+    });
+    const baselineSource = priceDesign({...priceInput, programId: baselineProgramId, honeycombFabricComponents: components}, selection.catalogAsOf);
+    if (!baselineSource.ok) return null;
+    const retail = catalogCostRetail(baselineSource, selection);
+    if (!retail.ok || retail.wholesaleBase == null) return null;
+    return {programId: baselineProgramId, matchedWidth: baselineSource.matchedWidth, matchedHeight: baselineSource.matchedHeight, catalogAmount: baselineSource.base, wholesaleAmount: retail.wholesaleBase, customerAmount: retail.base, source: sourceProvenance("norman-retail-guide-2026-09", {pages: [10,11,12]})};
+  }
+
   if (baselineProgramId === selectedProgram.id) {
     if (
       sourceResult.wholesaleBase == null ||
@@ -1362,7 +1383,7 @@ function priceComponentInputs(
   product: CatalogProduct,
   sourceResult: PriceBreakdown,
 ) {
-  const pricingSource = priceComponentSource(
+  const pricingSource = honeycombDualFabrics(selection) ? sourceProvenance("norman-retail-guide-2026-09", {pages: [10,11,12]}) : priceComponentSource(
     product,
     getProgram(product, sourceResult.programId),
     selection.catalogAsOf,
@@ -1687,6 +1708,8 @@ export function authoritativePriceInputForSelection(
   selection: SelectionContext,
   priceInput: PriceInput,
 ): PriceInput {
+  const honeycomb = honeycombDualFabrics(selection);
+  if (honeycomb?.system === "smartfit_dual") return {...priceInput, honeycombFabricComponents: honeycomb.priceComponents};
   const onyxPricingSize = resolveOnyxWindowSizePricing(selection);
   if (onyxPricingSize.applicable && onyxPricingSize.supported) {
     return {

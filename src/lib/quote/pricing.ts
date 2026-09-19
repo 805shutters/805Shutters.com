@@ -80,6 +80,8 @@ export type PriceInput = {
    * the bases are summed. The overall width remains the assembled order width.
    */
   componentWidthsInches?: number[];
+  /** Engine-derived SmartFit Dual fabric grids; each fabric keeps its own premium. */
+  honeycombFabricComponents?: { programId: string; premium: boolean }[];
   /** Verified end-to-end SmartFold valance width for custom/return/shared valances. */
   valanceWidthInches?: number;
   quantity?: number;
@@ -859,14 +861,19 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
     }
   }
 
+  const honeycombComponents = input.honeycombFabricComponents;
+  if (honeycombComponents && (product.id !== "honeycomb" || !sourceAsOf || sourceAsOf < "2026-09-19" || !Array.isArray(honeycombComponents) || honeycombComponents.length !== 2 || componentWidths || honeycombComponents.some(c => !c || typeof c.premium !== "boolean" || !getProgram(product, c.programId)))) {
+    return fail("CONFIGURATION_INCOMPLETE", "Two exact Honeycomb fabric grids are required for SmartFit Dual pricing.", warnings);
+  }
   const baseLookups: BaseLookup[] = [];
-  for (const pricedWidth of pricedWidths) {
-    const lookup = lookupBaseCents(product, prog, pricedWidth, H, warnings);
+  for (const [index, pricedWidth] of (honeycombComponents ? [W, W] : pricedWidths).entries()) {
+    const componentProgram = honeycombComponents ? getProgram(product, honeycombComponents[index].programId)! : prog;
+    const lookup = lookupBaseCents(product, componentProgram, pricedWidth, H, warnings);
     if ("ok" in lookup) return lookup;
     baseLookups.push(lookup);
   }
   const baseLookup = baseLookups[0];
-  let configurationUnits = componentWidths?.length ?? 1;
+  let configurationUnits = honeycombComponents?.length ?? componentWidths?.length ?? 1;
   for (const sel of input.surcharges ?? []) {
     const surcharge = findProductSurcharge(product, sel.id);
     if (!surcharge) continue;
@@ -890,14 +897,14 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
     );
   }
   const dealerFactor = product.dealerFactor;
-  const baseCents = componentWidths
+  const baseCents = componentWidths || honeycombComponents
     ? baseLookups.reduce((sum, lookup) => sum + lookup.cents, 0)
     : baseLookup.cents * configurationUnits;
   const sourceWholesaleBaseCents = baseLookups.some(
     (lookup) => lookup.wholesaleCents == null,
   )
     ? null
-    : componentWidths
+    : componentWidths || honeycombComponents
       ? baseLookups.reduce(
           (sum, lookup) => sum + (lookup.wholesaleCents ?? 0),
           0,
@@ -966,6 +973,8 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
     }
     if (sc.kind === "percent") {
       let percentBaseCents = baseCents;
+      const componentPremium = sc.id === "room_darkening" && honeycombComponents;
+      if (componentPremium) percentBaseCents = baseLookups.reduce((sum, lookup, i) => sum + (honeycombComponents[i].premium ? lookup.cents : 0), 0);
       if (sc.percentOfSurchargeId) {
         const target = surchargeLines.find((line) => line.id === sc.percentOfSurchargeId);
         if (!target) return fail("SURCHARGE_NO_PRICE", `${sc.name} requires ${sc.percentOfSurchargeId} to be selected first.`, warnings);
@@ -977,10 +986,13 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
           const target = surchargeLines.find((line) => line.id === sc.percentOfSurchargeId);
           wholesaleAmountCents = target?.wholesaleAmount == null ? null : Math.round((toCents(target.wholesaleAmount) * sc.value) / 100);
         } else {
-          wholesaleAmountCents = Math.round((wholesaleBaseCents * sc.value) / 100);
+          const premiumWholesaleBase = componentPremium
+            ? baseLookups.reduce((sum, lookup, i) => sum + (honeycombComponents[i].premium ? lookup.wholesaleCents ?? Math.round(lookup.cents * (dealerFactor ?? 1)) : 0), 0)
+            : wholesaleBaseCents;
+          wholesaleAmountCents = Math.round((premiumWholesaleBase * sc.value) / 100);
         }
       }
-      detail = `${sc.value}% of base`;
+      detail = componentPremium ? `${sc.value}% of the selected premium fabric grids only` : `${sc.value}% of base`;
     } else if (sc.per === "sqft") {
       const sqft =
         billableSqft ??

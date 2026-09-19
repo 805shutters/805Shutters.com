@@ -552,16 +552,15 @@ function rowMatchesMtsContext(
         ) {
           return false;
         }
-        // Once an operating system is selected, remove Sheer colors from
-        // ordinary shades. Norman only documents these five colors as the
-        // sheer layer of a Day & Night configuration. Leave the unselected
-        // state permissive so the existing choose-in-any-order workflow stays
-        // intact; the authoritative validator still fails closed at pricing.
+        // SmartFit Dual supports Sheer in either position (guide p16), but
+        // excludes FR and FR Essentials in both fabric pickers.
         const liftSystem = stringOption(optionsJson, "lift_system");
+        const smartfitDual = /smartfit.*dual/.test(normalize(liftSystem));
+        if (smartfitDual && /flame resistant|fr essentials/.test(normalize(exactColor?.family))) return false;
         if (
           liftSystem &&
           normalize(exactColor?.family) === "sheer" &&
-          !normalize(liftSystem).includes("day night")
+          !normalize(liftSystem).includes("day night") && !smartfitDual
         ) {
           return false;
         }

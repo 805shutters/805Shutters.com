@@ -1,4 +1,5 @@
 import { SYNCHRONY_HARDWARE_COLORS, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
+import { validateHoneycombMultiFabricPricing } from "./norman-honeycomb-dual";
 import { romanComponentWidths } from "./norman-assemblies";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { validateNormanFamilyRules } from "./norman-family-rules";
@@ -1870,7 +1871,8 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
     );
   }
   const dayNight = lift.includes("day night") || application.includes("day night");
-  if (normalizeIdentity(color?.family) === "sheer" && !dayNight) {
+  const smartfitDual = context.catalogAsOf >= "2026-09-19" && `${lift} ${application}`.includes("smartfit") && `${lift} ${application}`.includes("dual");
+  if (normalizeIdentity(color?.family) === "sheer" && !dayNight && !smartfitDual) {
     issues.push(
       issue(
         "hard_block",
@@ -1882,7 +1884,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
     );
   }
 
-  if (dayNight) {
+  if (dayNight || smartfitDual) {
     const rearCollection = text(configValue(context, "rear_fabric_collection"));
     const rearCode = text(configValue(context, "rear_fabric_color_code"));
     const rearCell = text(configValue(context, "rear_cell_size"));
@@ -1894,7 +1896,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
           "honeycomb.day_night.rear_exact_selection_required",
           HONEYCOMB_COLORS,
           { rear_fabric_collection: rearCollection || null, rear_fabric_color_code: rearCode || null, rear_cell_size: rearCell || null },
-          "Day & Night requires the exact rear fabric color and cell size.",
+          "Two-fabric Honeycomb requires the exact second fabric color and cell size.",
         ),
       );
     } else if (!rearColor || !rearColor.cellSizes.some((size) => normalizeIdentity(size) === normalizeIdentity(rearCell))) {
@@ -1909,6 +1911,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
       );
     }
   }
+  issues.push(...validateHoneycombMultiFabricPricing(context));
   issues.push(...validateNormanShadeMotorization(context));
   return issues;
 }

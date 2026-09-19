@@ -33,6 +33,11 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "back_fabric_color_id",
+  "back_fabric_product_id",
+  "back_fabric_program_id",
+  "back_fabric_surcharge_id",
+  "rear_fabric_color_id",
   "norman_assembly_v1",
   "smartdrape_pair_v1",
   "norman_order_record_v1",
@@ -181,6 +186,8 @@ function formatOptionValue(value: unknown): string {
 
 function humanizeKey(key: string): string {
   const labels: Record<string, string> = {
+    day_night_top_layer: "Top Shade Selection",
+    slope_angle_degrees: "Window Slope (degrees)",
     vertical_hardware_color: "Hardware Color",
     vertical_wand_drop_inches: "Wand Drop (inches)",
     vertical_shim_layers: "Shim Layers per Bracket",

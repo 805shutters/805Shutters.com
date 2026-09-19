@@ -1681,6 +1681,10 @@ export function isHoneycombDayNightOperatingSystem(os: string | null | undefined
   return Boolean(os && os.includes("Day & Night"));
 }
 
+export function isHoneycombTwoFabricOperatingSystem(os: string | null | undefined): boolean {
+  return isHoneycombDayNightOperatingSystem(os) || Boolean(os?.includes("SmartFit Dual"));
+}
+
 // Norman only offers "2 on 1" shades for these systems (live-verified).
 export function honeycombOperatingSystemAllows2On1(os: string | null | undefined): boolean {
   return os === "SmartRise Cordless" || os === "Woven Cordless" || os === "Cord Loop" || os === "SmartRelease";

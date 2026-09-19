@@ -883,6 +883,10 @@ describe("V2 exact-interface contract", () => {
       [BACK_FABRIC_COLOR_ID_DETAIL]: "back-id",
       [BACK_FABRIC_CODE_DETAIL]: "B200",
       back_fabric_color: "B200 - Back",
+      rear_fabric_collection: "Old rear family",
+      rear_fabric_color_code: "Old rear code",
+      rear_fabric_color_name: "Old rear name",
+      rear_fabric_class: "Old rear class",
     };
     expect(withoutBackFabricColorDetails(options)).toEqual({
       fabric_color_id: "front-id",

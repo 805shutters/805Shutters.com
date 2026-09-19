@@ -172,6 +172,7 @@ import {
   isHoneycombChainOperatingSystem,
   isHoneycombCordlessPoleOperatingSystem,
   isHoneycombDayNightOperatingSystem,
+  isHoneycombTwoFabricOperatingSystem,
   isHoneycombFrameCellSize,
   isHoneycombMotorizedOperatingSystem,
   PERFECTSHEER_MOUNT_TYPES,
@@ -2652,6 +2653,7 @@ export function withoutBackFabricColorDetails(
   options: Record<string, unknown>,
 ): Record<string, unknown> {
   const next = withoutFabricMetadata(options, BACK_FABRIC_METADATA_KEYS);
+  for (const key of ["rear_fabric_collection", "rear_fabric_color_code", "rear_fabric_color_name", "rear_fabric_color_id", "rear_fabric_class"]) delete next[key];
   delete next.back_fabric_color;
   return next;
 }
@@ -9681,7 +9683,8 @@ function ShadesAndBlindsOptions({
       }
       const motorized = isHoneycombMotorizedOperatingSystem(nextOs);
       if (!motorized) nextJson.hub_required = null;
-      if (!isHoneycombDayNightOperatingSystem(nextOs)) {
+      if (!(authoritativeV2 ? isHoneycombTwoFabricOperatingSystem(nextOs) : isHoneycombDayNightOperatingSystem(nextOs))) {
+        nextJson.day_night_top_layer = null;
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
         nextJson.rear_cell_size = null;
@@ -10976,14 +10979,16 @@ function ShadesAndBlindsOptions({
 
         // Day & Night systems add the back shade fabric (the rep records the
         // fabric line here; the front color comes from the fabric search).
-        if (!specialtyShapeApplication && isHoneycombDayNightOperatingSystem(operatingSystem)) {
+        if (!specialtyShapeApplication && (authoritativeV2 ? isHoneycombTwoFabricOperatingSystem(operatingSystem) : isHoneycombDayNightOperatingSystem(operatingSystem))) {
           if (authoritativeV2) {
             options.push({
               key: "rear_cell_size",
               label: "Back Shade Cell Size",
               field: "json:rear_cell_size",
               type: "select",
-              options: HONEYCOMB_CELL_SIZES.filter((size) => !isHoneycombFrameCellSize(size)),
+              options: operatingSystem?.includes("SmartFit Dual")
+                ? HONEYCOMB_CELL_SIZES.filter(size => size === String(honeycombOptions.honeycomb_actual_cell_size || cellSize))
+                : HONEYCOMB_CELL_SIZES.filter((size) => !isHoneycombFrameCellSize(size)),
             });
           }
           options.push({
@@ -10994,7 +10999,7 @@ function ShadesAndBlindsOptions({
             options: authoritativeV2
               ? getV2HoneycombFabricFamiliesForCellSize(
                   String(honeycombOptions.rear_cell_size || cellSize || ""),
-                )
+                ).filter(family => !operatingSystem?.includes("SmartFit Dual") || !/flame resistant|fr essentials/i.test(family))
               : getHoneycombDealerFabricTypesFor(cellSize),
           });
           if (authoritativeV2 && String(honeycombOptions.back_fabric || "")) {
@@ -11006,6 +11011,13 @@ function ShadesAndBlindsOptions({
               options: [] as readonly string[],
             });
           }
+        }
+
+        if (authoritativeV2 && isHoneycombTwoFabricOperatingSystem(operatingSystem)) {
+          options.push({key: "day_night_top_layer", label: "Top Shade Selection", field: "json:day_night_top_layer", type: "select", options: ["Front", "Rear"]});
+        }
+        if (authoritativeV2 && ["SmartFit", "SmartFit Dual Shade"].includes(operatingSystem || "") && !isHoneycombFrameCellSize(cellSize) && !(HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application)) {
+          options.push({key: "slope_angle_degrees", label: "Window Slope", field: "json:slope_angle_degrees", type: "number", min: 0, max: 15, step: "0.1", unit: "°"});
         }
 
         // SmartFit-with-Frame (Decoflex) sizes add the frame details.
@@ -12200,6 +12212,7 @@ function ShadesAndBlindsOptions({
             optionsJson={{
               ...productColorLookupOptions,
               cell_size: optionsJson.rear_cell_size ?? optionsJson.cell_size,
+              light_control: null,
             }}
             metadataKeys={BACK_FABRIC_METADATA_KEYS}
             allowedCollections={backFabric ? [backFabric] : undefined}

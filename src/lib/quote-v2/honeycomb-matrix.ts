@@ -5,6 +5,7 @@ import type {
   ValidationIssue,
 } from "./core";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
+import { findHoneycombColor } from "./catalog";
 import {
   NORMAN_MOTORIZATION_SOURCE_ID,
   resolveNormanShadeMotorization,
@@ -887,6 +888,10 @@ function selectedFabricClass(
   rear = false,
 ): HoneycombFabricClass | null {
   const prefix = rear ? "rear_" : "";
+  if (context.catalogAsOf >= "2026-09-19") {
+    const exact = findHoneycombColor(stringConfig(context, `${prefix}fabric_collection`), stringConfig(context, `${prefix}fabric_color_code`));
+    if (exact) return normalizeHoneycombFabricClass(exact.family);
+  }
   return normalizeHoneycombFabricClass(
     stringConfig(
       context,
@@ -1981,6 +1986,14 @@ function validateDayNight(
           "SmartFit Dual top and bottom shades must use the same cell size.",
         ),
       );
+    if (context.catalogAsOf >= "2026-09-19" && system === "smartfit_dual") {
+      const rearContext = { ...context, configuration: { ...context.configuration,
+        fabric_class: rearClass, fabric_collection: context.configuration.rear_fabric_collection,
+        fabric_color_code: context.configuration.rear_fabric_color_code, cell_size: context.configuration.rear_cell_size,
+      } };
+      const rearProfile = resolveHoneycombMatrixProfile(rearContext);
+      if (rearProfile.ok) issues.push(...validateDimensionProfile(rearContext, rearProfile.profile).map(i => ({...i, ruleId: `${i.ruleId}.rear`, explanation: `Second shade: ${i.explanation}`})));
+    }
     return issues;
   }
   if (system === "patio_door_vertical_day_night") {

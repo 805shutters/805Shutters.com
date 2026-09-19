@@ -1,4 +1,5 @@
 import { deriveSmartdrapePairs } from "./norman-smartdrape-tracks";
+import { honeycombDualFabrics } from "./norman-honeycomb-dual";
 import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { smartdrapeComponents } from "./norman-smartdrape";
 import { derivePerfectsheerMatching, PERFECTSHEER_MATCHING_KEY } from "./norman-perfectsheer-matching";
@@ -36,6 +37,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     delete configuration[NORMAN_ASSEMBLY_KEY];
     delete configuration[PERFECTSHEER_MATCHING_KEY];
     selection.configuration = configuration;
+    const honeycomb = honeycombDualFabrics(selection);
+    if (honeycomb) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: honeycomb.record};
     const smartdrape = smartdrapeComponents(selection);
     if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
     const smartfold = smartfoldHardware(selection);

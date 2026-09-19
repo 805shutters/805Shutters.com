@@ -1,4 +1,5 @@
 import { getProduct, getProgram } from "@/lib/quote/catalog";
+import { honeycombDualFabrics } from "./norman-honeycomb-dual";
 import type { CatalogProduct, CatalogProgram } from "@/lib/quote/catalog/types";
 import type { PriceBreakdown, PriceLine } from "@/lib/quote/pricing";
 import type {
@@ -824,14 +825,17 @@ export function buildAuthoritativePriceComponents(
     fabricWholesaleAmount !== 0 ||
     fabricCustomerAmount !== 0;
 
+  const honeycomb = honeycombDualFabrics(input.selection);
+  const honeycombBindings = honeycomb ? [{field: "fabric_grids", value: honeycomb.record.fabrics}] : [];
   const components: AuthoritativePriceComponent[] = [
     {
       id: `base_grid:${baseline.programId}`,
       category: "base_grid",
-      label: `Base grid — ${baselineProgram?.name ?? baseline.programId}`,
+      label: honeycomb ? "Base grids — both SmartFit shades" : `Base grid — ${baselineProgram?.name ?? baseline.programId}`,
       status: "priced",
       basis: "grid_cell",
       selectionBindings: [
+        ...honeycombBindings,
         { field: "baseline_program_id", value: baseline.programId },
         { field: "matched_width", value: baseline.matchedWidth },
         { field: "matched_height", value: baseline.matchedHeight },
@@ -855,7 +859,7 @@ export function buildAuthoritativePriceComponents(
       id: `fabric_upgrade:${selectedProgram.id}`,
       category: "fabric_upgrade",
       label:
-        standaloneSelfBaseline
+        honeycomb ? (fabricHasAnyAmount ? "Fabric upgrades — both SmartFit shades" : "Fabric upgrades — included") : standaloneSelfBaseline
           ? "Fabric upgrade — not applicable"
           : !fabricHasAnyAmount
           ? "Fabric upgrade — included"
@@ -863,6 +867,7 @@ export function buildAuthoritativePriceComponents(
       status: fabricHasAnyAmount ? "priced" : "included",
       basis: fabricHasAnyAmount ? "grid_delta" : "included",
       selectionBindings: [
+        ...honeycombBindings,
         { field: "program_id", value: selectedProgram.id },
         {
           field: "fabric_collection",
