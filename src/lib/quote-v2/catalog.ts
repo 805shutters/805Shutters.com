@@ -35,7 +35,7 @@ export function quoteV2CatalogVersionFor(
   asOf: string,
 ): string {
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`;
-  if (productId === "honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-hardware-2026-09-19-r2`;
+  if (productId === "honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`;
   if (productId === "smartdrape" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartdrape-mounting-2026-09-19-r3`;
   if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-controls-2026-09-19-r7`;
   if (productId === "smartfold" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r6`;

@@ -1,3 +1,4 @@
+import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
 import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { perfectsheerMatching } from "./norman-perfectsheer-matching";
 import { perfectsheerCommon } from "./norman-perfectsheer-valance";
@@ -811,8 +812,13 @@ function resolveHoneycomb(
     };
   }
 
+  const accessories = honeycombMotorAccessories(context);
   const controller = controllerSelection(family, config.remoteType);
-  if (controller) canonicalSelections.push(controller);
+  const suppliedControl = accessories?.record.controller;
+  if (controller && suppliedControl?.quantityExplicit) {
+    if (suppliedControl.quantity > 0) canonicalSelections.push({...controller,units:suppliedControl.quantity,billingScope:"once_per_line"});
+  } else if (controller) canonicalSelections.push(controller);
+  if (accessories) { canonicalSelections.push(...accessories.selections); issues.push(...accessories.issues); }
   if (config.hubRequired === true && family !== "autowand") {
     canonicalSelections.push(
       canonicalSelection(
@@ -1307,7 +1313,7 @@ export function resolveNormanShadeMotorization(
     ...resolution,
     limits: resolution.limits?.map(limit => ({ ...limit, sourcePage: page(limit.sourcePage) })),
     sourcePages: resolution.sourcePages?.map(page),
-    issues: resolution.issues.map(i => ({ ...i, source: sourceProvenance("norman-motorization-guide-2026-09-16", {
+    issues: resolution.issues.map(i => i.ruleId.startsWith("honeycomb.accessory.") ? i : ({ ...i, source: sourceProvenance("norman-motorization-guide-2026-09-16", {
       ...(i.source.page ? { page: page(i.source.page) } : {}),
       ...(i.source.pages ? { pages: i.source.pages.map(page) } : {}),
     }) })),
@@ -1318,7 +1324,7 @@ export function validateNormanShadeMotorization(
   context: SelectionContext,
 ): readonly ValidationIssue[] {
   const resolution = resolveNormanShadeMotorization(context);
-  if (!resolution) return [];
+  if (!resolution) return honeycombMotorAccessories(context)?.issues ?? [];
   return resolution.issues;
 }
 

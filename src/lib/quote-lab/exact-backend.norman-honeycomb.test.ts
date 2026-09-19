@@ -232,3 +232,23 @@ describe("Honeycomb side support kit",()=>{
   const q=horizontalQuote({honeycomb_application:"Motorized Skylights",rail_color:"Agave"},"Motorized");
   expect(price(q).result.validationIssues.some(i=>i.ruleId==="honeycomb.hardware.skylight_guard_color")).toBe(true);
  });
+
+describe("Honeycomb motor accessory server prices",()=>{
+ it.each([
+  ["AutoWand",null,{honeycomb_wand_length:"60",honeycomb_wand_color:"White",honeycomb_extra_charging_kits:2,honeycomb_extension_cables:3,honeycomb_extension_color:"Black"},1962],
+  ["Norman Smart Rechargeable Battery with Wireless Charging Wand","SmartDial Remote",{honeycomb_remote_quantity:1,honeycomb_remote_channel:5,honeycomb_charging_extension_poles:2,honeycomb_color_ring_sets:2},4479],
+ ] as const)("prices %s accessories exactly and preserves reopened configuration",(motor,remote,options,total)=>{
+  const q=horizontalQuote({motor_position:"Right",hub_required:false,...options},"Motorized");q.designs[0].motor_type=motor;q.designs[0].remote_type=remote;q.lines[0].quantity=3;
+  const d=price(q);expect(d.result,JSON.stringify(d.result)).toMatchObject({ok:true,total});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(price(reopened)).toEqual(d);
+  const visible=v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)).join(" ");expect(visible).not.toMatch(/norman_assembly|catalogVersion|dealerCost/);
+  if(motor==="AutoWand")expect(visible).toContain("60");else expect(visible).toContain("Shade Remote Channel: 5");
+ });
+ it("rejects AutoWand Breeze while preserving supported woven families",()=>{
+  for(const family of ["Breeze AB0658","Windsong AB0632","Designer Fabric (RD) (Ashton)"]){
+   const q=dualQuote("Light Filtering",family);q.designs[0].lift_system="Motorized";q.designs[0].motor_type="AutoWand";
+   q.designs[0].options_json={...q.designs[0].options_json,rear_cell_size:null,back_fabric:null,back_fabric_color_code:null,day_night_top_layer:null,motor_position:"Right",hub_required:false};
+   expect(price(q).result.ok,JSON.stringify(price(q).result)).toBe(family!=="Breeze AB0658");
+  }
+ });
+});

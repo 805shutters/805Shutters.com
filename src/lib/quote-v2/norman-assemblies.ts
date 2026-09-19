@@ -1,3 +1,4 @@
+import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
 import { honeycombHardware } from "./norman-honeycomb-hardware";
 import { verticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { deriveSmartdrapePairs } from "./norman-smartdrape-tracks";
@@ -203,9 +204,9 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };
     }
   }
-  const motorNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories> | ReturnType<typeof smartdrapeMotorAccessories>>}[]>();
+  const motorNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories> | ReturnType<typeof smartdrapeMotorAccessories> | ReturnType<typeof honeycombMotorAccessories>>}[]>();
   for(const line of lines) {
-    const accessories=perfectsheerMotorAccessories(line.selection) ?? smartdrapeMotorAccessories(line.selection);
+    const accessories=perfectsheerMotorAccessories(line.selection) ?? smartdrapeMotorAccessories(line.selection) ?? honeycombMotorAccessories(line.selection);
     if(accessories) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorAccessories:accessories.record}};
@@ -219,9 +220,10 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const repeaters=members.reduce((n,m)=>n+m.accessories.record.repeaters,0);
     const capacity=first.family === "automate_home"?2:5;
     for(const {line} of members) {
-      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:"norman.perfectsheer.network_repeater_capacity",source:source(first.family === "automate_home"?76:43),selectedValues:{network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
+      const networkSourcePage=line.selection.productId === "honeycomb" ? first.family === "automate_home" ? 68 : 15 : line.selection.productId === "smartdrape" ? 49 : first.family === "automate_home" ? 76 : 43;
+      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:"norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
-      line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:first.family === "automate_home"?76:43}}};
+      line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:networkSourcePage}}};
     }
   }
   // Allocate included kits across selected lines, not once per line.
@@ -229,21 +231,21 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   const chargingGroups = new Map<string, typeof lines[number][]>();
   for (const line of lines) {
     const s=line.selection, power=normalizeIdentity(s.configuration.motor_type);
-    if(!["perfectsheer","smartdrape"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
-    const key=s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
+    if(!["perfectsheer","smartdrape","honeycomb"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
+    const key=s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
     if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
   }
   for (const [family,members] of chargingGroups) {
     const connectedLineIds=members.map(m=>m.lineId).sort();
     const motors=members.reduce((n,m)=>n+m.selection.quantity,0);
     const kits=family==="automate_5v"?motors:Math.ceil(motors/3);
-    const page=family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
+    const page=family==="honeycomb_autowand_usb_c"?81:family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
     for(const line of members) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,includedChargingKits:{
         version:1,productId:line.selection.productId,family,connectedLineIds,ownerLineId:connectedLineIds[0],motorQuantity:motors,
         orderQuantity:kits,fulfillmentQuantity:line.lineId===connectedLineIds[0]?kits:0,retailCharge:0,
-        description:family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
+        description:family==="honeycomb_autowand_usb_c"?"White 78.75-inch USB-C cable; 5V charger excluded":family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
         sourceId:"norman-motorization-guide-2026-09-16",sourcePage:page,
       }}};
     }

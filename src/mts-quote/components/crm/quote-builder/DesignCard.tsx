@@ -1,3 +1,4 @@
+import { HONEYCOMB_MOTOR_ACCESSORY_KEYS, HONEYCOMB_WAND_LENGTHS } from "@/lib/quote-v2/norman-honeycomb-motor-accessories";
 import { HONEYCOMB_GUARD_COLORS, HONEYCOMB_MAGNET_COLORS } from "@/lib/quote-v2/norman-honeycomb-hardware";
 import { SMARTDRAPE_CEILING_ATTACHMENTS, smartdrapeKeystoneChoices } from "@/lib/quote-v2/norman-smartdrape-hardware";
 import { SMARTDRAPE_CHARGING_WAND_LENGTHS } from "@/lib/quote-v2/norman-smartdrape-motor-accessories";
@@ -9411,6 +9412,7 @@ function ShadesAndBlindsOptions({
         nextJson.honeycomb_light_guard = "No"; nextJson.honeycomb_light_guard_color = null;
         nextJson.honeycomb_side_mount_kit = "No"; nextJson.installation_method = null;
         nextJson.hold_downs = null; nextJson.honeycomb_magnet_color = null;
+        for (const key of HONEYCOMB_MOTOR_ACCESSORY_KEYS) nextJson[key] = null;
         if (!frameApplication) { nextJson.poles = null; nextJson.honeycomb_pole_quantity = null; nextJson.honeycomb_pole_length = null; }
       }
       const frameCellSize = getHoneycombCellSizeForApplication(application);
@@ -9766,6 +9768,7 @@ function ShadesAndBlindsOptions({
       const keepRemote = Boolean(
         design?.remote_type && (remotes as readonly string[]).includes(design.remote_type)
       );
+      if (authoritativeV2 && !keepMotor) for (const key of HONEYCOMB_MOTOR_ACCESSORY_KEYS) nextJson[key] = null;
       // "2 on 1" is only offered on a few operating systems.
       const clearShadeType =
         design?.shade_type === "2 on 1" && !honeycombOperatingSystemAllows2On1(nextOs);
@@ -9791,12 +9794,13 @@ function ShadesAndBlindsOptions({
           : ([] as readonly string[]);
       const keepRemote =
         design?.remote_type && (remotes as readonly string[]).includes(design.remote_type);
+      const nextJson = {...currentJson};
+      if (authoritativeV2) for (const key of HONEYCOMB_MOTOR_ACCESSORY_KEYS) nextJson[key] = null;
+      if (nextSource === "AutoWand") nextJson.hub_required = null;
       onUpdateFields({
         motor_type: nextSource,
         ...(keepRemote ? {} : { remote_type: null }),
-        ...(nextSource === "AutoWand"
-          ? { options_json: { ...currentJson, hub_required: null } }
-          : {}),
+        options_json: nextJson,
       });
       return;
     }
@@ -11003,7 +11007,7 @@ function ShadesAndBlindsOptions({
             label: "Power Source",
             field: "motor_type",
             type: "select",
-            options: withStoredValue(getHoneycombMotorsFor(operatingSystem), powerSource),
+            options: withStoredValue(getHoneycombMotorsFor(operatingSystem).filter(source => !(authoritativeV2 && /breeze/i.test(String(honeycombOptions.fabric_color_collection ?? design?.fabric ?? "")) && source === "AutoWand")), powerSource),
           });
           if (powerSource && powerSource !== "AutoWand") {
             const isAutomate = HONEYCOMB_AUTOMATE_POWER_SOURCES.has(powerSource);
@@ -11021,6 +11025,26 @@ function ShadesAndBlindsOptions({
               type: "yes-no",
               noFirst: true,
             });
+          }
+        }
+
+        if (authoritativeV2 && isHoneycombMotorizedOperatingSystem(operatingSystem) && powerSource) {
+          const wand = powerSource === "AutoWand", automate = HONEYCOMB_AUTOMATE_POWER_SOURCES.has(powerSource);
+          const quantity = Math.max(1,_lineItem.quantity ?? 1);
+          const number = (key:string,label:string,max=999,min=0):GridOption => ({key,label,field:`json:${key}`,type:"number",min,max,step:"1"});
+          const choice = (key:string,label:string,values:readonly string[]):GridOption => ({key,label,field:`json:${key}`,type:"select",options:values});
+          if (wand) {
+            options.push(choice("honeycomb_wand_length","AutoWand Length",HONEYCOMB_WAND_LENGTHS),choice("honeycomb_wand_color","AutoWand Color",["White","Cottage White","Black"]),number("honeycomb_extra_charging_kits","Extra Charging Kits for This Line",quantity),number("honeycomb_extension_cables","Extension Cables for This Line",quantity));
+            if(Number(honeycombOptions.honeycomb_extension_cables)>0)options.push(choice("honeycomb_extension_color","Extension Cable Color",["White","Black"]));
+          } else {
+            options.push(number("honeycomb_repeaters","Repeaters for This Line",automate?2:5),number("honeycomb_motor_network","Motor Network",999,1));
+            if(design?.remote_type)options.push(number("honeycomb_remote_quantity","Remotes for This Line"),number("honeycomb_remote_channel","Shade Remote Channel",automate&&/15.Channel/.test(design.remote_type)?15:5,1));
+            options.push({key:"existing_remote_work_order_number",label:"Existing Remote Work Order",field:"json:existing_remote_work_order_number",type:"text"});
+            if(/SmartDial/.test(design?.remote_type || ""))options.push(number("honeycomb_color_ring_sets","Extra Four-Color Ring Sets"));
+            if(/charging wand/i.test(powerSource))options.push(number("honeycomb_charging_extension_poles","36-inch Charging Extension Poles",quantity));
+            if(!automate&&/Low Voltage/i.test(powerSource))options.push(number("honeycomb_extra_harnesses","Extra DC Harnesses for This Line"));
+            if(!automate&&!/charging wand/i.test(powerSource))options.push(choice("honeycomb_power_cable_exit","Power Cable Exit",mountType==="Outside Mount"?["Front of Headrail","Back of Headrail","Top of Headrail"]:["Front of Headrail","Back of Headrail"]));
+            if(automate&&/battery|rechargeable/i.test(powerSource))options.push({key:"honeycomb_solar_panel",label:"Solar Panel per Shade",field:"json:honeycomb_solar_panel",type:"yes-no",noFirst:true});
           }
         }
 
