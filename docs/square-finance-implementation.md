@@ -23,7 +23,11 @@ authorized one payment SMS to 805-298-5555 for each new completed payment.
 - [x] Run focused tests, full suite, typecheck, build, and browser verification.
 - [x] Review payment behavior, migration, authentication, and secret changes.
 - [x] Apply reviewed migration, publish intended changes, and verify production.
-- [ ] Configure production webhook, verify delivery, reconcile history, and report exceptions.
+- [x] Verify the scheduled recovery job against the live API, including historical batches.
+- [x] Verify readable desktop/tablet UI and payment receipt/matching drilldown.
+- [x] Complete historical coverage and report unmatched evidence; owner decisions remain for unproven matches.
+- [ ] Restore Square console sign-in, configure the production subscription, and verify delivery.
+- [ ] Observe delivery of an owner SMS after the next real new customer payment.
 
 ## Invariants
 
@@ -170,4 +174,36 @@ trailing slash. The recovery workflow now calls the canonical www URL directly a
 requires a recognized JSON sync status, so redirects cannot masquerade as success.
 The Square developer-console session expired during verification; its login page
 is preserved for Mike to sign in. Webhook subscription setup still requires that
-session. Historical payment and payout pagination remains in progress.
+session. Initial historical payment and payout pagination subsequently completed; periodic rechecks continue.
+
+## Recovery and UI follow-up
+
+Production release 4703201e2a464206586e4e5972aa02f5529a7bdf passed the full
+release gate and live verification. GitHub recovery runs 35452655387, 35452932462,
+35453191938, and 35453288778 completed successfully against the canonical live
+API. Payment imports have reached September 2026. Payout, refund, and dispute
+history have completed their first passes. The dashboard now distinguishes an
+ongoing recheck from missing initial history; previously completed coverage is
+retained while older records are rechecked. The recovery workflow ends its initial
+batch once every category has completed at least one pass without errors.
+
+The Square login page remains the one provider-setup blocker. No webhook delivery
+or real owner SMS has yet been observed, and no historical/test alerts were sent.
+
+## Completed historical baseline
+
+Authenticated live readback on September 19 at about 9 AM Pacific verified 278
+payment objects and all 50 pre-existing Square credits linked by exact ID, totaling
+$81,897.42, with no new customer credit and no matching errors. All 183 imported
+payouts have complete entry breakdowns whose signed net totals balance. None is
+claimed to match a bank statement without statement evidence. All four historical
+resource categories completed their first pass through the initial 8:39 AM cutoff;
+recent-payment recovery was current through 8:58 AM.
+
+The Square location includes $420,091.06 gross completed collections and $13,704.32
+known fees across its available history. These are location totals, not confirmed
+805 revenue. 199 completed payments remain in assignment/review; historical
+company/customer ownership must not be inferred from names or amounts. The seven
+existing email credits retain their original values and need exact provider
+evidence before linking. No refund records or pending payments were present in
+this snapshot. No owner texts were queued for the historical import.

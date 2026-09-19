@@ -28,7 +28,7 @@ jobs:
               https://www.805shutters.com/api/cron/square-payment-emails/)
             printf '%s' "$result" | jq '{status, errors}'
             printf '%s' "$result" | jq -e '.status == "synced" or .status == "already_running"'
-            if printf '%s' "$result" | jq -e '.status == "already_running" or ([.state.payment, .state.refund, .state.dispute, .state.payout] | all(.completedThrough and (.cursor | not) and (.error | not)))' > /dev/null; then
+            if printf '%s' "$result" | jq -e '.status == "already_running" or ([.state.payment, .state.refund, .state.dispute, .state.payout] | all(.completedThrough and (.error | not)))' > /dev/null; then
               break
             fi
           done
