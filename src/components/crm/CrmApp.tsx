@@ -5,7 +5,7 @@ import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorks
 import { ContractsWorkspace } from "./ContractsWorkspace";
 import { SquareFinanceWorkspace } from "./SquareFinanceWorkspace";
 import { CrmLoadingScreen } from "./CrmLoadingScreen";
-import { CrmNavigation, crmNavigation } from "./CrmNavigation";
+import { CrmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
 import { orderCostParent } from "./ProductOrderEditor";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
@@ -3145,7 +3145,6 @@ export function CrmApp({
     <div className="crm-app-shell crm-platinum-shell">
       <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void refresh().catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
       <div className="crm-platinum-main">
-      <header className="crm-platinum-topbar"><span>Workspace / {crmNavigation.find(item => item.id === activeTab)?.label || "CRM"}</span><span>{user?.email}</span></header>
       <div className="crm-platinum-content">
       {builderQuoteId && session ? (
         builderVersion === "original-v1" ? (
