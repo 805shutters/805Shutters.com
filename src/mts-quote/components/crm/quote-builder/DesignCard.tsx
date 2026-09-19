@@ -1,3 +1,4 @@
+import { SMARTDRAPE_CHARGING_WAND_LENGTHS } from "@/lib/quote-v2/norman-smartdrape-motor-accessories";
 import { SMARTDRAPE_HEADRAIL_COLORS, SMARTDRAPE_CHARGING_WAND_COLORS, smartdrapeSecondColors } from "@/lib/quote-v2/norman-smartdrape";
 import { perfectsheerSavedCommonForDisplay, PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
@@ -9188,6 +9189,14 @@ function ShadesAndBlindsOptions({
         smartdrape_wand_color: null,
         wand_drop_inches: null,
         smartdrape_charging_wand_color: null,
+        smartdrape_charging_wand_length: null,
+        smartdrape_extra_charging_kits: null,
+        smartdrape_remote_quantity: null,
+        smartdrape_remote_channel: null,
+        smartdrape_color_ring_sets: null,
+        smartdrape_hub_quantity: null,
+        smartdrape_repeaters: null,
+        existing_remote_work_order_number: null,
         motorization_selections: null,
       };
       onUpdateFields({ motor_type: null, remote_type: null, options_json: nextJson });
@@ -9852,6 +9861,18 @@ function ShadesAndBlindsOptions({
     if (productType === "SmartFold Shades" && field === "json:premium_hem_bar") {
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
       return;
+    }
+    if (productType === "Smart Drapes" && field === "motor_type") {
+      onUpdateFields({motor_type:typeof value === "string"?value:null,options_json:{...currentJson,smartdrape_charging_wand_length:null,smartdrape_charging_wand_color:null,smartdrape_extra_charging_kits:null,motorization_selections:null}});return;
+    }
+    if (productType === "Smart Drapes" && field === "remote_type") {
+      onUpdateFields({remote_type:typeof value === "string"?value:null,options_json:{...currentJson,smartdrape_remote_channel:null,smartdrape_color_ring_sets:null,motorization_selections:null}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:smartdrape_charging_wand_length") {
+      onUpdateFields({options_json:{...currentJson,smartdrape_charging_wand_length:value,smartdrape_charging_wand_color:null}});return;
+    }
+    if (productType === "Smart Drapes" && field === "json:hub_required") {
+      onUpdateFields({options_json:{...currentJson,hub_required:value,smartdrape_hub_quantity:null}});return;
     }
     if (productType === "Smart Drapes" && field === "json:stack_option") {
       const side=currentJson.control_type === "Motorized"?"Left":value === "Stack Left"?"Right":value === "Stack Right"?"Left":value === "Traveling Center Stack"?"Both":null;
@@ -11821,8 +11842,20 @@ function ShadesAndBlindsOptions({
         const sdChoice=(key:string,label:string,choices:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options:choices});
         options.push(sdChoice("vane_style","Vane Colors",["Single Color","Alternating"]),sdChoice("smartdrape_headrail_color","Headrail and Hardware Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]));
         if(optionsJson.vane_style === "Alternating")options.push(sdChoice("smartdrape_second_color","Second Alternating Fabric",smartdrapeSecondColors(optionsJson.fabric_color_code)));
-        if(controlType === "Motorized")options.push(sdChoice("smartdrape_charging_wand_color","Charging Wand Color",["Default",...SMARTDRAPE_CHARGING_WAND_COLORS]));
-        else options.push(sdChoice("smartdrape_wand_color","Tilt Wand Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]),{key:"wand_drop_inches",label:"Wand Drop from Headrail",field:"json:wand_drop_inches",type:"number",min:12,max:90,step:"0.0625",unit:"in",placeholder:"Default"});
+        if(controlType === "Motorized") {
+          const sdCount=(key:string,label:string,max=Number.MAX_SAFE_INTEGER):GridOptionNumber=>({key,label,field:`json:${key}`,type:"number",min:0,max,step:"1",placeholder:"0"});
+          if(/rechargeable/i.test(String(design?.motor_type))) {
+            options.push(sdChoice("smartdrape_charging_wand_length","Charging Extension Wand Length",SMARTDRAPE_CHARGING_WAND_LENGTHS),sdCount("smartdrape_extra_charging_kits","Extra Charging Kits for This Line",_lineItem.quantity));
+            if([19.25,39].includes(Number(optionsJson.smartdrape_charging_wand_length)))options.push(sdChoice("smartdrape_charging_wand_color","Charging Wand Color",["Default",...SMARTDRAPE_CHARGING_WAND_COLORS]));
+          }
+          options.push(sdCount("smartdrape_repeaters","Repeaters for This Line",5),{key:"smartdrape_motor_network",label:"Motor Network Number",field:"json:smartdrape_motor_network",type:"number",min:1,step:"1",placeholder:"1"});
+          if(optionsJson.hub_required===true || optionsJson.hub_required==="Yes")options.push({...sdCount("smartdrape_hub_quantity","Hubs for This Line"),placeholder:String(_lineItem.quantity||1)});
+          if(design?.remote_type) {
+            options.push({...sdCount("smartdrape_remote_quantity","Remote Controls for This Line"),placeholder:String(_lineItem.quantity||1)},{key:"smartdrape_remote_channel",label:"Shade Remote Channel",field:"json:smartdrape_remote_channel",type:"number",min:1,max:5,step:"1",placeholder:"1"});
+            if(/smartdial/i.test(design.remote_type))options.push(sdCount("smartdrape_color_ring_sets","Extra SmartDial Color Ring Sets"));
+            if(Number(optionsJson.smartdrape_remote_quantity)===0 && optionsJson.smartdrape_remote_quantity!=null)options.push({key:"existing_remote_work_order_number",label:"Existing Remote Work Order",field:"json:existing_remote_work_order_number",type:"text",placeholder:"Prior Norman work-order number"});
+          }
+        } else options.push(sdChoice("smartdrape_wand_color","Tilt Wand Color",["Default",...SMARTDRAPE_HEADRAIL_COLORS]),{key:"wand_drop_inches",label:"Wand Drop from Headrail",field:"json:wand_drop_inches",type:"number",min:12,max:90,step:"0.0625",unit:"in",placeholder:"Default"});
         options.push({ key: "installation_method", label: "Installation", field: "json:installation_method", type: "select", options: ["Wall Mount", "Ceiling Mount", "Ceiling Pocket Mount"] });
         if (optionsJson.installation_method === "Ceiling Pocket Mount") options.push(
           { key: "pocket_depth", label: "Pocket Depth", field: "json:pocket_depth_inches", type: "number", min: 0, step: "0.0625", unit: "in" },
@@ -11844,10 +11877,10 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
-  const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? validateNormanFamilyRules({
+  const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context),...validateNormanShadeMotorization(context).filter(i=>i.severity==="hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.startsWith("smartdrape.accessory."))])({
     productId:"smartdrape",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??"smartdrape_smartdrape_light_filtering"),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context), ...validateNormanShadeMotorization(context).filter(i=>i.severity === "hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.includes("panel_allocation"))])({
     productId:"perfectsheer",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"perfectsheer_perfectsheer_shades_light_filtering",

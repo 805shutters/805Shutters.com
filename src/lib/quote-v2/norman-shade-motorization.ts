@@ -1,3 +1,4 @@
+import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { perfectsheerMatching } from "./norman-perfectsheer-matching";
 import { perfectsheerCommon } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
@@ -36,10 +37,10 @@ export interface SourceBackedMotorLimits {
 export type NormanShadeMotorizationResolution =
   | {
       readonly ok: true;
-      readonly productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer";
+      readonly productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer" | "smartdrape";
       readonly family: NormanShadeMotorFamily;
       readonly powerSource: string;
-      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night" | "smartfold" | "perfectsheer";
+      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night" | "smartfold" | "perfectsheer" | "smartdrape";
       readonly limits: readonly SourceBackedMotorLimits[];
       readonly canonicalSelections: readonly CanonicalMotorizationSelection[];
       readonly sourcePages: readonly number[];
@@ -59,7 +60,7 @@ export type NormanShadeMotorizationResolution =
     };
 
 type MotorConfig = Readonly<{
-  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer";
+  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer" | "smartdrape";
   lift: string;
   application: string;
   powerSource: string;
@@ -180,13 +181,13 @@ function parseCanonicalSelections(
 
 function motorConfig(
   context: SelectionContext,
-  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer",
+  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer" | "smartdrape",
 ): MotorConfig {
   const canonicalValue = value(context, "motorization_selections");
   return {
     productId,
     lift: normalized(
-      value(context, "honeycomb_operating_system", "lift_system"),
+      productId === "smartdrape" ? value(context,"control_type","lift_system") : value(context, "honeycomb_operating_system", "lift_system"),
     ),
     application: normalized(
       value(context, "application", "honeycomb_application"),
@@ -195,7 +196,7 @@ function motorConfig(
     remoteType: normalized(value(context, "remote_type", "motor_remote_type")),
     hubRequired: booleanValue(value(context, "hub_required")),
     motorPosition: normalized(
-      value(
+      productId === "smartdrape" ? value(context,"control_side","motor_position") : value(
         context,
         "motor_position",
         "power_source_location",
@@ -1260,15 +1261,39 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
   return {ok:true,...result,productId:"perfectsheer",family:motorFamily,powerSource:config.powerSource,mode:"perfectsheer",includedAccessories,...(derivedAdapterWattage?{derivedAdapterWattage}:{})};
 }
 
+function resolveSmartDrape(context: SelectionContext, config: MotorConfig): NormanShadeMotorizationResolution {
+  const sourceId = "norman-motorization-guide-2026-09-16";
+  const accessories = smartdrapeMotorAccessories(context)!;
+  const components = [canonicalSelection("smart_motorization","motor","base_motor")];
+  const controller = controllerSelection("norman_smart",config.remoteType);
+  const supplied = accessories.record.controller;
+  if(controller && supplied.quantityExplicit) {
+    if(supplied.quantity>0)components.push({...controller,units:supplied.quantity,billingScope:"once_per_line"});
+  } else if(controller)components.push(controller);
+  if(config.hubRequired===true) {
+    const hub = accessories.record.hub;
+    if(!hub.quantityExplicit)components.push(canonicalSelection("smart_motorization","hub","hub"));
+    else if(hub.quantity>0)components.push({...canonicalSelection("smart_motorization","hub","hub"),units:hub.quantity,billingScope:"once_per_line"});
+  }
+  components.push(...accessories.selections);
+  const issues = [...accessories.issues,...validateControlAndPosition(context,config,"norman_smart",[49]),...canonicalContractIssues(config,components,[46])].map(i=>({...i,source:sourceProvenance(sourceId,{page:i.source.page??49})}));
+  if(!["norman smart rechargeable battery","norman smart ac adapter","norman smart ac adapter plug in"].includes(config.powerSource))issues.push({severity:"hard_block",ruleId:"smartdrape.motorization.power",source:sourceProvenance(sourceId,{page:46}),selectedValues:{...context.configuration},explanation:"SmartDrape supports Norman Smart rechargeable battery or AC adapter power only."});
+  if(config.motorPosition!=="left")issues.push({severity:"hard_block",ruleId:"smartdrape.motorization.position",source:sourceProvenance(sourceId,{page:46}),selectedValues:{...context.configuration},explanation:"The SmartDrape motor must be on the left for every stack configuration."});
+  const result = {issues,limits:[],canonicalSelections:components,sourcePages:[45,46,47,48,49]};
+  if(issues.some(i=>i.severity==="hard_block"))return {ok:false,...result};
+  return {ok:true,...result,productId:"smartdrape",family:"norman_smart",powerSource:config.powerSource,mode:"smartdrape",includedAccessories:config.powerSource.includes("rechargeable")?["One USB-C charging kit per three SmartDrape motors, rounded up per order"]:[]};
+}
+
 export function resolveNormanShadeMotorization(
   context: SelectionContext,
 ): NormanShadeMotorizationResolution | null {
-  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer" && context.productId !== "smartdrape") {
     return null;
   }
-  if (context.productId === "perfectsheer" && context.catalogAsOf < "2026-09-19") return null;
+  if (["perfectsheer", "smartdrape"].includes(context.productId) && context.catalogAsOf < "2026-09-19") return null;
   const config = motorConfig(context, context.productId);
   if (!isMotorized(config) && config.lift !== "autowand") return null;
+  if (context.productId === "smartdrape") return resolveSmartDrape(context, config);
   if (context.productId === "smartfold") return resolveSmartFold(context, config);
   if (context.productId === "perfectsheer") return resolvePerfectSheer(context, config);
   const resolution = context.productId === "honeycomb"
@@ -1307,10 +1332,14 @@ export function canonicalNormanShadeMotorizationSelectionsFromConfiguration(
 export function motorFamilyForNormanShadeSelection(
   context: SelectionContext,
 ): NormanShadeMotorFamily | null {
-  if (context.productId === "perfectsheer" && context.catalogAsOf < "2026-09-19") return null;
+  if (["perfectsheer", "smartdrape"].includes(context.productId) && context.catalogAsOf < "2026-09-19") return null;
+  if(context.productId === "smartdrape") {
+    const config=motorConfig(context,"smartdrape");
+    return isMotorized(config) && ["norman smart rechargeable battery","norman smart ac adapter","norman smart ac adapter plug in"].includes(config.powerSource) ? "norman_smart" : null;
+  }
   const resolution = resolveNormanShadeMotorization(context);
   if (resolution?.ok) return resolution.family;
-  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer" && context.productId !== "smartdrape") {
     return null;
   }
   return familyForPowerSource(

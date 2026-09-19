@@ -12,13 +12,28 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("prices SmartDrape motors and whole-line accessories with a persisted USB-C allocation",()=>{
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Motorized",stack_option:"Stack Left",control_side:"Left",installation_method:"Wall Mount",hub_required:true});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.designs[0].motor_type="Norman Smart Rechargeable Battery";q.designs[0].remote_type="SmartDial Remote";q.lines[0].quantity=3;
+  const base=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  q.designs[0].options_json={...q.designs[0].options_json,smartdrape_remote_quantity:1,smartdrape_remote_channel:4,smartdrape_hub_quantity:1,smartdrape_extra_charging_kits:2,smartdrape_charging_wand_length:39,smartdrape_charging_wand_color:"2052 Day Light",smartdrape_repeaters:2,smartdrape_color_ring_sets:2};
+  const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if(!("backend" in priced)||priced.backend!=="v2"||!("backend" in base)||base.backend!=="v2")throw new Error("Expected V2");
+  const d=priced.designs[0],b=base.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(b.result.ok,JSON.stringify(b.result)).toBe(true);
+  if(!d.result.ok||!b.result.ok)throw new Error("Expected valid SmartDrape motor price");
+  expect(d.result.total-b.result.total).toBe(-2*268-2*321+2*43+3*75+2*107+2*43);
+  expect(d.result.components).toEqual(expect.arrayContaining([expect.objectContaining({id:"operating:motor:smart_motorization:motor",catalogAmount:642})]));
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{controller:{quantity:1,channel:4},chargingWand:{length:39,quantity:3}},includedChargingKits:{family:"smartdrape_usb_c",orderQuantity:1,fulfillmentQuantity:1}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toEqual(expect.arrayContaining(["Remote Controls for This Line: 1","Shade Remote Channel: 4","Charging Extension Wand Length: 39"]));
+ });
  it("server-prices and persists all 77 SmartDrape colors, including alternating colors and hardware overrides",()=>{
   for(const row of SMARTDRAPE_COORDINATION){
    const q=currentQuote("smartdrape","Smart Drapes",row.customerColorCode,{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",smartdrape_headrail_color:"4534 Brass",smartdrape_wand_color:"3058 White",wand_drop_inches:48,light_control:row.category.includes("Room")?"Room Darkening":"Light Filtering"});
    q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type=row.category.replace(":","");
    const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
    if(!("backend" in priced)||priced.backend!=="v2")throw new Error("Expected V2");
-   const d=priced.designs[0];expect(d.result.ok,row.customerColorCode+JSON.stringify(d.result.validationIssues)).toBe(true);
+   const d=priced.designs[0];expect(d.selection.programId).toBe(row.category.includes("Essentials")?"smartdrape_smartdrape_lakeshore_stripe":"smartdrape_smartdrape_light_filtering");expect(d.result.ok,row.customerColorCode+JSON.stringify(d.result.validationIssues)).toBe(true);
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabrics:[{customerColorCode:row.customerColorCode,factoryColorCode:row.factoryColorCode}],coordination:{headrail:"4534 Brass"},wand:{color:"3058 White",drop:48}});
    const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
    expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);

@@ -1,3 +1,4 @@
+import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { smartdrapeComponents } from "./norman-smartdrape";
 import { derivePerfectsheerMatching, PERFECTSHEER_MATCHING_KEY } from "./norman-perfectsheer-matching";
 import { derivePerfectsheerCommonValances, perfectsheerCommon } from "./norman-perfectsheer-valance";
@@ -191,18 +192,18 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };
     }
   }
-  const psNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories>>}[]>();
+  const motorNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories> | ReturnType<typeof smartdrapeMotorAccessories>>}[]>();
   for(const line of lines) {
-    const accessories=perfectsheerMotorAccessories(line.selection);
+    const accessories=perfectsheerMotorAccessories(line.selection) ?? smartdrapeMotorAccessories(line.selection);
     if(accessories) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorAccessories:accessories.record}};
     }
-    if(!accessories || !/motor/i.test(String(line.selection.configuration.lift_system)) || accessories.record.family === "autowand")continue;
+    if(!accessories || !/motor/i.test(String(line.selection.configuration.control_type ?? line.selection.configuration.lift_system)) || accessories.record.family === "autowand")continue;
     const key=`${accessories.record.family}/${accessories.record.network}`;
-    psNetworks.set(key,[...(psNetworks.get(key)??[]),{line,accessories}]);
+    motorNetworks.set(key,[...(motorNetworks.get(key)??[]),{line,accessories}]);
   }
-  for(const members of psNetworks.values()) {
+  for(const members of motorNetworks.values()) {
     const first=members[0].accessories.record;
     const repeaters=members.reduce((n,m)=>n+m.accessories.record.repeaters,0);
     const capacity=first.family === "automate_home"?2:5;
@@ -212,26 +213,26 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:first.family === "automate_home"?76:43}}};
     }
   }
-  // Allocate included PerfectSheer kits across selected lines, not once per line.
+  // Allocate included kits across selected lines, not once per line.
   // Do not merge charging connectors or infer a shared dealer order across products.
   const chargingGroups = new Map<string, typeof lines[number][]>();
   for (const line of lines) {
     const s=line.selection, power=normalizeIdentity(s.configuration.motor_type);
-    if(s.productId!=="perfectsheer" || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.lift_system)))continue;
-    const key=power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
+    if(!["perfectsheer","smartdrape"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
+    const key=s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
     if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
   }
   for (const [family,members] of chargingGroups) {
     const connectedLineIds=members.map(m=>m.lineId).sort();
     const motors=members.reduce((n,m)=>n+m.selection.quantity,0);
     const kits=family==="automate_5v"?motors:Math.ceil(motors/3);
-    const page=family==="autowand"?91:family==="smart_36w"?42:74;
+    const page=family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
     for(const line of members) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,includedChargingKits:{
-        version:1,productId:"perfectsheer",family,connectedLineIds,ownerLineId:connectedLineIds[0],motorQuantity:motors,
+        version:1,productId:line.selection.productId,family,connectedLineIds,ownerLineId:connectedLineIds[0],motorQuantity:motors,
         orderQuantity:kits,fulfillmentQuantity:line.lineId===connectedLineIds[0]?kits:0,retailCharge:0,
-        description:family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
+        description:family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
         sourceId:"norman-motorization-guide-2026-09-16",sourcePage:page,
       }}};
     }

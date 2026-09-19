@@ -1,3 +1,4 @@
+import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { validateSmartdrapeComponents } from "./norman-smartdrape";
 import { validatePerfectsheerComponents } from "./norman-perfectsheer";
 import { validateNormanContract } from "./norman-contract-rules";
@@ -15,7 +16,7 @@ const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [...validateSmartdrapeComponents(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
+  const issues: ValidationIssue[] = [...(smartdrapeMotorAccessories(context)?.issues ?? []), ...validateSmartdrapeComponents(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];

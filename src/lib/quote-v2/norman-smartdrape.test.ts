@@ -42,7 +42,7 @@ describe("SmartDrape source fabric and component reconciliation",()=>{
  it("retains both traveling wands and first-fabric charging-wand coordination",()=>{
   expect(smartdrapeComponents(shade({stack_option:"Traveling Center Stack",control_side:"Both"}))?.wand).toMatchObject({quantity:2,side:"Both"});
   expect(validateSmartdrapeComponents(shade({stack_option:"Stack Right",control_side:"Right"})).map(i=>i.ruleId)).toContain("norman.smartdrape.wand_side");
-  const rows=[{lineId:"sd",selection:shade({control_type:"Motorized",motor_type:"Norman Smart Rechargeable Battery",control_side:"Left",vane_style:"Alternating",smartdrape_second_color:"F1128",smartdrape_headrail_color:"4534 Brass",norman_assembly_v1:{fabric:{factoryColorCode:"FORGED"}}})}];
+  const rows=[{lineId:"sd",selection:shade({control_type:"Motorized",motor_type:"Norman Smart Rechargeable Battery",smartdrape_charging_wand_length:39,control_side:"Left",vane_style:"Alternating",smartdrape_second_color:"F1128",smartdrape_headrail_color:"4534 Brass",norman_assembly_v1:{fabric:{factoryColorCode:"FORGED"}}})}];
   deriveNormanOrderRecords(rows);expect(rows[0].selection.configuration.norman_assembly_v1).toMatchObject({coordination:{chargingWandColor:"2052 Day Light"},wand:null});
   const reopened=JSON.parse(JSON.stringify(rows));deriveNormanOrderRecords(reopened);expect(reopened).toEqual(rows);
   rows[0].selection.catalogAsOf="2026-09-18";expect(smartdrapeComponents(rows[0].selection)).toBeNull();
