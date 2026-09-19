@@ -52,7 +52,7 @@ describe("PerfectSheer September motor contract",()=>{
     rows[1].selection.quantity=2;expect(deriveNormanOrderRecords(rows).map(i=>i.ruleId)).toContain("norman.motorization.shared_panel_capacity");
   });
   it("rejects incompatible controls, undocumented power and missing tube",()=>{
-    for(const c of [{motor_type:"Rechargeable Battery (Charging Wand)"},{remote_type:"15-Channel Remote"},{perfectsheer_tube_diameter:""},{motor_type:"AutoWand",remote_type:"Basic Remote"}])expect(resolve(shade(c)).ok).toBe(false);
+    for(const c of ([{motor_type:"Rechargeable Battery (Charging Wand)"},{remote_type:"15-Channel Remote"},{perfectsheer_tube_diameter:""},{motor_type:"AutoWand",remote_type:"Basic Remote"}] as SelectionContext["configuration"][]))expect(resolve(shade(c)).ok).toBe(false);
     const past=shade();past.catalogAsOf="2026-09-18";expect(resolveNormanShadeMotorization(past)).toBeNull();
   });
   it("requires the larger Automate DC tube above 96 inches",()=>{
