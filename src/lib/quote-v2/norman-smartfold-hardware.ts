@@ -1,6 +1,7 @@
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
+import { smartfoldStyle } from "./norman-smartfold-style";
 
 export const SMARTFOLD_HARDWARE_DATE = "2026-09-19";
 export const SMARTFOLD_INSTALLATIONS = ["Top Mount with Raceway", "Back / Wall Mount with Raceway"] as const;
@@ -44,6 +45,7 @@ export function smartfoldHardware(context: SelectionContext) {
       shimLayers: validLayers ? shimLayers : null,
       shimQuantity: validMount && validLayers ? supports * shimLayers! : null,
       quantityBasis: "per_shade",
+      style: smartfoldStyle(context),
     },
   };
 }

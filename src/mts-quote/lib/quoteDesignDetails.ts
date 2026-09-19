@@ -185,6 +185,17 @@ function humanizeKey(key: string): string {
     smartfold_magnet_color: "Magnet Catch Color",
     smartfold_pole: "Additional Pole per Shade",
     smartfold_light_guard_color: "Light Guard Color",
+    smartfold_fabric_pattern: "Fabric Pattern",
+    smartfold_hardware_color: "Hardware Color",
+    smartfold_hem_style: "Hem-Bar Style",
+    smartfold_hem_color: "Hem-Bar Color",
+    smartfold_hem_end_cap: "Hem-Bar End Caps",
+    smartfold_fascia_style: "Curved Fascia Style",
+    smartfold_fascia_color: "Fascia Color",
+    smartfold_fascia_end_cap: "Fascia End Caps",
+    smartfold_valance_fabric_code: "Valance Fabric Code",
+    smartfold_wood_valance_color: "Wood Valance Finish",
+    smartfold_chain_color: "Chain Color",
   };
   if (labels[key]) return labels[key];
   return key

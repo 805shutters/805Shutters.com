@@ -11,6 +11,18 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("saves an Impressions reverse pattern with silver fascia and premium hem finish",()=>{
+  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:3,smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Nickel-Plated",smartfold_pole:"60-inch Cordless Operating Pole",smartfold_fabric_pattern:"Reverse",smartfold_fascia_color:"Anodized Silver",premium_hem_bar:"Yes",smartfold_hem_color:"Bronze"});
+  q.designs[0].valance="Curved Fascia";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  const priced=first.designs[0];expect(priced.result).toMatchObject({ok:true,base:606,unitPrice:935,validationIssues:[]});
+  expect(priced.selection.configuration.norman_assembly_v1).toMatchObject({style:{fabricPattern:"Reverse",fasciaColor:"Anodized Silver",fasciaEndCap:"White",hemColor:"Bronze",hemEndCap:"Chocolate"}});
+  const customer=customerConfigurationFromSelection(priced.selection);
+  expect(v2CustomerConfigurationOptions(customer)).toEqual(expect.arrayContaining(["Fabric Pattern: Reverse","Fascia Color: Anodized Silver","Hem-Bar Color: Bronze"]));
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...priced.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+ });
  it("retains the exact SmartFold verification blocker",()=>{
   const result=repriceExactQuoteBuilderForServerDate(currentQuote("smartfold","SmartFold Shades","F1709",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0}),"2026-09-19");
   expect(result).toMatchObject({backend:"v2"});

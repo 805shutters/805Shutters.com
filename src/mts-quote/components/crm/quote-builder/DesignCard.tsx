@@ -1,10 +1,11 @@
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
 import { SMARTFOLD_INSTALLATIONS, SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "@/lib/quote-v2/norman-smartfold-hardware";
+import { SMARTFOLD_HARDWARE_COLORS, SMARTFOLD_HEM_COLORS, SMARTFOLD_FASCIA_COLORS, SMARTFOLD_END_CAP_COLORS, SMARTFOLD_PREMIUM_HEM_COLORS, SMARTFOLD_WOOD_VALANCE_COLORS, SMARTFOLD_CHAIN_COLORS } from "@/lib/quote-v2/norman-smartfold-style";
 import { NormanContractDesignOptions } from "@/components/crm/NormanContractDesignOptions";
 import { isNormanContractProduct } from "@/lib/quote/norman-contract";
 import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
 import { isSanClementeProduct } from "@/lib/quote/norman-san-clemente";
-import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "@/lib/quote/norman-current-assortment";
+import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import {
@@ -9815,6 +9816,22 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "SmartFold Shades" && field === "json:smartfold_fascia_style") {
+      onUpdateFields({options_json:{...currentJson,smartfold_fascia_style:value,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "json:smartfold_hem_style") {
+      onUpdateFields({options_json:{...currentJson,smartfold_hem_style:value,smartfold_hem_end_cap:null}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "json:premium_hem_bar") {
+      onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
+      return;
+    }
+    if (productType === "SmartFold Shades" && field === "valance") {
+      onUpdateFields({valance:typeof value === "string"?value:null,options_json:{...currentJson,smartfold_fascia_style:null,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null,smartfold_wood_valance_color:null}});
+      return;
+    }
     if (productType === "SmartFold Shades" && field === "mount_type") {
       const outside=value === "Outside Mount";
       onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,...(outside?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null}:{})}});
@@ -10054,6 +10071,23 @@ function ShadesAndBlindsOptions({
         const fabricCode = String(optionsJson.fabric_color_code ?? "");
         const louise = ["F1708", "F1709", "F1710", "F1711"].includes(fabricCode);
         const tallLouise = louise && measurementToInches(_lineItem.height_whole, _lineItem.height_fraction) > 72;
+        const premiumHem=optionsJson.premium_hem_bar === "Yes";
+        const curved=design?.valance === "Curved Fascia";
+        const wrapped=curved && optionsJson.smartfold_fascia_style === "Fabric-Wrapped";
+        const styleChoice=(key:string,label:string,options:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options});
+        const styleOptions:GridOption[]=fabricCode ? [
+          ...(SMARTFOLD_FABRICS.find(f=>f.code===fabricCode)?.collection === "Impressions" ? [styleChoice("smartfold_fabric_pattern","Fabric Pattern",["Standard","Reverse"])] : []),
+          styleChoice("smartfold_hardware_color","Hardware Color",["Default",...SMARTFOLD_HARDWARE_COLORS]),
+          styleChoice("smartfold_hem_style","Hem-Bar Style",["Fabric-Wrapped","Plain"]),
+          styleChoice("smartfold_hem_color",premiumHem?"Premium Hem-Bar Finish":"Hem-Bar Color",premiumHem?SMARTFOLD_PREMIUM_HEM_COLORS:["Default",...SMARTFOLD_HEM_COLORS]),
+          ...(!premiumHem && optionsJson.smartfold_hem_style !== "Plain" ? [styleChoice("smartfold_hem_end_cap","Hem-Bar End Caps",["Default",...SMARTFOLD_END_CAP_COLORS])] : []),
+          ...(curved?[styleChoice("smartfold_fascia_style","Curved Fascia Style",["Plain","Fabric-Wrapped"])]:[]),
+          ...(design?.valance === "Square Fascia" || (curved&&!wrapped) ? [styleChoice("smartfold_fascia_color","Fascia Color",["Default",...SMARTFOLD_FASCIA_COLORS])] : []),
+          ...(wrapped?[styleChoice("smartfold_fascia_end_cap","Fascia End Caps",["Default",...SMARTFOLD_END_CAP_COLORS])]:[]),
+          ...(wrapped || /inch Fabric/.test(String(design?.valance)) ? [styleChoice("smartfold_valance_fabric_code","Valance Fabric Override",["Default",...SMARTFOLD_FABRICS.map(f=>f.code)])]:[]),
+          ...(design?.valance === "Modern Wood" ? [styleChoice("smartfold_wood_valance_color","Wood Valance Finish",SMARTFOLD_WOOD_VALANCE_COLORS)]:[]),
+          ...(design?.lift_system === "Continuous Cord Loop" ? [styleChoice("smartfold_chain_color","Chain Color",["Default",...SMARTFOLD_CHAIN_COLORS])]:[]),
+        ] : [];
         const motorOptions: GridOption[] = design?.lift_system === "Motorized" ? [
           { key: "motor_type", label: "Power Source", field: "motor_type", type: "select", options: ["Norman Smart Rechargeable Battery (AC Charger)", "Norman Smart AC Adapter", "Norman Smart DC Low Voltage", "AutoWand"] },
           ...(design.motor_type !== "AutoWand" ? [
@@ -10077,6 +10111,7 @@ function ShadesAndBlindsOptions({
           ...(optionsJson.smartfold_hold_down === "Magnetic" ? [{key:"magnet_color",label:"Magnet Catch Color",field:"json:smartfold_magnet_color",type:"select",options:SMARTFOLD_MAGNET_COLORS} as GridOption] : []),
           ...(/cordless/i.test(String(design?.lift_system)) ? [{key:"pole",label:"Additional Pole per Shade",field:"json:smartfold_pole",type:"select",options:SMARTFOLD_POLES} as GridOption] : []),
           { key: "shim", label: "Shim Layers", field: "json:smartfold_shim_layers", type: "buttons", options: ["0", "1", "2", "3"] },
+          ...styleOptions,
           ...motorOptions,
         ];
       }
@@ -11831,6 +11866,7 @@ function ShadesAndBlindsOptions({
       if (inferredLightControl) nextJson.light_control = inferredLightControl;
     }
 
+    if (productType === "SmartFold Shades" && fabricColor.collection !== "Impressions") nextJson.smartfold_fabric_pattern="Standard";
     if (productType === "Smart Drapes") {
       const inferredShadeType = getSmartDrapeShadeTypeFromProductColor(fabricColor);
       if (inferredShadeType) patch.shade_type = inferredShadeType;

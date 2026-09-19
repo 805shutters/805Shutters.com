@@ -5,13 +5,14 @@ import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { citylightsColorSlatSizes, PALLADIAN_COLORS, PALLADIAN_LEGACY_COLORS, palladianProductEligible, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
 import { validateSmartfoldHardware, validateSmartfoldAccessories } from "./norman-smartfold-hardware";
+import { validateSmartfoldStyle } from "./norman-smartfold-style";
 
 const normalized = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "premium"].includes(normalized(value));
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context)];
+  const issues: ValidationIssue[] = [...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];
