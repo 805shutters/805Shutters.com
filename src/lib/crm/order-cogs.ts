@@ -1,3 +1,4 @@
+import { applyOrderEmailProduct } from "./apply-order-email-product";
 import { productOrderCosts } from "./product-order-cost";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
@@ -102,9 +103,13 @@ export type ProcessOrderCogsOptions = {
   /**
    * When false, scan/extract/match and write audit rows only — no COGS, status,
    * Telegram, or Gmail archive. Defaults to ORDER_COGS_AUTO_APPLY !== "false".
-   * Live cron and staff pull pass false for the manufacturer-COGS cutover.
+   * Live callers disable this legacy writer and use productAutoApply instead.
    */
   autoApply?: boolean;
+  /** Apply through the current product-invoice workflow, never the legacy status writer. */
+  productAutoApply?: boolean;
+  /** Bound scheduled work; unfinished emails remain eligible for the next run. */
+  maxRunMs?: number;
 };
 
 export type ProcessOrderCogsTarget = {
@@ -139,6 +144,7 @@ export type ProcessOrderCogsResult = {
   /** First audit-log insert failure (diagnostic), if any. */
   lastInsertError?: string;
   targetCogsTotal?: number | null;
+  deferred?: number;
   emails: CrmOrderCogsEmail[];
 };
 
@@ -272,12 +278,18 @@ async function gmailJson<T>(accessToken: string, url: string) {
   return (await response.json()) as T;
 }
 
-async function listGmailMessages(accessToken: string, query: string, maxResults: number) {
+export async function listGmailMessages(accessToken: string, query: string, maxResults: number, allPages = false) {
   const url = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
   url.searchParams.set("q", query);
   url.searchParams.set("maxResults", String(maxResults));
-  const result = await gmailJson<GmailListResponse>(accessToken, url.toString());
-  return result.messages || [];
+  const messages = new Map<string, { id: string; threadId?: string }>();
+  for (let page = 0; page < 20; page += 1) {
+    const result = await gmailJson<GmailListResponse>(accessToken, url.toString());
+    for (const message of result.messages || []) messages.set(message.id, message);
+    if (!allPages || !result.nextPageToken) return [...messages.values()];
+    url.searchParams.set("pageToken", result.nextPageToken);
+  }
+  throw new CrmAuthError(502, "Order email search exceeded 20 pages. Narrow the date range and retry; no orders were silently discarded.");
 }
 
 async function getGmailMessage(accessToken: string, id: string) {
@@ -1124,15 +1136,18 @@ type OrderCogsEmailRecord = {
   id?: string;
   applied_at?: string | null;
   match_status?: CrmOrderCogsEmailStatus;
+  raw?: Record<string, unknown>;
+  gmail_message_id?: string;
+  processed_at?: string | null;
 };
 
 async function loadOrderCogsEmailRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
   const { data, error } = await supabase
     .from("crm_order_cogs_emails")
-    .select("id,applied_at,match_status")
+    .select("id,applied_at,match_status,raw")
     .eq("gmail_message_id", gmailMessageId)
     .maybeSingle();
-  if (error) return null;
+  if (error) throw new CrmAuthError(502, "Existing invoice evidence could not be loaded; retry before applying COGS.");
   return (data as OrderCogsEmailRecord | null) || null;
 }
 
@@ -1209,13 +1224,17 @@ export async function processOrderCogsInbox(
   supabase: CrmSupabaseClient,
   options: ProcessOrderCogsOptions = {}
 ): Promise<ProcessOrderCogsResult> {
+  const startedAt = Date.now();
   const mailbox = normalizedMailbox(options.mailbox);
   const query = options.query || (options.target?.customerName
     ? customerOrderCogsQuery(mailbox, options.target.customerName, options.days)
-    : process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox));
+    : process.env.ORDER_COGS_GMAIL_QUERY || (options.productAutoApply
+      ? defaultQuery(mailbox).replace("in:inbox ", "").replace("-label:Processed ", "")
+      : defaultQuery(mailbox)));
   const maxResults = maxResultsValue(options.maxResults);
   const actor: CrmActor = { email: options.actorEmail || "order-cogs" };
-  const autoApply = resolveOrderCogsAutoApply(options);
+  const productAutoApply = options.productAutoApply === true;
+  const autoApply = productAutoApply || resolveOrderCogsAutoApply(options);
   const archiveEnabled = autoApply && (options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false");
   const allCandidates = await loadOrderCogsCandidates(supabase);
   const targetName = options.target?.customerName.trim().toLowerCase() || "";
@@ -1232,11 +1251,21 @@ export async function processOrderCogsInbox(
         return candidate.customerName.trim().toLowerCase() === targetName;
       })
     : allCandidates;
-  const accessToken = options.messageIds?.length ? null : await getGmailAccessToken(mailbox);
+  const accessToken = productAutoApply || !options.messageIds?.length ? await getGmailAccessToken(mailbox) : null;
   const processedLabelId = archiveEnabled && accessToken ? await ensureProcessedLabel(accessToken) : null;
-  const messages = options.messageIds?.length
+  let messages = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
-    : await listGmailMessages(accessToken as string, query, maxResults);
+    : await listGmailMessages(accessToken as string, query, maxResults, productAutoApply);
+  if (productAutoApply && !options.target && !options.messageIds?.length) {
+    const { data, error } = await supabase.from("crm_order_cogs_emails")
+      .select("gmail_message_id,processed_at,match_status,applied_at,raw")
+      .eq("mailbox_email", mailbox).in("match_status", ["needs_review", "unmatched", "error"]).limit(1000);
+    if (error || (data?.length || 0) >= 1000) throw new CrmAuthError(502, "Pending order email retries could not be completely loaded.");
+    const pending = new Map((data || []).map(row => [row.gmail_message_id, row]));
+    messages = [...new Map([...messages, ...[...pending.keys()].map(id => ({ id }))].map(row => [row.id, row])).values()];
+    // Never let repeatedly ambiguous emails starve untried or interrupted orders.
+    messages.sort((a, b) => String(pending.get(a.id)?.processed_at || "").localeCompare(String(pending.get(b.id)?.processed_at || "")));
+  }
   const records: CrmOrderCogsEmail[] = [];
   const result: ProcessOrderCogsResult = {
     mailbox,
@@ -1255,10 +1284,15 @@ export async function processOrderCogsInbox(
     emails: records
   };
 
-  for (const listed of messages) {
+  for (const [index, listed] of messages.entries()) {
+    if (options.maxRunMs && Date.now() - startedAt >= options.maxRunMs) {
+      result.deferred = messages.length - index;
+      break;
+    }
+    let existingRecord: OrderCogsEmailRecord | null = null;
     try {
-      const existingRecord = await loadOrderCogsEmailRecord(supabase, listed.id);
-      if (shouldSkipOrderCogsMessage(existingRecord, autoApply)) {
+      existingRecord = await loadOrderCogsEmailRecord(supabase, listed.id);
+      if (shouldSkipOrderCogsMessage(existingRecord, autoApply) && (!productAutoApply || recordMeta(existingRecord?.raw).productCompletionVerified === true)) {
         result.processed += 1;
         result.skipped += 1;
         if (archiveEnabled && accessToken) {
@@ -1287,20 +1321,23 @@ export async function processOrderCogsInbox(
       const extraction = extractOrderCogs(text, fromEmail);
       const match = matchOrderCogs(extraction, candidates);
       const review = reviewStatus(extraction, match);
+      if (productAutoApply && review.canApply && match.confidence < 1) {
+        review.canApply = false;
+        review.status = "needs_review";
+        review.reason = "Customer identity needs review before automatic product COGS can be applied.";
+      }
       const now = new Date().toISOString();
 
-      // A confident match flips the matched job to "ordered" and writes COGS. If the
-      // match has no ledger row (a bare sold job), the job is still marked ordered but
-      // the COGS lands in "needs_review" for manual entry rather than being lost.
-      // The manufacturer-COGS cutover keeps scan/audit on and turns apply off.
+      // Retain the legacy import path for explicit callers. Production uses the
+      // product invoice writer below so cost and completion share retry evidence.
       let cogsApplied = false;
       let appliedTotalCogs: number | null = null;
       const duplicateApplied = Boolean(
-        autoApply && review.canApply && match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)
+        !productAutoApply && autoApply && review.canApply && match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)
       );
       if (duplicateApplied) {
         cogsApplied = false;
-      } else if (autoApply && review.canApply && match.candidate) {
+      } else if (!productAutoApply && autoApply && review.canApply && match.candidate) {
         const applied = await applyOrderCogs(supabase, match.candidate, extraction, message, actor);
         cogsApplied = applied.cogsApplied;
         appliedTotalCogs = applied.cogsApplied ? applied.nextCogsAmount : null;
@@ -1318,14 +1355,14 @@ export async function processOrderCogsInbox(
         if (telegram.sent) result.telegramSent += 1;
         else if (telegram.error) result.telegramErrors += 1;
       }
-      const status = !autoApply
+      let status = !autoApply
         ? "needs_review"
         : duplicateApplied
           ? "skipped"
           : review.canApply && !cogsApplied
             ? "needs_review"
             : review.status;
-      const reason = !autoApply
+      let reason = !autoApply
         ? "auto-apply disabled (COGS cutover)"
         : duplicateApplied
           ? "This Gmail order was already applied to the matched job/quote."
@@ -1333,10 +1370,8 @@ export async function processOrderCogsInbox(
             ? `${review.reason} Job marked ordered, but no ledger row exists yet — enter COGS manually.`
             : review.reason;
 
-      // The audit/review log (crm_order_cogs_emails) is best-effort and OFF the critical
-      // path: the job's status + COGS were already written above to tables that the
-      // schema cache always has. A failure here (e.g. the new table's PostgREST schema
-      // cache is stale) must not undo the applied COGS or block archiving.
+      // Product-mode financial writes require durable invoice evidence first.
+      // The final verification receipt can be repaired by a subsequent replay.
       const auditInput = {
         mailbox_email: mailbox,
         gmail_message_id: message.id,
@@ -1360,16 +1395,46 @@ export async function processOrderCogsInbox(
         match_confidence: match.confidence,
         match_reason: reason,
         processed_at: now,
-        applied_at: review.canApply && cogsApplied ? now : null,
+        applied_at: review.canApply && cogsApplied ? now : productAutoApply ? existingRecord?.applied_at || null : null,
         error_message: null,
         raw: {
           actorEmail: options.actorEmail || null,
           autoApplyDisabled: !autoApply,
-          duplicateApplied,
+          duplicateApplied: duplicateApplied || Boolean(productAutoApply && (recordMeta(existingRecord?.raw).duplicateApplied || (match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)))),
           pdfExtractionErrors: pdf.errors,
           textPreview: extraction.text.slice(0, 1000)
         }
       } satisfies Omit<CrmOrderCogsEmail, "id" | "created_at" | "updated_at">;
+      let productAddedCogs = 0;
+      if (productAutoApply) {
+        // Persist source evidence before the cost CAS. A failed audit write must
+        // never result in an untraceable financial mutation.
+        auditInput.match_status = review.status;
+        auditInput.match_reason = review.reason;
+        const evidence = await insertOrderCogsRecord(supabase, auditInput);
+        status = review.status;
+        reason = review.reason;
+        if (review.canApply) {
+          try {
+            const applied = await applyOrderEmailProduct(supabase, evidence, extraction.manufacturer, actor);
+            cogsApplied = true;
+            productAddedCogs = applied.addedCogs;
+            appliedTotalCogs = applied.totalCogs;
+            status = "matched";
+            reason = "Verified invoice COGS and product Ordered check saved.";
+            if (match.candidate) match.candidate.cogsAmount = applied.totalCogs;
+          } catch (error) {
+            const retryable = !(error instanceof CrmAuthError) || error.status >= 500;
+            status = retryable ? "error" : "needs_review";
+            reason = error instanceof Error ? error.message : "Product invoice application failed; retry required.";
+            if (retryable && !result.lastError) result.lastError = reason;
+          }
+        }
+        auditInput.match_status = status;
+        auditInput.match_reason = reason;
+        auditInput.applied_at = cogsApplied ? now : existingRecord?.applied_at || null;
+        Object.assign(auditInput.raw, { productCompletionVerified: cogsApplied, productAutoApply: true });
+      }
       try {
         const record = await insertOrderCogsRecord(supabase, auditInput);
         records.push(record);
@@ -1389,7 +1454,7 @@ export async function processOrderCogsInbox(
       if (status === "error") result.errors += 1;
       if (review.canApply && cogsApplied) result.applied = (result.applied || 0) + 1;
       if (review.canApply && cogsApplied && extraction.orderAmount) {
-        result.addedCogs = addMoney(result.addedCogs || 0, extraction.orderAmount);
+        result.addedCogs = addMoney(result.addedCogs || 0, productAutoApply ? productAddedCogs : extraction.orderAmount);
       }
 
       // Archive ONLY emails we actually applied or proved were already applied.
@@ -1408,6 +1473,14 @@ export async function processOrderCogsInbox(
       result.errors += 1;
       if (!result.lastError) result.lastError = error instanceof Error ? error.message : String(error);
       try {
+        if (existingRecord?.id) {
+          const { error: retryError } = await supabase.from("crm_order_cogs_emails").update({
+            match_status: "error", processed_at: new Date().toISOString(),
+            error_message: error instanceof Error ? error.message : "Retry required.",
+          }).eq("id", existingRecord.id);
+          if (retryError) throw new Error("Could not record the order email retry.");
+          continue;
+        }
         const listedWithThread = listed as { threadId?: unknown };
         const listedThreadId = typeof listedWithThread.threadId === "string" ? listedWithThread.threadId : null;
         const record = await insertOrderCogsRecord(supabase, {

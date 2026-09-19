@@ -5,8 +5,8 @@
   "installCommand": "npm install",
   "crons": [
     {
-      "path": "/api/cron/order-cogs",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/order-cogs/",
+      "schedule": "0 3,4,15,16 * * *"
     },
     {
       "path": "/api/cron/square-contract-reminders",

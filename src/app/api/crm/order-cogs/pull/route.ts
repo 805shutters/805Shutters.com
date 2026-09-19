@@ -3,6 +3,7 @@ import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 import { processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,8 +28,10 @@ export async function POST(request: NextRequest) {
         : undefined,
       days: typeof payload.days === "number" ? payload.days : undefined,
       target,
-      archive: typeof payload.archive === "boolean" ? payload.archive : undefined,
-      autoApply: false
+      autoApply: false,
+      productAutoApply: true,
+      maxRunMs: 230_000,
+      archive: false
     });
 
     return NextResponse.json(result);

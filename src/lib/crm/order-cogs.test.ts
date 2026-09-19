@@ -1,3 +1,5 @@
+import * as productEmailWorkflow from "./apply-order-email-product";
+import { listGmailMessages } from "./order-cogs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
@@ -991,5 +993,79 @@ describe("processOrderCogsInbox", () => {
     expect(supabase.updates.filter((u) => u.table === "crm_quote_bookkeeping_entries")).toHaveLength(0);
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/messages/msg-norman"))).toBe(false);
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/modify"))).toBe(false);
+  });
+});
+
+
+describe("product-mode order ingestion", () => {
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  function gmail() {
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client"); vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret"); vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("oauth2.googleapis.com/token")) return jsonResponse({ access_token: "token" });
+      if (url.includes("/messages?")) return jsonResponse({ messages: [{ id: "msg-norman" }] });
+      return jsonResponse({ id: "msg-norman", payload: { headers: [{ name: "From", value: "OrderConfirmation@normanusa.com" }], mimeType: "text/plain", body: { data: gmailTextBody(NORMAN_BODY) } } });
+    });
+    vi.stubGlobal("fetch", fetcher); return fetcher;
+  }
+  it("persists invoice evidence before saving, marks verified only afterward, and skips a proven retry", async () => {
+    const fetcher = gmail(); const db = new FakeSupabase();
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockImplementation(async (_db, email) => {
+      expect(db.records).toHaveLength(1); expect(email.match_status).toBe("matched");
+      expect((db.records[0].raw as any).productCompletionVerified).toBeUndefined();
+      return { addedCogs: 617.26, totalCogs: 617.26 };
+    });
+    const options = { autoApply: false, productAutoApply: true, archive: false };
+    const result = await processOrderCogsInbox(db as never, options);
+    expect(result).toMatchObject({ applied: 1, addedCogs: 617.26, errors: 0, telegramSent: 0, archived: 0 });
+    expect(db.records[0]).toMatchObject({ match_status: "matched", raw: { productCompletionVerified: true } });
+    await processOrderCogsInbox(db as never, options); expect(apply).toHaveBeenCalledOnce();
+    expect(db.updates.every(write => write.table === "crm_order_cogs_emails")).toBe(true);
+    expect(fetcher.mock.calls.some(([url]) => /modify|telegram/.test(String(url)))).toBe(false);
+    const query = new URL(String(fetcher.mock.calls.find(([url]) => String(url).includes("/messages?"))![0])).searchParams.get("q");
+    expect(query).not.toContain("in:inbox"); expect(query).not.toContain("-label:Processed");
+  });
+  it("retries failed product work and preserves a prior aggregate applied receipt", async () => {
+    gmail(); const db = new FakeSupabase();
+    db.records.push({ id: "receipt", gmail_message_id: "msg-norman", mailbox_email: "805shutters@gmail.com", applied_at: "2026-09-16", match_status: "matched", raw: {} });
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockRejectedValueOnce(new Error("Temporary outage"))
+      .mockImplementationOnce(async (_db, email) => { expect(email.applied_at).toBe("2026-09-16"); return { addedCogs: 0, totalCogs: 617.26 }; });
+    const options = { autoApply: false, productAutoApply: true, archive: false };
+    expect(await processOrderCogsInbox(db as never, options)).toMatchObject({ errors: 1 });
+    expect(await processOrderCogsInbox(db as never, options)).toMatchObject({ applied: 1, addedCogs: 0 });
+    expect(apply).toHaveBeenCalledTimes(2);
+  });
+  it("carries forward a legacy recorded manufacturer reference to prevent duplicate aggregate COGS", async () => {
+    gmail(); const db = new FakeSupabase();
+    db.entries[0].cogs_amount = 617.26; db.entries[0].manufacturer_order_ref = "8880976230"; db.entries[0].manufacturer_name = "Norman";
+    vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockImplementation(async (_db, email) => {
+      expect(email.raw).toMatchObject({ duplicateApplied: true }); return { addedCogs: 0, totalCogs: 617.26 };
+    });
+    expect(await processOrderCogsInbox(db as never, { productAutoApply: true, archive: false })).toMatchObject({ addedCogs: 0 });
+  });
+  it("does not change financial records when the evidence store fails", async () => {
+    gmail(); const db = new FakeSupabase(); db.failOrderCogsRecordWrites = true;
+    const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct");
+    expect(await processOrderCogsInbox(db as never, { productAutoApply: true, archive: false })).toMatchObject({ errors: 1 });
+    expect(apply).not.toHaveBeenCalled(); expect(db.updates).toHaveLength(0);
+  });
+  it("fetches the real email body on an explicit retry", async () => {
+    const fetcher = gmail(); const db = new FakeSupabase();
+    vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockResolvedValue({ addedCogs: 617.26, totalCogs: 617.26 });
+    await processOrderCogsInbox(db as never, { productAutoApply: true, archive: false, messageIds: ["msg-norman"] });
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("/messages/msg-norman"))).toBe(true);
+    expect(db.records[0].extracted_order_amount).toBe(617.26);
+  });
+  it("follows every Gmail page and deduplicates repeated ids", async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(jsonResponse({ messages: [{ id: "one" }], nextPageToken: "next" }))
+      .mockResolvedValueOnce(jsonResponse({ messages: [{ id: "one" }, { id: "two" }] }));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await listGmailMessages("token", "orders", 50, true)).toEqual([{ id: "one" }, { id: "two" }]);
+    expect(new URL(fetcher.mock.calls[1][0]).searchParams.get("pageToken")).toBe("next");
+  });
+  it("fails visibly instead of silently losing an oversized or looping result set", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ messages: [{ id: "one" }], nextPageToken: "loop" })));
+    await expect(listGmailMessages("token", "orders", 50, true)).rejects.toThrow("exceeded 20 pages");
   });
 });

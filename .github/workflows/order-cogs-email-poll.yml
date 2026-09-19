@@ -1,8 +1,8 @@
 name: Poll order COGS emails
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
+  # Automatic runs belong to Vercel: 8 AM and 8 PM Pacific.
+  # Retain this workflow only as an explicit manual recovery tool.
   workflow_dispatch:
 
 concurrency:

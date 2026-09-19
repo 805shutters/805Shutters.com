@@ -259,19 +259,36 @@ Product order emails should arrive in the configured 805 Gmail mailbox. The CRM
 can pull order COGS from the Bookkeeping tab or through the Vercel cron route at
 `/api/cron/order-cogs`.
 
-The puller:
+The automatic run is at **8 AM and 8 PM America/Los_Angeles**. Vercel is
+its only automatic scheduler. Its UTC triggers cover both daylight-saving offsets;
+the authenticated GET handler skips the unused offset. The GitHub workflow is
+manual recovery only. An authorized POST or staff Find COGS can run on demand.
 
-- searches the configured Gmail query for order/receipt/confirmation emails;
-- extracts customer name, order total, order/vendor reference, Gmail URL, and
-  confidence;
-- matches high-confidence messages to sold/approved/ordered jobs using the
-  linked quote/bookkeeping row and customer name;
-- auto-applies COGS only when the customer and amount are confident;
-- updates `crm_quote_bookkeeping_entries.cogs_amount` and manufacturer/order
-  metadata when available;
-- records every processed message in `crm_order_cogs_emails`;
-- leaves ambiguous names, missing totals, job-only matches, and conflicts in
-  review so they feed Missing COGS work.
+The run:
+
+- searches recent manufacturer mail, including archived/previously labeled mail,
+  follows Gmail pagination, and retries persisted unresolved emails even after
+  they age out of the recent search;
+- extracts the vendor order number, full invoice total and customer identity from
+  the email/attachments, treating their content only as source data;
+- requires a confident total, exact customer identity, one active sale and one
+  unambiguous product group (ONYX targets shutters); mixed or conflicting
+  allocations remain in Order COGS review with a reason;
+- saves source evidence before using the same `saveProductOrderCost` workflow as
+  Job status. The cost and product Ordered check use stable invoice request IDs,
+  existing invoice receipts and compare-and-set writes to avoid duplicate costs;
+- reloads the Job status data and verifies both the product cost and Ordered
+  check before setting `productCompletionVerified` and marking the email applied;
+- resumes a partial save without adding its invoice twice. Existing manual
+  invoices or changed invoice amounts require reconciliation instead of replacement;
+- leaves mail in place and sends no external messages from this product workflow;
+- records processing/audit failures and deferred work as failed integration runs,
+  rather than reporting false success. A bounded run leaves unfinished work for
+  the next run; untried and oldest pending attempts are processed first.
+
+Legacy aggregate auto-apply remains disabled in production callers. Square and
+peer-payment processors retain their own behavior inside this combined run;
+Square also has its independent payment reconciliation schedule.
 
 ## Commercial bid opportunity puller
 

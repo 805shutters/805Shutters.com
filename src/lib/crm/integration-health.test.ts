@@ -17,6 +17,11 @@ describe("integration processing evidence", () => {
     expect(insert.mock.calls[1][0].metadata.state).toBe("failed");
     expect(JSON.stringify(insert.mock.calls)).not.toContain("synthetic-provider-secret");
   });
+  it("records a returned partial failure as failed", async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    await observeIntegration({ from: () => ({ insert }) } as never, "order-cogs", async () => ({ errors: 1 }), result => result.errors === 0);
+    expect(insert.mock.calls[1][0].metadata.state).toBe("failed");
+  });
   it("reports health-store outages as unavailable, never zero or success", async () => {
     const health = await loadIntegrationHealth({ from: () => { throw new Error("offline"); } } as never);
     expect(health).toHaveLength(3);

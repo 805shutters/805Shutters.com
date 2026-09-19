@@ -765,6 +765,8 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
 }
 
 type OrderCogsPullResult = {
+  recordErrors?: number;
+  deferred?: number;
   scanned: number;
   processed: number;
   matched: number;
@@ -1981,7 +1983,7 @@ export function CrmApp({
         (quoteId && email.matched_quote_id === quoteId) ||
         (rowId && email.matched_bookkeeping_entry_id === rowId)
       );
-      const appliedTarget = targetEmails.find((email) => email.applied_at || email.match_status === "matched");
+      const appliedTarget = targetEmails.find((email) => email.applied_at && email.match_status === "matched" && email.raw?.productCompletionVerified === true);
       if (appliedTarget) {
         setMessage(
           `Order email matched. COGS workflow processed ${appliedTarget.extracted_order_number || "the confirmation"} for ${appliedTarget.extracted_customer_name || entry.customerName || entry.name}. Review the product-line order controls for any outstanding items.`
@@ -2040,11 +2042,15 @@ export function CrmApp({
       }
 
       const appliedCount = result.applied || 0;
+      if (result.errors || result.recordErrors || result.deferred) {
+        setMessage(`Order email processing is incomplete for ${customerName}. Verified ${appliedCount} order${appliedCount === 1 ? "" : "s"}; remaining work will retry. Review Order COGS history for details.`);
+        return false;
+      }
       const addedCogs = result.addedCogs || 0;
       const total = result.targetCogsTotal == null ? null : toLedgerCurrency(result.targetCogsTotal);
       if (appliedCount) {
         setMessage(
-          `Found ${appliedCount} new manufacturer order${appliedCount === 1 ? "" : "s"} for ${customerName}. Added ${toLedgerCurrency(addedCogs)}; COGS total ${total || "updated"}.`
+          `Verified ${appliedCount} manufacturer order${appliedCount === 1 ? "" : "s"} and Ordered check${appliedCount === 1 ? "" : "s"} for ${customerName}. Added ${toLedgerCurrency(addedCogs)}; COGS total ${total || "updated"}.`
         );
         return true;
       }

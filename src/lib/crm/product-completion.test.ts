@@ -1,3 +1,4 @@
+import { applyOrderEmailProduct, orderEmailRequestId } from "./apply-order-email-product";
 import { saveProductOrderCost } from "./save-product-order-cost";
 import { productOrderCosts } from "./product-order-cost";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -284,5 +285,92 @@ describe('product invoice costs',()=>{
   it('rejects invoice email belonging to another customer',async()=>{
     const db=setupCost();const emailId='81111111-1111-4111-8111-111111111111';db.tables.crm_order_cogs_emails=[{id:emailId,matched_quote_id:jobId,match_status:'matched',applied_at:timestamp,extracted_order_amount:250,gmail_message_id:'gmail1'}];
     await expect(saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:200,emailId}},actor)).rejects.toThrow('exact sale');expect(db.writes).toHaveLength(0);
+  });
+});
+
+
+describe("automatic order email uses the same product invoice workflow", () => {
+  const emailId = "81111111-1111-4111-8111-111111111111";
+  function setup() {
+    const db = database();
+    Object.assign(db.tables.crm_jobs[0], { customer_name: "Phillip Benson", status: "sold", created_at: timestamp, updated_at: timestamp, product_interest: "Shutters" });
+    Object.assign(db.tables.crm_quotes[0], { status: "sold", quote_total: 6958.8, created_at: timestamp, updated_at: timestamp, materials_cost: 300 });
+    db.tables.crm_order_cogs_emails = [{ id: emailId, mailbox_email: "805shutters@gmail.com", gmail_message_id: "gmail-benson", matched_quote_id: quoteId, matched_job_id: jobId, match_status: "matched", extracted_order_number: "52609191394", extracted_order_amount: 2823.29, raw: {} }];
+    const load = async () => {
+      const jobs = structuredClone(db.tables.crm_jobs);
+      const quotes = structuredClone(db.tables.crm_quotes);
+      const customerProducts = structuredClone(db.tables.crm_customer_products);
+      const customerFiles = buildCustomerFiles({ jobs, quotes, bookkeepingRows: [], customers: [], products: customerProducts, contracts: [] } as never);
+      return { jobs, quotes, customerFiles, customerProducts, bookkeepingRows: [], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData;
+    };
+    const apply = () => applyOrderEmailProduct(db.client, db.tables.crm_order_cogs_emails[0] as never, "Onyx", actor, load);
+    return { db, load, apply };
+  }
+  it("saves the full invoice once, verifies the green check, and leaves unrelated costs intact", async () => {
+    const {db, apply} = setup();
+    expect(await apply()).toMatchObject({ addedCogs: 2823.29 });
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_customer_products.every(p => p.meta.ordered_at)).toBe(true);
+    const writes = db.writes.length;
+    expect(await apply()).toMatchObject({ addedCogs: 0 });
+    expect(db.writes).toHaveLength(writes);
+    expect(db.tables.crm_jobs[0].status).toBe("sold");
+  });
+  it("recovers after cost saved but one product check failed, without charging twice", async () => {
+    const {db, apply} = setup(); db.controls.failId = p2;
+    await expect(apply()).rejects.toThrow("Not all products");
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    db.controls.failId = "";
+    expect(await apply()).toMatchObject({ addedCogs: 0 });
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_customer_products.every(p => p.meta.ordered_at)).toBe(true);
+  });
+  it("updates the generated job-product used by Benson's live card", async () => {
+    const {db, apply, load} = setup(); db.tables.crm_customer_products = [];
+    await apply();
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(buildOperationsItems(await load())[0].products[0].ordered).toBe(true);
+    expect(await apply()).toMatchObject({ addedCogs: 0 });
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+  });
+  it("recognizes another email for the same vendor order", async () => {
+    const {db, apply} = setup(); await apply();
+    const original = db.tables.crm_order_cogs_emails[0];
+    db.tables.crm_order_cogs_emails.unshift({ ...original, id: "91111111-1111-4111-8111-111111111111", gmail_message_id: "resent" });
+    expect(await apply()).toMatchObject({ addedCogs: 0 });
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+  });
+  it("repairs the product check for a previously applied aggregate invoice without adding cost", async () => {
+    const {db, apply} = setup();
+    db.tables.crm_quotes[0].materials_cost = 3123.29;
+    db.tables.crm_order_cogs_emails[0].applied_at = timestamp;
+    expect(await apply()).toMatchObject({ addedCogs: 0 });
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+  });
+  it("selects only shutters in a mixed product sale", async () => {
+    const {db, apply} = setup(); db.tables.crm_customer_products[1].product_type = "Roller Shades";
+    await apply();
+    expect(db.tables.crm_customer_products[0].meta.ordered_at).toBeTruthy();
+    expect(db.tables.crm_customer_products[1].meta.ordered_at).toBeUndefined();
+  });
+  it.each(["different sale", "combined products", "existing manual cost", "different amount"])("leaves %s for review", async reason => {
+    const {db, apply} = setup();
+    if (reason === "different sale") db.tables.crm_order_cogs_emails[0].matched_job_id = entryId;
+    if (reason === "combined products") db.tables.crm_customer_products.forEach(p => p.product_type = "Shutters and Roller Shades");
+    if (reason === "existing manual cost" || reason === "different amount") {
+      await apply();
+      const cost = Object.values(db.tables.crm_quotes[0].meta.product_order_costs)[0] as Row;
+      if (reason === "existing manual cost") cost.emailId = null;
+      else db.tables.crm_order_cogs_emails[0].extracted_order_amount = 100;
+    }
+    const writes = db.writes.length;
+    await expect(apply()).rejects.toMatchObject({ status: 409 });
+    expect(db.writes).toHaveLength(writes);
+  });
+  it("uses stable invoice identities across retries and distinct identities across sales", () => {
+    const id = orderEmailRequestId("805shutters@gmail.com", "Onyx", "52609191394", quoteId);
+    expect(orderEmailRequestId("805SHUTTERS@gmail.com", "ONYX", "52609191394", quoteId)).toBe(id);
+    expect(orderEmailRequestId("805shutters@gmail.com", "Onyx", "52609191394", entryId)).not.toBe(id);
+    expect(id).toMatch(/^[a-f0-9-]{36}$/);
   });
 });

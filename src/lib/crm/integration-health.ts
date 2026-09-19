@@ -5,7 +5,7 @@ export type IntegrationProcessor = typeof PROCESSORS[number];
 export type IntegrationHealth = { processor: IntegrationProcessor; state: "unknown" | "running" | "succeeded" | "failed" | "unavailable"; lastAttemptAt: string | null; lastSuccessAt: string | null };
 
 /** Append-only operational evidence. Never persist tokens, mail bodies or provider errors. */
-export async function observeIntegration<T>(supabase: SupabaseClient | null, processor: IntegrationProcessor, operation: () => Promise<T>): Promise<T> {
+export async function observeIntegration<T>(supabase: SupabaseClient | null, processor: IntegrationProcessor, operation: () => Promise<T>, succeeded: (result: T) => boolean = () => true): Promise<T> {
   const runId = crypto.randomUUID();
   async function record(state: "running" | "succeeded" | "failed") {
     if (!supabase) return;
@@ -18,7 +18,7 @@ export async function observeIntegration<T>(supabase: SupabaseClient | null, pro
     } catch { console.warn("Integration health could not be recorded", processor, state); }
   }
   await record("running");
-  try { const result = await operation(); await record("succeeded"); return result; }
+  try { const result = await operation(); await record(succeeded(result) ? "succeeded" : "failed"); return result; }
   catch (error) { await record("failed"); throw error; }
 }
 
