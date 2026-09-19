@@ -35,7 +35,7 @@ export function quoteV2CatalogVersionFor(
   asOf: string,
 ): string {
   if (productId === "synchrony_vertical" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-synchrony-2026-09-19-r1`;
-  if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r1`;
+  if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;
   if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
   if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
