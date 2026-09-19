@@ -61,6 +61,10 @@ describe("STRESS: every fabric route resolves to its mapped program", () => {
       for (const [fabric, programId] of Object.entries(product.fabricRouting)) {
         const prog = product.programs.find((p) => p.id === programId);
         if (!prog || prog.priceAxis === "sqft") continue;
+        if (product.priceBasis === "manual_required" || prog.priceBasis === "manual_required") {
+          expect(priceDesign({ productId: product.id, fabric, widthInches: 36, heightInches: 60 })).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+          continue;
+        }
         const w = prog.grid.widths[0];
         const h = prog.grid.heights[0] ?? 0;
         const r = priceDesign({ productId: product.id, fabric, widthInches: w, heightInches: h });

@@ -52,6 +52,14 @@ function Preview() {
       setDesigns([{ ...initial, product_type: product, lift_system: product === "Smart Drapes" ? null : "Continuous Cord Loop", mount_type: product === "Smart Drapes" ? "Outside Mount" : "Inside Mount", options_json: { ...options, quote_v2_backend:true, catalog_product_id: selectedCatalog.id, quote_lab_product_id: selectedCatalog.id, catalog_program_id:selectedCatalog.programs[0].id, quote_lab_program_id:selectedCatalog.programs[0].id, catalog_manufacturer:"Norman" } }]);
       setLine(old => ({ ...old, product_type: product, selected_design_id: "fixture-design" }));
     }}>{["Honeycomb Shades", "Roller Shades", "Roman Shades", "SmartFold Shades", "Smart Drapes", "Sheer Shades", "Mini Blinds", "Wood Blinds", "Palladian Shelf"].map(p => <option key={p}>{p}</option>)}</select></label>
+    <button onClick={() => {
+      setDesigns([{...initial, product_type:"Honeycomb Shades",lift_system:"Cordless",options_json:{quote_v2_backend:true,catalog_product_id:"san_clemente_honeycomb",quote_lab_product_id:"san_clemente_honeycomb",catalog_program_id:"san_clemente_hg006",quote_lab_program_id:"san_clemente_hg006"}}]);
+      setLine({...item,selected_design_id:initial.id});
+    }}>San Clemente Honeycomb fixture</button>
+    <button onClick={() => {
+      setDesigns([{...initial,product_type:"Faux Wood Blinds",lift_system:"Cordless",options_json:{quote_v2_backend:true,catalog_product_id:"san_clemente_faux_wood",quote_lab_product_id:"san_clemente_faux_wood",catalog_program_id:"san_clemente_b5w20",quote_lab_program_id:"san_clemente_b5w20"}}]);
+      setLine({...item,product_type:"Faux Wood Blinds",selected_design_id:initial.id});
+    }}>San Clemente Faux Wood fixture</button>
     <p>Local test data. Uses the CRM design card; saves only in this browser.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}>
       <button onClick={() => { localStorage.setItem(storageKey, JSON.stringify({design, designs, line, locked})); setMessage("Saved locally"); }}>Save fixture</button>

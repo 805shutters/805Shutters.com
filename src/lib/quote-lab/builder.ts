@@ -54,6 +54,8 @@ const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
   roman: "Roman Shades",
   honeycomb: "Honeycomb Shades",
   vertical_honeycomb: "Honeycomb Shades",
+  san_clemente_honeycomb: "Honeycomb Shades",
+  san_clemente_faux_wood: "Faux Wood Blinds",
   smartfold: "SmartFold Shades",
   palladian_shelf: "Palladian Shelf",
   perfectsheer: "Sheer Shades",

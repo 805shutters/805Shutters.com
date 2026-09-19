@@ -1,3 +1,4 @@
+import { SAN_CLEMENTE_HONEYCOMB, SAN_CLEMENTE_FAUX } from "./norman-san-clemente";
 import {
   findPriceableProductSurcharge,
   getProductLightGuardSurcharges,
@@ -485,6 +486,19 @@ const shutterFields: QuoteDetailField[] = [
 ];
 
 const productDetails: Record<string, QuoteDetailField[]> = {
+  [SAN_CLEMENTE_HONEYCOMB]: [
+    { id: "lift_system", label: "Lift", type: "select", options: ["Cordless", "Cordless TDBU"].map(value => ({ value, label: value })) },
+    { id: "cell_size", label: "Cell", type: "select", options: [{ value: '9/16" Single', label: '9/16" Single' }] },
+    { id: "san_clemente_mount_fit", label: "Mount fit", type: "select", options: ["Flush", "Semi Inside"].map(value => ({ value, label: value })) },
+    ...["san_clemente_pole_36_quantity", "san_clemente_pole_60_quantity", "san_clemente_attachment_quantity"].map(id => ({ id, label: id === "san_clemente_attachment_quantity" ? "White attachment quantity" : id.includes("36") ? "36-inch pole quantity" : "60-inch pole quantity", type: "select" as const, options: ["0", "1", "2"].map(value => ({ value, label: value })) })),
+  ],
+  [SAN_CLEMENTE_FAUX]: [
+    { id: "lift_system", label: "Lift", type: "select", options: [{ value: "Cordless", label: "Cordless" }] },
+    { id: "slat_size", label: "Slat", type: "select", options: [{ value: '2"', label: '2"' }] },
+    { id: "control_side", label: "Wand", type: "select", options: [{ value: "Left", label: "Left" }] },
+    { id: "installation_method", label: "Bracket mounting", type: "select", options: ["Top / Back", "Side Only", "Side With Top Support"].map(value => ({ value, label: value })) },
+    { id: "san_clemente_mount_fit", label: "Mount fit", type: "select", options: ["Flush", "Semi Inside"].map(value => ({ value, label: value })) },
+  ],
   polar_elite_patio: [polarExteriorGuideField],
   polar_titan_patio: [polarExteriorGuideField],
   polar_mega_exterior: [polarExteriorGuideField],

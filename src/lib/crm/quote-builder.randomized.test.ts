@@ -197,7 +197,7 @@ function stratifiedRandomColorRows(): ProductColorOption[] {
   const random = rng(RANDOM_SEED);
   const byProduct = new Map<string, ProductColorOption[]>();
   for (const row of productColorOptions) {
-    if (!row.available) continue;
+    if (!row.available || getProduct(row.productId)?.priceBasis === "manual_required") continue;
     const rows = byProduct.get(row.productId) ?? [];
     rows.push(row);
     byProduct.set(row.productId, rows);
@@ -209,14 +209,14 @@ function stratifiedRandomColorRows(): ProductColorOption[] {
     shuffled(rows, random).slice(0, Math.min(16, rows.length)).forEach(add);
   }
   productColorOptions
-    .filter((row) => row.available && (row.requiresProgram || row.automaticDetails[PRODUCT_COLOR_SURCHARGE_DETAIL]))
+    .filter((row) => row.available && getProduct(row.productId)?.priceBasis !== "manual_required" && (row.requiresProgram || row.automaticDetails[PRODUCT_COLOR_SURCHARGE_DETAIL]))
     .forEach(add);
   return [...selected.values()].sort((a, b) => a.productId.localeCompare(b.productId) || a.id.localeCompare(b.id));
 }
 
 describe("quote builder randomized fabric/color pricing", () => {
-  it("normalizes and prices every available searchable color row", () => {
-    const rows = productColorOptions.filter((row) => row.available);
+  it("normalizes and prices every available searchable color row with a published price", () => {
+    const rows = productColorOptions.filter((row) => row.available && getProduct(row.productId)?.priceBasis !== "manual_required");
     expect(rows.length).toBe(1278);
 
     for (const row of rows) {

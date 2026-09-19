@@ -1,3 +1,4 @@
+import { validateSanClemente } from "./norman-san-clemente-rules";
 import type { SelectionContext, SelectionValue, ValidationIssue } from "./core";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { citylightsColorSlatSizes, PALLADIAN_COLORS, SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
@@ -8,7 +9,7 @@ const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...validateSanClemente(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];

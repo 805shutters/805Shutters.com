@@ -1,3 +1,5 @@
+import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
+import { isSanClementeProduct } from "@/lib/quote/norman-san-clemente";
 import { CITYLIGHTS_FINISH_BY_CODE, PALLADIAN_COLORS } from "@/lib/quote/norman-current-assortment";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
@@ -1550,7 +1552,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required") {
+  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -5946,7 +5948,9 @@ export function DesignCard({
         {manufacturerOptionsRoute.status === "manual_quote" ? (
           <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          isShutters ? (
+          manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
+            <SanClementeDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+          ) : isShutters ? (
             <ShutterDesignOptions
               design={currentDesign}
               displayedUnitPrice={displayedUnitPrice}

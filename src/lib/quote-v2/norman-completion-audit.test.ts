@@ -7,15 +7,15 @@ import { expectedHoneycombProgramId, QUOTE_V2_PRODUCT_STATUS } from "./catalog";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { QUOTE_V2_SOURCE_MANIFEST } from "./source-manifest";
 
-const productIds = ["citylights_aluminum", "faux_wood", "honeycomb", "vertical_honeycomb", "palladian_shelf", "perfectsheer", "roller", "roman", "smartdrape", "smartfold", "smartprivacy_faux", "synchrony_vertical", "wood_blinds", "norman_shutters"];
+const productIds = ["citylights_aluminum", "faux_wood", "honeycomb", "vertical_honeycomb", "palladian_shelf", "perfectsheer", "roller", "roman", "smartdrape", "smartfold", "smartprivacy_faux", "synchrony_vertical", "wood_blinds", "norman_shutters", "san_clemente_honeycomb", "san_clemente_faux_wood"];
 const products = catalog.products.filter(p => productIds.includes(p.id));
 const colors = productColorOptions.filter(c => productIds.includes(c.productId));
 const honeycombCellRoutes = normanHoneycombV2Source.activeColors.flatMap(c => c.cellSizes.map(cell => ({ collection:c.family, code:c.customerColorCode, color:c.colorName, cell, programId:expectedHoneycombProgramId(c.family,c.customerColorCode,cell) })));
 
 describe("Norman catalog coverage ledger", () => {
   it("accounts for every imported family, program and retained color identity", () => {
-    expect(products).toHaveLength(14);
-    expect(products.flatMap(p => p.programs)).toHaveLength(47);
+    expect(products).toHaveLength(16);
+    expect(products.flatMap(p => p.programs)).toHaveLength(50);
     expect(new Set(colors.map(c => c.id)).size).toBe(colors.length);
     for (const color of colors) {
       expect(color.sourcePage || color.sourceNote, color.id).toBeTruthy();

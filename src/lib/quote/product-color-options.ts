@@ -1,3 +1,4 @@
+import { sanClementeColors } from "./norman-san-clemente";
 import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
 import { normanColorWithdrawal } from "./norman-assortment-2026-09";
 import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, citylightsColorSlatSizes, SMARTFOLD_FABRICS, SMARTDRAPE_ESSENTIALS_CODES } from "./norman-current-assortment";
@@ -452,6 +453,7 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
 }));
 
 export const productColorOptions = [
+  ...sanClementeColors,
   ...rollerProductColorOptions,
   ...honeycombDealerColorOptions,
   ...verticalHoneycombDealerColorOptions,

@@ -2,13 +2,15 @@
 
 Status: implementation in progress. This ledger does not certify universal live pricing.
 
-The current catalog contains 14 Norman families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
+The current catalog contains 16 Norman families and 50 programs, including two newly discovered San Clemente families and their three unpriced programs. The original import contained 14 families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
 
-The inventory includes 1,288 retained fabric/color identities, of which 1,278 are available to the picker; 678 Honeycomb color/cell routes; and 544 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Complete current assortment discovery still requires the authenticated Norman dealer catalog.
+The inventory includes 1,299 retained fabric/color identities, of which 1,289 are available to the picker; 678 Honeycomb color/cell routes; and 555 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Authenticated dealer discovery continues; San Clemente was absent from the original import.
 
 ## Implemented changes
 
-- Pin September 10 SmartFold guide and size appendix, August 1 CityLights guide, September 1 Normandy wood-blind guide, and September 16 motorization guide. All 45 manifest artifacts were hash-verified against local originals.
+- San Clemente: add separate HG006 Light Filtering, HG006BO Room Darkening and B5W20 Faux Wood destinations, all ten current G2 fabrics and White 6008. Dedicated CRM controls preserve product identity, net dimensions, two cordless honeycomb lifts, depth, fixed faux-wood slat/wand/valance, bracket conditions and optional pole quantities. Source-backed configuration is available; prices remain blocked until the San Clemente base and surcharge schedules are supplied.
+
+- Pin September 10 SmartFold guide and size appendix, August 1 CityLights guide, September 1 Normandy wood-blind guide, and September 16 motorization guide. The 45 initial manifest artifacts were hash-verified against local originals; the newly downloaded San Clemente PDF is also hash-pinned.
 - Retain existing catalog IDs. Keep discontinued colors and SmartFold reverse-side image identities readable. CityLights half-inch configurations are discontinued from August 1.
 - SmartFold: 15 ordering fabrics, collection/control-specific appendix limits, Louise cordless height of 72 inches, narrow cordless limits, fold-height constraints, tall-Louise valance requirements, inside-only Light Guard, and three valance price schedules. October-specific motor revision remains date-controlled.
 - SmartDrape: add F1603, F1604 and F1868; route the ten Essentials fabrics to their source grid; enforce motor/stack/mount, pocket, area, left-motor location, wall hardware and keystone conditions. Derive shim quantity by mounting-bracket count, with separate manual/motorized breakpoints. The uncovered motorized center-opening bracket interval over 94¼ through 94½ inches is blocked for manufacturer clarification.
@@ -40,11 +42,14 @@ The inventory includes 1,288 retained fabric/color identities, of which 1,278 ar
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
 | Palladian Shelf | Current dealer comparison and production verification of both price schedules and linked product persistence. |
+| San Clemente Honeycomb | Current base, TDBU and pole/attachment price schedules; dealer-account applicability and production persistence. |
+| San Clemente Faux Wood | Current base and optional side-bracket price schedules; dealer-account applicability and production persistence. |
 | Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
 
 ## Evidence and release state
 
-- Deployed follow-up `63b5a5b8`: 4,262 tests passed, 28 skipped on September 19; typecheck and build passed. The new measured wood cut-out increment is tested locally and is not yet deployed.
+- Wood cut-out release `7d61abdc`: deployed September 19; 4,271 tests passed, 28 skipped; typecheck and build passed. `805-one.vercel.app` redirects successfully to the verified canonical site.
+- San Clemente increment: local real-CRM controls saved/reopened C4127T Room Darkening, Cordless TDBU, flush mount, 2-inch recess and one 36-inch pole; also White 6008 faux wood, flush side mount and 3½-inch recess. Separate source/program mapping, boundaries and blocked pricing tested for all 11 colors. Full suite: 4,300 tests passed, 28 skipped; typecheck/build passed. Publication pending.
 - Initial implementation commit `da2501e9` was pushed and deployed to the 805 Vercel project; canonical production and `805-one.vercel.app` responded successfully.
 - Production verification quote `805-0310` saved and reopened Louise F1709, 36 × 60, cordless, 7-inch fold and 6-inch fabric valance. It exposed the legacy draft route: selection persistence passed, but pricing remained incomplete at $0. This is not verified live pricing.
 - Production native quote `805-0312` saved and reopened Louise F1709, 36 × 60, quantity one, cordless, 7-inch fold, 6-inch fabric valance, no Light Guard and no premium hem bar. The authoritative endpoint retains a blocked status because the product restriction review is incomplete. The equivalent backend fixture computes $761 retail but correctly withholds a sendable snapshot. This is persistence proof, not live pricing certification.

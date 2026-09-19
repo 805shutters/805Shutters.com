@@ -26,6 +26,7 @@ describe("Quote Lab builder model", () => {
     expect(quoteLabProductsForType(products, "Faux Wood Blinds").map((product) => product.id).sort()).toEqual([
       "faux_wood",
       "lotus_faux_wood_blinds",
+      "san_clemente_faux_wood",
       "smartprivacy_faux",
       "sundance_advantage_ii_2",
       "sundance_advantage_ii_2_5",

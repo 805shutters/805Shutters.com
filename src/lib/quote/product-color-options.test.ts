@@ -15,7 +15,7 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1288);
+    expect(productColorOptions).toHaveLength(1299);
     expect(getProductColorOptions("roller")).toHaveLength(440);
     expect(getProductColorOptions("roman")).toHaveLength(202);
     expect(getProductColorOptions("honeycomb")).toHaveLength(191);
