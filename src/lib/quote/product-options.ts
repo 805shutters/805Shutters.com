@@ -901,17 +901,12 @@ const productDetails: Record<string, QuoteDetailField[]> = {
   ],
   synchrony_vertical: [
     ...mountFields,
-    {
-      id: "stack_option",
-      label: "Stack",
-      type: "select",
-      options: [
-        { value: "left", label: "Left stack" },
-        { value: "right", label: "Right stack" },
-        { value: "split", label: "Split stack" },
-      ],
-    },
-    ...shadeControlFields,
+    contractChoice("stack_option", "Stack", ["Stack Left", "Stack Right"]),
+    contractChoice("draw_direction", "Draw", ["Left Draw", "Right Draw"]),
+    contractChoice("control_type", "Control", ["Cordless Wand Operation"]),
+    contractChoice("vertical_hardware_color", "Hardware color", ["Default", "White", "Silk White", "Nature", "Silver Moon"]),
+    contractChoice("vertical_wand_drop_inches", "Optional wand drop", ["34", "49", "61"]),
+    contractChoice("vertical_shim_layers", "Shim layers per bracket", ["0", "1", "2"]),
     ...installationFields,
   ],
   faux_wood: [

@@ -4605,11 +4605,8 @@ function ProductColorAutocomplete({
                   key={fabricColor.id}
                   type="button"
                   disabled={disabled}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    if (disabled) return;
-                    handleSelect(fabricColor);
-                  }}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => { if (!disabled) handleSelect(fabricColor); }}
                   className={cn(
                     "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
                     selectedColor?.id === fabricColor.id && "bg-accent"
@@ -9823,8 +9820,18 @@ function ShadesAndBlindsOptions({
         mount_type: mountType,
         options_json: {
           ...currentJson,
-          ...(mountType === "Inside Mount" ? {} : { mount_depth_inches: null }),
+          ...(mountType === "Inside Mount" ? { vertical_shim_layers: "0", shim_quantity: 0, shim: false, shims: 0 } : { mount_depth_inches: null }),
         },
+      });
+      return;
+    }
+
+    if (productType === "Vertical Blinds" && authoritativeV2 && field === "json:control_type") {
+      onUpdateFields({
+        lift_system: value === "Cordless Wand Operation" ? "Wand" : null,
+        motor_type: null,
+        remote_type: null,
+        options_json: { ...clearMotorizationOptions(currentJson), control_type: value },
       });
       return;
     }
@@ -11519,6 +11526,11 @@ function ShadesAndBlindsOptions({
           },
         ];
         if (authoritativeV2) {
+          options.push(
+            { key: "vertical_hardware_color", label: "Hardware color", field: "json:vertical_hardware_color", type: "select", options: ["Default", "White", "Silk White", "Nature", "Silver Moon"] },
+            { key: "vertical_wand_drop_inches", label: "Optional wand drop", field: "json:vertical_wand_drop_inches", type: "select", options: ["34", "49", "61"] },
+            ...(mountType === "Outside Mount" ? [{ key: "vertical_shim_layers", label: "Shim layers per bracket", field: "json:vertical_shim_layers", type: "select" as const, options: ["0", "1", "2"] }] : []),
+          );
           if (mountType === "Inside Mount") {
             options.splice(1, 0, {
               key: "mount_depth_inches",

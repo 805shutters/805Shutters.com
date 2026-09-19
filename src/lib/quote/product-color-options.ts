@@ -1,3 +1,4 @@
+import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "./norman-synchrony";
 import { normanContractColors } from "./norman-contract";
 import { sanClementeColors } from "./norman-san-clemente";
 import { NORMAN_ROLLER_PG4_PROGRAM_ID } from "./norman-roller-pg4-2026-09.generated";
@@ -382,6 +383,13 @@ const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.m
 // Apply current dealer-guide corrections after assigning IDs: historical
 // swatch references must not shift when an offering is retired or added.
 for (const row of generatedProductColorOptions) {
+  if (row.productId === "synchrony_vertical") {
+    const group = SYNCHRONY_ACTIVE_COLLECTIONS.find(group => group.collection === row.collection && group.colors.includes(row.colorName));
+    row.available = Boolean(group);
+    row.sourcePage = "Vertical Blinds Guide.pdf#page=9";
+    row.sourceNote = group ? "June 26, 2026 dealer guide current collection/color identity." : "Discontinued by the June 26, 2026 dealer guide; retained for historical quotes.";
+  }
+
   if (row.productId === "citylights_aluminum") {
     row.fabricType = `Available in ${citylightsColorSlatSizes(row.colorCode).join(" & ")}`;
     row.automaticDetails = { slat_finish: CITYLIGHTS_FINISH_BY_CODE[row.colorCode] ?? "standard" };
@@ -453,7 +461,22 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
   searchText: row.searchText,
 }));
 
+const additionalSynchronyColors: ProductColorOption[] = [
+  ...SYNCHRONY_ACTIVE_COLLECTIONS.flatMap(group => group.colors.map(colorName => ({ collection: group.collection, colorName, priceGroup: group.priceGroup, available: true }))),
+  ...SYNCHRONY_DISCONTINUED.map(([collection, colorName]) => ({ collection, colorName, priceGroup: "group4", available: false })),
+].filter(row => !generatedProductColorOptions.some(existing => existing.productId === "synchrony_vertical" && existing.collection === row.collection && existing.colorName === row.colorName)).map(row => ({
+  id: `synchrony_vertical:dealer-2026-06:${slug(row.collection)}:${slug(row.colorName)}`,
+  productId: "synchrony_vertical", collection: row.collection, publicCollection: row.collection,
+  fabricType: "PVC", colorCode: "", colorName: row.colorName, publicColorName: row.colorName,
+  frStatus: "", imageUrl: "", sourcePage: "Vertical Blinds Guide.pdf#page=9", sourcePageModified: null,
+  sourceNote: row.available ? "June 26, 2026 dealer guide; color code not printed. Collection and color are the ordering identity." : "Discontinued in current dealer guide; retained for historical identification.",
+  programId: `synchrony_vertical_synchrony_vertical_blind_price_group_${row.priceGroup.slice(-1)}_pg${row.priceGroup.slice(-1)}`,
+  selectionMode: "fabric", requiresProgram: false, available: row.available, automaticDetails: {},
+  searchText: `${row.collection} ${row.colorName} synchrony`.toLowerCase(),
+}));
+
 export const productColorOptions = [
+  ...additionalSynchronyColors,
   ...sanClementeColors,
   ...normanContractColors,
   ...rollerProductColorOptions,

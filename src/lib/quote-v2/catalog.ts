@@ -1,3 +1,4 @@
+import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "@/lib/quote/norman-synchrony";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { normanRollerFabricColors, normanRollerJulyFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
@@ -33,6 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === "synchrony_vertical" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-synchrony-2026-09-19-r1`;
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r1`;
   if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
@@ -154,73 +156,10 @@ export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStat
   onyx_shutters: "restriction_source_incomplete",
 };
 
-type SynchronyCollection = {
-  collection: string;
-  priceGroup: "group1" | "group2" | "group3" | "group4";
-  colors: readonly string[];
-};
-
-const SYNCHRONY_ACTIVE_COLLECTIONS: readonly SynchronyCollection[] = [
-  {
-    collection: "Classic",
-    priceGroup: "group1",
-    colors: ["Pure White", "Silk White", "Pearl", "Sea Mist", "Metropolitan"],
-  },
-  {
-    collection: "S-Curved",
-    priceGroup: "group2",
-    colors: ["Pure White", "Silk White", "Pearl", "Sea Mist", "Metropolitan"],
-  },
-  {
-    collection: "Sandblasted",
-    priceGroup: "group2",
-    colors: ["Designer White", "Bright White", "Crisp Linen", "Taupe Gray"],
-  },
-  {
-    collection: "Flaxen",
-    priceGroup: "group3",
-    colors: ["Mustard Green", "Honey Wheat", "Platinum", "Magnetic Gray"],
-  },
-  {
-    collection: "Adobe",
-    priceGroup: "group3",
-    colors: ["Pure White", "Bright White", "Latte", "Taupe", "Shark Fin"],
-  },
-  {
-    collection: "Shantung",
-    priceGroup: "group3",
-    colors: [
-      "Pure White",
-      "Bright White",
-      "Latte",
-      "Metropolitan",
-      "Cement",
-      "Lilac",
-      "Laurel Pink",
-    ],
-  },
-  {
-    collection: "Linen",
-    priceGroup: "group4",
-    colors: ["Pure White", "Wheat", "Chic Gray", "Metropolitan", "Dusty Blue", "Merlot"],
-  },
-  { collection: "Grasscloth", priceGroup: "group4", colors: ["Botanical Garden"] },
-  {
-    collection: "Willow",
-    priceGroup: "group4",
-    colors: ["Mist", "Birch", "Burnished Clay", "Natural Gray"],
-  },
-  {
-    collection: "Faux Wood",
-    priceGroup: "group4",
-    colors: ["Limed White", "Silver Birch", "Chestnut", "Oak", "Driftwood"],
-  },
-] as const;
-
 const verticalSource = (note?: string): readonly CatalogSourceRef[] => [
   {
     sourceId: "norman-vertical-blinds-guide-2026-06",
-    page: 4,
+    page: 9,
     ...(note ? { note } : {}),
   },
 ];
@@ -241,12 +180,7 @@ export const synchronyVerticalActiveColors: readonly CatalogColorOffering[] =
     })),
   );
 
-export const synchronyVerticalDiscontinuedColors: readonly CatalogColorOffering[] = [
-  ["Grasscloth", "Silver Cloud"],
-  ["Grasscloth", "Coffee"],
-  ["Grasscloth", "Onyx"],
-  ["Willow", "Cloud"],
-].map(([collection, colorName]) => ({
+export const synchronyVerticalDiscontinuedColors: readonly CatalogColorOffering[] = SYNCHRONY_DISCONTINUED.map(([collection, colorName]) => ({
   id: `synchrony_vertical:${collection}:${colorName}`.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
   productId: "synchrony_vertical",
   collection,

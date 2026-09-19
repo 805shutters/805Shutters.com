@@ -47,11 +47,11 @@ function Preview() {
     <h1 style={{ fontSize: 20 }}>Norman completion regression fixture</h1>
     <label>Product fixture <select aria-label="Product fixture" value={design.product_type || ""} onChange={event => {
       const product = event.target.value;
-      const selectedCatalog = catalog.products.find(p => ({ "Honeycomb Shades":"honeycomb", "Roller Shades":"roller", "Roman Shades":"roman", "SmartFold Shades":"smartfold", "Smart Drapes":"smartdrape", "Sheer Shades":"perfectsheer", "Mini Blinds":"citylights_aluminum", "Wood Blinds":"wood_blinds", "Palladian Shelf":"palladian_shelf" } as Record<string,string>)[product] === p.id)!;
+      const selectedCatalog = catalog.products.find(p => ({ "Honeycomb Shades":"honeycomb", "Roller Shades":"roller", "Roman Shades":"roman", "SmartFold Shades":"smartfold", "Smart Drapes":"smartdrape", "Sheer Shades":"perfectsheer", "Mini Blinds":"citylights_aluminum", "Wood Blinds":"wood_blinds", "Palladian Shelf":"palladian_shelf", "Vertical Blinds":"synchrony_vertical" } as Record<string,string>)[product] === p.id)!;
       const options = product === "Mini Blinds" ? { slat_size: '1"', control_side: "Left" } : product === "Wood Blinds" ? { slat_size: '2"', control_side: "Left" } : {};
       setDesigns([{ ...initial, product_type: product, lift_system: product === "Smart Drapes" ? null : "Continuous Cord Loop", mount_type: product === "Smart Drapes" ? "Outside Mount" : "Inside Mount", options_json: { ...options, quote_v2_backend:true, catalog_product_id: selectedCatalog.id, quote_lab_product_id: selectedCatalog.id, catalog_program_id:selectedCatalog.programs[0].id, quote_lab_program_id:selectedCatalog.programs[0].id, catalog_manufacturer:"Norman" } }]);
       setLine(old => ({ ...old, product_type: product, selected_design_id: "fixture-design" }));
-    }}>{["Honeycomb Shades", "Roller Shades", "Roman Shades", "SmartFold Shades", "Smart Drapes", "Sheer Shades", "Mini Blinds", "Wood Blinds", "Palladian Shelf"].map(p => <option key={p}>{p}</option>)}</select></label>
+    }}>{["Honeycomb Shades", "Roller Shades", "Roman Shades", "SmartFold Shades", "Smart Drapes", "Sheer Shades", "Mini Blinds", "Wood Blinds", "Palladian Shelf", "Vertical Blinds"].map(p => <option key={p}>{p}</option>)}</select></label>
     <button onClick={() => {
       setDesigns([{...initial, product_type:"Honeycomb Shades",lift_system:"Cordless",options_json:{quote_v2_backend:true,catalog_product_id:"san_clemente_honeycomb",quote_lab_product_id:"san_clemente_honeycomb",catalog_program_id:"san_clemente_hg006",quote_lab_program_id:"san_clemente_hg006"}}]);
       setLine({...item,selected_design_id:initial.id});

@@ -4,9 +4,11 @@ Status: implementation in progress. This ledger does not certify universal live 
 
 The current catalog contains 18 Norman families and 53 programs, including two newly discovered San Clemente families and two Contract Sales families with six unpriced programs. The original import contained 14 families and 47 programs. A fresh comparison of the current catalog against the pinned September retail PDF matched all 371 rows across the 41 non-shutter programs, including unavailable cells. The six shutter rates remain provisional because the supplied binders leave the base-rate fields blank. Matching a retail grid does not establish configuration eligibility or 805 dealer cost.
 
-The inventory includes 1,314 retained fabric/color identities, of which 1,302 are available to the picker; 678 Honeycomb color/cell routes; and 574 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Authenticated dealer discovery continues; San Clemente was absent from the original import.
+The inventory includes 1,322 retained fabric/color identities, of which 1,306 are available to the picker; 678 Honeycomb color/cell routes; and 577 configuration-field, surcharge and motor-accessory records. These are inventory counts, not a claim that every option combination is supported. Authenticated dealer discovery continues; San Clemente was absent from the original import.
 
 ## Implemented changes
+
+- Synchrony: reconcile all 46 active and four discontinued June 26 identities across catalog consumers. Restore five missing S-Curved shared-catalog rows, withdraw Willow Cloud, and retain three older Grasscloth identities. Preserve existing picker IDs. Enforce current wand-only operation, left/right stack and draw, valance-free headrail, four hardware-color overrides, three wand drops and outside-only shim layers. Derive charged shim count from width/brackets; saved caller quantities cannot override it. Current components cite September retail page 34. All 46 current CRM picker identities pass exact-backend pricing/serialization at their four source price groups.
 
 - Contract Sales: separate 2-inch and 2.5-inch cordless faux-wood programs and 3.5-inch vertical program; 13 active color/slat identities and two discontinued 6018 identities. Dedicated CRM controls and server validation cover net deductions, dimensions, area, wand drops, mounting, valance returns and hardware. Server records derive bracket counts, vane length and valance dimensions; vertical minimum 50 applies across the order. No project rates are invented.
 
@@ -42,12 +44,12 @@ The inventory includes 1,314 retained fabric/color identities, of which 1,302 ar
 | Wood Blinds | Common valances and their outer-position cutouts, keystone locations and complete mounting constraints; account reconciliation of ND108/ND118. |
 | Ultimate Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
 | SmartPrivacy Faux Wood | Complete current assortment/options and current dealer/production comparison beyond the existing documented subset. |
-| Synchrony | Existing normalized rules retained; current dealer assortment and production persistence not recertified. |
-| Palladian Shelf | September guide rules now normalized, including 42 coded finishes, minimum width, depth increments, support weight, paired-product eligibility, quantity and default/custom deductions. Current dealer comparison and production verification of both price schedules and linked-product persistence remain. |
+| Synchrony | Complete June assortment and current hardware/shim rules implemented; current dealer comparison and production save/reopen still pending. |
+| Palladian Shelf | September guide rules now normalized, including 42 coded finishes, minimum width, depth increments, support weight, paired-product eligibility, quantity and default/custom deductions. Linked-product persistence passed in production. Current dealer comparison and both price schedules remain. |
 | San Clemente Honeycomb | Current base, TDBU and pole/attachment price schedules and dealer-account applicability. Production selection save/reopen passed. |
 | San Clemente Faux Wood | Current base and optional side-bracket price schedules and dealer-account applicability. Production selection save/reopen passed. |
-| Contract Faux Wood | Current project base, valance, hardware and freight quote; dealer applicability and production persistence. |
-| Contract Vertical | Current project rates and optional charges; fully-inside depth source conflict (table ¾ versus drawing 3¾ inches); dealer applicability and production persistence. |
+| Contract Faux Wood | Current project base, valance, hardware and freight quote; dealer applicability. Production selection save/reopen passed. |
+| Contract Vertical | Current project rates and optional charges; fully-inside depth source conflict (table ¾ versus drawing 3¾ inches); dealer applicability. Production selection save/reopen passed. |
 | Shutters | Current 805 rates and surcharge schedule for all six programs; finish/frame/louver/tilt/panel/shape/track comparison. |
 
 ## Evidence and release state
@@ -77,3 +79,9 @@ Local Contract UI evidence: Pure White 6016, 2½-inch embossed, Designer Crown v
 Palladian release `dafc50e2` and saved-row refresh release `0ca940de` were deployed September 19. The latter passed 4,338 tests with 28 skipped plus typecheck/build. Production quote `805-0312` retained both San Clemente configurations after reopening. A new Palladian row immediately displayed its correct product identity. Subsequent dimension entry exposed the missing-depth fingerprint defect; its fix has a regression test and is included with the Contract increment.
 
 Palladian local UI evidence: Winchester White 2010, 2⅛-inch depth, custom measurements, 20-pound support weight and separately ordered shelf saved/reopened. A new server-derived assembly retains finish code 066, quantity and deduction basis. This is local persistence evidence, not production certification.
+
+Contract release `9e8ce155` deployed September 19; 4,371 tests passed / 28 skipped, typecheck/build passed. Production quote `805-0312` reopened with Contract Faux 6016/2½-inch embossed, right wand, Designer Crown, semi-inside bracket flush, recess 3 and hold-down brackets; and Contract Vertical 8071, White 2058, left wand, semi-inside, recess 3, two shim layers, quantity 50. Prices remain blocked pending the required schedules.
+
+The same production reopen retained Palladian Winchester White 2010, depth 2⅛ inches, default measurements, supported weight 20 pounds and the linked Office SmartFold line. Missing-depth draft save is fixed. This proves selection persistence; it does not certify the account price.
+
+Synchrony local CRM controls retained S-Curved Pure White, outside mount, left stack/draw, wand control, Nature hardware, 49-inch wand and two shim layers after saving/reopening. Color results now support keyboard selection as well as pointer selection.

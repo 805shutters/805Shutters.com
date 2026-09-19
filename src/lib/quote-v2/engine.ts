@@ -1,3 +1,4 @@
+import { synchronyBracketCount } from "@/lib/quote/norman-synchrony";
 import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, WOOD_PREMIUM_CODES } from "@/lib/quote/norman-current-assortment";
 import { romanComponentWidths } from "./norman-assemblies";
 import { calculateCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
@@ -493,6 +494,11 @@ export function authoritativeAutomaticSurchargeSelections(
       .filter(kind => kind === "corner_bottom" || kind === "side_middle").length;
     // Charge measured sides, never a client-provided surcharge count.
     details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
+  }
+  if (selection.productId === "synchrony_vertical" && selection.catalogAsOf >= "2026-09-19" && selection.configuration.vertical_shim_layers != null) {
+    const layers = Number(selection.configuration.vertical_shim_layers);
+    details.shim_quantity = [0,1,2].includes(layers) ? synchronyBracketCount(selection.widthInches) * layers : 0;
+    details.shim = Number(details.shim_quantity) > 0;
   }
   if (selection.productId === "smartdrape") {
     // Manual guide p21 and September motor guide p50 count brackets separately.
@@ -1170,12 +1176,15 @@ function programPriceComposition(
 function priceComponentSource(
   product: CatalogProduct,
   program?: CatalogProgram,
+  asOf?: string,
 ) {
   const pages = program?.sourcePages?.length
     ? program.sourcePages
     : product.pages;
   return sourceProvenance(
-    (program?.sourceId as SourceManifestId | undefined) ?? contractSourceId(product.id),
+    product.id === "synchrony_vertical" && asOf && asOf >= "2026-09-19"
+      ? "norman-retail-guide-2026-09"
+      : (program?.sourceId as SourceManifestId | undefined) ?? contractSourceId(product.id),
     pages.length > 0 ? { pages } : {},
   );
 }
@@ -1200,7 +1209,7 @@ function surchargePriceComponentSource(
     } satisfies ValidationIssue["source"];
   }
   return surcharge?.sourcePages?.length
-    ? sourceProvenance(contractSourceId(product.id), {
+    ? sourceProvenance(product.id === "synchrony_vertical" && fallback.sourceId === "norman-retail-guide-2026-09" ? "norman-retail-guide-2026-09" : contractSourceId(product.id), {
         pages: surcharge.sourcePages,
       })
     : fallback;
@@ -1252,7 +1261,7 @@ function baselinePriceComponent(
   if (!baselineProgramId) return null;
   const baselineProgram = getProgram(product, baselineProgramId);
   if (!baselineProgram) return null;
-  const source = priceComponentSource(product, baselineProgram);
+  const source = priceComponentSource(product, baselineProgram, selection.catalogAsOf);
 
   if (baselineProgramId === selectedProgram.id) {
     if (
@@ -1321,6 +1330,7 @@ function priceComponentInputs(
   const pricingSource = priceComponentSource(
     product,
     getProgram(product, sourceResult.programId),
+    selection.catalogAsOf,
   );
   const canonicalContract =
     selection.productId === "roller"
@@ -1420,6 +1430,9 @@ function priceComponentInputs(
         ? motorPriceComponentSource(line.id)
         : surchargeSource,
       priceLineId: line.id,
+      ...(selection.productId === "synchrony_vertical" && line.id === "shim" && selection.catalogAsOf >= "2026-09-19"
+        ? { units: authoritativeAutomaticSurchargeSelections(selection).find(entry => entry.id === "shim")?.units ?? 1 }
+        : {}),
       billingScope: oncePerLine ? "once_per_line" : "per_window",
     });
   }

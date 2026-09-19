@@ -1,3 +1,4 @@
+import { SYNCHRONY_HARDWARE_COLORS, synchronyDefaultHardware } from "@/lib/quote/norman-synchrony";
 import { romanComponentWidths } from "./norman-assemblies";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { validateNormanFamilyRules } from "./norman-family-rules";
@@ -2032,14 +2033,34 @@ function validateSynchronyVertical(context: SelectionContext): ValidationIssue[]
     );
   }
 
-  const wandDrop = context.heightInches <= 84 ? 34 : context.heightInches <= 96 ? 49 : 61;
+  if (context.catalogAsOf >= "2026-09-19") {
+    const c = context.configuration;
+    const block = (rule: string, page: number, explanation: string) => issues.push(issue("hard_block", `vertical.${rule}`, { ...VERTICAL_GUIDE, page }, { ...c }, explanation));
+    if (!["inside mount", "outside mount"].includes(mount)) block("mount.invalid", 6, "Choose inside or outside mount.");
+    const stack = normalized(c.stack_option).replace(/stack/g, "").trim(), draw = normalized(c.draw_direction).replace(/draw|wand/g, "").trim();
+    if (!["left", "right"].includes(stack) || draw !== stack) block("stack_draw", 7, "Synchrony uses a single left or right stack with matching draw orientation.");
+    if ((c.control_type && c.control_type !== "Cordless Wand Operation") || (c.lift_system && !["wand", "cordless wand operation"].includes(normalized(c.lift_system))) || c.motor_type || c.remote_type || (Array.isArray(c.motorization_selections) && c.motorization_selections.length)) block("control.invalid", 6, "Synchrony uses reversible wand control; motorization is not offered.");
+    if (c.valance && !["none", "no valance"].includes(normalized(c.valance))) block("valance.invalid", 4, "Synchrony has a decorative valance-free headrail.");
+    const hardware = c.vertical_hardware_color;
+    if (hardware && hardware !== "Default" && !SYNCHRONY_HARDWARE_COLORS.includes(hardware as typeof SYNCHRONY_HARDWARE_COLORS[number])) block("hardware_color", 10, "Choose White, Silk White, Nature or Silver Moon hardware.");
+    if (verticalColor) issues.push(issue("auto_derive", "vertical.hardware_color", { ...VERTICAL_GUIDE, pages: [9, 10] }, { color: colorName, requested: hardware ?? "Default" }, "Resolve the coordinated headrail, wand and component color, including an explicit override.", { hardwareColor: hardware && hardware !== "Default" ? hardware : synchronyDefaultHardware(colorName) }));
+    const drop = c.vertical_wand_drop_inches;
+    if (drop != null && drop !== "" && ![34,49,61].includes(Number(drop))) block("wand_drop.invalid", 6, "Optional wand drops are 34, 49 or 61 inches, measured from the top of the headrail.");
+    const layers = c.vertical_shim_layers;
+    if (layers != null && (!Number.isInteger(Number(layers)) || ![0,1,2].includes(Number(layers)))) block("shim_layers", 12, "Choose zero, one or two shim layers per bracket.");
+    const shimRequested = Number(layers ?? c.shim_quantity ?? c.shims ?? 0) > 0 || yes(c.shim) || yes(c.shims);
+    if (mount.includes("inside") && shimRequested) block("shims.outside_mount_only", 12, "Synchrony shims are available for outside mount only.");
+  }
+  const standardWandDrop = context.heightInches <= 84 ? 34 : context.heightInches <= 96 ? 49 : 61;
+  const requestedWandDrop = finiteNumber(configValue(context, "vertical_wand_drop_inches"));
+  const wandDrop = context.catalogAsOf >= "2026-09-19" && requestedWandDrop !== null && [34,49,61].includes(requestedWandDrop) ? requestedWandDrop : standardWandDrop;
   issues.push(
     issue(
       "auto_derive",
       "vertical.wand_drop",
       { ...VERTICAL_GUIDE, page: 6 },
       { heightInches: context.heightInches },
-      `The published standard wand drop for this height is ${wandDrop} inches.`,
+      `The selected or standard wand drop is ${wandDrop} inches.`,
       { wandDropInches: wandDrop },
     ),
   );
