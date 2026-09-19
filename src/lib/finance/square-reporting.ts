@@ -59,6 +59,8 @@ export function normalizeSquareObject(kind: SquareObjectKind, input: SquareRecor
       order_id: text(input.order_id) || null, customer_id: text(input.customer_id) || null,
       reference_id: text(input.reference_id) || null, note: text(input.note) || null,
       receipt_url: text(input.receipt_url) || null,
+      source_type: text(input.source_type) || null,
+      wallet_type: text(record(input.card_details).wallet_type) || text(record(input.wallet_details).brand) || null,
       refunded_cents: input.refunded_money ? money(input.refunded_money).amount : 0,
       due_at: text(input.due_at) || null, reason: text(input.reason) || null,
       arrival_date: text(input.arrival_date) || null,

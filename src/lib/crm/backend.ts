@@ -4173,6 +4173,7 @@ export async function updateCrmBookkeepingPayment(
     .eq("id", id)
     .maybeSingle();
   if (existingError || !existing) throw new CrmAuthError(404, "Payment was not found.");
+  if (objectMeta(objectMeta(existing.meta).payment_hub).check) throw new CrmAuthError(409, "This check has a clearance history. Manage it in Payment Hub to preserve its audit and customer credit.");
 
   const patch: Record<string, unknown> = {};
   if (payload.amount !== undefined) {
@@ -4201,6 +4202,7 @@ export async function updateCrmBookkeepingPayment(
     .from("crm_quote_bookkeeping_payments")
     .update(patch)
     .eq("id", id)
+    .eq("updated_at", existing.updated_at)
     .select("*")
     .single();
   if (error || !data) throw new CrmAuthError(502, "Payment could not be updated.");
@@ -4226,9 +4228,10 @@ export async function deleteCrmBookkeepingPayment(supabase: CrmSupabaseClient, i
     .eq("id", id)
     .maybeSingle();
   if (existingError || !existing) throw new CrmAuthError(404, "Payment was not found.");
+  if (objectMeta(objectMeta(existing.meta).payment_hub).check) throw new CrmAuthError(409, "This check has a clearance history. Manage it in Payment Hub to preserve its audit and customer credit.");
 
-  const { error } = await supabase.from("crm_quote_bookkeeping_payments").delete().eq("id", id);
-  if (error) throw new CrmAuthError(502, "Payment could not be deleted.");
+  const { data: removed, error } = await supabase.from("crm_quote_bookkeeping_payments").delete().eq("id", id).eq("updated_at", existing.updated_at).select("id");
+  if (error || !removed?.length) throw new CrmAuthError(409, "Payment changed or could not be deleted. Refresh first.");
 
   await recordCrmActivity(supabase, actor, {
     entityType: "bookkeeping_payment",

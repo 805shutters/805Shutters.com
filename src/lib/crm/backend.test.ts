@@ -2689,13 +2689,13 @@ function ledgerLineRecorder(opts: { table: string; row: Record<string, unknown> 
     }
 
     then<TResult1 = unknown, TResult2 = never>(
-      onfulfilled?: ((value: { data: null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+      onfulfilled?: ((value: { data: {id: unknown}[] | null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
     ) {
       if (this.operation === "delete") deletes.push({ table: this.table, filters: this.filters });
       if (this.operation === "insert") inserts.push({ table: this.table, payload: this.payload || {} });
       if (this.operation === "update") updates.push({ table: this.table, filters: this.filters, payload: this.payload || {} });
-      return Promise.resolve({ data: null, error: null } as { data: null; error: null }).then(onfulfilled, onrejected);
+      return Promise.resolve({ data: this.operation === "delete" && opts.row ? [{id: opts.row.id}] : null, error: null } as { data: {id: unknown}[] | null; error: null }).then(onfulfilled, onrejected);
     }
   }
 
@@ -2709,6 +2709,12 @@ function ledgerLineRecorder(opts: { table: string; row: Record<string, unknown> 
 }
 
 describe("ledger payment line CRUD", () => {
+  it("protects managed check history from generic edits and deletion", async () => {
+    const {supabase,updates,deletes}=ledgerLineRecorder({table:"crm_quote_bookkeeping_payments",row:{id:"check1",amount:0,meta:{payment_hub:{check:{status:"RETURNED"}}}}});
+    await expect(updateCrmBookkeepingPayment(supabase,"check1",{amount:500},actor)).rejects.toMatchObject({status:409});
+    await expect(deleteCrmBookkeepingPayment(supabase,"check1",actor)).rejects.toMatchObject({status:409});
+    expect(updates).toHaveLength(0);expect(deletes).toHaveLength(0);
+  });
   it("updates amount, label, date, and type on the payment row only", async () => {
     const { updates, supabase } = ledgerLineRecorder({
       table: "crm_quote_bookkeeping_payments",

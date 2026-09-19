@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       supabase.from('crm_square_sync').select('environment,merchant_id,location_id,history_from,auto_post_after,state,last_started_at,last_finished_at,error').eq('environment', environment).single(),
       loadCompleteCrmTable(supabase, 'crm_quotes', 'created_at', 'id,job_id,quote_total,status,meta'),
       loadCompleteCrmTable(supabase, 'crm_quote_bookkeeping_entries', 'created_at', 'id,job_id,customer_name,total_amount,source,meta'),
-      loadCompleteCrmTable(supabase, 'crm_quote_bookkeeping_payments', 'created_at', 'id,quote_id,bookkeeping_entry_id,amount,paid_at,payment_label,external_source,external_id,meta'),
+      loadCompleteCrmTable(supabase, 'crm_quote_bookkeeping_payments', 'created_at', 'id,quote_id,bookkeeping_entry_id,amount,paid_at,payment_label,payment_type,created_at,updated_at,notes,external_source,external_id,meta'),
       supabase.from('crm_square_alerts').select('*').eq('environment', environment).order('created_at', { ascending: false }).limit(100),
       loadCompleteCrmTable(supabase, 'crm_jobs', 'created_at', 'id,customer_name'),
       squareFinanceRows(supabase, 'crm_square_requests'),

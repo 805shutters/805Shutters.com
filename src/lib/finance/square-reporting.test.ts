@@ -22,3 +22,9 @@ it('filters every reporting list to the configured location and retains history/
  const u = new URL(squareListPath('payment', 'loc', '2020-01-01T00:00:00Z', base.created_at, 'page2'), 'https://example.test');
  expect(u.searchParams.get('location_id')).toBe('loc'); expect(u.searchParams.get('cursor')).toBe('page2'); expect(u.searchParams.get('begin_time')).toBe('2020-01-01T00:00:00Z');
 });
+
+it('stores wallet classification without retaining any card data', () => {
+ const payment=normalizeSquareObject('payment',{...base,source_type:'CARD',card_details:{wallet_type:'APPLE_PAY',card:{last_4:'1234'}}},ctx);
+ expect(payment.details).toMatchObject({source_type:'CARD',wallet_type:'APPLE_PAY'});
+ expect(JSON.stringify(payment)).not.toContain('1234');
+});

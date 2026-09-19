@@ -4,10 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { SquareObject } from '@/lib/finance/square-reporting';
 import './square-finance.css';
+import { buildPaymentHub, type HubLedger } from '@/lib/crm/payment-hub';
+import { PaymentHubFeed } from './PaymentHubFeed';
 
 type ObjectRow = Omit<SquareObject, 'details'> & { details: Record<string, unknown> };
 type Allocation = { id: string; square_payment_id: string; amount_cents: number; ledger_payment_id: string; actor_email: string; evidence: string };
-type Ledger = { id: string; quote_id: string | null; bookkeeping_entry_id: string | null; amount: number; paid_at: string; payment_label: string; external_source: string; meta: Record<string, unknown> };
+type Ledger = HubLedger;
 type Target = { id: string; customer_name: string; status?: string; source?: string; quote_total?: number; total_amount?: number; meta: Record<string, unknown> };
 type State = { cursor?: string; until?: string; completedThrough?: string; error?: string };
 type Data = {
@@ -33,6 +35,8 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
   const [data, setData] = useState<Data | null>(null), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false), [tab, setTab] = useState<Tab>('Transactions'), [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ObjectRow | null>(null);
+  const [hubOpen, setHubOpen] = useState(false);
+  useEffect(() => { if (hubOpen) setSelected(null); }, [hubOpen]);
   const reviewRef = useRef<HTMLElement>(null);
   const operationRef = useRef(false), lastAutoRefresh = useRef(0);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
@@ -51,7 +55,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
   // Refresh the visible activity feed without interrupting a review form. The
   // existing server lease prevents simultaneous browser/cron imports.
   useEffect(() => {
-    if (!data || tab !== 'Transactions' || selected) return;
+    if (!data || tab !== 'Transactions' || selected || hubOpen) return;
     let disposed = false;
     const refresh = async () => {
       if (document.visibilityState === 'hidden' || operationRef.current || Date.now() - lastAutoRefresh.current < 60_000) return;
@@ -77,7 +81,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
     return () => { disposed = true; window.clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('focus', onVisible); setAutoRefreshing(false); };
-  }, [Boolean(data), data?.canReview, tab, selected, api, load]);
+  }, [Boolean(data), data?.canReview, tab, selected, hubOpen, api, load]);
   async function act(body: Record<string, unknown>) {
     if (operationRef.current) return;
     operationRef.current = true;
@@ -90,7 +94,8 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
     ...data.quotes.filter(t => !['archived', 'lost'].includes(t.status || '') && !t.meta?.deleted_at && !t.meta?.bookkeeping_deleted_at).map(t => ({ ...t, key: `quote:${t.id}`, total: t.quote_total })),
     ...data.entries.filter(t => ['manual', 'legacy_sheet'].includes(t.source || '') && !t.meta?.deleted_at && !t.meta?.bookkeeping_deleted_at).map(t => ({ ...t, key: `entry:${t.id}`, total: t.total_amount })),
   ].sort((a, b) => a.customer_name.localeCompare(b.customer_name)) : [], [data]);
-  if (!data) return <section className="square-finance"><h1>Square Payments</h1><p role={error ? 'alert' : 'status'}>{error || 'Loading Square records…'}</p><button onClick={() => void load()}>Try again</button></section>;
+  if (!data) return <section className="square-finance"><h1>Payment Hub</h1><p role={error ? 'alert' : 'status'}>{error || 'Loading payments…'}</p><button onClick={() => void load()}>Try again</button></section>;
+  const hubRows = buildPaymentHub(data);
   const allocated = (id: string) => data.allocations.filter(a => a.square_payment_id === id).reduce((sum, a) => sum + Number(a.amount_cents), 0);
   const excluded = (id: string) => data.classifications.some(c => c.square_payment_id === id);
   const payments = data.objects.filter(o => o.kind === 'payment').sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
@@ -117,7 +122,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
   const resources = ['recent_payments', 'payment', 'refund', 'dispute', 'payout'];
   const incomplete = resources.some(k => !data.sync.state[k]?.completedThrough || data.sync.state[k]?.error);
   return <section className="square-finance">
-    <header><div><p className="square-eyebrow">805 SHUTTERS <span> / {data.environment === 'production' ? 'PAYMENTS' : 'SANDBOX'}</span></p><h1>Square Payments</h1><p>Customer payments, all in one place.</p></div><div className="square-actions"><button disabled={busy || autoRefreshing} onClick={() => void load()}>Refresh list</button>{data.canReview && <button className="square-primary" disabled={busy || autoRefreshing} onClick={() => void act({ action: 'sync' })}>{busy || autoRefreshing ? 'Checking Square…' : 'Refresh from Square'}</button>}<button onClick={download}>Export CSV</button></div></header>
+    <header><div><p className="square-eyebrow">805 SHUTTERS <span> / {data.environment === 'production' ? 'PAYMENTS' : 'SANDBOX'}</span></p><h1>Payment Hub</h1><p>Every payment. One place.</p></div><div className="square-actions"><button disabled={busy || autoRefreshing} onClick={() => void load()}>Refresh list</button>{data.canReview && <button className="square-primary" disabled={busy || autoRefreshing} onClick={() => void act({ action: 'sync' })}>{busy || autoRefreshing ? 'Checking Square…' : 'Refresh from Square'}</button>}<button onClick={download}>Export Square records</button></div></header>
     {error && <p role="alert" className="square-alert">{error}</p>}{notice && <p role="status" className="square-notice">{notice}</p>}
     {tab === 'Connection health' && <p className="square-coverage">Last refresh attempt: {date(data.sync.last_finished_at)}. {incomplete ? 'History is incomplete or needs attention; totals cover imported records only.' : `Records checked from ${date(data.sync.history_from)}. See coverage by category below.`}</p>}
     <nav aria-label="Square finance views">{tabs.map(t => <button key={t} aria-pressed={tab === t} onClick={() => { setTab(t); setQuery(''); setSelected(null); }}>{t}{t === 'Needs review' ? ` (${review.length})` : ''}</button>)}</nav>
@@ -137,7 +142,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
       const balance = target ? ledgerTotals(target.key, Number(target.total)).balance : null;
       return <tr key={r.id}><td>{date(r.created_at)}<small>{target?.customer_name || 'Ledger needs review'}</small></td><td>{dollars(r.amount_cents)}<small>{r.payment_type}</small></td><td>{dollars(collected)}</td><td>{collected >= Number(r.amount_cents) ? related.some(p => Number(p.details.refunded_cents)>0) ? 'Paid — refund review' : 'Paid' : collected > 0 ? 'Partially paid' : balance !== null && balance < Number(r.amount_cents) ? 'Balance changed — replace this link in Square' : r.order_id ? 'Awaiting completed payment' : 'Order link needs review'}</td><td>{r.id}<small>{r.order_id}</small></td></tr>;
     })}</tbody></table>{!data.requests.length && <p>No new payment requests have been created yet.</p>}</div></>}
-    {(tab === 'Transactions' || tab === 'Needs review') && <>{tab === 'Transactions' && <div className="square-feed-heading"><div><p className="square-eyebrow">PAYMENT ACTIVITY</p><h2>Latest transactions <span>{payments.length}</span></h2><p>Newest first · All transactions at your Square location</p></div><div className="square-live-status" aria-live="polite"><span className="square-live-dot" aria-hidden="true" />{autoRefreshing ? 'Checking for payments…' : error ? 'Refresh needs attention' : 'Auto-refresh on'}<small>{data.canReview ? 'Checks Square every minute while open' : 'Updates this list every minute'}{checkedAt ? ` · List updated ${new Date(checkedAt).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', timeZone:'America/Los_Angeles'})}` : ''}</small></div></div>}<label className="square-search"><span>Find a payment or customer</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Customer, payment ID, or note" /></label>{tab === 'Needs review' && <p>Link an existing CRM credit when it was already recorded manually or from email. Only add a new credit when your evidence confirms it is missing. Split a payment by assigning part of its gross amount to each job.</p>}{paymentTable(tab === 'Transactions' ? payments : review)}</>}
+    {(tab === 'Transactions' || tab === 'Needs review') && <>{tab === 'Transactions' && <div className="square-feed-heading"><div><p className="square-eyebrow">PAYMENT ACTIVITY</p><h2>Latest transactions <span>{hubRows.length}</span></h2><p>Newest first · All payment methods</p></div><div className="square-live-status" aria-live="polite"><span className="square-live-dot" aria-hidden="true" />{autoRefreshing ? 'Checking for payments…' : error ? 'Refresh needs attention' : selected || hubOpen ? 'Paused while reviewing' : 'Auto-refresh on'}<small>{data.canReview ? 'Checks Square every minute while open' : 'Updates this list every minute'}{checkedAt ? ` · List updated ${new Date(checkedAt).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', timeZone:'America/Los_Angeles'})}` : ''}</small></div></div>}<label className="square-search"><span>Find a payment or customer</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Customer, payment ID, or note" /></label>{tab === 'Needs review' && <p>Link an existing CRM credit when it was already recorded manually or from email. Only add a new credit when your evidence confirms it is missing. Split a payment by assigning part of its gross amount to each job.</p>}{tab === 'Transactions' ? <PaymentHubFeed rows={hubRows} targets={targets} token={session.access_token} canReview={data.canReview} query={query} onSquare={id => { const row=payments.find(p=>p.id===id); if(row) choose(row); }} onReload={load} onOpenChange={setHubOpen}/> : paymentTable(review)}</>}
     {tab === 'Payouts' && <div className="square-table-scroll"><table><thead><tr><th>Payout / expected arrival</th><th>Square status</th><th>Net transfer</th><th>Breakdown check</th><th>Bank evidence</th></tr></thead><tbody>{payoutRows.map(p => {
       const entries = data.objects.filter(e => e.payout_id === p.id), state = data.sync.state[`entries:${p.id}`];
       const complete = Boolean(state?.completedThrough && !state.cursor && !state.error && Date.parse(state.completedThrough) >= Date.parse(p.provider_updated_at));

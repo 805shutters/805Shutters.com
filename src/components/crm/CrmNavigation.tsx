@@ -12,7 +12,7 @@ export const crmNavigation = [
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "bookkeeping", label: "Bookkeeping", icon: Wallet },
   { id: "payments", label: "Payables", icon: Wallet },
-  { id: "square", label: "Square Payments", icon: Wallet },
+  { id: "square", label: "Payment Hub", icon: Wallet },
   { id: "jobs", label: "Job records", icon: ClipboardList },
   { id: "reports", label: "Operations reports", icon: ClipboardList },
   { id: "intelligence", label: "Sales intelligence", icon: LayoutDashboard },
