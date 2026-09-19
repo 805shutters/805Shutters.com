@@ -10133,6 +10133,7 @@ function ShadesAndBlindsOptions({
           {key:"full_fold",label:"Full Fold Required",field:"json:full_fold_required",type:"buttons",options:["No","Yes"]},
           ...styleOptions,
           ...valanceOptions,
+          styleChoice("smartfold_side_by_side_id","Side-by-Side Group",["None",...Array.from({length:50},(_,i)=>`Group ${i+1}`)]),
           styleChoice("smartfold_common_valance_id","Common Valance Group",["None",...Array.from({length:50},(_,i)=>`Valance ${i+1}`)]),
           ...(common?[{key:"common_position",label:"Shade Position from Left",field:"json:smartfold_common_position",type:"number",min:1,max:4,step:"1"} as GridOption,{key:"common_gap",label:"Gap After This Shade",field:"json:smartfold_common_gap_after",type:"number",min:0,max:24,step:"0.125",unit:"in"} as GridOption]:[]),
           ...(/cord.*loop/i.test(String(design?.lift_system)) ? [{key:"control_side",label:"Control Side",field:"json:control_side",type:"buttons",options:["Left","Right"]} as GridOption] : []),

@@ -1217,7 +1217,7 @@ function repriceExactQuoteBuilderV2(
     }
     return { ...entry, prepared };
   });
-  const assemblyIssues = deriveNormanOrderRecords(selectedPrepared.map(entry => ({ lineId: entry.line.id, selection: entry.prepared.selection })));
+  const assemblyIssues = deriveNormanOrderRecords(selectedPrepared.map(entry => ({ lineId: entry.line.id, roomName: entry.line.room_name, selection: entry.prepared.selection })));
   // Rebuild exact motor components on the server from the validated scalar
   // selections. Persist the result in the price snapshot; never trust a browser
   // supplied assembly or shared-panel charge allocation.

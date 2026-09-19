@@ -1,3 +1,4 @@
+import { deriveSmartfoldSideBySide, type SmartfoldOrderLine } from "./norman-smartfold-side-by-side";
 import { deriveNormanContractOrderRecords } from "./norman-contract-rules";
 import { palladianProductEligible, PALLADIAN_FINISHES } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
@@ -18,7 +19,7 @@ export function romanComponentWidths(context: SelectionContext): number[] | null
 }
 
 /** Input is the server's explicitly selected designs, never unselected alternatives. */
-export function deriveNormanOrderRecords(lines: readonly { lineId: string; selection: SelectionContext }[]): ValidationIssue[] {
+export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [...deriveNormanContractOrderRecords(lines)];
   // Earlier catalogs retain their original unsupported-assembly behavior.
   lines = lines.filter(({ selection }) => selection.manufacturerId.toLowerCase() === "norman" && selection.catalogAsOf >= "2026-09-18");
@@ -38,6 +39,7 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
     }};
   }
   issues.push(...deriveSmartfoldCommonValances(lines));
+  issues.push(...deriveSmartfoldSideBySide(lines));
   for (const {selection} of lines) {
     const valance=smartfoldValance(selection);
     const hardware=selection.configuration[NORMAN_ASSEMBLY_KEY];

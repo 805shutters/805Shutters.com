@@ -912,6 +912,7 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_chain_color", "Chain color", ["Default", ...SMARTFOLD_CHAIN_COLORS]),
     contractChoice("smartfold_chain_unobstructed", "Unobstructed below tension device", ["No", "Yes"]),
     contractChoice("full_fold_required", "Full fold required", ["No", "Yes"]),
+    contractChoice("smartfold_side_by_side_id", "Side-by-side group", ["None", ...Array.from({length:50},(_,i)=>`Group ${i+1}`)]),
     ...shadeControlFields,
     { id: "fabric_category", label: "Fabric category", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
     {

@@ -178,6 +178,7 @@ function humanizeKey(key: string): string {
     smartfold_chain_length: "Custom Chain Length",
     smartfold_chain_unobstructed: "Unobstructed Below Tension Device",
     full_fold_required: "Full Fold Required",
+    smartfold_side_by_side_id: "Side-by-Side Group",
     smartfold_common_valance_id: "Common Valance Group",
     smartfold_common_position: "Shade Position from Left",
     smartfold_common_gap_after: "Gap After This Shade",

@@ -25,7 +25,7 @@ describe("Current Norman production configurations",()=>{
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(first.designs[0].selection));expect(customer.join(" ")).not.toMatch(/ownerLineId|orderSpan|common_valance_v1/);
  });
  it("preserves independent CCL drops and full-fold choices under one common valance",()=>{
-  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,control_side:"Left",smartfold_chain_length:90,smartfold_chain_unobstructed:"Yes",full_fold_required:"Yes"});
+  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,smartfold_side_by_side_id:"Group 1",room_name:"FORGED ROOM",control_side:"Left",smartfold_chain_length:90,smartfold_chain_unobstructed:"Yes",full_fold_required:"Yes"});
   q.designs[0].lift_system="Continuous Cord Loop";
   q.lines.push({...q.lines[0],id:"second",width_whole:42,height_whole:72,sort_order:1});
   q.designs.push({...q.designs[0],id:"second-A",line_item_id:"second",options_json:{...q.designs[0].options_json,smartfold_common_position:2,smartfold_common_gap_after:0,control_side:"Right",smartfold_chain_length:60,smartfold_chain_unobstructed:"No"}});
@@ -36,6 +36,7 @@ describe("Current Norman production configurations",()=>{
    expect(d.result).toMatchObject({ok:true,validationIssues:[]});
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({chain:{length:i===0?90:60,lengthBasis:"custom",unobstructedBelow:i===0}});
    expect(d.selection.configuration.full_fold_required).toBe("Yes");
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({sideBySide:{groupId:"Group 1",room:"Office",shadeQuantity:2}});
   }
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(first.designs[0].selection));
   expect(customer).toEqual(expect.arrayContaining(["Custom Chain Length: 90","Full Fold Required: Yes"]));
