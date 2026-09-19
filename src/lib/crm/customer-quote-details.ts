@@ -7,6 +7,8 @@ export type QuoteProductDetail = {
 };
 
 const INTERNAL_DETAIL_LABELS = new Set([
+  "norman assembly v1",
+  "norman order record v1",
   "base price",
   "discount percent",
   "discount amount",
@@ -27,7 +29,7 @@ const INTERNAL_DETAIL_LABELS = new Set([
   "surcharge total",
 ]);
 
-const INTERNAL_DETAIL_PREFIXES = ["catalog ", "quote lab "];
+const INTERNAL_DETAIL_PREFIXES = ["catalog ", "quote lab ", "quote v2 ", "priced ", "authoritative ", "pricing "];
 const INTERNAL_DETAIL_SUFFIXES = [
   " blind count",
   " configuration version",
@@ -88,7 +90,7 @@ function stripRepeatedLightControl(value: string, lightControl: string | undefin
 export function quoteProductDetails(styleName: string, options: string[], presentation: { illustrated?: boolean } = {}): QuoteProductDetail[] {
   const hasTemporaryShadeCaption = presentation.illustrated && temporaryShadeSelected(options);
   styleName = customerQuoteText(styleName, true);
-  const parsed = customerQuoteOptions(options)
+  const parsed = customerQuoteOptions(options.filter((option) => !isInternalDetailLabel(splitDetail(option).label)))
     .map(splitDetail)
     .filter(({ label, value }) => label && value && !EMPTY_VALUES.has(normalized(value)));
   const lightControl = parsed.find(({ label }) => normalized(label) === "light control")?.value;

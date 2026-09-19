@@ -73,3 +73,14 @@ describe("customer quote branding boundary", () => {
       .toEqual(["Fabric Color: F1244 - Polar White", "Color: Onyx", "Fabric: F1957 - Lotus White"]);
   });
 });
+
+it("filters V2 engine identifiers from previously formatted contract detail strings", () => {
+  expect(quoteProductDetails("", [
+    "Quote V2 Backend: Yes", "Priced Catalog Version: internal-v1",
+    "Quote V2 Catalog As Of: 2026-09-19", "Priced Selection Fingerprint: sha256:internal",
+    "Norman Assembly V1: internal", "Norman Order Record V1: internal",
+    "Hardware Color: Nature", "Wand Drop (inches): 49", "Shim Layers per Bracket: 2",
+  ])).toEqual([
+    {label:"Hardware Color",value:"Nature"}, {label:"Wand Drop (inches)",value:"49"}, {label:"Shim Layers per Bracket",value:"2"},
+  ]);
+});

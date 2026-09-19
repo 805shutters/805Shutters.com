@@ -143,3 +143,23 @@ describe("getQuoteDesignDetails", () => {
     ]);
   });
 });
+
+it("retains Synchrony customer selections without exposing saved engine identifiers", () => {
+  const design = miniBlindDesign();
+  design.product_type = "Vertical Blinds";
+  design.options_json = {
+    fabric_color_code: "8078", fabric_color_name: "Pure White", fabric_group: "S-Curved",
+    vertical_hardware_color: "Nature", vertical_wand_drop_inches: 49, vertical_shim_layers: 2,
+    quote_v2_backend: true, quote_v2_catalog_version: "internal-v1", quote_v2_catalog_as_of: "2026-09-19",
+    priced_catalog_version: "internal-v1", priced_selection_fingerprint: "sha256:internal",
+    norman_assembly_v1: { sourceId: "internal-source" }, norman_order_record_v1: { version: 1 },
+  };
+  const details = getQuoteDesignDetails(design);
+  expect(details).toEqual(expect.arrayContaining([
+    { label: "Fabric Color", value: "8078 - Pure White" },
+    { label: "Hardware Color", value: "Nature" },
+    { label: "Wand Drop (inches)", value: "49" },
+    { label: "Shim Layers per Bracket", value: "2" },
+  ]));
+  expect(JSON.stringify(details)).not.toMatch(/internal|sha256|Quote V2|Priced|Norman Assembly|Norman Order Record/);
+});

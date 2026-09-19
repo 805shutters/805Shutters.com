@@ -33,6 +33,8 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "norman_assembly_v1",
+  "norman_order_record_v1",
   "base_price",
   "surcharge_total",
   "customer_charges",
@@ -65,7 +67,7 @@ const INTERNAL_OPTION_KEYS = new Set([
   PRODUCT_COLOR_SURCHARGE_DETAIL,
 ]);
 
-const INTERNAL_OPTION_KEY_PREFIXES = ["catalog_", "quote_lab_", "authoritative_", "pricing_"];
+const INTERNAL_OPTION_KEY_PREFIXES = ["catalog_", "quote_lab_", "authoritative_", "pricing_", "priced_", "quote_v2_"];
 
 const INTERNAL_OPTION_KEY_SUFFIXES = [
   "_blind_count",
@@ -173,6 +175,12 @@ function formatOptionValue(value: unknown): string {
 }
 
 function humanizeKey(key: string): string {
+  const labels: Record<string, string> = {
+    vertical_hardware_color: "Hardware Color",
+    vertical_wand_drop_inches: "Wand Drop (inches)",
+    vertical_shim_layers: "Shim Layers per Bracket",
+  };
+  if (labels[key]) return labels[key];
   return key
     .replace(/_/g, " ")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")

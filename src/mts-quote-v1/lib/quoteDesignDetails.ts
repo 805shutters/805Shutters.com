@@ -33,6 +33,8 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "norman_assembly_v1",
+  "norman_order_record_v1",
   "base_price",
   "surcharge_total",
   "customer_charges",
@@ -87,7 +89,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   }
 
   Object.entries(options).forEach(([key, value]) => {
-    if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key) || ["catalog_", "quote_lab_", "authoritative_", "pricing_"].some(prefix => key.startsWith(prefix)) || ["_blind_count", "_configuration_version", "_program_code", "_source_page"].some(suffix => key.endsWith(suffix))) return;
+    if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key) || ["catalog_", "quote_lab_", "authoritative_", "pricing_", "priced_", "quote_v2_"].some(prefix => key.startsWith(prefix)) || ["_blind_count", "_configuration_version", "_program_code", "_source_page"].some(suffix => key.endsWith(suffix))) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
       const surchargeText = value
@@ -151,6 +153,12 @@ function formatOptionValue(value: unknown): string {
 }
 
 function humanizeKey(key: string): string {
+  const labels: Record<string, string> = {
+    vertical_hardware_color: "Hardware Color",
+    vertical_wand_drop_inches: "Wand Drop (inches)",
+    vertical_shim_layers: "Shim Layers per Bracket",
+  };
+  if (labels[key]) return labels[key];
   return key
     .replace(/_/g, " ")
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
