@@ -11,6 +11,40 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("prices two different SmartFold shade widths with one common valance and preserves shared charges",()=>{
+  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,smartfold_valance_joinery:"Square Keystone",smartfold_keystone_count:1,basic_light_guard:"Yes",smartfold_light_guard_color:"3058 White"});
+  q.lines.push({...q.lines[0],id:"second",width_whole:42,sort_order:1});
+  q.designs.push({...q.designs[0],id:"second-A",line_item_id:"second",options_json:{...q.designs[0].options_json,smartfold_common_position:2,smartfold_common_gap_after:0,smartfold_common_valance_v1:{chargeSharedOptions:true,orderSpan:1}}});
+  q.selectedVariantByLine.second="A";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  expect(first.designs.map(d=>d.result)).toMatchObject([{ok:true,base:606,unitPrice:995,validationIssues:[]},{ok:true,base:671,unitPrice:671,validationIssues:[]}]);
+  expect(first.designs[0].selection.configuration.smartfold_common_valance_v1).toMatchObject({orderSpan:80,orderedWidths:[36,42],chargeSharedOptions:true});
+  const reopened=JSON.parse(JSON.stringify(q));for(const [i,d]of first.designs.entries())reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(first.designs[0].selection));expect(customer.join(" ")).not.toMatch(/ownerLineId|orderSpan|common_valance_v1/);
+ });
+ it("retains four motors and charges one power panel for two repeated shared-valance assemblies",()=>{
+  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,motor_type:"Norman Smart DC Low Voltage",motor_position:"Right",hub_required:false,existing_remote_work_order_number:"TEST-EXISTING-REMOTE",dc_power_supply:"DC Distribution Panel",shared_power_panel_id:"Panel 1"});
+  q.lines[0].quantity=2;q.designs[0].lift_system="Motorized";
+  q.lines.push({...q.lines[0],id:"second",width_whole:42,sort_order:1});
+  q.designs.push({...q.designs[0],id:"second-A",line_item_id:"second",options_json:{...q.designs[0].options_json,smartfold_common_position:2,smartfold_common_gap_after:0}});
+  q.selectedVariantByLine.second="A";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  for(const d of first.designs){
+   expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+   expect(d.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:4,connectedLineIds:["audit-line","second"]});
+  }
+  expect(first.designs.map(d=>d.result)).toMatchObject([{base:606,total:3649},{base:671,total:2306}]);
+  const reopened=JSON.parse(JSON.stringify(q));for(const [i,d]of first.designs.entries())reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+  reopened.designs[0].options_json.smartfold_common_valance_id=null;
+  const removed=repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19");
+  if (!("backend" in removed) || removed.backend!=="v2") throw new Error("Expected V2 backend");
+  expect(removed.designs[0].selection.configuration.smartfold_common_valance_v1).toBeUndefined();
+  expect(removed.designs[1].result.validationIssues?.some(i=>i.ruleId==="norman.smartfold.common_count")).toBe(true);
+ });
  it("saves an Impressions reverse pattern with silver fascia and premium hem finish",()=>{
   const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:3,smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Nickel-Plated",smartfold_pole:"60-inch Cordless Operating Pole",smartfold_fabric_pattern:"Reverse",smartfold_fascia_color:"Anodized Silver",premium_hem_bar:"Yes",smartfold_hem_color:"Bronze"});
   q.designs[0].valance="Curved Fascia";

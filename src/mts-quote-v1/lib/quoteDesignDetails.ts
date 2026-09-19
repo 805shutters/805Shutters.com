@@ -35,6 +35,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 const INTERNAL_OPTION_KEYS = new Set([
   "norman_assembly_v1",
   "norman_order_record_v1",
+  "smartfold_common_valance_v1",
   "base_price",
   "surcharge_total",
   "customer_charges",
@@ -174,6 +175,18 @@ function humanizeKey(key: string): string {
     smartfold_valance_fabric_code: "Valance Fabric Code",
     smartfold_wood_valance_color: "Wood Valance Finish",
     smartfold_chain_color: "Chain Color",
+    smartfold_common_valance_id: "Common Valance Group",
+    smartfold_common_position: "Shade Position from Left",
+    smartfold_common_gap_after: "Gap After This Shade",
+    smartfold_valance_width: "Custom Valance Width",
+    smartfold_valance_returns: "Valance Returns",
+    smartfold_valance_return_size: "Custom Return Length",
+    smartfold_valance_joinery: "Valance Joinery",
+    smartfold_keystone_count: "Keystone Count",
+    smartfold_keystone_layout: "Keystone Locations",
+    smartfold_keystone_location_1: "Keystone 1 from Left",
+    smartfold_keystone_location_2: "Keystone 2 from Left",
+    smartfold_keystone_location_3: "Keystone 3 from Left",
   };
   if (labels[key]) return labels[key];
   return key

@@ -1,6 +1,8 @@
+import { SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "../quote-v2/norman-smartfold-valance";
 import { CONTRACT_FAUX, CONTRACT_VERTICAL, CONTRACT_VALANCES, CONTRACT_FITS, CONTRACT_VERTICAL_FITS } from "./norman-contract";
 import { SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "../quote-v2/norman-smartfold-hardware";
-import { PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS } from "./norman-current-assortment";
+import { SMARTFOLD_HARDWARE_COLORS, SMARTFOLD_HEM_COLORS, SMARTFOLD_FASCIA_COLORS, SMARTFOLD_END_CAP_COLORS, SMARTFOLD_PREMIUM_HEM_COLORS, SMARTFOLD_WOOD_VALANCE_COLORS, SMARTFOLD_CHAIN_COLORS } from "../quote-v2/norman-smartfold-style";
+import { PALLADIAN_COLORS, PALLADIAN_WITH_PRODUCT_IDS, SMARTFOLD_FABRICS } from "./norman-current-assortment";
 import { SAN_CLEMENTE_HONEYCOMB, SAN_CLEMENTE_FAUX } from "./norman-san-clemente";
 import {
   findPriceableProductSurcharge,
@@ -892,6 +894,22 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_magnet_color", "Magnet catch color", SMARTFOLD_MAGNET_COLORS),
     contractChoice("smartfold_pole", "Additional pole per shade", SMARTFOLD_POLES),
     contractChoice("smartfold_light_guard_color", "Light Guard color", SMARTFOLD_LIGHT_GUARD_COLORS),
+    contractChoice("smartfold_valance_returns", "Valance returns", SMARTFOLD_RETURNS),
+    contractChoice("smartfold_valance_joinery", "Valance joinery", SMARTFOLD_JOINERY),
+    contractChoice("smartfold_keystone_count", "Keystone count", ["1", "2", "3"]),
+    contractChoice("smartfold_keystone_layout", "Keystone locations", ["Equally Spaced", "Custom"]),
+    contractChoice("smartfold_common_position", "Shade position from left", ["1", "2", "3", "4"]),
+    contractChoice("smartfold_fabric_pattern", "Fabric pattern", ["Standard", "Reverse"]),
+    contractChoice("smartfold_hardware_color", "Hardware color", ["Default", ...SMARTFOLD_HARDWARE_COLORS]),
+    contractChoice("smartfold_hem_style", "Hem-bar style", ["Fabric-Wrapped", "Plain"]),
+    contractChoice("smartfold_hem_color", "Hem-bar color", ["Default", ...SMARTFOLD_HEM_COLORS, ...SMARTFOLD_PREMIUM_HEM_COLORS]),
+    contractChoice("smartfold_hem_end_cap", "Hem-bar end caps", ["Default", ...SMARTFOLD_END_CAP_COLORS]),
+    contractChoice("smartfold_fascia_style", "Curved fascia style", ["Plain", "Fabric-Wrapped"]),
+    contractChoice("smartfold_fascia_color", "Fascia color", ["Default", ...SMARTFOLD_FASCIA_COLORS]),
+    contractChoice("smartfold_fascia_end_cap", "Fascia end caps", ["Default", ...SMARTFOLD_END_CAP_COLORS]),
+    contractChoice("smartfold_valance_fabric_code", "Valance fabric override", ["Default", ...SMARTFOLD_FABRICS.map(f => f.code)]),
+    contractChoice("smartfold_wood_valance_color", "Wood valance finish", SMARTFOLD_WOOD_VALANCE_COLORS),
+    contractChoice("smartfold_chain_color", "Chain color", ["Default", ...SMARTFOLD_CHAIN_COLORS]),
     ...shadeControlFields,
     { id: "fabric_category", label: "Fabric category", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
     {

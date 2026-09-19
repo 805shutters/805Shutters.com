@@ -1,3 +1,4 @@
+import { SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "@/lib/quote-v2/norman-smartfold-valance";
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
 import { SMARTFOLD_INSTALLATIONS, SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "@/lib/quote-v2/norman-smartfold-hardware";
 import { SMARTFOLD_HARDWARE_COLORS, SMARTFOLD_HEM_COLORS, SMARTFOLD_FASCIA_COLORS, SMARTFOLD_END_CAP_COLORS, SMARTFOLD_PREMIUM_HEM_COLORS, SMARTFOLD_WOOD_VALANCE_COLORS, SMARTFOLD_CHAIN_COLORS } from "@/lib/quote-v2/norman-smartfold-style";
@@ -9816,6 +9817,10 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "SmartFold Shades" && field === "json:smartfold_common_valance_id") {
+      onUpdateFields({options_json:{...currentJson,smartfold_common_valance_id:value === "None"?null:value,smartfold_common_position:null,smartfold_common_gap_after:null}});
+      return;
+    }
     if (productType === "SmartFold Shades" && field === "json:smartfold_fascia_style") {
       onUpdateFields({options_json:{...currentJson,smartfold_fascia_style:value,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null}});
       return;
@@ -9829,12 +9834,12 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "SmartFold Shades" && field === "valance") {
-      onUpdateFields({valance:typeof value === "string"?value:null,options_json:{...currentJson,smartfold_fascia_style:null,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null,smartfold_wood_valance_color:null}});
+      onUpdateFields({valance:typeof value === "string"?value:null,options_json:{...currentJson,smartfold_fascia_style:null,smartfold_fascia_color:null,smartfold_fascia_end_cap:null,smartfold_valance_fabric_code:null,smartfold_wood_valance_color:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,smartfold_valance_width:null,smartfold_valance_joinery:null,smartfold_keystone_count:null,smartfold_keystone_layout:null,smartfold_keystone_location_1:null,smartfold_keystone_location_2:null,smartfold_keystone_location_3:null}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "mount_type") {
       const outside=value === "Outside Mount";
-      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,...(outside?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null}:{})}});
+      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,...(outside?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null}:{})}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "lift_system") {
@@ -10088,6 +10093,18 @@ function ShadesAndBlindsOptions({
           ...(design?.valance === "Modern Wood" ? [styleChoice("smartfold_wood_valance_color","Wood Valance Finish",SMARTFOLD_WOOD_VALANCE_COLORS)]:[]),
           ...(design?.lift_system === "Continuous Cord Loop" ? [styleChoice("smartfold_chain_color","Chain Color",["Default",...SMARTFOLD_CHAIN_COLORS])]:[]),
         ] : [];
+        const common=!!optionsJson.smartfold_common_valance_id && optionsJson.smartfold_common_valance_id !== "None";
+        const hasValance=!!design?.valance && design.valance !== "No Valance";
+        const hasReturns=optionsJson.smartfold_valance_returns && optionsJson.smartfold_valance_returns !== "None";
+        const keystone=/Keystone/.test(String(optionsJson.smartfold_valance_joinery));
+        const valanceOptions:GridOption[]=hasValance ? [
+          {key:"valance_width",label:"Custom Valance Width",field:"json:smartfold_valance_width",type:"number",min:0.125,step:"0.125",unit:"in",placeholder:"Default"},
+          ...((design?.mount_type === "Outside Mount" || design?.mount_type === "Semi-Inside Mount") && (design.valance === "Modern Wood" || /inch Fabric/.test(String(design.valance))) ? [styleChoice("smartfold_valance_returns","Valance Returns",SMARTFOLD_RETURNS)] : []),
+          ...(hasReturns?[{key:"valance_return_size",label:design?.mount_type === "Outside Mount"?"Extra Return Length":"Custom Return Length",field:"json:smartfold_valance_return_size",type:"number",min:design?.mount_type === "Outside Mount"?0.125:design.valance === "8-inch Fabric"?1.125:0.5,max:design?.mount_type === "Outside Mount"?1:4.5,step:"0.125",unit:"in",placeholder:"Default"} as GridOption]:[]),
+          styleChoice("smartfold_valance_joinery","Valance Joinery",SMARTFOLD_JOINERY),
+          ...(keystone?[styleChoice("smartfold_keystone_count","Keystone Count",["1","2","3"]),styleChoice("smartfold_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]),
+            ...(optionsJson.smartfold_keystone_layout === "Custom"?Array.from({length:Math.min(3,Math.max(1,Number(optionsJson.smartfold_keystone_count)||1))},(_,i)=>({key:`keystone_${i+1}`,label:`Keystone ${i+1} from Left`,field:`json:smartfold_keystone_location_${i+1}`,type:"number",min:18,step:"0.125",unit:"in"} as GridOption)):[])]:[]),
+        ]:[];
         const motorOptions: GridOption[] = design?.lift_system === "Motorized" ? [
           { key: "motor_type", label: "Power Source", field: "motor_type", type: "select", options: ["Norman Smart Rechargeable Battery (AC Charger)", "Norman Smart AC Adapter", "Norman Smart DC Low Voltage", "AutoWand"] },
           ...(design.motor_type !== "AutoWand" ? [
@@ -10096,7 +10113,7 @@ function ShadesAndBlindsOptions({
           ] : []),
         ] : [];
         return [
-          { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount", "Outside Mount"] },
+          { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount", "Semi-Inside Mount", "Outside Mount"] },
           { key: "installation", label: "Mounting Method", field: "json:smartfold_installation", type: "select", options: design?.mount_type === "Outside Mount" ? [SMARTFOLD_INSTALLATIONS[1]] : SMARTFOLD_INSTALLATIONS },
           { key: "fabric", label: "Fabric", field: "fabric", type: "select", options: [] },
           { key: "lift", label: "Lift System", field: "lift_system", type: "select", options: tallLouise ? ["Continuous Cord Loop", "Motorized"] : ["PrecisionLift Cordless", "Continuous Cord Loop", "Motorized"] },
@@ -10112,6 +10129,10 @@ function ShadesAndBlindsOptions({
           ...(/cordless/i.test(String(design?.lift_system)) ? [{key:"pole",label:"Additional Pole per Shade",field:"json:smartfold_pole",type:"select",options:SMARTFOLD_POLES} as GridOption] : []),
           { key: "shim", label: "Shim Layers", field: "json:smartfold_shim_layers", type: "buttons", options: ["0", "1", "2", "3"] },
           ...styleOptions,
+          ...valanceOptions,
+          styleChoice("smartfold_common_valance_id","Common Valance Group",["None",...Array.from({length:50},(_,i)=>`Valance ${i+1}`)]),
+          ...(common?[{key:"common_position",label:"Shade Position from Left",field:"json:smartfold_common_position",type:"number",min:1,max:4,step:"1"} as GridOption,{key:"common_gap",label:"Gap After This Shade",field:"json:smartfold_common_gap_after",type:"number",min:0,max:24,step:"0.125",unit:"in"} as GridOption]:[]),
+          ...(/cord.*loop/i.test(String(design?.lift_system)) ? [{key:"control_side",label:"Control Side",field:"json:control_side",type:"buttons",options:["Left","Right"]} as GridOption] : []),
           ...motorOptions,
         ];
       }
@@ -12213,6 +12234,7 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
+      {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
       {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">

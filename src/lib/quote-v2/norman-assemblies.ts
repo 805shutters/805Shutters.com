@@ -4,6 +4,7 @@ import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core"
 import { sourceProvenance } from "./source-manifest";
 import { resolveNormanShadeMotorization } from "./norman-shade-motorization";
 import { normalizeIdentity } from "./catalog";
+import { deriveSmartfoldCommonValances, smartfoldValance, smartfoldCommonValance } from "./norman-smartfold-valance";
 import { smartfoldHardware } from "./norman-smartfold-hardware";
 
 export const NORMAN_ORDER_RECORD_KEY = "norman_order_record_v1";
@@ -35,6 +36,12 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
       height: selection.heightInches, motorCount: /motor/i.test(String(selection.configuration.lift_system)) ? 2 : 0,
       motorPositions: ["left", "right"], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
+  }
+  issues.push(...deriveSmartfoldCommonValances(lines));
+  for (const {selection} of lines) {
+    const valance=smartfoldValance(selection);
+    const hardware=selection.configuration[NORMAN_ASSEMBLY_KEY];
+    if(valance && hardware && typeof hardware === "object" && !Array.isArray(hardware))selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...hardware,valance:valance.record}};
   }
   // Persist the order-wide adapter assignment. The narrow dual-motor HC exception
   // is explicitly retained even when another shade requires a 65W adapter.
@@ -88,9 +95,18 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
         const total = lines.filter(other => other.selection.productId === "palladian_shelf" && other.selection.programId?.endsWith("_with_product") && other.selection.configuration.accompanying_line_id === id).reduce((sum, other) => sum + other.selection.quantity, 0);
         if (total > t.quantity) fail("quantity", 6, "Total custom shelves linked to this line cannot exceed its blind/shade quantity. Shelf quantity is a line total, not an amount per shade.");
       }
-      if (basis === "default" && shelf.widthInches !== t.widthInches) fail("opening_width", 5, "Default shelf width must match the accompanying product's ordered opening width.");
-      if (/common valance/.test(application)) {
-        const widths = tc.common_valance_panel_widths;
+      const common=smartfoldCommonValance(t);
+      if (basis === "default" && shelf.widthInches !== (typeof common?.orderSpan === "number" ? common.orderSpan : t.widthInches)) fail("opening_width", 5, "Default shelf width must match the accompanying product's ordered opening width, including the full common-valance span.");
+      if (common) {
+        const total=lines.filter(other=>{
+          if(other.selection.productId!=="palladian_shelf" || !other.selection.programId?.endsWith("_with_product"))return false;
+          const linked=lines.find(candidate=>candidate.lineId===other.selection.configuration.accompanying_line_id);
+          return linked && smartfoldCommonValance(linked.selection)?.assemblyId===common.assemblyId;
+        }).reduce((sum,other)=>sum+other.selection.quantity,0);
+        if(total>t.quantity)fail("common_quantity",6,"Shelves linked to shades under the same common valance cannot exceed the common-valance assembly quantity.");
+      }
+      if (/common valance/.test(application) || smartfoldCommonValance(t)) {
+        const widths = smartfoldCommonValance(t)?.orderedWidths ?? tc.common_valance_panel_widths;
         if (!Array.isArray(widths) || widths.length < 2 || widths.some(width => typeof width !== "number" || !Number.isFinite(width) || width <= 0)) fail("common_widths", 8, "Record every blind/shade width in the common-valance assembly before pairing a shelf.");
         else if ((widths as number[]).reduce((sum, width) => sum + width, 0) >= 96) fail("common_width", 8, "The sum of ordered blind/shade widths under a common valance must be less than 96 inches.");
       }

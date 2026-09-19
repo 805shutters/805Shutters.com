@@ -3,12 +3,17 @@ import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext } from "./core";
 import { smartfoldStyle, validateSmartfoldStyle, SMARTFOLD_FASCIA_COLORS, SMARTFOLD_WOOD_VALANCE_COLORS, SMARTFOLD_END_CAP_COLORS, SMARTFOLD_CHAIN_COLORS } from "./norman-smartfold-style";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
+import { getDetailFieldsForProduct } from "@/lib/quote/product-options";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
 
 function shade(config:SelectionContext["configuration"]={}):SelectionContext {
  return {productId:"smartfold",manufacturerId:"Norman",programId:"smartfold_smartfold_shades",catalogAsOf:"2026-09-19",catalogVersion:"test",widthInches:36,heightInches:60,quantity:1,options:{},configuration:{fabric_color_code:"F1709",lift_system:"PrecisionLift Cordless",mount_type:"Inside Mount",smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,fold_size:7,valance:"6-inch Fabric",...config}};
 }
 describe("SmartFold finishes and reverse-pattern source coverage",()=>{
+ it("exposes every source choice to catalog audit exports",()=>{
+  const fields=getDetailFieldsForProduct("smartfold");
+  for(const [id,values] of [["smartfold_fascia_color",SMARTFOLD_FASCIA_COLORS],["smartfold_wood_valance_color",SMARTFOLD_WOOD_VALANCE_COLORS],["smartfold_chain_color",SMARTFOLD_CHAIN_COLORS]] as const)expect(fields.find(f=>f.id===id)?.options?.map(o=>o.value)).toEqual(expect.arrayContaining([...values]));
+ });
  it.each([
   ["F1934","White","White"],["F1935","Bianca","Cottage White"],["F1936","Black","Sahara"],["F1937","Black","Silver"],["F1938","Black","Chocolate"],
   ["F1794","White","White"],["F1795","Bianca","White"],["F1719","Bianca","Sahara"],["F1721","Black","Brass"],["F1720","Black","Silver"],["F1695","Black","Silver"],

@@ -77,6 +77,8 @@ export type PriceInput = {
    * the bases are summed. The overall width remains the assembled order width.
    */
   componentWidthsInches?: number[];
+  /** Verified end-to-end SmartFold valance width for custom/return/shared valances. */
+  valanceWidthInches?: number;
   quantity?: number;
   surcharges?: SurchargeSelection[];
   motorization?: MotorizationSelection[];
@@ -928,13 +930,15 @@ export function priceDesign(input: PriceInput): PriceResult {
     if (sc.widthGraduated) {
       // Valance-style charge priced by window width (round up), plus a per-foot
       // overage beyond the largest listed width.
-      const graduatedCents = widthGraduatedCents(sc.widthGraduated, W);
+      const chargeWidth = product.id === "smartfold" && /^smartfold_.*valance$/.test(sc.id) ? input.valanceWidthInches ?? W : W;
+      if (!Number.isFinite(chargeWidth) || chargeWidth <= 0) return fail("INVALID_DIMENSIONS", "Valance width must be a positive finite number.", warnings);
+      const graduatedCents = widthGraduatedCents(sc.widthGraduated, chargeWidth);
       if (graduatedCents == null) {
         return fail("NA_CELL", `${sc.name} is not available at width ${W}".`, warnings);
       }
       amountCents = graduatedCents;
       if (dealerFactor != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor));
-      detail = `by width (${W}")`;
+      detail = `by width (${chargeWidth}")`;
       surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }), kind: sc.kind, detail });
       perWindowCents += amountCents;
       if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;

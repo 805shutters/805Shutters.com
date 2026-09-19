@@ -1,3 +1,4 @@
+import { smartfoldValancePriceWidth } from "@/lib/quote-v2/norman-smartfold-valance";
 import { palladianProductEligible } from "@/lib/quote/norman-current-assortment";
 import { deriveNormanOrderRecords, romanComponentWidths } from "@/lib/quote-v2/norman-assemblies";
 import { resolveNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
@@ -420,6 +421,7 @@ function exactPriceInput(
               .map(Number)
               .filter((width) => Number.isFinite(width) && width > 0)
         : undefined,
+    valanceWidthInches: authoritativeSelection ? smartfoldValancePriceWidth(authoritativeSelection) : undefined,
     quantity:
       authoritativeSelection?.quantity ??
       Math.max(1, Math.floor(Number(line.quantity) || 1)),
@@ -1067,6 +1069,10 @@ function repriceExactQuoteBuilderV2(
       catalogAsOf,
       catalogVersion: quoteV2CatalogVersionFor(productId, catalogAsOf),
     });
+    if (productId === "smartfold" && catalogAsOf >= "2026-09-19") {
+      const clean = {...selection.configuration}; delete clean.smartfold_common_valance_v1; selection.configuration=clean;
+    }
+
     const designOptions =
       (design.options_json as Record<string, unknown> | undefined) ?? {};
     const rollerMotorization =
@@ -1274,6 +1280,7 @@ function repriceExactQuoteBuilderV2(
     }) => {
     const authoritativePriceInput: PriceInput = {
       ...priceInput,
+      ...(selection.productId === "smartfold" && selection.catalogAsOf >= "2026-09-19" ? { valanceWidthInches:smartfoldValancePriceWidth(selection), surcharges:surchargeSelections(selection.productId,design,true,selection) } : {}),
       programId: programId ?? undefined,
     };
     const result = priceQuoteV2Selection({
