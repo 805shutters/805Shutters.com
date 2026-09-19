@@ -18,11 +18,17 @@ jobs:
           SQUARE_PAYMENT_EMAIL_CRON_SECRET: ${{ secrets.SQUARE_PAYMENT_EMAIL_CRON_SECRET }}
         run: |
           test -n "${SQUARE_PAYMENT_EMAIL_CRON_SECRET}"
-          result=$(curl --fail-with-body --silent --show-error \
-            --retry 2 \
-            --max-time 125 \
-            --request POST \
-            --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
-            https://www.805shutters.com/api/cron/square-payment-emails/)
-          printf '%s\n' "$result"
-          printf '%s' "$result" | jq -e '.status == "synced" or .status == "already_running"'
+          # Advance bounded history pages while retaining the server's exclusive lease.
+          for pass in 1 2 3 4 5 6; do
+            result=$(curl --fail-with-body --silent --show-error \
+              --retry 2 \
+              --max-time 125 \
+              --request POST \
+              --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
+              https://www.805shutters.com/api/cron/square-payment-emails/)
+            printf '%s' "$result" | jq '{status, errors}'
+            printf '%s' "$result" | jq -e '.status == "synced" or .status == "already_running"'
+            if printf '%s' "$result" | jq -e '.status == "already_running" or ([.state.payment, .state.refund, .state.dispute, .state.payout] | all(.completedThrough and (.cursor | not) and (.error | not)))' > /dev/null; then
+              break
+            fi
+          done
