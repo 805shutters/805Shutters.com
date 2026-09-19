@@ -26,10 +26,15 @@ describe("every current Honeycomb workbook offering reaches its correct grid", (
   for (const [engine, rowsFor] of [["current", getMtsProductColorRows], ["v1", getV1Rows]] as const) {
     it(`${engine}: all 191 colors survive an offered light-control filter at every supported cell size`, () => {
       expect(normanHoneycombV2Source.activeColors).toHaveLength(191);
-      for (const { color, cell } of offerings) {
-        const found = HONEYCOMB_LIGHT_CONTROL.flatMap(light_control => rowsFor("Honeycomb Shades", {
+      // Each color uses the same picker output for its cell size. Build that
+      // output once per cell, then retain every workbook-color assertion below.
+      const rowsByCell = new Map([...new Set(offerings.map(({ cell }) => cell))].map(cell => [
+        cell, HONEYCOMB_LIGHT_CONTROL.flatMap(light_control => rowsFor("Honeycomb Shades", {
           quote_v2_backend: true, cell_size: cell, light_control,
-        })).filter(row => row.colorCode === color.customerColorCode || row.colorCode === color.factoryColorCode);
+        })),
+      ]));
+      for (const { color, cell } of offerings) {
+        const found = rowsByCell.get(cell)!.filter(row => row.colorCode === color.customerColorCode || row.colorCode === color.factoryColorCode);
         expect(found.length, `${color.family} ${color.customerColorCode} ${cell}`).toBeGreaterThan(0);
         expect(new Set(found.map(row => row.programId))).toEqual(new Set([
           expectedHoneycombProgramId(color.family, color.customerColorCode, cell),
