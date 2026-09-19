@@ -168,3 +168,5 @@ describe("Vertical Honeycomb splice and unavailable selections",()=>{
  it.each(["Windsong AB0632","Breeze AB0658","Solus","Designer Fabric (LF) (Ashton)"])("rejects unavailable vertical %s",family=>expect(price(verticalQuote(family)).result.ok).toBe(false));
  it("rejects an unknown exact vertical color",()=>{const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,fabric_color_code:"C9999"};expect(price(q).result.ok).toBe(false);});
 });
+
+it.each(["hold_downs","magnetic_hold_down","light_guard","poles"])("rejects incompatible vertical %s",key=>{const q=verticalQuote();q.designs[0].options_json={...q.designs[0].options_json,[key]:"Yes"};expect(price(q).result.ok).toBe(false);});

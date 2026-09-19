@@ -9500,6 +9500,7 @@ function ShadesAndBlindsOptions({
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null; nextJson.rear_cell_size = null; nextJson.day_night_top_layer = null;
         nextJson.poles = null; nextJson.chain_location = null; nextJson.chain_length = null; nextJson.hub_required = null;
+        nextJson.hold_downs = null; nextJson.magnetic_hold_down = false; nextJson.light_guard = null; nextJson.basic_light_guard = false; nextJson.light_guard_rails = null;
         if (!['3/4" Single Cell', '1 1/4" Single Cell'].includes(String(nextJson.cell_size))) nextJson.cell_size = null;
       }
       if (application !== "Patio Door Vertical") {
@@ -11379,7 +11380,7 @@ function ShadesAndBlindsOptions({
         });
 
         // Hold downs are an outside-mount option at Norman.
-        if (mountType === "Outside Mount") {
+        if (mountType === "Outside Mount" && !verticalApplication) {
           options.push({
             key: "hold_downs",
             label: "Hold Down Brackets",

@@ -64,10 +64,11 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(
       searchMtsProductColors(
         "Honeycomb Shades",
-        { ...v2, lift_system: "SmartRise Cordless" },
+        { ...v2, lift_system: "SmartRise Cordless", cell_size: '3/4" Single Cell' },
         "C5004",
       ),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
+    expect(searchMtsProductColors("Honeycomb Shades", { ...v2, lift_system: "SmartRise Cordless", cell_size: '9/16" Single Cell' }, "C5004")).toHaveLength(0);
     expect(
       searchMtsProductColors(
         "Honeycomb Shades",
