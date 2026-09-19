@@ -33,6 +33,8 @@ export function smartfoldHardware(context: SelectionContext) {
   const bracketSize = !collection || !knownLift ? null : collection === "Louise"
     ? cordless || context.heightInches <= 72 ? 4.5 : 6
     : collection === "Moonlight" && !cordless ? 3.5 : context.heightInches <= 60 ? 3.5 : 4.5;
+  const customChain = c.smartfold_chain_length != null && c.smartfold_chain_length !== "";
+  const chainLength = customChain ? Number(c.smartfold_chain_length) : context.heightInches <= 25.5 ? context.heightInches - 2 : context.heightInches * 2 / 3 + 6;
   return {
     validMount, validLayers,
     record: {
@@ -46,6 +48,14 @@ export function smartfoldHardware(context: SelectionContext) {
       shimQuantity: validMount && validLayers ? supports * shimLayers! : null,
       quantityBasis: "per_shade",
       style: smartfoldStyle(context),
+      chain: /cord.*loop/.test(lift) ? {
+        sourceId: "norman-smartfold-guide-2026-09-10", sourcePage:21,
+        length: Number.isFinite(chainLength) && chainLength > 0 ? chainLength : null,
+        lengthBasis: customChain ? "custom" : "default",
+        measurementBasis: "top_of_mounting_bracket_to_bottom_of_tension_device",
+        unobstructedBelow: ["true","yes"].includes(normalize(c.smartfold_chain_unobstructed)),
+        requiredClearanceBelow:2,
+      } : null,
     },
   };
 }
@@ -63,6 +73,13 @@ export function validateSmartfoldHardware(context: SelectionContext): Validation
   if (!hardware.validLayers) add("shim_layers", 38, "Select zero, one, two or three shim layers. Hardware quantities are calculated from the finished shade width and mounting method.");
   const fold = Number(context.configuration.fold_size);
   if (![6, 7, 8].includes(fold)) add("fold_size", 9, "Select a 6-inch, 7-inch or 8-inch fold.");
+  const c=context.configuration;
+  if (/cord.*loop/.test(normalize(c.lift_system ?? c.control_type)) && c.smartfold_chain_length != null && c.smartfold_chain_length !== "") {
+    const length=Number(c.smartfold_chain_length);
+    const defaultLength=context.heightInches <= 25.5 ? context.heightInches - 2 : context.heightInches * 2 / 3 + 6;
+    const maximum=["true","yes"].includes(normalize(c.smartfold_chain_unobstructed)) ? 280 : context.heightInches-2;
+    if (!Number.isFinite(length) || length <= defaultLength || length > maximum) add("chain_length",21,`Custom chain length must be longer than the standard ${Number(defaultLength.toFixed(3))} inches and no more than ${maximum} inches. Lengths beyond shade height minus 2 inches require an unobstructed area below the tension device.`);
+  }
   return issues;
 }
 

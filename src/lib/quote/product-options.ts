@@ -910,6 +910,8 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_valance_fabric_code", "Valance fabric override", ["Default", ...SMARTFOLD_FABRICS.map(f => f.code)]),
     contractChoice("smartfold_wood_valance_color", "Wood valance finish", SMARTFOLD_WOOD_VALANCE_COLORS),
     contractChoice("smartfold_chain_color", "Chain color", ["Default", ...SMARTFOLD_CHAIN_COLORS]),
+    contractChoice("smartfold_chain_unobstructed", "Unobstructed below tension device", ["No", "Yes"]),
+    contractChoice("full_fold_required", "Full fold required", ["No", "Yes"]),
     ...shadeControlFields,
     { id: "fabric_category", label: "Fabric category", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
     {

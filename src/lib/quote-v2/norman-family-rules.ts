@@ -46,7 +46,7 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     const valance = text("valance");
     const valanceHeight = Number(value("valance_height", "valance_height_inches"));
     if (louise && h > 72 && !(valance === "fabric_8" || ["6_inch_fabric", "8_inch_fabric"].includes(valance) || (valance.includes("fabric") && [6, 8].includes(valanceHeight)))) add("louise_valance", source, 15, "Louise over 72 inches high requires a 6-inch or 8-inch fabric valance. Specify the actual valance height.");
-    if ((enabled(value("light_guard", "basic_light_guard")) || text("light_guard") === "basic_light_guard") && !inside) add("light_guard_mount", source, 22, "SmartFold Light Guard is available for inside mount only.");
+    if ([c.light_guard,c.basic_light_guard].some(v => enabled(v) || normalized(v) === "basic_light_guard") && !["inside", "inside_mount", "im", "ib"].includes(text("mount_type"))) add("light_guard_mount", source, 22, "SmartFold Light Guard is available for inside mount only.");
     const fullFold = Number(value("fold_size"));
     if (enabled(value("full_fold_required")) && ((fullFold === 7 && h < 13.625) || (fullFold === 8 && h < 15.125))) add("full_fold_height", source, 23, "A full 7-inch fold requires at least 13⅝ inches height; a full 8-inch fold requires at least 15⅛ inches.");
     if (fabric) {

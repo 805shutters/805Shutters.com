@@ -24,6 +24,24 @@ describe("Current Norman production configurations",()=>{
   expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
   const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(first.designs[0].selection));expect(customer.join(" ")).not.toMatch(/ownerLineId|orderSpan|common_valance_v1/);
  });
+ it("preserves independent CCL drops and full-fold choices under one common valance",()=>{
+  const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,control_side:"Left",smartfold_chain_length:90,smartfold_chain_unobstructed:"Yes",full_fold_required:"Yes"});
+  q.designs[0].lift_system="Continuous Cord Loop";
+  q.lines.push({...q.lines[0],id:"second",width_whole:42,height_whole:72,sort_order:1});
+  q.designs.push({...q.designs[0],id:"second-A",line_item_id:"second",options_json:{...q.designs[0].options_json,smartfold_common_position:2,smartfold_common_gap_after:0,control_side:"Right",smartfold_chain_length:60,smartfold_chain_unobstructed:"No"}});
+  q.selectedVariantByLine.second="A";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  for (const [i,d] of first.designs.entries()) {
+   expect(d.result).toMatchObject({ok:true,validationIssues:[]});
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({chain:{length:i===0?90:60,lengthBasis:"custom",unobstructedBelow:i===0}});
+   expect(d.selection.configuration.full_fold_required).toBe("Yes");
+  }
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(first.designs[0].selection));
+  expect(customer).toEqual(expect.arrayContaining(["Custom Chain Length: 90","Full Fold Required: Yes"]));
+  const reopened=JSON.parse(JSON.stringify(q));for(const [i,d]of first.designs.entries())reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+ });
  it("retains four motors and charges one power panel for two repeated shared-valance assemblies",()=>{
   const q=currentQuote("smartfold","SmartFold Shades","F1794",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2,motor_type:"Norman Smart DC Low Voltage",motor_position:"Right",hub_required:false,existing_remote_work_order_number:"TEST-EXISTING-REMOTE",dc_power_supply:"DC Distribution Panel",shared_power_panel_id:"Panel 1"});
   q.lines[0].quantity=2;q.designs[0].lift_system="Motorized";

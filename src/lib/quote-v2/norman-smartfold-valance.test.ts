@@ -1,7 +1,7 @@
 import {describe,expect,it} from "vitest";
 import type {SelectionContext} from "./core";
 import {deriveNormanOrderRecords} from "./norman-assemblies";
-import {smartfoldValance,validateSmartfoldValance,smartfoldCommonValance,smartfoldValancePriceWidth} from "./norman-smartfold-valance";
+import {smartfoldValance,validateSmartfoldValance,smartfoldCommonValance,smartfoldValancePriceWidth,smartfoldSavedCommonValanceForDisplay} from "./norman-smartfold-valance";
 import {authoritativeAutomaticSurchargeSelections} from "./engine";
 const shade=(width=36,configuration:SelectionContext["configuration"]={}):SelectionContext=>({productId:"smartfold",manufacturerId:"Norman",programId:"smartfold_smartfold_shades",catalogAsOf:"2026-09-19",catalogVersion:"test",widthInches:width,heightInches:60,quantity:1,options:{},configuration:{mount_type:"Inside Mount",smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0,fold_size:7,fabric_color_code:"F1794",lift_system:"PrecisionLift Cordless",valance:"6-inch Fabric",...configuration}});
 const rows=(n=2)=>Array.from({length:n},(_,i)=>({lineId:`line-${i}`,selection:shade(36,{smartfold_common_valance_id:"Valance 1",smartfold_common_position:i+1,smartfold_common_gap_after:i<n-1?2:0})}));
@@ -93,6 +93,18 @@ describe("SmartFold custom and shared valances",()=>{
   const s=shade(96,{smartfold_valance_joinery:"Square Keystone",smartfold_keystone_count:"bad"});expect(validateSmartfoldValance(s).map(i=>i.ruleId)).toContain("norman.smartfold.keystone_count");
   const draft=shade(96,{smartfold_valance_joinery:"Square Keystone",smartfold_keystone_count:2,smartfold_keystone_layout:"Custom"});expect(smartfoldValance(draft)?.record.keystonePositions).toEqual([null,null]);
   s.catalogAsOf="2026-09-18";expect(smartfoldValance(s)).toBeNull();expect(validateSmartfoldValance(s)).toEqual([]);
+ });
+ it("uses the persisted server assembly for form feedback without accepting stale dimensions or another group",()=>{
+  const group=rows();deriveNormanOrderRecords(group);
+  const saved=JSON.parse(JSON.stringify(group[0].selection));
+  const options={smartfold_common_valance_id:"Valance 1",smartfold_common_position:1,smartfold_common_gap_after:2};
+  const resolved=smartfoldSavedCommonValanceForDisplay(options,saved,36,60,1);
+  expect(resolved.smartfold_common_valance_v1).toMatchObject({orderSpan:74});
+  expect(smartfoldSavedCommonValanceForDisplay(options,saved,42,60,1)).toEqual({});
+  expect(smartfoldSavedCommonValanceForDisplay({smartfold_common_valance_id:"Valance 2"},saved,36,60,1)).toEqual({});
+  expect(smartfoldSavedCommonValanceForDisplay(options,undefined,36,60,1)).toEqual({});
+  expect(smartfoldSavedCommonValanceForDisplay({...options,smartfold_common_gap_after:3},saved,36,60,1)).toEqual({});
+  expect(smartfoldSavedCommonValanceForDisplay({...options,smartfold_common_position:2},saved,36,60,1)).toEqual({});
  });
  it("discards forged shared ownership and removes membership after a change",()=>{
   const group=rows();for(const r of group)r.selection.configuration={...r.selection.configuration,smartfold_common_valance_v1:{chargeSharedOptions:false,orderSpan:1}};

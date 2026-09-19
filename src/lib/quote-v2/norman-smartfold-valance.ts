@@ -122,3 +122,18 @@ export function smartfoldValancePriceWidth(s: SelectionContext): number | undefi
   const v=smartfoldValance(s);
   return v?.active && (v.custom!==null || v.returns>0 || smartfoldCommonValanceId(s)) ? v.finishedWidth : undefined;
 }
+
+/** Read-only form feedback uses the separate server selection, not editable options JSON.
+ * Authoritative pricing still discards and rebuilds every shared record quote-wide.
+ */
+export function smartfoldSavedCommonValanceForDisplay(
+  configuration:Record<string,unknown>, saved:Record<string,unknown>|undefined,
+  width:number,height:number,quantity:number,
+):Record<string,unknown> {
+  if(saved?.productId!=="smartfold" || saved.widthInches!==width || saved.heightInches!==height || saved.quantity!==quantity)return {};
+  const c=saved.configuration as Record<string,unknown>|undefined;
+  if(!c || !configuration.smartfold_common_valance_id || c.smartfold_common_valance_id!==configuration.smartfold_common_valance_id)return {};
+  if (["smartfold_common_position", "smartfold_common_gap_after"].some(key => finite(c[key]) !== finite(configuration[key]))) return {};
+  const common=c[SMARTFOLD_SHARED_VALANCE_KEY];
+  return common && typeof common === "object" && !Array.isArray(common) ? {[SMARTFOLD_SHARED_VALANCE_KEY]:common} : {};
+}
