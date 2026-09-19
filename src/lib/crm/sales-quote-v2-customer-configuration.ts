@@ -78,6 +78,7 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["perfectsheer_magnetic_hold_down", "Magnetic Hold-Down"],
   ["perfectsheer_magnet_color", "Magnet Catch Finish"],
   ["perfectsheer_shim_layers", "Shim Layers"],
+  ["perfectsheer_side_by_side_id", "Side-by-Side Group"],
   ["perfectsheer_common_valance_id", "Common Valance Group"],
   ["perfectsheer_common_position", "Shade Position from Left"],
   ["perfectsheer_common_gap_after", "Gap After This Shade"],

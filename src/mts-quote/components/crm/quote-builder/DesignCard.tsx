@@ -11329,7 +11329,7 @@ function ShadesAndBlindsOptions({
         if (["Modern Wood Valance","wood"].includes(design?.valance ?? "")) options.push(psChoice("perfectsheer_wood_finish","Wood Valance Finish",PERFECTSHEER_WOOD_FINISHES));
         else options.push(psChoice("perfectsheer_valance_fabric","Valance Fabric Override",["Default",...PERFECTSHEER_FABRIC_CODES]));
         const psDimension=(key:string,label:string,min:number,max?:number):GridOption=>({key,label,field:`json:${key}`,type:"number",min,max,step:"0.125",unit:"in",placeholder:"Default"});
-        options.push(psChoice("perfectsheer_common_valance_id","Common Valance Group",["None",...Array.from({length:50},(_,i)=>String(i+1))]));
+        options.push(psChoice("perfectsheer_side_by_side_id","Side-by-Side Group",["None",...Array.from({length:50},(_,i)=>`Group ${i+1}`)]),psChoice("perfectsheer_common_valance_id","Common Valance Group",["None",...Array.from({length:50},(_,i)=>String(i+1))]));
         if (optionsJson.perfectsheer_common_valance_id && optionsJson.perfectsheer_common_valance_id !== "None") options.push(psChoice("perfectsheer_common_position","Shade Position from Left",["1","2","3","4","5","6"]),psDimension("perfectsheer_common_gap_after","Gap After This Shade",0,12));
         options.push(psDimension("perfectsheer_valance_width","Custom Valance Width",.125),psChoice("perfectsheer_valance_joinery","Valance Joinery",PERFECTSHEER_JOINERY));
         if (["Modern Wood Valance","wood","Fabric Valance","fabric"].includes(design?.valance ?? "") && ["Semi Inside Mount","Outside Mount"].includes(design?.mount_type ?? "")) {
@@ -12303,6 +12303,7 @@ function ShadesAndBlindsOptions({
       ) : null}
 
       {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
+      {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
       {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}

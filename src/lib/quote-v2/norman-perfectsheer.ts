@@ -1,3 +1,4 @@
+import { perfectsheerMatching } from "./norman-perfectsheer-matching";
 import { perfectsheerValance, perfectsheerCommon, validatePerfectsheerValance } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerHardware, validatePerfectsheerHardware } from "./norman-perfectsheer-hardware";
@@ -21,6 +22,7 @@ export function perfectsheerComponents(context: SelectionContext) {
   if (context.productId !== "perfectsheer" || context.catalogAsOf < "2026-09-19") return null;
   const c = context.configuration;
   const common=perfectsheerCommon(context);
+  const matching=perfectsheerMatching(context);
   const fabric = perfectsheerFabric(c.fabric_color_code);
   const type = norm(c.valance);
   const wood = ["wood", "modern wood valance"].includes(type);
@@ -31,8 +33,8 @@ export function perfectsheerComponents(context: SelectionContext) {
   const motor = /motor|autowand/.test(norm(c.lift_system));
   const power = norm(c.motor_type);
   const autowand = /autowand/.test(power + norm(c.lift_system));
-  const tube = Number(common?.tubeDiameter ?? c.perfectsheer_tube_diameter);
-  const bracketClass = typeof common?.bracketClass === "string" ? common.bracketClass : autowand && [1.75,2].includes(tube) ? context.heightInches > (tube === 1.75 ? 84 : 72) ? "large" : "small" : wood ? null : large ? "large" : "small";
+  const tube = Number(matching?.tubeDiameter ?? common?.tubeDiameter ?? c.perfectsheer_tube_diameter);
+  const bracketClass = typeof matching?.bracketClass === "string" ? matching.bracketClass : typeof common?.bracketClass === "string" ? common.bracketClass : autowand && [1.75,2].includes(tube) ? context.heightInches > (tube === 1.75 ? 84 : 72) ? "large" : "small" : wood ? null : large ? "large" : "small";
   const finishedWidth = context.widthInches - (["inside mount", "inside", "semi inside mount", "semi inside", "im", "ib"].includes(norm(c.mount_type)) ? .125 : 0);
   const defaultChain = context.heightInches <= 20 ? 9 : context.heightInches <= 30 ? 16 : context.heightInches <= 42 ? 24 : context.heightInches <= 55 ? 36 : context.heightInches <= 69 ? 48 : context.heightInches <= 95 ? 60 : 84;
   const chain = /cord.*loop/.test(norm(c.lift_system));
@@ -40,6 +42,7 @@ export function perfectsheerComponents(context: SelectionContext) {
     version: 1, type: "perfectsheer_components", sourceId: "norman-perfectsheer-smartdrape-guide-2026-09", sourcePages: [32,34,35,40,41,42],
     motorMounting: autowand ? {tubeDiameter: Number.isFinite(tube) ? tube : null, bracketClass, sourceId:"norman-motorization-guide-2026-09-16",sourcePage:90} : null,
     finishedShadeWidth: finishedWidth,
+    matching,
     hardware: perfectsheerHardware(context)?.record ?? null,
     motorAccessories: perfectsheerMotorAccessories(context)?.record ?? null,
     fabric: fabric ? {

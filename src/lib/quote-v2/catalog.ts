@@ -34,7 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
-  if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-valance-2026-09-19-r5`;
+  if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-matching-2026-09-19-r6`;
   if (productId === "smartfold" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r6`;
   if (productId === "synchrony_vertical" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-synchrony-2026-09-19-r1`;
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;

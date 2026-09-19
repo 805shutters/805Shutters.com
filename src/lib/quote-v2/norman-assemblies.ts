@@ -1,3 +1,4 @@
+import { derivePerfectsheerMatching, PERFECTSHEER_MATCHING_KEY } from "./norman-perfectsheer-matching";
 import { derivePerfectsheerCommonValances, perfectsheerCommon } from "./norman-perfectsheer-valance";
 import { perfectsheerMotorAccessories } from "./norman-perfectsheer-motor-accessories";
 import { perfectsheerComponents } from "./norman-perfectsheer";
@@ -30,6 +31,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const configuration = { ...selection.configuration };
     delete configuration[NORMAN_ORDER_RECORD_KEY];
     delete configuration[NORMAN_ASSEMBLY_KEY];
+    delete configuration[PERFECTSHEER_MATCHING_KEY];
     selection.configuration = configuration;
     const smartfold = smartfoldHardware(selection);
     if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
@@ -45,6 +47,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   }
   issues.push(...deriveSmartfoldCommonValances(lines));
   issues.push(...derivePerfectsheerCommonValances(lines));
+  issues.push(...derivePerfectsheerMatching(lines));
   for (const {selection} of lines) {
     const components=perfectsheerComponents(selection);
     if(components) selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:components};
