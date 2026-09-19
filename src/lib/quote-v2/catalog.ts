@@ -34,6 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === "smartfold" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r1`;
   if (productId === "synchrony_vertical" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-synchrony-2026-09-19-r1`;
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;
   if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";

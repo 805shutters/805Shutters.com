@@ -12,12 +12,22 @@ function currentQuote(productId: string, productType: string, code: string, opti
 }
 describe("Current Norman production configurations",()=>{
  it("retains the exact SmartFold verification blocker",()=>{
-  const result=repriceExactQuoteBuilderForServerDate(currentQuote("smartfold","SmartFold Shades","F1709"),"2026-09-19");
+  const result=repriceExactQuoteBuilderForServerDate(currentQuote("smartfold","SmartFold Shades","F1709",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:0}),"2026-09-19");
   expect(result).toMatchObject({backend:"v2"});
   if ("backend" in result && result.backend==="v2") {
    expect(result.designs[0].result).toMatchObject({ok:true,unitPrice:761,validationStatus:"blocked",productStatus:"restriction_source_incomplete",validationIssues:[]});
    expect(result.designs[0].snapshot).toBeNull();
   }
+ });
+ it("persists source-derived SmartFold hardware and prices actual shim pieces",()=>{
+  const q=currentQuote("smartfold","SmartFold Shades","F1709",{smartfold_installation:"Top Mount with Raceway",smartfold_shim_layers:3,shim_quantity:999});
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  expect(first.designs[0].result).toMatchObject({ok:true,unitPrice:824,validationStatus:"blocked",validationIssues:[],surchargeLines:expect.arrayContaining([expect.objectContaining({id:"shim",amount:63,detail:"7 x 9 units"})])});
+  expect(first.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({shimQuantity:9,finishedShadeWidth:35.875,mountingBracketCount:0});
+  const reopened=JSON.parse(JSON.stringify(q));
+  reopened.designs[0].options_json={...reopened.designs[0].options_json,...first.designs[0].selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
  });
  it("retains measured wood cut-outs and derives their price after serialization",()=>{
   const q=currentQuote("wood_blinds","Wood Blinds","ND001",{slat_size:'2"',cut_out_sides:"two",wood_cutout_left_type:"Corner (Bottom)",wood_cutout_left_width:1,wood_cutout_left_top:20});

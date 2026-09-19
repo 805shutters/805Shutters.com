@@ -884,6 +884,9 @@ const productDetails: Record<string, QuoteDetailField[]> = {
   ],
   smartfold: [
     ...mountFields,
+    contractChoice("smartfold_installation", "Mounting method", ["Top Mount with Raceway", "Back / Wall Mount with Raceway"]),
+    contractChoice("smartfold_shim_layers", "Shim layers", ["0", "1", "2", "3"]),
+    contractChoice("fold_size", "Fold size", ["6", "7", "8"]),
     ...shadeControlFields,
     { id: "fabric_category", label: "Fabric category", type: "select", options: [{ value: "light_filtering", label: "Light filtering" }, { value: "room_darkening", label: "Room darkening" }] },
     {

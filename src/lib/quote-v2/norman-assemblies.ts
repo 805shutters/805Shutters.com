@@ -4,6 +4,7 @@ import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core"
 import { sourceProvenance } from "./source-manifest";
 import { resolveNormanShadeMotorization } from "./norman-shade-motorization";
 import { normalizeIdentity } from "./catalog";
+import { smartfoldHardware } from "./norman-smartfold-hardware";
 
 export const NORMAN_ORDER_RECORD_KEY = "norman_order_record_v1";
 export const NORMAN_ASSEMBLY_KEY = "norman_assembly_v1";
@@ -25,6 +26,8 @@ export function deriveNormanOrderRecords(lines: readonly { lineId: string; selec
     delete configuration[NORMAN_ORDER_RECORD_KEY];
     delete configuration[NORMAN_ASSEMBLY_KEY];
     selection.configuration = configuration;
+    const smartfold = smartfoldHardware(selection);
+    if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
     const widths = romanComponentWidths(selection);
     if (widths) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: {
       version: 1, type: "roman_common_valance", panelWidths: widths,

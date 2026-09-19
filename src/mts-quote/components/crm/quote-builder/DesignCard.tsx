@@ -1,4 +1,5 @@
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
+import { SMARTFOLD_INSTALLATIONS } from "@/lib/quote-v2/norman-smartfold-hardware";
 import { NormanContractDesignOptions } from "@/components/crm/NormanContractDesignOptions";
 import { isNormanContractProduct } from "@/lib/quote/norman-contract";
 import { SanClementeDesignOptions } from "@/components/crm/SanClementeDesignOptions";
@@ -10039,13 +10040,14 @@ function ShadesAndBlindsOptions({
         ] : [];
         return [
           { key: "mount", label: "Mount", field: "mount_type", type: "buttons", options: ["Inside Mount", "Outside Mount"] },
+          { key: "installation", label: "Mounting Method", field: "json:smartfold_installation", type: "select", options: design?.mount_type === "Outside Mount" ? [SMARTFOLD_INSTALLATIONS[1]] : SMARTFOLD_INSTALLATIONS },
           { key: "fabric", label: "Fabric", field: "fabric", type: "select", options: [] },
           { key: "lift", label: "Lift System", field: "lift_system", type: "select", options: tallLouise ? ["Continuous Cord Loop", "Motorized"] : ["PrecisionLift Cordless", "Continuous Cord Loop", "Motorized"] },
           { key: "fold", label: "Fold Size", field: "json:fold_size", type: "buttons", options: ["6", "7", "8"] },
           { key: "valance", label: "Valance", field: "valance", type: "select", options: tallLouise ? ["6-inch Fabric", "8-inch Fabric"] : ["No Valance", "Curved Fascia", "Square Fascia", "Modern Wood", "4.5-inch Fabric", "6-inch Fabric", "8-inch Fabric"] },
           { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "yes-no", noFirst: true },
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
-          { key: "shim", label: "Shims", field: "json:shim_quantity", type: "number", min: 0, step: "1" },
+          { key: "shim", label: "Shim Layers", field: "json:smartfold_shim_layers", type: "buttons", options: ["0", "1", "2", "3"] },
           ...motorOptions,
         ];
       }

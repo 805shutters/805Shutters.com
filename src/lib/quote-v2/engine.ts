@@ -1,4 +1,5 @@
 import { synchronyBracketCount } from "@/lib/quote/norman-synchrony";
+import { smartfoldHardware } from "./norman-smartfold-hardware";
 import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, WOOD_PREMIUM_CODES } from "@/lib/quote/norman-current-assortment";
 import { romanComponentWidths } from "./norman-assemblies";
 import { calculateCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
@@ -494,6 +495,12 @@ export function authoritativeAutomaticSurchargeSelections(
       .filter(kind => kind === "corner_bottom" || kind === "side_middle").length;
     // Charge measured sides, never a client-provided surcharge count.
     details.cut_out_sides = count === 2 ? "two" : count === 1 ? "one" : "none";
+  }
+  const smartfold = smartfoldHardware(selection);
+  if (smartfold) {
+    details.shim_quantity = smartfold.record.shimQuantity ?? 0;
+    details.shim = Number(details.shim_quantity) > 0;
+    delete details.shims;
   }
   if (selection.productId === "synchrony_vertical" && selection.catalogAsOf >= "2026-09-19" && selection.configuration.vertical_shim_layers != null) {
     const layers = Number(selection.configuration.vertical_shim_layers);

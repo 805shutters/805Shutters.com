@@ -157,6 +157,8 @@ function humanizeKey(key: string): string {
     vertical_hardware_color: "Hardware Color",
     vertical_wand_drop_inches: "Wand Drop (inches)",
     vertical_shim_layers: "Shim Layers per Bracket",
+    smartfold_installation: "Mounting Method",
+    smartfold_shim_layers: "Shim Layers",
   };
   if (labels[key]) return labels[key];
   return key
