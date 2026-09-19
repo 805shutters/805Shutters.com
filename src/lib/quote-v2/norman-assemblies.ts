@@ -51,7 +51,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   // Persist the order-wide adapter assignment. The narrow dual-motor HC exception
   // is explicitly retained even when another shade requires a 65W adapter.
   {
-    const rows = lines.filter(l => ["honeycomb", "roman", "smartfold"].includes(l.selection.productId)).map(l => ({ ...l, resolution: resolveNormanShadeMotorization(l.selection) }));
+    const rows = lines.filter(l => ["honeycomb", "roman", "smartfold", "perfectsheer"].includes(l.selection.productId)).map(l => ({ ...l, resolution: resolveNormanShadeMotorization(l.selection) }));
     const requirements = rows.flatMap(row => {
       const derivation = row.resolution?.issues.find(i => i.ruleId.endsWith("ac_adapter_wattage_derived"));
       const watts = derivation?.derivedValues?.ac_adapter_wattage;
@@ -64,7 +64,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       row.selection.configuration = { ...row.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: {
         version: 1, adapterWatts: use65 && !narrowDual ? 65 : row.watts,
         adapterLineIds: requirements.map(r => r.lineId),
-        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: row.selection.productId === "honeycomb" ? 10 : row.selection.productId === "smartfold" ? 56 : 21,
+        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: row.selection.productId === "honeycomb" ? 10 : row.selection.productId === "smartfold" ? 56 : row.selection.productId === "perfectsheer" ? 39 : 21,
       }};
     }
   }
@@ -155,7 +155,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       // per dual-motor shade. Its larger-area branch consumes 3A vs 2A.
       const connections = (romanDual ? 2 : 1) * quantity;
       const load = connections * (dualHC && m.selection.widthInches * m.selection.heightInches > 60 * 144 ? 3 : 2);
-      return { m, family, connections, load, valid: ["honeycomb", "roman", "smartfold"].includes(m.selection.productId) && (family !== "automate_home" || m.selection.productId === "roman") && /low voltage|12v/.test(power) && /motor/.test(lift) };
+      return { m, family, connections, load, valid: ["honeycomb", "roman", "smartfold", "perfectsheer"].includes(m.selection.productId) && (family !== "automate_home" || ["roman", "perfectsheer"].includes(m.selection.productId)) && /low voltage|12v/.test(power) && /motor/.test(lift) };
     });
     const family = configurations[0].family;
     const hasLargeDual = configurations.some(c => c.load > 2 * c.connections);
@@ -173,7 +173,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       const record: SelectionRecord = {
         version: 1, panelId, family, ownerLineId: owner, chargePanel: m.lineId === owner,
         connectedLineIds: members.map(l => l.lineId).sort(), connections, totalConnections, capacity, requiredCurrentAmps: totalLoad,
-        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: family === "automate_home" ? 75 : 14,
+        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: family === "automate_home" ? 75 : m.selection.productId === "perfectsheer" ? 41 : 14,
       };
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };
     }

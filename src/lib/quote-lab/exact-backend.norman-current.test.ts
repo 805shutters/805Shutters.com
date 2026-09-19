@@ -11,6 +11,21 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("server-prices PerfectSheer motor components and retains tube selection after reopening",()=>{
+  const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_tube_diameter:2,motor_position:"Right",hub_required:false});
+  q.designs[0].lift_system="Motorized";q.designs[0].motor_type="Norman Smart AC Adapter";q.designs[0].remote_type="Basic Remote";
+  const first=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in first) || first.backend!=="v2") throw new Error("Expected V2 backend");
+  const d=first.designs[0];expect(d.result.validationIssues?.filter(i=>i.severity === "hard_block")).toEqual([]);expect(d.result.ok).toBe(true);
+  expect(d.selection.configuration.motorization_selections).toEqual(expect.arrayContaining([{groupId:"smart_motorization",optionId:"motor",role:"base_motor",units:1},{groupId:"smart_motorization",optionId:"basic_remote_black",role:"controller",units:1}]));
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(first);
+  reopened.designs[0].options_json.perfectsheer_tube_diameter=3;
+  const invalid=repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19");
+  if (!("backend" in invalid) || invalid.backend!=="v2") throw new Error("Expected V2 backend");
+  expect(invalid.designs[0].result.validationIssues?.some(i=>i.ruleId==="perfectsheer.motorization.tube")).toBe(true);
+ });
+
  it("preserves PerfectSheer ordering identity, factory aliases, valance charges and customer choices",()=>{
   const q=currentQuote("perfectsheer","Sheer Shades","F1179",{light_control:"Light Filtering",perfectsheer_installation:"Back Mount",perfectsheer_wood_finish:"003 Silk White",perfectsheer_chain_length:90,perfectsheer_chain_unobstructed:"Yes",norman_assembly_v1:{fabric:{factoryColorCode:"FORGED"}}});
   q.designs[0].lift_system="Continuous Cord Loop";q.designs[0].valance="Modern Wood Valance";

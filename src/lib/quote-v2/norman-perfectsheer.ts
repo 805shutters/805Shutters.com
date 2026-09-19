@@ -2,6 +2,7 @@ import type { SelectionContext, ValidationIssue } from "./core";
 import { PERFECTSHEER_COORDINATION } from "./generated/norman-perfectsheer-coordination.generated";
 import { sourceProvenance } from "./source-manifest";
 
+export const PERFECTSHEER_POWER_SOURCES = ["Norman Smart Rechargeable Battery (AC Charger)", "Norman Smart AC Adapter", "Norman Smart DC Low Voltage", "Automate Home ARC Rechargeable Battery", "Automate Home 12V DC Low Voltage", "AutoWand"] as const;
 export const PERFECTSHEER_VALANCES = ["Curved Fascia with Fabric", "Fabric Valance", "Modern Wood Valance"] as const;
 export const PERFECTSHEER_WOOD_FINISHES = ["001 Pure White","003 Silk White","006 Pearl","012 Crisp Linen","049 Stone Gray","053 Clay","109 Weathered Teak","110 Limed White","212 Dark Teak","221 Black Walnut","237 Wenge","246 Matte Black"] as const;
 export const PERFECTSHEER_WAND_COLORS = ["2208 Black", "2058 White", "2094 Cottage White"] as const;
@@ -25,12 +26,15 @@ export function perfectsheerComponents(context: SelectionContext) {
   const large = height === 4.5;
   const motor = /motor|autowand/.test(norm(c.lift_system));
   const power = norm(c.motor_type);
-  const bracketClass = wood ? null : large ? "large" : "small";
+  const autowand = /autowand/.test(power + norm(c.lift_system));
+  const tube = Number(c.perfectsheer_tube_diameter);
+  const bracketClass = autowand && [1.75,2].includes(tube) ? context.heightInches > (tube === 1.75 ? 84 : 72) ? "large" : "small" : wood ? null : large ? "large" : "small";
   const finishedWidth = context.widthInches - (["inside mount", "inside", "semi inside mount", "semi inside", "im", "ib"].includes(norm(c.mount_type)) ? .125 : 0);
   const defaultChain = context.heightInches <= 20 ? 9 : context.heightInches <= 30 ? 16 : context.heightInches <= 42 ? 24 : context.heightInches <= 55 ? 36 : context.heightInches <= 69 ? 48 : context.heightInches <= 95 ? 60 : 84;
   const chain = /cord.*loop/.test(norm(c.lift_system));
   return {
     version: 1, type: "perfectsheer_components", sourceId: "norman-perfectsheer-smartdrape-guide-2026-09", sourcePages: [32,34,35,40,41,42],
+    motorMounting: autowand ? {tubeDiameter: Number.isFinite(tube) ? tube : null, bracketClass, sourceId:"norman-motorization-guide-2026-09-16",sourcePage:90} : null,
     finishedShadeWidth: finishedWidth,
     fabric: fabric ? {
       customerFabricCode: fabric.customerFabricCode, customerColorCode: fabric.customerColorCode,
@@ -49,7 +53,7 @@ export function perfectsheerComponents(context: SelectionContext) {
       installation: c.perfectsheer_installation ?? null,
       minimumInsideDepth: .75,
       woodFlushDepthByBracket: wood ? { small: 4, large: motor ? 4.5 : 4.625 } : null,
-      flushInsideDepth: wood ? null : fabricValance ? large ? motor ? 4.3125 : 4.125 : 3.75 : large ? motor ? 4.0625 : 4.1875 : 3.5625,
+      flushInsideDepth: wood || (autowand && bracketClass !== (large ? "large" : "small")) ? null : fabricValance ? large ? motor ? 4.3125 : 4.125 : 3.75 : large ? motor ? 4.0625 : 4.1875 : 3.5625,
     },
     chain: chain ? { controlSide: c.control_side ?? "Right", length: explicit(c.perfectsheer_chain_length) ? Number(c.perfectsheer_chain_length) : defaultChain, defaultLength: defaultChain, recommendedCustomMaximum: (context.heightInches - 2) / 1.1, safetyTensionDeviceRequired: true, clearanceBelowDevice: 2 } : null,
   };

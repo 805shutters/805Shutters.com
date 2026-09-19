@@ -1,3 +1,4 @@
+import { perfectsheerFabric, perfectsheerComponents, PERFECTSHEER_POWER_SOURCES } from "./norman-perfectsheer";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import { SMARTFOLD_LIMITS } from "./generated/norman-smartfold-limits.generated";
 import type {
@@ -32,10 +33,10 @@ export interface SourceBackedMotorLimits {
 export type NormanShadeMotorizationResolution =
   | {
       readonly ok: true;
-      readonly productId: "honeycomb" | "roman" | "smartfold";
+      readonly productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer";
       readonly family: NormanShadeMotorFamily;
       readonly powerSource: string;
-      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night" | "smartfold";
+      readonly mode: NormanHoneycombMotorMode | "roman" | "roman_day_night" | "smartfold" | "perfectsheer";
       readonly limits: readonly SourceBackedMotorLimits[];
       readonly canonicalSelections: readonly CanonicalMotorizationSelection[];
       readonly sourcePages: readonly number[];
@@ -55,7 +56,7 @@ export type NormanShadeMotorizationResolution =
     };
 
 type MotorConfig = Readonly<{
-  productId: "honeycomb" | "roman" | "smartfold";
+  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer";
   lift: string;
   application: string;
   powerSource: string;
@@ -175,7 +176,7 @@ function parseCanonicalSelections(
 
 function motorConfig(
   context: SelectionContext,
-  productId: "honeycomb" | "roman" | "smartfold",
+  productId: "honeycomb" | "roman" | "smartfold" | "perfectsheer",
 ): MotorConfig {
   const canonicalValue = value(context, "motorization_selections");
   return {
@@ -1196,15 +1197,71 @@ function resolveSmartFold(context: SelectionContext, config: MotorConfig): Norma
   return {ok:true,productId:"smartfold",family:autowand?"autowand":"norman_smart",powerSource:config.powerSource,mode:"smartfold",limits:[limits],canonicalSelections:components,sourcePages:[limits.sourcePage],includedAccessories:rechargeable||autowand?["One charging kit per three motors, minimum one per order"]:[],issues,...(ac?{derivedAdapterWattage}:{})};
 }
 
+function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): NormanShadeMotorizationResolution {
+  const sourceId = "norman-motorization-guide-2026-09-16";
+  const issues: ValidationIssue[] = [];
+  const add = (id: string, page: number, explanation: string) => issues.push({severity:"hard_block",ruleId:`perfectsheer.motorization.${id}`,source:sourceProvenance(sourceId,{page}),selectedValues:{...context.configuration},explanation});
+  const family = config.powerSource === "autowand" || config.lift === "autowand" ? "autowand" : familyForPowerSource(config.powerSource);
+  const ac = config.powerSource.includes("ac adapter");
+  const dc = /low voltage|12v/.test(config.powerSource);
+  const battery = config.powerSource.includes("rechargeable") || config.powerSource.includes("arc");
+  const tube = Number(value(context,"perfectsheer_tube_diameter"));
+  const fabric = perfectsheerFabric(value(context,"fabric_color_code"));
+  const width = perfectsheerComponents(context)?.finishedShadeWidth ?? context.widthInches;
+  const area = width * context.heightInches / 144;
+  const roomDarkening = fabric?.opacity === "Room Darkening";
+  if (!PERFECTSHEER_POWER_SOURCES.some(power => normalizeIdentity(power) === config.powerSource)) add("power_source",4,"Select a documented PerfectSheer Norman Smart, Automate Home or AutoWand power source. Rechargeable charging-wand motors are unavailable.");
+  if (![1.75,2].includes(tube)) add("tube",family === "autowand" ? 90 : family === "automate_home" ? 73 : 39,"Select the documented 1¾-inch or 2-inch tube for the PerfectSheer motor configuration.");
+  if (!fabric) add("fabric",39,"Select a current PerfectSheer fabric color before applying its motor limits.");
+  const motorFamily = family ?? "norman_smart";
+  const page = motorFamily === "autowand" ? 90 : motorFamily === "automate_home" ? 73 : 39;
+  let maxAreaSqFt: number | undefined;
+  let derivedAdapterWattage: 36 | 65 | undefined;
+  if (motorFamily === "norman_smart") {
+    if (battery) {
+      if (tube === 1.75 && roomDarkening) maxAreaSqFt=68.6;
+      if (tube === 2 && (roomDarkening || ["AA0327","AA0332"].includes(fabric?.customerFabricCode ?? ""))) maxAreaSqFt=51.2;
+    }
+    if (ac) {
+      derivedAdapterWattage = tube === 2 && roomDarkening && area > 73.3 ? 65 : 36;
+      issues.push({severity:"auto_derive",ruleId:"perfectsheer.motorization.ac_adapter_wattage_derived",source:sourceProvenance(sourceId,{page:39}),selectedValues:{width,height:context.heightInches,tube},derivedValues:{ac_adapter_wattage:derivedAdapterWattage},explanation:`The fabric, tube and area require a ${derivedAdapterWattage}W adapter before order-wide matching.`});
+    }
+  }
+  if (motorFamily === "automate_home" && dc && width > 96 && tube !== 2) add("dc_tube",75,"Automate 12V DC shades wider than 96 inches require a 2-inch tube.");
+  const limits: SourceBackedMotorLimits = {id:`${motorFamily}-${tube}-${dc?"dc":ac?"ac":"battery"}`,minWidth:motorFamily === "autowand" ? 22 : motorFamily === "automate_home" ? dc ? 17 : 26 : battery ? 24 : 16,maxWidth:motorFamily === "norman_smart" && tube === 1.75 ? 96 : 109,minHeight:12,maxHeight:120,sourcePage:page,...(maxAreaSqFt ? {maxAreaSqFt}:{})};
+  const group = motorFamily === "autowand" ? "autowand" : motorFamily === "automate_home" ? "automate_home" : "smart_motorization";
+  const components = [canonicalSelection(group,motorFamily === "autowand" ? "autowand" : motorFamily === "automate_home" ? dc ? "low_voltage_dc_motor" : "motor_rechargeable_battery_pack" : "motor","base_motor")];
+  const controller=controllerSelection(motorFamily,config.remoteType);
+  if(controller) components.push(controller);
+  if(config.hubRequired === true && motorFamily !== "autowand") components.push(canonicalSelection(group,"hub","hub"));
+  const includedAccessories: string[] = [];
+  if(dc) {
+    const choices = motorFamily === "automate_home" ? ["external battery pack","dc distribution panel"] : ["direct building low voltage","dc distribution panel"];
+    if(!choices.includes(config.dcPowerSupply)) add("dc_power_supply",motorFamily === "automate_home" ? 75 : 41,"Select a compatible external battery pack, direct low-voltage supply or allocated shared distribution panel for this motor family.");
+    if(config.dcPowerSupply === "external battery pack") {components.push(canonicalSelection(group,"external_battery_pack","power_supply"));includedAccessories.push("One external battery pack charging kit per motor");}
+    if(config.dcPowerSupply === "dc distribution panel") {
+      if(!hasPanelAllocation(context)) add("panel_allocation",motorFamily === "automate_home" ? 75 : 41,"Connect this shade to a capacity-checked shared panel on the quote.");
+      components.push(...panelSelections(context,group));
+    }
+  } else if(battery || motorFamily === "autowand") includedAccessories.push(motorFamily === "automate_home" ? "One charging kit per shade" : "One compatible charging kit per three motors, minimum one per order");
+  const shared = [...validateControlAndPosition(context,config,motorFamily,[page]),...dimensionIssues({...context,widthInches:width},[limits],"perfectsheer.motorization.dimension"),...canonicalContractIssues(config,components,[page])];
+  issues.push(...shared.map(i=>({...i,source:sourceProvenance(sourceId,{page})})));
+  const result = {issues,limits:[limits],canonicalSelections:components,sourcePages:[page]};
+  if(issues.some(i=>i.severity === "hard_block"))return {ok:false,...result};
+  return {ok:true,...result,productId:"perfectsheer",family:motorFamily,powerSource:config.powerSource,mode:"perfectsheer",includedAccessories,...(derivedAdapterWattage?{derivedAdapterWattage}:{})};
+}
+
 export function resolveNormanShadeMotorization(
   context: SelectionContext,
 ): NormanShadeMotorizationResolution | null {
-  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer") {
     return null;
   }
+  if (context.productId === "perfectsheer" && context.catalogAsOf < "2026-09-19") return null;
   const config = motorConfig(context, context.productId);
   if (!isMotorized(config) && config.lift !== "autowand") return null;
   if (context.productId === "smartfold") return resolveSmartFold(context, config);
+  if (context.productId === "perfectsheer") return resolvePerfectSheer(context, config);
   const resolution = context.productId === "honeycomb"
     ? resolveHoneycomb(context, config)
     : resolveRoman(context, config);
@@ -1243,7 +1300,7 @@ export function motorFamilyForNormanShadeSelection(
 ): NormanShadeMotorFamily | null {
   const resolution = resolveNormanShadeMotorization(context);
   if (resolution?.ok) return resolution.family;
-  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold") {
+  if (context.productId !== "honeycomb" && context.productId !== "roman" && context.productId !== "smartfold" && context.productId !== "perfectsheer") {
     return null;
   }
   return familyForPowerSource(

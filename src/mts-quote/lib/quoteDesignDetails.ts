@@ -202,6 +202,7 @@ function humanizeKey(key: string): string {
     perfectsheer_valance_fabric: "Valance Fabric Override",
     perfectsheer_wood_finish: "Wood Valance Finish",
     perfectsheer_wand_color: "AutoWand Color",
+    perfectsheer_tube_diameter: "Tube Diameter",
     perfectsheer_chain_length: "Custom Cord Length",
     perfectsheer_chain_unobstructed: "Unobstructed Below Tension Device",
     smartfold_chain_length: "Custom Chain Length",

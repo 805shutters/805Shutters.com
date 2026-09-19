@@ -2375,7 +2375,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
   issues.push(...validateNormanFamilyRules(context));
-  if (context.productId === "smartfold") issues.push(...validateNormanShadeMotorization(context));
+  if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
   const withdrawal = normanColorWithdrawal(
     context.productId,
     configValue(context, "fabric_color_code"),

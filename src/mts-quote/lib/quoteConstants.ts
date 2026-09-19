@@ -1976,7 +1976,7 @@ export function getHoneycombFabricsForCellSize(cellSize: string): readonly strin
 // Sheer Shade Options (PerfectSheer)
 export const PERFECTSHEER_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
 export const PERFECTSHEER_LIGHT_CONTROL = ["Light Filtering", "Room Darkening"] as const;
-export const PERFECTSHEER_LIFT_SYSTEMS = ["Cordless", "Motorized"] as const;
+export const PERFECTSHEER_LIFT_SYSTEMS = ["Continuous Cord Loop", "Motorized"] as const;
 
 export const PERFECTSHEER_FABRICS = [
   "Whisper Sheer",

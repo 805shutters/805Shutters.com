@@ -857,6 +857,7 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("perfectsheer_valance_height", "Valance height", ["Default","3.5","4.5"]),
     contractChoice("perfectsheer_valance_fabric", "Valance fabric override", ["Default",...PERFECTSHEER_FABRIC_CODES]),
     contractChoice("perfectsheer_wood_finish", "Wood valance finish", PERFECTSHEER_WOOD_FINISHES),
+    contractChoice("perfectsheer_tube_diameter", "Tube diameter", ["1.75","2"]),
     contractChoice("perfectsheer_wand_color", "AutoWand color", PERFECTSHEER_WAND_COLORS),
     contractChoice("perfectsheer_chain_unobstructed", "Unobstructed below tension device", ["No","Yes"]),
     ...installationFields,

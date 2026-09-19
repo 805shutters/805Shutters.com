@@ -1,4 +1,5 @@
-import { PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "@/lib/quote-v2/norman-perfectsheer";
+import { validateNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
+import { PERFECTSHEER_POWER_SOURCES, PERFECTSHEER_VALANCES, PERFECTSHEER_WOOD_FINISHES, PERFECTSHEER_WAND_COLORS, PERFECTSHEER_FABRIC_CODES } from "@/lib/quote-v2/norman-perfectsheer";
 import { smartfoldSavedCommonValanceForDisplay, SMARTFOLD_JOINERY, SMARTFOLD_RETURNS } from "@/lib/quote-v2/norman-smartfold-valance";
 import { validateNormanFamilyRules } from "@/lib/quote-v2/norman-family-rules";
 import { SMARTFOLD_INSTALLATIONS, SMARTFOLD_HOLD_DOWNS, SMARTFOLD_MAGNET_COLORS, SMARTFOLD_POLES, SMARTFOLD_LIGHT_GUARD_COLORS } from "@/lib/quote-v2/norman-smartfold-hardware";
@@ -9141,10 +9142,11 @@ function ShadesAndBlindsOptions({
       field === "lift_system"
     ) {
       const nextControl = typeof value === "string" ? value : null;
-      const nextJson =
+      const nextJson: Record<string, unknown> =
         nextControl === "Motorized"
           ? { ...currentJson }
           : clearMotorizationOptions(currentJson);
+      if (nextControl !== "Continuous Cord Loop") {nextJson.perfectsheer_chain_length=null;nextJson.perfectsheer_chain_unobstructed=null;}
       onUpdateFields({
         lift_system: nextControl,
         motor_type: nextControl === "Motorized" ? design?.motor_type ?? null : null,
@@ -9834,8 +9836,8 @@ function ShadesAndBlindsOptions({
       onUpdateFields({options_json:{...currentJson,premium_hem_bar:value,smartfold_hem_color:null,smartfold_hem_end_cap:null}});
       return;
     }
-    if (productType === "Sheer Shades" && field === "lift_system" && value !== "Continuous Cord Loop") {
-      onUpdateFields({lift_system: typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_chain_length:null,perfectsheer_chain_unobstructed:null}});
+    if (productType === "Sheer Shades" && field === "motor_type") {
+      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null}});
       return;
     }
     if (productType === "Sheer Shades" && field === "valance") {
@@ -11310,34 +11312,13 @@ function ShadesAndBlindsOptions({
         );
         if (/autowand/i.test(String(design?.motor_type))) options.push(psChoice("perfectsheer_wand_color","AutoWand Color",PERFECTSHEER_WAND_COLORS));
 
-        // Show motorization options if Motorized is selected
         if (liftSystem === "Motorized") {
-          options.push({
-            key: "motor_type",
-            label: "Motor Type",
-            field: "motor_type",
-            type: "select",
-            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
-          });
-          options.push({
-            key: "hub_required",
-            label: "Hub Required",
-            field: "json:hub_required",
-            type: "yes-no",
-            noFirst: true,
-          });
-          options.push({
-            key: "remote_type",
-            label: "Remote Type",
-            field: "remote_type",
-            type: "select",
-            options: [
-              "15-Channel Remote",
-              "5-Channel Wall Switch",
-              "SmartDial Remote",
-              "Basic Remote",
-            ] as readonly string[],
-          });
+          options.push({key:"motor_type",label:"Power Source",field:"motor_type",type:"select",options:PERFECTSHEER_POWER_SOURCES});
+          options.push(psChoice("perfectsheer_tube_diameter","Tube Diameter",["1.75","2"]));
+          if (!/autowand/i.test(String(design?.motor_type))) {
+            options.push({key:"hub_required",label:"Hub Required",field:"json:hub_required",type:"yes-no",noFirst:true});
+            options.push({key:"remote_type",label:"Remote Type",field:"remote_type",type:"select",options:/automate/i.test(String(design?.motor_type)) ? ["15-Channel Remote","5-Channel Wall Switch"] : ["SmartDial Remote","Basic Remote"]});
+          }
         }
 
         return options;
@@ -11775,17 +11756,17 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
-  const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? validateNormanFamilyRules({
+  const perfectsheerIssues = productType === "Sheer Shades" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context), ...validateNormanShadeMotorization(context).filter(i=>i.severity === "hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.includes("panel_allocation"))])({
     productId:"perfectsheer",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"perfectsheer_perfectsheer_shades_light_filtering",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
     productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,...smartfoldSavedCommonValanceForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,...smartfoldSavedCommonValanceForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
-  if (authoritativeV2 && ["Honeycomb Shades", "Roman Shades", "SmartFold Shades"].includes(productType) && /motor|autowand/i.test(String(design?.lift_system))) {
+  if (authoritativeV2 && ["Honeycomb Shades", "Roman Shades", "SmartFold Shades", "Sheer Shades"].includes(productType) && /motor|autowand/i.test(String(design?.lift_system))) {
     gridOptions.push({ key: "motor_position", label: "Motor Position", field: "json:motor_position", type: "buttons", options: ["Left", "Right"] });
     if (/low voltage|12v/i.test(String(design?.motor_type))) {
       const automate = /automate|12v/i.test(String(design?.motor_type));

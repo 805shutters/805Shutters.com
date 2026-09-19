@@ -754,7 +754,7 @@ function priceInputContractIssues(
         )
       : null;
   const canonicalShadeMotorization =
-    selection.productId === "honeycomb" || selection.productId === "roman" || selection.productId === "smartfold"
+    selection.productId === "honeycomb" || selection.productId === "roman" || selection.productId === "smartfold" || selection.productId === "perfectsheer"
       ? canonicalNormanShadeMotorizationSelectionsFromConfiguration(selection)
       : null;
   if (
