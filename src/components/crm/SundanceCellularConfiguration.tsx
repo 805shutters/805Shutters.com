@@ -1,4 +1,5 @@
 'use client';
+import { SundanceCellularAccessories } from './SundanceCellularAccessories';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import { sundanceCellularColors } from '@/lib/quote/sundance/cellular-assortment';
@@ -25,6 +26,7 @@ export function SundanceCellularConfiguration({ options, widthInches = 0, height
     {options.sundance_cellular_system === 'Skylight' && <p className="text-sm text-amber-900">White #001 side rails. Enter finished size; the factory takes no deductions. The source specialty/skylight surcharge is $116 net, separate from retail fabric pricing.</p>}
     {String(options.sundance_cellular_system ?? '').startsWith('Simphony') && <p className="text-sm text-amber-900">The motor page states minimum width and a 96×96-inch maximum, but no minimum height. Confirm minimum height and required power/accessories before ordering.</p>}
     <label className="block text-sm">Assembly<select aria-label="Sundance cellular assembly" className={classes} value={String(options.sundance_cellular_assembly ?? '')} onChange={e => field('sundance_cellular_assembly', e.target.value)}><option value="">Select assembly</option><option>Single</option><option>Two on one</option></select></label>
+    <SundanceCellularAccessories options={options} widthInches={widthInches} onChange={field} />
     {issues.length > 0 && <div role="alert" className="space-y-1 text-sm text-amber-900">{issues.map(issue => <p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
   </>;
 }

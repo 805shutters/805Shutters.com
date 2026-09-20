@@ -1,3 +1,4 @@
+import { clearSundanceCellularAccessories, sundanceCellularAccessoryIssues } from './cellular-option-schedules';
 import type { SelectionContext, ValidationIssue } from '@/lib/quote-v2/core';
 import { sourceProvenance } from '@/lib/quote-v2/source-manifest';
 import { sundanceCellularColors, sundanceCellularSource, sundanceCellularColorMatchesContext } from './cellular-assortment';
@@ -16,7 +17,7 @@ export const sundanceCellularSystems = [
 ] as const;
 
 export function sundanceCellularSystemPatch(options: Record<string, unknown>, system: string) {
-  const next: Record<string, unknown> = { ...options, sundance_cellular_system: system || null,
+  const next: Record<string, unknown> = { ...clearSundanceCellularAccessories(options), sundance_cellular_system: system || null,
     sundance_cellular_bottom_fabric_id: null, sundance_cellular_bottom_fabric_code: null,
     sundance_cellular_bottom_program_id: null, sundance_cellular_stack: null,
     sundance_cellular_size_basis: system === 'Skylight' ? 'Finished size' : null,
@@ -39,6 +40,7 @@ export function validateSundanceCellularConfiguration(s: Pick<SelectionContext, 
   const c = s.configuration, issues: ValidationIssue[] = [];
   const add = (key: string, page: number, explanation: string) => issues.push({ severity: 'hard_block', ruleId: `sundance.cellular.${key}`,
     source: sourceProvenance(sundanceCellularSource.sourceId, { page }), selectedValues: { ...c, widthInches: s.widthInches, heightInches: s.heightInches }, explanation });
+  for (const issue of sundanceCellularAccessoryIssues(c)) add(`accessory_${issues.length}`, issue.page, issue.explanation);
   const row = sundanceCellularColors.find(row => row.id === c.fabric_color_id);
   if (!row || row.colorCode !== c.fabric_color_code || row.programId !== s.programId || row.automaticDetails.cell_size !== c.cell_size || row.automaticDetails.light_control !== c.light_control)
     add('material', 3, 'Select an exact cellular fabric/color, cell size and matching price group.');

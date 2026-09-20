@@ -25,3 +25,13 @@ Skylight uses finished dimensions and White001 side rails with no factory deduct
 Validation:440 Sundance/quote-rule checks passed including independently transcribed minimum/maximum/just-outside dimensions, all148 fabric exclusions/routing, reverse/stale/forged DayNight identities, mount depths, skylight basis, shared server validation, and visible controls. Whole-worktree TypeScript passed. Production save/reopen for these new controls remains pending deployment.
 
 Remaining implementation work: specialty-shape dimensions/template records, full two-on-one components, exact cellular motor/power/control accessory quantities and separate net/retail option evidence, other family control/size/assembly rules, and order-wide shared-accessory reconciliation. External gates remain dealer factors, source/account charge authority and unresolved assortment identities; these do not block continuing source-backed implementation.
+
+## Control and motor option evidence increment
+
+Imported the12 cordless width-band charges and17 cordloop width-band charges from PDF7–11, plus500 retail TDBU/DayNight,116 net skylight,220 net SomfyTL25,150 net Simphony standard and450 net Concerto motors. The source accessories comprise22 exact schedule rows across PDF15–17. Quantities persist per line, require whole nonnegative values and are restricted to the relevant motor family; changing operating systems clears prior accessory allocations. No controls are charged automatically to a customer.
+
+The source evidence panel presents **retail options subtotal** and **net options subtotal** separately, never summed into an assumed account or selling price. Example Somfy motor220+Situo5remote83+twochargers36each=375 net. Concerto450+TDBUremote90+charger25=565 net. DayNight500 retail excludes both fabric bases. Shared accessory quantities remain explicit line allocations requiring order-wide review.
+
+Exact source exceptions remain: Smoove multi-channel row says5-channel while its image says4-channel, so its100 net row is preserved but flagged for exact-item confirmation. Simphony transformer requires an extension cord without a priced length/specification; its selection adds a verification block. Simphony wall-switch function/channel compatibility with TDBU is not asserted. These exceptions are visible and also checked on the shared server path.
+
+Validation after this increment:453 Sundance/quote-rule checks passed and whole-worktree TypeScript passed. Checks include first/last and between-band control prices, all22 independently transcribed accessory amounts, negative/fractional/nonfinite quantities, stale and incompatible controls, separate net/retail bases, and source-ambiguity holds. Live persistence of the new cellular accessory fields awaits deployment.
