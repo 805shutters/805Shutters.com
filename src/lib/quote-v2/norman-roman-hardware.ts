@@ -11,7 +11,7 @@ export function romanHardware(s:SelectionContext){
  const add=(id:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roman.hardware.${id}`,source:sourceProvenance('norman-roman-guide-2026-09',{page}),selectedValues:{...c},explanation});
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
  // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
- const mountingRevision = /norman-roman-mounting-2026-09-20-r[23]$/.test(s.catalogVersion);
+ const mountingRevision = /norman-roman-mounting-2026-09-20-r[234]$/.test(s.catalogVersion);
  const mountingFit = String(c.roman_mount_fit ?? '');
  const rawDepth = c.mount_depth_inches;
  const depth = rawDepth == null || rawDepth === '' ? NaN : Number(rawDepth);
@@ -39,7 +39,7 @@ export function romanHardware(s:SelectionContext){
  if(c.chain_color!=null&&(!chain||norm(c.chain_type)==='stainless steel'||!['white','cottage white','black'].includes(norm(c.chain_color))))add('chain_color',15,'Plastic Roman chain colors are White, Cottage White and Black. Stainless Steel uses white clutch and tension hardware.');
  if(c.chain_location!=null&&(!chain||!['left','right'].includes(norm(c.chain_location))))add('chain_location',15,'Select Left or Right for the Roman chain position.');
  const banded = /edge banded|ribbon banded/.test(norm(c.fold_style));
- const bandingRevision = s.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r3');
+ const bandingRevision = /norman-roman-mounting-2026-09-20-r[34]$/.test(s.catalogVersion);
  const bandingLayout = String(c.roman_banding_layout ?? '');
  if (bandingRevision && banded && !['Side Border','Wrapped Border'].includes(bandingLayout)) add('banding_layout',/ribbon/.test(norm(c.fold_style))?8:9,'Choose Side Border or Wrapped Border for the banded Roman shade.');
  const pole=norm(c.poles),hasPole=!!pole&&pole!=='none';

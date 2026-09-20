@@ -460,6 +460,16 @@ export function authoritativeAutomaticSurchargeSelections(
     ]),
   );
 
+  if (selection.productId === "roman" && selection.catalogVersion.endsWith("norman-roman-mounting-2026-09-20-r4")) {
+    // The saved configurator uses fold_style. Derive the guide charge from that
+    // authoritative selection, superseding stale legacy surcharge aliases.
+    delete details.roman_style;
+    delete details.decorative_trim;
+    if (details.fold_style === "soft_fold") details.roman_style = "soft_fold";
+    if (details.fold_style === "edge_banded") details.decorative_trim = "edge_banding_border";
+    if (details.fold_style === "ribbon_banded") details.decorative_trim = "ribbon_banding";
+  }
+
   if (selection.productId === "roller") {
     const application = String(
       details.roller_application ?? details.shade_type ?? "",
