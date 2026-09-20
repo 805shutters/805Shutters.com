@@ -203,7 +203,8 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  if (!Number.isFinite(context.widthInches) || context.widthInches <= 0) {
+  const dimensionlessPart = context.productId === "lotus_dealer_listed_parts";
+  if (!dimensionlessPart && (!Number.isFinite(context.widthInches) || context.widthInches <= 0)) {
     issues.push(
       issue(
         "hard_block",
@@ -214,7 +215,7 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  if (!Number.isFinite(context.heightInches) || context.heightInches <= 0) {
+  if (!dimensionlessPart && (!Number.isFinite(context.heightInches) || context.heightInches <= 0)) {
     issues.push(
       issue(
         "hard_block",

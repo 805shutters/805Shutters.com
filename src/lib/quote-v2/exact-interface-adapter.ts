@@ -122,6 +122,7 @@ export function authoritativeV2Measurement(
   whole: unknown,
   fraction: unknown,
   dimension: "width" | "height",
+  allowUnmeasuredDraft = false,
 ): number {
   const wholeNumber = finiteNumericInput(whole);
   if (wholeNumber === null || !Number.isInteger(wholeNumber) || wholeNumber < 0) {
@@ -144,7 +145,7 @@ export function authoritativeV2Measurement(
     EXACT_INTERFACE_V2_FRACTIONS[
       fractionToken as keyof typeof EXACT_INTERFACE_V2_FRACTIONS
     ];
-  if (measured <= 0) {
+  if (measured <= 0 && !allowUnmeasuredDraft) {
     throw new ExactInterfaceV2InputError(
       dimension,
       { whole, fraction },
@@ -357,6 +358,8 @@ export type ExactInterfaceSelectionOptions = {
   programId: string | null;
   catalogAsOf?: ISODate;
   catalogVersion?: string;
+  /** Server-only batch mode: retain zero draft measurements for line-level validation. */
+  allowUnmeasuredDraft?: boolean;
 };
 
 /** Convert the familiar existing builder payload into the complete V2 contract. */
@@ -760,11 +763,13 @@ export function selectionContextFromExactInterface(
     line.width_whole,
     line.width_fraction,
     "width",
+    input.allowUnmeasuredDraft === true,
   );
   const measuredHeightInches = authoritativeV2Measurement(
     line.height_whole,
     line.height_fraction,
     "height",
+    input.allowUnmeasuredDraft === true,
   );
   // SelectionContext always preserves the customer opening. Source-backed
   // pricing footprints are derived inside the authoritative engine, never in

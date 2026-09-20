@@ -5773,7 +5773,9 @@ export function DesignCard({
                 productType={lineItem.product_type}
                 onChangeProductType={onChangeProductType}
               />
-              {hasMeasurements ? (
+              {manufacturerOptionsRoute.productId === "lotus_dealer_listed_parts" ? (
+                <span className="quote-line-card-size">By item / quantity</span>
+              ) : hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
                   className="quote-line-card-size"

@@ -1082,6 +1082,7 @@ function repriceExactQuoteBuilderV2(
       programId,
       catalogAsOf,
       catalogVersion: quoteV2CatalogVersionFor(productId, catalogAsOf),
+      allowUnmeasuredDraft: true,
     });
     if (productId === "smartfold" && catalogAsOf >= "2026-09-19") {
       const clean = {...selection.configuration}; delete clean.smartfold_common_valance_v1; selection.configuration=clean;
