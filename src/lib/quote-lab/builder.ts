@@ -1,4 +1,5 @@
 import { onyxHeldProducts } from "@/lib/quote/onyx-held-catalog";
+import { lotusObservedProducts } from "@/lib/quote/lotus-observed-offerings";
 import type {
   QuoteLabCatalogProduct,
   QuoteLabDesignInput,
@@ -26,6 +27,7 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Vinyl Blinds",
   "Fabric Blinds",
   "Woven Wood Shades",
+  "Parts & Accessories",
 ] as const;
 
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
@@ -50,6 +52,7 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
   "Retractable Screens": "polar_all_seasons_screen",
   Awnings: "polar_awning_premium_pro",
   "Vinyl Blinds": "lotus_vinyl_blinds",
+  "Parts & Accessories": "lotus_dealer_listed_parts",
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
@@ -85,6 +88,7 @@ const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
   polar_awning_premium: "Awnings",
   polar_awning_select: "Awnings",
   polar_awning_drop_arm: "Awnings",
+  ...Object.fromEntries(lotusObservedProducts.map(product => [product.id, product.productType as QuoteLabProductType])),
   lotus_vinyl_blinds: "Vinyl Blinds",
   lotus_mini_blinds: "Mini Blinds",
   lotus_faux_wood_blinds: "Faux Wood Blinds",

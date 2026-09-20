@@ -7,6 +7,12 @@
   },
   "artifacts": [
     {
+      "sourceId": "lotus-dealer-observed-2026-09-20",
+      "fileName": "lotus-observed-offerings-20260920.json",
+      "byteLength": 1820487,
+      "sha256": "5710fcd397735a939f76b62641b110215178ce26a8632bca2e319e1fdd0639a4"
+    },
+    {
       "sourceId": "sundance-sundance-product_price-guide-2026-1d87571a8af7",
       "fileName": "Sundance-Product_Price-Guide-2026.pdf",
       "byteLength": 10597732,

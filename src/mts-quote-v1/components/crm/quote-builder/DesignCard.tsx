@@ -1,5 +1,7 @@
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
+import { LotusObservedDesignOptions } from "@/components/crm/LotusObservedDesignOptions";
+import { isLotusObservedProduct } from "@/lib/quote/lotus-observed-offerings";
 import { pricingBlockReasonMessage } from "@/lib/quote/pricing-block-reason";
 import { ManufacturerManualQuoteBadge } from "@/components/crm/ManufacturerManualQuoteBadge";
 import { getProduct } from "@/lib/quote/catalog";
@@ -5203,7 +5205,9 @@ export function DesignCard({
         )}
 
         {/* Exact manual-only families must not render another manufacturer's options. */}
-        {getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required" ? (
+        {isLotusObservedProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? "")) ? (
+          <LotusObservedDesignOptions design={currentDesign} productId={String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id)} onUpdateFields={updateFields} />
+        ) : getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required" ? (
           <>
             <ManufacturerManualQuoteBadge manufacturer={currentDesign?.supplier || "Manufacturer"} />
             {hasSundanceConfiguration(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? "")) && <SundanceDesignOptions design={currentDesign} productId={String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id)} onUpdateFields={updateFields} />}

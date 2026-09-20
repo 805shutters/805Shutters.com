@@ -5,6 +5,8 @@ import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersi
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
 import { romanHardware, romanFabricPatternOptions } from "@/lib/quote-v2/norman-roman-hardware";
+import { LotusObservedDesignOptions } from "@/components/crm/LotusObservedDesignOptions";
+import { isLotusObservedProduct } from "@/lib/quote/lotus-observed-offerings";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
@@ -6012,7 +6014,9 @@ export function DesignCard({
         )}
 
         {/* Design options based on the exact persisted manufacturer route. */}
-        {manufacturerOptionsRoute.status === "manual_quote" ? (
+        {manufacturerOptionsRoute.productId && isLotusObservedProduct(manufacturerOptionsRoute.productId) ? (
+          <LotusObservedDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+        ) : manufacturerOptionsRoute.status === "manual_quote" ? (
           <>
             <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}

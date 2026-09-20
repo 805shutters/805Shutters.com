@@ -1,4 +1,5 @@
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
+import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanHardware } from "./norman-roman-hardware";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
 import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
@@ -2392,6 +2393,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
   issues.push(...validateOnyxHeldSelection(context));
+  issues.push(...validateLotusObservedOffering(context));
   issues.push(...validateNormanFamilyRules(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
   const withdrawal = normanColorWithdrawal(

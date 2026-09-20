@@ -10,6 +10,7 @@ export function lotusLegacyDeliveryBlock(designs: Row[]): string | null {
     const options = design.options_json && typeof design.options_json === "object" && !Array.isArray(design.options_json)
       ? design.options_json as Row : {};
     const productId = String(options.catalog_product_id ?? options.quote_lab_product_id ?? "");
+    if (productId.startsWith("lotus_dealer_listed_") || options.lotus_observed_offering_id) return "This exact dealer-listed Lotus item requires verified configuration and price confirmation in the native quote workflow before delivery.";
     const programId = String(options.catalog_program_id ?? options.quote_lab_program_id ?? "");
     if (!productId.startsWith("lotus_") || !programId.startsWith("lotus_")) continue;
     const block = lotusCustomerDeliveryBlock(productId, programId, typeof design.mount_type === "string" ? design.mount_type : undefined);

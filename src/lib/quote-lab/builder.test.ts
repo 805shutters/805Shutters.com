@@ -25,6 +25,7 @@ describe("Quote Lab builder model", () => {
     expect(quoteLabDefaultProduct(products, "Roller Shades").id).toBe("roller");
     expect(quoteLabProductsForType(products, "Faux Wood Blinds").map((product) => product.id).sort()).toEqual([
       "faux_wood",
+      "lotus_dealer_listed_faux",
       "lotus_faux_wood_blinds",
       "norman_contract_faux_wood",
       "san_clemente_faux_wood",
@@ -35,6 +36,7 @@ describe("Quote Lab builder model", () => {
     ]);
     expect(quoteLabProductsForType(products, "Mini Blinds").map((product) => product.id).sort()).toEqual([
       "citylights_aluminum",
+      "lotus_dealer_listed_mini",
       "lotus_mini_blinds",
       "sundance_aluminum_1",
       "sundance_aluminum_2",

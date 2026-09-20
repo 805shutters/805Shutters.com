@@ -1,5 +1,6 @@
 import { romanPriceGroup, romanFabricStyles } from '@/lib/quote/norman-roman-current-price-groups';
 import { isOnyxHeldProduct, onyxHeldProducts, ONYX_HELD_VERSION } from "@/lib/quote/onyx-held-catalog";
+import { isLotusObservedProduct, lotusObservedProducts, LOTUS_OBSERVED_VERSION } from "@/lib/quote/lotus-observed-offerings";
 import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "@/lib/quote/norman-synchrony";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
@@ -54,6 +55,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;
   if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
+  if (isLotusObservedProduct(productId)) return LOTUS_OBSERVED_VERSION;
   if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
     return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
@@ -138,6 +140,7 @@ export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStat
   // configuration restriction evidence has not yet been normalized into V2.
   // Listing them explicitly prevents an existing price grid from being
   // mistaken for permission to send a customer quote.
+  ...Object.fromEntries(lotusObservedProducts.map(product => [product.id, "manual_quote_required" as const])),
   lotus_vinyl_blinds: "restriction_source_incomplete",
   lotus_mini_blinds: "restriction_source_incomplete",
   // The owner-selected West A26.v1 grid is usable for internal/draft

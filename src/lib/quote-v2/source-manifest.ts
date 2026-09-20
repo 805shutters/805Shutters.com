@@ -51,6 +51,25 @@ export interface SourceManifestEntry {
  * entry/version rather than editing its hash in place.
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
+{
+  "id": "lotus-dealer-observed-2026-09-20",
+  "manufacturer": "Lotus",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "lotus-observed-offerings-20260920.json",
+  "title": "Complete authenticated Lotus custom, stock and parts listings",
+  "revision": "Observed September 20, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation date is not a manufacturer effective date.",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": null,
+  "sha256": "5710fcd397735a939f76b62641b110215178ce26a8632bca2e319e1fdd0639a4",
+  "authorities": [
+    "assortment"
+  ],
+  "accountScope": "Authenticated 805 Lotus dealer account",
+  "sourceUrl": "https://www.lotusblind.com"
+},
   ...SUNDANCE_SOURCE_MANIFEST,
 {
   "id": "norman-shutter-frame-menus-2026-09-19",
