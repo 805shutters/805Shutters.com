@@ -1,3 +1,4 @@
+import { assertLegacyLotusDeliveryAllowed } from "./lotus-legacy-delivery";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -77,6 +78,7 @@ export async function markSalesQuoteSold(
   const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
   await assertHistoricalSalesQuoteMutationAllowed(supabase, original);
+  await assertLegacyLotusDeliveryAllowed(supabase, original);
   if (resolveSalesQuoteCustomerWorkflow(original) === "v2") {
     await guardV2SalesQuoteBeforeLegacySend(supabase, original);
   }
@@ -212,6 +214,7 @@ export async function sendSalesQuoteToCustomer(
   const groupQuotes = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
   for (const groupQuote of groupQuotes) {
     await assertHistoricalSalesQuoteMutationAllowed(supabase, groupQuote);
+    await assertLegacyLotusDeliveryAllowed(supabase, groupQuote);
   }
   if (
     options.sendAsIs !== undefined &&
@@ -604,6 +607,7 @@ export async function prepareSalesQuoteForCommunication(supabase: CrmSupabaseCli
 
 async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quote: AnyRow): Promise<string> {
   await assertHistoricalSalesQuoteMutationAllowed(supabase, quote);
+  await assertLegacyLotusDeliveryAllowed(supabase, quote);
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")
     .select("*")

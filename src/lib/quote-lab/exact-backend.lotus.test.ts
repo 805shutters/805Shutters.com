@@ -301,3 +301,20 @@ it("enforces the new Lotus color contract through server repricing and preserves
   const accepted = reprice("White");
   expect(accepted.designs[0]?.result.ok).toBe(true);
 });
+
+it("keeps a saved typed MLX White configuration outside automatic customer delivery", () => {
+  const mlxLine = { ...line("Vinyl Blinds"), width_whole: 48, height_whole: 60 };
+  const mlxDesign = { ...design({
+    quote_v2_backend: true, catalog_product_id: "lotus_vinyl_blinds",
+    catalog_program_id: "lotus_mlx_1in_vinyl_custom",
+    lotus_color_configuration_version: "lotus-color-v1", color: "White",
+  }), product_type: "Vinyl Blinds", supplier: "Lotus", mount_type: "Inside Mount" } as SalesQuoteDesign;
+  const result = repriceExactQuoteBuilder({ lines: [mlxLine], designs: [mlxDesign], selectedVariantByLine: { [mlxLine.id]: "A" } });
+  expect("backend" in result && result.backend).toBe("v2");
+  if (!("backend" in result) || result.backend !== "v2") return;
+  expect(result.designs[0].result).toMatchObject({ ok: true, wholesaleUnitPrice: 21.74, unitPrice: 65.22 });
+  expect(result.sendability.sendable).toBe(false);
+  expect(result.sendability.lines[0].blockingIssues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ ruleId: "lotus.faux.send_authority_pending", explanation: expect.stringContaining("Lotus MLX dealer-guide and portal prices conflict") }),
+  ]));
+});
