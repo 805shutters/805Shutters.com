@@ -50,17 +50,51 @@ function isInternalPricingDetail(label: string): boolean {
   return /\b(?:costs?|wholesale|dealer|landed|margin|profit|markup|uplift|pricing|price|discount|commission|cogs)\b/i.test(normalized);
 }
 
+/** Keep complete track specifications while retaining the customer-facing brand policy. */
+function sundanceTrackDetail(label: string, value: string): { label: string; value: string } | null {
+  const labels: Record<string, string> = {
+    "Sundance Track Motor Type": "Track Motor",
+    "Sundance Track Headrail Colors": "Track Color",
+    "Sundance Track Motor Position": "Track Motor Position",
+    "Sundance Track Curved Track": "Track Shape",
+    "Sundance Track Stack Type": "Track Stack",
+    "Sundance Track Drapery Style Track": "Drapery Style",
+    "Sundance Track Remote Control": "Track Remote",
+  };
+  if (!labels[label]) return null;
+  const values: Record<string, Record<string, string>> = {
+    "Sundance Track Motor Type": {
+      "GLYDEA MOTOR /1.O NM/ 110 VOLTS": "AC motor / 1.0 Nm / 110 volts",
+      "GLYDEA MOTOR/ 0.6 NM /110 VOLTS": "AC motor / 0.6 Nm / 110 volts",
+      "IRISMO 35/ 24VOLTS/ 0.6 NM (WITH TRANSFORMER)": "Low-voltage motor 35 / 24 volts / 0.6 Nm / transformer included",
+      "IRISMO 45/LI-ON RECHARGEABLE/0.8 NM": "Rechargeable motor 45 / lithium-ion / 0.8 Nm",
+      "No": "No motor",
+    },
+    "Sundance Track Remote Control": {
+      "Situo 1 (Single Line)": "1-channel remote",
+      "Situo 5 (5 Lines)": "5-channel remote",
+      "Telis 16": "16-channel remote",
+      "No": "No remote",
+    },
+    "Sundance Track Curved Track": { "No": "Straight", "Yes": "Curved" },
+  };
+  const normalized = value.trim().replace(/\s+/g, " ");
+  return { label: labels[label], value: values[label]?.[normalized] ?? normalized };
+}
+
 /** Remove supplier and internal pricing fields before customer serialization. */
 export function customerQuoteOptions(options: string[]): string[] {
   return options.flatMap((option) => {
     const separator = option.indexOf(":");
-    const label = separator < 0 ? "" : option.slice(0, separator);
+    let label = separator < 0 ? "" : option.slice(0, separator);
     if (isManufacturerDetail(label) || isInternalPricingDetail(label || option) || /^(?:catalog|quote lab)\b/i.test(label)) return [];
     if (separator < 0) {
       const cleaned = customerQuoteText(option);
       return cleaned ? [cleaned] : [];
     }
-    const value = customerQuoteText(option.slice(separator + 1), /\b(?:color|fabric|finish)\b/i.test(label));
+    const track = sundanceTrackDetail(label, option.slice(separator + 1));
+    if (track) label = track.label;
+    const value = customerQuoteText(track?.value ?? option.slice(separator + 1), /\b(?:color|fabric|finish)\b/i.test(label));
     const cleanLabel = customerQuoteText(label);
     return cleanLabel && value ? [`${cleanLabel}: ${value}`] : [];
   });

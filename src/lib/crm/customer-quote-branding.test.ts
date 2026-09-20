@@ -84,3 +84,31 @@ it("filters V2 engine identifiers from previously formatted contract detail stri
     {label:"Hardware Color",value:"Nature"}, {label:"Wand Drop (inches)",value:"49"}, {label:"Shim Layers per Bracket",value:"2"},
   ]);
 });
+
+
+it("keeps complete neutral Sundance track details in customer output without changing stored portal values", () => {
+  const source = [
+    "Sundance Track Motor Type: IRISMO 45/LI-ON RECHARGEABLE/0.8 NM",
+    "Sundance Track Headrail Colors: Bronze",
+    "Sundance Track Motor Position: Motor Right",
+    "Sundance Track Curved Track: No",
+    "Sundance Track Stack Type: Split.",
+    "Sundance Track Drapery Style Track: Ripple Fold Drapery style.",
+    "Sundance Track Remote Control: Situo 5 (5 Lines)",
+  ];
+  const before = [...source];
+  expect(quoteProductDetails("", source)).toEqual([
+    {label:"Track Motor",value:"Rechargeable motor 45 / lithium-ion / 0.8 Nm"},
+    {label:"Track Color",value:"Bronze"},
+    {label:"Track Motor Position",value:"Motor Right"},
+    {label:"Track Shape",value:"Straight"},
+    {label:"Track Stack",value:"Split."},
+    {label:"Drapery Style",value:"Ripple Fold Drapery style."},
+    {label:"Track Remote",value:"5-channel remote"},
+  ]);
+  expect(source).toEqual(before);
+  expect(customerQuoteOptions(["Sundance Track Motor Type: No", "Sundance Track Remote Control: No"]))
+    .toEqual(["Track Motor: No motor", "Track Remote: No remote"]);
+  expect(customerQuoteOptions(["Sundance Track Motor Type: IRISMO 35/ 24VOLTS/ 0.6 NM (WITH   TRANSFORMER)"]))
+    .toEqual(["Track Motor: Low-voltage motor 35 / 24 volts / 0.6 Nm / transformer included"]);
+});
