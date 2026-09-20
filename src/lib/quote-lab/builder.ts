@@ -1,3 +1,4 @@
+import { isRomanAncillary } from "@/lib/quote/norman-roman-ancillary";
 import { onyxHeldProducts } from "@/lib/quote/onyx-held-catalog";
 import { lotusObservedProducts } from "@/lib/quote/lotus-observed-offerings";
 import type {
@@ -28,11 +29,15 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Fabric Blinds",
   "Woven Wood Shades",
   "Parts & Accessories",
+  "Fabric by Yard",
+  "Decorative Pillow Covers",
 ] as const;
 
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
 
 const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
+  "Fabric by Yard": "norman_roman_fabric_by_yard",
+  "Decorative Pillow Covers": "norman_roman_pillow_covers",
   "Fabric Blinds": "onyx_lux_fabric_blinds",
   "Woven Wood Shades": "onyx_woven",
   Shutters: "norman_shutters",
@@ -56,6 +61,8 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
+  norman_roman_fabric_by_yard: "Fabric by Yard",
+  norman_roman_pillow_covers: "Decorative Pillow Covers",
   norman_shutters: "Shutters",
   onyx_shutters: "Shutters",
   roller: "Roller Shades",
@@ -138,8 +145,8 @@ export function createQuoteLabDesign(
     label,
     productId: product.id,
     programId: product.programs[0]?.id,
-    widthInches: 36,
-    heightInches: 60,
+    widthInches: isRomanAncillary(product.id) ? 0 : 36,
+    heightInches: isRomanAncillary(product.id) ? 0 : 60,
     discountPercent: 0,
     surcharges: [],
     motorization: [],

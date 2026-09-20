@@ -1,3 +1,4 @@
+import { hasRomanAncillaryUnits } from "./norman-roman-ancillary";
 import { onyxCanonicalFrameSides } from '@/lib/quote/onyx-current-assortment';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { getProduct } from "@/lib/quote/catalog";
@@ -762,13 +763,14 @@ export function selectionContextFromExactInterface(
     firstString(sourceOptions, "draw_direction", "control_side", "control_type"),
   );
 
-  const measuredWidthInches = authoritativeV2Measurement(
+  const naturalUnits = hasRomanAncillaryUnits(input.productId, configuration);
+  const measuredWidthInches = naturalUnits ? 0 : authoritativeV2Measurement(
     line.width_whole,
     line.width_fraction,
     "width",
     input.allowUnmeasuredDraft === true,
   );
-  const measuredHeightInches = authoritativeV2Measurement(
+  const measuredHeightInches = naturalUnits ? 0 : authoritativeV2Measurement(
     line.height_whole,
     line.height_fraction,
     "height",

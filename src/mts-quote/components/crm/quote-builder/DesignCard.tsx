@@ -1,3 +1,5 @@
+import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
+import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
 import { NormanShutterPanelOptions } from "@/components/crm/NormanShutterPanelOptions";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
@@ -1596,7 +1598,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
+  if (product.priceBasis === "manual_required" && !isRomanAncillary(product.id) && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -5786,7 +5788,7 @@ export function DesignCard({
               />
               {manufacturerOptionsRoute.productId === "lotus_dealer_listed_parts" ? (
                 <span className="quote-line-card-size">By item / quantity</span>
-              ) : hasMeasurements ? (
+              ) : authoritativeV2 && isRomanAncillary(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{romanAncillaryUnitLabel(manufacturerOptionsRoute.productId!, currentOptions[ROMAN_ANCILLARY_RECORD])}</span> : hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
                   className="quote-line-card-size"
@@ -6037,7 +6039,9 @@ export function DesignCard({
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
+          manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (
+            <NormanRomanAncillaryOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+          ) : manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
             <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
             <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />

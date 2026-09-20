@@ -9,6 +9,11 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
+  ["ancillary_unit", "Unit"],
+  ["ancillary_yards", "Yards per cut"],
+  ["ancillary_cover_size", "Cover size in inches"],
+  ["ancillary_edge", "Cover edge"],
+  ["ancillary_pattern", "Pattern orientation"],
   ["temporary_shade", "Complementary temporary paper shade"],
   ["shutter_type", "Shutter type"],
   ["track_type", "Track type"],

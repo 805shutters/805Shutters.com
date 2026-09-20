@@ -1,3 +1,4 @@
+import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-ancillary";
 import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
 import { validateLotusRoller } from "./lotus-roller";
@@ -206,7 +207,7 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  const dimensionlessPart = context.productId === "lotus_dealer_listed_parts";
+  const dimensionlessPart = context.productId === "lotus_dealer_listed_parts" || hasRomanAncillaryUnits(context.productId, context.configuration);
   if (!dimensionlessPart && (!Number.isFinite(context.widthInches) || context.widthInches <= 0)) {
     issues.push(
       issue(
@@ -2403,6 +2404,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
+  issues.push(...validateRomanAncillary(context));
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusRoller(context));
