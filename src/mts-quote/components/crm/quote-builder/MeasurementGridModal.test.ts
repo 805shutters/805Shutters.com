@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDirectMeasurement } from "./MeasurementGridModal";
+import { parseDirectMeasurement, parseDirectMeasurements } from "./MeasurementGridModal";
 
 describe("parseDirectMeasurement", () => {
   it("converts decimal inches to the nearest sixteenth", () => {
@@ -13,5 +13,17 @@ describe("parseDirectMeasurement", () => {
     expect(parseDirectMeasurement("0", 250)).toBeNull();
     expect(parseDirectMeasurement("251", 250)).toBeNull();
     expect(parseDirectMeasurement("120", 119)).toBeNull();
+  });
+});
+
+describe("component natural-axis measurements", () => {
+  it("requires only the actual component dimension and clears irrelevant prior measurements", () => {
+    expect(parseDirectMeasurements("60.5", "999", "width")).toEqual({ width: { whole: 60, fraction: "1/2" }, height: { whole: 0, fraction: "0" } });
+    expect(parseDirectMeasurements("999", "120", "height")).toEqual({ width: { whole: 0, fraction: "0" }, height: { whole: 120, fraction: "0" } });
+    expect(parseDirectMeasurements("", "", "width")).toBeNull();
+    expect(parseDirectMeasurements("", "", "height")).toBeNull();
+    expect(parseDirectMeasurements("60", "", null)).toBeNull();
+    expect(parseDirectMeasurements("", "72", null)).toBeNull();
+    expect(parseDirectMeasurements("60", "120", null)).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ interface MeasurementGridModalProps {
   saveError?: string;
   showDirectEntry?: boolean;
   singleDimensionLabel?: string;
+  measurementAxis?: "width" | "height" | null;
   wholeStart?: number;
   wholeEnd?: number;
   fractions?: readonly string[];
@@ -33,6 +34,7 @@ export function MeasurementGridModal({
   saving = false,
   saveError,
   singleDimensionLabel,
+  measurementAxis = null,
   wholeStart = 10,
   wholeEnd,
   fractions = FRACTIONS,
@@ -52,12 +54,12 @@ export function MeasurementGridModal({
   const isWidth = step === "width_whole" || step === "width_fraction";
   const isFractionStep = step === "width_fraction" || step === "height_fraction";
 
-  const label = singleDimensionLabel || (isWidth ? "Width" : "Height");
+  const label = singleDimensionLabel || (measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : isWidth ? "Width" : "Height");
   const sublabel = isFractionStep
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  const maxWholeInches = wholeEnd ?? (showDirectEntry && isWidth ? 250 : 119);
+  const maxWholeInches = wholeEnd ?? (measurementAxis === "height" ? 120 : showDirectEntry && isWidth ? 250 : 119);
   const wholeNumbers: number[] = [];
   for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
@@ -87,14 +89,13 @@ export function MeasurementGridModal({
   }, [open, pendingWidth, pendingHeight]);
 
   const submitDirectMeasurements = () => {
-    const width = parseDirectMeasurement(directWidth, 250);
-    const height = parseDirectMeasurement(directHeight, 119);
-    if (!width || !height) {
-      setDirectError("Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
+    const measurements = parseDirectMeasurements(directWidth, directHeight, measurementAxis);
+    if (!measurements) {
+      setDirectError(measurementAxis === "width" ? "Enter the headrail width from 1 to 250 15/16 inches." : measurementAxis === "height" ? "Enter the vane length from 1 to 120 15/16 inches." : "Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
       return;
     }
     setDirectError("");
-    onDirectMeasurements?.(width, height);
+    onDirectMeasurements?.(measurements.width, measurements.height);
   };
 
   return (
@@ -103,7 +104,7 @@ export function MeasurementGridModal({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">{label}</DialogTitle>
-            {!singleDimensionLabel ? <div className="flex items-center gap-3 text-sm">
+            {!singleDimensionLabel && !measurementAxis ? <div className="flex items-center gap-3 text-sm">
               <span className={cn("font-medium", isWidth && "text-primary")}>
                 W: {widthDisplay}"
               </span>
@@ -111,7 +112,7 @@ export function MeasurementGridModal({
               <span className={cn("font-medium", !isWidth && "text-primary")}>
                 H: {heightDisplay}"
               </span>
-            </div> : pendingWidth ? <strong className="text-sm">{widthDisplay}&quot;</strong> : null}
+            </div> : <strong className="text-sm">{measurementAxis === "height" ? heightDisplay : widthDisplay}&quot;</strong>}
           </div>
           <p className="text-sm text-muted-foreground">{sublabel}</p>
         </DialogHeader>
@@ -121,9 +122,9 @@ export function MeasurementGridModal({
         <fieldset disabled={saving} className="mt-4 min-w-0">
           {showDirectEntry ? <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
             <div className="mb-2 text-sm font-semibold">Enter measurements instead</div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-medium text-muted-foreground">
-                Width (inches)
+            <div className={cn("grid gap-3", !measurementAxis && "grid-cols-2")}>
+              {measurementAxis !== "height" && <label className="text-xs font-medium text-muted-foreground">
+                {measurementAxis === "width" ? "Headrail width (inches)" : "Width (inches)"}
                 <input
                   aria-label="Width in inches"
                   type="number"
@@ -137,15 +138,15 @@ export function MeasurementGridModal({
                   placeholder="e.g. 48.5"
                   className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-              </label>
-              <label className="text-xs font-medium text-muted-foreground">
-                Height (inches)
+              </label>}
+              {measurementAxis !== "width" && <label className="text-xs font-medium text-muted-foreground">
+                {measurementAxis === "height" ? "Vane length (inches)" : "Height (inches)"}
                 <input
                   aria-label="Height in inches"
                   type="number"
                   inputMode="decimal"
                   min="1"
-                  max="119.9375"
+                  max={measurementAxis === "height" ? "120.9375" : "119.9375"}
                   step="0.0625"
                   value={directHeight}
                   onChange={(event) => setDirectHeight(event.target.value)}
@@ -153,8 +154,9 @@ export function MeasurementGridModal({
                   placeholder="e.g. 64.25"
                   className="mt-1 h-11 w-full rounded-md border border-input bg-background px-3 text-base text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
-              </label>
+              </label>}
             </div>
+            {measurementAxis && <p className="mt-2 text-xs text-muted-foreground">Only the {measurementAxis === "width" ? "headrail width" : "vane length"} is measured. The other dimension is not applicable. Pricing remains subject to manufacturer confirmation.</p>}
             <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-xs text-muted-foreground">Decimals are rounded to the nearest 1/16 inch.</span>
               <button
@@ -226,4 +228,11 @@ function measurementToDecimalString(measurement: { whole: number; fraction: stri
   const fractionIndex = FRACTIONS.indexOf(measurement.fraction as (typeof FRACTIONS)[number]);
   const value = measurement.whole + Math.max(0, fractionIndex) / 16;
   return Number(value.toFixed(4)).toString();
+}
+
+export function parseDirectMeasurements(widthValue: string, heightValue: string, axis: "width" | "height" | null = null) {
+  const zero = { whole: 0, fraction: "0" };
+  const width = axis === "height" ? zero : parseDirectMeasurement(widthValue, 250);
+  const height = axis === "width" ? zero : parseDirectMeasurement(heightValue, axis === "height" ? 120 : 119);
+  return width && height ? { width, height } : null;
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { getProduct } from "@/lib/quote/catalog";
-import { lotusVerticalColors, lotusVerticalProfile } from "@/lib/quote/lotus-vertical";
+import { lotusVerticalColors, lotusVerticalProfile, lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
 import { LotusVerticalOptions } from "@/components/crm/LotusVerticalOptions";
 import type { SalesQuoteLineItem } from "@mts/types/quote";
@@ -35,6 +35,21 @@ describe("source-backed Lotus vertical options remain price held", () => {
       expect(productRuleStatusForSelection(selection)).toBe("restriction_source_incomplete");
       if (profile.valance === null) expect(selection.configuration).not.toHaveProperty("valance");
     }
+  });
+  it("saves component natural axes through the server adapter without fake dimensions or cleared price holds", () => {
+    for (const program of getProduct("lotus_vertical_blinds")!.programs) {
+      const patch = lotusProgramSelectionPatch({}, "Vertical Blinds", program.id)!;
+      const axis = lotusVerticalMeasurementAxis(patch.options_json as Record<string, unknown>);
+      expect(axis).toBe(program.priceAxis === "width" ? "width" : program.priceAxis === "height" ? "height" : null);
+      const base = context(program.id);
+      const line = { id: "component", quote_id: "verification", room_name: "Hall", product_type: "Vertical Blinds", width_whole: axis === "height" ? 0 : 60, width_fraction: "0", height_whole: axis === "width" ? 0 : 120, height_fraction: "0", quantity: 1, sort_order: 0, created_at: "2026-09-20T00:00:00Z" } satisfies SalesQuoteLineItem;
+      if (!axis) continue;
+      const selection = selectionContextFromExactInterface(line, { ...patch, mount_type: axis === "width" ? "Outside Mount" : null, options_json: { ...patch.options_json, color: "White", lotus_vertical_stack: base.configuration.lotus_vertical_stack } }, { productId: "lotus_vertical_blinds", programId: program.id, catalogAsOf: "2026-09-20", allowUnmeasuredDraft: true });
+      expect(validateLotusVertical(selection)).toEqual([]);
+      expect(productRuleStatusForSelection(selection)).toBe("restriction_source_incomplete");
+      expect(axis === "width" ? selection.heightInches : selection.widthInches).toBe(0);
+    }
+    expect(lotusVerticalMeasurementAxis({ catalog_product_id: "roller", catalog_program_id: "lotus_cvh_steel_headrail_custom" })).toBeNull();
   });
   it("uses the correct axis and exact cell SKU colors for components", () => {
     expect(lotusVerticalColors("lotus_cvh_steel_headrail_custom", 60, 0)).toEqual(["White"]);

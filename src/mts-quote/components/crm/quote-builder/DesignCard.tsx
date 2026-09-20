@@ -9,6 +9,7 @@ import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersi
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
 import { romanHardware, romanFabricPatternOptions, romanReturnOptions } from "@/lib/quote-v2/norman-roman-hardware";
+import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { LotusObservedDesignOptions } from "@/components/crm/LotusObservedDesignOptions";
 import { isLotusObservedProduct } from "@/lib/quote/lotus-observed-offerings";
 
@@ -5729,7 +5730,11 @@ export function DesignCard({
     authoritativeV2,
   ]);
 
-  const hasMeasurements = lineItem.width_whole > 0 || lineItem.height_whole > 0;
+  const lotusMeasurementAxis = lotusVerticalMeasurementAxis(currentOptions);
+  const hasMeasurements = lotusMeasurementAxis === "width" ? lineItem.width_whole > 0 : lotusMeasurementAxis === "height" ? lineItem.height_whole > 0 : lineItem.width_whole > 0 || lineItem.height_whole > 0;
+  const displayedDimensions = lotusMeasurementAxis
+    ? `${lotusMeasurementAxis === "width" ? "Headrail width" : "Vane length"}: ${lineItem[`${lotusMeasurementAxis}_whole`]}${lineItem[`${lotusMeasurementAxis}_fraction`] !== "0" ? " " + lineItem[`${lotusMeasurementAxis}_fraction`] : ""}″`
+    : formatDimensions(lineItem);
 
   return (
     <QuoteBuilderCatalogProductsContext.Provider value={catalogProducts ?? null}>
@@ -5797,7 +5802,7 @@ export function DesignCard({
                   <span className="quote-line-card-size-divider" aria-hidden="true">
                     -
                   </span>
-                  <span className="quote-line-card-size-value">{formatDimensions(lineItem)}</span>
+                  <span className="quote-line-card-size-value">{displayedDimensions}</span>
                 </button>
               ) : (
                 <button

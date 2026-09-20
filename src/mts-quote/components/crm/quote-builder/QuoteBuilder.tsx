@@ -1,3 +1,4 @@
+import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
@@ -615,6 +616,7 @@ export function QuoteBuilder({
 
   const [editingName, setEditingName] = useState(false);
   const [measuringItemId, setMeasuringItemId] = useState<string | null>(null);
+  const [measurementAxis, setMeasurementAxis] = useState<"width" | "height" | null>(null);
   const [measurementSaveError, setMeasurementSaveError] = useState("");
   const measurementSavePendingRef = useRef(false);
   const [measurementSavePending, setMeasurementSavePending] = useState(false);
@@ -1793,11 +1795,14 @@ export function QuoteBuilder({
   // Keep entered measurements available until the database confirms the save.
   const handleOpenMeasurement = (itemId: string) => {
     const item = lineItems.find((row) => row.id === itemId);
+    const selected = resolveSelectedQuoteDesign(designs.filter(design => design.line_item_id === itemId));
+    const axis = lotusVerticalMeasurementAxis(selected?.options_json as Record<string, unknown> | undefined);
+    setMeasurementAxis(axis);
     setMeasuringItemId(itemId);
     setMeasurementSaveError("");
     useQuoteBuilderStore.setState({
       showMeasurementGrid: true,
-      measurementStep: "width_whole",
+      measurementStep: axis === "height" ? "height_whole" : "width_whole",
       pendingWidth: item && item.width_whole > 0
         ? { whole: item.width_whole, fraction: item.width_fraction } : null,
       pendingHeight: item && item.height_whole > 0
@@ -1832,8 +1837,16 @@ export function QuoteBuilder({
     }
   };
 
+  const handleWidthFraction = (fraction: string) => {
+    const width = useQuoteBuilderStore.getState().pendingWidth;
+    if (measurementAxis === "width" && width) {
+      void handleDirectMeasurements({ ...width, fraction }, { whole: 0, fraction: "0" });
+    } else setWidthFraction(fraction);
+  };
+
   const handleHeightFraction = (fraction: string) => {
-    const { pendingWidth: width, pendingHeight: height } = useQuoteBuilderStore.getState();
+    const { pendingWidth, pendingHeight: height } = useQuoteBuilderStore.getState();
+    const width = measurementAxis === "height" ? { whole: 0, fraction: "0" } : pendingWidth;
     if (width && height) {
       void handleDirectMeasurements(width, { ...height, fraction });
     }
@@ -2611,6 +2624,7 @@ export function QuoteBuilder({
       <MeasurementGridModal
         open={showMeasurementGrid}
         showDirectEntry
+        measurementAxis={measurementAxis}
         saving={measurementSavePending}
         saveError={measurementSaveError}
         onClose={() => {
@@ -2620,7 +2634,7 @@ export function QuoteBuilder({
         }}
         step={measurementStep}
         onWidthWhole={setWidthWhole}
-        onWidthFraction={setWidthFraction}
+        onWidthFraction={handleWidthFraction}
         onHeightWhole={setHeightWhole}
         onHeightFraction={handleHeightFraction}
         onDirectMeasurements={handleDirectMeasurements}

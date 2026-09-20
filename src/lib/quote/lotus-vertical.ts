@@ -38,3 +38,10 @@ export function lotusVerticalDefaults(programId: string): Record<string, unknown
     color: null,
   } : {};
 }
+
+/** Only exact Lotus component routes use a single measured axis. */
+export function lotusVerticalMeasurementAxis(options: Record<string, unknown> | null | undefined): "width" | "height" | null {
+  if ((options?.catalog_product_id ?? options?.quote_lab_product_id) !== "lotus_vertical_blinds") return null;
+  const profile = lotusVerticalProfile(String(options?.catalog_program_id ?? options?.quote_lab_program_id ?? ""));
+  return profile?.kind === "Headrail only" ? "width" : profile?.kind === "Vanes only" ? "height" : null;
+}
