@@ -1,3 +1,4 @@
+import { getProduct } from "./catalog";
 import { describe, expect, it } from "vitest";
 import {
   getProductColorOptions,
@@ -15,7 +16,8 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1448);
+    expect(productColorOptions.filter(row => (getProduct(row.productId)?.manufacturer ?? "Norman") === "Norman")).toHaveLength(1448);
+    expect(getProductColorOptions("sundance_cellular")).toHaveLength(148);
     expect(getProductColorOptions("norman_shutters")).toHaveLength(126);
     expect(getProductColorOptions("norman_contract_faux_wood")).toHaveLength(12);
     expect(getProductColorOptions("norman_contract_vertical")).toHaveLength(3);
