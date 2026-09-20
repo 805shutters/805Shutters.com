@@ -1,3 +1,4 @@
+import { deriveUltimateAssemblies } from "./norman-ultimate-assemblies";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
@@ -65,6 +66,11 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       height: selection.heightInches, motorCount: /motor/i.test(String(selection.configuration.lift_system)) ? 2 : 0,
       motorPositions: ["left", "right"], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
+  }
+  issues.push(...deriveUltimateAssemblies(lines));
+  for (const {selection} of lines) {
+    const ultimate=ultimateFauxComponents(selection);
+    if(ultimate)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:ultimate.record};
   }
   issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));

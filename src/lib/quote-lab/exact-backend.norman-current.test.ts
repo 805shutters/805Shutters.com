@@ -12,6 +12,25 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("saves Ultimate matching and common groups through the real quote backend",()=>{
+  const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_matching_group:"1"});
+  q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
+  q.lines.push({...q.lines[0],id:"right",width_whole:48});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json}});q.selectedVariantByLine.right="A";
+  const matching=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in matching)||matching.backend!=="v2")throw new Error("Expected V2");
+  for(const d of matching.designs){expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.ultimate_matching_v1).toMatchObject({lineIds:["audit-line","right"]});}
+  q.designs.forEach((d,i)=>d.options_json={...d.options_json,ultimate_common_group:"1",ultimate_common_position:i+1,ultimate_common_gap_after:i===0?1:0});
+  const common=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in common)||common.backend!=="v2")throw new Error("Expected V2");
+  for(const d of common.designs){expect(d.result.ok).toBe(false);expect(d.selection.configuration.ultimate_common_valance_v1).toMatchObject({finishedWidth:86,pricingStatus:"unresolved_common_valance_width_basis"});}
+  const reopened=JSON.parse(JSON.stringify(q));common.designs.forEach((d,i)=>reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration});expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(common);
+ });
+
+ it("saves partially entered Ultimate cut-outs as an incomplete draft without non-finite snapshots",()=>{
+  const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_cutout_right_type:"Side (Middle)"});
+  q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  expect(p.designs[0].result.ok).toBe(false);expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({cutouts:[{side:"right",width:null,top:null,bottom:null}]});
+ });
+
  it("server-prices measured Ultimate cut-outs and keystones and preserves customer details",()=>{
   const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_keystone_count:1,ultimate_keystone_layout:"Custom",ultimate_keystone_location_1:18,ultimate_cutout_left_type:"Corner (Bottom)",ultimate_cutout_left_width:1,ultimate_cutout_left_top:20,ultimate_cutout_right_type:"Side (Middle)",ultimate_cutout_right_width:2,ultimate_cutout_right_top:30,ultimate_cutout_right_bottom:40});
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";

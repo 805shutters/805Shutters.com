@@ -10086,6 +10086,9 @@ function ShadesAndBlindsOptions({
       onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
       return;
     }
+    if (productType === "Faux Wood Blinds" && authoritativeV2 && currentJson.product_line === "Ultimate" && field === "json:ultimate_common_group") {
+      onUpdateFields({options_json:{...currentJson,ultimate_common_group:value,ultimate_common_position:null,ultimate_common_gap_after:null,ultimate_valance_width_inches:null}});return;
+    }
     if (productType === "Faux Wood Blinds" && authoritativeV2 && currentJson.product_line === "Ultimate" && ["mount_type", "valance", "json:ultimate_mount_fit", "json:ultimate_side_mount", "json:ultimate_valance_returns", "json:faux_blind_count"].includes(field)) {
       const options = {...currentJson};
       if (field.startsWith("json:")) options[field.slice(5)] = value;
@@ -10108,7 +10111,7 @@ function ShadesAndBlindsOptions({
       if (field === "json:ultimate_valance_returns") options.ultimate_return_inches = null;
       if (field === "json:faux_blind_count") {
         options.ultimate_valance_width_inches = null;
-        for(const key of Object.keys(options))if(key.startsWith("ultimate_cutout_")||key.startsWith("ultimate_keystone_"))options[key]=null;
+        for(const key of Object.keys(options))if(key.startsWith("ultimate_cutout_")||key.startsWith("ultimate_keystone_")||key.startsWith("ultimate_common_")||key==="ultimate_matching_group")options[key]=null;
       }
       if(field==="valance"&&value==="None")for(const key of Object.keys(options))if(key.startsWith("ultimate_keystone_"))options[key]=null;
       onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
@@ -11806,12 +11809,15 @@ function ShadesAndBlindsOptions({
           ] satisfies GridOption[] : []),
           ...(ultimate ? [
             spSelect("ultimate_wand_drop","Wand Drop",ULTIMATE_FAUX_WANDS),
+            ...(blindCount!==3 ? [spSelect("ultimate_common_group","Common Valance Group",["None","1","2","3","4","5","6","7","8","9","10"]),
+              ...(optionsJson.ultimate_common_group&&optionsJson.ultimate_common_group!=="None"?[spSelect("ultimate_common_position","Blind Position from Left",["1","2","3","4"]),spNumber("ultimate_common_gap_after","Gap after This Blind",0,12)]:[]),
+              spSelect("ultimate_matching_group","Side-by-Side Matching Group",["None","1","2","3","4","5","6","7","8","9","10"])]:[]),
             {key:"valance",label:"Valance",field:"valance",type:"select",options:ULTIMATE_FAUX_VALANCES},
             ...(spInside ? [spSelect("ultimate_mount_fit","Recess Arrangement",spValance === "None" ? ULTIMATE_FAUX_FITS.filter(v=>v!=="Bracket Flush") : ULTIMATE_FAUX_FITS),spNumber("mount_depth_inches","Mounting Depth",0,30)] : [spSelect("ultimate_shim_layers","Shim Layers",["0","1","2"])]),
             ...(spValance !== "None" ? [
               spSelect("ultimate_valance_returns","Valance Returns",spInside&&ufFit==="Fully Recessed"?["None"]:["None","Left","Right","Both"]),
               ...((optionsJson.ultimate_valance_returns ?? (spInside&&ufFit==="Fully Recessed"?"None":"Both")) !== "None" ? [spNumber("ultimate_return_inches","Custom Return Size",.5,5)] : []),
-              ...(blindCount!==3?[spNumber("ultimate_valance_width_inches","Custom Valance Width",1,101)]:[]),
+              ...(blindCount!==3?[spNumber("ultimate_valance_width_inches","Custom Valance Width",1,optionsJson.ultimate_common_group&&optionsJson.ultimate_common_group!=="None"?420:101)]:[]),
             ] : []),
             ...(spInside ? [{key:"ultimate_side_mount",label:"Side Support Kit",field:"json:ultimate_side_mount",type:"yes-no" as const,noFirst:true},
               ...(optionsJson.ultimate_side_mount === "Yes" ? [spSelect("ultimate_bracket_installation","Bracket Installation",(blindCount===3 ? [1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])) : [measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)]).every(w=>w-.375<=37) ? ["Top Support","Side Only"] : ["Top Support"])]:[])] : []),
@@ -11825,7 +11831,7 @@ function ShadesAndBlindsOptions({
               }),
               ...(spValance!=="None"?[spSelect("ultimate_keystone_count","Keystone Count",["0","1","2","3"]),
                 ...(Number(optionsJson.ultimate_keystone_count)>0?[spSelect("ultimate_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]),
-                  ...(optionsJson.ultimate_keystone_layout==="Custom"?Array.from({length:Math.min(3,Number(optionsJson.ultimate_keystone_count))},(_,i)=>spNumber(`ultimate_keystone_location_${i+1}`,`Keystone ${i+1} from Left`,6.5,101)):[])]:[])]:[]),
+                  ...(optionsJson.ultimate_keystone_layout==="Custom"?Array.from({length:Math.min(3,Number(optionsJson.ultimate_keystone_count))},(_,i)=>spNumber(`ultimate_keystone_location_${i+1}`,`Keystone ${i+1} from Left`,6.5,420)):[])]:[])]:[]),
             ] : []),
           ] satisfies GridOption[] : []),
         ];
@@ -12630,6 +12636,7 @@ function ShadesAndBlindsOptions({
       ) : null}
 
       {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
+      {productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" && Boolean(optionsJson.ultimate_common_group) && optionsJson.ultimate_common_group !== "None" && <p className="text-sm text-slate-700">Use the same common-valance group and shared valance choices on each blind line. Number blinds from left to right and enter the gap after each blind; the last gap is zero. Common-valance pricing requires dealer confirmation.</p>}
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
