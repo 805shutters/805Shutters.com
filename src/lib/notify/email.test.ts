@@ -309,6 +309,7 @@ describe("sendEmail guards (never throws, no-ops without config)", () => {
         idempotencyKey: "customer-closeout-quote-1"
       });
       expect(result).toEqual({ sent: true, id: "email-1" });
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty("cc");
       expect(fetchMock).toHaveBeenCalledWith(
         "https://api.resend.com/emails",
         expect.objectContaining({ headers: expect.objectContaining({ "Idempotency-Key": "customer-closeout-quote-1" }) })

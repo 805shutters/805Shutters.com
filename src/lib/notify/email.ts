@@ -25,6 +25,7 @@ export function isResendConfigured(): boolean {
 
 export async function sendEmail(input: {
   to: string | null | undefined;
+  cc?: string[];
   subject: string;
   html: string;
   text: string;
@@ -48,6 +49,7 @@ export async function sendEmail(input: {
       body: JSON.stringify({
         from: input.from || resendFromAddress(),
         to: [to],
+        ...(input.cc?.length ? { cc: input.cc } : {}),
         subject: input.subject,
         html: input.html,
         text: input.text,

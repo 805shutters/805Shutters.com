@@ -15,6 +15,7 @@ import { refreshInstallerCustomerBalance } from "@/lib/crm/installer-balance";
 import type { InstallationHandoffDeliveryState } from "@/lib/crm/installation-handoff";
 
 export const INSTALLER_FORM_FROM = "805 Shutters <805@805shutters.com>";
+export const INSTALLER_FORM_CC = "mtsinstallations@gmail.com";
 const BASE_VERSION = "base-v1";
 const BASE_RETRY_MINUTES = 5;
 
@@ -23,6 +24,8 @@ type InstallerOutboxStatus = "pending" | "processing" | "retry" | "uncertain" | 
 
 export type FrozenInstallerEmail = {
   to: typeof INSTALLER_FORM_RECIPIENT;
+  // Optional only for immutable payloads frozen before dual-recipient delivery.
+  cc?: [typeof INSTALLER_FORM_CC];
   from: typeof INSTALLER_FORM_FROM;
   subject: string;
   html: string;
@@ -86,6 +89,9 @@ class FrozenPayloadError extends Error {}
 function assertFrozenPayload(payload: FrozenInstallerEmail) {
   if (
     payload.to !== INSTALLER_FORM_RECIPIENT ||
+    (payload.cc !== undefined && (
+      !Array.isArray(payload.cc) || payload.cc.length !== 1 || payload.cc[0] !== INSTALLER_FORM_CC
+    )) ||
     payload.from !== INSTALLER_FORM_FROM ||
     !payload.idempotencyKey ||
     !payload.subject ||
@@ -149,6 +155,7 @@ async function defaultPrepareBase(
   const message = buildInstallerFormEmail(balanced, url);
   const payload: FrozenInstallerEmail = {
     to: INSTALLER_FORM_RECIPIENT,
+    cc: [INSTALLER_FORM_CC],
     from: INSTALLER_FORM_FROM,
     subject: message.subject,
     html: message.html,
@@ -178,6 +185,7 @@ async function defaultPrepareHandoff(
   const text = `${subject}\n\nCanonical handoff JSON and SHA-256 sidecar are attached. Source version: ${handoff.payload.sourceVersion}`;
   const payload: FrozenInstallerEmail = {
     to: INSTALLER_FORM_RECIPIENT,
+    cc: [INSTALLER_FORM_CC],
     from: INSTALLER_FORM_FROM,
     subject,
     text,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   INSTALLER_FORM_FROM,
   processInstallerDeliveryOutbox,
@@ -7,6 +7,15 @@ import {
   type InstallerOutboxClaim,
 } from "./installer-delivery-outbox";
 import type { InstallerFormRow } from "./installer-forms";
+import * as installerForms from "./installer-forms";
+import * as installerBalance from "./installer-balance";
+import { buildTechnicalMeasureInstallationHandoff } from "./installation-handoff";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 const form: InstallerFormRow = {
   id: "10000000-0000-4000-8000-000000000003",
@@ -87,6 +96,68 @@ function harness(input: {
 const client = {} as never;
 
 describe("installer delivery outbox runtime", () => {
+  it.each(["base_packet", "installation_handoff"] as const)("freezes and submits both recipients with the %s attachments", async (kind) => {
+    const handoff = buildTechnicalMeasureInstallationHandoff({
+      sourceCustomerId: "10000000-0000-4000-8000-000000000001",
+      sourceJobId: form.job_id!,
+      sourceDocumentId: form.id,
+      submittedAt: "2026-09-19T12:00:00.000Z",
+      durationMinutes: 60,
+    });
+    const balancedForm = { ...form, meta: { customer_balance: installerBalance.calculateInstallerCustomerBalance({
+      contractId: form.quote_id,
+      contractTotal: 200,
+      contractSignedAt: "2026-09-19T12:00:00.000Z",
+      payments: [{ amount: 100 }],
+      creditsIn: [],
+      creditsOut: [],
+    }) } };
+    vi.spyOn(installerForms, "ensureInstallerForm").mockResolvedValue(form);
+    vi.spyOn(installerBalance, "refreshInstallerCustomerBalance").mockResolvedValue(balancedForm);
+    vi.spyOn(installerForms, "prepareInstallerFormInstallationHandoff").mockResolvedValue(form);
+    vi.spyOn(installerForms, "installerFormHandoffPackage").mockReturnValue(handoff);
+    vi.stubEnv("RESEND_API_KEY", "test-key");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "both-recipients" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const h = harness({ claims: [claim({ kind, version_key: kind === "base_packet" ? "base-v1" : handoff.sha256 })] });
+    delete h.dependencies.prepareBase;
+    delete h.dependencies.prepareHandoff;
+    delete h.dependencies.send;
+
+    const formQuery = { select: () => formQuery, eq: () => formQuery, maybeSingle: async () => ({ data: form, error: null }) };
+    const database = { from: () => formQuery } as never;
+    const result = await processInstallerDeliveryOutbox(database, { dependencies: h.dependencies, limit: 1 });
+
+    expect(result.errors).toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(request).toMatchObject({
+      from: "805 Shutters <805@805shutters.com>",
+      to: ["mtsagent101@gmail.com"],
+      cc: ["mtsinstallations@gmail.com"],
+    });
+    expect(request.attachments).toHaveLength(kind === "base_packet" ? 1 : 2);
+    expect(request.attachments[0].filename).toMatch(kind === "base_packet" ? /\.pdf$/ : /\.json$/);
+    expect(h.updates[0].patch.payload).toMatchObject({ to: "mtsagent101@gmail.com", cc: ["mtsinstallations@gmail.com"] });
+    expect(h.updates.at(-1)?.patch).toMatchObject({ status: "sent", provider_message_id: "both-recipients" });
+  });
+
+  it("blocks a frozen packet with an unauthorized CC address", async () => {
+    const changed = { ...payload, cc: ["other@example.com"] } as unknown as FrozenInstallerEmail;
+    const h = harness({ claims: [claim({ payload: changed, idempotency_key: payload.idempotencyKey })] });
+    await processInstallerDeliveryOutbox(client, { dependencies: h.dependencies, limit: 1 });
+    expect(h.send).not.toHaveBeenCalled();
+    expect(h.updates.at(-1)?.patch).toMatchObject({ status: "blocked" });
+  });
+
+  it("retries both recipients using the exact frozen payload", async () => {
+    const both: FrozenInstallerEmail = { ...payload, cc: ["mtsinstallations@gmail.com"] };
+    const h = harness({ claims: [claim({ payload: both, idempotency_key: both.idempotencyKey, first_send_attempt_at: "2026-09-15T11:00:00.000Z" })] });
+    await processInstallerDeliveryOutbox(client, { dependencies: h.dependencies, limit: 1 });
+    expect(h.send).toHaveBeenCalledExactlyOnceWith(both);
+    expect(h.dependencies.prepareBase).not.toHaveBeenCalled();
+  });
+
   it("freezes the base packet before sending and records the accepted provider ID", async () => {
     const h = harness();
     const result = await processInstallerDeliveryOutbox(client, { dependencies: h.dependencies, limit: 1 });
