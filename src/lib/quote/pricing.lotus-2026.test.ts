@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isLotusObservedProduct } from "./lotus-observed-offerings";
 import { catalog, getProduct } from "./catalog";
 import { priceDealerNetDesign, priceDesign } from "./pricing";
 
@@ -13,7 +14,12 @@ describe("Lotus West A26.v1 cost catalog with owner-approved retail", () => {
       pages: 113,
       sha256: "4e9aba91a601e1212a3e8a1531c361caf033c28ef6ca1fdac3ad6247502a982f",
     });
-    const lotus = catalog.products.filter((product) => product.manufacturer === "Lotus");
+    const allLotus = catalog.products.filter((product) => product.manufacturer === "Lotus");
+    const lotus = allLotus.filter(product => !isLotusObservedProduct(product.id));
+    const held = allLotus.filter(product => isLotusObservedProduct(product.id));
+    expect(held).toHaveLength(6);
+    expect(held.every(product => product.priceBasis === "manual_required" && product.customerRetailStatus === "unverified")).toBe(true);
+    expect(held.every(product => product.programs.every(program => program.grid.prices.length === 0))).toBe(true);
     expect(lotus).toHaveLength(5);
     expect(lotus.every((product) => product.priceBasis === "suggested_retail")).toBe(true);
     expect(lotus.every((product) => product.customerRetailStatus === "verified")).toBe(true);

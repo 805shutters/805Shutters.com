@@ -206,3 +206,11 @@ describe("CRM quote to authoritative V2 import mapping", () => {
   });
 
 });
+
+
+it.each(["lotus_vinyl_blinds", "lotus_mini_blinds", "lotus_faux_wood_blinds", "lotus_roller_shades", "lotus_vertical_blinds", "lotus_dealer_listed_parts"])("preserves exact Lotus %s identities when new held destinations coexist", productId => {
+  const source = design({product_id:productId, fabric:null, details:{supplier:"Lotus"}});
+  const structure = buildSalesQuoteV2ImportStructure(quote([line([source])]));
+  expect(structure.lines[0].selectedDesignId).toBe(source.id);
+  expect(structure.lines[0].designs[0].patch.optionsJson).toMatchObject({catalog_product_id:productId});
+});

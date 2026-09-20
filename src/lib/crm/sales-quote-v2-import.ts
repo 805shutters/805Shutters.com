@@ -1,3 +1,4 @@
+import { lotusProductId } from "@/lib/quote/lotus-selection";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { loadQuoteBuilder } from "@/lib/crm/quote-builder";
@@ -212,12 +213,18 @@ function resolveCatalogIdentity(
           manufacturerName(product.manufacturer) === manufacturer,
       )
     : [];
+  // Legacy Lotus category evidence routes to the original custom family. New
+  // exact-item destinations require an explicit identity and never compete
+  // with those historical category-only imports.
+  const legacyLotusProduct = manufacturer === "Lotus" && category
+    ? getProduct(lotusProductId(category) ?? "")
+    : undefined;
   const product =
     manufacturerName(storedProduct?.manufacturer) === manufacturer
       ? storedProduct
-      : matchingProducts.length === 1
+      : legacyLotusProduct ?? (matchingProducts.length === 1
         ? matchingProducts[0]
-        : null;
+        : null);
   if (!product) {
     return { manufacturer, productId: null, programId: null };
   }
