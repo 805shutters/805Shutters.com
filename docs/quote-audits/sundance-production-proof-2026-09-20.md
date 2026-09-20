@@ -73,3 +73,7 @@ Observed remaining copy issue: the Zip line's missing dimensional-grid/manual-pr
 ### SheerView controls, release 3b9257e5
 
 In internal unsent 805-0335, line 10 (Primary Bathroom, 36×60, Carbon S65XN100-4) the live form exposed No Drill after choosing Cordless. Changing to Continuous Cord Loop cleared No Drill and removed it from the menu. Selected Flat Square, Safe Wand and Single; waited for Quote saved, closed and reopened the quote. All three values and the exact material persisted. The source-only availability warning remained, and no manual price was entered. This verifies the saved control path, not manufacturer orderability or approved account price.
+
+### Copy-line refresh race found during Portfolio proof
+
+On release f9fb2389, copying Portfolio line 12 into line 15 initially displayed generic Roman controls without a manufacturer, despite the source being saved. Closing and reopening restored the copied Sundance identity, TDBU, BO01 liner and Standard drop: the persisted copy was intact. The native success handler invalidated parent line and child design queries concurrently; the child read the old cached line IDs. Current and legacy builders now await the existing parent-before-child refresh helper, and legacy child reads use current cached IDs. Validation: the slow-parent query regression and both design-copy suites passed (22 checks), plus TypeScript. Live proof of the corrected immediate copy flow is pending deployment.

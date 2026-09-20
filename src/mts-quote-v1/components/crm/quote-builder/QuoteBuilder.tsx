@@ -1,3 +1,4 @@
+import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges, calculateQuoteTotalBreakdown, parseQuoteAdminControls } from "@/mts-quote-v1/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -618,8 +619,9 @@ export function QuoteBuilder() {
   }, [quote]);
 
   // Fetch line items
+  const lineItemsQueryKey = [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"] as const;
   const { data: lineItems = [] } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+    queryKey: lineItemsQueryKey,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
@@ -640,11 +642,12 @@ export function QuoteBuilder() {
   const { data: designs = [] } = useQuery({
     queryKey: designsQueryKey,
     queryFn: async () => {
-      if (lineItemIds.length === 0) return [];
+      const currentLineIds = currentQuoteLineIds(queryClient, lineItemsQueryKey);
+      if (currentLineIds.length === 0) return [];
       const { data, error } = await (supabase as any)
         .from("sales_quote_designs")
         .select("*")
-        .in("line_item_id", lineItemIds);
+        .in("line_item_id", currentLineIds);
       if (error) throw error;
       return (data || []) as SalesQuoteDesign[];
     },
@@ -913,15 +916,7 @@ export function QuoteBuilder() {
     },
     onSuccess: async () => {
       await syncQuoteTotal({ allowZero: true });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
-      });
+      await refreshQuoteV2Rows(queryClient, queryKeys.salesQuotes.detail(activeQuoteId || ""), lineItemsQueryKey, designsQueryKey);
       toast.success("Line item copied");
     },
     onError: (error) => {

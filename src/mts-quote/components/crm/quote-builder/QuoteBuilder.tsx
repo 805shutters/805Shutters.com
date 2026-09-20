@@ -1354,15 +1354,8 @@ export function QuoteBuilder({
       if (!serverOwnedV2) {
         await syncQuoteTotal({ allowZero: true });
       }
-      queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
-      });
-      queryClient.invalidateQueries({
-        queryKey: designsQueryKey,
-      });
-      queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
-      });
+      // Design fetches read parent IDs from cache; wait for the new line first.
+      await refreshQuoteV2Rows(queryClient, quoteQueryKey, lineItemsQueryKey, designsQueryKey);
       toast.success("Line item copied");
     },
     onError: (error) => {
