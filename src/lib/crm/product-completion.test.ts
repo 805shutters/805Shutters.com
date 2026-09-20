@@ -96,7 +96,7 @@ describe("staff product completion",()=>{
 
 
 describe("job-derived product completion", () => {
-  const fallback = { step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp }] };
+  const fallback = { step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp, productType: "roller shades" }] };
   function overview(db: ReturnType<typeof database>) {
     const jobs = structuredClone(db.tables.crm_jobs) as CrmJob[];
     const customerFiles = buildCustomerFiles({ jobs, quotes: [], bookkeepingRows: [], customers: [], products: [], contracts: [] });
@@ -118,6 +118,7 @@ describe("job-derived product completion", () => {
     expect(overview(db).products[0]).toMatchObject({ [step]: true, [step === "ordered" ? "shipped" : "ordered"]: false });
     await completeProductMilestone(db.client, { ...fallback, step }, actor);
     expect(db.writes).toHaveLength(1);
+    expect(overview(db).products[1]).toMatchObject({ ordered: false, shipped: false });
     db.tables.crm_jobs[0].product_interest = "Blinds";
     expect(overview(db).products[0]).toMatchObject({ ordered: false, shipped: false });
   });
@@ -135,7 +136,7 @@ describe("job-derived product completion", () => {
   it("keeps independently saved order and shipment checks", async () => {
     const db = setup();
     await completeProductMilestone(db.client, { ...fallback, step: "ordered" }, actor);
-    await completeProductMilestone(db.client, { ...fallback, records: [{ id: fallback.records[0].id, updatedAt: db.tables.crm_jobs[0].updated_at }] }, actor);
+    await completeProductMilestone(db.client, { ...fallback, records: [{ ...fallback.records[0], updatedAt: db.tables.crm_jobs[0].updated_at }] }, actor);
     expect(overview(db).products[0]).toMatchObject({ ordered: true, shipped: true });
   });
   it.each(["stale", "deleted", "missing", "write conflict"])("rejects %s without painting or saving a check", async reason => {
@@ -230,6 +231,66 @@ describe('product invoice costs',()=>{
     expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);expect(db.tables.crm_customer_products.every(p=>p.meta.ordered_at)).toBe(true);
     await saveProductOrderCost(db.client,{...input,invoice},actor);expect(db.tables.crm_quotes[0].materials_cost).toBe(1500);
     expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta))).toMatchObject([{amount:1200,reference:'INV-123',records:[p1,p2]}]);
+  });
+  it('reallocates a shared invoice without changing its total, siblings, or audit history',async()=>{
+    const db=setupCost();
+    db.tables.crm_customer_products=[{...db.tables.crm_customer_products[0],product_type:'Roller Shades, Shutters',status:'ordered'}];
+    const parent=db.tables.crm_quotes[0];parent.materials_cost=1780.28;
+    parent.meta={product_order_costs:{[p1]:{amount:1780.28,reference:'ORIGINAL',records:[p1],requestId:'old'}}};
+    const records=[{id:p1,updatedAt:timestamp,productType:'roller shades'}];
+    const body={...input,records,invoice:{...invoice,amount:700,includedInCogs:true}};
+    await expect(saveProductOrderCost(db.client,{...body,invoice:{...body.invoice,includedInCogs:false}},actor)).rejects.toThrow('Allocate the existing');
+    expect(db.writes).toHaveLength(0);
+    await saveProductOrderCost(db.client,body,actor);
+    await saveProductOrderCost(db.client,body,actor);
+    expect(parent.materials_cost).toBe(1780.28);
+    expect(Object.values(productOrderCosts(parent.meta)).map(cost=>cost.amount)).toEqual([700]);
+    expect(parent.meta.product_order_costs[p1]).toMatchObject({amount:1780.28,supersededAt:expect.any(String)});
+    expect(db.tables.crm_customer_products[0].meta.product_type_workflow.shutters).toBeUndefined();
+    const second={...input,records:[{id:p1,updatedAt:db.tables.crm_customer_products[0].updated_at,productType:'shutters'}],invoice:{...invoice,amount:1080.28,includedInCogs:true,expectedUpdatedAt:parent.updated_at,requestId:'71111111-1111-4111-8111-111111111111'}};
+    await saveProductOrderCost(db.client,second,actor);
+    expect(parent.materials_cost).toBe(1780.28);
+    expect(Object.values(productOrderCosts(parent.meta)).reduce((total,cost)=>total+cost.amount,0)).toBe(1780.28);
+    expect(parent.meta.product_order_cost_history).toHaveLength(2);
+    expect(db.tables.crm_customer_products[0].meta.product_type_workflow['roller shades'].ordered_at).toBeTruthy();
+    expect(db.tables.crm_customer_products[0].meta.product_type_workflow.shutters.ordered_at).toBeTruthy();
+  });
+  it.each([true,false])('reconciles only an evidenced shared email invoice (linked=%s)',async linked=>{
+    const db=setupCost();db.tables.crm_customer_products=[{...db.tables.crm_customer_products[0],product_type:'Shutters, Roller Shades'}];
+    const parent=db.tables.crm_quotes[0],emailId='81111111-1111-4111-8111-111111111111';
+    parent.materials_cost=1780.28;parent.meta={product_order_costs:{[p1]:{amount:1780.28,reference:'ORIGINAL',emailId:linked?emailId:null,records:[p1]}}};
+    db.tables.crm_order_cogs_emails=[{id:emailId,matched_quote_id:quoteId,match_status:'matched',applied_at:null,extracted_order_amount:1780.28,gmail_message_id:'sample-shared'}];
+    const body={...input,records:[{...input.records[0],productType:'shutters'}],invoice:{...invoice,amount:1080.28,emailId,includedInCogs:true}};
+    if(linked){await saveProductOrderCost(db.client,body,actor);expect(parent.materials_cost).toBe(1780.28);expect(Object.values(productOrderCosts(parent.meta))).toMatchObject([{amount:1080.28,emailId}]);}
+    else {await expect(saveProductOrderCost(db.client,body,actor)).rejects.toThrow('not linked to this email');expect(db.writes).toHaveLength(0);}
+  });
+  it('records different manufacturers independently and rejects a cross-manufacturer request',async()=>{
+    const db=setupCost();db.tables.crm_customer_products[0].supplier='Norman';db.tables.crm_customer_products[1].supplier='Onyx';
+    await expect(saveProductOrderCost(db.client,{...input,invoice},actor)).rejects.toThrow('product group changed');
+    expect(db.writes).toHaveLength(0);
+    await saveProductOrderCost(db.client,{...input,records:[input.records[0]],invoice},actor);
+    expect(db.tables.crm_customer_products[0].meta.ordered_at).toBeTruthy();
+    expect(db.tables.crm_customer_products[1].meta.ordered_at).toBeUndefined();
+    const parent=db.tables.crm_quotes[0];
+    await saveProductOrderCost(db.client,{...input,records:[input.records[1]],invoice:{...invoice,amount:700,expectedUpdatedAt:parent.updated_at,requestId:'71111111-1111-4111-8111-111111111111'}},actor);
+    expect(parent.materials_cost).toBe(2200);
+    expect(productOrderCosts(parent.meta)[p1].amount).toBe(1200);
+    expect(productOrderCosts(parent.meta)[p2].amount).toBe(700);
+  });
+  it.each([undefined,'blinds'])('rejects an absent or wrong mixed-product scope (%s) before saving money',async productType=>{
+    const db=setupCost();db.tables.crm_customer_products[0].product_type='Shutters, Roller Shades';
+    await expect(saveProductOrderCost(db.client,{...input,records:[{...input.records[0],productType}],invoice},actor)).rejects.toThrow();
+    expect(db.writes).toHaveLength(0);
+  });
+  it('scopes shipment evidence to one part of a combined record and persists on reload',async()=>{
+    const db=setupCost();db.tables.crm_customer_products=[{...db.tables.crm_customer_products[0],product_type:'Shutters, Roller Shades',status:'shipped',meta:{keep:true}}];
+    const target={...input,step:'shipped',records:[{...input.records[0],productType:'roller shades'}]};
+    await completeProductMilestone(db.client,target,actor);await completeProductMilestone(db.client,target,actor);
+    expect(db.writes).toHaveLength(1);
+    const row=db.tables.crm_customer_products[0];
+    expect(row.meta.product_type_workflow['roller shades'].shipped_at).toBeTruthy();
+    expect(row.meta.product_type_workflow.shutters).toBeUndefined();
+    expect(row.status).toBe('shipped');expect(row.meta.keep).toBe(true);
   });
   it('records an explicit zero-dollar invoice and completes the order',async()=>{
     const db=setupCost();await saveProductOrderCost(db.client,{...input,invoice:{...invoice,amount:0,reference:'NO CHARGE'}},actor);
@@ -353,10 +414,11 @@ describe("automatic order email uses the same product invoice workflow", () => {
     expect(db.tables.crm_customer_products[0].meta.ordered_at).toBeTruthy();
     expect(db.tables.crm_customer_products[1].meta.ordered_at).toBeUndefined();
   });
-  it.each(["different sale", "combined products", "existing manual cost", "different amount"])("leaves %s for review", async reason => {
+  it.each(["different sale", "combined products", "different manufacturer", "existing manual cost", "different amount"])("leaves %s for review", async reason => {
     const {db, apply} = setup();
     if (reason === "different sale") db.tables.crm_order_cogs_emails[0].matched_job_id = entryId;
     if (reason === "combined products") db.tables.crm_customer_products.forEach(p => p.product_type = "Shutters and Roller Shades");
+    if (reason === "different manufacturer") db.tables.crm_customer_products.forEach(p => p.supplier = "Norman");
     if (reason === "existing manual cost" || reason === "different amount") {
       await apply();
       const cost = Object.values(db.tables.crm_quotes[0].meta.product_order_costs)[0] as Row;

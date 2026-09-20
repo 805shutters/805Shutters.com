@@ -207,7 +207,7 @@ export function buildCustomerFiles({
           unit_price: Number(job.estimated_total) || 0,
           total_price: Number(job.estimated_total) || 0,
           status: job.status,
-          meta: { source: "crm_job", ordered_at: objectMeta(checks.ordered).at, shipped_at: objectMeta(checks.shipped).at }
+          meta: { source: "crm_job", product_type_workflow: objectMeta(job.meta).product_type_workflow, ordered_at: objectMeta(checks.ordered).at, shipped_at: objectMeta(checks.shipped).at }
         });
       }
     }

@@ -183,18 +183,26 @@ describe("operations overview source integrity", () => {
       { name: "Shutters / Blinds", quantity: 3, records: [{ id: "p2" }] }
     ]);
   });
-  it("deduplicates records before summing two same-type products and retains the combined name", () => {
+  it("separates mixed records without duplicating unknown quantities or shared checks", () => {
     const first = product({ product_type: "Plantation Shutters, Roller Shades", quantity: 2 });
     const second = product({ id: "p2", product_type: "Plantation Shutters, Roller Shades", quantity: 3 });
     const file = { id: "file-1", customer: null, customerName: "Avery", jobs: [], quotes: [], bookkeepingRows: [], products: [first], contracts: [], notes: [] } as unknown as CrmCustomerFile;
     const items = buildOperationsItems(data({ quotes: [quote()], customerFiles: [file], customerProducts: [first, second] }));
 
-    expect(items[0].products).toEqual([
-      expect.objectContaining({
-        name: "Plantation Shutters, Roller Shades",
-        quantity: 5,
-        records: [expect.objectContaining({ id: "p1" }), expect.objectContaining({ id: "p2" })]
-      })
+    expect(items[0].products).toMatchObject([
+      { name: "Plantation Shutters", quantity: null, ordered: false, records: [{ id: "p1", productType: "plantation shutters" }, { id: "p2", productType: "plantation shutters" }] },
+      { name: "Roller Shades", quantity: null, ordered: false, records: [{ id: "p1", productType: "roller shades" }, { id: "p2", productType: "roller shades" }] }
+    ]);
+  });
+  it("keeps the same product from different manufacturers on independent checks", () => {
+    const items = buildOperationsItems(data({ quotes: [quote()], customerProducts: [
+      product({ product_type: "Roller Shades", supplier: "Norman", quantity: 2 }),
+      product({ id: "p2", product_type: "Roller Shades", supplier: "Onyx", status: "pending", quantity: 3 }),
+      product({ id: "p3", product_type: "Roller Shades", supplier: " NORMAN ", quantity: 1 }),
+    ] }));
+    expect(items[0].products).toMatchObject([
+      { manufacturer: "Norman", quantity: 3, ordered: true, records: [{ id: "p1" }, { id: "p3" }] },
+      { manufacturer: "Onyx", quantity: 3, ordered: false, records: [{ id: "p2" }] }
     ]);
   });
   it("reports unknown quantity for self-booking placeholders with absent or null window counts", () => {

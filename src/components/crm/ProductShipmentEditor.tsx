@@ -26,7 +26,7 @@ export function ProductShipmentEditor({ item, product, onSave, onClose }: { item
     finally { lock.current = false; setSaving(false); }
   }
   return <dialog ref={dialog} className={styles.invoiceDialog} aria-labelledby="shipment-title" onCancel={event => { event.preventDefault(); if (!saving) onClose(); }}>
-    <form onSubmit={save}><small>SHIPPED · SHIPPING CONFIRMATION</small><h2 id="shipment-title">{product.name}</h2><p>{item.source.customerName}</p>
+    <form onSubmit={save}><small>SHIPPED · SHIPPING CONFIRMATION</small><h2 id="shipment-title">{product.name}</h2><p>{product.manufacturer || "Manufacturer not recorded"} · {item.source.customerName}</p>
       <p>Use the actual shipment notice in 805@805shutters.com. Confirm the order reference matches every selected product. Estimated dates and shipping labels do not confirm dispatch.</p>
       <label>Confirmed ship date<input autoFocus required type="date" max={losAngelesDateString(new Date())} value={date} disabled={saving} onChange={event => setDate(event.target.value)} /></label>
       <label>Manufacturer order reference<input required maxLength={150} value={reference} disabled={saving} onChange={event => setReference(event.target.value)} /></label>

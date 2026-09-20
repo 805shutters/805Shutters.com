@@ -6,6 +6,7 @@ import { buildOperationsItems, productCompletionSourceLinks, type OperationsItem
 import { orderCostKey, productOrderCosts } from './product-order-cost';
 import { saveProductOrderCost } from './save-product-order-cost';
 import type { CrmDashboardData, CrmOrderCogsEmail } from './types';
+import { normalizedProductLabel } from './product-workflow-groups';
 
 /** Never infer an allocation across a mixed-product order from the invoice total. */
 export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrderCogsEmail, manufacturer: string | null | undefined) {
@@ -21,8 +22,8 @@ export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrder
   });
   if (matches.length !== 1) throw new CrmAuthError(409, 'Order email needs one exact active sale before COGS can be applied.');
   const item = matches[0];
-  const products = item.products;
-  const simple = (product: ProductProgress) => !/[,/&+]|\band\b/i.test(product.name);
+  const products = item.products.filter(product => !product.manufacturer || normalizedProductLabel(product.manufacturer) === normalizedProductLabel(manufacturer || ''));
+  const simple = (product: ProductProgress) => !product.records.some(record => record.productType) && !/[,/&+]|\band\b/i.test(product.name);
   let product: ProductProgress | undefined;
   if (manufacturer === 'Onyx') {
     const shutters = products.filter(p => simple(p) && /\bshutters?\b/i.test(p.name));
