@@ -90,3 +90,13 @@ Fresh public CRM reload and full close/reopen of internal unsent805-0335 verifie
 One old Portfolio Standard configuration lacked its newly introduced hidden interior-valance No field. The live alert exposed that migration/default edge; follow-up da8c0c41 accepts absent/null/empty as no interior valance only on Standard shades. Explicit Yes is still invalid, and Waterfall still requires an explicit selection. No pricing eligibility changed.
 
 All15 lines remain Draft. Total unavailable/13 windows need pricing; the two original manual amounts remain explicitly labeled test fixtures. No message, order, payment or sale occurred.
+
+### Cellular controls, Day/Night and immediate copy — production8d2fa5c9
+
+Fresh public reload of0335 exposed the nine documented cellular systems. Original line1 retained PU422SS-766 Classic Gray blackout36×60; selected Cordless, Inside and Single, then waited for Quote saved.
+
+Copied line1 to new line16. The initial completed render immediately showed Sundance, exact PU422SS-766,3/4-inch Blackout, Cordless/Inside/Single and copied123.45 internal fixture, without closing/reopening. This closes the459a0133 immediate-copy regression proof.
+
+Changed line16 to Cordless Day/Night: its incompatible blackout primary identity cleared, the top menu exposed light-filtering choices, and a separate blackout-bottom menu appeared. Selected top PU41SS-766 Classic Gray LF and bottom PU422SS-766 Classic Gray BO. Tested width72 1/16 inches; visible validation stated width19–72 and height10–72. Restored36×60, waited for Quote saved, closed and reopened. Both exact fabric identities, Day/Night, Inside and Single persisted. Original line1 remained Cordless/BO. The copied123.45 remains an explicitly labeled internal persistence fixture, not a dealer/customer quote price; total remains unavailable with13 unpriced lines. No send/order/sale/payment occurred.
+
+This proves the representative UI/save/server-rule path and copy refresh, not every paired fabric's dealer compatibility, motor accesssory pricing or current account factors.
