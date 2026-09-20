@@ -74,7 +74,9 @@ describe("September Norman Roller PG4 supplement", () => {
       } });
       expect(resolveRollerOffering(context(color.collection, color.colorCode, "2026-08-31")).ok).toBe(false);
       expect(resolveRollerOffering(context("Olivia", color.colorCode)).ok).toBe(false);
-      expect(findRomanRearColor(color.collection, color.colorCode)).toBeUndefined();
+      expect(findRomanRearColor(color.collection, color.colorCode, "2026-08-31")).toBeUndefined();
+      // September Roman p38/p42 approves Springtide and Olivia RD; Etch RD remains excluded.
+      expect(Boolean(findRomanRearColor(color.collection, color.colorCode, "2026-09-01"))).toBe(color.collection !== "Etch RD");
     }
   });
 
