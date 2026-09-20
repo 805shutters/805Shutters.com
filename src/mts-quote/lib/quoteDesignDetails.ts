@@ -98,6 +98,8 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const pairedRomanChains = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
+  if (pairedRomanChains) details.push({label:"Chain Positions",value:/common valance/i.test(String(design.shade_type)) ? "Left shade: Left; Right shade: Right" : options.chain_location === "Left" ? "Front Roman: Left; Rear roller: Right" : "Front Roman: Right; Rear roller: Left"});
   const pairedRoman = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /motor/i.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
   if (pairedRoman) {
     const common = /common valance/i.test(String(design.shade_type));
@@ -115,6 +117,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || isInternalOptionKey(key)) return;
     if (pairedRoman && key === "motor_position") return;
+    if (pairedRomanChains && key === "chain_location") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
@@ -367,6 +370,9 @@ function humanizeKey(key: string): string {
     perfectsheer_wood_finish: "Wood Valance Finish",
     perfectsheer_wand_color: "AutoWand Color",
     perfectsheer_tube_diameter: "Tube Diameter",
+    roman_chain_length: "Custom Chain Length",
+    roman_chain_unobstructed: "Unobstructed Below Tension Device",
+    roman_pole_quantity: "Pole or Attachment Quantity",
     perfectsheer_chain_length: "Custom Cord Length",
     perfectsheer_chain_unobstructed: "Unobstructed Below Tension Device",
     smartfold_chain_length: "Custom Chain Length",

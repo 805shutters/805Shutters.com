@@ -1,3 +1,4 @@
+import { romanHardware } from "./norman-roman-hardware";
 import { isRomanSmartPower, romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { woodComponents } from "./norman-wood";
 import { deriveWoodAssemblies } from "./norman-wood-assemblies";
@@ -72,6 +73,10 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       height: selection.heightInches, motorCount: /motor/i.test(String(selection.configuration.lift_system)) ? 2 : 0,
       motorPositions: ["left", "right"], motors: /motor/i.test(String(selection.configuration.lift_system)) ? [{shade:"left",position:"Left",width:widths[0]}, {shade:"right",position:"Right",width:widths[1]}] : [], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
+  }
+  for (const {selection} of lines) {
+    const hardware=romanHardware(selection);
+    if(hardware)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...(selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord ?? {}),hardware:hardware.record}};
   }
   issues.push(...deriveCitylightsMatching(lines));
   issues.push(...deriveUltimateAssemblies(lines));

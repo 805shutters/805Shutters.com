@@ -1,3 +1,4 @@
+import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
@@ -9186,6 +9187,8 @@ function ShadesAndBlindsOptions({
         nextJson.chain_color = null;
         nextJson.chain_location = null;
         nextJson.chain_length = null;
+        nextJson.roman_chain_length = null;
+        nextJson.roman_chain_unobstructed = null;
       }
       if (nextControl !== "Continuous Cord Loop") {
         nextJson.headrail_size = null;
@@ -9193,6 +9196,7 @@ function ShadesAndBlindsOptions({
       if (nextControl !== "Cordless") {
         nextJson.poles = null;
         nextJson.pole_length = null;
+        nextJson.roman_pole_quantity = null;
       }
       if (nextControl !== "Motorized") {
         nextJson = {...clearMotorizationOptions(nextJson),...Object.fromEntries(ROMAN_MOTOR_ACCESSORY_KEYS.map(key=>[key,null]))};
@@ -9382,9 +9386,9 @@ function ShadesAndBlindsOptions({
         // Pleated returns are an outside-mount option at Norman.
         if (nextJson.valance_returns === "Pleated Returns") nextJson.valance_returns = null;
       }
-      // Inside Mount + Continuous Cord Loop is standard chain length only.
+      // Preserve the legacy picker policy; September V2 accepts measured custom chains.
       if (
-        nextMount === "Inside Mount" &&
+        !authoritativeV2 && nextMount === "Inside Mount" &&
         design?.lift_system === "Continuous Cord Loop" &&
         nextJson.chain_length &&
         nextJson.chain_length !== "Standard"
@@ -9406,6 +9410,9 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (authoritativeV2 && productType === "Roman Shades" && field === "json:roman_chain_length") {
+      onUpdateFields({options_json:{...currentJson,roman_chain_length:value,chain_length:null}}); return;
+    }
     if (productType === "Roman Shades" && field === "json:chain_type") {
       onUpdateFields({
         options_json: {
@@ -9423,6 +9430,7 @@ function ShadesAndBlindsOptions({
           ...currentJson,
           poles: value,
           ...(value === "Pole with Attachment" ? {} : { pole_length: null }),
+          ...(value && value !== "None" ? {} : {roman_pole_quantity:null}),
         },
       });
       return;
@@ -10770,23 +10778,20 @@ function ShadesAndBlindsOptions({
               options: ROMAN_CHAIN_COLORS,
             });
           }
-          options.push({
+          if (!authoritativeV2 || shadeType !== "Common Valance") options.push({
             key: "chain_location",
             label: "Chain Location (from inside the room)",
             field: "json:chain_location",
             type: "buttons",
             options: ROMAN_CHAIN_LOCATIONS,
           });
-          // Norman: Inside Mount + Continuous Cord Loop is standard-length only.
-          const standardOnly =
-            controlType === "Continuous Cord Loop" && mountType === "Inside Mount";
-          options.push({
-            key: "chain_length",
-            label: "Chain Length",
-            field: "json:chain_length",
-            type: "select",
-            options: standardOnly ? (["Standard"] as readonly string[]) : ROMAN_CHAIN_LENGTHS,
-          });
+          if (authoritativeV2) {
+            options.push({key:"roman_chain_length",label:"Custom Chain Length",field:"json:roman_chain_length",type:"number",min:0.125,max:280,step:"0.125",unit:"in",placeholder:"Default"} as GridOption);
+            options.push({key:"roman_chain_unobstructed",label:"Unobstructed Below Tension Device",field:"json:roman_chain_unobstructed",type:"buttons",options:["No","Yes"]});
+          } else {
+            const standardOnly=controlType === "Continuous Cord Loop" && mountType === "Inside Mount";
+            options.push({key:"chain_length",label:"Chain Length",field:"json:chain_length",type:"select",options:standardOnly?["Standard"]:ROMAN_CHAIN_LENGTHS});
+          }
         }
 
         // Cordless pole options.
@@ -10798,6 +10803,7 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: ROMAN_POLE_OPTIONS,
           });
+          if (authoritativeV2 && poles && poles !== "None") options.push({key:"roman_pole_quantity",label:"Pole or Attachment Quantity",field:"json:roman_pole_quantity",type:"select",options:["1","2"]});
           if (poles === "Pole with Attachment") {
             options.push({
               key: "pole_length",
@@ -12222,6 +12228,11 @@ function ShadesAndBlindsOptions({
     heightInches: measurementToInches(_lineItem.height_whole, _lineItem.height_fraction), options: {},
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
+  const romanHardwareIssues=authoritativeV2 && productType === "Roman Shades" ? romanHardware({
+    productId:"roman",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  })?.issues ?? [] : [];
   const woodIssues = authoritativeV2 && productType === "Wood Blinds" ? validateNormanFamilyRules({
     productId:"wood_blinds",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
@@ -12740,6 +12751,9 @@ function ShadesAndBlindsOptions({
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {authoritativeV2 && productType === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">Chain length runs from the top of the headrail to the bottom of the tension device. The default is shade height minus 3 inches. Leave at least 2 inches clear below the tension device.{design?.shade_type === "Common Valance" ? " The left shade has its chain on the left; the right shade has its chain on the right." : ""}</p>}
+      {authoritativeV2 && productType === "Roman Shades" && optionsJson.hold_downs === "Magnetic" && <p className="text-sm text-slate-700">Allow 1 7/16 inches beside the shade and 5/16 inch below it for the magnet catch. Magnetic hold-downs are not recommended on metal doors.</p>}
+      {romanHardwareIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{romanHardwareIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {woodIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{woodIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartprivacyIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartprivacyIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}

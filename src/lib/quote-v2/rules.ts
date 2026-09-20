@@ -1,3 +1,4 @@
+import { romanHardware } from "./norman-roman-hardware";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
 import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
 import { validateVerticalHoneycombHardware } from "./norman-honeycomb-vertical";
@@ -2422,6 +2423,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       break;
     case "roman":
       issues.push(...validateRoman(context));
+      issues.push(...(romanHardware(context)?.issues ?? []));
       break;
     case "honeycomb":
       issues.push(...validateHoneycomb(context));
