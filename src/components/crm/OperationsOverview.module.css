@@ -212,7 +212,6 @@
 .condensedTable tbody td:last-child { border-radius:0 6px 6px 0; }
 .condensedTable tr > :first-child { position:sticky; left:0; z-index:1; box-shadow:5px 0 8px #0002; }
 .condensedTable .customerLink { display:block; width:180px; max-width:180px; height:24px; min-height:24px; overflow:hidden; text-overflow:ellipsis; font-size:12px; padding:0; white-space:nowrap; }
-.condensedTable .condensedReference { max-width:120px; overflow:hidden; text-overflow:ellipsis; }
 .condensedTable .completionButton { width:24px; height:24px; min-height:24px; padding:2px; }
 .condensedTable .mark { width:20px; height:20px; border-width:1.5px; }
 .condensedTable .mark svg, .condensedTable .savingMark { width:14px; height:14px; }
