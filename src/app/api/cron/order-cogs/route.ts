@@ -44,14 +44,17 @@ function requireCronAccess(request: NextRequest, env: OrderCogsCronDependencies[
 }
 
 async function runAuxiliaryProcessor<T>(
-  name: "Square payment reconciliation" | "Peer payment processing",
+  name: "Order email processing" | "Square payment reconciliation" | "Peer payment processing",
   unavailableMessage: string,
   processor: () => Promise<T>,
+  succeeded: (result: T) => boolean = () => true,
 ) {
   try {
+    const result = await processor();
     return {
-      result: await processor(),
-      state: { status: "completed" as const },
+      result,
+      state: succeeded(result) ? { status: "completed" as const }
+        : { status: "failed" as const, message: unavailableMessage },
     };
   } catch (error) {
     console.error(`${name} failed during order COGS cron.`, error);
@@ -73,14 +76,21 @@ export async function runOrderCogsCron(
     }
     const supabase = dependencies.getSupabase();
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
-    const orderCogs = await observeIntegration(supabase, "order-cogs", () => dependencies.processOrderCogs(supabase, {
-      actorEmail: "order-cogs-cron",
-      autoApply: false,
-      productAutoApply: true,
-      archive: false,
-      maxRunMs: 230_000,
-    }), result => !(result.errors || result.recordErrors || result.deferred));
-    const [squarePayments, peerPayments] = await Promise.all([
+    // Start independent email intake immediately: a failed or slow vendor scan
+    // must not prevent customer receipts from being checked within this invocation.
+    const [orders, squarePayments, peerPayments] = await Promise.all([
+      runAuxiliaryProcessor(
+        "Order email processing",
+        "Order email processing is temporarily unavailable.",
+        () => observeIntegration(supabase, "order-cogs", () => dependencies.processOrderCogs(supabase, {
+          actorEmail: "order-cogs-cron",
+          autoApply: false,
+          productAutoApply: true,
+          archive: false,
+          maxRunMs: 230_000,
+        }), result => !(result.errors || result.recordErrors || result.deferred)),
+        result => !(result.errors || result.recordErrors || result.deferred),
+      ),
       runAuxiliaryProcessor(
         "Square payment reconciliation",
         "Square payment reconciliation is temporarily unavailable.",
@@ -89,19 +99,20 @@ export async function runOrderCogsCron(
       runAuxiliaryProcessor(
         "Peer payment processing",
         "Peer payment processing is temporarily unavailable.",
-        () => dependencies.processPeerPayments(supabase),
+        () => observeIntegration(supabase, "peer-payment-email", () => dependencies.processPeerPayments(supabase), result => result.errors === 0),
+        result => result.errors === 0,
       ),
     ]);
     return NextResponse.json({
-      orderCogs,
+      orderCogs: orders.result,
       squarePayments: squarePayments.result,
       peerPayments: peerPayments.result,
       processorStates: {
-        orderCogs: { status: orderCogs.errors || orderCogs.recordErrors || orderCogs.deferred ? "failed" : "completed" },
+        orderCogs: orders.state,
         squarePayments: squarePayments.state,
         peerPayments: peerPayments.state,
       },
-    }, { status: orderCogs.errors || orderCogs.recordErrors || orderCogs.deferred ? 502 : 200 });
+    }, { status: orders.state.status === "failed" || peerPayments.state.status === "failed" ? 502 : 200 });
   } catch (error) {
     return crmAuthErrorResponse(error);
   }

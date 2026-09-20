@@ -24,7 +24,7 @@ describe("integration processing evidence", () => {
   });
   it("reports health-store outages as unavailable, never zero or success", async () => {
     const health = await loadIntegrationHealth({ from: () => { throw new Error("offline"); } } as never);
-    expect(health).toHaveLength(3);
+    expect(health).toHaveLength(4);
     expect(health.every(source => source.state === "unavailable" && source.lastSuccessAt === null)).toBe(true);
   });
 });

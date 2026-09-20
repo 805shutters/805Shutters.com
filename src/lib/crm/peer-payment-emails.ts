@@ -78,12 +78,28 @@ function parsedAmount(value: string) {
 
 export function parsePeerPaymentEmail(message: PeerPaymentGmailMessage): PeerPaymentReceipt | null {
   const from = headerValue(message, "from").toLowerCase();
+  const sender = from.match(/<([^<>\s]+@[^<>\s]+)>/)?.[1] || from.trim();
+  const domain = sender.split("@")[1] || "";
+  const isVenmo = domain === "venmo.com" || domain.endsWith(".venmo.com");
+  const isBankOfAmerica = domain === "ealerts.bankofamerica.com";
+  if (!isVenmo && !isBankOfAmerica) return null;
+  // Gmail prepends its authentication verdict, including for automatic forwarding.
+  // A vendor's forwarded receipt or a sender display name is not bank evidence.
+  const authentication = headerValue(message, "authentication-results");
+  if (!/^mx\.google\.com\s*;/i.test(authentication)) return null;
+  const signedBySender = authentication.split(";").some((result) => {
+    if (!/\bdkim=pass\b/i.test(result)) return false;
+    const signedDomain = result.match(/header\.(?:i|d)=@?([^\s;]+)/i)?.[1]?.toLowerCase();
+    return signedDomain === domain;
+  });
+  if (!signedBySender) return null;
   const subject = headerValue(message, "subject");
   const body = collectText(message.payload).join(" ").replace(/<[^>]+>/g, " ");
   const text = `${subject} ${body}`.replace(/\s+/g, " ").trim();
 
   // Outgoing payment and vendor-payment notices are never customer receipts.
-  if (/\byou (?:sent|paid)\b|\bpayment sent to\b|\byour payment to\b/i.test(text)) return null;
+  if (/\byou (?:sent|paid)\b|\bpayment sent to\b|\byour payment to\b/i.test(text)
+    || /\bpayment\b.*\bto\b.*\bhas been sent\b/i.test(subject)) return null;
 
   let provider: PeerPaymentReceipt["provider"] | null = null;
   let payerValue = "";
@@ -95,14 +111,14 @@ export function parsePeerPaymentEmail(message: PeerPaymentGmailMessage): PeerPay
     const received = value.match(/you(?:'ve| have)? received\s+\$([\d,]+(?:\.\d{2})?)\s+from\s+(.+?)(?:\s+(?:with|through|via)\s+(?:zelle|venmo)|[.!?]|$)/i);
     return received ? { payer: received[2], amount: parsedAmount(received[1]) } : null;
   };
-  if (from.includes("venmo.com")) {
+  if (isVenmo) {
     const parsed = parseIncoming(subject, "paid") || parseIncoming(text, "paid");
     if (parsed) {
       provider = "venmo";
       payerValue = parsed.payer;
       amountValue = parsed.amount;
     }
-  } else if (/\bzelle\b/i.test(text)) {
+  } else if (isBankOfAmerica && /\bzelle\b/i.test(text)) {
     const parsed = parseIncoming(subject, "sent") || parseIncoming(text, "sent");
     if (parsed) {
       provider = "zelle";
@@ -115,10 +131,12 @@ export function parsePeerPaymentEmail(message: PeerPaymentGmailMessage): PeerPay
   const payerName = cleanPayer(payerValue);
   if (!provider || !amount || !payerName) return null;
 
-  const receivedAt = message.internalDate ? new Date(Number(message.internalDate)) : new Date();
-  const paidDate = Number.isNaN(receivedAt.getTime())
-    ? new Date().toISOString().slice(0, 10)
-    : receivedAt.toISOString().slice(0, 10);
+  const dateHeader = headerValue(message, "date");
+  const receivedAt = dateHeader ? new Date(dateHeader) : new Date(Number(message.internalDate));
+  if ((!message.internalDate && !dateHeader) || Number.isNaN(receivedAt.getTime())) return null;
+  const paidDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(receivedAt);
 
   return {
     provider,
@@ -151,8 +169,21 @@ async function getMessage(accessToken: string, id: string) {
 }
 
 export function peerPaymentEmailQuery() {
-  return `newer_than:14d -label:${PROCESSED_LABEL} {from:venmo.com "sent you" "payment received"} ` +
-    `-{subject:"you sent" subject:"payment sent" subject:"your payment to"}`;
+  return `newer_than:14d -label:${PROCESSED_LABEL} ` +
+    `{from:venmo.com from:ealerts.bankofamerica.com} ` +
+    `{"sent you" "paid you" "payment received" "you received" "you've received" "you have received"} ` +
+    `-{subject:"you sent" subject:"payment sent" subject:"your payment to" subject:"has been sent"}`;
+}
+
+export function hasPotentialPeerPaymentDuplicate(
+  receipt: PeerPaymentReceipt,
+  quoteId: string,
+  payments: Array<Record<string, unknown>>,
+) {
+  return payments.some((payment) => payment.quote_id === quoteId
+    && Math.round(Number(payment.amount) * 100) === Math.round(receipt.amount * 100)
+    && (String(payment.payment_type || "").toLowerCase() === receipt.provider
+      || payment.external_source === `${receipt.provider}_email`));
 }
 
 export async function processPeerPaymentEmails(
@@ -257,7 +288,8 @@ export async function processPeerPaymentEmails(
         credits: (creditsResult.data || []) as never,
       });
 
-      if (!match.candidate) {
+      const possibleDuplicate = match.candidate && hasPotentialPeerPaymentDuplicate(receipt, match.candidate.quoteId, payments);
+      if (!match.candidate || possibleDuplicate) {
         const { data: priorReview } = await supabase
           .from("crm_activity_events")
           .select("id")
@@ -270,7 +302,7 @@ export async function processPeerPaymentEmails(
             entity_type: "system",
             action: "peer_payment_email.needs_review",
             after_data: { provider: receipt.provider, payerName: receipt.payerName, amount: receipt.amount, paidDate: receipt.paidDate },
-            metadata: { gmailMessageId: receipt.gmailMessageId, gmailThreadId: receipt.gmailThreadId, sourceReference: receipt.sourceReference, reason: match.reason || null },
+            metadata: { gmailMessageId: receipt.gmailMessageId, gmailThreadId: receipt.gmailThreadId, sourceReference: receipt.sourceReference, reason: possibleDuplicate ? "An equal payment from this provider is already recorded for this sale; verify the original receipt before adding another payment." : match.reason || null },
           });
           if (reviewAuditError) throw new CrmAuthError(502, "Peer-payment review item could not be recorded.");
         }
@@ -322,6 +354,18 @@ export async function processPeerPaymentEmails(
         throw insertError;
       }
 
+      payments.push({
+        id: inserted.id,
+        quote_id: match.candidate.quoteId,
+        job_id: match.candidate.jobId,
+        payment_label: match.candidate.paymentType === "deposit" ? "Deposit" : "Balance payment",
+        payment_type: receipt.provider,
+        amount: receipt.amount,
+        paid_at: receipt.paidDate,
+        external_source: externalSource,
+        external_id: receipt.gmailMessageId,
+      });
+
       const { error: auditError } = await supabase.from("crm_activity_events").insert({
         actor_email: "peer-payment-email-poller",
         entity_type: "bookkeeping_payment",
@@ -335,17 +379,6 @@ export async function processPeerPaymentEmails(
       if (shouldArchivePeerPaymentEmail("recorded")) {
         await markProcessed(receipt.gmailMessageId);
       }
-      payments.push({
-        id: inserted.id,
-        quote_id: match.candidate.quoteId,
-        job_id: match.candidate.jobId,
-        payment_label: match.candidate.paymentType === "deposit" ? "Deposit" : "Balance payment",
-        payment_type: receipt.provider,
-        amount: receipt.amount,
-        paid_at: receipt.paidDate,
-        external_source: externalSource,
-        external_id: receipt.gmailMessageId,
-      });
       summary.recorded += 1;
     } catch (error) {
       console.error("peer payment email processing failed", { gmailMessageId: listedMessage.id, error });

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const PROCESSORS = ["order-cogs", "installation-invoices", "completed-report-filing"] as const;
+export const PROCESSORS = ["order-cogs", "installation-invoices", "completed-report-filing", "peer-payment-email"] as const;
 export type IntegrationProcessor = typeof PROCESSORS[number];
 export type IntegrationHealth = { processor: IntegrationProcessor; state: "unknown" | "running" | "succeeded" | "failed" | "unavailable"; lastAttemptAt: string | null; lastSuccessAt: string | null };
 

@@ -103,6 +103,30 @@ describe("order COGS cron route", () => {
     expect(response.status).toBe(503);
     expect(deps.processOrderCogs).not.toHaveBeenCalled();
     expect(deps.reconcileSquarePayments).not.toHaveBeenCalled();
+    expect(deps.processPeerPayments).not.toHaveBeenCalled();
+  });
+
+  it("still checks customer receipts when vendor email processing throws", async () => {
+    const deps = dependencies();
+    vi.mocked(deps.processOrderCogs).mockRejectedValue(new Error("upstream unavailable"));
+    const response = await runOrderCogsCron(request(), deps);
+    expect(response.status).toBe(502);
+    expect(deps.processPeerPayments).toHaveBeenCalledOnce();
+    await expect(response.json()).resolves.toMatchObject({
+      orderCogs: null,
+      processorStates: { orderCogs: { status: "failed" }, peerPayments: { status: "completed" } },
+    });
+  });
+
+  it("reports partial customer receipt failures as failed intake", async () => {
+    const deps = dependencies();
+    const result = await deps.processPeerPayments({} as never);
+    vi.mocked(deps.processPeerPayments).mockResolvedValue({ ...result, errors: 1 });
+    const response = await runOrderCogsCron(request(), deps);
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      processorStates: { peerPayments: { status: "failed" } },
+    });
   });
 
   it("uses the shared product save and still runs Square and peer processors", async () => {
