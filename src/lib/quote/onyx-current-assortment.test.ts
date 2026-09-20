@@ -73,6 +73,19 @@ describe('Onyx observed dealer assortment',()=>{
    for(const hinge of ['Match','Paint to Match','ORB','forged']) expect(validateOnyxCurrentAssortment(context({hinge_color:hinge},program)).map(i=>i.ruleId)).toContain('onyx.current_assortment.hinge');
   }
  });
+ it('accounts for every recorded choice in each existing current shutter program',()=>{
+  for(const program of ['painted_basswood','stained_basswood','secamore','vinyl','vlo_hybrid','onyx_us_made_vinyl']){
+   const row=onyxPortalAssortment(program)!;
+   const choices: Array<[string,readonly (string|number)[]]> = [
+    ['color_name',onyxPortalColors(program)!],['frame_type',row.frames],
+    ['louver_size_inches',row.louverSizes],['tilt_source_code',row.tiltCodes],
+    ['onyx_order_type',row.shapes],['hinge_color',onyxPortalHingeColors(program)!],
+   ];
+   for(const [field,values] of choices)for(const value of values){
+    expect(validateOnyxCurrentAssortment(context({[field]:value},program)),`${program}: ${field}=${value}`).toEqual([]);
+   }
+  }
+ });
  it('reconciles six dealer observations using rounded frame area without changing retail',()=>{
   for(const fixture of evidence.priceFixtures){
    const area=Math.round((fixture.width+3.5)*(fixture.height+3.5)/144*1000)/1000;
