@@ -1479,5 +1479,12 @@ describe("Norman shutter source-backed program choices", () => {
     expect(colors("normandy_stained")).not.toContain("001 - Pure White");
     expect(values("woodlore_aquashield", "louver_size")).not.toContain('1 7/8"');
     expect(values("normandy_stained", "louver_size")).toContain('1 7/8"');
+    expect(values("woodlore_aquashield", "frame_type")).toHaveLength(14);
+    expect(values("woodlore_aquashield", "frame_type")).toContain("Deep Plain L Frame *");
+    expect(values("woodlore_aquashield", "frame_type")).toContain('7/8" Traditional Hang Strip');
+    expect(values("woodlore_aquashield", "frame_type")).not.toContain("Colonial L Frame");
+    expect(values("brightwood", "frame_type")).toHaveLength(21);
+    expect(values("brightwood", "frame_type")).not.toContain("Colonial L Frame");
+    expect(values("normandy_painted", "frame_type")).toContain("Colonial L Frame");
   });
 });

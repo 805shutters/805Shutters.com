@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors, normanShutterLouvers } from "@/lib/quote/norman-shutter-assortment";
+import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors, normanShutterLouvers, normanShutterFrames, normanShutterFrame } from "@/lib/quote/norman-shutter-assortment";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { getNormanShutterRoutePatch } from "@mts/lib/quoteShutterRouting";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
@@ -33,6 +33,35 @@ describe("Norman shutter binder assortment", () => {
     const direct=shutter("normandy_painted","001 - Pure White");
     direct.configuration={...direct.configuration,frame_type:"Direct Mount (No Frame)",hinge_color:"Taupe Gray"};
     expect(validateNormanShutterAssortment(direct).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.hinge"]);
+    direct.configuration = {...direct.configuration, frame_type: "FN01"};
+    expect(validateNormanShutterAssortment(direct).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.hinge"]);
+  });
+  it("maps all six regular frame menus and rejects cross-program frames on saved lines", () => {
+    expect(NORMAN_SHUTTER_PROGRAMS.map(p => normanShutterFrames(p.id).length)).toEqual([24, 24, 14, 21, 24, 24]);
+    expect(normanShutterFrame("woodlore", "Beaded L Frame")?.code).toBe("FL01");
+    expect(normanShutterFrame("woodlore_aquashield", "Beaded L Frame")?.code).toBe("FL30");
+    expect(normanShutterFrame("brightwood", "Beaded L Frame")?.code).toBe("FL30");
+    expect(normanShutterFrame("normandy_stained", "Vintage L Frame")?.code).toBe("FL09");
+    for (const p of NORMAN_SHUTTER_PROGRAMS) for (const frame of normanShutterFrames(p.id)) {
+      const line = shutter(p.id, p.id === "normandy_stained" ? "200 - Natural" : "001 - Pure White");
+      line.configuration = {...line.configuration, frame_type: frame.label};
+      expect(validateNormanShutterAssortment(line)).toEqual([]);
+    }
+    for (const [program, frame] of [
+      ["woodlore_aquashield", "Colonial L Frame"],
+      ["woodlore_aquashield", '3" Ridge Deco Frame'],
+      ["woodlore_aquashield", 'Beaded L Frame with 1" Buildout *'],
+      ["woodlore_aquashield", '7/8" Vintage Hang Strip'],
+      ["brightwood", "Colonial L Frame"],
+      ["woodlore_plus", "Deep Plain L Frame *"],
+      ["normandy_painted", '1 1/2" Deep Bullnose Z Frame *'],
+    ]) {
+      const line = shutter(program, "001 - Pure White");
+      line.configuration = {...line.configuration, frame_type: frame};
+      expect(validateNormanShutterAssortment(line).map(i => i.ruleId)).toContain("norman.shutter.assortment.frame");
+      line.catalogAsOf = "2026-09-18";
+      expect(validateNormanShutterAssortment(line)).toEqual([]);
+    }
   });
   it("accepts exact legacy finish names without changing saved history", () => {
     expect(validateNormanShutterAssortment(shutter("woodlore","Pure White"))).toEqual([]);

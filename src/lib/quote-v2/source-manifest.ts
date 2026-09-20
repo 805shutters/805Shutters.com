@@ -53,6 +53,25 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
 {
+  "id": "norman-shutter-frame-menus-2026-09-19",
+  "manufacturer": "Norman",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "Norman shutter frame menus 2026-09-19.json",
+  "title": "Norman regular shutter frame menus for six programs",
+  "revision": "Authenticated menus observed September 19, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Current availability observed September 19; no manufacturer effective date asserted.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "sha256": "4424bf790d29d064aecdb2c3e215d02e7d9e532753164996f7263f000d6cab95",
+  "authorities": [
+    "assortment",
+    "options"
+  ],
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/Order/Order.asp?PanelOnly="
+},
+{
   "id": "norman-woodlore-binder-2026-09",
   "manufacturer": "Norman",
   "kind": "program_binder",

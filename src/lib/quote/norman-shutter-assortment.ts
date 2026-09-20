@@ -54,3 +54,557 @@ export function normanShutterHinges(programId: string | null | undefined, frame:
 export function normanShutterTilts(programId: string | null | undefined) {
   return normanShutterProgram(programId)?.id === "woodlore_aquashield" ? ["Invisible Tilt"] : ["Standard Tilt", "Invisible Tilt", "Offset Tilt"];
 }
+
+/** Regular frame menu membership; mounting geometry and surcharges are separate rules.
+ * Binder section e and the pinned September 19 dealer menus agree on these choices.
+ * Codes can differ across programs even when customer-facing labels are identical.
+ */
+export const NORMAN_SHUTTER_FRAME_SOURCE = "norman-shutter-frame-menus-2026-09-19";
+const shutterFrames: Record<NormanShutterProgramId, readonly (readonly [string, string])[]> = {
+  "woodlore": [
+    [
+      "FD05",
+      "3\" Ridge Deco Frame"
+    ],
+    [
+      "FD15",
+      "2 1/2\" Mission Deco Frame"
+    ],
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FD04",
+      "2\" Classic Deco Frame"
+    ],
+    [
+      "FL01",
+      "Beaded L Frame"
+    ],
+    [
+      "FL41",
+      "Beaded L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL31",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL32",
+      "Beaded L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL62",
+      "Colonial L Frame"
+    ],
+    [
+      "FL63",
+      "Colonial L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL64",
+      "Colonial L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL04",
+      "Vintage L Frame"
+    ],
+    [
+      "FL49",
+      "Vintage L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL38",
+      "Vintage L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ01",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ03",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ19",
+      "1 1/4\" Beaded Z Frame"
+    ],
+    [
+      "FZ04",
+      "Tilt Out Z Frame"
+    ],
+    [
+      "FH04",
+      "7/8\" Vintage Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ],
+  "woodlore_plus": [
+    [
+      "FD05",
+      "3\" Ridge Deco Frame"
+    ],
+    [
+      "FD15",
+      "2 1/2\" Mission Deco Frame"
+    ],
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FD04",
+      "2\" Classic Deco Frame"
+    ],
+    [
+      "FL01",
+      "Beaded L Frame"
+    ],
+    [
+      "FL41",
+      "Beaded L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL31",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL32",
+      "Beaded L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL62",
+      "Colonial L Frame"
+    ],
+    [
+      "FL63",
+      "Colonial L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL64",
+      "Colonial L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL04",
+      "Vintage L Frame"
+    ],
+    [
+      "FL49",
+      "Vintage L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL38",
+      "Vintage L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ01",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ03",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ19",
+      "1 1/4\" Beaded Z Frame"
+    ],
+    [
+      "FZ04",
+      "Tilt Out Z Frame"
+    ],
+    [
+      "FH04",
+      "7/8\" Vintage Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ],
+  "woodlore_aquashield": [
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FL30",
+      "Beaded L Frame"
+    ],
+    [
+      "FL29",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL04",
+      "Vintage L Frame"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL61",
+      "Deep Plain L frame *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ09",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ17",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ29",
+      "1 1/2\" Deep Bullnose Z frame *"
+    ],
+    [
+      "FH06",
+      "7/8\" Traditional Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ],
+  "brightwood": [
+    [
+      "FD01",
+      "3\" Ridge Deco Frame"
+    ],
+    [
+      "FD15",
+      "2 1/2\" Mission Deco Frame"
+    ],
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FD04",
+      "2\" Classic Deco Frame"
+    ],
+    [
+      "FL30",
+      "Beaded L Frame"
+    ],
+    [
+      "FL41",
+      "Beaded L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL29",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL32",
+      "Beaded L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL04",
+      "Vintage L Frame"
+    ],
+    [
+      "FL49",
+      "Vintage L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL38",
+      "Vintage L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ01",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ17",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ19",
+      "1 1/4\" Beaded Z Frame"
+    ],
+    [
+      "FZ04",
+      "Tilt Out Z Frame"
+    ],
+    [
+      "FH04",
+      "7/8\" Vintage Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ],
+  "normandy_painted": [
+    [
+      "FD01",
+      "3\" Ridge Deco Frame"
+    ],
+    [
+      "FD15",
+      "2 1/2\" Mission Deco Frame"
+    ],
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FD04",
+      "2\" Classic Deco"
+    ],
+    [
+      "FL01",
+      "Beaded L Frame"
+    ],
+    [
+      "FL41",
+      "Beaded L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL31",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL32",
+      "Beaded L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL62",
+      "Colonial L Frame"
+    ],
+    [
+      "FL63",
+      "Colonial L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL64",
+      "Colonial L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL09",
+      "Vintage L Frame"
+    ],
+    [
+      "FL49",
+      "Vintage L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL38",
+      "Vintage L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ01",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ03",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ19",
+      "1 1/4\" Beaded Z Frame"
+    ],
+    [
+      "FZ04",
+      "Tilt out Z"
+    ],
+    [
+      "FH04",
+      "7/8\" Vintage Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ],
+  "normandy_stained": [
+    [
+      "FD01",
+      "3\" Ridge Deco Frame"
+    ],
+    [
+      "FD15",
+      "2 1/2\" Mission Deco Frame"
+    ],
+    [
+      "FD08",
+      "2\" Camber Deco Frame"
+    ],
+    [
+      "FD04",
+      "2\" Classic Deco"
+    ],
+    [
+      "FL01",
+      "Beaded L Frame"
+    ],
+    [
+      "FL41",
+      "Beaded L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL31",
+      "Beaded L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL32",
+      "Beaded L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL62",
+      "Colonial L Frame"
+    ],
+    [
+      "FL63",
+      "Colonial L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL64",
+      "Colonial L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL09",
+      "Vintage L Frame"
+    ],
+    [
+      "FL49",
+      "Vintage L Frame with 1/4\" Light Block"
+    ],
+    [
+      "FL37",
+      "Vintage L Frame with 1/2\" Buildout *"
+    ],
+    [
+      "FL38",
+      "Vintage L Frame with 1\" Buildout *"
+    ],
+    [
+      "FL65",
+      "Plain L Frame"
+    ],
+    [
+      "FZ01",
+      "3\" Crown Z Frame"
+    ],
+    [
+      "FZ18",
+      "2\" Bel Air Z Frame"
+    ],
+    [
+      "FZ23",
+      "2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ03",
+      "1 1/2\" Bullnose Z Frame"
+    ],
+    [
+      "FZ19",
+      "1 1/4\" Beaded Z Frame"
+    ],
+    [
+      "FZ04",
+      "Tilt out Z"
+    ],
+    [
+      "FH04",
+      "7/8\" Vintage Hang Strip"
+    ],
+    [
+      "FN01",
+      "Direct Mount (No Frame)"
+    ]
+  ]
+};
+export function normanShutterFrames(programId: string | null | undefined) {
+  const program = normanShutterProgram(programId);
+  return program ? shutterFrames[program.id].map(([code, portalLabel]) => ({
+    code, portalLabel,
+    label: portalLabel === '2" Classic Deco' ? '2" Classic Deco Frame' : portalLabel === 'Tilt out Z' ? 'Tilt Out Z Frame' : portalLabel.replace(" Z frame", " Z Frame").replace(" L frame", " L Frame"),
+  })) : [];
+}
+export function normanShutterFrame(programId: string | null | undefined, value: unknown) {
+  return normanShutterFrames(programId).find(f => [f.label, f.portalLabel, f.code].some(v => normalize(v) === normalize(value)));
+}

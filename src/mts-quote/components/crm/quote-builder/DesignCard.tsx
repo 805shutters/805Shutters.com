@@ -1,4 +1,4 @@
-import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts } from "@/lib/quote/norman-shutter-assortment";
+import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
@@ -3603,7 +3603,9 @@ export function getStandardShutterGridOptions(
     ONYX_POLY_MATERIALS.includes(design.material as (typeof ONYX_POLY_MATERIALS)[number]);
   const frameOptions =
     design?.supplier === "Norman"
-      ? NORMAN_WOODLORE_FRAME_TYPES
+      ? authoritativeV2
+        ? normanShutterFrames(String((design.options_json as Record<string, unknown> | undefined)?.catalog_program_id ?? design.material ?? "")).map(frame => frame.label)
+        : NORMAN_WOODLORE_FRAME_TYPES
       : isOnyxPolyProgram
         ? ONYX_POLY_FRAME_TYPES
         : ONYX_WOOD_FRAME_TYPES;
