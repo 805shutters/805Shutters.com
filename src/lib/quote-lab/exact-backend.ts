@@ -1251,11 +1251,19 @@ function repriceExactQuoteBuilderV2(
     })),
   )];
   const relationshipIssuesByLine = new Map<string, typeof relationshipIssues>();
+  const selectedLineIds = new Set(selectedPrepared.map(entry => entry.line.id));
   for (const validationIssue of relationshipIssues) {
-    const lineId = validationIssue.selectedValues.lineId;
-    if (typeof lineId !== "string" || !lineId) continue;
-    const existing = relationshipIssuesByLine.get(lineId) ?? [];
-    relationshipIssuesByLine.set(lineId, [...existing, validationIssue]);
+    const { lineId, lineIds } = validationIssue.selectedValues;
+    // Per-line validators already emit one issue for each affected selection.
+    // Group validators instead supply lineIds; route those to every member.
+    const affectedLineIds = typeof lineId === "string" && lineId
+      ? [lineId]
+      : Array.isArray(lineIds) ? lineIds : [];
+    for (const affectedLineId of new Set(affectedLineIds)) {
+      if (typeof affectedLineId !== "string" || !selectedLineIds.has(affectedLineId)) continue;
+      const existing = relationshipIssuesByLine.get(affectedLineId) ?? [];
+      relationshipIssuesByLine.set(affectedLineId, [...existing, validationIssue]);
+    }
   }
   for (const entry of selectedPrepared) {
     if (

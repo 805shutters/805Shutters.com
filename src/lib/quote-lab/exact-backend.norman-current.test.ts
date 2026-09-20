@@ -92,6 +92,33 @@ describe("Current Norman production configurations",()=>{
   expect(p.designs[0].selection.configuration.smartdrape_pair_v1).toMatchObject({orderedWidths:[100,150],openCenterGap:2.25,chargeCenterKeystone:true});
   const reopened=JSON.parse(JSON.stringify(q));for(let i=0;i<2;i++)reopened.designs[i].options_json={...reopened.designs[i].options_json,...p.designs[i].selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
  });
+ it.each(["height", "room", "mount"])("blocks both SmartDrape pair members for mismatched %s through server pricing and saving", (mismatch) => {
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",application:"Side by Side",smartdrape_pair_id:"1",smartdrape_pair_position:"Left",smartdrape_keystone_joints:null,smartdrape_center_keystone:"Yes"});
+  q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.lines[0].width_whole=60;
+  q.lines.push({...q.lines[0],id:"right",width_whole:70});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,smartdrape_pair_position:"Right",stack_option:"Stack Right",control_side:"Left"}});q.selectedVariantByLine.right="A";
+  for(const d of q.designs)d.options_json={...d.options_json,shipping_region:"continental_us"};
+  const independent={...q.designs[0].options_json,application:"Single Shade",smartdrape_pair_id:null,smartdrape_pair_position:null,smartdrape_center_keystone:"No"};
+  q.lines.push({...q.lines[0],id:"independent"});q.designs.push({...q.designs[0],id:"independent-A",line_item_id:"independent",options_json:independent});q.selectedVariantByLine.independent="A";
+  q.designs.push({...q.designs[0],id:"audit-B",variant:"B",options_json:independent});
+  const run=()=>{const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");return p;};
+  for(const d of run().designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  if(mismatch==="height")q.lines[1].height_whole=61;
+  else if(mismatch==="room")q.lines[1].room_name="Bedroom";
+  else q.designs[1].options_json={...q.designs[1].options_json,installation_method:"Ceiling Mount"};
+  const rule=`norman.smartdrape.pair_${mismatch}`;
+  const blocked=run();
+  for(const d of blocked.designs.slice(0,2)){
+   expect(d.result.validationIssues.filter(i=>i.ruleId===rule)).toHaveLength(1);
+   expect(d.result.ok).toBe(false);expect(d.snapshot).toBeNull();
+  }
+  for(const d of blocked.designs.slice(2))expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  const saved=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs.slice(0,3),serverDate:"2026-09-19"});
+    for(const d of saved.prepared.slice(0,2))expect(d.priceStatus).toBe("blocked");
+  for(const d of saved.repriced.designs.slice(0,2))expect(d.result.validationIssues.map(i=>i.ruleId)).toContain(rule);
+  expect(saved.repriced.designs[2].result.ok).toBe(true);
+  expect(saved.repriced.designs[2].result.validationIssues).toEqual([]);
+  expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(q)),"2026-09-19")).toEqual(blocked);
+ });
  it("prices each SmartDrape joint and shim from source geometry and persists pocket heights",()=>{
   const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount"});
   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";q.lines[0].width_whole=190;q.lines[0].quantity=2;
