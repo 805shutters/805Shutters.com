@@ -7,7 +7,7 @@ import { smartfoldCharging } from "./norman-smartfold-charging";
 import { SMARTFOLD_CHARGING_KEY as KEY, emptySmartfoldCharging, newChargingDraft, syncChargingDraft, chargingDraftDirty } from "@/lib/quote/norman-smartfold-charging";
 import { NormanSmartfoldChargingOptions } from "@/components/crm/NormanSmartfoldChargingOptions";
 import { deriveNormanOrderRecords } from "./norman-assemblies";
-import { quoteV2CatalogVersionFor } from "./catalog";
+import { quoteV2CatalogVersionFor, isRecognizedQuoteV2Catalog } from "./catalog";
 import { resolveNormanShadeMotorization, validateNormanShadeMotorization } from "./norman-shade-motorization";
 import { selectionContextFromExactInterface } from "./exact-interface-adapter";
 import { canonicalMotorizationPriceSelections } from "./roller-motor-contract";
@@ -79,6 +79,16 @@ describe("SmartFold September charging allocation and canonical extra prices",()
     expect(s.configuration[KEY]).toEqual(record);
     const html=renderToStaticMarkup(createElement(NormanSmartfoldChargingOptions,{design,quantity:3,onUpdateFields:()=>{}}));
     expect(html).toContain("Save charging accessories");expect(html).toContain('value="2"');expect(html).toContain('value="3"');expect(html).toContain("No unsaved charging accessories");
+  });
+  it("recognizes same-date saved r6 without applying new charging rules",()=>{
+    const s=shade({[KEY]:record});s.catalogVersion=quoteV2CatalogVersionFor("smartfold","2026-09-19");
+    expect(isRecognizedQuoteV2Catalog("smartfold",s.catalogAsOf,s.catalogVersion)).toBe(true);
+    expect(smartfoldCharging(s)).toBeNull();
+    const rows=[{lineId:"old",selection:s}];deriveNormanOrderRecords(rows);
+    expect(s.configuration.norman_assembly_v1).not.toHaveProperty("includedChargingKits");
+    expect(resolveNormanShadeMotorization(s)?.canonicalSelections?.some(c=>c.optionId==="charging_kit")).toBe(false);
+    s.catalogVersion=quoteV2CatalogVersionFor("smartfold",s.catalogAsOf);
+    expect(smartfoldCharging(s)?.selections).toHaveLength(2);
   });
   it("keeps earlier catalog behavior without changing historical records",()=>{
     const s=shade({[KEY]:record});s.catalogAsOf="2026-09-19";

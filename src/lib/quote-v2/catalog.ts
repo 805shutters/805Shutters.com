@@ -99,6 +99,7 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "honeycomb" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r1`) return true;
   if (productId === "honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`) return true;
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`) return true;
+  if (productId === "smartfold" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r6`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-caroline-2026-09-20-r1`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r2`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r3`) return true;

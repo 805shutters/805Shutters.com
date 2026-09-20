@@ -4,7 +4,7 @@ import type { CanonicalMotorizationSelection } from "./roller-motor-contract";
 import { sourceProvenance } from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 export function smartfoldCharging(context:SelectionContext) {
-  if(context.productId!=="smartfold" || context.catalogAsOf<"2026-09-20")return null;
+  if(context.productId!=="smartfold" || context.catalogAsOf<"2026-09-20" || context.catalogVersion.endsWith("-norman-smartfold-hardware-2026-09-19-r6"))return null;
   const c=context.configuration,power=norm(c.motor_type),lift=norm(c.lift_system??c.control_type);
   const motorized=/motor|autowand/.test(lift);
   const wand=motorized&&(power==="autowand"||lift==="autowand");
