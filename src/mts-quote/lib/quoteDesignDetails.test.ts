@@ -36,6 +36,35 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("shows Roller hardware choices while hiding generated motor charge routing", () => {
+    const design={...miniBlindDesign(),product_type:"Roller Shades",motor_type:"Automate Home DC Adapter",options_json:{
+      roller_hardware_v1:{version:1,installation:"Back / Wall Mount",shimLayers:2,raceway:true},
+      motorization_selections:[{groupId:"automate_home",optionId:"power_distribution_panel",role:"accessory",units:1,billingScope:"once_per_line"}],
+      roller_power_panel_group:"Panel 1",
+    }};
+    const details=getQuoteDesignDetails(design);
+    expect(details).toContainEqual({label:"Bracket Installation",value:"Back / Wall Mount"});
+    expect(details).toContainEqual({label:"Shim Layers per Bracket",value:"2"});
+    expect(details).toContainEqual({label:"Raceway",value:"Yes"});
+    expect(details.some(d=>/Version:|Group Id|Billing Scope|Hardware V1|Motorization Selections/.test(d.label+" "+d.value))).toBe(false);
+    expect(details.some(d=>d.value==="Panel 1")).toBe(true);
+  });
+
+  it("renders saved atomic charging and clearance as customer choices without implementation metadata", () => {
+    const design = {...miniBlindDesign(), product_type:"Sheer Shades", options_json:{
+      smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:""},
+      smartfold_clearance_v1:{version:1,mountingAreaHeight:.75,mountingSpaceHeight:1.5},
+    }};
+    const original=JSON.stringify(design);
+    const details=getQuoteDesignDetails(design);
+    expect(details).toContainEqual({label:"Extra Charging Kits for This Line",value:"2"});
+    expect(details).toContainEqual({label:"Extension Cables for This Line",value:"3"});
+    expect(details).toContainEqual({label:"Screw Mounting-Area Height (inches)",value:"0.75"});
+    expect(details).toContainEqual({label:"Available Shade Mounting-Space Height (inches)",value:"1.5"});
+    expect(details.some(d=>/V1|Version:|Extension Cable Color/.test(d.label+" "+d.value))).toBe(false);
+    expect(JSON.stringify(design)).toBe(original);
+  });
+
   it("omits obsolete Roman banding from customer output after a style change without rewriting the saved record", () => {
     const design = {...miniBlindDesign(), product_type: "Roman Shades", options_json: {
       fold_style: "Soft Fold", roman_banding_layout: "Side Border", banding_color: "White",

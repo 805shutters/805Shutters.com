@@ -1,3 +1,6 @@
+import { parseRollerHardware, ROLLER_HARDWARE_KEY } from "@/lib/quote/norman-roller-hardware";
+import { parseSmartfoldCharging, SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
+import { parseSmartfoldClearance, SMARTFOLD_CLEARANCE_KEY } from "@/lib/quote/norman-smartfold-clearance";
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
@@ -33,6 +36,10 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  ROLLER_HARDWARE_KEY,
+  "motorization_selections",
+  SMARTFOLD_CHARGING_KEY,
+  SMARTFOLD_CLEARANCE_KEY,
   "smartdrape_replacement_request_v1",
   "smartdrape_replacement_source_v1",
   "back_fabric_color_id",
@@ -101,6 +108,23 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const rollerHardware = parseRollerHardware(options[ROLLER_HARDWARE_KEY]);
+  if (rollerHardware) {
+    if (rollerHardware.installation) details.push({label:"Bracket Installation",value:rollerHardware.installation});
+    details.push({label:"Shim Layers per Bracket",value:String(rollerHardware.shimLayers)});
+    details.push({label:"Raceway",value:rollerHardware.raceway ? "Yes" : "No"});
+  }
+  const charging = parseSmartfoldCharging(options[SMARTFOLD_CHARGING_KEY]);
+  if (charging) {
+    if (charging.extraChargingKits) details.push({label:"Extra Charging Kits for This Line", value:String(charging.extraChargingKits)});
+    if (charging.extensionCables) {
+      details.push({label:"Extension Cables for This Line", value:String(charging.extensionCables)});
+      if (charging.extensionColor) details.push({label:"Extension Cable Color", value:charging.extensionColor});
+    }
+  }
+  const clearance = parseSmartfoldClearance(options[SMARTFOLD_CLEARANCE_KEY]);
+  if (clearance?.mountingAreaHeight != null) details.push({label:"Screw Mounting-Area Height (inches)", value:String(clearance.mountingAreaHeight)});
+  if (clearance?.mountingSpaceHeight != null) details.push({label:"Available Shade Mounting-Space Height (inches)", value:String(clearance.mountingSpaceHeight)});
   const pairedRomanChains = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
   if (pairedRomanChains) details.push({label:"Chain Positions",value:/common valance/i.test(String(design.shade_type)) ? "Left shade: Left; Right shade: Right" : options.chain_location === "Left" ? "Front Roman: Left; Rear roller: Right" : "Front Roman: Right; Rear roller: Left"});
   const pairedRoman = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /motor/i.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
