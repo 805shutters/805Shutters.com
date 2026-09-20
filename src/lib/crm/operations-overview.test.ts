@@ -350,3 +350,29 @@ it('keeps paid shipped jobs with an explicit reopening in Active without clearin
  const other=buildOperationsItems(data({jobs:[{...job,meta:{}}],quotes:[quote({status:'paid',quote_total:1000,balance_due:0})],bookkeepingRows:[row]}))[0];
  expect(other.closed).toBe(true);
 });
+
+it('filters every dashboard metric by the same period, including exact LA sale boundaries', () => {
+  const dates = ['2026-03-31', '2026-04-01', '2026-06-30', '2026-07-01', '2026-08-31', '2026-09-01', '2026-09-14', '2026-09-20'];
+  const quotes = dates.map((day, index) => quote({id:`q${index}`,job_id:`j${index}`,sent_at:day,sold_at:day}));
+  const sales = dates.map((signedAt, index) => ({id:`sale${index}`,signedAt,amountCents:10000,customerName:`Customer ${index}`,reference:`Q${index}`,jobId:null,quoteId:null,customerId:null}));
+  sales.push({...sales[0],id:'boundary-before',signedAt:'2026-09-01T06:59:59Z'}, {...sales[0],id:'boundary-at',signedAt:'2026-09-01T07:00:00Z'});
+  const payments = dates.map((paid_at,index)=>({id:`p${index}`,paid_at,amount:100}));
+  payments.push({id:'refund',paid_at:'2026-09-14',amount:-25},payments[6]);
+  const metrics=buildPerformanceMetrics(data({quotes,bookkeepingPayments:payments as CrmDashboardData['bookkeepingPayments'],closedSales:{latestWeekStart:'2026-09-14',review:[],weeks:[{sales:[...sales,sales[6]]} as NonNullable<CrmDashboardData["closedSales"]>["weeks"][number]]}}),new Date('2026-09-19T19:00:00Z'));
+  expect(metrics.periods.weekly).toMatchObject({start:'2026-09-14',cohort:{quoted:1,sold:1},grossCents:10000,cashCents:7500});
+  expect(metrics.periods.monthly).toMatchObject({start:'2026-09-01',cohort:{quoted:2,sold:2},grossCents:30000,cashCents:17500});
+  expect(metrics.periods.threeMonths).toMatchObject({start:'2026-07-01',cohort:{quoted:4,sold:4},grossCents:60000,cashCents:37500});
+  expect(metrics.periods.sixMonths).toMatchObject({start:'2026-04-01',cohort:{quoted:6,sold:6},grossCents:80000,cashCents:57500});
+});
+
+it('handles year rollover, leap years, empty data, and keeps customer alternatives deduplicated for longer periods',()=>{
+  const quotes=[quote({sent_at:'2025-11-01',sold_at:'2026-01-02'}),quote({id:'alternative',sent_at:'2026-01-02',sold_at:null})];
+  const result=buildPerformanceMetrics(data({quotes}),new Date('2026-01-04T19:00:00Z'));
+  expect(result.periods.weekly.start).toBe('2025-12-29');
+  expect(result.periods.monthly.cohort.quoted).toBe(0);
+  expect(result.periods.threeMonths).toMatchObject({start:'2025-11-01',cohort:{quoted:1,sold:1}});
+  expect(result.periods.sixMonths.start).toBe('2025-08-01');
+  const leap=buildPerformanceMetrics(data(),new Date('2024-03-31T19:00:00Z'));
+  expect(leap.periods.threeMonths.start).toBe('2024-01-01');
+  expect(leap.periods.sixMonths).toMatchObject({start:'2023-10-01',grossCents:null,cashCents:0,cohort:{quoted:0,percent:null}});
+});

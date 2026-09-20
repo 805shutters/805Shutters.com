@@ -6,7 +6,7 @@ import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search } from "lucide-react";
 import type { CrmDashboardData } from "@/lib/crm/types";
-import { attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
+import { performancePeriods, type PerformancePeriod, attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
 import { type SaveJobCost } from "./InlineJobCost";
@@ -25,28 +25,44 @@ function Ring({ value }: { value: number | null }) {
   return <svg className={styles.ring} viewBox="0 0 48 48" role="img" aria-label={value === null ? "No quoted customers in this period" : `${value.toFixed(1)} percent closed`}><circle cx="24" cy="24" r="20" fill="none" stroke="var(--op-line)" strokeWidth="4" /><circle cx="24" cy="24" r="20" fill="none" stroke="var(--op-silver)" strokeWidth="4" strokeLinecap="round" pathLength="100" strokeDasharray={`${value || 0} 100`} transform="rotate(-90 24 24)" /></svg>;
 }
 export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onBookkeeping }: Props) {
+  const [period, setPeriod] = useState<PerformancePeriod>("weekly");
   const [step, setStep] = useState<WorkflowStep>("ordered");
-  const [metric, setMetric] = useState<"weekly" | "monthly" | "gross" | "cash" | null>(null);
+  const [metric, setMetric] = useState<"close" | "quoted" | "gross" | "cash" | null>(null);
   const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
   const metrics = useMemo(() => data ? buildPerformanceMetrics(data) : null, [data]);
   if (!data || !metrics) return <section className={styles.workspace} role="status">{busy ? "Loading dashboard…" : "Dashboard records are unavailable. Refresh to try again."}</section>;
   const attention = items.filter(item => !item.archived && (["quote", "sold"].includes(step) || item.sold) && !stepComplete(item, step));
+  const selected = metrics.periods[period];
+  const selectedPeriod = performancePeriods.find(option => option.id === period)!;
+  const dateRange = `${displayDate(selected.start)} – ${displayDate(selected.end)}`;
   const definitions = {
-    weekly: "Customers first sent a quote this week who have a dated sale, divided by all customers first sent a quote this week. Each customer counts once; quote alternatives do not inflate the rate.",
-    monthly: "Customers first sent a quote this month who have a dated sale, divided by all customers first sent a quote this month. Each customer counts once.",
-    gross: "Signed contract value for this week, using the existing signed-sales report. Deposits and balance receipts are reported separately.",
-    cash: "Recorded customer payments received this week, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
+    close: "Customers first sent a quote in this period who have a dated sale, divided by all customers first sent a quote in this period. Each customer counts once; quote alternatives do not inflate the rate.",
+    quoted: "Unique customers first sent a quote in this period. Repeat quotes and quote alternatives count once per customer.",
+    gross: "Signed contract value in the selected period, using the existing signed-sales report. Deposits and balance receipts are reported separately.",
+    cash: "Recorded customer payments received in the selected period, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
   };
-  const cohort = metric === "weekly" || metric === "monthly" ? metrics[metric] : null;
+  const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
   return <section className={styles.workspace} aria-labelledby="operations-dashboard-title" aria-busy={busy}>
-    <header className={styles.heading}><div><h1 id="operations-dashboard-title">Dashboard</h1><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>Week to date · Los Angeles</small></span></header>
+    <header className={styles.heading}><div><h1 id="operations-dashboard-title">Dashboard</h1><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>{selectedPeriod.description} · Los Angeles</small></span></header>
     {data.loadWarnings?.map(warning => <p className={styles.warning} role="status" key={warning}>{warning}</p>)}
-    <div className={styles.metrics}>
-      {(["weekly", "monthly"] as const).map(period => <button type="button" className={styles.metric} key={period} aria-expanded={metric === period} onClick={() => setMetric(metric === period ? null : period)}><span>{period === "weekly" ? "Weekly" : "Monthly"} close rate</span><div><strong>{metrics[period].percent === null ? "—" : `${metrics[period].percent!.toFixed(1)}%`}</strong><Ring value={metrics[period].percent} /></div><small>{metrics[period].sold} sold / {metrics[period].quoted} quoted customers</small><small>{displayDate(period === "weekly" ? metrics.weekStart : metrics.monthStart)} – {displayDate(metrics.today)}</small></button>)}
-      <button type="button" className={styles.metric} aria-expanded={metric === "gross"} onClick={() => setMetric(metric === "gross" ? null : "gross")}><span>Weekly gross sales</span><div><strong>{metrics.grossCents === null ? "Unavailable" : currency(metrics.grossCents / 100)}</strong></div><small>Signed contract value</small><small>{displayDate(metrics.weekStart)} – {displayDate(metrics.today)}</small></button>
-      <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Weekly payments collected</span><div><strong>{currency(metrics.cashCents / 100)}</strong></div><small>Deposits + balances received</small><small>{displayDate(metrics.weekStart)} – {displayDate(metrics.today)}</small></button>
+    <div className={styles.periodToolbar}>
+      <div className={styles.periodTabs} role="tablist" aria-label="Dashboard time period">{performancePeriods.map((option, index) => <button type="button" role="tab" id={`period-${option.id}`} aria-controls="dashboard-period-metrics" aria-selected={period === option.id} tabIndex={period === option.id ? 0 : -1} key={option.id} onClick={() => setPeriod(option.id)} onKeyDown={event => {
+        const next = event.key === "ArrowRight" ? (index + 1) % performancePeriods.length : event.key === "ArrowLeft" ? (index + performancePeriods.length - 1) % performancePeriods.length : event.key === "Home" ? 0 : event.key === "End" ? performancePeriods.length - 1 : null;
+        if (next === null) return;
+        event.preventDefault(); setPeriod(performancePeriods[next].id);
+        document.getElementById(`period-${performancePeriods[next].id}`)?.focus();
+      }}>{option.label}</button>)}</div>
+      <span>{dateRange}</span>
     </div>
-    {metric && <section className={styles.explanation} aria-live="polite"><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <button type="button" onClick={onSales}>Open signed sales history <ArrowRight size={14} /></button>}{metric === "cash" && <><p>{metrics.receipts.length} dated receipts · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onBookkeeping}>Open payment records <ArrowRight size={14} /></button></>}</section>}
+    <div id="dashboard-period-metrics" role="tabpanel" aria-labelledby={`period-${period}`} aria-live="polite">
+    <div className={styles.metrics}>
+      <button type="button" className={styles.metric} aria-expanded={metric === "close"} onClick={() => setMetric(metric === "close" ? null : "close")}><span>Close rate</span><div><strong>{selected.cohort.percent === null ? "—" : `${selected.cohort.percent.toFixed(1)}%`}</strong><Ring value={selected.cohort.percent} /></div><small>{selected.cohort.sold} sold / {selected.cohort.quoted} quoted customers</small><small>{dateRange}</small></button>
+      <button type="button" className={styles.metric} aria-expanded={metric === "quoted"} onClick={() => setMetric(metric === "quoted" ? null : "quoted")}><span>Quoted customers</span><div><strong>{selected.cohort.quoted}</strong></div><small>Unique customers first quoted</small><small>{dateRange}</small></button>
+      <button type="button" className={styles.metric} aria-expanded={metric === "gross"} onClick={() => setMetric(metric === "gross" ? null : "gross")}><span>Gross sales</span><div><strong>{selected.grossCents === null ? "Unavailable" : currency(selected.grossCents / 100)}</strong></div><small>Signed contract value</small><small>{dateRange}</small></button>
+      <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Payments collected</span><div><strong>{currency(selected.cashCents / 100)}</strong></div><small>Deposits + balances, less refunds</small><small>{dateRange}</small></button>
+    </div>
+    {metric && <section className={styles.explanation}><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <>{selected.grossCents === null ? <p>Signed sales history is unavailable.</p> : selected.sales.length ? <ul>{selected.sales.map(sale => <li key={sale.id}>{sale.customerName} · {sale.reference} · {currency(sale.amountCents / 100)}</li>)}</ul> : <p>No signed sales in this period.</p>}<button type="button" onClick={onSales}>Open signed sales history <ArrowRight size={14} /></button></>}{metric === "cash" && <><p>{selected.receipts.length} dated receipts in this period · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onBookkeeping}>Open payment records <ArrowRight size={14} /></button></>}</section>}
+    </div>
     <div className={styles.sectionHeading}><h2>Workflow completion</h2><span>Select a step to see what needs attention</span></div>
     <div className={styles.stages}>{workflowSteps.map(id => { const value = workflowSummary(items, id); return <button key={id} type="button" aria-pressed={step === id} className={styles.stage} onClick={() => setStep(id)}><div><span>{workflowLabels[id]}</span><CompletionMark done={value.total > 0 && value.done === value.total && value.unknown === 0} /></div><strong>{value.done}<small> / {value.total}</small></strong><small>{value.unit}</small><span>{value.total ? `${Math.round(value.done / value.total * 100)}% complete` : "No records"}</span>{value.unknown > 0 && <small>{value.unknown} jobs need product details</small>}</button>; })}</div>
     <section className={styles.attention} aria-live="polite"><header><div><h2>Needs attention · {workflowLabels[step]}</h2><p>Review the customer record to complete the next step.</p></div><span>{attention.length} jobs</span></header>{attention.length ? attention.map(item => <div className={styles.attentionRow} key={item.source.id}><span className={styles.initials} aria-hidden="true">{item.source.customerName.split(" ").map(part => part[0]).slice(0, 2).join("")}</span><div><strong>{item.source.customerName}</strong><small>{attentionDetail(item, step)}</small></div><button type="button" onClick={() => onOpen(item.source)}>Review job <ArrowRight size={14} /></button></div>) : <p className={styles.empty}><CompletionMark done={true} /> No unfinished jobs in this step.</p>}</section>

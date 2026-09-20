@@ -245,6 +245,14 @@ function businessDate(value: string | null | undefined, now: Date): string | nul
 }
 export type CloseCohort = { quoted: number; sold: number; percent: number | null; customers: { id: string; name: string; sold: boolean }[] };
 
+export const performancePeriods = [
+  { id: "weekly", label: "Weekly", description: "Week to date" },
+  { id: "monthly", label: "Monthly", description: "Month to date" },
+  { id: "threeMonths", label: "3 Months", description: "Current + previous 2 months" },
+  { id: "sixMonths", label: "6 Months", description: "Current + previous 5 months" }
+] as const;
+export type PerformancePeriod = typeof performancePeriods[number]["id"];
+
 export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()) {
   const today = losAngelesDateString(now);
   const date = new Date(`${today}T12:00:00Z`);
@@ -273,11 +281,23 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
     const sold = customers.filter(person => person.sold).length;
     return { quoted: customers.length, sold, percent: customers.length ? sold / customers.length * 100 : null, customers };
   };
-  const week = data.closedSales?.weeks.find(item => item.startDate === weekStart);
   const payments = [...new Map(data.bookkeepingPayments.map(payment => [payment.id, payment])).values()];
-  const receipts = payments.filter(payment => { const day = businessDate(payment.paid_at, now); return day && day >= weekStart && Number.isFinite(payment.amount); });
-  return { today, weekStart, monthStart, weekly: cohort(weekStart), monthly: cohort(monthStart),
-    grossCents: week?.totalCents ?? null, sales: week?.sales || [],
-    cashCents: receipts.reduce((total, payment) => total + Math.round(payment.amount * 100), 0), receipts,
+  const allSales = [...new Map((data.closedSales?.weeks.flatMap(week => week.sales) || []).map(sale => [sale.id, sale])).values()];
+  const monthOffset = (offset: number) => {
+    const start = new Date(`${monthStart}T12:00:00Z`);
+    start.setUTCMonth(start.getUTCMonth() - offset);
+    return start.toISOString().slice(0, 10);
+  };
+  const range = (start: string) => {
+    const receipts = payments.filter(payment => { const day = businessDate(payment.paid_at, now); return day && day >= start && Number.isFinite(payment.amount); });
+    const sales = allSales.filter(sale => { const day = businessDate(sale.signedAt, now); return day && day >= start; });
+    return { start, end: today, cohort: cohort(start), sales, receipts,
+      grossCents: data.closedSales ? sales.reduce((total, sale) => total + sale.amountCents, 0) : null,
+      cashCents: receipts.reduce((total, payment) => total + Math.round(payment.amount * 100), 0) };
+  };
+  const periods = { weekly: range(weekStart), monthly: range(monthStart), threeMonths: range(monthOffset(2)), sixMonths: range(monthOffset(5)) };
+  return { today, weekStart, monthStart, periods, weekly: periods.weekly.cohort, monthly: periods.monthly.cohort,
+    grossCents: periods.weekly.grossCents, sales: periods.weekly.sales,
+    cashCents: periods.weekly.cashCents, receipts: periods.weekly.receipts,
     missingQuoteDates, missingPaymentDates: payments.filter(payment => !businessDate(payment.paid_at, now)).length };
 }

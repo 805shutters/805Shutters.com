@@ -184,3 +184,12 @@
 .financialStrip summary:focus-visible { outline:2px solid #76dcb1; outline-offset:4px; }
 
 .shipmentDates { display:flex; flex-direction:column; gap:3px; max-width:100%; overflow-wrap:anywhere; text-align:center; }
+
+.periodToolbar { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin:0 0 18px; }
+.periodToolbar > span { color:#b8b6ae; font-size:12px; }
+.periodTabs { display:flex; gap:4px; padding:5px; border:1px solid #343b36; border-radius:12px; background:#181c19; max-width:100%; }
+.periodTabs button { padding:10px 18px; border:0; border-radius:8px; background:transparent; color:#b8bfb9; font-size:13px; white-space:nowrap; }
+.periodTabs button:hover { color:#fbfbfa; background:#2a302c; }
+.periodTabs button[aria-selected=true] { background:#75dfab; color:#102d21; font-weight:600; }
+.periodTabs button:focus-visible { outline:2px solid #fbfbfa; outline-offset:2px; }
+@media(max-width:600px) { .periodTabs { width:100%; } .periodTabs button { flex:1; padding:10px 6px; font-size:12px; } }

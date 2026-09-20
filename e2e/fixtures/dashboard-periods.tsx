@@ -1,0 +1,11 @@
+import { createRoot } from "react-dom/client";
+import "@/app/globals.css";
+import "@/components/crm/crm-platinum.css";
+import { OperationsDashboard } from "@/components/crm/OperationsOverview";
+import type { CrmDashboardData, CrmQuote } from "@/lib/crm/types";
+import { losAngelesDateString } from "@/lib/booking/availability";
+const today = new Date(`${losAngelesDateString(new Date())}T12:00:00Z`);
+const days = [0, 10, 40, 80, 140].map(days => new Date(today.getTime() - days * 86400000).toISOString().slice(0,10));
+const quotes = days.map((day,i)=>({id:`quote-${i}`,job_id:`job-${i}`,customer_name:`Sample customer ${i+1}`,status:"sent",sent_at:day,sold_at:i%2?null:day,meta:{},quote_total:1000} as CrmQuote));
+const data = {jobs:[],quotes,bookkeepingRows:[],customerFiles:[],customerProducts:[],customerContracts:[],orderCogsEmails:[],installationInvoiceEmails:[],bookkeepingPayments:days.map((paid_at,i)=>({id:`payment-${i}`,paid_at,amount:100*(i+1)})),closedSales:{latestWeekStart:days[0],review:[],weeks:[{sales:days.map((signedAt,i)=>({id:`sale-${i}`,signedAt,customerName:`Sample customer ${i+1}`,reference:`Q${i}`,amountCents:100000*(i+1)}))}]}} as unknown as CrmDashboardData;
+createRoot(document.getElementById("root")!).render(<main className="crm-platinum-shell" style={{display:"block",padding:28}}><OperationsDashboard data={data} busy={false} onOpen={()=>{}} /></main>);
