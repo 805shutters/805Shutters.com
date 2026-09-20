@@ -11,7 +11,7 @@ describe('September Roman chain and hardware rules',()=>{
    expect(romanHardware(s)?.record.mounting).toMatchObject({brackets:[count],shimQuantity:count*3,shimExtension:1.125});
    expect(authoritativeAutomaticSurchargeSelections(s).filter(x=>x.id==='shim')).toEqual([{id:'shim',units:count*3}]);
   }
-  for(const configuration of [{roman_shim_layers:1},{mount_type:'Outside Mount',shade_type:'Day & Night',roman_shim_layers:1},{mount_type:'Outside Mount',roman_shim_layers:4},{mount_type:'Outside Mount',roman_shim_layers:1.5}]) expect(romanHardware(shade(configuration))?.issues.length).toBeGreaterThan(0);
+  for(const configuration of [{roman_shim_layers:1},{mount_type:'Outside Mount',shade_type:'Day & Night',roman_shim_layers:1},{mount_type:'Outside Mount',roman_shim_layers:4},{mount_type:'Outside Mount',roman_shim_layers:1.5}] as SelectionContext['configuration'][]) expect(romanHardware(shade(configuration))?.issues.length).toBeGreaterThan(0);
  });
  it('counts common-valance hardware per constituent shade',()=>{
   const s=shade({mount_type:'Outside Mount',lift_system:'Cordless',shade_type:'Common Valance',common_valance_panel_widths:[30,60],roman_shim_layers:2,hold_downs:'Magnetic',poles:'Pole with Attachment',pole_length:'60"',roman_pole_quantity:2});
