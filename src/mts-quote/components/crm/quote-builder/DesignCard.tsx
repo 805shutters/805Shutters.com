@@ -1,6 +1,6 @@
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
-import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
+import { onyxPortalAssortment, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
@@ -3638,7 +3638,7 @@ export function getStandardShutterGridOptions(
         label: "Shutter Type",
         field: "json:onyx_order_type",
         type: "buttons",
-        options: ONYX_ORDER_SHUTTER_TYPES,
+        options: currentOnyx?.shapes ?? ONYX_ORDER_SHUTTER_TYPES,
       },
       {
         key: "size_type",
@@ -3690,7 +3690,7 @@ export function getStandardShutterGridOptions(
         label: "Hinge Color",
         field: "hinge_color",
         type: "select",
-        options: currentOnyx?.material === "US Made Vinyl" ? ["White"] : ONYX_HINGE_COLORS,
+        options: onyxPortalHingeColors(currentOnyxIdentity) ?? ONYX_HINGE_COLORS,
       },
       {
         key: "panel_config",

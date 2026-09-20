@@ -1,5 +1,6 @@
 "use client";
 import { onyxHeldProducts, onyxHeldColors, onyxHeldControlChoices, onyxAshAssortment, ONYX_HELD_REASON } from '@/lib/quote/onyx-held-catalog';
+import { onyxImportedHingeColors } from "@/lib/quote/onyx-current-assortment";
 import type { SalesQuoteDesign } from '@mts/types/quote';
 
 export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:SalesQuoteDesign|undefined;productId:string;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
@@ -17,6 +18,7 @@ export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:
     <label className="block text-sm">Onyx color<select aria-label="Onyx color" className={cls} value={String(options.fabric_color_id??'')} disabled={!selectedProgram} onChange={e=>{const c=colors.find(c=>c.id===e.target.value);if(!c)return;update({...c.automaticDetails,fabric_color_id:c.id,fabric_color_code:c.colorCode,fabric_color_name:c.colorName,fabric_color_collection:c.collection,fabric_product_id:productId,fabric_program_id:c.programId},{fabric:c.collection});}}><option value="">Select color</option>{colors.map(c=><option key={c.id} value={c.id}>{c.colorCode} · {c.colorName}</option>)}</select></label>
     {select('Onyx mount',design?.mount_type,['Inside Mount','Outside Mount'],mount_type=>update({},{mount_type}))}
     {productId==='onyx_ash_shutters'?<>
+      {select('Onyx Ash hinge',design?.hinge_color,onyxImportedHingeColors,hinge_color=>update({},{hinge_color}))}
       {select('Onyx Ash frame',options.onyx_frame,onyxAshAssortment.frames,v=>update({onyx_frame:v}))}
       {select('Onyx Ash shape',options.onyx_shape,onyxAshAssortment.shapes,v=>update({onyx_shape:v}))}
       {select('Onyx Ash louver',design?.louver_size,onyxAshAssortment.louverSizes.map(String),louver_size=>update({},{louver_size}))}

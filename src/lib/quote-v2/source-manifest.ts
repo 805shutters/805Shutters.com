@@ -538,6 +538,25 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
   "accountScope": "CHE01 California Home Exterior; full grids, dimensions and conditional compatibility unresolved"
 },
+{
+  "id": "onyx-hinge-assortment-2026-09-20",
+  "manufacturer": "Onyx",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "onyx-hinge-assortment-20260920.json",
+  "title": "Onyx CHE01 enabled imported shutter hinge choices",
+  "revision": "Visible controls observed September 20, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation date only; manufacturer effective date unpublished",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": "2026-09-20",
+  "sha256": "f26305e1d588365ce8fce713dc90d0b03f5ec284f1a1d4cec21cdda83376682a",
+  "authorities": [
+    "assortment"
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
+  "accountScope": "CHE01; Regular shutter menu observations; shape compatibility and charges unresolved"
+},
   {
     id: "onyx-portal-assortment-2026-09-20",
     manufacturer: "Onyx Shutters",

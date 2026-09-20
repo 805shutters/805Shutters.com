@@ -1,3 +1,4 @@
+import hingeEvidence from './onyx-hinge-assortment-20260920.json';
 import evidence from './onyx-portal-20260920.json';
 
 /** Current visible portal availability. This never changes selling rates or authorizes pricing. */
@@ -36,4 +37,13 @@ export function onyxPortalTiltLabels(programOrMaterial: string) {
 export function onyxCanonicalColor(value: string): string {
   const aliases: Record<string,string> = {White:'101_White', Snow:'105_Snow', 'Swiss Coffee':'107_Swiss Coffee', Creamy:'110_Creamy', Butter:'120_Butter',Nature:'200_Nature',Honey:'201_Honey',Java:'215_Java',Rose:'216_Rose',Mahogany:'220_Mahogany','Black Walnut':'230_Black Walnut'};
   return aliases[value] ?? ONYX_PORTAL_ASSORTMENT.flatMap(row => row.colors).find(color => color.replace(/^\d+_/, "").replaceAll("_", " ") === value) ?? value;
+}
+
+export const onyxImportedHingeColors = hingeEvidence.hinges.filter(h=>!h.disabled).map(h=>h.label);
+export function onyxPortalHingeColors(programOrMaterial:string) {
+  const row=onyxPortalAssortment(programOrMaterial);
+  return row ? row.material==='US Made Vinyl' ? ['White'] : onyxImportedHingeColors : null;
+}
+export function onyxCanonicalHinge(value:string) {
+  return ({'Anti Brass':'Antique Brass','Bri Brass':'Bright Brass',Nickel:'Nickle'} as Record<string,string>)[value] ?? value;
 }

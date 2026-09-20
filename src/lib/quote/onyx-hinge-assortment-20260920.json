@@ -1,0 +1,66 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "accountId": "CHE01",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
+  "scope": "Enabled hinge controls separately read on saved Regular shutter comparison lines; other shape compatibility and charges unresolved",
+  "observations": [
+    {
+      "material": "Bassia",
+      "draftLineId": 409240
+    },
+    {
+      "material": "Sycamore",
+      "draftLineId": 409241
+    },
+    {
+      "material": "Vinyl",
+      "draftLineId": 409242
+    },
+    {
+      "material": "VLO",
+      "draftLineId": 409243
+    },
+    {
+      "material": "Ash",
+      "draftLineId": 409244
+    }
+  ],
+  "hinges": [
+    {
+      "label": "White",
+      "portalValue": "White",
+      "disabled": false
+    },
+    {
+      "label": "Cream",
+      "portalValue": "Cream",
+      "disabled": false
+    },
+    {
+      "label": "Antique Brass",
+      "portalValue": "Antique",
+      "disabled": false
+    },
+    {
+      "label": "Bright Brass",
+      "portalValue": "Bright",
+      "disabled": false
+    },
+    {
+      "label": "Nickle",
+      "portalValue": "Nickle",
+      "disabled": false
+    },
+    {
+      "label": "Black",
+      "portalValue": "BLK",
+      "disabled": false
+    },
+    {
+      "label": "Paint to Match",
+      "portalValue": "Match",
+      "disabled": true
+    }
+  ]
+}

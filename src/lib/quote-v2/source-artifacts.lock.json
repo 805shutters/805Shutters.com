@@ -271,6 +271,12 @@
       "sha256": "05aa8047c204a4606d344b03c6e1ba9df2814acbedb9e7c95ce4f4cf5600eba1"
     },
     {
+      "sourceId": "onyx-hinge-assortment-2026-09-20",
+      "fileName": "onyx-hinge-assortment-20260920.json",
+      "byteLength": 1340,
+      "sha256": "f26305e1d588365ce8fce713dc90d0b03f5ec284f1a1d4cec21cdda83376682a"
+    },
+    {
       "sourceId": "onyx-portal-assortment-2026-09-20",
       "fileName": "onyx-portal-20260920.json",
       "byteLength": 11652,

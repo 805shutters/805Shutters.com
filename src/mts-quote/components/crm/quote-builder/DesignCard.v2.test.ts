@@ -1549,10 +1549,21 @@ describe("current Onyx portal choices", () => {
       expect(options("json:frame_type")).toEqual(["VL Outside","VL Inside","VL 68","VZ Fine","VZ Crest FS"]);
       expect(options("tilt_type")).toEqual(["H2 - Hidden Tiltrod Notch On Louver"]);
       expect(options("hinge_color")).toEqual(["White"]);
+      expect(options("json:onyx_order_type")).toEqual(["Regular", "French Door"]);
     }
   });
 });
 
+
+describe("imported Onyx exact application and hinge menus", () => {
+ it("uses current Bassia labels and omits disabled Paint to Match", () => {
+  const fields=getStandardShutterGridOptions({supplier:"Onyx",material:"Basswood",options_json:{catalog_program_id:"painted_basswood"}} as unknown as SalesQuoteDesign,true);
+  const options=(field:string)=>{const item=fields.find(f=>f.field===field);return item&&"options" in item?item.options:undefined;};
+  expect(options("hinge_color")).toEqual(["White","Cream","Antique Brass","Bright Brass","Nickle","Black"]);
+  expect(options("json:onyx_order_type")).toContain("ByPass-Close");
+  expect(options("json:onyx_order_type")).toContain("Barn Door");
+ });
+});
 
 describe("exact Onyx configuration entry", () => {
   it("opens the grid after exact program selection without redirecting to legacy wood routing", () => {

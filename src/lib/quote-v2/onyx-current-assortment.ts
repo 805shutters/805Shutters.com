@@ -1,4 +1,4 @@
-import { onyxCanonicalColor, onyxPortalAssortment, onyxPortalColors } from '../quote/onyx-current-assortment';
+import { onyxCanonicalColor, onyxCanonicalHinge, onyxPortalHingeColors, onyxPortalAssortment, onyxPortalColors } from '../quote/onyx-current-assortment';
 import type { SelectionContext, ValidationIssue } from './core';
 import { sourceProvenance } from './source-manifest';
 
@@ -10,7 +10,7 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
   const issues: ValidationIssue[] = [];
   const add = (field: string, value: string | number, explanation: string) => issues.push({
     severity: 'hard_block', ruleId: `onyx.current_assortment.${field}`,
-    source: sourceProvenance('onyx-portal-assortment-2026-09-20'),
+    source: sourceProvenance(field==='hinge' && row.material!=='US Made Vinyl' ? 'onyx-hinge-assortment-2026-09-20' : 'onyx-portal-assortment-2026-09-20'),
     selectedValues: {programId:context.programId, [field]:value}, explanation,
   });
   const color = String(selected.color_name ?? selected.color ?? '');
@@ -33,6 +33,12 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
   const rawTilt = String(selected.tilt_source_code ?? selected.tilt_type ?? '');
   const tilt = rawTilt.match(/^(H[123]|C|O)(?:$| - )/)?.[1] ?? ({standard:'C',offset:'O','Offset Tilt Rod':'O'} as Record<string,string>)[rawTilt];
   if (rawTilt && (!tilt || !row.tiltCodes.includes(tilt))) add('tilt',rawTilt,`${row.material} does not offer this tilt system in the current dealer portal.`);
-  if (row.material === 'US Made Vinyl' && selected.hinge_color && selected.hinge_color !== 'White') add('hinge',String(selected.hinge_color),'U.S. Made Vinyl currently offers White hinges only.');
+  // Preserve the exact portal application label; generic old ByPass does not
+  // distinguish current open/closed constructions and remains unresolved.
+  const shape = String(selected.onyx_order_type ?? selected.shutter_type ?? selected.order_type ?? '');
+  const canonicalShapes: Record<string,string> = {standard:'Regular',french_door:'French Door',cafe:'Cafe',bi_fold_tracking:'Bi-Fold Tracking'};
+  if (shape && !row.shapes.includes(canonicalShapes[shape] ?? shape)) add('shape',shape,`${row.material} does not offer this exact application in the current dealer portal; select a listed application.`);
+  const hinge=String(selected.hinge_color??'');
+  if (hinge && !onyxPortalHingeColors(context.programId??'')?.includes(onyxCanonicalHinge(hinge))) add('hinge',hinge,`${row.material} does not offer this enabled hinge finish in the current dealer portal.`);
   return issues;
 }

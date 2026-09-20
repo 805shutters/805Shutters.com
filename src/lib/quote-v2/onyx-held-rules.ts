@@ -1,3 +1,4 @@
+import { onyxImportedHingeColors, onyxCanonicalHinge } from '@/lib/quote/onyx-current-assortment';
 import { isOnyxHeldProduct, onyxHeldColors, onyxHeldProducts, onyxHeldControlChoices, onyxAshAssortment, ONYX_SHADE_SOURCE, ONYX_HELD_REASON } from '@/lib/quote/onyx-held-catalog';
 import type { SelectionContext, ValidationIssue } from './core';
 import { sourceProvenance } from './source-manifest';
@@ -5,7 +6,7 @@ import { sourceProvenance } from './source-manifest';
 export function validateOnyxHeldSelection(s:SelectionContext):ValidationIssue[]{
   if(!isOnyxHeldProduct(s.productId))return [];
   const c=s.configuration,issues:ValidationIssue[]=[];
-  const add=(rule:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`onyx.current.${rule}`,source:sourceProvenance(s.productId==='onyx_ash_shutters'?'onyx-portal-assortment-2026-09-20':ONYX_SHADE_SOURCE),selectedValues:{productId:s.productId,programId:s.programId,...c},explanation});
+  const add=(rule:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`onyx.current.${rule}`,source:sourceProvenance(rule==='hinge'?'onyx-hinge-assortment-2026-09-20':s.productId==='onyx_ash_shutters'?'onyx-portal-assortment-2026-09-20':ONYX_SHADE_SOURCE),selectedValues:{productId:s.productId,programId:s.programId,...c},explanation});
   // Assortment observations never authorize arbitrary prices or customer delivery.
   add('price_grid_required',ONYX_HELD_REASON);
   if(s.catalogAsOf<'2026-09-20')add('observation_date','This assortment was first observed September 20, 2026; an earlier effective schedule is not established.');
@@ -16,6 +17,7 @@ export function validateOnyxHeldSelection(s:SelectionContext):ValidationIssue[]{
   if(!color||color.programId!==s.programId||color.colorCode!==c.fabric_color_code||color.collection!==c.fabric_color_collection||color.colorName!==c.fabric_color_name)add('color_program','Choose a current color from the selected Onyx product and collection.');
   if(c.mount_type&&!['Inside Mount','Outside Mount'].includes(String(c.mount_type)))add('mount','Choose inside or outside mount.');
   if(s.productId==='onyx_ash_shutters'){
+    if(c.hinge_color&&!onyxImportedHingeColors.includes(onyxCanonicalHinge(String(c.hinge_color))))add('hinge','Choose an enabled current Ash hinge finish.');
     for(const [field,values] of [['onyx_frame',onyxAshAssortment.frames],['onyx_shape',onyxAshAssortment.shapes],['onyx_tilt_code',onyxAshAssortment.tiltCodes],['louver_size',onyxAshAssortment.louverSizes.map(String)]] as const){if(c[field]&&!values.includes(String(c[field])))add(field,'Choose a documented Ash menu option; construction and charge approval remain required.');}
   }else{
     if(c.lift_system&&!onyxHeldControlChoices(s.productId).includes(String(c.lift_system)))add('control','Choose a control listed for this Onyx product.');

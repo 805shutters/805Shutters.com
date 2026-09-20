@@ -1,7 +1,7 @@
 import { describe,it,expect } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { onyxPortalAssortment, onyxPortalColors, onyxPortalTiltLabels } from './onyx-current-assortment';
+import { onyxPortalAssortment, onyxPortalHingeColors, onyxPortalColors, onyxPortalTiltLabels } from './onyx-current-assortment';
 import { validateOnyxCurrentAssortment } from '../quote-v2/onyx-current-assortment';
 import { getSourceManifestEntry } from '../quote-v2/source-manifest';
 import type { SelectionContext } from '../quote-v2/core';
@@ -51,6 +51,26 @@ describe('Onyx observed dealer assortment',()=>{
   }
   for(const tilt of ['hidden','H4','H2-invalid','unknown']) {
    expect(validateOnyxCurrentAssortment(context({tilt_type:tilt})).map(i=>i.ruleId)).toContain('onyx.current_assortment.tilt');
+  }
+ });
+ it('enforces exact applications for each material without expanding a historical generic selection',()=>{
+  expect(validateOnyxCurrentAssortment(context({onyx_order_type:'French Door'}))).toEqual([]);
+  expect(validateOnyxCurrentAssortment(context({order_type:'standard'}))).toEqual([]);
+  for(const shape of ['ByPass-Close','ByPass-Open','Bi-Fold Tracking','Cafe']){
+   expect(validateOnyxCurrentAssortment(context({onyx_order_type:shape})).map(i=>i.ruleId)).toContain('onyx.current_assortment.shape');
+   expect(validateOnyxCurrentAssortment(context({onyx_order_type:shape},'vinyl'))).toEqual([]);
+  }
+  expect(validateOnyxCurrentAssortment(context({onyx_order_type:'French Door'},'vinyl')).map(i=>i.ruleId)).toContain('onyx.current_assortment.shape');
+  expect(validateOnyxCurrentAssortment(context({onyx_order_type:'Barn Door'},'painted_basswood'))).toEqual([]);
+  expect(validateOnyxCurrentAssortment(context({order_type:'bypass'},'painted_basswood')).map(i=>i.ruleId)).toContain('onyx.current_assortment.shape');
+ });
+ it('pins enabled imported hinges and rejects disabled or unsupported finishes',()=>{
+  const bytes=readFileSync(new URL('./onyx-hinge-assortment-20260920.json',import.meta.url));
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(getSourceManifestEntry('onyx-hinge-assortment-2026-09-20').sha256);
+  for(const program of ['painted_basswood','stained_basswood','secamore','vinyl','vlo_hybrid']){
+   expect(onyxPortalHingeColors(program)).toEqual(['White','Cream','Antique Brass','Bright Brass','Nickle','Black']);
+   for(const hinge of ['White','Cream','Antique Brass','Bright Brass','Nickle','Black','Nickel','Anti Brass','Bri Brass']) expect(validateOnyxCurrentAssortment(context({hinge_color:hinge},program))).toEqual([]);
+   for(const hinge of ['Match','Paint to Match','ORB','forged']) expect(validateOnyxCurrentAssortment(context({hinge_color:hinge},program)).map(i=>i.ruleId)).toContain('onyx.current_assortment.hinge');
   }
  });
  it('reconciles six dealer observations using rounded frame area without changing retail',()=>{
