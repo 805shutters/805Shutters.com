@@ -163,13 +163,13 @@ describe("mobile quote preview current-catalog integration", () => {
         issues: [{ ruleId: "norman.shutter.assortment.color" }, {
           ruleId: "norman.shutter.frame_pricing.missing_frame_sides",
           selectedValues: { frame_sides: null },
-          explanation: "Window-size shutter pricing requires three or four framed sides.",
+          explanation: "Window-size shutter pricing requires two, three or four framed sides.",
         }],
       },
     });
     expect(mobileQuotePreviewLineResponse(prepared)).toMatchObject({
       requiresManualPricing: false,
-      blockedReason: "Choose whether this Window Size shutter has three or four framed sides.",
+      blockedReason: "Choose the number of framed sides for this Window Size shutter.",
     });
 
     const withFrameSides = {

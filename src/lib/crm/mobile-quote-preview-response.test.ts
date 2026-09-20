@@ -44,7 +44,7 @@ describe("mobile quote preview customer-safe response", () => {
   it.each([
     [
       "norman.shutter.frame_pricing.missing_frame_sides",
-      "Choose whether this Window Size shutter has three or four framed sides.",
+      "Choose the number of framed sides for this Window Size shutter.",
     ],
     [
       "norman.shutter.frame_pricing.mount_frame_mismatch",

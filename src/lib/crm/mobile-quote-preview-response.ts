@@ -21,7 +21,7 @@ export type MobileQuotePreviewResponse = Readonly<{
 
 const SAFE_CONFIGURATION_REASONS: Readonly<Record<string, string>> = {
   "norman.shutter.frame_pricing.missing_frame_sides":
-    "Choose whether this Window Size shutter has three or four framed sides.",
+    "Choose the number of framed sides for this Window Size shutter.",
   "norman.shutter.frame_pricing.mount_frame_mismatch":
     "The selected Norman frame is not compatible with the selected mount type.",
 };
