@@ -10063,6 +10063,12 @@ function ShadesAndBlindsOptions({
     if (productType === "Smart Drapes" && ["json:long_l_bracket","json:aluminum_shim"].includes(field)) {
       onUpdateFields({options_json:{...currentJson,[field.slice(5)]:value,...([true,"Yes"].includes(value as string|boolean)?{[field==="json:long_l_bracket"?"aluminum_shim":"long_l_bracket"]:null}:{})}});return;
     }
+    if (authoritativeV2 && ((productType === "SmartFold Shades" && field === "json:smartfold_keystone_layout") || (productType === "Sheer Shades" && field === "json:perfectsheer_keystone_layout"))) {
+      const prefix = productType === "SmartFold Shades" ? "smartfold" : "perfectsheer";
+      const cleared = {...currentJson, [`${prefix}_keystone_layout`]: value, [`${prefix}_keystone_locations`]: null};
+      for (let i = 1; i <= 5; i++) cleared[`${prefix}_keystone_location_${i}`] = null;
+      onUpdateFields({options_json: cleared}); return;
+    }
     if (productType === "Smart Drapes" && field === "json:smartdrape_keystone_joints") {
       onUpdateFields({options_json:{...currentJson,smartdrape_keystone_joints:value,keystone:null,keystone_quantity:null}});return;
     }
@@ -10485,13 +10491,21 @@ function ShadesAndBlindsOptions({
         const hasValance=!!design?.valance && design.valance !== "No Valance";
         const hasReturns=optionsJson.smartfold_valance_returns && optionsJson.smartfold_valance_returns !== "None";
         const keystone=/Keystone/.test(String(optionsJson.smartfold_valance_joinery));
+        const sfAtGaps=optionsJson.smartfold_keystone_layout === "At Gaps Between Shades";
+        const sfSavedCommon=smartfoldSavedCommonValanceForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity).smartfold_common_valance_v1 as {gaps?:number[]}|undefined;
+        const sfGapIndexes=(sfSavedCommon?.gaps??[]).slice(0,-1).flatMap((gap,i)=>gap>0?[i+1]:[]);
         const valanceOptions:GridOption[]=hasValance ? [
           {key:"valance_width",label:"Custom Valance Width",field:"json:smartfold_valance_width",type:"number",min:0.125,step:"0.125",unit:"in",placeholder:"Default"},
           ...((design?.mount_type === "Outside Mount" || design?.mount_type === "Semi-Inside Mount") && (design.valance === "Modern Wood" || /inch Fabric/.test(String(design.valance))) ? [styleChoice("smartfold_valance_returns","Valance Returns",SMARTFOLD_RETURNS)] : []),
           ...(hasReturns?[{key:"valance_return_size",label:design?.mount_type === "Outside Mount"?"Extra Return Length":"Custom Return Length",field:"json:smartfold_valance_return_size",type:"number",min:design?.mount_type === "Outside Mount"?0.125:design.valance === "8-inch Fabric"?1.125:0.5,max:design?.mount_type === "Outside Mount"?1:4.5,step:"0.125",unit:"in",placeholder:"Default"} as GridOption]:[]),
           styleChoice("smartfold_valance_joinery","Valance Joinery",SMARTFOLD_JOINERY),
-          ...(keystone?[styleChoice("smartfold_keystone_count","Keystone Count",["1","2","3"]),styleChoice("smartfold_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]),
-            ...(optionsJson.smartfold_keystone_layout === "Custom"?Array.from({length:Math.min(3,Math.max(1,Number(optionsJson.smartfold_keystone_count)||1))},(_,i)=>({key:`keystone_${i+1}`,label:`Keystone ${i+1} from Left`,field:`json:smartfold_keystone_location_${i+1}`,type:"number",min:18,step:"0.125",unit:"in"} as GridOption)):[])]:[]),
+          ...(keystone?[styleChoice("smartfold_keystone_count","Keystone Count",["1","2","3"])]:[]),
+          ...(keystone||common?[styleChoice("smartfold_keystone_layout","Splice Locations",["Equally Spaced",...(keystone?["Custom"]:[]),...(common?["At Gaps Between Shades"]:[])])]:[]),
+          ...(keystone && optionsJson.smartfold_keystone_layout === "Custom"?Array.from({length:Math.min(3,Math.max(1,Number(optionsJson.smartfold_keystone_count)||1))},(_,i)=>({key:`keystone_${i+1}`,label:`Keystone ${i+1} from Left`,field:`json:smartfold_keystone_location_${i+1}`,type:"number",min:18,step:"0.125",unit:"in"} as GridOption)):[]),
+          ...(sfAtGaps?[
+            {key:"splice_span_offset",label:"First Shade Offset from Valance Left",field:"json:smartfold_splice_span_offset",type:"number",step:"0.0625",unit:"in",placeholder:"Required if widths differ"} as GridOption,
+            ...sfGapIndexes.map(i=>({key:`gap_joint_${i}`,label:`Joint in Gap ${i} from Valance Left`,field:`json:smartfold_keystone_location_${i}`,type:"number",min:0,step:"0.0625",unit:"in"} as GridOption)),
+          ]:[]),
         ]:[];
         const motorOptions: GridOption[] = design?.lift_system === "Motorized" ? [
           { key: "motor_type", label: "Power Source", field: "motor_type", type: "select", options: ["Norman Smart Rechargeable Battery (AC Charger)", "Norman Smart AC Adapter", "Norman Smart DC Low Voltage", "AutoWand"] },
@@ -11777,9 +11791,15 @@ function ShadesAndBlindsOptions({
           options.push(psChoice("perfectsheer_valance_returns","Valance Returns",PERFECTSHEER_RETURNS));
           if(optionsJson.perfectsheer_valance_returns && optionsJson.perfectsheer_valance_returns!=="None")options.push(psDimension("perfectsheer_valance_return_size",design?.mount_type === "Outside Mount"?"Return Extension Beyond Standard":"Custom Return Length",design?.mount_type === "Outside Mount"?.125:["Fabric Valance","fabric"].includes(design?.valance??"")?1.125:.5,design?.mount_type === "Outside Mount"?1:4.5));
         }
-        if(optionsJson.perfectsheer_valance_joinery === "Keystone") {
-          options.push(psChoice("perfectsheer_keystone_count","Keystone Quantity",["1","2","3","4","5"]),psChoice("perfectsheer_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]));
-          if(optionsJson.perfectsheer_keystone_layout === "Custom")for(let i=1;i<=Math.min(5,Number(optionsJson.perfectsheer_keystone_count)||1);i++)options.push(psDimension(`perfectsheer_keystone_location_${i}`,`Keystone ${i} from Left`,18));
+        const psKeystone=optionsJson.perfectsheer_valance_joinery === "Keystone";
+        const psCommon=!!optionsJson.perfectsheer_common_valance_id && optionsJson.perfectsheer_common_valance_id !== "None";
+        if(psKeystone) options.push(psChoice("perfectsheer_keystone_count","Keystone Quantity",["1","2","3","4","5"]));
+        if(psKeystone||psCommon) options.push(psChoice("perfectsheer_keystone_layout","Splice Locations",["Equally Spaced",...(psKeystone?["Custom"]:[]),...(psCommon?["At Gaps Between Shades"]:[])]));
+        if(psKeystone && optionsJson.perfectsheer_keystone_layout === "Custom")for(let i=1;i<=Math.min(5,Number(optionsJson.perfectsheer_keystone_count)||1);i++)options.push(psDimension(`perfectsheer_keystone_location_${i}`,`Keystone ${i} from Left`,18));
+        if(optionsJson.perfectsheer_keystone_layout === "At Gaps Between Shades") {
+          options.push({key:"perfectsheer_splice_span_offset",label:"First Shade Offset from Valance Left",field:"json:perfectsheer_splice_span_offset",type:"number",step:"0.0625",unit:"in",placeholder:"Required if widths differ"});
+          const savedCommon=perfectsheerSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity).perfectsheer_common_valance_v1 as {gaps?:number[]}|undefined;
+          for(const [index,gap] of (savedCommon?.gaps??[]).slice(0,-1).entries())if(gap>0)options.push(psDimension(`perfectsheer_keystone_location_${index+1}`,`Joint in Gap ${index+1} from Valance Left`,0));
         }
         if (liftSystem === "Continuous Cord Loop") options.push(
           psChoice("control_side","Control Side",["Right","Left"]),
@@ -12858,6 +12878,7 @@ function ShadesAndBlindsOptions({
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /day.*night/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">The rear roller motor is on the opposite side from the front Roman motor. The standard arrangement is front right and rear left.</p>}
       {productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" && Boolean(optionsJson.ultimate_common_group) && optionsJson.ultimate_common_group !== "None" && <p className="text-sm text-slate-700">Use the same common-valance group and shared valance choices on each blind line. Number blinds from left to right and enter the gap after each blind; the last gap is zero. Common-valance pricing requires dealer confirmation.</p>}
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
+      {((productType === "SmartFold Shades" && optionsJson.smartfold_keystone_layout === "At Gaps Between Shades") || (productType === "Sheer Shades" && optionsJson.perfectsheer_keystone_layout === "At Gaps Between Shades")) && <p className="text-sm text-slate-700">Save every common-valance shade to establish its gaps. Zero-gap joints follow the shade boundaries. For each positive gap, enter the measured joint position from the left end of the finished valance. If the valance and shade span widths differ, measure the first shade offset; a negative offset means the shade starts left of the valance.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">Chain length runs from the top of the headrail to the bottom of the tension device. The default is shade height minus 3 inches. Leave at least 2 inches clear below the tension device.{design?.shade_type === "Common Valance" ? " The left shade has its chain on the left; the right shade has its chain on the right." : ""}</p>}

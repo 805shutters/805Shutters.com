@@ -1,3 +1,4 @@
+import { valanceGapPlacement } from "./norman-valance-gaps";
 import { smartfoldStyle } from "./norman-smartfold-style";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
@@ -39,19 +40,24 @@ export function smartfoldValance(s: SelectionContext) {
   const minimumJoints=active?Math.max(0,Math.ceil(finishedWidth/maxUnspliced)-1):0;
   const joinery=String(c.smartfold_valance_joinery || "Connector");
   const keystone=/keystone/.test(norm(joinery));
+  const gapPlacement = valanceGapPlacement("smartfold", c, common, finishedWidth, orderSpan);
   const explicitCount=finite(c.smartfold_keystone_count);
-  const count=keystone?(explicitCount??Math.max(1,minimumJoints)):0;
+  const count=keystone?(explicitCount??gapPlacement?.jointCount??Math.max(1,minimumJoints)):0;
   const customLayout=norm(c.smartfold_keystone_layout)==="custom";
   const locationsText=customLayout ? Array.from({length:Math.max(0,Math.min(3,Math.floor(count)))},(_,i)=>String(c[`smartfold_keystone_location_${i+1}`]??" ")).join(",") : String(c.smartfold_keystone_locations ?? "").trim();
-  const positions=locationsText?locationsText.split(",").map(v=>v.trim()).map(v=>v===""?NaN:Number(v)):Array.from({length:Math.max(0,Math.min(3,Math.floor(count)))},(_,i)=>finishedWidth*(i+1)/(count+1));
-  return {active,inside,semi,wood,fabricValance,wrapped,returns,returnChoice,returnThickness,orderSpan,custom,finishedWidth,maxUnspliced,minimumJoints,joinery,keystone,count,positions,customLocations:customLayout||!!locationsText,
-    record:{version:1,type:"smartfold_valance",sourceId:"norman-smartfold-guide-2026-09-10",sourcePages:[15,16,18,28],finishedWidth:active?finishedWidth:null,widthBasis:custom===null?"default":"custom_end_to_end",returnSides:returns?String(c.smartfold_valance_returns):"None",returnQuantity:returns,returnSize:returns?finite(c.smartfold_valance_return_size)??(semi?1:null):null,returnSizeBasis:semi?"absolute": "extension_beyond_factory_standard",joinery:active?joinery:null,jointCount:active?keystone?count:minimumJoints:0,keystonePositions:active&&keystone?positions.map(p=>Number.isFinite(p)?p:null):[],woodSupportConnectors:active&&wood&&keystone?count:0} as SelectionRecord};
+  const positions=gapPlacement ? gapPlacement.positions : locationsText?locationsText.split(",").map(v=>v.trim()).map(v=>v===""?NaN:Number(v)):Array.from({length:Math.max(0,Math.min(3,Math.floor(count)))},(_,i)=>finishedWidth*(i+1)/(count+1));
+  return {gapPlacement,active,inside,semi,wood,fabricValance,wrapped,returns,returnChoice,returnThickness,orderSpan,custom,finishedWidth,maxUnspliced,minimumJoints,joinery,keystone,count,positions,customLocations:!!gapPlacement||customLayout||!!locationsText,
+    record:{version:1,type:"smartfold_valance",sourceId:"norman-smartfold-guide-2026-09-10",sourcePages:[15,16,18,28],finishedWidth:active?finishedWidth:null,widthBasis:custom===null?"default":"custom_end_to_end",returnSides:returns?String(c.smartfold_valance_returns):"None",returnQuantity:returns,returnSize:returns?finite(c.smartfold_valance_return_size)??(semi?1:null):null,returnSizeBasis:semi?"absolute": "extension_beyond_factory_standard",joinery:active?joinery:null,jointCount:active?gapPlacement?.jointCount??(keystone?count:minimumJoints):0,...(gapPlacement?{gapPlacement:gapPlacement.record}:{}),keystonePositions:active&&keystone?positions.map(p=>Number.isFinite(p)?p:null):[],woodSupportConnectors:active&&wood&&keystone?count:0} as SelectionRecord};
 }
 export function validateSmartfoldValance(s: SelectionContext): ValidationIssue[] {
   const v=smartfoldValance(s);if(!v)return [];
   const c=s.configuration, issues:ValidationIssue[]=[];
   const add=(rule:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.smartfold.${rule}`,source:sourceProvenance("norman-smartfold-guide-2026-09-10",{page}),selectedValues:{...c},explanation});
   if(!v.active)return issues;
+  if(supplied(c.smartfold_keystone_layout) && !["equally spaced","custom","at gaps between shades"].includes(norm(c.smartfold_keystone_layout))) add("keystone_layout",16,"Choose equally spaced, custom, or At Gaps Between Shades for a common valance.");
+  for(const message of v.gapPlacement?.issues ?? []) add("at_gaps",16,message);
+  if(v.gapPlacement && v.keystone && v.count!==v.gapPlacement.jointCount) add("at_gaps_count",16,"At Gaps Between Shades requires one joint per gap: shade quantity minus one.");
+  if(v.gapPlacement && !v.keystone && [...v.positions,v.finishedWidth].some((p,i)=>!Number.isFinite(p)||p-(i?v.positions[i-1]:0)>v.maxUnspliced)) add("valance_section_width",16,`No valance section may exceed ${v.maxUnspliced} inches between joints.`);
   if(["true","yes","on"].includes(norm(c.keystone)) && !v.keystone)add("legacy_keystone",16,"Reconfirm the saved keystone joinery and quantity before repricing this current configuration.");
   if(supplied(c.smartfold_valance_width) && (v.custom===null || v.custom<=0 || v.custom>v.orderSpan+12))add("valance_width",16,"Custom valance width must be positive and no more than the ordered shade span plus 12 inches. Measure end to end, including returns.");
   if(!SMARTFOLD_RETURNS.some(r=>norm(r)===v.returnChoice))add("valance_returns",18,"Choose no returns, a left return, a right return or both returns.");
@@ -82,8 +88,9 @@ export function deriveSmartfoldCommonValances(lines: readonly {lineId:string;sel
     const limited=/cord.*loop|autowand/.test(norm(c.lift_system)+" "+norm(c.motor_type));
     if(members.length<2||members.length>(limited?2:4))add("count",14,`This common valance requires 2–${limited?2:4} selected shade lines.`);
     if(sorted.some((r,i)=>finite(r.selection.configuration.smartfold_common_position)!==i+1))add("positions",14,"Give common-valance shades unique consecutive positions from left to right, starting at 1.");
-    const sharedKeys=["lift_system","motor_type","mount_type","valance","smartfold_fascia_style","smartfold_fascia_color","smartfold_fascia_end_cap","smartfold_valance_fabric_code","smartfold_wood_valance_color","smartfold_valance_returns","smartfold_valance_return_size","smartfold_valance_width","smartfold_valance_joinery","smartfold_keystone_count","smartfold_keystone_locations","smartfold_keystone_layout","smartfold_keystone_location_1","smartfold_keystone_location_2","smartfold_keystone_location_3","basic_light_guard","smartfold_light_guard_color"];
+    const sharedKeys=["lift_system","motor_type","mount_type","valance","smartfold_fascia_style","smartfold_fascia_color","smartfold_fascia_end_cap","smartfold_valance_fabric_code","smartfold_wood_valance_color","smartfold_valance_returns","smartfold_valance_return_size","smartfold_valance_width","smartfold_valance_joinery","smartfold_keystone_count","smartfold_keystone_locations","smartfold_keystone_layout","smartfold_splice_span_offset","smartfold_keystone_location_1","smartfold_keystone_location_2","smartfold_keystone_location_3","basic_light_guard","smartfold_light_guard_color"];
     const sameValue=(key:string,value:unknown)=>{
+      if(key==="smartfold_splice_span_offset")return supplied(value)?String(finite(value)):"";
       const text=norm(value);
       if(["smartfold_valance_returns","basic_light_guard"].includes(key) && ["none","no","false"].includes(text))return "";
       if(["smartfold_fascia_style"].includes(key) && text==="plain")return "";
@@ -110,7 +117,7 @@ export function deriveSmartfoldCommonValances(lines: readonly {lineId:string;sel
     if(v.finishedWidth>maxWidth)add("finished_width",16,`Finished common-valance width, including returns, cannot exceed ${maxWidth} inches.`);
     const fabrics=new Set(sorted.map(r=>norm(r.selection.configuration.fabric_color_code)));
     if((v.fabricValance||v.wrapped)&&fabrics.size>1&&(!supplied(c.smartfold_valance_fabric_code)||norm(c.smartfold_valance_fabric_code)==="default"))add("fabric_override",15,"For mixed shade fabrics, explicitly choose the shared valance fabric on every member.");
-    if(gaps.some(g=>g>12) && (!v.keystone || !v.customLocations || v.positions.some(p=>Math.abs(p-v.finishedWidth/2)<0.000001)))add("wide_gap_split",14,"A gap over 12 inches requires custom keystone split locations away from the center of the valance.");
+    if(gaps.some(g=>g>12) && (!(v.gapPlacement || v.keystone && v.customLocations) || v.positions.some(p=>Math.abs(p-v.finishedWidth/2)<0.000001)))add("wide_gap_split",14,"A gap over 12 inches requires At Gaps or custom keystone split locations away from the center of the valance.");
     // The same valance/bracket size is supplied for every member, using the largest required size.
     const bracketSize=Math.max(...sorted.map(r=>Number((r.selection.configuration.norman_assembly_v1 as SelectionRecord | undefined)?.mountingBracketSize)||0));
     for(const row of sorted){const hardware=row.selection.configuration.norman_assembly_v1;if(hardware&&typeof hardware==="object"&&!Array.isArray(hardware))row.selection.configuration={...row.selection.configuration,norman_assembly_v1:{...hardware,...(bracketSize?{mountingBracketSize:bracketSize}:{}),valance:v.record}};}

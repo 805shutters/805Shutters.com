@@ -1,3 +1,4 @@
+import { valanceGapPlacement } from "./norman-valance-gaps";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
 
@@ -22,13 +23,14 @@ export function perfectsheerValance(s:SelectionContext){
  const custom=finite(c.perfectsheer_valance_width),finishedWidth=custom??defaultWidth;
  const minimumJoints=Math.max(0,Math.ceil(finishedWidth/95)-1);
  const joinery=String(c.perfectsheer_valance_joinery??"Connector"),keystone=norm(joinery)==="keystone";
- const count=keystone?(finite(c.perfectsheer_keystone_count)??Math.max(1,minimumJoints)):0;
+ const gapPlacement=valanceGapPlacement("perfectsheer",c,common,finishedWidth,orderSpan);
+ const count=keystone?(finite(c.perfectsheer_keystone_count)??gapPlacement?.jointCount??Math.max(1,minimumJoints)):0;
  const customLayout=norm(c.perfectsheer_keystone_layout)==="custom";
- const positions=keystone?Array.from({length:Math.max(0,Math.min(5,Math.floor(count)))},(_,i)=>customLayout?Number(c[`perfectsheer_keystone_location_${i+1}`]??NaN):finishedWidth*(i+1)/(count+1)):[];
- return {wood,fabric,inside,semi,returnChoice,returns,orderSpan,custom,finishedWidth,minimumJoints,joinery,keystone,count,positions,
+ const positions=gapPlacement?gapPlacement.positions:keystone?Array.from({length:Math.max(0,Math.min(5,Math.floor(count)))},(_,i)=>customLayout?Number(c[`perfectsheer_keystone_location_${i+1}`]??NaN):finishedWidth*(i+1)/(count+1)):[];
+ return {gapPlacement,wood,fabric,inside,semi,returnChoice,returns,orderSpan,custom,finishedWidth,minimumJoints,joinery,keystone,count,positions,
  record:{version:1,sourceId:"norman-perfectsheer-smartdrape-guide-2026-09",sourcePages:[36,37,38,39],orderedSpan:orderSpan,finishedWidth,defaultWidth,returnSides:c.perfectsheer_valance_returns??"None",returnCount:returns,
  returnSize:returns?(finite(c.perfectsheer_valance_return_size)??(semi?1:"factory standard")):null,returnSizeBasis:semi?"actual return length":"extension beyond factory standard",returnTolerance:.125,
- maximumUnsplicedWidth:95,minimumJoints,joinery,jointQuantity:keystone?count:minimumJoints,keystonePositions:positions.map(p=>Number.isFinite(p)?p:null),supportConnectorQuantity:keystone?count:minimumJoints} as SelectionRecord};
+ maximumUnsplicedWidth:95,minimumJoints,joinery,jointQuantity:gapPlacement?.jointCount??(keystone?count:minimumJoints),...(gapPlacement?{gapPlacement:gapPlacement.record}:{}),keystonePositions:keystone?positions.map(p=>Number.isFinite(p)?p:null):[],supportConnectorQuantity:gapPlacement?.jointCount??(keystone?count:minimumJoints)} as SelectionRecord};
 }
 export function validatePerfectsheerValance(s:SelectionContext):ValidationIssue[]{
  const v=perfectsheerValance(s);if(!v)return [];
@@ -43,7 +45,10 @@ export function validatePerfectsheerValance(s:SelectionContext):ValidationIssue[
  if(["yes","true"].includes(norm(c.keystone))&&!v.keystone)add("legacy_keystone",38,"Reconfirm the saved keystone quantity and positions before repricing this configuration.");
  if(v.keystone&&((supplied(c.perfectsheer_keystone_count)&&finite(c.perfectsheer_keystone_count)===null)||!Number.isInteger(v.count)||v.count<Math.max(1,v.minimumJoints)||v.count>5))add("keystone_count",38,`Select at least ${Math.max(1,v.minimumJoints)} keystones and no more than five.`);
  if(v.keystone&&v.count>3)add("keystone_source_conflict",38,"Norman's table permits five keystones but the same page limits the quantity to three. Four- and five-keystone configurations require dealer clarification.");
- if(supplied(c.perfectsheer_keystone_layout)&&!["equally spaced","custom"].includes(norm(c.perfectsheer_keystone_layout)))add("layout",38,"Choose equally spaced or custom keystone locations.");
+ if(supplied(c.perfectsheer_keystone_layout)&&!["equally spaced","custom","at gaps between shades"].includes(norm(c.perfectsheer_keystone_layout)))add("layout",38,"Choose equally spaced, custom, or At Gaps Between Shades for a common valance.");
+ for(const message of v.gapPlacement?.issues??[])add("at_gaps",38,message);
+ if(v.gapPlacement&&v.keystone&&v.count!==v.gapPlacement.jointCount)add("at_gaps_count",38,"At Gaps Between Shades requires one joint per gap: shade quantity minus one.");
+ if(v.gapPlacement&&!v.keystone&&[...v.positions,v.finishedWidth].some((p,i)=>!Number.isFinite(p)||p-(i?v.positions[i-1]:0)>95))add("section_width",38,"No valance section between joints may exceed 95 inches.");
  if(v.keystone&&(v.positions.length!==v.count||v.positions.some((p,i)=>!Number.isFinite(p)||p<18||p>v.finishedWidth-18||(i>0&&p-v.positions[i-1]<18))))add("spacing",39,"Record one ordered position per keystone, at least 18 inches from either end and from neighboring keystones.");
  if(v.keystone&&[...v.positions,v.finishedWidth].some((p,i)=>p-(i?v.positions[i-1]:0)>95))add("section_width",38,"No valance section between joints may exceed 95 inches.");
  if(perfectsheerCommonId(s)&&!perfectsheerCommon(s))add("members",37,"A common valance requires the complete selected shade group on this quote.");
@@ -62,8 +67,8 @@ export function derivePerfectsheerCommonValances(lines:readonly {lineId:string;s
   const add=(rule:string,page:number,explanation:string)=>{for(const row of members)issues.push({severity:"hard_block",ruleId:`norman.perfectsheer.common_${rule}`,source:sourceProvenance("norman-perfectsheer-smartdrape-guide-2026-09",{page}),selectedValues:{lineId:row.lineId,assemblyId:id},explanation});};
   if(members.length<2||members.length>(limited?2:6))add("count",37,`This common valance requires 2–${limited?2:6} selected shade lines.`);
   if(sorted.some((r,i)=>finite(r.selection.configuration.perfectsheer_common_position)!==i+1))add("positions",37,"Assign unique consecutive positions from left to right, starting at 1.");
-  const keys=["lift_system","motor_type","mount_type","valance","perfectsheer_valance_height","perfectsheer_valance_fabric","perfectsheer_wood_finish","perfectsheer_valance_returns","perfectsheer_valance_return_size","perfectsheer_valance_width","perfectsheer_valance_joinery","perfectsheer_keystone_count","perfectsheer_keystone_layout",...Array.from({length:5},(_,i)=>`perfectsheer_keystone_location_${i+1}`)];
-  const value=(key:string,v:unknown)=>{const n=norm(v);return n==="default"||(key==="perfectsheer_valance_returns"&&n==="none")||(key==="perfectsheer_valance_joinery"&&n==="connector")||(key==="perfectsheer_keystone_layout"&&n==="equally spaced")?"":n;};
+  const keys=["lift_system","motor_type","mount_type","valance","perfectsheer_valance_height","perfectsheer_valance_fabric","perfectsheer_wood_finish","perfectsheer_valance_returns","perfectsheer_valance_return_size","perfectsheer_valance_width","perfectsheer_valance_joinery","perfectsheer_keystone_count","perfectsheer_keystone_layout","perfectsheer_splice_span_offset",...Array.from({length:5},(_,i)=>`perfectsheer_keystone_location_${i+1}`)];
+  const value=(key:string,v:unknown)=>{if(key==="perfectsheer_splice_span_offset")return supplied(v)?String(finite(v)):"";const n=norm(v);return n==="default"||(key==="perfectsheer_valance_returns"&&n==="none")||(key==="perfectsheer_valance_joinery"&&n==="connector")||(key==="perfectsheer_keystone_layout"&&n==="equally spaced")?"":n;};
   if(sorted.some(r=>r.selection.quantity!==lead.selection.quantity||keys.some(k=>value(k,r.selection.configuration[k])!==value(k,c[k]))))add("matching",37,"Common-valance shades must use matching lift, power, mount and valance choices with the same assembly quantity.");
   const gaps=sorted.map((r,i)=>i===sorted.length-1?0:finite(r.selection.configuration.perfectsheer_common_gap_after)??0);
   if(gaps.some(g=>g<0||g>12)||sorted.some(r=>supplied(r.selection.configuration.perfectsheer_common_gap_after)&&finite(r.selection.configuration.perfectsheer_common_gap_after)===null))add("gap",37,"Gaps between shades must be 0–12 inches.");
