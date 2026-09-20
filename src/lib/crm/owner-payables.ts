@@ -1,5 +1,5 @@
 import { installationCost } from "./installation-estimate";
-import { reconcileKenMonthlyLedger } from "./ken-monthly-ledger";
+import { kenPayableReadiness, reconcileKenMonthlyLedger } from "./ken-monthly-ledger";
 import { effectiveBookkeepingStatus } from "./bookkeeping";
 import { buildPartnerPaymentLedger } from "./partner-payments";
 import type { CrmBookkeepingRow } from "./types";
@@ -30,6 +30,17 @@ export function ownerPayableReadiness(row: CrmBookkeepingRow) {
 
 export function isOwnerPayableJob(row: CrmBookkeepingRow) {
   return row.total > 0 && (row.isPaidInFull || ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid", "legacy", "manual", "closed"].includes(row.liveStatus || row.status));
+}
+
+/** Job cards on Payables show only eligible obligations, not the sales pipeline.
+ * Use the recorded parent status; a zero balance alone projects a financial
+ * "closed" status even for a job that staff explicitly reopened.
+ * Keep this display filter separate from historical payment reconciliation.
+ */
+export function isPayablesLedgerJob(row: CrmBookkeepingRow) {
+  const recordedStatus = row.jobStatus ?? (!row.jobId ? row.status : null);
+  return row.total > 0 && row.isPaidInFull && recordedStatus === "closed"
+    && ownerPayableReadiness(row).ready && kenPayableReadiness(row).ready;
 }
 
 export function projectOwnerPayableRows(rows: CrmBookkeepingRow[]) {

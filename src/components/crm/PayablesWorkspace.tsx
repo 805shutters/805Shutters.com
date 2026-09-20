@@ -3,7 +3,7 @@
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Check, Circle, Minus, X } from "lucide-react";
-import { isOwnerPayableJob, ownerPayableFinancials, ownerPayableReadiness, OWNER_PAYABLES_MODEL } from "@/lib/crm/owner-payables";
+import { isPayablesLedgerJob, ownerPayableFinancials, ownerPayableReadiness, OWNER_PAYABLES_MODEL } from "@/lib/crm/owner-payables";
 import { kenPayableReadiness } from "@/lib/crm/ken-monthly-ledger";
 import { partnerPaymentItemKeyForRow } from "@/lib/crm/partner-payments";
 import type { CrmBookkeepingRow, CrmPartnerPaymentLedger, CrmPaymentPerson } from "@/lib/crm/types";
@@ -40,7 +40,7 @@ export function PayablesWorkspace({ rows, ledger, busy, canEdit, activePerson, o
   const savingRef = useRef(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const disabled = busy || saving || !canEdit;
-  const allJobs = rows.filter(isOwnerPayableJob);
+  const allJobs = rows.filter(isPayablesLedgerJob);
   const filtered = allJobs.filter(row => `${row.customerName} ${row.quoteNumber || ""}`.toLowerCase().includes(search.toLowerCase()));
   const itemFor = (row: CrmBookkeepingRow, person: CrmPaymentPerson) => ledger?.people[person].items.find(item => item.itemKey === partnerPaymentItemKeyForRow(person, row));
   const history = ledger?.history.filter(batch => batch.person === activePerson) || [];
@@ -104,7 +104,7 @@ export function PayablesWorkspace({ rows, ledger, busy, canEdit, activePerson, o
     </section>}
     {renderEditor()}
     {ledger?.kenBuyout && <details className={styles.buyout}><summary>10% buyout · {money(ledger.kenBuyout.remainingBalance)} remaining overall</summary><div><p>{money(ledger.kenBuyout.totalPaid)} applied toward {money(ledger.kenBuyout.target)}</p><progress value={ledger.kenBuyout.totalPaid} max={ledger.kenBuyout.target} aria-label="Buyout paid" /><div className={styles.tableWrap}><table><thead><tr><th>Date</th><th>Payment</th><th>Note</th><th>Remaining</th></tr></thead><tbody>{ledger.kenBuyout.payments.map(payment => <tr key={payment.id}><td>{payment.paidOn || "—"}</td><td>{money(payment.amount)}</td><td>{payment.note || "—"}</td><td>{money(payment.remainingBalance)}</td></tr>)}</tbody></table></div></div></details>}
-    <div className={styles.toolbar}><h2>Jobs <small>{filtered.length}</small></h2><label><span className={styles.srOnly}>Search customer or quote</span><input type="search" placeholder="Search customer or quote" value={search} onChange={event => { setSearch(event.target.value); setLimit(20); }} /></label></div>
+    <div className={styles.toolbar}><h2>Paid &amp; closed jobs <small>{filtered.length}</small></h2><label><span className={styles.srOnly}>Search customer or quote</span><input type="search" placeholder="Search customer or quote" value={search} onChange={event => { setSearch(event.target.value); setLimit(20); }} /></label></div>
     <p className={styles.formula}>Contract − COGS − installation − 10% buyout = profit. Mike 50% · Jessica 50%.</p>
     <div role="status" className={styles.notice}>{notice}</div>
     {!ledger && <p>Loading payables…</p>}
@@ -122,7 +122,7 @@ export function PayablesWorkspace({ rows, ledger, busy, canEdit, activePerson, o
         {renderEditor(row)}
       </article>;
     })}
-    {ledger && !filtered.length && <p>No matching jobs.</p>}
+    {ledger && !filtered.length && <p>No qualifying paid-and-closed jobs match this search.</p>}
     {filtered.length > limit && <button type="button" onClick={() => setLimit(limit + 20)}>Show more jobs</button>}
     <section className={styles.history}><div className={styles.toolbar}><h2>Payment history</h2><label>Recipient<select value={activePerson} onChange={event => onPersonChange(event.target.value as CrmPaymentPerson)}>{people.map(person => <option key={person} value={person}>{names[person]}</option>)}</select></label></div><div className={styles.tableWrap}><table><thead><tr><th>Date</th><th>Amount</th><th>Type</th><th>Note / reference</th><th>Jobs</th></tr></thead><tbody>{history.map(batch => <tr key={batch.id}><td>{batch.paidOn || "—"}</td><td>{money(batch.amount)}</td><td>{batch.reconciliation?.status === "confirmed_duplicate" ? "Duplicate · excluded" : batch.reconciliation?.status === "review" ? "Needs review" : batch.isAdvance ? "Advance" : "Payment"}</td><td>{batch.note || "—"}{batch.reconciliation?.status === "confirmed_duplicate" && <small>Included in batch: {batch.reconciliation.matchedBatchIds.join(", ")}</small>}{batch.dateReviewRequired && <small>Historical dates need review</small>}{batch.dueDate && <small>Due {batch.dueDate} · cutoff {batch.paymentCutoffAt}</small>}<small>{batch.createdByEmail}</small></td><td><details><summary>{batch.allocations.length} allocations</summary>{batch.allocations.map(allocation => <p key={allocation.id}>{allocation.customerName} · {money(allocation.amount)}{allocation.virtual ? " · legacy allocation" : ""}</p>)}</details></td></tr>)}</tbody></table></div>{!history.length && <p>No recorded payments.</p>}</section>
   </section>;
