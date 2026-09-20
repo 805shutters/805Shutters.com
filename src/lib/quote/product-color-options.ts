@@ -1,3 +1,4 @@
+import { romanPriceGroup } from './norman-roman-current-price-groups';
 import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors } from "./norman-shutter-assortment";
 import { ultimateFauxColor } from "./norman-ultimate-faux";
 import { smartprivacyColor } from "./norman-smartprivacy";
@@ -251,7 +252,7 @@ const ROMAN_PROGRAM_BY_PRICE_GROUP: Record<string, string> = {
 
 const romanDealerColorOptions: ProductColorOption[] = normanRomanDealerFabricRows.map(
   (row, index) => {
-    const programId = ROMAN_PROGRAM_BY_PRICE_GROUP[row.priceGroup] ?? null;
+    const programId = ROMAN_PROGRAM_BY_PRICE_GROUP[romanPriceGroup(row)] ?? null;
     const fabricType = row.openness || "";
     const searchText = [
       row.collection,

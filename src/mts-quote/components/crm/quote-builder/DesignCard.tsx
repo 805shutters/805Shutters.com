@@ -9200,7 +9200,7 @@ function ShadesAndBlindsOptions({
       if (nextControl !== "Cordless") {
         nextJson.poles = null;
         nextJson.pole_length = null;
-        nextJson.roman_pole_quantity = null;
+        nextJson.roman_pole_quantity = null; nextJson.roman_pole_total_quantity = null;
       }
       if (nextControl !== "Motorized") {
         nextJson = {...clearMotorizationOptions(nextJson),...Object.fromEntries(ROMAN_MOTOR_ACCESSORY_KEYS.map(key=>[key,null]))};
@@ -9418,6 +9418,9 @@ function ShadesAndBlindsOptions({
     if (authoritativeV2 && productType === "Roman Shades" && field === "json:roman_chain_length") {
       onUpdateFields({options_json:{...currentJson,roman_chain_length:value,chain_length:null}}); return;
     }
+    if (authoritativeV2 && productType === "Roman Shades" && field === "json:roman_pole_total_quantity") {
+      onUpdateFields({options_json:{...currentJson,roman_pole_total_quantity:value,roman_pole_quantity:null}}); return;
+    }
     if (productType === "Roman Shades" && field === "json:chain_type") {
       onUpdateFields({
         options_json: {
@@ -9435,7 +9438,7 @@ function ShadesAndBlindsOptions({
           ...currentJson,
           poles: value,
           ...(value === "Pole with Attachment" ? {} : { pole_length: null }),
-          ...(value && value !== "None" ? {} : {roman_pole_quantity:null}),
+          ...(value && value !== "None" ? (authoritativeV2 ? {roman_pole_total_quantity:1,roman_pole_quantity:null} : {}) : {roman_pole_quantity:null,roman_pole_total_quantity:null}),
         },
       });
       return;
@@ -10810,7 +10813,7 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: ROMAN_POLE_OPTIONS,
           });
-          if (authoritativeV2 && poles && poles !== "None") options.push({key:"roman_pole_quantity",label:"Poles or Attachments per Shade",field:"json:roman_pole_quantity",type:"select",options:["1","2"]});
+          if (authoritativeV2 && poles && poles !== "None") options.push({key:"roman_pole_total_quantity",label:"Total Poles or Attachments for This Line",field:"json:roman_pole_total_quantity",type:"number",min:1,max:2*(isCommonValance?2:1)*(_lineItem.quantity||1),step:"1",placeholder:String(opts.roman_pole_quantity?Number(opts.roman_pole_quantity)*(isCommonValance?2:1)*(_lineItem.quantity||1):1)});
           if (poles === "Pole with Attachment") {
             options.push({
               key: "pole_length",

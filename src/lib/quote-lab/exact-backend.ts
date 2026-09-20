@@ -1,3 +1,4 @@
+import { findRomanFrontColor } from '@/lib/quote-v2/catalog';
 import { woodValancePriceWidth } from "@/lib/quote-v2/norman-wood";
 import { expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
 import { perfectsheerValancePriceWidth } from "@/lib/quote-v2/norman-perfectsheer-valance";
@@ -1067,6 +1068,10 @@ function repriceExactQuoteBuilderV2(
     let productId = resolveV2ProductId(line, design);
     let programId = resolveV2ProgramId(productId, design);
     const honeycombOptions = (design.options_json ?? {}) as Record<string, unknown>;
+    if (productId === "roman" && ["F1085","F0255"].includes(String(honeycombOptions.fabric_color_code))) {
+      const fabric = findRomanFrontColor(String(honeycombOptions.fabric_color_collection ?? design.fabric ?? ""),String(honeycombOptions.fabric_color_code),catalogAsOf);
+      if(fabric) { const group=fabric.priceGroup.replace("group",""); programId=`roman_cordless_usa_price_group_${group}_pg${group}`; }
+    }
     if (catalogAsOf >= "2026-09-19" && ["honeycomb", "vertical_honeycomb"].includes(productId) &&
         (productId === "vertical_honeycomb" || honeycombOptions.honeycomb_application === "Patio Door Vertical")) {
       productId = "vertical_honeycomb";

@@ -152,6 +152,26 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "pageCount": 154
 },
   {
+  "id": "norman-roman-portal-2026-09-19",
+  "manufacturer": "Norman",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "roman-portal-20260919.json",
+  "title": "Roman current fabric price-group and line pole quantity comparison",
+  "revision": "Observed September 19, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Current dealer draft observed September 19; no earlier effective day inferred. September Roman guide p25 corroborates both group2 assignments.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "sha256": "dab17f868f881dfa884c954672e29efc60da0828fdf8addf7fbe1a9d27d5e1fd",
+  "authorities": [
+    "pricing",
+    "options"
+  ],
+  "accountScope": "R00743 account costs are evidence only; applicability to 805 unconfirmed. Dealer factors and selling policy unchanged.",
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/RomanShades/order.asp?Service=PO"
+},
+  {
   "id": "norman-wood-valance-portal-2026-09-19",
   "manufacturer": "Norman",
   "kind": "dealer_portal_snapshot",

@@ -53,6 +53,8 @@ export type PriceErrorCode =
 
 export type SurchargeSelection = {
   id: string;
+  /** Authoritative line accessory quantity, charged once regardless of shade quantity. */
+  billingScope?: "once_per_line";
   /** Multiplier for per-side / per-foot surcharges (e.g. 2 sides, 3 extra feet). Default 1. */
   units?: number;
 };
@@ -634,7 +636,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
         detail = `${dealerNetValue} x ${units} ${surcharge.per}s`;
       }
     }
-    const billingScope = surcharge.per === "once" ? "once" : "per_window";
+    const billingScope = surcharge.per === "once" || selection.billingScope === "once_per_line" ? "once" : "per_window";
     dealerNetOptionLines.push({
       id: surcharge.id,
       label: surcharge.name,
@@ -1025,7 +1027,7 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
       kind: sc.kind,
       detail,
     });
-    if (sc.per === "once") {
+    if (sc.per === "once" || sel.billingScope === "once_per_line") {
       onceCents += amountCents;
       if (wholesaleAmountCents != null) wholesaleOnceCents += wholesaleAmountCents;
     } else {

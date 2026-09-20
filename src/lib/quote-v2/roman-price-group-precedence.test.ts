@@ -1,8 +1,17 @@
+import { findRomanFrontColor } from './catalog';
+import { getProductColorOptions } from '@/lib/quote/product-color-options';
 import { describe, expect, it } from "vitest";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 import { ROMAN_JULY_PRICE_GROUP_CONFLICTS } from "./roman-price-group-precedence";
 
 describe("Roman July 2026 price-group source precedence", () => {
+  it("routes the two current dealer-confirmed corrections to group2 while retaining July history",()=>{
+    for(const [collection,code] of [["Sheer Elegance","F1085"],["Valencia","F0255"]]){
+      expect(findRomanFrontColor(collection,code,"2026-09-18")?.priceGroup).toBe("group1");
+      expect(findRomanFrontColor(collection,code,"2026-09-19")?.priceGroup).toBe("group2");
+      expect(getProductColorOptions("roman").find(c=>c.colorCode===code)?.programId).toBe("roman_cordless_usa_price_group_2_pg2");
+    }
+  });
   it("pins all ten guide-versus-price-book conflicts", () => {
     expect(ROMAN_JULY_PRICE_GROUP_CONFLICTS).toHaveLength(10);
     expect(

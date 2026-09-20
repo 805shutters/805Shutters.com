@@ -373,6 +373,7 @@ function humanizeKey(key: string): string {
     roman_chain_length: "Custom Chain Length",
     roman_chain_unobstructed: "Unobstructed Below Tension Device",
     roman_pole_quantity: "Poles or Attachments per Shade",
+    roman_pole_total_quantity: "Total Poles or Attachments for This Line",
     roman_shim_layers: "Shim Layers per Bracket",
     perfectsheer_chain_length: "Custom Cord Length",
     perfectsheer_chain_unobstructed: "Unobstructed Below Tension Device",

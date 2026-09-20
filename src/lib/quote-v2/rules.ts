@@ -1320,7 +1320,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
 
   const collection = text(configValue(context, "fabric_collection", "roman_fabric_category"));
   const colorCode = text(configValue(context, "fabric_color_code"));
-  const fabric = findRomanFrontColor(collection, colorCode);
+  const fabric = findRomanFrontColor(collection, colorCode, context.catalogAsOf);
   if (collection && colorCode && !fabric) {
     issues.push(
       issue(
@@ -1337,14 +1337,14 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
       issue(
         "hard_block",
         "roman.program.fabric_mismatch",
-        { sourceId: "norman-retail-guide-2026-07", page: 24 },
+        context.catalogAsOf >= "2026-09-19" && ["F1085","F0255"].includes(colorCode) ? {sourceId:"norman-roman-portal-2026-09-19"} : {sourceId:"norman-retail-guide-2026-07",page:24},
         {
           fabric_collection: collection,
           fabric_color_code: colorCode,
           selectedProgramId: context.programId,
           expectedPriceGroup: fabric.priceGroup,
         },
-        "The selected Roman price program does not match the July price group for this exact fabric/color.",
+        "The selected Roman price program does not match the effective price group for this exact fabric/color.",
       ),
     );
   }

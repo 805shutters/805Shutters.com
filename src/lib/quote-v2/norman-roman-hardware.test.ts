@@ -16,8 +16,8 @@ describe('September Roman chain and hardware rules',()=>{
  it('counts common-valance hardware per constituent shade',()=>{
   const s=shade({mount_type:'Outside Mount',lift_system:'Cordless',shade_type:'Common Valance',common_valance_panel_widths:[30,60],roman_shim_layers:2,hold_downs:'Magnetic',poles:'Pole with Attachment',pole_length:'60"',roman_pole_quantity:2});
   expect(romanHardware(s)?.issues).toEqual([]);
-  expect(authoritativeAutomaticSurchargeSelections(s)).toEqual(expect.arrayContaining([{id:'shim',units:10},{id:'magnetic_hold_down',units:2},{id:'cordless_operating_pole',units:4}]));
-  expect(romanHardware(s)?.record.pole).toMatchObject({quantity:4,quantityPerShade:2});
+  expect(authoritativeAutomaticSurchargeSelections(s)).toEqual(expect.arrayContaining([{id:'shim',units:10},{id:'magnetic_hold_down',units:2},{id:'cordless_operating_pole',units:4,billingScope:'once_per_line'}]));
+  expect(romanHardware(s)?.record.pole).toMatchObject({quantity:4,legacyPerShadeQuantity:2,quantityBasis:'per_line'});
  });
  it('allows custom inside CCL lengths from height minus three and retains exact geometry',()=>{
   expect(romanHardware(shade({roman_chain_length:57.5}))?.issues).toEqual([]);
@@ -41,7 +41,7 @@ describe('September Roman chain and hardware rules',()=>{
   for(const pole_length of ['36"','60"']){
    const s=shade({lift_system:'Cordless',poles:'Pole with Attachment',pole_length,roman_pole_quantity:2});
    expect(romanHardware(s)?.issues).toEqual([]);
-   expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cordless_operating_pole',units:2});
+   expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cordless_operating_pole',units:2,billingScope:'once_per_line'});
   }
   for(const roman_pole_quantity of [0,1.5,3])expect(romanHardware(shade({lift_system:'Cordless',poles:'Attachment Only',roman_pole_quantity}))?.issues.length).toBeGreaterThan(0);
   expect(romanHardware(shade({poles:'Pole with Attachment',pole_length:'36"'}))?.issues.length).toBeGreaterThan(0);

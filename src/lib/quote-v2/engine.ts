@@ -327,6 +327,7 @@ function contractSourceId(productId: string): SourceManifestId {
 
 type ContractSurchargeSelection = {
   id: string;
+  billingScope?: "once_per_line";
   units: number;
 };
 
@@ -572,7 +573,7 @@ export function authoritativeAutomaticSurchargeSelections(
     const common=smartfoldCommonValance(selection);
     return !common || common.chargeSharedOptions === true || !(/^smartfold_.*valance$/.test(entry.id) || entry.id === "basic_light_guard" || entry.id === "keystone");
   }).map(
-    (entry) => ({ id: entry.id, units: entry.units ?? 1 }),
+    (entry) => ({ ...entry, units: entry.units ?? 1 }),
   );
 }
 
@@ -584,7 +585,7 @@ function surchargeContractIssues(
   const source = sourceProvenance(contractSourceId(selection.productId));
   const product = getProduct(selection.productId);
   const automatic = authoritativeAutomaticSurchargeSelections(selection).map(
-    (entry) => ({ id: entry.id, units: positiveWholeUnits(entry.units) ?? 1 }),
+    (entry) => ({ ...entry, units: positiveWholeUnits(entry.units) ?? 1 }),
   );
   const automaticIds = new Set(automatic.map((entry) => entry.id));
   const actual: ContractSurchargeSelection[] = [];
@@ -639,7 +640,7 @@ function surchargeContractIssues(
         });
       }
       actualIds.add(id);
-      actual.push({ id, units });
+      actual.push({ id, units, ...(entry.billingScope != null ? {billingScope:entry.billingScope} : {}) });
       if (product && !findProductSurcharge(product, id)) {
         issues.push({
           severity: "hard_block",
@@ -934,7 +935,7 @@ function catalogCostRetail(
   const onceLineIds = new Set(
     source.surchargeLines
       .filter(
-        (line) => findProductSurcharge(product, line.id)?.per === "once" || (Array.isArray(selection.configuration.motorization_selections) && selection.configuration.motorization_selections.some(m => m && typeof m === "object" && !Array.isArray(m) && m.billingScope === "once_per_line" && line.id === `motor:${m.groupId}:${m.optionId}`)) || /^motor:(smart_motorization|automate_home):power_distribution_panel$/.test(line.id),
+        (line) => findProductSurcharge(product, line.id)?.per === "once" || authoritativeAutomaticSurchargeSelections(selection).some(s => s.id === line.id && s.billingScope === "once_per_line") || (Array.isArray(selection.configuration.motorization_selections) && selection.configuration.motorization_selections.some(m => m && typeof m === "object" && !Array.isArray(m) && m.billingScope === "once_per_line" && line.id === `motor:${m.groupId}:${m.optionId}`)) || /^motor:(smart_motorization|automate_home):power_distribution_panel$/.test(line.id),
       )
       .map((line) => line.id),
   );
@@ -1489,7 +1490,7 @@ function priceComponentInputs(
       continue;
     }
     const surcharge = findProductSurcharge(product, line.id);
-    const oncePerLine = surcharge?.per === "once";
+    const oncePerLine = surcharge?.per === "once" || authoritativeAutomaticSurchargeSelections(selection).some(entry => entry.id === line.id && entry.billingScope === "once_per_line");
     const surchargeSource = surchargePriceComponentSource(
       product,
       line.id,

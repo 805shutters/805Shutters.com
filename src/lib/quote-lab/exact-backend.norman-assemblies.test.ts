@@ -98,6 +98,33 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    expect(result.designs[0].snapshot).not.toBeNull();
   }
  });
+ it("reprices the two dealer-confirmed Roman fabrics using the effective dated route",()=>{
+  for(const code of ["F1085","F0255"]){
+   const color=getProductColorOptions("roman").find(c=>c.colorCode===code)!;
+   const q=quote([1]);q.designs[0].lift_system="Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;q.designs[0].fabric=color.collection;
+   q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null,quote_lab_program_id:"roman_cordless_usa_price_group_1_pg1",fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName};
+   for(const [date,group,total] of [["2026-09-18","1",861],["2026-09-19","2",1038]] as const){
+    const r=repriceExactQuoteBuilderForServerDate(q,date);if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");
+    expect(r.designs[0].result.ok,JSON.stringify(r.designs[0].result)).toBe(true);
+    expect(r.designs[0].selection.programId).toBe(`roman_cordless_usa_price_group_${group}_pg${group}`);
+    expect(r.total).toBe(total);
+   }
+  }
+ });
+ it("charges one total Roman pole once across multiple single or common assemblies",()=>{
+  for(const common of [false,true]) for(const quantity of [1,2,4]){
+   const q=quote([quantity]);q.designs[0].lift_system="Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;
+   q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null};
+   if(common){q.lines[0].width_whole=71;q.designs[0].shade_type="Common Valance";q.designs[0].valance="Fabric Valance";q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1,valance_returns:"No Returns"};}
+   const run=()=>{const r=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
+   const base=run();expect(base.designs[0].result.ok,JSON.stringify(base.designs[0].result)).toBe(true);
+   q.designs[0].options_json={...q.designs[0].options_json,poles:"Pole with Attachment",pole_length:'60"',roman_pole_total_quantity:1};
+   const added=run();expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
+   expect(added.total-base.total).toBe(89);
+   expect(added.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({hardware:{pole:{quantity:1,quantityBasis:"per_line"}}});
+   q.designs=JSON.parse(JSON.stringify(q.designs));expect(run().total).toBe(added.total);
+  }
+ });
  it("charges two Roman poles and outside magnets through the saved server configuration",()=>{
   const q=quote([1]);q.designs[0].lift_system="Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;
   q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null};
