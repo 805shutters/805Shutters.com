@@ -27,6 +27,8 @@ export const sundanceCellularColors: ProductColorOption[] = source.rows.map(row 
 export function sundanceCellularColorMatchesContext(row: ProductColorOption, details: Record<string, unknown>): boolean {
   const size = typeof details.cell_size === "string" ? details.cell_size.trim() : "";
   const opacity = typeof details.light_control === "string" ? details.light_control.trim().toLowerCase() : "";
+  if (details.sundance_cellular_system === "Cordless Day/Night" && row.automaticDetails.light_control !== "Light Filtering") return false;
+  if (details.sundance_cellular_system === "Verticell" && (row.collection.startsWith("Linen Print ") || row.collection.startsWith("Sheer ") || row.automaticDetails.cell_size === '7/16"')) return false;
   if (size && size !== row.automaticDetails.cell_size) return false;
   if (opacity && opacity !== row.automaticDetails.light_control.toLowerCase()) return false;
   return row.productId === "sundance_cellular";
