@@ -31,6 +31,26 @@ describe("source-backed Norman assortment withdrawals", () => {
     expect(productColorOptions.find((row) => row.productId === product && row.colorCode === code)).toMatchObject({ available: false });
   });
 
+  it.each([
+    ["F1052", "2026-01-01", "2025-12-31"],
+    ["F1054", "2026-02-01", "2026-01-31"],
+    ["F0237", "2026-02-01", "2026-01-31"],
+    ["F1050", "2026-04-10", "2026-04-09"],
+    ["F1055", "2026-04-10", "2026-04-09"],
+    ["F1068", "2026-05-11", "2026-05-10"],
+  ] as const)("enforces the guide's dated withdrawal for %s without rejecting earlier quotes", (code, start, before) => {
+    const old = selection("roman", before, { fabric_color_code: code });
+    expect(withdrawalIssues(old)).toEqual([]);
+    expect(withdrawalIssues(selection("roman", start, { fabric_color_code: code }))).toEqual([
+      expect.objectContaining({ severity: "hard_block", ruleId: "norman.assortment.color_withdrawn",
+        source: expect.objectContaining({ sourceId: "norman-roman-guide-2026-09", page: 2 }) }),
+    ]);
+    expect(withdrawalIssues(selection("roman", "2026-09-20", { fabric_color_code: ` ${code.toLowerCase()} ` }))).toHaveLength(1);
+    expect(searchProductColorOptions("roman", code)).toEqual([]);
+    // Validation must never mutate a historical saved selection.
+    expect(JSON.parse(JSON.stringify(old)).configuration.fabric_color_code).toBe(code);
+  });
+
   it("keeps adjacent Roman colors active and the withdrawn label out of the current builder choices", () => {
     expect(searchProductColorOptions("roman", "F0211")).toHaveLength(1);
     expect(getRomanFabricColorsForCategory("Taylor").join(" ")).not.toContain("F0210");

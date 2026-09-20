@@ -16,7 +16,7 @@ import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/n
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { NORMAN_STILE_PROFILES, NORMAN_PANEL_CLOSURES, normanStileWidths, normanStileJoins, normanRegularPanelCount, normanRegularPanelMaxWidth } from "@/lib/quote/norman-shutter-construction";
-import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
+import { WOOD_FITS, woodWandChoices } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
 import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
 import { SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS } from "@/lib/quote/norman-smartprivacy";
@@ -12049,7 +12049,7 @@ function ShadesAndBlindsOptions({
           },
           { key: "valance", label: "Valance", field: "valance", type: "buttons", options: ["No Valance", "Designer Crown", "Contempo", "Linear"] },
           ...(authoritativeV2 ? [
-            select("wood_wand_drop","Wand Drop",WOOD_WANDS),
+            select("wood_wand_drop","Wand Drop",woodWandChoices(measurementToInches(_lineItem.height_whole,_lineItem.height_fraction))),
             select("wood_common_group","Common Valance Group",["None","1","2","3","4","5","6","7","8","9","10"]),
             ...(optionsJson.wood_common_group&&optionsJson.wood_common_group!=="None"?[select("wood_common_position","Blind Position from Left",["1","2","3","4"]),number("wood_common_gap_after","Gap after This Blind",0,12)]:[]),
             select("wood_matching_group","Side-by-Side Matching Group",["None","1","2","3","4","5","6","7","8","9","10"]),

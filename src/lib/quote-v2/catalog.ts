@@ -44,6 +44,8 @@ export function quoteV2CatalogVersionFor(
   if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r8`;
   if (productId === "roman" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-hardware-2026-09-19-r2`;
   if (productId === "norman_shutters" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-shutter-assortment-2026-09-19-r4`;
+  if (productId === "wood_blinds" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-wood-hardware-2026-09-20-r1`;
+  if (productId === "faux_wood" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-ultimate-faux-hardware-2026-09-20-r1`;
   if (productId === "wood_blinds" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-wood-2026-09-19-r3`;
   if (productId === "citylights_aluminum" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-citylights-2026-09-19-r2`;
   if (productId === "faux_wood" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-ultimate-faux-2026-09-19-r2`;

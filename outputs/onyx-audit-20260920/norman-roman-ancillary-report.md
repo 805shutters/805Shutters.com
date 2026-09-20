@@ -7,7 +7,7 @@ Status: implemented and tested in an isolated worktree. Not deployed or verified
 - `norman_roman_fabric_by_yard` / `norman_roman_fabric_by_yard_source`: 201 current source colors, one fabric cut with explicit yards; quote-line quantity must be one. No shade width or height is requested or used.
 - `norman_roman_pillow_covers` / `norman_roman_pillow_covers_source`: 157 currently documented eligible colors, 11 cover sizes, knife edge or piping. Quote-line quantity means covers. The recommended pillow insert size is informational; an insert is not included.
 - Existing Roman product/program/color identities and historical snapshots are unchanged.
-- Complete cross-product ledger: `norman-roman-ancillary-ledger.csv` (402 current source/product rows, two retail-only exceptions, one discontinued identity). Full 33-cell pillow table and piping calculation: `norman-pillow-retail-cells.csv`.
+- Complete cross-product ledger: `norman-roman-ancillary-ledger.csv` (402 current source/product rows, three discontinued identities). Full 33-cell pillow table and piping calculation: `norman-pillow-retail-cells.csv`.
 
 Original PDFs were rendered and visually inspected for table meaning, not just text extraction:
 
@@ -27,7 +27,7 @@ Pillow retail groups use exact collection/code routing:
 - A: Alma, Caroline except AB0608, Windsor, Lakeside, Lorraine, Seabreeze, Taylor, Patterns, Francis, Valencia, Ella, Solids, Sierra, Ashley, Whispering Willow, Impressions, Louise.
 - B: current Libeco Belgian Linen F1057/F1058; Rochelle, Breeze, Ellie.
 - C: current Libeco Belgian Linen F1051/F1061.
-- Retail table also names F1055 (B) and F1050 (C), but neither occurs in the current guide assortment. They remain exact unresolved exceptions; absence is not treated as proof of discontinuation.
+- Retail table also names F1055 (B) and F1050 (C). The Roman Guide p2 revision table explicitly discontinues both on April 10, 2026: AA0901 F1050 Pewter 8027 and AA0902 F1055 Flax 0024. They are excluded from current destinations; the retail appendix is stale for these colors.
 - Taylor F0210 was discontinued September 1, 2026 (Roman Guide p2) and remains excluded from new ancillary choices.
 
 Page50 excludes Sheer Elegance, Scarlett, Bali, Blake, Bora Bora, Caroline AB0608, Catalina, Java, Riviera, Sumatra and Phuket from pillows. **Patterns AB0635/AB0636 remain available in standard pattern. Only their reverse pattern, and reverse Impressions, are excluded.** This reading agrees with the fabric-list pillow flags and produces 157 eligible colors.
@@ -68,4 +68,6 @@ Parent live check scenarios, internal draft only:
 4. Test Patterns F1073 standard remains selectable; reverse unavailable. Test excluded Caroline AB0608 code absent. Libeco F1057 usesB; F1051 usesC.
 5. PG2yardage retains missing-September-rate hold; no $150 fallback. 10yards boundary accepted as a held request; greaterthan10 blocked. No real customer send/order/checkout.
 
-Remaining external evidence: authenticated ancillary ordering availability/options, fractional-yard increments and cut/order limit semantics, F1050/F1055 status, current PG2yardrate, applicable dealer charges/freight/fees/selling treatment, and representative portal comparisons. Until those are reconciled and production proof passes, these are documented held destinations, not verified-live automatic pricing.
+Remaining external evidence: authenticated ancillary ordering availability/options, fractional-yard increments and cut/order limit semantics, current PG2yardrate, applicable dealer charges/freight/fees/selling treatment, and representative portal comparisons. Until those are reconciled and production proof passes, these are documented held destinations, not verified-live automatic pricing.
+
+Revision-table evidence rechecked visually on September20: Roman Guidep2 explicitly dates TaylorF0210 discontinuation to September1,2026 and LibecoF1050/F1055 to April10,2026. Source absence alone is not used to classify these identities.

@@ -7,3 +7,6 @@ export const WOOD_CODES = ["ND001","ND003","ND006","ND080","ND053","ND091","ND61
 export const woodWandDrop = (height:number) => height<=48?17.75:height<=72?29.75:38.25;
 export const woodBrackets = (width:number) => width<=37?2:width<=47?3:width<=75?4:5;
 export function woodLadders(width:number,large:boolean){return width<=(large?36.5:32)?{ladders:2,cords:4}:width<40?{ladders:3,cords:4}:width<=(large?54:52)?{ladders:3,cords:6}:width<=(large?75:78)?{ladders:4,cords:8}:{ladders:5,cords:8};}
+
+/** The 11¾-inch default is a running change for heights at most 36 inches, not an all-height optional wand. */
+export function woodWandChoices(height:number,asOf="2026-09-20"):readonly string[]{return asOf>="2026-09-20"&&height<=36?["11.75",...WOOD_WANDS]:WOOD_WANDS;}

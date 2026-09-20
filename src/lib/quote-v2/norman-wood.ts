@@ -1,7 +1,8 @@
+import { normanBlindClips, normanBlindScrews } from "@/lib/quote/norman-blind-hardware";
 import { woodCommon, woodCommonId } from "./norman-wood-assemblies";
 import type { SelectionContext, ValidationIssue } from "./core";
 import type { SurchargeSelection } from "@/lib/quote/pricing";
-import { WOOD_SOURCE, WOOD_VALANCES, WOOD_FITS, WOOD_WANDS, WOOD_CODES, woodWandDrop, woodBrackets, woodLadders } from "@/lib/quote/norman-wood";
+import { WOOD_SOURCE, WOOD_VALANCES, WOOD_FITS, woodWandChoices, WOOD_CODES, woodWandDrop, woodBrackets, woodLadders } from "@/lib/quote/norman-wood";
 import { WOOD_DESIGNER_CODES, WOOD_PREMIUM_CODES } from "@/lib/quote/norman-current-assortment";
 import { sourceProvenance } from "./source-manifest";
 const finiteOrNull=(v:number)=>Number.isFinite(v)?v:null;
@@ -25,7 +26,8 @@ export function woodComponents(s:SelectionContext) {
  if(netWidths.some(w=>w<15?side!=="Center":!["Left","Right"].includes(side)))add("wand_side",7,"Blinds below 15 inches net width have center tilt and no lift. Wider blinds use Left or Right tilt. Use separate quote lines when their tilt requirements differ.");
  if(present(c.lift_system)&&c.lift_system!=="Cordless"||c.motor_type||c.remote_type||(Array.isArray(c.motorization_selections)&&c.motorization_selections.length))add("operation",7,"Normandy Wood uses cordless lift and wand tilt, with no lift on blinds below 15 inches net width.");
  const wand=Number(c.wood_wand_drop??common?.defaultWandDrop??woodWandDrop(h));
- if(!WOOD_WANDS.some(v=>Number(v)===wand))add("wand_drop",8,"Choose a listed wand drop measured from headrail top to wand grip.");
+ if(!woodWandChoices(h,s.catalogAsOf).some(v=>Number(v)===wand))add("wand_drop",8,"Choose a listed wand drop measured from headrail top to wand grip.");
+ if(s.catalogAsOf>="2026-09-20"&&wand===11.75)add("wand_running_change",8,"The 11¾-inch wand is listed as a running-change default for blinds up to 36 inches high. Current factory availability must be confirmed; the established default remains 17¾ inches.");
  const valance=String(c.valance??"No Valance"),hasValance=valance!=="No Valance",fit=String(c.wood_mount_fit??"Minimum Depth");
  if(!WOOD_VALANCES.includes(valance as never))add("valance",16,"Choose no valance, Contempo, Designer Crown or Linear valance.");
  if(inside&&(!WOOD_FITS.includes(fit as never)||fit==="Bracket Flush"&&!hasValance))add("mount_fit",15,"Bracket-flush mounting requires a valance. Choose a documented recess arrangement.");
@@ -68,7 +70,7 @@ export function woodComponents(s:SelectionContext) {
  if(locations.some((n,i)=>!Number.isFinite(n)||n<6.5||n>valanceWidth-6.5||i>0&&n-locations[i-1]<18))add("keystone_spacing",16,"Keystone centers must be at least 6½ inches from each valance end and 18 inches apart.");
  if(!keystoneCount&&(Number(c.keystone_quantity)>0||yes(c.keystone)))add("keystone_measurements",16,"Record the keystone count and locations before pricing.");
  const components=netWidths.map((netWidth,index)=>({orderedWidth:widths[index],netWidth,height:h,brackets:woodBrackets(netWidth),shims:woodBrackets(netWidth)*layers,sideSupport:sideMount,topSupport:!sideOnly,holdDowns:yes(c.wood_hold_down)?2:0,lift:netWidth<15?"No Lift":"Cordless",wandSide:side,
- valance:hasValance?{style:valance,width:common?.finishedWidth??custom??netWidth+(inside?returns!=="None"?.625:.25:returns!=="None"?1:2),returns,returnSize,clips:valanceWidth<=37?2:valanceWidth<60?3:valanceWidth<=96?4:null,minimumClips:valanceWidth>96?4:null,spliceCount:Math.max(0,Math.ceil(valanceWidth/96)-1),returnConnectors:(returns==="Both"?2:returns==="None"?0:1)*(valance==="Contempo"?1:2)}:null}));
+ valance:hasValance?{style:valance,width:common?.finishedWidth??custom??netWidth+(inside?returns!=="None"?.625:.25:returns!=="None"?1:2),returns,returnSize,clips:s.catalogAsOf>="2026-09-20"?normanBlindClips(netWidth,common?valanceWidth:custom,false).quantity:valanceWidth<=37?2:valanceWidth<60?3:valanceWidth<=96?4:null,minimumClips:valanceWidth>96?4:null,...(s.catalogAsOf>="2026-09-20"?{clipSchedule:normanBlindClips(netWidth,common?valanceWidth:custom,false)}:{}),spliceCount:Math.max(0,Math.ceil(valanceWidth/96)-1),returnConnectors:(returns==="Both"?2:returns==="None"?0:1)*(valance==="Contempo"?1:2)}:null}));
  const surchargeSelections:SurchargeSelection[]=[];
  if(color&&WOOD_DESIGNER_CODES.includes(color as never))surchargeSelections.push({id:"designer_color",units:1});
  if(color&&WOOD_PREMIUM_CODES.includes(color as never))surchargeSelections.push({id:"premium_color",units:1});
@@ -79,7 +81,7 @@ export function woodComponents(s:SelectionContext) {
  if(hasValance&&chargeShared)surchargeSelections.push({id:valance==="Designer Crown"?"valance_surcharge_designer_crown":"valance_surcharge_contempo",units:1});
  if(cutouts.length)surchargeSelections.push({id:"cut_out",units:cutouts.length});
  if(keystoneCount&&chargeShared)surchargeSelections.push({id:"keystone",units:keystoneCount});
- return {issues,surchargeSelections,record:{version:1,type:"wood_blinds_independent_blinds",sourceId:WOOD_SOURCE,sourcePages:[7,8,9,11,12,13,14,15,16,17,19,20,23,24],components:components.map(component=>({...component,...woodLadders(component.netWidth,c.slat_size!=='2"'),screws:{mounting:component.brackets*2,mountingLength:layers?2:1.25,holdDown:component.holdDowns,holdDownLength:.75,sideNutBolt:sideOnly?4:0},orderedWidth:finiteOrNull(component.orderedWidth),netWidth:finiteOrNull(component.netWidth),height:finiteOrNull(component.height),valance:component.valance?{...component.valance,width:finiteOrNull(Number(component.valance.width)),returnSize:component.valance.returnSize===null?null:finiteOrNull(component.valance.returnSize)}:null})),commonValance:common,cutouts:cutouts.map(cut=>({...cut,width:finiteOrNull(cut.width),top:finiteOrNull(cut.top),...(cut.bottom!==undefined?{bottom:finiteOrNull(cut.bottom)}:{})})),keystones:{count:finiteOrNull(keystoneCount),layout,locations:locations.map(finiteOrNull)},color,wandDrop:finiteOrNull(wand),wandMaterial:"Metal",splitWand:false,mountFit:inside?fit:null,requiredMountDepth:inside?depth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
+ return {issues,surchargeSelections,record:{version:1,type:"wood_blinds_independent_blinds",sourceId:WOOD_SOURCE,sourcePages:[7,8,9,11,12,13,14,15,16,17,19,20,23,24],components:components.map(component=>({...component,...woodLadders(component.netWidth,c.slat_size!=='2"'),screws:s.catalogAsOf>="2026-09-20"?normanBlindScrews(component.brackets,layers>0,component.holdDowns,sideMount):{mounting:component.brackets*2,mountingLength:layers?2:1.25,holdDown:component.holdDowns,holdDownLength:.75,sideNutBolt:sideOnly?4:0},orderedWidth:finiteOrNull(component.orderedWidth),netWidth:finiteOrNull(component.netWidth),height:finiteOrNull(component.height),valance:component.valance?{...component.valance,width:finiteOrNull(Number(component.valance.width)),returnSize:component.valance.returnSize===null?null:finiteOrNull(component.valance.returnSize)}:null})),commonValance:common,cutouts:cutouts.map(cut=>({...cut,width:finiteOrNull(cut.width),top:finiteOrNull(cut.top),...(cut.bottom!==undefined?{bottom:finiteOrNull(cut.bottom)}:{})})),keystones:{count:finiteOrNull(keystoneCount),layout,locations:locations.map(finiteOrNull)},color,wandDrop:finiteOrNull(wand),wandMaterial:"Metal",splitWand:false,mountFit:inside?fit:null,requiredMountDepth:inside?depth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
 }
 
 /** Standard valances use blind width; explicit custom/shared valances use their finished width. */
