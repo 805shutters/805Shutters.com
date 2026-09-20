@@ -2360,6 +2360,9 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  // Current CityLights assortment, mounting, hardware and matching rules are
+  // normalized. Unsupported sizes and combinations still fail their rules.
+  if (context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
   // The September shelf guide is fully normalized, including linked-product
   // eligibility and quantity checks in the order assembly validator.
   if (context.productId === "palladian_shelf" && context.catalogAsOf >= "2026-09-19") return "documented_limited";

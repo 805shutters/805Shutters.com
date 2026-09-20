@@ -34,7 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
-  if (productId === "citylights_aluminum" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-citylights-2026-09-19-r1`;
+  if (productId === "citylights_aluminum" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-citylights-2026-09-19-r2`;
   if (productId === "faux_wood" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-ultimate-faux-2026-09-19-r2`;
   if (productId === "smartprivacy_faux" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartprivacy-2026-09-19-r1`;
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`;

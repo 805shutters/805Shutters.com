@@ -1,3 +1,4 @@
+import {prepareSalesQuoteV2PricingBatch} from "@/lib/crm/sales-quote-v2-price-save";
 import { SMARTDRAPE_COORDINATION } from "@/lib/quote-v2/generated/norman-smartdrape-coordination.generated";
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
@@ -12,6 +13,20 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("prices CityLights as created by the production product picker",()=>{
+  const q=currentQuote("citylights_aluminum","Mini Blinds","7031",{slat_size:'2"',light_control:"SmartPrivacy",control_side:"Right",citylights_wand_drop:"47.25",citylights_shim_layers:"2",citylights_hold_down:"Yes",fabric_color_type:'Available in 1" & 2"',fabric_color_collection:"",slat_finish:"matte",citylights_mount_fit:null,citylights_bracket_installation:null,mount_depth_inches:null,side_mount_bracket:null});
+  q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system=null;q.designs[0].valance=null;q.designs[0].fabric=null;q.designs[0].material="CityLights Cordless Aluminum Blinds";
+  for(const k of ["fold_size","basic_light_guard","premium_hem_bar"])delete q.designs[0].options_json![k];
+  q.designs[0].options_json={...q.designs[0].options_json,surcharges:[],motorization_selections:[],catalog_product_id:"citylights_aluminum",catalog_program_id:q.designs[0].options_json!.quote_lab_program_id,fabric_program_id:q.designs[0].options_json!.quote_lab_program_id,fabric_product_id:"citylights_aluminum",color:'7031 - Porcelain | Available in 1" & 2"'};
+
+  const p=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  expect(p.designs[0].result.ok,JSON.stringify(p.designs[0].result)).toBe(true);
+  const batch=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(batch.prepared[0].priceStatus,JSON.stringify(batch.prepared[0])).toBe("authoritative");
+  expect(batch.repriced.total).toBe(460.9);
+  q.designs[0].options_json={...q.designs[0].options_json,slat_size:'1/2"'};
+  expect(prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"}).prepared[0].priceStatus).toBe("blocked");
+ });
+
  it("server-prices CityLights source hardware, saves matching and preserves customer output",()=>{
   const q=currentQuote("citylights_aluminum","Mini Blinds","7031",{slat_size:'2"',light_control:"SmartPrivacy",control_side:"Right",citylights_wand_drop:47.25,citylights_shim_layers:2,citylights_hold_down:"Yes",citylights_matching_group:"1",shim_quantity:999});
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance=null;

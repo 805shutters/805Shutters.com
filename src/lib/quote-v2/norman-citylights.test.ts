@@ -12,6 +12,11 @@ function blind(c:SelectionContext["configuration"]={},w=36,h=60):SelectionContex
 const rules=(s:SelectionContext)=>citylightsComponents(s)!.issues.map(i=>i.ruleId.split('.').pop());
 function price(s:SelectionContext){deriveNormanOrderRecords([{lineId:"a",selection:s}]);return priceQuoteV2Selection({selection:s,priceInput:{productId:s.productId,programId:s.programId!,widthInches:s.widthInches,heightInches:s.heightInches,quantity:s.quantity,surcharges:authoritativeAutomaticSurchargeSelections(s)},includeInternalCost:true});}
 describe("CityLights August source assortment and current components",()=>{
+ it("prices the production UI selection with implicit cordless operation",()=>{
+  const row=colors.find(r=>r.colorCode==="7031")!;
+  const s=blind({lift_system:null,material:"CityLights Cordless Aluminum Blinds",supplier:"Norman",slat_size:'2"',light_control:"SmartPrivacy",fabric_color_id:row.id,fabric_color_code:"7031",fabric_color_type:row.fabricType,slat_finish:"matte",control_side:"Right",draw_direction:"Right",citylights_wand_drop:"47.25",citylights_shim_layers:"2",citylights_hold_down:"Yes",mount_depth_inches:null,side_mount_bracket:null,citylights_mount_fit:null,citylights_bracket_installation:null});
+  const p=price(s);expect(p.ok,JSON.stringify(p)).toBe(true);
+ });
  for(const [slat,codes] of [[1,CITYLIGHTS_CURRENT_COLORS.oneInch],[2,CITYLIGHTS_CURRENT_COLORS.twoInch]] as const)for(const code of codes)it(`prices ${code} with ${slat}-inch slats`,()=>{
   const row=colors.find(r=>r.colorCode===code)!;expect(row?.available).toBe(true);
   const s=blind({slat_size:`${slat}"`,light_control:slat===1?"Regular Route Holes":"SmartPrivacy",fabric_color_id:row.id,fabric_color_code:row.colorCode,fabric_color_type:row.fabricType,color:row.colorName});expect(rules(s)).toEqual([]);const p=price(s);expect(p.ok,JSON.stringify(p)).toBe(true);
