@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BROKER_MAILBOX, handle805GmailTokenRequest } from "./gmail-token-broker";
+import { BROKER_MAILBOX, BUSINESS_MAILBOX, handle805GmailTokenRequest } from "./gmail-token-broker";
 
 const secret = "synthetic-broker-secret-with-at-least-32-characters";
 function setup(overrides: Record<string, string | undefined> = {}) {
@@ -31,7 +31,7 @@ describe("805-only Gmail token broker", () => {
     expect((await handle805GmailTokenRequest(request(), deps)).status).toBe(503);
     expect(deps.fetch).not.toHaveBeenCalled();
   });
-  it.each(["mtsinstallations@gmail.com", "mtsshutters@gmail.com", "805@805shutters.com", ""])("cannot request another mailbox: %s", async (emailAddress) => {
+  it.each(["mtsinstallations@gmail.com", "mtsshutters@gmail.com", "elsewhere@example.com", ""])("cannot request another mailbox: %s", async (emailAddress) => {
     const deps = setup();
     expect((await handle805GmailTokenRequest(request({ action: "access-token", emailAddress }), deps)).status).toBe(403);
     expect(deps.fetch).not.toHaveBeenCalled();
@@ -53,6 +53,29 @@ describe("805-only Gmail token broker", () => {
     expect(form.get("refresh_token")).toBe("stored-refresh-token");
     expect(form.get("client_id")).toBe("805-client");
     expect(deps.fetch.mock.calls[2][0]).toBe("https://gmail.googleapis.com/gmail/v1/users/me/profile");
+  });
+  it("uses only the business mailbox stored token and accepts read-only access", async () => {
+    const deps=setup(); deps.fetch.mockReset()
+      .mockResolvedValueOnce(Response.json([{refresh_token:"business-stored"}]))
+      .mockResolvedValueOnce(Response.json({access_token:"business-access",scope:"https://www.googleapis.com/auth/gmail.readonly"}))
+      .mockResolvedValueOnce(Response.json({emailAddress:BUSINESS_MAILBOX}));
+    const response=await handle805GmailTokenRequest(request({action:"access-token",emailAddress:BUSINESS_MAILBOX}),deps);
+    expect(response.status).toBe(200);
+    expect((await response.json()).emailAddress).toBe(BUSINESS_MAILBOX);
+    expect(new URL(String(deps.fetch.mock.calls[0][0])).searchParams.get("email_address")).toBe(`eq.${BUSINESS_MAILBOX}`);
+    expect((deps.fetch.mock.calls[1][1]?.body as URLSearchParams).get("refresh_token")).toBe("business-stored");
+  });
+  it("requires business reconnection rather than using the legacy environment token", async () => {
+    const deps=setup(); deps.fetch.mockReset().mockResolvedValueOnce(Response.json([]));
+    const response=await handle805GmailTokenRequest(request({action:"access-token",emailAddress:BUSINESS_MAILBOX}),deps);
+    expect(response.status).toBe(503);
+    expect(deps.fetch).toHaveBeenCalledTimes(1);
+  });
+  it("never releases a legacy token for the business mailbox", async () => {
+    const deps=setup();
+    const response=await handle805GmailTokenRequest(request({action:"access-token",emailAddress:BUSINESS_MAILBOX}),deps);
+    expect(response.status).toBe(403);
+    expect(await response.text()).not.toContain("805-access-token");
   });
   it("does not fall back to MTS OAuth credentials", async () => {
     const deps = setup({ GMAIL_805_CLIENT_SECRET: undefined, GOOGLE_CLIENT_SECRET: "mts-secret" });

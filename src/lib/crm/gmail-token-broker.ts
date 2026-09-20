@@ -1,6 +1,7 @@
 // Portable handler shared by the Supabase Edge entry point and regression tests.
 // This service belongs to 805 and can never select an MTS mailbox.
 export const BROKER_MAILBOX = "805shutters@gmail.com";
+export const BUSINESS_MAILBOX = "805@805shutters.com";
 export const BROKER_ACTION = "access-token";
 
 type Dependencies = {
@@ -33,7 +34,8 @@ export async function handle805GmailTokenRequest(request: Request, deps: Depende
 
   const body = await request.json().catch(() => null);
   if (!body || body.action !== BROKER_ACTION) return json({ error: "Unsupported operation." }, 400);
-  if (typeof body.emailAddress !== "string" || body.emailAddress.trim().toLowerCase() !== BROKER_MAILBOX) {
+  const mailbox = typeof body.emailAddress === "string" ? body.emailAddress.trim().toLowerCase() : "";
+  if (mailbox !== BROKER_MAILBOX && mailbox !== BUSINESS_MAILBOX) {
     return json({ error: "Mailbox is not permitted." }, 403);
   }
 
@@ -51,7 +53,7 @@ export async function handle805GmailTokenRequest(request: Request, deps: Depende
     // must not silently reuse an obsolete token from the environment.
     const url = new URL(`${databaseUrl.replace(/\/$/, "")}/rest/v1/gmail_mailbox_tokens`);
     url.searchParams.set("select", "refresh_token");
-    url.searchParams.set("email_address", `eq.${BROKER_MAILBOX}`);
+    url.searchParams.set("email_address", `eq.${mailbox}`);
     url.searchParams.set("limit", "1");
     const stored = await deps.fetch(url, {
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
@@ -60,7 +62,7 @@ export async function handle805GmailTokenRequest(request: Request, deps: Depende
     if (!stored.ok) return json({ error: "805 mailbox credential lookup failed." }, 502);
     const rows = await stored.json();
     if (!Array.isArray(rows)) return json({ error: "805 mailbox credential lookup failed." }, 502);
-    const refreshToken = rows[0]?.refresh_token || deps.env("GMAIL_805_REFRESH_TOKEN");
+    const refreshToken = rows[0]?.refresh_token || (mailbox === BROKER_MAILBOX ? deps.env("GMAIL_805_REFRESH_TOKEN") : undefined);
     if (typeof refreshToken !== "string" || !refreshToken.trim()) {
       return json({ error: "805 Gmail reconnection is required." }, 503);
     }
@@ -76,18 +78,19 @@ export async function handle805GmailTokenRequest(request: Request, deps: Depende
       return json({ error: "805 Gmail token refresh failed; reconnection may be required." }, 502);
     }
     const scopes = typeof token.scope === "string" ? token.scope.split(/\s+/) : [];
-    if (!scopes.includes("https://www.googleapis.com/auth/gmail.modify") && !scopes.includes("https://mail.google.com/")) {
-      return json({ error: "805 Gmail token requires gmail.modify access." }, 403);
+    const readOnlyBusiness = mailbox === BUSINESS_MAILBOX && scopes.includes("https://www.googleapis.com/auth/gmail.readonly");
+    if (!readOnlyBusiness && !scopes.includes("https://www.googleapis.com/auth/gmail.modify") && !scopes.includes("https://mail.google.com/")) {
+      return json({ error: mailbox === BUSINESS_MAILBOX ? "805 business Gmail token requires mail read access." : "805 Gmail token requires gmail.modify access." }, 403);
     }
     const profileResponse = await deps.fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
       headers: { Authorization: `Bearer ${token.access_token}` },
       signal: AbortSignal.timeout(4_000),
     });
     const profile = await profileResponse.json();
-    if (!profileResponse.ok || profile.emailAddress?.toLowerCase() !== BROKER_MAILBOX) {
+    if (!profileResponse.ok || profile.emailAddress?.toLowerCase() !== mailbox) {
       return json({ error: "805 Gmail token mailbox verification failed." }, 403);
     }
-    return json({ success: true, emailAddress: BROKER_MAILBOX, accessToken: token.access_token, expiresIn: token.expires_in });
+    return json({ success: true, emailAddress: mailbox, accessToken: token.access_token, expiresIn: token.expires_in });
   } catch {
     // Provider payloads, refresh tokens and secrets must never enter responses/logs.
     return json({ error: "805 Gmail authentication service is unavailable." }, 502);

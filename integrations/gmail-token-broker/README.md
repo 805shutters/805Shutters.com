@@ -25,3 +25,9 @@ Run the focused broker tests, full unit suite, typecheck and build before releas
 5. Redeploy the verified main revision so the new environment is applied. Run the three GitHub workflows and inspect response results, including auxiliary processor failures.
 
 To fail closed during recovery, clear the broker action in Vercel and redeploy. Revert the dedicated function to its previous tested version for a future regression; do not add token operations to the public OAuth setup endpoint. Credentials must be transferred only through protected files/stdin and removed from temporary storage after verification.
+
+## Business mailbox intake (September 19, 2026)
+
+The explicit allowlist now also supports `805@805shutters.com` for requested order-email intake. It requires its own stored refresh token under that exact email address, uses the 805 OAuth client, and verifies the returned Google profile. It never falls back to the legacy Gmail environment token. Read-only Gmail scope is sufficient for this business-account intake; the legacy filing account still requires modify scope. All non-805 mailboxes remain denied.
+
+Safety review: the same dedicated caller secret is required before lookup; no new public caller or MTS mailbox access is introduced. The authenticated read-only connection audit found only the legacy Gmail row. Until the business account completes OAuth with the 805 client and its refresh token is securely stored, business-account scans fail closed with reconnection required. Browser Gmail sign-in does not create this backend connection.
