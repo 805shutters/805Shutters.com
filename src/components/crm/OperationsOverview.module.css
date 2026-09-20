@@ -211,7 +211,8 @@
 .condensedTable tbody th { text-align:left; border-left:2px solid #75dfab; border-radius:6px 0 0 6px; }
 .condensedTable tbody td:last-child { border-radius:0 6px 6px 0; }
 .condensedTable tr > :first-child { position:sticky; left:0; z-index:1; box-shadow:5px 0 8px #0002; }
-.condensedTable .customerLink { font-size:12px; padding:0; white-space:nowrap; }
+.condensedTable .customerLink { display:block; width:180px; max-width:180px; height:24px; min-height:24px; overflow:hidden; text-overflow:ellipsis; font-size:12px; padding:0; white-space:nowrap; }
+.condensedTable .condensedReference { max-width:120px; overflow:hidden; text-overflow:ellipsis; }
 .condensedTable .completionButton { width:24px; height:24px; min-height:24px; padding:2px; }
 .condensedTable .mark { width:20px; height:20px; border-width:1.5px; }
 .condensedTable .mark svg, .condensedTable .savingMark { width:14px; height:14px; }
@@ -224,7 +225,7 @@
 .condensedProductDetail small, .condensedProductDetail .shipmentDates, .condensedProductDetail time { display:inline; white-space:nowrap; overflow-wrap:normal; }
 .condensedProductDetail time::after { content:" · "; }
 .condensedProductDetail time:last-child::after { content:""; }
-.workspace .condensedLink { display:inline-flex; align-items:center; gap:5px; padding:4px 6px; border:1px solid #465047; border-radius:5px; background:transparent; color:inherit; white-space:nowrap; font-size:11px; }
+.workspace .condensedLink { height:24px; min-height:24px; display:inline-flex; align-items:center; gap:5px; padding:4px 6px; border:1px solid #465047; border-radius:5px; background:transparent; color:inherit; white-space:nowrap; font-size:11px; }
 .condensedContract { width:min(1200px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; background:#202420; color:#fbfbfa; border:1px solid #465047; border-radius:14px; padding:12px; }
 .condensedContract::backdrop { background:#0009; }
-@media(pointer:coarse) { .condensedTable .completionButton { width:44px; height:44px; min-height:44px; } .condensedTable tbody th, .condensedTable tbody td { height:52px; } }
+@media(pointer:coarse) { .condensedTable .customerLink, .workspace .condensedLink { height:44px; min-height:44px; } .condensedTable .completionButton { width:44px; height:44px; min-height:44px; } .condensedTable tbody th, .condensedTable tbody td { height:52px; } }

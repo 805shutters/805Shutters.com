@@ -171,8 +171,8 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
         <tbody>{visible.map(item => {
           const products = item.products.length ? item.products : [item.wholeJob];
           return <tr key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
-            <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button></th>
-            <td>{item.source.quote?.quote_number || item.source.project || "Not recorded"}</td>
+            <th scope="row"><button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button></th>
+            <td className={styles.condensedReference} title={item.source.quote?.quote_number || item.source.project || "Not recorded"}>{item.source.quote?.quote_number || item.source.project || "Not recorded"}</td>
             <td>{mark(item, "quote")}</td><td>{mark(item, "sold")}</td><td>{mark(item, "deposit")}</td>
             {(["ordered", "shipped"] as const).map(step => <td key={step}><div className={styles.condensedProducts}>{products.map((product, index) => <span key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : [product.name, product.manufacturer].filter(Boolean).join(" · ")} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => void act(item, step, product)} />{products.length > 1 && <span>P{index + 1}</span>}</span>)}</div></td>)}
             <td>{mark(item, "installed")}</td><td>{mark(item, "paid")}</td>
