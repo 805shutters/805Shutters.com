@@ -4,7 +4,7 @@ import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPor
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
-import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
+import { romanHardware, romanFabricPatternOptions } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
@@ -11078,6 +11078,9 @@ function ShadesAndBlindsOptions({
         }
 
         if (authoritativeV2) {
+          if (romanFabricPatternOptions(opts.fabric_color_code).includes("Reverse")) {
+            options.push({key:"roman_fabric_pattern",label:"Fabric Pattern",field:"json:roman_fabric_pattern",type:"buttons",options:["Standard","Reverse"]});
+          }
           options.push({
             key: "side_by_side",
             label: "Side-by-Side Match",
@@ -12403,6 +12406,7 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Roman Shades") {
       nextJson.roman_fabric_category = fabricColor.collection;
+      if (!romanFabricPatternOptions(fabricColor.colorCode).includes("Reverse")) nextJson.roman_fabric_pattern = "Standard";
       if (
         nextJson.fold_style === "Edge Banded" &&
         typeof nextJson.banding_color === "string" &&

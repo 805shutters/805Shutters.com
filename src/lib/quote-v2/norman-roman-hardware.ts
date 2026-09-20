@@ -2,6 +2,11 @@ import type { SelectionContext, SelectionRecord, ValidationIssue } from './core'
 import { sourceProvenance } from './source-manifest';
 
 export const ROMAN_HARDWARE_MAGNET_COLORS = ['Nickel-Plated','Pure White','Silk White','Bisque','Pearl','Bright Brass','Antique Brass','Black','Crisp Linen','String','Sea Mist','Stone Gray','Brown Gray','Taupe Gray'] as const;
+/** September Roman guide p49: reverse is the opposite swatch face, not railroading. */
+export const ROMAN_REVERSE_PATTERN_CODES = ['F1073','F1075','F1072','F1074','F1076','F1078','F1079','F1077','F1695','F1719','F1720','F1721','F1794','F1795'] as const;
+export function romanFabricPatternOptions(code: unknown): string[] {
+ return (ROMAN_REVERSE_PATTERN_CODES as readonly string[]).includes(String(code ?? '').trim().toUpperCase()) ? ['Standard','Reverse'] : ['Standard'];
+}
 const norm=(v:unknown)=>String(v??'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const selected=(v:unknown)=>['yes','true'].includes(norm(v));
 export function romanHardware(s:SelectionContext){
@@ -9,6 +14,8 @@ export function romanHardware(s:SelectionContext){
  const c=s.configuration,lift=norm(c.lift_system),mount=norm(c.mount_type),common=norm(c.shade_type)==='common valance',dayNight=norm(c.shade_type)==='day night';
  const issues:ValidationIssue[]=[];
  const add=(id:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roman.hardware.${id}`,source:sourceProvenance('norman-roman-guide-2026-09',{page}),selectedValues:{...c},explanation});
+ const fabricPattern = c.roman_fabric_pattern ?? 'Standard';
+ if (!romanFabricPatternOptions(c.fabric_color_code).includes(String(fabricPattern))) add('fabric_pattern',49,'Choose a documented Roman fabric pattern. Reverse is available only for the listed Patterns and Impressions colors.');
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
  // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
  const mountingRevision = /norman-roman-mounting-2026-09-20-r[2345]$/.test(s.catalogVersion);
@@ -67,7 +74,7 @@ export function romanHardware(s:SelectionContext){
  if(selected(c.magnetic_hold_down)&&!magnetic)add('legacy_magnet',22,'Reconfirm the Roman magnetic hold-down selection before repricing.');
  if((selected(c.cordless_operating_pole)||selected(c.pole_attachment_only))&&!hasPole)add('legacy_pole',23,'Reconfirm the Roman pole or attachment selection before repricing.');
  return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:shadeCount}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity,billingScope:'once_per_line' as const}]:[]),...(shimQuantity>0?[{id:'shim',units:shimQuantity}]:[])],record:{
-  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[8,9,15,16,22,23,24],
+  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[8,9,15,16,22,23,24,49],fabricPattern,
   mounting:{...(mountingRevision && mount === 'inside mount' ? {fit:mountingFit,measuredDepth:Number.isFinite(depth)?depth:null,minimumDepth} : {}),componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
   banding:banded&&bandingRevision?{layout:bandingLayout,type:/ribbon/.test(norm(c.fold_style))?'Ribbon':'Edge',borderWidth:/ribbon/.test(norm(c.fold_style))?1.0625:2.5,ribbonInset:/ribbon/.test(norm(c.fold_style))?2:null}:null,
   chain:chain?{length:chainLength,custom,measuredFrom:'top_of_headrail_to_bottom_of_tension_device',minimumAccessClearance:2,toleranceAbove:1.5625,material:norm(c.chain_type)==='stainless steel'?'Stainless Steel':'Plastic',color:norm(c.chain_type)==='stainless steel'?'Stainless Steel':c.chain_color??'White',clutchAndTensionColor:norm(c.chain_type)==='stainless steel'?'White':c.chain_color??'White',positions}:null,
