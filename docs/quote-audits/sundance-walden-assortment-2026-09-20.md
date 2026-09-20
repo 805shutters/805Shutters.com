@@ -24,3 +24,9 @@ Selection writes exact material/code/product and all three existing program keys
 All prices remain manual-required. This increment adds fabric identity/routing and source constraints, not certification of account costs, accessory totals, complete availability, or automatic customer pricing.
 
 Validation: every source row has a unique ID and a same-family existing grid; independent first-cell group fixtures; both editor families produce 46 selectable Premier and 56 selectable Select identities; cross-family/source-only selection rejected; stale accessory clearing and conflict UI verified. TypeScript passes. Production save/reopen proof of these newly added material choices remains pending deployment.
+
+## Authenticated dealer price evidence
+
+The existing unsubmitted dealer audit order now preserves line6 Aires White (`E-M01`), 36×60 Inside, Flat, Cordless, no liner and no multi-blind charge. Dealer group F1 has base retail **708**, matching Premier group F; observed net **318.60**, tax **23.10**, total **341.70**. This one observed 0.45 relationship is not an account-policy substitution.
+
+Separate line7 adds Blackout. The portal shows option retail **87**, net **357.75**, tax **25.94**, total **383.69**. The hash-verified current Premier PDF20 blackout grid at 36×60 is **86**. This **1-dollar retail discrepancy remains unresolved**, and the option grid stays ineligible for automatic pricing. The light-filtering menu showed net36.90, consistent with the published82 cell at the observed fixture factor; it was not saved as a separate priced comparison. Neither draft line was submitted or ordered.
