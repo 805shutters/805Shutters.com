@@ -1,5 +1,6 @@
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
+import { NORMAN_STILE_PROFILES, NORMAN_PANEL_CLOSURES, normanStileWidths, normanStileJoins, normanRegularPanelCount, normanRegularPanelMaxWidth } from "@/lib/quote/norman-shutter-construction";
 import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
 import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
@@ -4006,6 +4007,13 @@ export function getStandardShutterGridOptions(
       type: "select",
       options: SHUTTER_PANEL_CONFIGS,
     },
+    ...(authoritativeV2 ? [
+      {key: "widest_panel_width_inches", label: "Widest Finished Panel Width", field: "json:widest_panel_width_inches", type: "number", min: 6, max: normanRegularPanelMaxWidth(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), design?.louver_size, design?.panel_config), step: "0.0625", unit: '"'},
+      {key: "stile_width", label: "Stile Width", field: "json:stile_width", type: "buttons", options: normanStileWidths(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), normanOptions.widest_panel_width_inches)},
+      {key: "stile_join", label: "Stile Join", field: "json:stile_join", type: "buttons", options: normanStileJoins(design?.panel_config, normanOptions.widest_panel_width_inches)},
+      {key: "stile_profile", label: "Stile Profile", field: "json:stile_profile", type: "buttons", options: NORMAN_STILE_PROFILES},
+      ...(normanRegularPanelCount(design?.panel_config) !== 1 ? [{key: "panel_closure", label: "Panel Closure", field: "json:panel_closure", type: "buttons", options: NORMAN_PANEL_CLOSURES} satisfies GridOption] : []),
+    ] satisfies GridOption[] : []),
     {
       key: "split_tilt",
       label: "Split Tilt",

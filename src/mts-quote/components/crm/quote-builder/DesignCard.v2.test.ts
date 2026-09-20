@@ -1469,6 +1469,20 @@ it("initializes an exact Vertical Honeycomb product with its valid application a
 });
 
 describe("Norman shutter source-backed program choices", () => {
+  it("filters construction choices by program and finished panel geometry", () => {
+    const choices = (program: string, panel_config: string, width: number) => getStandardShutterGridOptions({supplier:"Norman",material:"Woodlore",panel_config,options_json:{catalog_program_id:program,widest_panel_width_inches:width}} as unknown as SalesQuoteDesign,true);
+    const values = (program: string, panel: string, width: number, key: string) => {
+      const option = choices(program,panel,width).find(o=>o.key===key);
+      return option && "options" in option ? option.options : [];
+    };
+    expect(values("woodlore_aquashield","L R",12,"stile_width")).toEqual(['2"']);
+    expect(values("woodlore","L R",12,"stile_width")).toContain('1 5/8"');
+    expect(values("woodlore","L R",12.0625,"stile_width")).not.toContain('1 5/8"');
+    expect(values("woodlore","L R",18,"stile_join")).toEqual(["Rabbet","Astragal"]);
+    expect(values("woodlore","L",9,"stile_join")).toEqual(["Butt"]);
+    expect(choices("woodlore","L",9).some(o=>o.key==="panel_closure")).toBe(false);
+    expect(values("woodlore","L R",18,"panel_closure")).toEqual(["Right Over Left","Left Over Right"]);
+  });
   it("offers the selected program's finishes and excludes AquaShield's unavailable louver", () => {
     const choices = (program: string) => getStandardShutterGridOptions({supplier:"Norman",material:"Woodlore",options_json:{catalog_program_id:program}} as unknown as SalesQuoteDesign,true);
     const values = (program: string, key: string) => { const option = choices(program).find(o=>o.key===key); return option && "options" in option ? option.options : []; };

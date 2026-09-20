@@ -1,6 +1,7 @@
 import { normanShutterColor, normanShutterLouvers, normanShutterProgram, normanShutterHinges, normanShutterTilts, normanShutterFrame, normanShutterMounts, NORMAN_SHUTTER_FRAME_SOURCE } from "@/lib/quote/norman-shutter-assortment";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
+import { NORMAN_STILE_PROFILES, NORMAN_PANEL_CLOSURES, normanStileWidths, normanStileJoins, normanRegularPanelCount, normanConstructionPages, normanRegularPanelMaxWidth } from "@/lib/quote/norman-shutter-construction";
 
 export function validateNormanShutterAssortment(s: SelectionContext): ValidationIssue[] {
   if (s.productId !== "norman_shutters" || s.catalogAsOf < "2026-09-19") return [];
@@ -24,6 +25,17 @@ export function validateNormanShutterAssortment(s: SelectionContext): Validation
   const mount = String(s.configuration.mount_type ?? "");
   const mountLabel = /inside|^im$|^i$/i.test(mount) ? "Inside Mount" : /outside|^om$|^o$/i.test(mount) ? "Outside Mount" : null;
   if (mountLabel && !normanShutterMounts(p.id, s.configuration.frame_type).includes(mountLabel)) add("frame_mount", "The selected Norman frame does not offer this mount type. Reselect the frame or mount.", p.id === "woodlore" ? [16,17,18,19,20] : p.id.startsWith("woodlore_") ? [20,21,22,23,24] : p.id === "brightwood" ? [17,18,19,20,21] : [18,19,20,21,22]);
+  const constructionPages = normanConstructionPages(p.id);
+  const c = s.configuration;
+  const mixedBifold = ["LLR", "LRR"].includes(String(c.panel_config ?? "").replace(/\s+/g, "").toUpperCase());
+  if (mixedBifold && Number(c.widest_panel_width_inches) > normanRegularPanelMaxWidth(p.id, c.louver_size, "LL")) add("mixed_panel_width", "This mixed hinged/bifold layout needs individual finished panel widths to verify the narrower bifold limit.", p.id.startsWith("woodlore_") ? [38] : [32]);
+  if (c.widest_panel_width_inches != null && c.widest_panel_width_inches !== "" && (!Number.isFinite(Number(c.widest_panel_width_inches)) || Number(c.widest_panel_width_inches) < 6 || Number(c.widest_panel_width_inches) > normanRegularPanelMaxWidth(p.id, c.louver_size, c.panel_config))) add("panel_width", "Finished panel width is outside the documented limit for this program, louver and regular panel layout.", p.id.startsWith("woodlore_") ? [38] : [32]);
+  if ((c.stile_width || c.stile_join || c.panel_closure) && normanRegularPanelCount(c.panel_config) === null) add("construction_layout", "Stile and panel-closure rules for this T-post or specialized layout still require manufacturer verification.", constructionPages);
+  if (c.stile_profile && !NORMAN_STILE_PROFILES.includes(String(c.stile_profile) as never)) add("stile_profile", "Choose Beaded or Chamfer stile profile.", constructionPages);
+  if (c.stile_width && !normanStileWidths(p.id, c.widest_panel_width_inches).includes(String(c.stile_width))) add("stile_width", p.id === "woodlore_aquashield" ? "AquaShield requires 2-inch stiles." : "1⅝-inch stiles require finished panel widths of 12 inches or less; otherwise choose 2 or 2¼ inches.", constructionPages);
+  if (c.stile_join && !normanStileJoins(c.panel_config, c.widest_panel_width_inches).includes(String(c.stile_join))) add("stile_join", "The selected stile join is incompatible with this regular panel configuration and finished panel width.", constructionPages);
+  if (c.stile_join && normanRegularPanelCount(c.panel_config) === 1 && !(Number(c.widest_panel_width_inches) >= 9)) add("single_panel_join", "Single panels below 9 inches require the exact finished panel width and hang-strip placement to verify the stile join.", constructionPages);
+  if (c.panel_closure && (!NORMAN_PANEL_CLOSURES.includes(String(c.panel_closure) as never) || normanRegularPanelCount(c.panel_config) === 1)) add("panel_closure", "Panel closure is available only for a compatible multi-panel configuration.", constructionPages);
   // Premium finishes remain selectable, with an explicit unresolved price exception.
   if (color?.premium) add("premium_price", "This Normandy premium finish is documented, but its current account surcharge has not been verified.");
   return issues;
