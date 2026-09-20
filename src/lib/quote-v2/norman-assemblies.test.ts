@@ -4,6 +4,8 @@ import { deriveNormanOrderRecords, romanComponentWidths } from "./norman-assembl
 import { resolveNormanShadeMotorization } from "./norman-shade-motorization";
 import { priceDesign } from "@/lib/quote/pricing";
 import { getProduct } from "@/lib/quote/catalog";
+import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
+import type { SalesQuoteDesign } from "@mts/types/quote";
 
 function roman(id: string, config: SelectionContext["configuration"] = {}, quantity=1) {
  const selection: SelectionContext = {manufacturerId:"norman",productId:"roman",programId:"roman-test",catalogAsOf:"2026-09-18",catalogVersion:"test",widthInches:36,heightInches:60,quantity,options:{},configuration:{shade_type:"Single",lift_system:"Motorized",fold_style:"Flat Fold without Seams",motor_type:"Norman Smart DC Low Voltage",motor_position:"Right",hub_required:false,dc_power_supply:"DC Distribution Panel",shared_power_panel_id:"Panel 1",...config}};
@@ -15,6 +17,12 @@ function materialize(s:SelectionContext) {
  return resolveNormanShadeMotorization(s)!;
 }
 describe("Norman saved assemblies",()=>{
+ it("shows both Roman motors in customer details without a misleading single position",()=>{
+  const design={product_type:"Roman Shades",supplier:"Norman",lift_system:"Motorized",shade_type:"Common Valance",options_json:{quote_v2_backend:true,motor_position:"Right"}} as unknown as SalesQuoteDesign;
+  expect(getQuoteDesignDetails(design)).toContainEqual({label:"Motor Positions",value:"Left shade: Left; Right shade: Right"});
+  expect(getQuoteDesignDetails(design).some(d=>d.label==="Motor Position")).toBe(false);
+  expect(getQuoteDesignDetails({...design,shade_type:"Day & Night",options_json:{quote_v2_backend:true,motor_position:"Left"}})).toContainEqual({label:"Motor Positions",value:"Front Roman: Left; Rear roller: Right"});
+ });
  it("allocates a panel once across repeated line quantities and preserves connected identities",()=>{
   const a=roman("a",{},5), b=roman("b",{},7);
   expect(deriveNormanOrderRecords([b,a])).toEqual([]);
@@ -35,7 +43,7 @@ describe("Norman saved assemblies",()=>{
   expect(deriveNormanOrderRecords([line])).toEqual([]);
   expect(romanComponentWidths(line.selection)).toEqual([30,40]);
   expect(materialize(line.selection).canonicalSelections).toContainEqual({groupId:"smart_motorization",optionId:"motor",role:"base_motor",units:2});
-  expect(line.selection.configuration.norman_assembly_v1).toMatchObject({version:1,panelWidths:[30,40],gap:1,motorCount:2});
+  expect(line.selection.configuration.norman_assembly_v1).toMatchObject({version:1,panelWidths:[30,40],gap:1,motorCount:2,motors:[{shade:"left",position:"Left",width:30},{shade:"right",position:"Right",width:40}]});
  });
  it("prices a shared panel once even when its owner line has quantity greater than one",()=>{
   const programId=getProduct("roman")!.programs[0].id;

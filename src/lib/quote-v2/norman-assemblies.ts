@@ -69,7 +69,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       version: 1, type: "roman_common_valance", panelWidths: widths,
       gap: selection.configuration.common_valance_gap ?? null,
       height: selection.heightInches, motorCount: /motor/i.test(String(selection.configuration.lift_system)) ? 2 : 0,
-      motorPositions: ["left", "right"], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
+      motorPositions: ["left", "right"], motors: /motor/i.test(String(selection.configuration.lift_system)) ? [{shade:"left",position:"Left",width:widths[0]}, {shade:"right",position:"Right",width:widths[1]}] : [], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
   }
   issues.push(...deriveCitylightsMatching(lines));

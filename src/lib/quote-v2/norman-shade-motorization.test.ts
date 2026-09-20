@@ -469,6 +469,15 @@ describe("Norman July 2026 Roman motorization normalization", () => {
     );
   });
 
+  it("keeps current paired motor positions explicit even when a legacy single position is saved", () => {
+    for (const motor_position of ["Left", "Right", null]) {
+      const common: SelectionContext = {...roman({shade_type:"Common Valance",motor_position,common_valance_panel_widths:[30,40],common_valance_gap:1},71,60),catalogAsOf:"2026-09-19"};
+      expect(validateNormanShadeMotorization(common)).toContainEqual(expect.objectContaining({ruleId:"roman.motorization.motor_position_derived",derivedValues:{left_shade_motor_position:"Left",right_shade_motor_position:"Right"}}));
+      const dayNight: SelectionContext = {...roman({shade_type:"Day & Night",motor_position}),catalogAsOf:"2026-09-19"};
+      expect(validateNormanShadeMotorization(dayNight)).toContainEqual(expect.objectContaining({ruleId:"roman.motorization.motor_position_derived",derivedValues:{front_motor_position:motor_position === "Left" ? "Left" : "Right",rear_motor_position:motor_position === "Left" ? "Right" : "Left"}}));
+    }
+  });
+
   it("requires an exact Automate 12V supply and keeps shared panels fail-closed", () => {
     expect(
       ruleIds(roman({ motor_type: "Automate 12V Low Voltage" })),

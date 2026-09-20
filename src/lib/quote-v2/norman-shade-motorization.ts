@@ -387,16 +387,16 @@ function validateControlAndPosition(
     );
   }
 
-  if (isRomanDerivedPosition && !config.motorPosition) {
+  if (isRomanDerivedPosition && (!config.motorPosition || context.catalogAsOf >= "2026-09-19")) {
     issues.push(
       issue(
         "roman.motorization.motor_position_derived",
         pages,
-        { shade_type: shadeType, motor_position: null },
+        { shade_type: shadeType, motor_position: config.motorPosition || null },
         "The documented standard paired motor positions are applied.",
         "auto_derive",
         shadeType.includes("day night")
-          ? { front_motor_position: "Right", rear_motor_position: "Left" }
+          ? { front_motor_position: config.motorPosition === "left" ? "Left" : "Right", rear_motor_position: config.motorPosition === "left" ? "Right" : "Left" }
           : {
               left_shade_motor_position: "Left",
               right_shade_motor_position: "Right",

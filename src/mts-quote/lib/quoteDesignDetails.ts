@@ -98,6 +98,12 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const pairedRoman = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /motor/i.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
+  if (pairedRoman) {
+    const common = /common valance/i.test(String(design.shade_type));
+    const frontLeft = String(options.motor_position).toLowerCase() === "left";
+    details.push({label:"Motor Positions",value:common ? "Left shade: Left; Right shade: Right" : frontLeft ? "Front Roman: Left; Rear roller: Right" : "Front Roman: Right; Rear roller: Left"});
+  }
   const fabricColor = formatFabricColorDetail(options);
   if (fabricColor) {
     details.push({
@@ -108,6 +114,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || isInternalOptionKey(key)) return;
+    if (pairedRoman && key === "motor_position") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 
     if (key === "surcharges" && Array.isArray(value)) {
