@@ -1,6 +1,7 @@
 import { sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { sundanceHorizontalProductIds } from "@/lib/quote/sundance/horizontal-assortment";
+import { sundanceShadeProductIds } from "@/lib/quote/sundance/shade-fabrics";
 import { SYNCHRONY_DEALER_COLOR_CODES } from "@/lib/quote/norman-synchrony";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import {
@@ -516,6 +517,7 @@ function rowMatchesMtsContext(
 ): boolean {
   if (row.productId === "sundance_cellular") return sundanceCellularColorMatchesContext(row, optionsJson);
   if (sundanceHorizontalProductIds.includes(row.productId)) return true;
+  if (sundanceShadeProductIds.includes(row.productId)) return !optionsJson.catalog_sundance_shade_collection_id || row.automaticDetails.catalog_sundance_shade_collection_id === optionsJson.catalog_sundance_shade_collection_id;
   if (row.productId === "sundance_walden_premier" || row.productId === "sundance_walden_select") return true;
   if(isOnyxHeldProduct(row.productId))return getMtsProductColorProductIds(productType,optionsJson).includes(row.productId);
   switch (productType) {
