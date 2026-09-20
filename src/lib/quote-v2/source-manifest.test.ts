@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(55);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(59);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(55);
+    ).toBe(59);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(55);
+    ).toBe(59);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -70,6 +70,10 @@ describe("quote V2 source manifest", () => {
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({
+      "One PDF-Woodlore.pdf": "e6b946da8bb729df36e130347149aefe0e8c8cb688580bee2614c35949c25469",
+      "One PDF-Woodlore Plus.pdf": "92e547a134faa6b4757b7ad16cd8357eca30ae7b828b37e7f1423eca0bf0c45e",
+      "One PDF-Brightwood.pdf": "7e9aa8956fda910d1d72ce2a542a109154aa9cd916cbab92e4f2acb50b2ec7e7",
+      "One PDF-Normandy.pdf": "da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f",
       "Ultimate FW Blinds Guide.pdf": "b0cc6132087ad8f10f770a2d001415df3db54c13b098006645eea3f64d8e957c",
       "SmartPrivacy FW Blinds Guide.pdf": "c92a08153e7fa04c4da17d48bef8b8d00d4fe954e40cd83ad29f04c76fb17879",
       "Contract Cordless Faux Wood Blind Product Specifications.pdf": "df9eeb465da4dfe8c3f36a9c715b3af8d87375a4cf8d4a26745c047804ca9def",

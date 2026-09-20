@@ -1,3 +1,4 @@
+import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors } from "./norman-shutter-assortment";
 import { ultimateFauxColor } from "./norman-ultimate-faux";
 import { smartprivacyColor } from "./norman-smartprivacy";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED, SYNCHRONY_DEALER_COLOR_CODES } from "./norman-synchrony";
@@ -496,7 +497,17 @@ const additionalSynchronyColors: ProductColorOption[] = [
   searchText: `${row.collection} ${row.colorName} ${SYNCHRONY_DEALER_COLOR_CODES[row.collection]?.[row.colorName] ?? ""} synchrony`.toLowerCase(),
 }));
 
+const normanShutterColorOptions: ProductColorOption[] = NORMAN_SHUTTER_PROGRAMS.flatMap(p => normanShutterColors(p.id).map(c => ({
+  id: `norman_shutters:${p.id}:${c.code}`, productId: "norman_shutters", collection: p.name, publicCollection: p.name,
+  fabricType: c.premium ? "Premium finish" : p.id === "normandy_stained" ? "Stain" : "Paint", colorCode: c.code, colorName: c.name, publicColorName: c.name,
+  frStatus: "", imageUrl: "", sourcePage: `${p.sourceId}#page=${p.pages[0]}`, sourcePageModified: null,
+  sourceNote: "Complete 2026 shutter binder section b. Assortment evidence only; account pricing and configuration restrictions remain unresolved.",
+  programId: p.id, selectionMode: "program", requiresProgram: true, available: true,
+  automaticDetails: { color: c.label }, searchText: `${p.name} ${c.code} ${c.name}`.toLowerCase(),
+})));
+
 export const productColorOptions = [
+  ...normanShutterColorOptions,
   ...additionalSynchronyColors,
   ...sanClementeColors,
   ...normanContractColors,

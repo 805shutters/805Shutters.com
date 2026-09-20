@@ -1,3 +1,5 @@
+import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers } from "@/lib/quote/norman-shutter-assortment";
+import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
 import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
@@ -208,6 +210,7 @@ import {
 import {
   WOOD_SHUTTER_ROUTES,
   getAutoShutterRoutePatch,
+  getNormanShutterRoutePatch,
   getWoodShutterRoutePatch,
   type ShutterRoutePatch,
   type WoodShutterRoute,
@@ -3530,7 +3533,8 @@ export function parseDeferredNumberDraft(value: string): number | null | undefin
 
 // --- Step/Grid logic for Standard Shutter ---
 
-function getDefiningSteps(design: SalesQuoteDesign | undefined): DefiningStep[] {
+function getDefiningSteps(design: SalesQuoteDesign | undefined, authoritativeV2 = false): DefiningStep[] {
+  if (authoritativeV2 && design?.supplier === "Norman") return [{key:"norman_program",label:"Norman Program",field:"material",options:NORMAN_BINDER_SHUTTER_PROGRAMS.map(p=>p.name)}];
   const steps: DefiningStep[] = [];
   const opts = (design?.options_json as Record<string, string>) || {};
 
@@ -3571,7 +3575,7 @@ function isStandardShutterComplete(design: SalesQuoteDesign | undefined): boolea
 
   if (design.supplier === "Norman") {
     if (!opts?.material_type) return false;
-    if (opts.material_type === "Composite") return opts.composite_subtype === "Woodlore";
+    if (opts.material_type === "Composite") return Boolean(normanShutterProgram(opts.composite_subtype));
     return !!design.material;
   }
 
@@ -3968,7 +3972,7 @@ export function getStandardShutterGridOptions(
       label: "Louver Size",
       field: "louver_size",
       type: "buttons",
-      options: SHUTTER_LOUVER_SIZES,
+      options: authoritativeV2 ? normanShutterLouvers(String(normanOptions.catalog_program_id ?? design?.material ?? "")) : SHUTTER_LOUVER_SIZES,
     },
     {
       key: "tilt_type",
@@ -3982,7 +3986,7 @@ export function getStandardShutterGridOptions(
       label: "Color",
       field: "json:color",
       type: "select",
-      options: ONYX_COLORS,
+      options: authoritativeV2 ? normanShutterColors(String(normanOptions.catalog_program_id ?? design?.material ?? "")).map(c=>c.label) : ONYX_COLORS,
     },
     {
       key: "hinge_color",
@@ -5950,7 +5954,7 @@ export function DesignCard({
           <Tabs value={activeVariant} onValueChange={handleVariantChange}>
             <TabsList className="bg-transparent gap-2 h-auto p-0">
               {variants.map((v) => {
-                const label = isShutters
+                const label = isShutters && !authoritativeV2
                   ? SHUTTER_AUTO_VARIANTS.find((sv) => sv.variant === v)?.label || `Quote ${v}`
                   : `Quote ${v}`;
                 return (
@@ -6734,7 +6738,8 @@ function ShutterDesignOptions({
   const autoRoutePatchKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const patch = getAutoShutterRoutePatch(activeVariant);
+    const currentProgram = workingDesign.supplier === "Norman" ? (workingDesign.options_json as Record<string, unknown>)?.catalog_program_id : null;
+    const patch = authoritativeV2 && normanShutterProgram(currentProgram) ? null : getAutoShutterRoutePatch(activeVariant);
     if (
       !design ||
       !shouldApplyAutomaticShutterRoutePatch(authoritativeV2, design, patch)
@@ -6748,7 +6753,8 @@ function ShutterDesignOptions({
   }, [activeVariant, authoritativeV2, design, onUpdateFields]);
 
   const handleUpdate = (field: string, value: unknown) => {
-    const patch = getAutoShutterRoutePatch(activeVariant);
+    const currentProgram = workingDesign.supplier === "Norman" ? (workingDesign.options_json as Record<string, unknown>)?.catalog_program_id : null;
+    const patch = authoritativeV2 && normanShutterProgram(currentProgram) ? null : getAutoShutterRoutePatch(activeVariant);
     if (patch && needsShutterRoutePatch(design, patch, authoritativeV2)) {
       if (authoritativeV2) {
         onUpdateFields(
@@ -6883,6 +6889,11 @@ function ShutterDesignOptions({
   };
 
   const handleDefiningStepSelect = (step: DefiningStep, value: string) => {
+    if (authoritativeV2 && step.key === "norman_program") {
+      const patch = getNormanShutterRoutePatch(value);
+      if (patch) applyShutterRoutePatch(patch, design, onUpdateFields);
+      return;
+    }
     if (step.field === "json:wood_route") {
       const patch = getWoodShutterRoutePatch(value as WoodShutterRoute);
       if (authoritativeV2) {
@@ -6896,7 +6907,7 @@ function ShutterDesignOptions({
     handleUpdate(step.field, value);
   };
 
-  const allDefiningSteps = getDefiningSteps(workingDesign);
+  const allDefiningSteps = getDefiningSteps(workingDesign, authoritativeV2);
   const definingSteps = mobilePresentation
     ? allDefiningSteps.filter((step) => step.field !== "json:wood_route")
     : allDefiningSteps;
@@ -12164,7 +12175,7 @@ function ShadesAndBlindsOptions({
   const woodIssues = authoritativeV2 && productType === "Wood Blinds" ? validateNormanFamilyRules({
     productId:"wood_blinds",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,...woodSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartprivacyIssues = authoritativeV2 && productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? validateNormanFamilyRules({
     productId:"smartprivacy_faux",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",

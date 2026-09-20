@@ -115,6 +115,30 @@
       "sha256": "2a54ee5ba2a85cad4c30e489e1887ef497046c622e27851fba299731681029ed"
     },
     {
+      "sourceId": "norman-woodlore-binder-2026-09",
+      "fileName": "One PDF-Woodlore.pdf",
+      "byteLength": 12656341,
+      "sha256": "e6b946da8bb729df36e130347149aefe0e8c8cb688580bee2614c35949c25469"
+    },
+    {
+      "sourceId": "norman-woodlore-plus-binder-2026-09",
+      "fileName": "One PDF-Woodlore Plus.pdf",
+      "byteLength": 21933008,
+      "sha256": "92e547a134faa6b4757b7ad16cd8357eca30ae7b828b37e7f1423eca0bf0c45e"
+    },
+    {
+      "sourceId": "norman-brightwood-binder-2026-09",
+      "fileName": "One PDF-Brightwood.pdf",
+      "byteLength": 20864611,
+      "sha256": "7e9aa8956fda910d1d72ce2a542a109154aa9cd916cbab92e4f2acb50b2ec7e7"
+    },
+    {
+      "sourceId": "norman-normandy-binder-2026-09",
+      "fileName": "One PDF-Normandy.pdf",
+      "byteLength": 24739310,
+      "sha256": "da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f"
+    },
+    {
       "sourceId": "norman-wood-valance-portal-2026-09-19",
       "fileName": "wood-portal-20260919.json",
       "byteLength": 3112,

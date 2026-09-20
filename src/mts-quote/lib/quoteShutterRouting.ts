@@ -1,3 +1,5 @@
+import { normanShutterProgram } from "@/lib/quote/norman-shutter-assortment";
+
 export const WOOD_SHUTTER_ROUTES = ["Premium Wood", "Standard Wood"] as const;
 
 export type WoodShutterRoute = (typeof WOOD_SHUTTER_ROUTES)[number];
@@ -8,6 +10,14 @@ export interface ShutterRoutePatch {
   productId: "norman_shutters" | "onyx_shutters";
   programId: string | null;
   options: Record<string, string | null>;
+}
+
+export function getNormanShutterRoutePatch(value: unknown): ShutterRoutePatch | null {
+  const program = normanShutterProgram(value);
+  return program ? {
+    supplier: "Norman", material: program.name, productId: "norman_shutters", programId: program.id,
+    options: { material_type: program.material, composite_subtype: program.material === "Composite" ? program.name : null, wood_route: program.material === "Wood" ? "Premium Wood" : null },
+  } : null;
 }
 
 export function getAutoShutterRoutePatch(

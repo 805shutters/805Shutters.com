@@ -52,6 +52,86 @@ export interface SourceManifestEntry {
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
+{
+  "id": "norman-woodlore-binder-2026-09",
+  "manufacturer": "Norman",
+  "kind": "program_binder",
+  "format": "pdf",
+  "fileName": "One PDF-Woodlore.pdf",
+  "title": "Woodlore complete shutter program binder",
+  "revision": "2026 binder retrieved September 2026; section revision dates retained in source",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Binder contains section-specific revision dates; no single universal effective date is asserted.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "e6b946da8bb729df36e130347149aefe0e8c8cb688580bee2614c35949c25469",
+  "authorities": [
+    "assortment",
+    "options",
+    "restrictions"
+  ],
+  "pageCount": 108
+},
+{
+  "id": "norman-woodlore-plus-binder-2026-09",
+  "manufacturer": "Norman",
+  "kind": "program_binder",
+  "format": "pdf",
+  "fileName": "One PDF-Woodlore Plus.pdf",
+  "title": "Woodlore Plus complete shutter program binder",
+  "revision": "2026 binder retrieved September 2026; section revision dates retained in source",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Binder contains section-specific revision dates; no single universal effective date is asserted.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "92e547a134faa6b4757b7ad16cd8357eca30ae7b828b37e7f1423eca0bf0c45e",
+  "authorities": [
+    "assortment",
+    "options",
+    "restrictions"
+  ],
+  "pageCount": 143
+},
+{
+  "id": "norman-brightwood-binder-2026-09",
+  "manufacturer": "Norman",
+  "kind": "program_binder",
+  "format": "pdf",
+  "fileName": "One PDF-Brightwood.pdf",
+  "title": "Brightwood complete shutter program binder",
+  "revision": "2026 binder retrieved September 2026; section revision dates retained in source",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Binder contains section-specific revision dates; no single universal effective date is asserted.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "7e9aa8956fda910d1d72ce2a542a109154aa9cd916cbab92e4f2acb50b2ec7e7",
+  "authorities": [
+    "assortment",
+    "options",
+    "restrictions"
+  ],
+  "pageCount": 140
+},
+{
+  "id": "norman-normandy-binder-2026-09",
+  "manufacturer": "Norman",
+  "kind": "program_binder",
+  "format": "pdf",
+  "fileName": "One PDF-Normandy.pdf",
+  "title": "Normandy complete shutter program binder",
+  "revision": "2026 binder retrieved September 2026; section revision dates retained in source",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Binder contains section-specific revision dates; no single universal effective date is asserted.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f",
+  "authorities": [
+    "assortment",
+    "options",
+    "restrictions"
+  ],
+  "pageCount": 154
+},
   {
   "id": "norman-wood-valance-portal-2026-09-19",
   "manufacturer": "Norman",

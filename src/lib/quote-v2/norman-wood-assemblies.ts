@@ -16,6 +16,17 @@ export function woodCommon(s: SelectionContext): SelectionRecord | null {
   return woodCommonId(s) && record && typeof record === "object" && !Array.isArray(record) ? record as SelectionRecord : null;
 }
 
+/** Form feedback can reuse a matching server snapshot; pricing always rebuilds it. */
+export function woodSavedCommonForDisplay(configuration: Record<string, unknown>, saved: Record<string, unknown> | undefined, width: number, height: number, quantity: number): Record<string, unknown> {
+  if (saved?.productId !== "wood_blinds" || saved.widthInches !== width || saved.heightInches !== height || saved.quantity !== quantity) return {};
+  const c = saved.configuration as Record<string, unknown> | undefined;
+  if (!c || !group(configuration.wood_common_group)) return {};
+  const keys = ["wood_common_group", "wood_common_position", "wood_common_gap_after", "wood_valance_width_inches", "wood_keystone_count", "wood_keystone_layout", "wood_keystone_location_1", "wood_keystone_location_2", "wood_keystone_location_3"];
+  if (keys.some(key => String(c[key] ?? "") !== String(configuration[key] ?? ""))) return {};
+  const common = c[WOOD_COMMON_KEY];
+  return common && typeof common === "object" && !Array.isArray(common) ? { [WOOD_COMMON_KEY]: common } : {};
+}
+
 type Line = { lineId: string; selection: SelectionContext };
 /** Rebuild order-level relationships from selected lines; ignore all incoming derived records. */
 export function deriveWoodAssemblies(lines: readonly Line[]): ValidationIssue[] {

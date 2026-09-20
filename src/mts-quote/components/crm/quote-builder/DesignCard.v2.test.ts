@@ -1467,3 +1467,16 @@ it("initializes an exact Vertical Honeycomb product with its valid application a
  const patch=buildCatalogSelectionPatch({},catalogProduct("vertical_honeycomb","Norman",[],{productType:"Honeycomb Shades"}));
  expect(patch).toMatchObject({lift_system:"Patio Door Vertical",options_json:{honeycomb_application:"Patio Door Vertical"}});
 });
+
+describe("Norman shutter source-backed program choices", () => {
+  it("offers the selected program's finishes and excludes AquaShield's unavailable louver", () => {
+    const choices = (program: string) => getStandardShutterGridOptions({supplier:"Norman",material:"Woodlore",options_json:{catalog_program_id:program}} as unknown as SalesQuoteDesign,true);
+    const colors = (program: string) => choices(program).find(o=>o.key==="color")?.options;
+    expect(colors("woodlore")).toHaveLength(6);
+    expect(colors("woodlore_plus")).toContain("080 - Taupe Gray");
+    expect(colors("normandy_stained")).toContain("862 - French Oak");
+    expect(colors("normandy_stained")).not.toContain("001 - Pure White");
+    expect(choices("woodlore_aquashield").find(o=>o.key==="louver_size")?.options).not.toContain('1 7/8"');
+    expect(choices("normandy_stained").find(o=>o.key==="louver_size")?.options).toContain('1 7/8"');
+  });
+});

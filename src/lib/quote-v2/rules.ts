@@ -1,3 +1,4 @@
+import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
 import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
 import { validateVerticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { expectedVerticalHoneycombProgramId } from "./catalog";
@@ -2441,6 +2442,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       issues.push(...validateOnyxShutterRestrictions(context));
       break;
     case "norman_shutters":
+      issues.push(...validateNormanShutterAssortment(context));
       issues.push(...validateNormanShutterFramePricing(context));
       break;
     case "polar_elite_patio":

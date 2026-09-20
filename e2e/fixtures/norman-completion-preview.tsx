@@ -72,6 +72,10 @@ function Preview() {
       setDesigns([{...initial,product_type:"Faux Wood Blinds",lift_system:"Cordless",valance:null,mount_type:null,options_json:{quote_v2_backend:true,catalog_product_id:"faux_wood",quote_lab_product_id:"faux_wood",catalog_program_id:"faux_wood_2in_and_2_1_2in_slats_cordless",quote_lab_program_id:"faux_wood_2in_and_2_1_2in_slats_cordless",product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1}}]);
       setLine({...item,product_type:"Faux Wood Blinds",selected_design_id:initial.id});
     }}>Ultimate fixture</button>
+    <button onClick={() => {
+      setDesigns([{...initial,product_type:"Shutters",material:"Woodlore",mount_type:"Inside Mount",lift_system:null,options_json:{quote_v2_backend:true,catalog_product_id:"norman_shutters",quote_lab_product_id:"norman_shutters",catalog_program_id:"woodlore",quote_lab_program_id:"woodlore",material_type:"Composite",composite_subtype:"Woodlore"}}]);
+      setLine({...item,product_type:"Shutters",selected_design_id:initial.id});
+    }}>Norman Shutters fixture</button>
     <p>Local test data. Uses the CRM design card; saves only in this browser.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}>
       <button onClick={() => { localStorage.setItem(storageKey, JSON.stringify({design, designs, line, locked})); setMessage("Saved locally"); }}>Save fixture</button>
