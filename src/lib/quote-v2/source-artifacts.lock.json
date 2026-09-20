@@ -145,6 +145,12 @@
       "sha256": "da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f"
     },
     {
+      "sourceId": "norman-roman-portal-2026-09-19",
+      "fileName": "roman-portal-20260919.json",
+      "sha256": "dab17f868f881dfa884c954672e29efc60da0828fdf8addf7fbe1a9d27d5e1fd",
+      "byteLength": 2037
+    },
+    {
       "sourceId": "norman-wood-valance-portal-2026-09-19",
       "fileName": "wood-portal-20260919.json",
       "byteLength": 3112,
