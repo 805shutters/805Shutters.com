@@ -35,3 +35,11 @@ The source evidence panel presents **retail options subtotal** and **net options
 Exact source exceptions remain: Smoove multi-channel row says5-channel while its image says4-channel, so its100 net row is preserved but flagged for exact-item confirmation. Simphony transformer requires an extension cord without a priced length/specification; its selection adds a verification block. Simphony wall-switch function/channel compatibility with TDBU is not asserted. These exceptions are visible and also checked on the shared server path.
 
 Validation after this increment:453 Sundance/quote-rule checks passed and whole-worktree TypeScript passed. Checks include first/last and between-band control prices, all22 independently transcribed accessory amounts, negative/fractional/nonfinite quantities, stale and incompatible controls, separate net/retail bases, and source-ambiguity holds. Live persistence of the new cellular accessory fields awaits deployment.
+
+## Specialty shape capture
+
+Added Standard Arch, Quarter Arch, Circle, Hexagon and Octagon under a separate Specialty Shape operating-system destination. The existing fabric IDs remain intact, and server validation checks geometry/dimensions, required template references, all six/eight polygon side measurements and single-assembly state. Changing back to a rectangular system clears stale shape/template details.
+
+PDF14 was rendered and visually inspected because plain text interleaves the adjacent shape columns: **Quarter Arch maximum width50 inches; Circle maximum width42 inches**. Standard Arch18–84 wide and9–48 high; perfect width=2×height. Quarter Arch9–50 wide; height geometry still requires manufacturer review. Circle9/16 pleat9–42 wide and7/16 pleat12–42 wide; other cells remain explicit confirmation exceptions. Perfect circles require equal width/height. Hexagon/Octagon21–48 wide and12–48 high; all sides and actual template required. A template reference is saved evidence metadata and does not assert that the actual file has been attached or approved.
+
+Source specialty surcharge116 net and non-perfect arch template trim100 net are shown separately from unverified fabric-base pricing. The trim charge is not assigned speculatively to non-perfect circles.456 focused Sundance/quote-rule checks and TypeScript passed. New production proof pending release.

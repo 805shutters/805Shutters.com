@@ -5,6 +5,7 @@ import { sundanceCellularColors, sundanceCellularSource, sundanceCellularColorMa
 
 // Source PDF12,13,15,17. Null lower height means the motor page does not publish one.
 export const sundanceCellularSystems = [
+  { name: 'Specialty Shape', minWidth: 9, maxWidth: 84, minHeight: null, maxHeight: null, page: 14 },
   { name: 'Cordless', minWidth: 12, maxWidth: 96, minHeight: 10, maxHeight: 96, page: 12 },
   { name: 'Cordless Top Down/Bottom Up', minWidth: 19, maxWidth: 96, minHeight: 10, maxHeight: 84, page: 12 },
   { name: 'Cordless Day/Night', minWidth: 19, maxWidth: 72, minHeight: 10, maxHeight: 72, page: 12 },
@@ -22,7 +23,8 @@ export function sundanceCellularSystemPatch(options: Record<string, unknown>, sy
     sundance_cellular_bottom_program_id: null, sundance_cellular_stack: null,
     sundance_cellular_size_basis: system === 'Skylight' ? 'Finished size' : null,
     sundance_cellular_rail_color: system === 'Skylight' ? 'White #001' : system === 'Verticell' ? 'Off White' : null,
-    sundance_cellular_assembly: 'Single' };
+    sundance_cellular_assembly: 'Single', sundance_cellular_shape: null, sundance_cellular_shape_geometry: null, sundance_cellular_template_reference: null };
+  for (let side = 1; side <= 8; side++) next[`sundance_cellular_shape_side_${side}`] = null;
   const row = sundanceCellularColors.find(row => row.id === options.fabric_color_id);
   if (row && !sundanceCellularColorMatchesContext(row, { ...next, cell_size: null, light_control: null })) {
     for (const key of ['fabric_color_id', 'fabric_color_code', 'fabric_color_name', 'fabric_color_collection', 'fabric_color_type', 'fabric_program_id', 'catalog_program_id', 'quote_lab_program_id']) next[key] = null;
@@ -46,8 +48,11 @@ export function validateSundanceCellularConfiguration(s: Pick<SelectionContext, 
     add('material', 3, 'Select an exact cellular fabric/color, cell size and matching price group.');
   const system = sundanceCellularSystems.find(system => system.name === c.sundance_cellular_system);
   if (!system) add('system', 12, 'Choose a documented cellular operating system.');
-  if (system && (!Number.isFinite(s.widthInches) || !Number.isFinite(s.heightInches) || s.widthInches < system.minWidth || s.widthInches > system.maxWidth || s.heightInches <= 0 || system.minHeight != null && s.heightInches < system.minHeight || s.heightInches > system.maxHeight))
+  if (system && system.name !== 'Specialty Shape' && (!Number.isFinite(s.widthInches) || !Number.isFinite(s.heightInches) || s.widthInches < system.minWidth || s.widthInches > system.maxWidth || s.heightInches <= 0 || system.minHeight != null && s.heightInches < system.minHeight || s.heightInches > system.maxHeight))
     add('size', system.page, `${system.name} requires width ${system.minWidth}–${system.maxWidth} inches and ${system.minHeight == null ? 'a positive height up to' : `height ${system.minHeight}–`}${system.maxHeight} inches.`);
+  if (system?.name === 'Specialty Shape') {
+    issues.push(...validateSundanceCellularShape(s));
+  } else if (c.sundance_cellular_shape || c.sundance_cellular_shape_geometry || c.sundance_cellular_template_reference) add('stale_shape', 14, 'Specialty shape details cannot remain on a rectangular operating system.');
   if (!['Inside', 'Outside'].includes(String(c.mount_type))) add('mount', 18, 'Choose inside or outside mount.');
   if (c.sundance_cellular_system === 'Cordless Day/Night') {
     const bottom = sundanceCellularColors.find(row => row.id === c.sundance_cellular_bottom_fabric_id);
@@ -70,5 +75,39 @@ export function validateSundanceCellularConfiguration(s: Pick<SelectionContext, 
     add('skylight', 12, 'Skylights require finished dimensions without factory deductions and White #001 side rails.');
   if (c.sundance_cellular_assembly === 'Two on one') add('components', 7, 'Two-on-one shades must be measured and priced individually; component widths and controls require review.');
   else if (c.sundance_cellular_assembly !== 'Single') add('assembly', 12, 'Choose a single shade or identify a two-on-one assembly.');
+  return issues;
+}
+
+
+export const sundanceCellularShapes = ['Standard Arch', 'Quarter Arch', 'Circle', 'Hexagon', 'Octagon'] as const;
+export function sundanceCellularShapePatch(options: Record<string, unknown>, shape: string): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...options, sundance_cellular_shape: shape || null, sundance_cellular_shape_geometry: null, sundance_cellular_template_reference: null };
+  for (let side = 1; side <= 8; side++) next[`sundance_cellular_shape_side_${side}`] = null;
+  return next;
+}
+/** PDF14 rendered-column verification: Quarter Arch maximum50; Circle maximum42. */
+export function validateSundanceCellularShape(s: Pick<SelectionContext, 'widthInches' | 'heightInches' | 'configuration'>): ValidationIssue[] {
+  const c = s.configuration, issues: ValidationIssue[] = [];
+  const add = (key: string, explanation: string) => issues.push({ severity: 'hard_block', ruleId: `sundance.cellular.shape_${key}`, source: sourceProvenance(sundanceCellularSource.sourceId, { page: 14 }), selectedValues: { ...c, widthInches: s.widthInches, heightInches: s.heightInches }, explanation });
+  const shape = String(c.sundance_cellular_shape ?? ''), w = s.widthInches, h = s.heightInches;
+  if (!sundanceCellularShapes.includes(shape as never)) add('selection', 'Choose a documented specialty shape.');
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) add('dimensions', 'Enter positive finite specialty dimensions.');
+  if (shape === 'Standard Arch' && (w < 18 || w > 84 || h < 9 || h > 48)) add('size', 'Standard arches require width18–84 inches and height9–48 inches.');
+  if (shape === 'Quarter Arch' && (w < 9 || w > 50)) add('size', 'Quarter arches require width9–50 inches; height and template geometry require verification.');
+  if (shape === 'Circle') {
+    if (!['9/16"', '7/16"'].includes(String(c.cell_size))) add('cell', 'The circle specification covers only9/16-inch or7/16-inch pleats; other cells need manufacturer confirmation.');
+    const min = c.cell_size === '7/16"' ? 12 : 9;
+    if (w < min || w > 42) add('size', `This circle pleat requires width${min}–42 inches.`);
+  }
+  const polygon = shape === 'Hexagon' || shape === 'Octagon';
+  if (polygon) {
+    if (w < 21 || w > 48 || h < 12 || h > 48) add('size', 'Hexagon and octagon shades require width21–48 inches and height12–48 inches.');
+    const count = shape === 'Hexagon' ? 6 : 8;
+    if (Array.from({ length: count }, (_, index) => Number(c[`sundance_cellular_shape_side_${index + 1}`])).some(n => !Number.isFinite(n) || n <= 0)) add('sides', `Record all${count} side measurements and retain the matching template.`);
+  } else if (!['Perfect', 'Non-perfect'].includes(String(c.sundance_cellular_shape_geometry))) add('geometry', 'Identify perfect or non-perfect geometry. A1/16-inch deviation makes an arch non-perfect.');
+  if (shape === 'Standard Arch' && c.sundance_cellular_shape_geometry === 'Perfect' && w !== 2 * h) add('perfect_ratio', 'A perfect standard arch has width exactly twice its height.');
+  if (shape === 'Circle' && c.sundance_cellular_shape_geometry === 'Perfect' && w !== h) add('perfect_ratio', 'A perfect circle has equal width and height.');
+  if ((polygon || c.sundance_cellular_shape_geometry === 'Non-perfect') && !String(c.sundance_cellular_template_reference ?? '').trim()) add('template', 'Retain the required template file reference; confirm the actual file is attached and reviewed before ordering.');
+  if (c.sundance_cellular_assembly !== 'Single') add('assembly', 'Specialty shape assembly requires a separately verified design.');
   return issues;
 }

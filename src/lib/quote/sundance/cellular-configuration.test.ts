@@ -60,3 +60,24 @@ it('renders current choices and blackout-only second fabrics', () => {
   expect(html).toContain('Sundance cellular operating system');expect(html).toContain('Sundance cellular bottom fabric');expect(html).toContain('$500');
   const secondary=html.split('aria-label="Sundance cellular bottom fabric"')[1].split('</select>')[0];expect(secondary).toContain('PS320-001');expect(secondary).not.toContain('PS310-001');
 });
+it('uses rendered source columns for quarter arch and circle, not interleaved PDF extraction',()=>{
+ const base=context('Specialty Shape');
+ const shape=(name:string,w:number,h:number,extra:Record<string,string|number>={})=>({...base,widthInches:w,heightInches:h,configuration:{...base.configuration,sundance_cellular_shape:name,sundance_cellular_shape_geometry:'Perfect',...extra}});
+ expect(validateSundanceCellularConfiguration(shape('Standard Arch',18,9))).toEqual([]);
+ expect(validateSundanceCellularConfiguration(shape('Standard Arch',84,42))).toEqual([]);
+ expect(validateSundanceCellularConfiguration(shape('Standard Arch',84,42.0625)).map(i=>i.ruleId)).toContain('sundance.cellular.shape_perfect_ratio');
+ expect(validateSundanceCellularConfiguration(shape('Quarter Arch',50,50))).toEqual([]);
+ expect(validateSundanceCellularConfiguration(shape('Quarter Arch',50.0625,50)).map(i=>i.ruleId)).toContain('sundance.cellular.shape_size');
+ expect(validateSundanceCellularConfiguration(shape('Circle',42,42))).toEqual([]);
+ expect(validateSundanceCellularConfiguration(shape('Circle',42.0625,42.0625)).map(i=>i.ruleId)).toContain('sundance.cellular.shape_size');
+ expect(validateSundanceCellularConfiguration(shape('Circle',8.9375,8.9375)).map(i=>i.ruleId)).toContain('sundance.cellular.shape_size');
+});
+it('requires polygon side measurements and template references; clears stale geometry',async()=>{
+ const {sundanceCellularShapePatch}=await import('./cellular-configuration');
+ const c=context('Specialty Shape',48,48);c.configuration={...c.configuration,sundance_cellular_shape:'Hexagon'};
+ expect(validateSundanceCellularConfiguration(c).map(i=>i.ruleId)).toEqual(expect.arrayContaining(['sundance.cellular.shape_sides','sundance.cellular.shape_template']));
+ c.configuration={...c.configuration,...Object.fromEntries(Array.from({length:6},(_,i)=>[`sundance_cellular_shape_side_${i+1}`,24])),sundance_cellular_template_reference:'internal-test-template-reference'};
+ expect(validateSundanceCellularConfiguration(c)).toEqual([]);
+ const next=sundanceCellularShapePatch(c.configuration,'Circle');expect(next.sundance_cellular_shape_side_1).toBeNull();expect(next.sundance_cellular_template_reference).toBeNull();
+ const rectangular=sundanceCellularSystemPatch(c.configuration,'Cordless');expect(rectangular.sundance_cellular_shape).toBeNull();
+});

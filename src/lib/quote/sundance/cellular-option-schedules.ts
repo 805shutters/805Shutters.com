@@ -56,11 +56,13 @@ export function sundanceCellularOptionEvidence(options: Record<string, unknown>,
     if (index < 0) unresolved.push('No control surcharge width band covers this dimension.');
     else retail(`${system} control surcharge`, prices[index], 7, widths[index]);
   } else if (system === 'Cordless Top Down/Bottom Up' || system === 'Cordless Day/Night') retail('Cordless Top Down/Bottom Up surcharge', 500);
-  else if (system === 'Skylight') net('Specialty/skylight surcharge', 116, 7);
+  else if (system === 'Skylight' || system === 'Specialty Shape') net('Specialty/skylight surcharge', 116, 7);
   else if (system === 'Somfy Cord Lift WireFree TL25') net('Somfy Cord Lift WireFree TL25 motor', 220, 15);
   else if (system === 'Simphony Cell Shade WireFree') net('Simphony Cell Shade WireFree motor', 150, 17);
   else if (system === 'Simphony Concerto TDBU') net('Simphony Concerto TDBU motor', 450, 17);
   else unresolved.push('The selected system has no verified option calculation in this schedule.');
+  if (system === 'Specialty Shape' && ['Standard Arch','Quarter Arch'].includes(String(options.sundance_cellular_shape)) && options.sundance_cellular_shape_geometry === 'Non-perfect') net('Non-perfect arch template trim', 100, 7);
+  if (system === 'Specialty Shape') unresolved.push('Specialty base pricing, exact geometry and required template must be confirmed; the surcharge does not prove the complete price.');
   if (system === 'Cordless Day/Night') unresolved.push('Both fabrics are priced at retail in addition to the TDBU surcharge; the two base fabric prices are excluded here.');
   if (options.sundance_cellular_assembly === 'Two on one') unresolved.push('Price individual shade components; this option subtotal does not resolve the assembly.');
   for (const accessory of sundanceCellularAccessories) {

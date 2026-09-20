@@ -26,3 +26,8 @@ it('validates quantities and control compatibility; changing motor clears stale 
  const next=sundanceCellularSystemPatch(config,'Cordless');expect(next[key('situo_5')]).toBeUndefined();expect(next.unrelated).toBe('preserved');
  expect(sundanceCellularAccessoryIssues({sundance_cellular_system:'Simphony Cell Shade WireFree',[key('simphony_transformer')]:1})[0].page).toBe(17);
 });
+it('keeps specialty and non-perfect arch trim net charges separate from fabric bases',()=>{
+ const e=evidence({sundance_cellular_system:'Specialty Shape',sundance_cellular_shape:'Standard Arch',sundance_cellular_shape_geometry:'Non-perfect'},36);
+ expect(e.netSubtotal).toBe(216);expect(e.retailSubtotal).toBe(0);expect(e.unresolved[0]).toContain('base pricing');
+ expect(evidence({sundance_cellular_system:'Specialty Shape',sundance_cellular_shape:'Circle',sundance_cellular_shape_geometry:'Non-perfect'},36).netSubtotal).toBe(116);
+});
