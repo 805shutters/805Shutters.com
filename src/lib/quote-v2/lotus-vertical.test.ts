@@ -5,6 +5,8 @@ import { getProduct } from "@/lib/quote/catalog";
 import { lotusVerticalColors, lotusVerticalProfile } from "@/lib/quote/lotus-vertical";
 import { lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
 import { LotusVerticalOptions } from "@/components/crm/LotusVerticalOptions";
+import type { SalesQuoteLineItem } from "@mts/types/quote";
+import { selectionContextFromExactInterface } from "./exact-interface-adapter";
 import { validateLotusVertical } from "./lotus-vertical";
 import { productRuleStatusForSelection } from "./rules";
 import type { SelectionContext, SelectionValue } from "./core";
@@ -21,6 +23,17 @@ describe("source-backed Lotus vertical options remain price held", () => {
       const selection = context(program.id);
       expect(validateLotusVertical(selection), program.id).toEqual([]);
       expect(productRuleStatusForSelection(selection)).toBe("restriction_source_incomplete");
+    }
+  });
+  it("retains every valid program through the real saved-design adapter, including unresolved valance", () => {
+    const line = { id: "line-vertical", quote_id: "quote-vertical", room_name: "Dining Room", product_type: "Vertical Blinds", width_whole: 60, width_fraction: "0", height_whole: 72, height_fraction: "0", quantity: 1, sort_order: 0, created_at: "2026-09-20T00:00:00Z" } satisfies SalesQuoteLineItem;
+    for (const program of getProduct("lotus_vertical_blinds")!.programs) {
+      const patch = lotusProgramSelectionPatch({}, "Vertical Blinds", program.id)!;
+      const profile = lotusVerticalProfile(program.id)!;
+      const selection = selectionContextFromExactInterface(line, { ...patch, mount_type: profile.rail ? "Outside Mount" : null, options_json: { ...patch.options_json, color: "White", lotus_vertical_stack: profile.draw === "One-way" ? "Left" : profile.draw === "Center draw" ? "Center" : null } }, { productId: "lotus_vertical_blinds", programId: program.id, catalogAsOf: "2026-09-20" });
+      expect(validateLotusVertical(selection), program.id).toEqual([]);
+      expect(productRuleStatusForSelection(selection)).toBe("restriction_source_incomplete");
+      if (profile.valance === null) expect(selection.configuration).not.toHaveProperty("valance");
     }
   });
   it("uses the correct axis and exact cell SKU colors for components", () => {

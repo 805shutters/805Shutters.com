@@ -19,7 +19,7 @@ export function validateLotusVertical(context: SelectionContext): ValidationIssu
     if (Number(config.lotus_vertical_wand_inches) !== 30 && !["White", "Alabaster"].includes(String(config.lotus_vertical_wand_color))) add("wand_color", "The optional steel-system wand must be ordered in White or Alabaster; its separate accessory price remains unverified.");
     if (profile.draw === "Center draw" ? config.lotus_vertical_stack !== "Center" : !["Left", "Right"].includes(String(config.lotus_vertical_stack))) add("stack", "Choose Left or Right for one-way draw; a center-draw program must retain center stacking.");
   } else if (config.lift_system !== "None" || config.lotus_vertical_wand_inches != null || config.lotus_vertical_stack != null) add("vane_only", "Vanes-only configuration cannot include a headrail control, wand or stack choice.");
-  if (config.valance !== profile.valance) add("valance", profile.valance === null ? "Custom center-draw valance inclusion is unresolved; do not infer an included valance." : "Valance inclusion must match the documented complete package or component program.");
+  if ((config.valance ?? null) !== profile.valance) add("valance", profile.valance === null ? "Custom center-draw valance inclusion is unresolved; do not infer an included valance." : "Valance inclusion must match the documented complete package or component program.");
   if ([config.motor_type, config.remote_type, config.motorization_type].some(value => value && !["None", "none"].includes(String(value))) || (Array.isArray(context.options.motorization_selections) && context.options.motorization_selections.length)) add("motorization", "The current vertical source documents wand control; motorization is not verified.");
   return issues;
 }
