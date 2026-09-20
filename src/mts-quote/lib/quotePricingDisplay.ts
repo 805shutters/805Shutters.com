@@ -8,9 +8,10 @@ type PricedDesign = {
 
 /** A saved partial subtotal is not a customer-ready amount. Locked quotes retain their history. */
 export function isSavedQuotePricingIncomplete(quote: Partial<SalesQuote> | null | undefined): boolean {
-  return quote?.quote_v2_backend === true && quote.status === "draft" &&
+  return quote?.status === "draft" && !quote.signed_at && !quote.customer_signature &&
     !isQuotePriceLocked({ status: quote.status, sent_at: quote.sent_at ?? null }) &&
-    quote.quote_v2_status !== "priced";
+    (quote.persisted_line_pricing_incomplete === true ||
+      (quote.quote_v2_backend === true && quote.quote_v2_status !== "priced"));
 }
 
 /** Staff explanation for persisted failures, including rows saved without an error string. */

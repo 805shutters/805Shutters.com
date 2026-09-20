@@ -21,6 +21,7 @@ import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import { loadAllSalesQuotes, searchQuotes } from "@mts/lib/quoteSearch";
+import { loadSavedQuoteCompleteness } from "@mts/lib/savedQuoteCompleteness";
 import { createQuoteV2Alternative, createQuoteV2Draft, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
@@ -206,7 +207,12 @@ export function QuoteDashboard({
           .range(from, to);
       });
       if (result.error) throw new Error(result.error.message);
-      return result.data || [];
+      return loadSavedQuoteCompleteness(result.data || [], (ids, from, to) => (supabase as any)
+        .from("sales_quote_line_items")
+        .select("id,quote_id,selected_design_id,sales_quote_designs!line_item_id(id,line_item_id,variant,unit_price,options_json)")
+        .in("quote_id", ids)
+        .order("id", { ascending: true })
+        .range(from, to));
     },
   });
 

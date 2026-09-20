@@ -93,6 +93,8 @@ export interface SalesQuote {
   quote_v2_catalog_version?: string | null;
   quote_v2_revision?: number;
   quote_v2_last_priced_at?: string | null;
+  /** Read-only list projection from persisted draft lines; not a database column. */
+  persisted_line_pricing_incomplete?: boolean;
 }
 
 export interface SalesQuoteLineItem {
