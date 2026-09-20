@@ -1,0 +1,13 @@
+# Sundance Vertical Essence reconciliation — 2026-09-20
+
+Status: custom source choices and valance schedules implemented; production save/reopen proof pending. Automatic customer pricing remains held.
+
+`K-Vertical-Essence-V2.pdf` page 3, effective August 1, 2024, has **27 custom patterns / 104 pattern-color choices**, separate from the two stock colors already supported. **103** exact normalized names match the dealer menu. Source **Lino Caramel** has an explicit warning because the dealer spells it **LINO CARMEL**; portal **LINO OXBOOD** has no current source mapping. The captured menu has 131 rows but only 105 unique labels. Duplicate menu rows are not new offerings or proof of discontinuation.
+
+All exact choices map to their existing product and one of six source groups (1, 1A, 2, 3, 4, 6). **Group 5, program `sundance_vertical_essence_p9_t1`, has no offering in the current source index**. Its grid remains available as historical/source evidence and is not assigned to an invented fabric. Custom and stock identities stay separate. Selecting stock clears custom fabric/valance identity; saved stock configurations cannot offer custom colors.
+
+This increment also imports **14 previously missing square/rounded valance width schedules**, 25 columns each (**350 retail reference cells**) from PDF pages 4–10. They are separate option schedules with source hash, page/table and base-program association. All start at a 37-inch pricing column and end at 192 inches; first and last prices of all fourteen schedules have independent text-read test anchors. Boundary tests cover 37 to the next column, invalid dimensions and above 192. Valance IDs are saved only for the selected color's group and cleared when its material changes. These reference amounts are not account prices or automatically added customer charges.
+
+Remaining rules/options: product dimensions, per-pattern/color maximums if any, valance dimensions/returns, mounting and extension brackets, draw/stack configurations, track-only and crown valance destinations and net charges. The guide's crown valance is $7/foot net, crown with dust cover $10/foot net, and track-only $0.95/inch net with a three-foot minimum; do not treat these as retail percentages or established selling prices. Account terms and representative live dealer price comparisons remain unresolved.
+
+Provenance: `vertical-assortment.source.json`; reproduce with `scripts/sundance/import_vertical.py --source-dir <locked PDFs> --portal-dir <captured menus>`. The PDF must match the SHA-256 lock. Existing historical quote snapshots and selling-price policy are preserved.

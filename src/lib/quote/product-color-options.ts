@@ -1,4 +1,5 @@
 import { romanPriceGroup, romanFabricStyles } from './norman-roman-current-price-groups';
+import { sundanceVerticalColors } from "./sundance/vertical-assortment";
 import { sundancePortfolioColors } from "./sundance/portfolio-assortment";
 import { sundanceWaldenColors } from "./sundance/walden-assortment";
 import { sundanceHorizontalColors } from "./sundance/horizontal-assortment";
@@ -522,6 +523,7 @@ export const productColorOptions = [
   ...sundanceShadeColors,
   ...sundanceSheerviewColors,
   ...sundancePortfolioColors,
+  ...sundanceVerticalColors,
   ...normanShutterColorOptions,
   ...additionalSynchronyColors,
   ...sanClementeColors,

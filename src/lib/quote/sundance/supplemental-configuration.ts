@@ -32,6 +32,7 @@ export function sundanceStockVerticalPatch(options: Record<string, unknown>, ena
     quote_lab_program_id: enabled ? SUNDANCE_STOCK_VERTICAL_PROGRAM : null,
     fabric_program_id: enabled ? SUNDANCE_STOCK_VERTICAL_PROGRAM : null,
     fabric_color_id: null, fabric_color_code: null, fabric_color_name: null, fabric_color_collection: null, fabric_color_type: null,
+    catalog_sundance_portal_status: null, sundance_vertical_valance: null, catalog_sundance_vertical_valance_id: null,
     stock_vertical_color: null, stock_vertical_valance: null,
     stock_vertical_width_cut_down: null, stock_vertical_height_cut_down: null,
     stock_vertical_control: enabled ? "Wand" : null,
