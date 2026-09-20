@@ -6,6 +6,7 @@ import { SundanceSupplementalOptions } from "./SundanceSupplementalOptions";
 import { SundanceHorizontalOptions } from "./SundanceHorizontalOptions";
 import { sundanceHorizontalProductIds } from "@/lib/quote/sundance/horizontal-assortment";
 import { sundanceShadeProductIds } from "@/lib/quote/sundance/shade-fabrics";
+import { SundanceSheerviewOptions } from "./SundanceSheerviewOptions";
 import { SundanceShadeOptions } from "./SundanceShadeOptions";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
@@ -37,7 +38,7 @@ export function SundanceDesignOptions({ design, productId, onUpdateFields }: {
       }}>
         <option value="">Select fabric and color</option>{rows.map(row => <option key={row.id} value={row.id}>{row.colorCode} · {row.collection} · {row.colorName} · {row.fabricType}</option>)}
       </select></label>
-    </> : sundanceShadeProductIds.includes(productId) ? <SundanceShadeOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : sundanceHorizontalProductIds.includes(productId) ? <SundanceHorizontalOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : ["sundance_vertical_essence", "sundance_walden_premier", "sundance_walden_select"].includes(productId) ? <SundanceSupplementalOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : sundanceDraperyTrackFields.map(field => <label key={field.id} className="block text-sm">{field.label}
+    </> : productId === "sundance_sheerview" ? <SundanceSheerviewOptions options={options} onUpdateFields={onUpdateFields} /> : sundanceShadeProductIds.includes(productId) ? <SundanceShadeOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : sundanceHorizontalProductIds.includes(productId) ? <SundanceHorizontalOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : ["sundance_vertical_essence", "sundance_walden_premier", "sundance_walden_select"].includes(productId) ? <SundanceSupplementalOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : sundanceDraperyTrackFields.map(field => <label key={field.id} className="block text-sm">{field.label}
       <select aria-label={`Sundance ${field.label}`} className={classes} value={String(options[field.id] ?? "")} onChange={e => onUpdateFields({options_json: {...options, [field.id]: e.target.value || null}})}>
         <option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
