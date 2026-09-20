@@ -214,6 +214,8 @@ export async function sendSalesQuoteToCustomer(
   const groupQuotes = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
   for (const groupQuote of groupQuotes) {
     await assertHistoricalSalesQuoteMutationAllowed(supabase, groupQuote);
+  }
+  for (const groupQuote of groupQuotes) {
     await assertLegacyLotusDeliveryAllowed(supabase, groupQuote);
   }
   if (
