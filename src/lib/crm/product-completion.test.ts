@@ -355,7 +355,7 @@ describe("automatic order email uses the same product invoice workflow", () => {
   function setup() {
     const db = database();
     Object.assign(db.tables.crm_jobs[0], { customer_name: "Phillip Benson", status: "sold", created_at: timestamp, updated_at: timestamp, product_interest: "Shutters" });
-    Object.assign(db.tables.crm_quotes[0], { status: "sold", quote_total: 6958.8, created_at: timestamp, updated_at: timestamp, materials_cost: 300 });
+    Object.assign(db.tables.crm_quotes[0], { status: "sold", quote_total: 6958.8, created_at: timestamp, updated_at: timestamp, materials_cost: 0 });
     db.tables.crm_order_cogs_emails = [{ id: emailId, mailbox_email: "805shutters@gmail.com", gmail_message_id: "gmail-benson", matched_quote_id: quoteId, matched_job_id: jobId, match_status: "matched", extracted_order_number: "52609191394", extracted_order_amount: 2823.29, raw: {} }];
     const load = async () => {
       const jobs = structuredClone(db.tables.crm_jobs);
@@ -367,46 +367,60 @@ describe("automatic order email uses the same product invoice workflow", () => {
     const apply = () => applyOrderEmailProduct(db.client, db.tables.crm_order_cogs_emails[0] as never, "Onyx", actor, load);
     return { db, load, apply };
   }
-  it("saves the full invoice once, verifies the green check, and leaves unrelated costs intact", async () => {
+  it("saves the full invoice once and verifies the green check", async () => {
     const {db, apply} = setup();
     expect(await apply()).toMatchObject({ addedCogs: 2823.29 });
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
     expect(db.tables.crm_customer_products.every(p => p.meta.ordered_at)).toBe(true);
     const writes = db.writes.length;
     expect(await apply()).toMatchObject({ addedCogs: 0 });
     expect(db.writes).toHaveLength(writes);
     expect(db.tables.crm_jobs[0].status).toBe("sold");
   });
+  it("holds an invoice when historical COGS has no allocation or invoice identity", async () => {
+    const {db, apply} = setup();
+    db.tables.crm_quotes[0].materials_cost = 786.19;
+    await expect(apply()).rejects.toThrow("Existing unassigned COGS");
+    expect(db.writes).toHaveLength(0);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(786.19);
+  });
+  it("permits new cost when all earlier COGS has a separate invoice allocation", async () => {
+    const {db, apply} = setup();
+    db.tables.crm_quotes[0].materials_cost = 300;
+    db.tables.crm_quotes[0].meta.product_order_costs = { unrelated: { amount:300, reference:"separate-invoice", emailId:null, records:["unrelated"], at:timestamp, by:actor.email, requestId:emailId } };
+    expect(await apply()).toMatchObject({addedCogs:2823.29});
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+  });
   it("recovers after cost saved but one product check failed, without charging twice", async () => {
     const {db, apply} = setup(); db.controls.failId = p2;
     await expect(apply()).rejects.toThrow("Not all products");
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
     db.controls.failId = "";
     expect(await apply()).toMatchObject({ addedCogs: 0 });
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
     expect(db.tables.crm_customer_products.every(p => p.meta.ordered_at)).toBe(true);
   });
   it("updates the generated job-product used by Benson's live card", async () => {
     const {db, apply, load} = setup(); db.tables.crm_customer_products = [];
     await apply();
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
     expect(buildOperationsItems(await load())[0].products[0].ordered).toBe(true);
     expect(await apply()).toMatchObject({ addedCogs: 0 });
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
   });
   it("recognizes a forwarded copy in the business mailbox without charging the invoice again", async () => {
     const {db, apply} = setup(); await apply();
     const original = db.tables.crm_order_cogs_emails[0];
     db.tables.crm_order_cogs_emails.unshift({ ...original, id: "91111111-1111-4111-8111-111111111111", gmail_message_id: "resent", mailbox_email: "805@805shutters.com" });
     expect(await apply()).toMatchObject({ addedCogs: 0 });
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
   });
   it("repairs the product check for a previously applied aggregate invoice without adding cost", async () => {
     const {db, apply} = setup();
-    db.tables.crm_quotes[0].materials_cost = 3123.29;
+    db.tables.crm_quotes[0].materials_cost = 2823.29;
     db.tables.crm_order_cogs_emails[0].applied_at = timestamp;
     expect(await apply()).toMatchObject({ addedCogs: 0 });
-    expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
   });
   it("selects only shutters in a mixed product sale", async () => {
     const {db, apply} = setup(); db.tables.crm_customer_products[1].product_type = "Roller Shades";

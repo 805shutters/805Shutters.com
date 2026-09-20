@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmAuthError } from './auth';
 import { objectMeta } from './measure-needed-state';
 import { buildOperationsItems, productCompletionSourceLinks, type OperationsItem, type ProductProgress } from './operations-overview';
-import { orderCostKey, productOrderCosts } from './product-order-cost';
+import { allocatedOrderCost, orderCostKey, productOrderCosts } from './product-order-cost';
 import { saveProductOrderCost } from './save-product-order-cost';
 import type { CrmDashboardData, CrmOrderCogsEmail } from './types';
 import { normalizedProductLabel } from './product-workflow-groups';
@@ -77,6 +77,11 @@ export async function applyOrderEmailProduct(
   const included = Boolean(email.applied_at || objectMeta(email.raw).duplicateApplied ||
     (Array.isArray(meta.orderCogsMessageIds) && meta.orderCogsMessageIds.includes(email.gmail_message_id)) ||
     (Array.isArray(meta.orderCogsOrderRefs) && meta.orderCogsOrderRefs.includes(reference)));
+  // Historical aggregate costs have no invoice identity. They may already contain
+  // this emailed invoice, so unattended intake cannot safely add or allocate it.
+  if (!previous && !included && Number(before.item.source.cogs || 0) - allocatedOrderCost(parent.meta) > .005) {
+    throw new CrmAuthError(409, 'Existing unassigned COGS may already include this invoice. Reconcile the existing cost in Job status before automatic intake.');
+  }
   await saveProductOrderCost(db, {
     step: 'ordered', records: before.product.records.map(record => ({ ...record })),
     ...productCompletionSourceLinks(before.item, before.product),
