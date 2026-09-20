@@ -13,8 +13,8 @@ import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
 import { type SaveJobCost } from "./InlineJobCost";
 import { InlineJobContract } from "./InlineJobContract";
-import { ProductOrderEditor, orderCostParent, orderCostTotal } from "./ProductOrderEditor";
-import { productOrderCosts, orderCostKey, allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
+import { ProductOrderEditor, orderCostParent, orderCostTotal, displayedOrderAmount } from "./ProductOrderEditor";
+import { allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
 import styles from "./OperationsOverview.module.css";
 
 function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
@@ -79,9 +79,14 @@ export type WorkflowAction = (item: OperationsItem, step: WorkflowActionStep, pr
 function CompletionButton({ done, label, disabled, saving, onClick }: { done: boolean; label: string; disabled: boolean; saving?: boolean; onClick: () => void }) {
   return <button type="button" className={styles.completionButton} aria-label={label} title={label} aria-pressed={done} aria-busy={saving || undefined} disabled={disabled} onClick={onClick}>{saving ? <LoaderCircle className={styles.savingMark} size={24} aria-hidden="true" /> : <CompletionMark done={done} />}</button>;
 }
+function OrderAmount({ item, product }: { item: OperationsItem; product: ProductProgress }) {
+  const cost = displayedOrderAmount(item, product);
+  return <small>{cost ? `${cost.source === "job" ? "Job cost: " : ""}${currency(cost.amount)}` : "Enter invoice"}</small>;
+}
+
 export function ProductChecks({ item, step, disabled, pending, onAction }: { item: OperationsItem; step: "ordered" | "shipped"; disabled: boolean; pending: string | null; onAction: (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => void }) {
   const checks = item.products.length ? item.products : [item.wholeJob];
-  return <div className={styles.productChecks}>{checks.map(product => <div className={styles.product} key={product.id} style={{minHeight: 140 + Math.max(0, new Set((product.shipments || []).map(shipment => shipment.shippedOn)).size - 1) * 36 + ((product.shipments?.length && (!product.shipped || product.undatedShipments)) ? 32 : 0)}}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : [product.name, product.manufacturer].filter(Boolean).join(" · ")} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span title={product.name} className={product[step] ? styles.completeText : undefined}>{product.wholeJob ? "Whole job" : product.name}</span><small title={product.manufacturer || "Manufacturer not recorded"} className={styles.productManufacturer}>{product.wholeJob ? "" : product.manufacturer || "Manufacturer not recorded"}</small>{step === "ordered" ? <small>{productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)] ? currency(productOrderCosts(orderCostParent(item)?.meta)[orderCostKey(product.records)].amount) : "Enter invoice"}</small> : <ShipmentDates product={product} />}</div>)}{item.products.length ? <small className={styles.productCount}>{`${checks.filter(product => product[step]).length} of ${checks.length} complete`}</small> : null}</div>;
+  return <div className={styles.productChecks}>{checks.map(product => <div className={styles.product} key={product.id} style={{minHeight: 140 + Math.max(0, new Set((product.shipments || []).map(shipment => shipment.shippedOn)).size - 1) * 36 + ((product.shipments?.length && (!product.shipped || product.undatedShipments)) ? 32 : 0)}}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : [product.name, product.manufacturer].filter(Boolean).join(" · ")} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => onAction(item, step, product)} /><span title={product.name} className={product[step] ? styles.completeText : undefined}>{product.wholeJob ? "Whole job" : product.name}</span><small title={product.manufacturer || "Manufacturer not recorded"} className={styles.productManufacturer}>{product.wholeJob ? "" : product.manufacturer || "Manufacturer not recorded"}</small>{step === "ordered" ? <OrderAmount item={item} product={product} /> : <ShipmentDates product={product} />}</div>)}{item.products.length ? <small className={styles.productCount}>{`${checks.filter(product => product[step]).length} of ${checks.length} complete`}</small> : null}</div>;
 }
 export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn))].sort();

@@ -6,6 +6,7 @@ import { orderCostKey, productOrderCosts, availableOrderCost, sharedOrderCosts, 
 import type { WorkflowAction } from './OperationsOverview';
 import styles from './OperationsOverview.module.css';
 import { objectMeta } from '@/lib/crm/measure-needed-state';
+import { normalizedProductLabel } from '@/lib/crm/product-workflow-groups';
 
 export function orderCostParent(item:OperationsItem) {
   const { row, quote, job } = item.source;
@@ -19,6 +20,20 @@ export function orderCostTotal(item:OperationsItem): number | null {
   if(item.source.row || item.source.quote) return null;
   const total=objectMeta(item.source.job?.meta).product_order_cogs_total;
   return typeof total==='number' && Number.isFinite(total) ? total : null;
+}
+/** A legacy manual order may have job COGS but no per-product invoice allocation. */
+export function displayedOrderAmount(item: OperationsItem, product: ProductProgress): { amount: number; source: 'invoice' | 'job' } | null {
+  const meta = orderCostParent(item)?.meta;
+  const cost = productOrderCosts(meta)[orderCostKey(product.records)];
+  if (cost) return { amount: cost.amount, source: 'invoice' };
+  // Never relabel a removed allocation, or assign a shared job total to one product.
+  if (!product.ordered || Object.keys(objectMeta(objectMeta(meta).product_order_costs)).length) return null;
+  const soleProduct = item.products.length === 1 && item.products[0].id === product.id
+    && item.headerProducts.length === 1
+    && normalizedProductLabel(item.headerProducts[0].name) === normalizedProductLabel(product.name);
+  if (!product.wholeJob && !soleProduct) return null;
+  const total = orderCostTotal(item);
+  return total !== null && Number.isFinite(total) && total > 0 ? { amount: total, source: 'job' } : null;
 }
 export function ProductOrderEditor({item,product,onSave,onClose,orderEmails}:{orderEmails:CrmOrderCogsEmail[];item:OperationsItem;product:ProductProgress;onSave:WorkflowAction;onClose:()=>void}) {
   const parent=orderCostParent(item);const costs=productOrderCosts(parent?.meta);const old=costs[orderCostKey(product.records)];
