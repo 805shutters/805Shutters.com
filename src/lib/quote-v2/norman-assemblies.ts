@@ -1,4 +1,4 @@
-import { romanMotorAccessories } from "./norman-roman-motor-accessories";
+import { isRomanSmartPower, romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { woodComponents } from "./norman-wood";
 import { deriveWoodAssemblies } from "./norman-wood-assemblies";
 import { citylightsComponents, deriveCitylightsMatching } from "./norman-citylights";
@@ -259,7 +259,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   for (const line of lines) {
     const s=line.selection, power=normalizeIdentity(s.configuration.motor_type);
     if(!["perfectsheer","smartdrape","honeycomb","roman"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
-    const key=s.productId==="roman" ? power==="autowand"?"roman_autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"roman_smart_36w":power.includes("automate") && power.includes("arc")?"roman_automate_5v":null : s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
+    const key=s.productId==="roman" ? power==="autowand"?"roman_autowand":isRomanSmartPower(power) && power.includes("rechargeable")?"roman_smart_36w":power.includes("automate") && power.includes("arc")?"roman_automate_5v":null : s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
     if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
   }
   for (const [family,members] of chargingGroups) {

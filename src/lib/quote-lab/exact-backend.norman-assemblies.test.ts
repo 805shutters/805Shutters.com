@@ -66,6 +66,22 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(reopened.total).toBe(added.total);
   expect(reopened.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{extraChargingKits:2,extension:{quantity:3,adapterWatts:36},controller:{quantity:1,channel:5}},includedChargingKits:{orderQuantity:2,motorQuantity:4}});
  });
+ it.each(["Rechargeable Battery (AC Charger)", "DC Low Voltage Hard Wire", "AC Adapter Plug-In"])("prices the actual live Roman power label %s with shared accessories",power=>{
+  const q=quote([1,1]);
+  for(const d of q.designs){d.motor_type=power;d.remote_type="Basic Remote";d.options_json={...clearNormanMotorPowerConnection(d.options_json),remote_type:"Basic Remote",roman_remote_quantity:d===q.designs[0]?1:0,roman_remote_channel:2,roman_repeaters:1};}
+  if(power.includes("DC"))for(const d of q.designs)d.options_json={...d.options_json,dc_power_supply:"DC Distribution Panel",shared_power_panel_id:"Panel 1",roman_extra_harnesses:1};
+  else for(const d of q.designs)d.options_json={...d.options_json,roman_extension_cables:1,...(power.includes("Rechargeable")?{roman_extra_charging_kits:1}:{})};
+  q.lines[0].width_whole=71;q.designs[0].shade_type="Common Valance";
+  q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1};
+  const result=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");
+  if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
+  for(const d of result.designs){
+   expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{family:"smart_motorization",controller:{type:"Basic Remote"}}});
+   if(power.includes("Rechargeable"))expect(d.selection.configuration.norman_assembly_v1).toMatchObject({includedChargingKits:{orderQuantity:1,motorQuantity:3}});
+  }
+ });
  it("clears a prior DC panel when a Roman changes to an AC adapter",()=>{
   const q=quote([1]);q.designs[0].motor_type="Norman Smart AC Adapter";
   const blocked=price(q);expect(blocked.designs[0].result.ok).toBe(false);

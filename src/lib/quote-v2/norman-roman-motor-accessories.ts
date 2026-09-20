@@ -7,6 +7,14 @@ export const ROMAN_MOTOR_ACCESSORY_KEYS = ["roman_extra_charging_kits", "roman_e
 const norm = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const yes = (v: unknown) => ["yes", "true"].includes(norm(v));
 
+/** Accept both saved canonical names and the exact live Roman picker labels. */
+export function isRomanSmartPower(value: unknown): boolean {
+  const power = norm(value);
+  return !power.includes("automate") && (power.startsWith("norman smart") || [
+    "rechargeable battery ac charger", "dc low voltage hard wire", "ac adapter plug in",
+  ].includes(power));
+}
+
 /** Accessory counts are for the whole line; base motors still multiply by shade quantity. */
 export function romanMotorAccessories(context: SelectionContext) {
   if (context.productId !== "roman" || context.catalogAsOf < "2026-09-19") return null;
@@ -15,7 +23,7 @@ export function romanMotorAccessories(context: SelectionContext) {
   const motorized = /motor|autowand/.test(norm(c.lift_system));
   const wand = motorized && power === "autowand";
   const automate = motorized && power.includes("automate");
-  const smart = motorized && power.startsWith("norman smart");
+  const smart = motorized && isRomanSmartPower(c.motor_type);
   const dc = /low voltage|12v/.test(power);
   const battery = /rechargeable|arc/.test(power);
   const rawOrder=c.norman_order_record_v1;
