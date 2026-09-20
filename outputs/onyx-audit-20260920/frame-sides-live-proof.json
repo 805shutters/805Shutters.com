@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-20",
+  "release": "fed42ad5",
+  "url": "https://www.805shutters.com",
+  "quote": "805-0333",
+  "menuCounts": {"US Made Vinyl":5,"VLO":8,"Ash":8},
+  "savedClosedReopened": [
+    {"material":"US Made Vinyl","visible":"3 Side With Sill Plate - Bottom","adapterTestedSourceCode":"3SP_B"},
+    {"material":"VLO","visible":"3 Side With Floor Clearance","adapterTestedSourceCode":"3FC"},
+    {"material":"Ash","visible":"2","savedSelectValue":"2"}
+  ],
+  "quoteSaved": true,
+  "sendQuoteDisabled": true,
+  "sendPaymentLinkDisabled": true,
+  "pricing": "Special frame construction dimensions and charges remain held; source code preservation exhaustively tested through server adapter. UI proof does not certify an unknown charge."
+}
