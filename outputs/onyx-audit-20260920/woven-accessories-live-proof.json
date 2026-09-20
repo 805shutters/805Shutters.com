@@ -1,0 +1,35 @@
+{
+  "observedDate": "2026-09-20",
+  "productionRelease": "04d74891",
+  "url": "https://www.805shutters.com",
+  "quote": "805-0333",
+  "customer": "Onyx Catalog Verification 2026-09-20",
+  "method": "Authenticated Chrome dedicated audit tab. For each configuration: wait for QUOTE SAVED, close builder, open Quotes, search quote number and reopen. No send, sold, or order action.",
+  "premierReopened": {
+    "program": "onyx_woven_wp_walden_premier_wp_walden_premier",
+    "color": "WP_ArtisanWeave",
+    "liner": "WPL_Black-OutChocolate",
+    "binding": "WPE_WideWhite",
+    "assembly": "single",
+    "customValanceWidthInches": 120
+  },
+  "collectionSwitch": {
+    "from": "Premier",
+    "to": "Select",
+    "cleared": ["color", "liner", "binding", "assembly", "customValanceWidthInches"],
+    "selectLinerCount": 6,
+    "selectBindingCount": 12
+  },
+  "selectReopenedCurrentDraft": {
+    "program": "onyx_woven_ws_walden_select_ws_walden_select",
+    "color": "WS_AlisiaAntiqueWhite",
+    "liner": "WSL_PrivacyGary",
+    "binding": "WSE_WidePecan",
+    "assembly": "2ON1",
+    "customValanceWidthInches": 119.9375
+  },
+  "pricing": "Held; shared headrail component dimensions and charges not verified or represented as an order-ready assembly",
+  "sendQuoteDisabled": true,
+  "sendPaymentLinkDisabled": true,
+  "boundaryEvidence": "120 and 119.9375 persisted. Invalid120.0625 was entered then removed; UI displayed a generic pricing-held message, not a distinct boundary message. Exact >120 rejection verified by server unit tests; do not claim detailed live rejection text."
+}
