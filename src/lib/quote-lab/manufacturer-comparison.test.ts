@@ -37,7 +37,15 @@ describe("manufacturer price comparison", () => {
       selectedProductId: "roller",
     });
 
-    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Polar", "Lotus", "Sundance"]));
+    expect(new Set(result.products.map((product) => product.manufacturer))).toEqual(new Set(["Norman", "Polar", "Lotus", "Sundance", "Onyx"]));
+    const onyx = result.products.filter(product => product.manufacturer === "Onyx");
+    expect(onyx.map(product => product.productId).sort()).toEqual(["onyx_signature_roller", "onyx_signature_sunscreen"]);
+    expect(onyx.flatMap(product => product.programs)).toHaveLength(23);
+    for (const program of onyx.flatMap(product => product.programs)) {
+      expect(program).toMatchObject({status: "manual_required", errorCode: "MANUAL_PRICE_REQUIRED"});
+      expect(program.customerRetail).toBeNull();
+      expect(program.dealerCost).toBeNull();
+    }
     const blackout = result.products
       .find((product) => product.productId === "lotus_roller_shades")
       ?.programs.find((program) => program.programId === "lotus_rs_blackout_unpriced");
