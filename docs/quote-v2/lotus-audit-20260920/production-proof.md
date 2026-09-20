@@ -27,3 +27,17 @@ These are arithmetic/persistence observations, not account-price approval. The l
 ## Dealer-listed destinations follow-up
 
 The versioned observed-offering registry accounts for all 3,710 observed listing/variant rows: 820 custom listings, 2,728 stock rows and 162 parts rows. Six additive held destinations preserve all original 20 custom-program IDs. Two explicitly discontinued parts observations remain readable in the registry but are excluded from current selection. No observed listing price becomes a price grid. No manufacturer effective date is invented. Runtime selection and customer delivery remain held until configuration and price authority are resolved. Deployment and saved/reopened production proof of these new destinations are separate gates.
+
+## Exact held destinations — deployed d28bd77d
+
+In the same native verification quote 805-0337, added and selected the following current source identities, waited for Quote saved, closed the builder and reopened the quote:
+
+| Room | Kind | Saved/reopened selection | Stable offering ID | Dealer source |
+|---|---|---|---|---|
+| Hall | Replacement part | FCXTILTER2JTS — 2 PC WAND TILTER 2 IN CORDLESS FAUX | lotus_observed_99928096bf5c0b2fae2d | https://www.lotusblind.com/products/2-pc-wand-tilter-2-in-cordless-faux |
+| Foyer | Custom grid listing | CAMX2772W — Width Range 23.25–27 / Length Range 62–72 | lotus_observed_3788971af57298199b13 | https://www.lotusblind.com/products/camx2772w-width-range-23-25-27-length-range-62-72 |
+| Breakfast Nook | Stock blind | AMX2772WH — 27 × 72 / White | lotus_observed_3d616264a894785908cd | https://www.lotusblind.com/products/amx-72-inch-length |
+
+The exact three selected option values and labels survived reopening. Each showed Price confirmation required, a dealer source link, and Authoritative pricing blocked. Send Quote/Send Payment Link stayed disabled. No overrides were entered. Dimensions were not invented for these identity-only held records.
+
+This verification exposed an existing server batch failure: zero width on one draft line threw “Authoritative V2 pricing could not interpret the saved selection: width: must be greater than zero” after structural mutation had invalidated all mutable prices. Thus the previously priced FTXLG line was cleared to zero despite unchanged valid selections. The immutable history remains intact. Fix 1b021940 makes the server retain legitimate draft zeros for per-line validation, leaves malformed fractions/quantities rejected, and represents parts by item/quantity. Regression testing proves valid FTXLG35×36 retains119.94 while a dimensionless part and unfinished shade remain held. Production re-verification is pending the repair deployment.
