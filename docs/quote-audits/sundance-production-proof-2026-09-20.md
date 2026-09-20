@@ -28,3 +28,9 @@ This evidence does not mark any complete Sundance family verified for automatic 
 ## Walden exact identities on release d28bd77d
 
 The same draft now contains five lines. Premier Family Room retains exact **E-M01 Aires White**, 36×60, Black-out liner, wide twill binding, Chocolate and movable liner Yes. Select Dining Room retains exact **WS-0602 Pudong White**, 36×60, light-filtering liner `sundance_walden_select_option_p19_t1`, edge binding `sundance_walden_select_option_p19_t3` and Gray liner. Both were closed and reopened through the Quotes list with all selections intact. Selecting Aires White initially cleared the previous accessory choices as intended; the verified choices were then selected again. Source-only material codes were absent from the new-choice menus. The three unpriced stock/Walden lines correctly leave the reopened quote **Pricing incomplete — 3 windows need pricing**.
+
+## Horizontal identities on release 04d74891
+
+Two more internal lines were saved and reopened in 805-0335. Hall retains **Advantage II 2-inch, Fog 904-101, Crown valance, 36×60**. Before the final selection, Natural FS-411 visibly showed its 5% retail surcharge and trapezoid-bottomrail references. Changing from Natural with Flat valance to Fog cleared Flat and offered only Crown. Foyer retains **1-inch aluminum, 8014 Matte White, 8-Gauge, 36×60**; its 20% retail surcharge reference remains visible after reopening. Both lines remain intentionally unpriced. The seven-line builder reports **Pricing incomplete — 5 windows need pricing**.
+
+This proof exposed a separate list-display defect: the Quotes list still showed the prior 358.01 manual fixture subtotal while the reopened builder correctly withheld a total. The persisted line identity proof passes; list completeness requires a separate fix. None of these values authorize dealer or customer pricing.
