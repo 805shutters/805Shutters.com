@@ -1,5 +1,6 @@
 import { smartfoldCharging } from "./norman-smartfold-charging";
 import { honeycombMounting } from "./norman-honeycomb-mounting";
+import { deriveVerticalHoneycombPairs } from "./norman-vertical-pair";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { deriveRomanMatching } from "./norman-roman-matching";
 import { romanHardware } from "./norman-roman-hardware";
@@ -92,6 +93,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const ultimate=ultimateFauxComponents(selection);
     if(ultimate)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:ultimate.record};
   }
+  issues.push(...deriveVerticalHoneycombPairs(lines));
   issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));
   issues.push(...derivePerfectsheerCommonValances(lines));

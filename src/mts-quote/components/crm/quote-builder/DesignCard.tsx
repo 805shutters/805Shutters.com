@@ -9509,6 +9509,12 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (authoritativeV2 && productType === "Honeycomb Shades" && field === "json:vertical_pair_mode") {
+      onUpdateFields({options_json: {...currentJson, vertical_pair_mode: value, vertical_pair_group: null, vertical_pair_position: null, vertical_honeycomb_pair_v1: null}}); return;
+    }
+    if (authoritativeV2 && productType === "Honeycomb Shades" && field === "json:vertical_pair_position") {
+      onUpdateFields({options_json: {...currentJson, vertical_pair_position: value, stacking_configuration: null, split_splice: value === "Left" ? "Left Stack" : value === "Right" ? "Right Stack" : null, vertical_honeycomb_pair_v1: null}}); return;
+    }
     if (authoritativeV2 && productType === "Honeycomb Shades" && field === "json:vertical_mounting" && value === "Pre-Drilled Headrail") {
       onUpdateFields({options_json: {...currentJson, vertical_mounting: value, vertical_shim_layers: "0"}});
       return;
@@ -9633,6 +9639,7 @@ function ShadesAndBlindsOptions({
         if (!['3/4" Single Cell', '1 1/4" Single Cell'].includes(String(nextJson.cell_size))) nextJson.cell_size = null;
       }
       if (application !== "Patio Door Vertical") {
+        nextJson.vertical_pair_mode = null; nextJson.vertical_pair_group = null; nextJson.vertical_pair_position = null; nextJson.vertical_honeycomb_pair_v1 = null;
         nextJson.vertical_mounting = null;
         nextJson.vertical_shim_layers = null;
         nextJson.split_splice = null;
@@ -9833,6 +9840,7 @@ function ShadesAndBlindsOptions({
       const nextOs = typeof value === "string" ? value : null;
       let nextJson = { ...currentJson };
       if (authoritativeV2) {
+        if (nextOs !== "Patio Door Vertical") {nextJson.vertical_pair_mode = null; nextJson.vertical_pair_group = null; nextJson.vertical_pair_position = null; nextJson.vertical_honeycomb_pair_v1 = null;}
         if (nextOs?.startsWith("SmartFit") || currentJson.honeycomb_application === "Motorized Skylights" || currentJson.honeycomb_application === "Specialty Shapes") nextJson.hold_downs = null;
         if (nextOs?.startsWith("SmartFit") && (design?.mount_type === "Inside Mount" || nextOs.includes("Sloped"))) nextJson.honeycomb_shim_layers = "0";
         if (!nextOs?.startsWith("SmartFit")) nextJson.honeycomb_mounting_plate = null;
@@ -11530,6 +11538,11 @@ function ShadesAndBlindsOptions({
         }
 
         if (authoritativeV2 && application === "Patio Door Vertical") {
+          if (operatingSystem === "Patio Door Vertical") options.push({key: "vertical_pair_mode", label: "Vertical Shade Arrangement", field: "json:vertical_pair_mode", type: "select", options: ["Single Shade", "Butt Together"]});
+          if (operatingSystem === "Patio Door Vertical" && honeycombOptions.vertical_pair_mode === "Butt Together") options.push(
+            {key: "vertical_pair_group", label: "Butt Together Group", field: "json:vertical_pair_group", type: "select", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]},
+            {key: "vertical_pair_position", label: "Position in Pair", field: "json:vertical_pair_position", type: "select", options: ["Left", "Right"]},
+          );
           if (mountType === "Inside Mount") options.push({key: "vertical_mounting", label: "Vertical Mounting", field: "json:vertical_mounting", type: "select", options: ["Pre-Drilled Headrail", "Installation Brackets"]});
           if (mountType !== "Inside Mount" || honeycombOptions.vertical_mounting !== "Pre-Drilled Headrail") options.push({key: "vertical_shim_layers", label: "Shim Layers", field: "json:vertical_shim_layers", type: "buttons", options: ["0", "1", "2"]});
           options.push({
@@ -11537,7 +11550,7 @@ function ShadesAndBlindsOptions({
             label: "Stack Configuration",
             field: "json:split_splice",
             type: "select",
-            options: HONEYCOMB_SPLIT_SPLICE_OPTIONS,
+            options: honeycombOptions.vertical_pair_mode === "Butt Together" ? honeycombOptions.vertical_pair_position === "Left" ? ["Left Stack"] : honeycombOptions.vertical_pair_position === "Right" ? ["Right Stack"] : ["Left Stack", "Right Stack"] : HONEYCOMB_SPLIT_SPLICE_OPTIONS,
           });
           if (honeycombOptions.split_splice === "Center Opening - Custom Split") {
             options.push(

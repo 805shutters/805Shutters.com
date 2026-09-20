@@ -154,6 +154,10 @@ const COPIED_DESIGN_TRANSIENT_OPTION_KEYS = new Set([
 ]);
 
 const COPIED_DESIGN_RELATIONSHIP_KEYS = new Set([
+  "vertical_pair_mode",
+  "vertical_pair_group",
+  "vertical_pair_position",
+  "vertical_honeycomb_pair_v1",
   "side_by_side_match_line_id",
   "side_by_side_reference_line_id",
   "side_by_side_matches",

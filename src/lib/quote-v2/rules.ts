@@ -1,3 +1,4 @@
+import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
 import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-ancillary";
 import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
@@ -1937,6 +1938,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
   }
   issues.push(...validateHoneycombMultiFabricPricing(context));
   issues.push(...validateVerticalHoneycombHardware(context));
+  issues.push(...validateVerticalHoneycombPair(context));
   issues.push(...validateHoneycombHardware(context));
   issues.push(...validateNormanShadeMotorization(context));
   return issues;

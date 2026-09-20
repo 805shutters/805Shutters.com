@@ -20,6 +20,11 @@ export function normanSavedPricingAudit(design: SalesQuoteDesign | undefined): s
     if (order.adapterWatts === 36 || order.adapterWatts === 65) rows.push(`Saved order adapter: ${order.adapterWatts}W${Array.isArray(order.adapterLineIds) ? ` across ${order.adapterLineIds.length} quote lines` : ''}.`);
     if (typeof order.totalConnections === 'number' && typeof order.capacity === 'number') rows.push(`Shared panel: ${order.totalConnections} of ${order.capacity} motor connections; ${order.chargePanel === true ? 'panel charged on this line' : 'panel charged on another connected line'}.`);
   }
+  const savedPair = selection.configuration.vertical_honeycomb_pair_v1;
+  if (savedPair && typeof savedPair === 'object' && !Array.isArray(savedPair)) {
+    const pair = savedPair as SelectionRecord;
+    if (Array.isArray(pair.orderWidths) && pair.orderWidths.length === 2) rows.push(`Saved Butt Together group ${pair.groupId}: ${pair.position} shade; widths ${pair.orderWidths.join(' + ')} inches, height ${pair.orderHeight} inches, ${pair.mountType}. Magnetic strips included at the meeting rails; each shade priced separately.`);
+  }
   const savedAssembly = selection.configuration.norman_assembly_v1;
   if (savedAssembly && typeof savedAssembly === 'object' && !Array.isArray(savedAssembly)) {
     const assembly = savedAssembly as SelectionRecord;
