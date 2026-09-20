@@ -1,4 +1,5 @@
 import { sundanceWaldenSource } from "./walden-assortment";
+import { sundanceHorizontalSource } from "./horizontal-assortment";
 import { sundanceDraperyTrack } from "./drapery-track";
 import { SUNDANCE_CELLULAR_PROGRAMS, sundanceCellularSource } from "./cellular-assortment";
 import catalogJson from "../catalog/sundance.catalog.json";
@@ -22,9 +23,19 @@ export const sundanceCatalog: Catalog = {
         fabricCollections: [{category:"Exact Walden material codes",fabrics:rows.filter(row => row.programId === program.id).map(row => row.code)}],
       })),
     } : product;
+  }).map(product => {
+    const rows = sundanceHorizontalSource.rows.filter(row => row.productId === product.id);
+    if (!rows.length) return product;
+    // Chateau shares finish codes across two slat sizes; retain the size in its route key.
+    const code = (row: typeof rows[number]) => product.id === "sundance_chateau_woods" ? `${row.slatSize}:${row.code}` : row.code;
+    return {...product, fabricRouting: Object.fromEntries(rows.map(row => [code(row),row.programId])),
+      programs: product.programs.map(program => ({...program,
+        fabricCollections: [{category:"Exact horizontal color/slat codes",fabrics:rows.filter(row => row.programId === program.id).map(code)}],
+      })),
+    };
   }), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r6";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r7";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);
