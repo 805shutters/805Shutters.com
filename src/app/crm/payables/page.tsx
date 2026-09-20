@@ -2,7 +2,7 @@ import { CrmApp } from "@/components/crm/CrmApp";
 import type { CrmPaymentPerson } from "@/lib/crm/types";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
 
-export const metadata = privatePageMetadata("805 CRM Payables");
+export const metadata = privatePageMetadata("805 CRM Payoff");
 
 function normalizePerson(value: unknown): CrmPaymentPerson {
   if (value === "mike" || value === "jessica" || value === "ken") return value;
