@@ -45,3 +45,7 @@ Before the reload, added two separate 36 × 60-inch unpriced lines and observed 
 - Line 9, Primary Bedroom, Louvolite Europanels: same exact dealer label, **Argent Blackout · Group E**, exact color ID `sundance_louvolite_europanels:dealer:29e2f862f6db`, collection `sundance_louvolite_europanels:collection:2be9a98bafa7`.
 
 The family-specific values survived the full reload/reopen. Builder reads **Pricing incomplete / Total unavailable / 7 windows need pricing**. The draft remains explicitly internal and unsent; existing manual fixture prices are not pricing authority. This proves identity and incomplete-price persistence, not dealer account pricing or full configuration compatibility.
+
+## SheerView guide-only identity — production b907fd2e
+
+In internal unsent draft 805-0335, added line 10 Primary Bathroom, 36 × 60 inches, selected **S65XN100-4 · Carbon · 2.5-inch Striped Collection · Light Filtering**. Observed Quote saved, closed the builder, and reopened the persisted draft. Vane size `2.5`, light control `Light Filtering`, and exact color ID `sundance_sheerview:S65XN100-4` all remained selected. The warning that this color is present in the current guide but absent from the captured dealer menu also remained visible. Total remained unavailable with eight windows requiring pricing. This confirms that the availability exception is preserved in the actual CRM; it does not verify current dealer orderability or price.
