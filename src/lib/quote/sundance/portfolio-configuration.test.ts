@@ -61,9 +61,9 @@ it('blocks a saved Somfy accessory on a cordless shade at the server boundary',(
 
 it('does not require a hidden interior valance default on preexisting standard shades',()=>{
  for(const missing of [undefined,null,'']){
-  const c=context();c.configuration={...c.configuration};delete c.configuration.sundance_portfolio_interior_valance;if(missing!==undefined)c.configuration.sundance_portfolio_interior_valance=missing;
+  const c=context();const {sundance_portfolio_interior_valance: _c,...base}=c.configuration;c.configuration={...base,...(missing===undefined?{}:{sundance_portfolio_interior_valance:missing})};
   expect(validateSundancePortfolioConfiguration(c)).toEqual([]);
-  const w=context('Hobbled');w.configuration={...w.configuration};delete w.configuration.sundance_portfolio_interior_valance;if(missing!==undefined)w.configuration.sundance_portfolio_interior_valance=missing;
+  const w=context('Hobbled');const {sundance_portfolio_interior_valance: _w,...waterfall}=w.configuration;w.configuration={...waterfall,...(missing===undefined?{}:{sundance_portfolio_interior_valance:missing})};
   expect(validateSundancePortfolioConfiguration(w).map(i=>i.ruleId)).toContain('sundance.portfolio.interior_valance');
  }
 });
