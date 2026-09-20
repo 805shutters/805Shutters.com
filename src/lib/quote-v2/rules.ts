@@ -13,6 +13,7 @@ import { validateLotusVertical } from "./lotus-vertical";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
+import { validateSundanceZebraConfiguration } from "@/lib/quote/sundance/zebra-configuration";
 import { validateSundanceCellularConfiguration } from "@/lib/quote/sundance/cellular-configuration";
 import { validateSundanceExteriorZipConfiguration } from "@/lib/quote/sundance/exterior-zip-configuration";
 import { validateSundancePortfolioConfiguration } from "@/lib/quote/sundance/portfolio-configuration";
@@ -2428,6 +2429,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...(romanFabricLimits(context)?.issues ?? []));
   issues.push(...validateNormanFamilyRules(context));
+  if (context.productId === "sundance_zebra") issues.push(...validateSundanceZebraConfiguration(context));
   if (context.productId === "sundance_cellular") issues.push(...validateSundanceCellularConfiguration(context));
   if (context.productId === "sundance_exterior_zip") issues.push(...validateSundanceExteriorZipConfiguration(context));
   if (context.productId === "sundance_portfolio_roman") issues.push(...validateSundancePortfolioConfiguration(context));

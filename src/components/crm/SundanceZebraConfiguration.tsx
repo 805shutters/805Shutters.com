@@ -1,0 +1,22 @@
+'use client';
+import type { SelectionRecord } from '@/lib/quote-v2/core';
+import type { SalesQuoteDesign } from '@mts/types/quote';
+import { sundanceZebraControls, sundanceZebraCassettes, sundanceZebraCassetteColors, sundanceZebraChains, sundanceZebraControlPatch, validateSundanceZebraConfiguration, sundanceZebraOptionEvidence } from '@/lib/quote/sundance/zebra-configuration';
+export function SundanceZebraConfiguration({options,widthInches=0,heightInches=0,onUpdateFields}:{options:Record<string,unknown>;widthInches?:number;heightInches?:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}) {
+ const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
+ const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null}});
+ const issues=validateSundanceZebraConfiguration({widthInches,heightInches,programId:String(options.catalog_program_id??''),configuration:options as SelectionRecord});
+ const evidence=sundanceZebraOptionEvidence(options);
+ return <>
+  <label className="block text-sm">Operating system<select aria-label="Sundance Zebra operating system" className={classes} value={String(options.sundance_zebra_control??'')} onChange={e=>onUpdateFields({options_json:sundanceZebraControlPatch(options,e.target.value)})}><option value="">Select system</option>{sundanceZebraControls.map(c=><option key={c.name}>{c.name}</option>)}</select></label>
+  <label className="block text-sm">Cassette<select aria-label="Sundance Zebra cassette" className={classes} value={String(options.sundance_zebra_cassette??'')} onChange={e=>field('sundance_zebra_cassette',e.target.value)}><option value="">Select cassette</option>{sundanceZebraCassettes.map(c=><option key={c}>{c}</option>)}</select></label>
+  <label className="block text-sm">Cassette color<select aria-label="Sundance Zebra cassette color" className={classes} value={String(options.sundance_zebra_cassette_color??'')} onChange={e=>field('sundance_zebra_cassette_color',e.target.value)}><option value="">Select color</option>{sundanceZebraCassetteColors.map(c=><option key={c}>{c}</option>)}</select></label>
+  {options.sundance_zebra_control==='Beaded Chain'&&<label className="block text-sm">Chain<select aria-label="Sundance Zebra chain" className={classes} value={String(options.sundance_zebra_chain??'')} onChange={e=>field('sundance_zebra_chain',e.target.value)}><option value="">Select chain</option>{sundanceZebraChains.map(c=><option key={c}>{c}</option>)}</select></label>}
+  <label className="block text-sm">Mount<select aria-label="Sundance Zebra mount" className={classes} value={String(options.mount_type??'')} onChange={e=>field('mount_type',e.target.value)}><option value="">Select mount</option><option>Inside</option><option>Outside</option></select></label>
+  <label className="block text-sm">Assembly<select aria-label="Sundance Zebra assembly" className={classes} value={String(options.sundance_zebra_assembly??'')} onChange={e=>field('sundance_zebra_assembly',e.target.value)}><option value="">Select assembly</option><option>Single</option><option>Two on one</option></select></label>
+  <label className="block text-sm">Side-by-side alignment group (optional)<input aria-label="Sundance Zebra alignment group" className={classes} value={String(options.sundance_zebra_alignment_group??'')} onChange={e=>field('sundance_zebra_alignment_group',e.target.value)}/></label>
+  <p className="text-sm text-amber-900">Both cassettes are3 inches high and3½ inches deep. Inside width deduction is1/8 inch at the factory; outside has no deduction. Finished height is in the privacy position. No tile cut-outs; hold-down brackets are not recommended. Generic motor maximums above96×96 do not establish larger Zebra availability.</p>
+  <details className="text-sm"><summary className="cursor-pointer">Published Zebra option evidence</summary>{evidence.entries.map(e=><p key={e.label}>{e.label}: ${e.net.toFixed(2)} net (PDF {e.page})</p>)}<p>Source net options subtotal: ${evidence.netSubtotal.toFixed(2)}. Excludes base shade, power/control accessories, account terms and taxes; not a customer price. Two-on-one component pricing and order alignment require review.</p></details>
+  {issues.length>0&&<div role="alert" className="text-sm text-amber-900">{issues.map(issue=><p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
+ </>;
+}
