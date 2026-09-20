@@ -10,7 +10,7 @@ const job = "229371b6-23c7-4d8a-8d82-74c5740db2f8";
 const quote = "d3ebcb7d-ac13-45f0-a579-5c4f198a3edd";
 const savedProduct = "10000000-0000-4000-8000-000000000001";
 const savedContract = "10000000-0000-4000-8000-000000000002";
-const actor = { email: "test@example.com", userId: null };
+const actor = { email: "test@example.com" };
 const tables = ["crm_customers", "crm_jobs", "crm_quotes", "crm_quote_bookkeeping_entries", "crm_customer_products", "crm_customer_contracts", "sales_quotes"];
 // Execute the actual handler against PostgreSQL UUID columns, including its reads,
 // tombstones and audit insert. The old string-only mock missed synthetic row IDs.
