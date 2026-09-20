@@ -1,3 +1,4 @@
+import { deriveRomanMatching } from "./norman-roman-matching";
 import { romanHardware } from "./norman-roman-hardware";
 import { isRomanSmartPower, romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { woodComponents } from "./norman-wood";
@@ -78,6 +79,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const hardware=romanHardware(selection);
     if(hardware)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...(selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord ?? {}),hardware:hardware.record}};
   }
+  issues.push(...deriveRomanMatching(lines));
   issues.push(...deriveCitylightsMatching(lines));
   issues.push(...deriveUltimateAssemblies(lines));
   issues.push(...deriveWoodAssemblies(lines));
