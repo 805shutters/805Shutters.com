@@ -7,7 +7,7 @@ import { payableFixtureRow } from './payables-data';
 
 function Preview() {
   const [rows, setRows] = useState([
-    payableFixtureRow({ id:'sample-1', jobClosedAt:'2026-09-10T18:00:00Z', payments:[{...payableFixtureRow().payments[0],amount:10000}], customerName:'Sample completed job', quoteNumber:'DEMO-101', total:10000, cogs:4000, installationInvoiceAmount:1000 }),
+    payableFixtureRow({ id:'sample-1', jobStatus:'closed', completedAt:'2026-09-10', jobClosedAt:'2026-09-10T18:00:00Z', payments:[{...payableFixtureRow().payments[0],amount:10000}], customerName:'Sample completed job', quoteNumber:'DEMO-101', total:10000, cogs:4000, installationInvoiceAmount:1000 }),
     payableFixtureRow({ id:'sample-2', customerName:'Sample pending job', quoteNumber:'DEMO-102', total:6000, cogs:2000, installationInvoiceAmount:500, isPaidInFull:false, status:'sold', liveStatus:'sold' }),
   ]);
   const [commissionPayments, setCommissionPayments] = useState<CrmCommissionPayment[]>([]);
