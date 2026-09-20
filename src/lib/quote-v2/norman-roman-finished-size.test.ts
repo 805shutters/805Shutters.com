@@ -12,7 +12,7 @@ describe('September Roman finished size and actual headrail limits',()=>{
   const c={mount_type:'Inside Mount'};
   expect(sizeIssues(shade(20,60,c))).toContain('roman.dimension.width');
   expect(sizeIssues(shade(20.375,60,c))).toEqual([]);
-  const old=shade(20,60,c);old.catalogVersion=old.catalogVersion.replace('-r8','-r7');
+  const old=shade(20,60,c);old.catalogVersion=old.catalogVersion.replace(/-r\d+$/, '-r7');
   expect(sizeIssues(old)).toEqual([]);
  });
  it('uses each common shade finished width independently',()=>{

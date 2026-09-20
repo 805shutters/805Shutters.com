@@ -1381,7 +1381,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
 
   const isDayNight = shadeType === "day night";
   const isCommonValance = shadeType === "common valance";
-  const finishedSizeRules = context.catalogVersion.endsWith("norman-roman-mounting-2026-09-20-r8");
+  const finishedSizeRules = /norman-roman-mounting-2026-09-20-r[89]$/.test(context.catalogVersion);
   const sizeSource = finishedSizeRules ? sourceProvenance("norman-roman-guide-2026-09", { page: 13 }) : { ...ROMAN_GUIDE, pages: [11, 12] };
   const orderedPanelWidths = romanComponentWidths(context) ?? [context.widthInches];
   const inside = normalized(configValue(context, "mount_type")) === "inside mount";
