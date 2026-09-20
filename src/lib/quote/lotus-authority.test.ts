@@ -112,13 +112,12 @@ describe("September 20 Lotus custom cart conflicts", () => {
     },
   );
 
-  it("leaves unrelated FTX, aluminum and vinyl programs outside these cart conflicts", () => {
+  it("leaves unrelated FTX and aluminum programs outside these cart conflicts", () => {
     for (const [productId, programId] of [
       ["lotus_faux_wood_blinds", "lotus_ftx_2in_snow_white_custom"],
       ["lotus_faux_wood_blinds", "lotus_ftxlg_2in_light_gray_custom"],
       ["lotus_mini_blinds", "lotus_amx_1in_aluminum_custom"],
-      ["lotus_vinyl_blinds", "lotus_mlx_1in_vinyl_custom"],
-    ]) {
+      ]) {
       expect(wholesaleAuthorityFindings(productId, programId)).toEqual([]);
       expect(lotusCustomerDeliveryBlock(productId, programId, "Inside Mount")).toBeNull();
     }

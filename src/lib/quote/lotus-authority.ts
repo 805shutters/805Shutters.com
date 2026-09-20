@@ -126,6 +126,7 @@ export const LOTUS_CUSTOM_CART_AUDIT_20260920 = {
     { productId: "lotus_faux_wood_blinds", programId: "lotus_fgx_2_5in_bright_white_custom", programCode: "FGX", sku: "CFGX5960BW", width: 59, height: 60, guideDealerNet: 62.63, portalCartUnitPrice: 105, guidePage: 104 },
     { productId: "lotus_vinyl_blinds", programId: "lotus_rlx_1in_vinyl_plus_custom", programCode: "RLX", sku: "CRLX7296W", width: 72, height: 96, guideDealerNet: 56.26, portalCartUnitPrice: 105, guidePage: 96 },
     { productId: "lotus_vinyl_blinds", programId: "lotus_rtx_2in_vinyl_plus_custom", programCode: "RTX", sku: "CRTX4872W", width: 48, height: 72, guideDealerNet: 38.34, portalCartUnitPrice: 105, guidePage: 98 },
+    { productId: "lotus_vinyl_blinds", programId: "lotus_mlx_1in_vinyl_custom", programCode: "MLX", sku: "CMLX4860W", width: 48, height: 60, guideDealerNet: 21.74, portalCartUnitPrice: 105, guidePage: 95 },
   ],
 } as const;
 

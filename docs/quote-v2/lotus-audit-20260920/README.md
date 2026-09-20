@@ -20,7 +20,7 @@ The dealer FAQ currently links these documents:
 - [V1.1.25 assortment catalog](https://cdn.shopify.com/s/files/1/0723/5085/9514/files/V1.1.25_catalog-compressed.pdf?v=1749232524), 36 pages, SHA256 `8faa4c75054e8e5434df85fa5a9c56ae6bebe78dc37c91ec81a20178b5ca71b9`. This is an assortment catalog, not a replacement rate schedule.
 - [Ordering guide](https://cdn.shopify.com/s/files/1/0723/5085/9514/files/orderguide_form.pdf?v=1749232248), two pages, SHA256 `ae809d42501847688fc77ec5b61a1d8b0ab8432683993b433166fa49eceec50e`. It describes cutdowns, packaging and order surcharges but does not resolve current custom rates.
 
-Four exact custom configurations were added to the previously empty dealer cart, each quantity one, with note `INTERNAL AUDIT 2026-09-20 DO NOT ORDER`. The final cart contains all four at $105 each, total $420; it is preserved for vendor reconciliation:
+Six exact custom configurations were added to the previously empty dealer cart, each quantity one, with note `INTERNAL AUDIT 2026-09-20 DO NOT ORDER`. The final cart contains five at $105 each and one at $26.30, total $551.30; it is preserved for vendor reconciliation:
 
 | Program | Exact SKU | Dimensions | Guide dealer cost | Cart unit price | Guide page |
 |---|---|---:|---:|---:|---:|
@@ -28,8 +28,10 @@ Four exact custom configurations were added to the previously empty dealer cart,
 | FGX | CFGX5960BW | 59 × 60 | $62.63 | $105.00 | 104 |
 | RLX | CRLX7296W | 72 × 96 | $56.26 | $105.00 | 96 |
 | RTX | CRTX4872W | 48 × 72 | $38.34 | $105.00 | 98 |
+| MLX | CMLX4860W | 48 × 60 | $21.74 | $105.00 | 95 |
+| AMX | CAMX2772W | 27 × 72 | $26.30 | $26.30 | 97 |
 
-Earlier recorded FLX/FCX conflicts remain unresolved. Repeated $105 prices across different custom sizes may be placeholders, but this is an inference, not authority to replace them or publish the old guide as current. The portal's mostly matching stock rates support treating stock and custom separately.
+MLX and AMX product pages, like their collections, did not display a price; the cart revealed the prices above. The matching AMX example is positive representative evidence, not exhaustive current-price certification. Earlier recorded FLX/FCX conflicts remain unresolved. Repeated $105 prices across different custom sizes may be placeholders, but this is an inference, not authority to replace them or publish the old guide as current. The portal's mostly matching stock rates support treating stock and custom separately.
 
 Only three exact stock matches differ: `FLX1172EBWH` $105 versus guide $19.49 (page 42), `AMX9548WH` $98.07 versus $98.08 (page 21), and `AMX2396WH` $19.92 versus $19.91 (page 23). The last two are one-cent differences; their controlling source still needs confirmation.
 
@@ -39,7 +41,7 @@ All 20 imported programs retain their IDs and readable history. Exact matrix cou
 
 | Programs | Implemented or already represented | Exact remaining exception |
 |---|---|---|
-| MLX, AMX | Imported full grids; new White/Alabaster choice uses color-specific SKUs from the next size cell, enforced on server for newly typed configurations | 7 MLX and 14 AMX custom listings lack exact source destinations; custom collection prices absent; current portal comparison and production save/reopen remain |
+| MLX, AMX | Imported full grids; new White/Alabaster choice uses color-specific SKUs from the next size cell, enforced on server for newly typed configurations | 7 MLX and 14 AMX custom listings lack exact source destinations; custom collection prices absent; MLX cart price conflicts, one AMX cart price agrees; production save/reopen remains |
 | RLX, RTX | Imported grids; new White selection tied to source cell; exact cart conflict guarded | 68 RLX and 2 RTX custom listings unmatched, including portal RLX Alabaster SKUs absent from source; current authoritative custom rates required |
 | FLX, FLXE, FCX, FGX | Fixed finishes, exact grids, typed one/three-blind configuration; confirmed conflict controls | Four faux programs have current/prior guide-versus-portal conflicts; 27 faux custom listings unmatched overall; source limits versus website specification contradictions unresolved |
 | FTX, FTX-LG | Source page 101 SKU lists now split by Snow White versus Light Gray; no price/ID changes | 14 priced Light Gray cells contain no Light Gray SKU in source; some printed codes are malformed; no current custom collection listing, vendor ordering codes required |
@@ -62,8 +64,8 @@ No current collection listing for a source SKU is not evidence that it is discon
 
 - FTX per-color ordering-code metadata corrected in importer and generated catalog. A structural comparison confirmed the only catalog changes are the two SKU matrices; prices, IDs, stock records and other metadata are identical.
 - New mini/vinyl color controls persist a versioned color choice and are filtered by the current size cell. The server rejects missing/incompatible colors for newly typed configurations. Historical untyped data remains unchanged.
-- Source conflict findings and customer-delivery checks added for the four cart-confirmed programs; existing FLX/FCX, side-mount and vane-unit exceptions retained. Original guide grids and dealer-versus-retail distinctions remain intact.
+- Source conflict findings and customer-delivery checks added for the five cart-confirmed conflict programs; existing FLX/FCX, side-mount and vane-unit exceptions retained. Original guide grids and dealer-versus-retail distinctions remain intact.
 - Reproduce the complete ledger with `python3 scripts/audit-lotus-portal-20260920.py`. It reads committed observation snapshots and the current catalog; it performs no network calls or mutation.
-- Targeted UI, color validation, pricing, authority and server-repricing checks: 49 tests pass across five files. Importer regeneration completed successfully with the pinned PDF. TypeScript checking reported only missing dependencies in the shared canonical node_modules link (pglite, puppeteer/chromium, pdf-lib) and related pre-existing errors, with no Lotus errors. Production save/reopen validation must follow integration and deployment; no row is promoted to verified live merely because a unit test passes.
+- Targeted UI, color validation, pricing, authority and server-repricing checks: 50 tests pass across five files. Importer regeneration completed successfully with the pinned PDF. TypeScript checking reported only missing dependencies in the shared canonical node_modules link (pglite, puppeteer/chromium, pdf-lib) and related pre-existing errors, with no Lotus errors. Production save/reopen validation must follow integration and deployment; no row is promoted to verified live merely because a unit test passes.
 
 Completion still requires a current account-specific Lotus custom price schedule/effective date, dispositions for every unmatched and source-only SKU, missing Light Gray/Blackout ordering codes, vertical quantity/operating rules, stock/parts selection support, and production quote persistence/customer-output evidence for all five families. Supplier outreach was not authorized or sent.
