@@ -69,3 +69,9 @@ Created through New Norman quote, then explicitly selected Lotus Aluminum Mini B
 Configured Office, 27 × 72, White, Inside Mount, Cordless, no valance, quantity 1. Waited for Quote saved and observed **$117.90**. Contract preview showed the exact program, White, Inside Mount, Cordless, dimensions, $25 installation, $14 shipping, and subtotal/total **$117.90**. Then performed a full browser reload, found quote 805-0339 in Staff quotes with Draft / $117.90, reopened it, and reread the same selections and price. Reopened Contract preview retained them again.
 
 This proves the representative customer retail configuration and production persistence. It does not certify all AMX boundary/color combinations, current source-book effective date, live stock or dealer order charges. No send, share, signature, sale, deposit, order or checkout action occurred. The new-line initialization required one explicit program reselection; repair 327ccd13 addresses that usability defect separately, without changing historical records.
+
+### New AMX initialization and persistence — b907fd2e / e1b9ccaa
+
+After initialization repair 327ccd13 reached production, added Primary Bedroom as line 9 to internal quote 805-0337. Selecting Lotus Aluminum Mini Blinds initialized the current typed program immediately; no program reselection was needed. Entered 27 × 72, White, Inside Mount, and waited for Quote saved after edits. The line priced at $117.90 while the original Office AMX retained $117.90, Living Room FTXLG retained $119.94, and the six incomplete or held lines remained blocked.
+
+A full browser reload, Staff quotes, and reopening 805-0337 retained Primary Bedroom's exact program, 27 × 72, White, Inside Mount, quantity 1 and $117.90. The quote still showed six windows needing pricing. This verifies the new-line initialization through saved production state; it does not broaden the representative AMX pricing evidence to other sizes or colors.
