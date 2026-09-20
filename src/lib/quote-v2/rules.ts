@@ -1,6 +1,7 @@
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
+import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { romanHardware } from "./norman-roman-hardware";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
 import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
@@ -2398,6 +2399,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusObservedOffering(context));
+  issues.push(...(romanFabricLimits(context)?.issues ?? []));
   issues.push(...validateNormanFamilyRules(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
   const withdrawal = normanColorWithdrawal(

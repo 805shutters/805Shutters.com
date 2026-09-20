@@ -5,7 +5,7 @@ import { sourceProvenance } from './source-manifest';
 const norm=(v:unknown)=>String(v??'').trim().toLowerCase().replace(/\s+/g,' ');
 /** September p21: complete matching criteria use selected order lines and actual rooms. */
 export function deriveRomanMatching(lines:readonly SmartfoldOrderLine[]):ValidationIssue[]{
- const active=lines.filter(l=>l.selection.productId==='roman'&&l.selection.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r6')&&['yes','true'].includes(norm(l.selection.configuration.side_by_side)));
+ const active=lines.filter(l=>l.selection.productId==='roman'&&/norman-roman-mounting-2026-09-20-r[67]$/.test(l.selection.catalogVersion)&&['yes','true'].includes(norm(l.selection.configuration.side_by_side)));
  const byId=new Map(active.map(l=>[l.lineId,l]));
  const neighbors=new Map(active.map(l=>[l.lineId,new Set<string>()]));
  for(const line of active){

@@ -1,6 +1,7 @@
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
 import { onyxPortalAssortment, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
+import { romanFabricConstructionChoices } from "@/lib/quote-v2/norman-roman-fabric-limits";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
@@ -10914,19 +10915,14 @@ function ShadesAndBlindsOptions({
             label: "Fabric Orientation",
             field: "json:fabric_orientation",
             type: "buttons",
-            options: ROMAN_FABRIC_ORIENTATIONS,
+            options: romanFabricConstructionChoices(opts.fabric_color_code,foldStyle,fabricOrientation).orientations,
           });
           options.push({
             key: "seaming",
             label: "Seaming",
             field: "json:seaming",
             type: "select",
-            options:
-              fabricOrientation === "Railroaded"
-                ? (["No Seams", "Horizontal Seams"] as readonly string[])
-                : fabricOrientation === "Standard / Non-Railroaded"
-                  ? (["No Seams", "Vertical Seams"] as readonly string[])
-                  : ROMAN_SEAMING_OPTIONS,
+            options: romanFabricConstructionChoices(opts.fabric_color_code,foldStyle,fabricOrientation).seams,
           });
         }
         options.push({
@@ -12412,6 +12408,11 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Roman Shades") {
       nextJson.roman_fabric_category = fabricColor.collection;
+      if(authoritativeV2){
+        const choices=romanFabricConstructionChoices(fabricColor.colorCode,nextJson.fold_style,nextJson.fabric_orientation);
+        if(!choices.orientations.includes(String(nextJson.fabric_orientation??''))) nextJson.fabric_orientation=null;
+        if(!choices.seams.includes(String(nextJson.seaming??''))) nextJson.seaming=null;
+      }
       if (authoritativeV2 && !romanReturnOptions(design?.mount_type,design?.valance,fabricColor.collection,fabricColor.colorCode).includes(String(nextJson.valance_returns ?? ''))) nextJson.valance_returns = null;
       if (!romanFabricPatternOptions(fabricColor.colorCode).includes("Reverse")) nextJson.roman_fabric_pattern = "Standard";
       if (

@@ -1,3 +1,4 @@
+import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { deriveRomanMatching } from "./norman-roman-matching";
 import { romanHardware } from "./norman-roman-hardware";
 import { isRomanSmartPower, romanMotorAccessories } from "./norman-roman-motor-accessories";
@@ -77,7 +78,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   }
   for (const {selection} of lines) {
     const hardware=romanHardware(selection);
-    if(hardware)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...(selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord ?? {}),hardware:hardware.record}};
+    if(hardware)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...(selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord ?? {}),hardware:hardware.record,...(romanFabricLimits(selection)?.record?{fabricLimits:romanFabricLimits(selection)!.record}: {})}};
   }
   issues.push(...deriveRomanMatching(lines));
   issues.push(...deriveCitylightsMatching(lines));
