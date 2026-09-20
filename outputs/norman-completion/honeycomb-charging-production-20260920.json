@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-20",
+  "deployment": "8d2fa5c94ea661a3cdb0e5246ca93c0e9120c124",
+  "quote": "805-0345",
+  "alternative": "C",
+  "source": "Norman Motorization Guide September 16, p10 and mounting pp16-18",
+  "configuration": {
+    "room": "Office",
+    "width": 36,
+    "height": 60,
+    "fabric": "C7015K Brilliant White LF",
+    "cell": "3/4 Single",
+    "lift": "Motorized",
+    "power": "Rechargeable Battery (Wireless Charging Wand)",
+    "remote": "Basic Remote",
+    "motorPosition": "Right",
+    "hub": "No",
+    "mount": "Inside Flush",
+    "mountRecess": 2.3125,
+    "chargingPortRecess": 0.75,
+    "clearOpeningHeight": 60,
+    "obstruction": "No"
+  },
+  "proof": {
+    "fullBrowserReload": true,
+    "closeReopen": true,
+    "customerPreview": true,
+    "baseRetail": 415,
+    "motor": 482,
+    "wirelessChargingWand": 428,
+    "remote": 75,
+    "installation": 25,
+    "shipping": 14,
+    "total": 1439,
+    "negative": {
+      "clearOpeningHeight": 35.9375,
+      "portRecess": 0.75,
+      "savedServerIssue": "The guide directs an AC adapter when the shade is recessed at least \u00be inch into an opening under 36 inches high.",
+      "result": "Pricing blocked, zero price. Restored60 and1439 saved/reopened."
+    }
+  },
+  "limitations": [
+    "Representative wireless charging-wand path only.",
+    "The printed obstruction-height table has conflicting minimum labels and <= inequalities; retained as explicit source warning, not inferred geometry.",
+    "Account applicability and landed costs unresolved; selling policy unchanged."
+  ],
+  "externalActions": "No send, sign, sold, checkout or order."
+}
