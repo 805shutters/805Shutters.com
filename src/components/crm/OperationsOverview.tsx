@@ -128,6 +128,15 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     const label = step === "deposit" ? "Deposit" : workflowLabels[step];
     return <CompletionButton done={done} label={`${done ? "Review" : step === "quote" ? "Open" : ["sold", "paid", "deposit"].includes(step) ? "Record" : "Mark"} ${label} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:`} onClick={() => void act(item, step)} />;
   };
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    try { setCondensed(window.localStorage.getItem("805-job-status-condensed") === "true"); } catch { /* Storage may be disabled. */ }
+  }, []);
+  function changeDensity(value: boolean) {
+    setCondensed(value);
+    setContractId(null);
+    try { window.localStorage.setItem("805-job-status-condensed", String(value)); } catch { /* Keep the view usable without storage. */ }
+  }
   const [filter, setFilter] = useState("active");
   const [search, setSearch] = useState("");
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
@@ -150,11 +159,39 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
   return <section className={styles.workspace} aria-label="Job status" aria-busy={busy}>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><label className={styles.densityToggle}><input type="checkbox" checked={condensed} onChange={event => changeDensity(event.target.checked)} />Condensed view</label><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll && <p role="status">Loading all jobs…</p>}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
     {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
-    <div className={styles.jobList}>{visible.map(item => {
+    {condensed && feedbackId && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{items.find(item => item.source.id === feedbackId)?.source.customerName}: {error || notice}</p>}
+    {condensed ? <div className={styles.condensedScroll} role="region" aria-label="Condensed customer jobs" tabIndex={0}>
+      <table className={styles.condensedTable}>
+        <caption className={styles.srOnly}>One line per customer job. Product numbers correspond across Ordered, Shipped, and product details. Scroll horizontally for all fields.</caption>
+        <thead><tr>{["Customer", "Quote #", ...statusColumns, "Contract total", "Deposit collected", "Balance due", "Cost of goods", "Installation cost", "Profit · Before buyout", "Margin · Contract less COGS", "10% buyout", "Sale date", "Product quantities", "Product / manufacturer", "Invoice cost by product", "Ship dates by product", "Address", "Phone", "Email", "Job state", "Actions"].map((label, index) => <th key={`${label}-${index}`} scope="col">{label}</th>)}</tr></thead>
+        <tbody>{visible.map(item => {
+          const products = item.products.length ? item.products : [item.wholeJob];
+          return <tr key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
+            <th scope="row"><button type="button" className={styles.customerLink} onClick={() => onOpen(item.source)}>{item.source.customerName}</button></th>
+            <td>{item.source.quote?.quote_number || item.source.project || "Not recorded"}</td>
+            <td>{mark(item, "quote")}</td><td>{mark(item, "sold")}</td><td>{mark(item, "deposit")}</td>
+            {(["ordered", "shipped"] as const).map(step => <td key={step}><div className={styles.condensedProducts}>{products.map((product, index) => <span key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : [product.name, product.manufacturer].filter(Boolean).join(" · ")} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => void act(item, step, product)} />{products.length > 1 && <span>P{index + 1}</span>}</span>)}</div></td>)}
+            <td>{mark(item, "installed")}</td><td>{mark(item, "paid")}</td>
+            {jobFinancialValues(item).map(([label, value, note]) => <td key={label} className={styles.condensedNumber}><span className={label === "Profit" ? styles.completeText : undefined}>{value}</span>{label === "Installation cost" && note && <span className={styles.condensedNote}> · {note}</span>}</td>)}
+            <td>{formatOperationsDate(item.source.soldDate) || "Sale date needed"}</td>
+            <td><button type="button" className={styles.condensedLink} aria-label={`Open contract quantities for ${item.source.customerName}`} onClick={event => toggleContract(item.source.id, event.currentTarget)}>{item.headerProducts.length ? item.headerProducts.map(product => `${product.quantity} ${product.name}`).join(" · ") : "Review contract"}</button></td>
+            <td>{products.map((product, index) => `P${index + 1}: ${product.wholeJob ? "Whole job" : `${product.name} / ${product.manufacturer || "Manufacturer not recorded"}`}`).join(" · ")}</td>
+            <td>{products.map((product, index) => <span className={styles.condensedProductDetail} key={product.id}>P{index + 1}: <OrderAmount item={item} product={product} /></span>)}</td>
+            <td>{products.map((product, index) => <span className={styles.condensedProductDetail} key={product.id}>P{index + 1}: <ShipmentDates product={product} /></span>)}</td>
+            <td>{item.source.address || "Address needed"}</td><td>{item.source.phone || "Phone needed"}</td><td>{item.source.email || "Email needed"}</td>
+            <td>{item.closed ? "Closed · Paid in full" : item.paid ? "Active · Paid in full" : item.sold ? "Active" : "Not sold"}{item.source.progress.stage === "attention" && ` · Needs review: ${item.source.progress.nextAction || "Next action needed"}`}</td>
+            <td><div className={styles.condensedActions}><button type="button" className={styles.condensedLink} onClick={() => onOpen(item.source)}>Open job <ArrowRight size={13} /></button><button type="button" className={styles.condensedLink} aria-label={`Contract for ${item.source.customerName}`} aria-expanded={contractId === item.source.id} aria-controls={`job-contract-${item.source.id}`} onClick={event => toggleContract(item.source.id, event.currentTarget)}><FileText size={14} />Contract</button>
+            {onDelete && item.source.file && !item.sold && canDeleteCustomerFile(item.source.file) && <button type="button" className={styles.condensedLink} aria-label={`Delete customer file for ${item.source.customerName}`} disabled={disabled} onClick={() => onDelete(item.source.file!)}><Trash2 size={15} /></button>}
+            {!data && onDeleteFileId && activeSnapshot?.deletableFiles[item.source.id] && <button type="button" className={styles.condensedLink} aria-label={`Delete customer file for ${item.source.customerName}`} disabled={disabled} onClick={() => { void onDeleteFileId(activeSnapshot.deletableFiles[item.source.id]).catch(cause => { setFeedbackId(null); setError(cause instanceof Error ? cause.message : "Customer file could not be loaded."); }); }}><Trash2 size={15} /></button>}
+            </div></td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div> : <div className={styles.jobList}>{visible.map(item => {
       const saleDate = formatOperationsDate(item.source.soldDate);
       const contactLine = `${item.source.phone || "Phone needed"} · ${item.source.email || "Email needed"}`;
       return <article className={styles.jobCard} key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
@@ -197,21 +234,36 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       {onDelete && item.source.file && !item.sold && canDeleteCustomerFile(item.source.file) && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => onDelete(item.source.file!)}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
       {!data && onDeleteFileId && activeSnapshot?.deletableFiles[item.source.id] && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => { void onDeleteFileId(activeSnapshot.deletableFiles[item.source.id]).catch(cause => { setFeedbackId(null); setError(cause instanceof Error ? cause.message : "Customer file could not be loaded."); }); }}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
     </article>;
-    })}</div>
+    })}</div>}
+    {condensed && contractId && visible.some(item => item.source.id === contractId) && <CondensedContract item={visible.find(item => item.source.id === contractId)!} onClose={closeContract} />}
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     {shipmentEditor && <ProductShipmentEditor item={shipmentEditor.item} product={shipmentEditor.product} onSave={onAction} onClose={() => setShipmentEditor(null)} />}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || orderEditor.item.source.orderEmails} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
-    <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
+    <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence{condensed && <span>One line per customer job · Scroll right for all details</span>}</footer>
   </section>;
 }
 
 export function BackToStatus({ onClick }: { onClick: () => void }) { return <button className={styles.back} type="button" onClick={onClick}><ArrowLeft size={16} /> Back to job status</button>; }
 
-export function JobFinancialStrip({item}:{item:OperationsItem}) {
+function jobFinancialValues(item: OperationsItem): [string, string, string?][] {
   const source=item.source;
   const cogs=orderCostTotal(item) ?? (source.row || source.quote ? null : allocatedOrderCost(orderCostParent(item)?.meta));const installation=installationCost(source.row, source.quote); const install=installation.amount;
   const profit=source.total!==null && cogs!==null && install!==null ? source.total-cogs-install : null;
   const margin=source.total!==null && source.total>0 && cogs!==null ? (source.total-cogs)/source.total*100 : null;
   const values:[string,string,string?][]=[['Contract total',source.total===null?'—':currency(source.total)],['Deposit collected',source.depositReceived===null?'—':currency(source.depositReceived)],['Balance due',source.balanceOutstanding===null?'—':currency(source.balanceOutstanding)],['Cost of goods',cogs===null?'—':currency(cogs)],['Installation cost',install===null?'—':currency(install),installation.source==='invoice'?'MTS invoice':install===null?'Estimate needs details':'Estimate'],['Profit',profit===null?'—':currency(profit),'Before buyout'],['Margin',margin===null?'—':`${margin.toFixed(1)}%`,'Contract less COGS'],['10% buyout',source.total===null?'—':currency(source.total*.1),'Of contract total']];
-  return <section aria-label={`Finances for ${source.customerName}`} className={styles.financialStrip}><div className={styles.financialMetrics}>{values.map(([label,value,note])=><div key={label}><span>{label}</span><strong className={label==='Profit'?styles.completeText:undefined}>{value}</strong>{note&&<small>{note}</small>}</div>)}</div></section>;
+  return values;
+}
+
+function CondensedContract({ item, onClose }: { item: OperationsItem; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { dialog.current?.showModal(); }, []);
+  function close() { dialog.current?.close(); onClose(); }
+  return <dialog ref={dialog} className={styles.condensedContract} aria-label={`Contract for ${item.source.customerName}`} onCancel={event => { event.preventDefault(); close(); }}>
+    <div id={`job-contract-${item.source.id}`}><InlineJobContract url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={close} /></div>
+  </dialog>;
+}
+
+export function JobFinancialStrip({item}:{item:OperationsItem}) {
+  const values = jobFinancialValues(item);
+  return <section aria-label={`Finances for ${item.source.customerName}`} className={styles.financialStrip}><div className={styles.financialMetrics}>{values.map(([label,value,note])=><div key={label}><span>{label}</span><strong className={label==='Profit'?styles.completeText:undefined}>{value}</strong>{note&&<small>{note}</small>}</div>)}</div></section>;
 }
