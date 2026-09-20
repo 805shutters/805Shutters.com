@@ -16,6 +16,17 @@ export function ultimateCommon(s: SelectionContext): SelectionRecord | null {
   return ultimateCommonId(s) && record && typeof record === "object" && !Array.isArray(record) ? record as SelectionRecord : null;
 }
 
+/** Form feedback can reuse a matching server snapshot; pricing always rebuilds it. */
+export function ultimateSavedCommonForDisplay(configuration: Record<string, unknown>, saved: Record<string, unknown> | undefined, width: number, height: number, quantity: number): Record<string, unknown> {
+  if (saved?.productId !== "faux_wood" || saved.widthInches !== width || saved.heightInches !== height || saved.quantity !== quantity) return {};
+  const c = saved.configuration as Record<string, unknown> | undefined;
+  if (!c || !group(configuration.ultimate_common_group)) return {};
+  const keys = ["ultimate_common_group", "ultimate_common_position", "ultimate_common_gap_after", "ultimate_valance_width_inches", "ultimate_keystone_count", "ultimate_keystone_layout", "ultimate_keystone_location_1", "ultimate_keystone_location_2", "ultimate_keystone_location_3"];
+  if (keys.some(key => String(c[key] ?? "") !== String(configuration[key] ?? ""))) return {};
+  const common = c[ULTIMATE_COMMON_KEY];
+  return common && typeof common === "object" && !Array.isArray(common) ? { [ULTIMATE_COMMON_KEY]: common } : {};
+}
+
 type Line = { lineId: string; selection: SelectionContext };
 /** Rebuild order-level relationships from selected lines; ignore all incoming derived records. */
 export function deriveUltimateAssemblies(lines: readonly Line[]): ValidationIssue[] {

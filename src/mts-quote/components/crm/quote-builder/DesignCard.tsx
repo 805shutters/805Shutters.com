@@ -1,6 +1,8 @@
 import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
+import { ultimateSavedCommonForDisplay } from "@/lib/quote-v2/norman-ultimate-assemblies";
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
 import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
+import { normanBlindDraftCatalog } from "@/lib/quote-v2/norman-blind-draft-preview";
 import { NormanSmartfoldChargingOptions } from "@/components/crm/NormanSmartfoldChargingOptions";
 import { NormanShutterPanelOptions } from "@/components/crm/NormanShutterPanelOptions";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
@@ -12065,7 +12067,7 @@ function ShadesAndBlindsOptions({
           },
           { key: "valance", label: "Valance", field: "valance", type: "buttons", options: ["No Valance", "Designer Crown", "Contempo", "Linear"] },
           ...(authoritativeV2 ? [
-            select("wood_wand_drop","Wand Drop",woodWandChoices(measurementToInches(_lineItem.height_whole,_lineItem.height_fraction))),
+            select("wood_wand_drop","Wand Drop",woodWandChoices(measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),normanBlindDraftCatalog("wood_blinds").catalogAsOf)),
             select("wood_common_group","Common Valance Group",["None","1","2","3","4","5","6","7","8","9","10"]),
             ...(optionsJson.wood_common_group&&optionsJson.wood_common_group!=="None"?[select("wood_common_position","Blind Position from Left",["1","2","3","4"]),number("wood_common_gap_after","Gap after This Blind",0,12)]:[]),
             select("wood_matching_group","Side-by-Side Matching Group",["None","1","2","3","4","5","6","7","8","9","10"]),
@@ -12303,14 +12305,19 @@ function ShadesAndBlindsOptions({
     configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,shade_type:design?.shade_type??null,motor_type:design?.motor_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   })?.issues ?? [] : [];
   const woodIssues = authoritativeV2 && productType === "Wood Blinds" ? validateNormanFamilyRules({
-    productId:"wood_blinds",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
+    productId:"wood_blinds",manufacturerId:"Norman",...normanBlindDraftCatalog("wood_blinds"),programId:String(optionsJson.fabric_program_id??""),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,...woodSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartprivacyIssues = authoritativeV2 && productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? validateNormanFamilyRules({
-    productId:"smartprivacy_faux",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+    productId:"smartprivacy_faux",manufacturerId:"Norman",...normanBlindDraftCatalog("smartprivacy_faux"),programId:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,faux_blind_widths_inches:Number(optionsJson.faux_blind_count)===3?[1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])):undefined,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
+  const ultimateFauxIssues = authoritativeV2 && productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" ? validateNormanFamilyRules({
+    productId:"faux_wood",manufacturerId:"Norman",...normanBlindDraftCatalog("faux_wood"),programId:String(optionsJson.fabric_program_id??""),
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,...ultimateSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),faux_blind_widths_inches:Number(optionsJson.faux_blind_count)===3?[1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])):undefined,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const gridOptions = getGridOptions();
   const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context),...validateNormanShadeMotorization(context).filter(i=>i.severity==="hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.startsWith("smartdrape.accessory."))])({
@@ -12837,6 +12844,7 @@ function ShadesAndBlindsOptions({
       {romanHardwareIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{romanHardwareIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {woodIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{woodIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartprivacyIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartprivacyIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
+      {ultimateFauxIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{ultimateFauxIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
