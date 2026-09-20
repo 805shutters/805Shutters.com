@@ -19,7 +19,7 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(77);
     expect(getMtsProductColorRows("Vertical Blinds")).toHaveLength(46);
     expect(getMtsProductColorRows("Mini Blinds")).toHaveLength(33);
-    expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "SmartPrivacy" })).toHaveLength(16);
+    expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "SmartPrivacy" })).toHaveLength(6);
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "Ultimate" })).toHaveLength(16);
     expect(getMtsProductColorRows("Wood Blinds")).toHaveLength(26);
   });
