@@ -12,7 +12,7 @@ const finite = (v: unknown) => v !== "" && v != null && Number.isFinite(Number(v
 
 /** Exact printed mounting tables; null is an unavailable or unresolved table cell. */
 export function honeycombMounting(s: SelectionContext) {
-  if (!["honeycomb", "vertical_honeycomb"].includes(s.productId) || !/norman-(?:vertical-)?honeycomb-mounting-2026-09-20-r[12]$/.test(s.catalogVersion)) return null;
+  if (!["honeycomb", "vertical_honeycomb"].includes(s.productId) || !/norman-(?:vertical-)?honeycomb-mounting-2026-09-20-r[123]$/.test(s.catalogVersion)) return null;
   const c = s.configuration;
   const inside = normalizeIdentity(c.mount_type) === "inside mount";
   if (!inside) return null;

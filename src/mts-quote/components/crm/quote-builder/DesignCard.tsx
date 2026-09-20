@@ -9627,6 +9627,9 @@ function ShadesAndBlindsOptions({
         nextJson.non_operable = "Yes";
       } else {
         nextJson.specialty_shape = null;
+        nextJson.specialty_net_width_inches = null;
+        nextJson.specialty_net_height_inches = null;
+        nextJson.specialty_net_measurements_confirmed = null;
         nextJson.specialty_leg_height = null;
         nextJson.specialty_left_leg_height = null;
         nextJson.specialty_right_leg_height = null;
@@ -9965,12 +9968,18 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Honeycomb Shades" && ["json:specialty_net_width_inches", "json:specialty_net_height_inches", "json:specialty_leg_height", "json:specialty_left_leg_height", "json:specialty_right_leg_height"].includes(field)) {
+      onUpdateFields({options_json:{...currentJson,[field.slice(5)]:value,specialty_net_measurements_confirmed:null}});
+      return;
+    }
+
     if (productType === "Honeycomb Shades" && field === "json:specialty_shape") {
       const shape = typeof value === "string" ? value : "";
       onUpdateFields({
         options_json: {
           ...currentJson,
           specialty_shape: value,
+          specialty_net_measurements_confirmed: null,
           non_operable: authoritativeV2 ? "Yes" : currentJson.non_operable,
           ...(honeycombSpecialtyShapeNeedsLegHeight(shape)
             ? {}
@@ -11511,6 +11520,11 @@ function ShadesAndBlindsOptions({
             options: HONEYCOMB_SPECIALTY_SHAPES,
           });
           if (authoritativeV2) {
+            options.push(
+              {key:"specialty_net_width_inches",label:"Finished Net Shade Width",field:"json:specialty_net_width_inches",type:"number",min:0,step:"0.0625",unit:'"'},
+              {key:"specialty_net_height_inches",label:"Finished Net Shade Height",field:"json:specialty_net_height_inches",type:"number",min:0,step:"0.0625",unit:'"'},
+              {key:"specialty_net_measurements_confirmed",label:"Net Shade and Leg Measurements Confirmed",field:"json:specialty_net_measurements_confirmed",type:"yes-no",noFirst:true},
+            );
             options.push({
               key: "non_operable",
               label: "Non-Operable",
@@ -11522,7 +11536,7 @@ function ShadesAndBlindsOptions({
             options.push(
               {
                 key: "specialty_left_leg_height",
-                label: "Left Leg Height",
+                label: "Net Left Leg Height",
                 field: "json:specialty_left_leg_height",
                 type: "number",
                 min: 1,
@@ -11532,7 +11546,7 @@ function ShadesAndBlindsOptions({
               },
               {
                 key: "specialty_right_leg_height",
-                label: "Right Leg Height",
+                label: "Net Right Leg Height",
                 field: "json:specialty_right_leg_height",
                 type: "number",
                 min: 1,
@@ -11544,7 +11558,7 @@ function ShadesAndBlindsOptions({
           } else if (honeycombSpecialtyShapeNeedsLegHeight(specialtyShape)) {
             options.push({
               key: "specialty_leg_height",
-              label: "Leg Height",
+              label: "Net Leg Height",
               field: "json:specialty_leg_height",
               type: "number",
               min: 1,

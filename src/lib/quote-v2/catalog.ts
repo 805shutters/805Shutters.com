@@ -50,7 +50,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "citylights_aluminum" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-citylights-2026-09-19-r2`;
   if (productId === "faux_wood" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-ultimate-faux-2026-09-19-r2`;
   if (productId === "smartprivacy_faux" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartprivacy-2026-09-19-r1`;
-  if (productId === "honeycomb" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r2`;
+  if (productId === "honeycomb" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r3`;
   if (["honeycomb", "vertical_honeycomb"].includes(productId) && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-${productId === "vertical_honeycomb" ? "vertical-" : ""}honeycomb-mounting-2026-09-20-r1`;
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`;
   if (productId === "honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`;
@@ -97,6 +97,7 @@ export function isRecognizedQuoteV2Catalog(
   asOf: string,
   catalogVersion: string,
 ): boolean {
+  if (productId === "honeycomb" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r2`) return true;
   if (productId === "honeycomb" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r1`) return true;
   if (productId === "honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`) return true;
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`) return true;

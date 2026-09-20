@@ -4,7 +4,7 @@ import { sourceProvenance } from "./source-manifest";
 
 /** Motorization Guide p10: charging-port recess is distinct from bracket mounting depth. */
 export function honeycombChargingClearance(s: SelectionContext) {
-  if (s.productId !== "honeycomb" || !/norman-honeycomb-mounting-2026-09-20-r2$/.test(s.catalogVersion)) return null;
+  if (s.productId !== "honeycomb" || !/norman-honeycomb-mounting-2026-09-20-r[23]$/.test(s.catalogVersion)) return null;
   const c=s.configuration;
   if (!/motor/i.test(String(c.lift_system)) || !normalizeIdentity(c.motor_type).includes("charging wand")) return null;
   const number=(v:unknown)=>v!==""&&v!=null&&Number.isFinite(Number(v))?Number(v):null;

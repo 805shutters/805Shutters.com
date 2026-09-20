@@ -2290,6 +2290,21 @@ function validateSpecialtyShape(
 ): ValidationIssue[] {
   if (system !== "specialty_shape") return [];
   const issues: ValidationIssue[] = [];
+  // Page 39 limits are NET sizes; page 7 edge deductions do not establish
+  // a universal bounding-box conversion for every curved shape.
+  if (/norman-honeycomb-mounting-2026-09-20-r3$/.test(context.catalogVersion)) {
+    const netWidth = numberConfig(context, "specialty_net_width_inches");
+    const netHeight = numberConfig(context, "specialty_net_height_inches");
+    if (!booleanConfig(context, "specialty_net_measurements_confirmed") || netWidth === null || netHeight === null || netWidth <= 0 || netHeight <= 0 || netWidth > context.widthInches || netHeight > context.heightInches) {
+      return [issue("honeycomb.matrix.specialty.net_measurements", 39,
+        { orderedWidth: context.widthInches, orderedHeight: context.heightInches, netWidth, netHeight },
+        "Enter and confirm the finished net shade width, height and any leg measurements. Net dimensions must be positive and cannot exceed the ordered opening. The guide's shape limits apply to net sizes; opening dimensions remain the pricing inputs.")];
+    }
+    context = { ...context, widthInches: netWidth, heightInches: netHeight };
+    if (normalizeHoneycombFabricClass(stringConfig(context, "fabric_collection")) === "windsong" && (netWidth > 86 || netHeight > 86)) {
+      issues.push(issue("honeycomb.matrix.specialty.windsong_net_max", 39, { netWidth, netHeight }, "Windsong specialty shapes cannot exceed 86 inches in net width or height."));
+    }
+  }
   const shape = compact(stringConfig(context, "specialty_shape"));
   const mount = normalizedMount(context);
   if (mount !== "inside")
