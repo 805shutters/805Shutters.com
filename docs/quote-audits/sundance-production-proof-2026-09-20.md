@@ -34,3 +34,14 @@ The same draft now contains five lines. Premier Family Room retains exact **E-M0
 Two more internal lines were saved and reopened in 805-0335. Hall retains **Advantage II 2-inch, Fog 904-101, Crown valance, 36×60**. Before the final selection, Natural FS-411 visibly showed its 5% retail surcharge and trapezoid-bottomrail references. Changing from Natural with Flat valance to Fog cleared Flat and offered only Crown. Foyer retains **1-inch aluminum, 8014 Matte White, 8-Gauge, 36×60**; its 20% retail surcharge reference remains visible after reopening. Both lines remain intentionally unpriced. The seven-line builder reports **Pricing incomplete — 5 windows need pricing**.
 
 This proof exposed a separate list-display defect: the Quotes list still showed the prior 358.01 manual fixture subtotal while the reopened builder correctly withheld a total. The persisted line identity proof passes; list completeness requires a separate fix. None of these values authorize dealer or customer pricing.
+
+## Louvolite family routing and quote-list completeness — production 827159e4
+
+Reloaded public `www.805shutters.com/crm/` after the deployment and opened Quotes. The real persisted-design relation query succeeded; internal unsent draft **805-0335** now displays **Pricing incomplete** in the list instead of its stale $358.01 fixture subtotal.
+
+Before the reload, added two separate 36 × 60-inch unpriced lines and observed Quote saved. After reopening:
+
+- Line 8, Breakfast Nook, Louvolite roller: `ARGENT-CHAMPAGNE B/O-80`, **Argent (Blackout) · Group D**, exact color ID `sundance_louvolite_roller:dealer:29e2f862f6db`, collection `sundance_louvolite_roller:collection:c8070d50c3df`.
+- Line 9, Primary Bedroom, Louvolite Europanels: same exact dealer label, **Argent Blackout · Group E**, exact color ID `sundance_louvolite_europanels:dealer:29e2f862f6db`, collection `sundance_louvolite_europanels:collection:2be9a98bafa7`.
+
+The family-specific values survived the full reload/reopen. Builder reads **Pricing incomplete / Total unavailable / 7 windows need pricing**. The draft remains explicitly internal and unsent; existing manual fixture prices are not pricing authority. This proves identity and incomplete-price persistence, not dealer account pricing or full configuration compatibility.
