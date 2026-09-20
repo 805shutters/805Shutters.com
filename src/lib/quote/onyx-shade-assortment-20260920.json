@@ -1,0 +1,3196 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "account": "CHE01",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "scope": "Visible assortment only. Full grids, limits, conditional compatibility and effective schedule unresolved.",
+  "fabrics": [
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Amelia BO_ZG601",
+      "colors": [
+        {
+          "id": "20205BO_01",
+          "name": "White"
+        },
+        {
+          "id": "20205BO_02",
+          "name": "Ivory"
+        },
+        {
+          "id": "20205BO_03",
+          "name": "Cream"
+        },
+        {
+          "id": "20205BO_04",
+          "name": "Beige"
+        },
+        {
+          "id": "20205BO_05",
+          "name": "Ash"
+        },
+        {
+          "id": "20205BO_06",
+          "name": "French Grey"
+        },
+        {
+          "id": "20205BO_07",
+          "name": "Grey"
+        },
+        {
+          "id": "20205BO_08",
+          "name": "Anthracite"
+        },
+        {
+          "id": "20205BO_09",
+          "name": "Coffee"
+        },
+        {
+          "id": "20205BO_10",
+          "name": "Black"
+        },
+        {
+          "id": "20205BO_11",
+          "name": "Olive"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Amelia LF_20205",
+      "colors": [
+        {
+          "id": "20205_01",
+          "name": "White"
+        },
+        {
+          "id": "20205_02",
+          "name": "Ivory"
+        },
+        {
+          "id": "20205_03",
+          "name": "Cream"
+        },
+        {
+          "id": "20205_04",
+          "name": "Beige"
+        },
+        {
+          "id": "20205_05",
+          "name": "Ash"
+        },
+        {
+          "id": "20205_06",
+          "name": "French Grey"
+        },
+        {
+          "id": "20205_07",
+          "name": "Grey"
+        },
+        {
+          "id": "20205_08",
+          "name": "Anthracite"
+        },
+        {
+          "id": "20205_09",
+          "name": "Coffee"
+        },
+        {
+          "id": "20205_10",
+          "name": "Black"
+        },
+        {
+          "id": "20205_11",
+          "name": "Olive"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Baltimore BO_C137BO",
+      "colors": [
+        {
+          "id": "C137BO_01",
+          "name": "Procelain"
+        },
+        {
+          "id": "C137BO_02",
+          "name": "Cream"
+        },
+        {
+          "id": "C137BO_03",
+          "name": "Putty"
+        },
+        {
+          "id": "C137BO_04",
+          "name": "Birch"
+        },
+        {
+          "id": "C137BO_05",
+          "name": "Platinum"
+        },
+        {
+          "id": "C137BO_06",
+          "name": "Pebble"
+        },
+        {
+          "id": "C137BO_07",
+          "name": "Copper"
+        },
+        {
+          "id": "C137BO_08",
+          "name": "Anthracite"
+        },
+        {
+          "id": "C137BO_09",
+          "name": "Bronce"
+        },
+        {
+          "id": "C137BO_10",
+          "name": "Flint"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Baltimore LF_C137",
+      "colors": [
+        {
+          "id": "C137_01",
+          "name": "Procelain"
+        },
+        {
+          "id": "C137_02",
+          "name": "Cream"
+        },
+        {
+          "id": "C137_03",
+          "name": "Putty"
+        },
+        {
+          "id": "C137_04",
+          "name": "Birch"
+        },
+        {
+          "id": "C137_05",
+          "name": "Platinum"
+        },
+        {
+          "id": "C137_06",
+          "name": "Pebble"
+        },
+        {
+          "id": "C137_07",
+          "name": "Copper"
+        },
+        {
+          "id": "C137_08",
+          "name": "Anthracite"
+        },
+        {
+          "id": "C137_09",
+          "name": "Bronce"
+        },
+        {
+          "id": "C137_10",
+          "name": "Flint"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Bermuda BO_C147BO",
+      "colors": [
+        {
+          "id": "C147BO_00",
+          "name": "Snow"
+        },
+        {
+          "id": "C147BO_01",
+          "name": "Stella"
+        },
+        {
+          "id": "C147BO_02",
+          "name": "Oyster"
+        },
+        {
+          "id": "C147BO_03",
+          "name": "Pearl"
+        },
+        {
+          "id": "C147BO_04",
+          "name": "Silver"
+        },
+        {
+          "id": "C147BO_05",
+          "name": "Terrace"
+        },
+        {
+          "id": "C147BO_06",
+          "name": "Mercury"
+        },
+        {
+          "id": "C147BO_07",
+          "name": "Platinum"
+        },
+        {
+          "id": "C147BO_08",
+          "name": "Chestnut"
+        },
+        {
+          "id": "C147BO_09",
+          "name": "Toffee"
+        },
+        {
+          "id": "C147BO_10",
+          "name": "Grey"
+        },
+        {
+          "id": "C147BO_11",
+          "name": "Basalt"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Bermuda LF_C147",
+      "colors": [
+        {
+          "id": "C147_00",
+          "name": "Snow"
+        },
+        {
+          "id": "C147_01",
+          "name": "Stella"
+        },
+        {
+          "id": "C147_02",
+          "name": "Oyster"
+        },
+        {
+          "id": "C147_03",
+          "name": "Pearl"
+        },
+        {
+          "id": "C147_04",
+          "name": "Silver"
+        },
+        {
+          "id": "C147_05",
+          "name": "Terrace"
+        },
+        {
+          "id": "C147_06",
+          "name": "Mercury"
+        },
+        {
+          "id": "C147_07",
+          "name": "Platinum"
+        },
+        {
+          "id": "C147_08",
+          "name": "Chestnut"
+        },
+        {
+          "id": "C147_09",
+          "name": "Toffee"
+        },
+        {
+          "id": "C147_10",
+          "name": "Grey"
+        },
+        {
+          "id": "C147_11",
+          "name": "Basalt"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Bistro BO_C150BO",
+      "colors": [
+        {
+          "id": "C150BO_01",
+          "name": "Ice White"
+        },
+        {
+          "id": "C150BO_02",
+          "name": "Cloud"
+        },
+        {
+          "id": "C150BO_03",
+          "name": "Whisper"
+        },
+        {
+          "id": "C150BO_04",
+          "name": "Mint Grey"
+        },
+        {
+          "id": "C150BO_05",
+          "name": "Primrose"
+        },
+        {
+          "id": "C150BO_06",
+          "name": "Cadet Grey"
+        },
+        {
+          "id": "C150BO_07",
+          "name": "Mica"
+        },
+        {
+          "id": "C150BO_08",
+          "name": "Expresso"
+        },
+        {
+          "id": "C150BO_09",
+          "name": "Charcoal"
+        },
+        {
+          "id": "C150BO_10",
+          "name": "Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Bistro LF_C150",
+      "colors": [
+        {
+          "id": "C150_01",
+          "name": "Ice White"
+        },
+        {
+          "id": "C150_02",
+          "name": "Cloud"
+        },
+        {
+          "id": "C150_03",
+          "name": "Whisper"
+        },
+        {
+          "id": "C150_04",
+          "name": "Mint Grey"
+        },
+        {
+          "id": "C150_05",
+          "name": "Primrose"
+        },
+        {
+          "id": "C150_06",
+          "name": "Cadet Grey"
+        },
+        {
+          "id": "C150_07",
+          "name": "Mica"
+        },
+        {
+          "id": "C150_08",
+          "name": "Expresso"
+        },
+        {
+          "id": "C150_09",
+          "name": "Charcoal"
+        },
+        {
+          "id": "C150_10",
+          "name": "Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Cambria BO_C163BO",
+      "colors": [
+        {
+          "id": "20296BO_01",
+          "name": "Cotton"
+        },
+        {
+          "id": "20296BO_02",
+          "name": "Linen"
+        },
+        {
+          "id": "20296BO_04",
+          "name": "Oatmeal"
+        },
+        {
+          "id": "20296BO_13",
+          "name": "Khaki"
+        },
+        {
+          "id": "20296BO_15",
+          "name": "Steel"
+        },
+        {
+          "id": "20296BO_16",
+          "name": "Coal"
+        },
+        {
+          "id": "20296BO_17",
+          "name": "Sand"
+        },
+        {
+          "id": "20296BO_18",
+          "name": "Dune"
+        },
+        {
+          "id": "20296BO_19",
+          "name": "Olive"
+        },
+        {
+          "id": "20296BO_20",
+          "name": "Celeste"
+        },
+        {
+          "id": "20296BO_21",
+          "name": "Indigo"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Cambria LF_20296",
+      "colors": [
+        {
+          "id": "20296_01",
+          "name": "Cotton"
+        },
+        {
+          "id": "20296_02",
+          "name": "Linen"
+        },
+        {
+          "id": "20296_04",
+          "name": "Oatmeal"
+        },
+        {
+          "id": "20296_13",
+          "name": "Khaki"
+        },
+        {
+          "id": "20296_15",
+          "name": "Steel"
+        },
+        {
+          "id": "20296_16",
+          "name": "Coal"
+        },
+        {
+          "id": "20296_17",
+          "name": "Sand"
+        },
+        {
+          "id": "20296_18",
+          "name": "Dune"
+        },
+        {
+          "id": "20296_19",
+          "name": "Olive"
+        },
+        {
+          "id": "20296_20",
+          "name": "Celeste"
+        },
+        {
+          "id": "20296_21",
+          "name": "Indigo"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Francis BO_C151BO",
+      "colors": [
+        {
+          "id": "C151BO_01",
+          "name": "Swan"
+        },
+        {
+          "id": "C151BO_02",
+          "name": "Ivory"
+        },
+        {
+          "id": "C151BO_03",
+          "name": "Stella"
+        },
+        {
+          "id": "C151BO_04",
+          "name": "Cream"
+        },
+        {
+          "id": "C151BO_05",
+          "name": "Linen"
+        },
+        {
+          "id": "C151BO_06",
+          "name": "Beige"
+        },
+        {
+          "id": "C151BO_07",
+          "name": "Dove"
+        },
+        {
+          "id": "C151BO_08",
+          "name": "Limestone"
+        },
+        {
+          "id": "C151BO_09",
+          "name": "Cadet Grey"
+        },
+        {
+          "id": "C151BO_10",
+          "name": "Earth"
+        },
+        {
+          "id": "C151BO_11",
+          "name": "Coal"
+        },
+        {
+          "id": "C151BO_12",
+          "name": "Raven"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Francis LF_C151",
+      "colors": [
+        {
+          "id": "C151_01",
+          "name": "Swan"
+        },
+        {
+          "id": "C151_02",
+          "name": "Ivory"
+        },
+        {
+          "id": "C151_03",
+          "name": "Stella"
+        },
+        {
+          "id": "C151_04",
+          "name": "Cream"
+        },
+        {
+          "id": "C151_05",
+          "name": "Linen"
+        },
+        {
+          "id": "C151_06",
+          "name": "Beige"
+        },
+        {
+          "id": "C151_07",
+          "name": "Dove"
+        },
+        {
+          "id": "C151_08",
+          "name": "Limestone"
+        },
+        {
+          "id": "C151_09",
+          "name": "Cadet Grey"
+        },
+        {
+          "id": "C151_10",
+          "name": "Earth"
+        },
+        {
+          "id": "C151_11",
+          "name": "Coal"
+        },
+        {
+          "id": "C151_12",
+          "name": "Raven"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Madrid BO_C138BO",
+      "colors": [
+        {
+          "id": "C138BO_00",
+          "name": "Chalk"
+        },
+        {
+          "id": "C138BO_01",
+          "name": "Sand"
+        },
+        {
+          "id": "C138BO_02",
+          "name": "Mint"
+        },
+        {
+          "id": "C138BO_03",
+          "name": "Papyrus"
+        },
+        {
+          "id": "C138BO_04",
+          "name": "Slat"
+        },
+        {
+          "id": "C138BO_05",
+          "name": "Smoke"
+        },
+        {
+          "id": "C138BO_07",
+          "name": "Navy"
+        },
+        {
+          "id": "C138BO_0A",
+          "name": "Oyster"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Madrid LF_C138",
+      "colors": [
+        {
+          "id": "C138_00",
+          "name": "Chalk"
+        },
+        {
+          "id": "C138_01",
+          "name": "Sand"
+        },
+        {
+          "id": "C138_02",
+          "name": "Mint"
+        },
+        {
+          "id": "C138_03",
+          "name": "Papyrus"
+        },
+        {
+          "id": "C138_04",
+          "name": "Slat"
+        },
+        {
+          "id": "C138_05",
+          "name": "Smoke"
+        },
+        {
+          "id": "C138_07",
+          "name": "Navy"
+        },
+        {
+          "id": "C138_0A",
+          "name": "Oyster"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Prestige BO_C127BO",
+      "colors": [
+        {
+          "id": "C127BO_01",
+          "name": "Chalk"
+        },
+        {
+          "id": "C127BO_02",
+          "name": "Cream"
+        },
+        {
+          "id": "C127BO_03",
+          "name": "Birch"
+        },
+        {
+          "id": "C127BO_04",
+          "name": "Limestone"
+        },
+        {
+          "id": "C127BO_05",
+          "name": "Papyrus"
+        },
+        {
+          "id": "C127BO_06",
+          "name": "Stone Grey"
+        },
+        {
+          "id": "C127BO_07",
+          "name": "Pebble"
+        },
+        {
+          "id": "C127BO_08",
+          "name": "Ash"
+        },
+        {
+          "id": "C127BO_09",
+          "name": "Canvas Charcoal"
+        },
+        {
+          "id": "C127BO_10",
+          "name": "Bliss Onyx"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Prestige LF_C127",
+      "colors": [
+        {
+          "id": "C127_01",
+          "name": "Chalk"
+        },
+        {
+          "id": "C127_02",
+          "name": "Cream"
+        },
+        {
+          "id": "C127_03",
+          "name": "Birch"
+        },
+        {
+          "id": "C127_04",
+          "name": "Limestone"
+        },
+        {
+          "id": "C127_05",
+          "name": "Papyrus"
+        },
+        {
+          "id": "C127_06",
+          "name": "Stone Grey"
+        },
+        {
+          "id": "C127_07",
+          "name": "Pebble"
+        },
+        {
+          "id": "C127_08",
+          "name": "Ash"
+        },
+        {
+          "id": "C127_09",
+          "name": "Canvas Charcoal"
+        },
+        {
+          "id": "C127_10",
+          "name": "Bliss Onyx"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Summerland BO_C156BO",
+      "colors": [
+        {
+          "id": "C156BO_01",
+          "name": "Flax"
+        },
+        {
+          "id": "C156BO_02",
+          "name": "Sand"
+        },
+        {
+          "id": "C156BO_03",
+          "name": "Echo Dune"
+        },
+        {
+          "id": "C156BO_04",
+          "name": "Blend Nomad"
+        },
+        {
+          "id": "C156BO_05",
+          "name": "Stone Grey"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Summerland LF_C156",
+      "colors": [
+        {
+          "id": "C156_01",
+          "name": "Flax"
+        },
+        {
+          "id": "C156_02",
+          "name": "Sand"
+        },
+        {
+          "id": "C156_03",
+          "name": "Echo Dune"
+        },
+        {
+          "id": "C156_04",
+          "name": "Blend Nomad"
+        },
+        {
+          "id": "C156_05",
+          "name": "Stone Grey"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Eco Screen LF_135",
+      "colors": [
+        {
+          "id": "135_01",
+          "name": "Cotton"
+        },
+        {
+          "id": "135_02",
+          "name": "Oatmeal"
+        },
+        {
+          "id": "135_03",
+          "name": "Flax"
+        },
+        {
+          "id": "135_04",
+          "name": "Straw"
+        },
+        {
+          "id": "135_07",
+          "name": "Platinum"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Roller",
+      "pattern": "Sheer Vision LF_141",
+      "colors": [
+        {
+          "id": "141_01",
+          "name": "Cotton"
+        },
+        {
+          "id": "141_02",
+          "name": "Mist"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Sunscreen",
+      "pattern": "1% SC-1_s1001",
+      "colors": [
+        {
+          "id": "S1001_01",
+          "name": "Ice White"
+        },
+        {
+          "id": "S1001_02",
+          "name": "White"
+        },
+        {
+          "id": "S1001_03",
+          "name": "Sandstone"
+        },
+        {
+          "id": "S1001_04",
+          "name": "Platinum"
+        },
+        {
+          "id": "S1001_05",
+          "name": "Silver"
+        },
+        {
+          "id": "S1001_06",
+          "name": "Grey"
+        },
+        {
+          "id": "S1001_07",
+          "name": "Mocha"
+        },
+        {
+          "id": "S1001_08",
+          "name": "Linen"
+        },
+        {
+          "id": "S1001_09",
+          "name": "Toffee"
+        },
+        {
+          "id": "S1001_10",
+          "name": "Chocolate"
+        },
+        {
+          "id": "S1001_11",
+          "name": "Onyx"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Sunscreen",
+      "pattern": "3% SC-3_s1003",
+      "colors": [
+        {
+          "id": "S1003_01",
+          "name": "Ice White"
+        },
+        {
+          "id": "S1003_02",
+          "name": "White"
+        },
+        {
+          "id": "S1003_03",
+          "name": "Sandstone"
+        },
+        {
+          "id": "S1003_04",
+          "name": "Platinum"
+        },
+        {
+          "id": "S1003_05",
+          "name": "Silver"
+        },
+        {
+          "id": "S1003_06",
+          "name": "Grey"
+        },
+        {
+          "id": "S1003_07",
+          "name": "Mocha"
+        },
+        {
+          "id": "S1003_08",
+          "name": "Linen"
+        },
+        {
+          "id": "S1003_09",
+          "name": "Toffee"
+        },
+        {
+          "id": "S1003_10",
+          "name": "Chocolate"
+        },
+        {
+          "id": "S1003_11",
+          "name": "Onyx"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Sunscreen",
+      "pattern": "5% SC-5_s1005",
+      "colors": [
+        {
+          "id": "S1005_01",
+          "name": "Ice White"
+        },
+        {
+          "id": "S1005_02",
+          "name": "White"
+        },
+        {
+          "id": "S1005_03",
+          "name": "Sandstone"
+        },
+        {
+          "id": "S1005_04",
+          "name": "Platinum"
+        },
+        {
+          "id": "S1005_05",
+          "name": "Silver"
+        },
+        {
+          "id": "S1005_06",
+          "name": "Grey"
+        },
+        {
+          "id": "S1005_07",
+          "name": "Mocha"
+        },
+        {
+          "id": "S1005_08",
+          "name": "Linen"
+        },
+        {
+          "id": "S1005_09",
+          "name": "Toffee"
+        },
+        {
+          "id": "S1005_10",
+          "name": "Chocolate"
+        },
+        {
+          "id": "S1005_11",
+          "name": "Onyx"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Arcadia BO_A242",
+      "colors": [
+        {
+          "id": "A242_1",
+          "name": "Cloud Meadow"
+        },
+        {
+          "id": "A242_3",
+          "name": "Earthen Cream"
+        },
+        {
+          "id": "A242_9",
+          "name": "Silver Field"
+        },
+        {
+          "id": "A242_10",
+          "name": "Silver Grove"
+        },
+        {
+          "id": "A242_12",
+          "name": "Mist Hallow"
+        },
+        {
+          "id": "A242_15",
+          "name": "Harvest Reed"
+        },
+        {
+          "id": "A242_17",
+          "name": "Timber Brown"
+        },
+        {
+          "id": "A242_19",
+          "name": "Blue Preserve"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Aurelia BO_A288",
+      "colors": [
+        {
+          "id": "A288_5",
+          "name": "Artic Veil"
+        },
+        {
+          "id": "A288_6",
+          "name": "Pale Stone"
+        },
+        {
+          "id": "A288_7",
+          "name": "Silver Whisper"
+        },
+        {
+          "id": "A288_8",
+          "name": "Iron Shadow"
+        },
+        {
+          "id": "A288_9",
+          "name": "Soft Hearth"
+        },
+        {
+          "id": "A288_10",
+          "name": "Beige Glow"
+        },
+        {
+          "id": "A288_11",
+          "name": "Taupe Mist"
+        },
+        {
+          "id": "A288_12",
+          "name": "Wheatwood"
+        },
+        {
+          "id": "A288_13",
+          "name": "Timbershade"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Belmont LF_A247",
+      "colors": [
+        {
+          "id": "A247_1",
+          "name": "Estate White"
+        },
+        {
+          "id": "A247_2",
+          "name": "Crest Cream"
+        },
+        {
+          "id": "A247_3",
+          "name": "Carriage Biege"
+        },
+        {
+          "id": "A247_4",
+          "name": "Saddle Stone"
+        },
+        {
+          "id": "A247_5",
+          "name": "Stable Grey"
+        },
+        {
+          "id": "A247_6",
+          "name": "Derby Slate"
+        },
+        {
+          "id": "A247_7",
+          "name": "Championship Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Coastal Loom LF_A243",
+      "colors": [
+        {
+          "id": "A243_1",
+          "name": "Cream Glaze"
+        },
+        {
+          "id": "A243_2",
+          "name": "Pure White"
+        },
+        {
+          "id": "A243_3",
+          "name": "Mint Whisper"
+        },
+        {
+          "id": "A243_4",
+          "name": "Soft Gray"
+        },
+        {
+          "id": "A243_5",
+          "name": "Warm Stone"
+        },
+        {
+          "id": "A243_7",
+          "name": "Coconut Husk"
+        },
+        {
+          "id": "A243_9",
+          "name": "Iron Gray"
+        },
+        {
+          "id": "A243_10",
+          "name": "Shadow Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Linen Estate LF_A287.1",
+      "colors": [
+        {
+          "id": "A216_10",
+          "name": "Vintage Linen"
+        },
+        {
+          "id": "A216_11",
+          "name": "Stone Loom"
+        },
+        {
+          "id": "A216_12",
+          "name": "Grey Spindle"
+        },
+        {
+          "id": "A216_13",
+          "name": "Stoneforge"
+        },
+        {
+          "id": "A216_8",
+          "name": "Heirloom White"
+        },
+        {
+          "id": "A216_9",
+          "name": "Flaxen Cream"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Millstone BO_A241",
+      "colors": [
+        {
+          "id": "A241_01",
+          "name": "Soft Limestone"
+        },
+        {
+          "id": "A241_02",
+          "name": "Chalkstone White"
+        },
+        {
+          "id": "A241_03",
+          "name": "Pale Clay"
+        },
+        {
+          "id": "A241_05",
+          "name": "Riverstone Grey"
+        },
+        {
+          "id": "A241_06",
+          "name": "Quarry Taupe"
+        },
+        {
+          "id": "A241_07",
+          "name": "Wheat"
+        },
+        {
+          "id": "A241_08",
+          "name": "Earthshade Brown"
+        },
+        {
+          "id": "A241_11",
+          "name": "Charcoal"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Noble Weave LF_A246",
+      "colors": [
+        {
+          "id": "A246_1",
+          "name": "Regal White"
+        },
+        {
+          "id": "A246_2",
+          "name": "Ivory Crest"
+        },
+        {
+          "id": "A246_3",
+          "name": "Pale Sandstone"
+        },
+        {
+          "id": "A246_4",
+          "name": "Harvest Taupe"
+        },
+        {
+          "id": "A246_5",
+          "name": "Silver Strand"
+        },
+        {
+          "id": "A246_6",
+          "name": "Granite Mist"
+        },
+        {
+          "id": "A246_7",
+          "name": "Shadow Steel"
+        },
+        {
+          "id": "A246_8",
+          "name": "Obsidian"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Praire LF_A81",
+      "colors": [
+        {
+          "id": "A81FS_1",
+          "name": "Oatcream"
+        },
+        {
+          "id": "A81FS_2",
+          "name": "Sandstone"
+        },
+        {
+          "id": "A81FS_3",
+          "name": "Wheatfield"
+        },
+        {
+          "id": "A81FS_8",
+          "name": "Wildgrass White"
+        },
+        {
+          "id": "A81FS_9",
+          "name": "Soft Barley"
+        },
+        {
+          "id": "A81FS_10",
+          "name": "Silver Thatch"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Stellar Texture LF_A255",
+      "colors": [
+        {
+          "id": "A255_1",
+          "name": "Lunar White"
+        },
+        {
+          "id": "A255_2",
+          "name": "Astral Ivory"
+        },
+        {
+          "id": "A255_3",
+          "name": "Moonlit Beige"
+        },
+        {
+          "id": "A255_4",
+          "name": "Nova Beige"
+        },
+        {
+          "id": "A255_5",
+          "name": "Cosmic Umber"
+        },
+        {
+          "id": "A255_6",
+          "name": "Stellar Pearl"
+        },
+        {
+          "id": "A255_8Starlight",
+          "name": "Silver"
+        },
+        {
+          "id": "A255_10",
+          "name": "Eclipse Grey"
+        }
+      ]
+    },
+    {
+      "portalProgram": "signature",
+      "product": "Zebra",
+      "pattern": "Terra LF_A287.2",
+      "colors": [
+        {
+          "id": "A216_14",
+          "name": "Soft Sand"
+        },
+        {
+          "id": "A216_15",
+          "name": "Golden Dune"
+        },
+        {
+          "id": "A216_16",
+          "name": "Dessert Gold"
+        },
+        {
+          "id": "A216_17",
+          "name": "Riverstone"
+        },
+        {
+          "id": "A216_18",
+          "name": "Shaded Slate"
+        },
+        {
+          "id": "A216_19",
+          "name": "Mossed Sandstone"
+        },
+        {
+          "id": "A216_20",
+          "name": "Basalt"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Fabric Blinds",
+      "pattern": "2\" Light Filtering_FB_PG1",
+      "patternId": "FB_PG1",
+      "colors": [
+        {
+          "id": "FB_PG1_50016",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG1_50017",
+          "name": "chestnut"
+        },
+        {
+          "id": "FB_PG1_50018",
+          "name": "Gray Mood"
+        },
+        {
+          "id": "FB_PG1_50023",
+          "name": "Dusk Blue"
+        },
+        {
+          "id": "FB_PG1_50029",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG1_50031",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG1_50032",
+          "name": "chalk beige"
+        },
+        {
+          "id": "FB_PG1_50100",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG1_50100J897",
+          "name": "Black and White"
+        },
+        {
+          "id": "FB_PG1_50113",
+          "name": "Off white"
+        },
+        {
+          "id": "FB_PG1_50125",
+          "name": "vanilla"
+        },
+        {
+          "id": "FB_PG1_50206",
+          "name": "peach"
+        },
+        {
+          "id": "FB_PG1_50206J897",
+          "name": "Peach and Black"
+        },
+        {
+          "id": "FB_PG1_50295",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG1_50302",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG1_50303",
+          "name": "Kelp"
+        },
+        {
+          "id": "FB_PG1_50323",
+          "name": "Boulder"
+        },
+        {
+          "id": "FB_PG1_50334-1",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG1_50336",
+          "name": "Agilawood"
+        },
+        {
+          "id": "FB_PG1_50349",
+          "name": "Crushed Berry"
+        },
+        {
+          "id": "FB_PG1_50357",
+          "name": "Coral"
+        },
+        {
+          "id": "FB_PG1_50357J897",
+          "name": "Praline and Black"
+        },
+        {
+          "id": "FB_PG1_50360",
+          "name": "Beigegrau"
+        },
+        {
+          "id": "FB_PG1_50370",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG1_50375",
+          "name": "Cub"
+        },
+        {
+          "id": "FB_PG1_50376",
+          "name": "Beluga"
+        },
+        {
+          "id": "FB_PG1_50378",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG1_50417J897",
+          "name": "Canary and Black"
+        },
+        {
+          "id": "FB_PG1_50430-1",
+          "name": "Maple"
+        },
+        {
+          "id": "FB_PG1_50430J897",
+          "name": "Wheat and Black"
+        },
+        {
+          "id": "FB_PG1_50433",
+          "name": "Olive"
+        },
+        {
+          "id": "FB_PG2_50446",
+          "name": "Oak"
+        },
+        {
+          "id": "FB_PG1_50447",
+          "name": "Dijon"
+        },
+        {
+          "id": "FB_PG1_50504",
+          "name": "Moss"
+        },
+        {
+          "id": "FB_PG1_50515",
+          "name": "Aspen Green"
+        },
+        {
+          "id": "FB_PG1_50601J897",
+          "name": "Blue Ice and Black"
+        },
+        {
+          "id": "FB_PG1_50627",
+          "name": "Providence Blue"
+        },
+        {
+          "id": "FB_PG1_50701",
+          "name": "Branch Water"
+        },
+        {
+          "id": "FB_PG1_50711",
+          "name": "Maltose"
+        },
+        {
+          "id": "FB_PG1_50712",
+          "name": "Almond"
+        },
+        {
+          "id": "FB_PG1_50714",
+          "name": "Pamirs"
+        },
+        {
+          "id": "FB_PG1_50722",
+          "name": "Plant Soot"
+        },
+        {
+          "id": "FB_PG1_50723",
+          "name": "Water Caltrop"
+        },
+        {
+          "id": "FB_PG1_50731",
+          "name": "Toffee"
+        },
+        {
+          "id": "FB_PG1_50732",
+          "name": "Mugwort"
+        },
+        {
+          "id": "FB_PG1_50733",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG1_50734",
+          "name": "Alabaster"
+        },
+        {
+          "id": "FB_PG1_50736",
+          "name": "Glacier"
+        },
+        {
+          "id": "FB_PG1_50737",
+          "name": "Cyanus"
+        },
+        {
+          "id": "FB_PG1_50751",
+          "name": "Toffee"
+        },
+        {
+          "id": "FB_PG1_50752",
+          "name": "Mugwort"
+        },
+        {
+          "id": "FB_PG1_50753",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG1_50754",
+          "name": "Alabaster"
+        },
+        {
+          "id": "FB_PG1_50756",
+          "name": "Glacier"
+        },
+        {
+          "id": "FB_PG1_50757",
+          "name": "Cyanus"
+        },
+        {
+          "id": "FB_PG1_50821",
+          "name": "Reed Catkins"
+        },
+        {
+          "id": "FB_PG1_50822",
+          "name": "Silver"
+        },
+        {
+          "id": "FB_PG1_50823",
+          "name": "Grey"
+        },
+        {
+          "id": "FB_PG1_50895",
+          "name": "Turbulence"
+        },
+        {
+          "id": "FB_PG1_50897",
+          "name": "Black"
+        },
+        {
+          "id": "FB_PG1_50901",
+          "name": "Moon Silver"
+        },
+        {
+          "id": "FB_PG1_50902",
+          "name": "Luxury Gold"
+        },
+        {
+          "id": "FB_PG1_50903",
+          "name": "Rose Gold"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Fabric Blinds",
+      "pattern": "2\" Room Darkening_FB_PG2",
+      "patternId": "FB_PG2",
+      "colors": [
+        {
+          "id": "FB_PG2_50016D",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG2_50017D",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG2_50029D",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG2_50031D",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG2_50100-897",
+          "name": "Ash"
+        },
+        {
+          "id": "FB_PG3_50100D",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG2_50113D",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG2_50125D",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG2_50295D",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG2_50302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG2_50320D",
+          "name": "Gold"
+        },
+        {
+          "id": "FB_PG2_50334D",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG2_50357-897",
+          "name": "Acorn"
+        },
+        {
+          "id": "FB_PG2_50370D",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG2_50378D",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG2_50822-897",
+          "name": "Pewter"
+        },
+        {
+          "id": "FB_PG2_50822D",
+          "name": "Silver"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Fabric Blinds",
+      "pattern": "2.5\" Light Filtering_FB_PG3",
+      "patternId": "FB_PG3",
+      "colors": [
+        {
+          "id": "FB_PG3_65031",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG3_65100",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG3_65113",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG3_65125",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG3_65206",
+          "name": "Peach"
+        },
+        {
+          "id": "FB_PG3_65302",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG3_65334",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG3_65357",
+          "name": "Praline"
+        },
+        {
+          "id": "FB_PG3_65370",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG3_65378",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG4_65517",
+          "name": "Willow"
+        },
+        {
+          "id": "FB_PG3_65613",
+          "name": "Surf"
+        },
+        {
+          "id": "FB_PG3_65823",
+          "name": "Grey"
+        },
+        {
+          "id": "FB_PG3_65987",
+          "name": "Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Fabric Blinds",
+      "pattern": "2.5\" Room Darkening_FB_PG4",
+      "patternId": "FB_PG4",
+      "colors": [
+        {
+          "id": "FB_PG4_65016D",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG4_65017D",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG4_65029D",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG4_65031D",
+          "name": "Sand"
+        },
+        {
+          "id": "HC_PG01_65100D",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG4_65113D",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG4_65125D",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG4_65295D",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG4_65302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG4_65320D",
+          "name": "Gold"
+        },
+        {
+          "id": "FB_PG4_65334D",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG4_65370D",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG4_65378D",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG4_65822D",
+          "name": "Silver"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/4 Single LF_HC_PG05",
+      "patternId": "HC_PG05",
+      "colors": [
+        {
+          "id": "HC_PG05_H45034M",
+          "name": "Roswell"
+        },
+        {
+          "id": "HC_PG05_H45034S",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG05_H45047",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG05_H45100",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG05_H45100S",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG05_H45125",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG05_H45145",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG05_H45145P",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG05_H45206",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG05_H45206P",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG05_H45295",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG05_H45302",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG05_H45302P",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG05_H45323P",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG05_H45357",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG05_H45378",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG05_H45414",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG05_H45414P",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG05_H45430M",
+          "name": "Antique"
+        },
+        {
+          "id": "HC_PG05_H45430P",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG05_H45503K",
+          "name": "Jade"
+        },
+        {
+          "id": "HC_PG05_H45652K",
+          "name": "Icicle"
+        },
+        {
+          "id": "HC_PG05_H45822",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG05_H45823",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG05_H45895K",
+          "name": "Meteorite"
+        },
+        {
+          "id": "HC_PG06_H45895M",
+          "name": "Flint"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/4 Single RD_HC_PG06",
+      "patternId": "HC_PG06",
+      "colors": [
+        {
+          "id": "HC_PG06_H45034SD",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG06_H45047D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG06_H45047WD",
+          "name": "Nebula"
+        },
+        {
+          "id": "HC_PG06_H45100D",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG06_H45100SD",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG06_H45100WD",
+          "name": "Cloud"
+        },
+        {
+          "id": "HC_PG06_H45101WD",
+          "name": "Paper"
+        },
+        {
+          "id": "HC_PG06_H45125D",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG06_H45145D",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG06_H45145PD",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG06_H45206D",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG06_H45206PD",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG06_H45206WD",
+          "name": "Powder Pink"
+        },
+        {
+          "id": "HC_PG06_H45295D",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG06_H45302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG06_H45302PD",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG06_H45323PD",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG06_H45357D",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG06_H45378D",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG06_H45414D",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG06_H45414PD",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG06_H45430PD",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG06_H45504WD",
+          "name": "Meadow"
+        },
+        {
+          "id": "HC_PG06_H45822D",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG06_H45823D",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG06_H45823WD",
+          "name": "Pewter"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/8 Double LF_HC_PG03",
+      "patternId": "HC_PG03",
+      "colors": [
+        {
+          "id": "HC_PG04_H38000",
+          "name": "White Sheer"
+        },
+        {
+          "id": "HC_PG03_H38047T",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG03_H38100T",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG03_H38125T",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG03_H38145T",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG03_H38206T",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG03_H38295T",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG03_H38302T",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG03_H38357T",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG03_H38378T",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG03_H38414T",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG03_H38822T",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG03_H38823T",
+          "name": "Pebble"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/8 Double RD_HC_PG04",
+      "patternId": "HC_PG04",
+      "colors": [
+        {
+          "id": "HC_PG05_H38047TD",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG04_H38100TD",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG04_H38125TD",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG04_H38145TD",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG04_H38206TD",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG04_H38295TD",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG04_H38302TD",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG04_H38357TD",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG04_H38378TD",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG04_H38414TD",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG04_H38822TD",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG04_H38823TD",
+          "name": "Pebble"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/8 Single LF_HC_PG01",
+      "patternId": "HC_PG01",
+      "colors": [
+        {
+          "id": "HC_PG01_H25000",
+          "name": "White Sheer"
+        },
+        {
+          "id": "HC_PG01_H25016",
+          "name": "Nautical Gray"
+        },
+        {
+          "id": "HC_PG01_H25034M",
+          "name": "Roswell"
+        },
+        {
+          "id": "HC_PG01_H25034S",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG01_H25047",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG01_H25100",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG01_H25100S",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG01_H25125",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG01_H25145",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG01_H25145P",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG01_H25206",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG01_H25206P",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG01_H25295",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG01_H25302",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG01_H25302P",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG01_H25307",
+          "name": "Neutral"
+        },
+        {
+          "id": "HC_PG01_H25323P",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG01_H25357",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG01_H25378",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG01_H25414",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG01_H25414P",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG01_H25430M",
+          "name": "Antique"
+        },
+        {
+          "id": "HC_PG01_H25430P",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG01_H25504",
+          "name": "Sage"
+        },
+        {
+          "id": "HC_PG01_H25820",
+          "name": "Light Gray"
+        },
+        {
+          "id": "HC_PG01_H25822",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG01_H25823",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG01_H25895",
+          "name": "Dark Brown"
+        },
+        {
+          "id": "HC_PG02_H25895M",
+          "name": "Flint"
+        },
+        {
+          "id": "HC_PG01_H25897",
+          "name": "Almost Black"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Honeycomb",
+      "pattern": "3/8 Single RD_HC_PG02",
+      "patternId": "HC_PG02",
+      "colors": [
+        {
+          "id": "HC_PG02_H25016D",
+          "name": "Nautical Gray"
+        },
+        {
+          "id": "HC_PG02_H25034SD",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG02_H25047D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG02_H25047WD",
+          "name": "Nebula"
+        },
+        {
+          "id": "HC_PG02_H25100D",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG02_H25100SD",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG02_H25100WD",
+          "name": "Cloud"
+        },
+        {
+          "id": "HC_PG02_H25101WD",
+          "name": "Paper"
+        },
+        {
+          "id": "HC_PG02_H25125D",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG02_H25145D",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG02_H25145PD",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG02_H25206D",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG02_H25206PD",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG02_H25206WD",
+          "name": "Powder Pink"
+        },
+        {
+          "id": "HC_PG02_H25295D",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG02_H25302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG03_H25302PD",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG02_H25306D",
+          "name": "Greige"
+        },
+        {
+          "id": "HC_PG02_H25307D",
+          "name": "Neutral"
+        },
+        {
+          "id": "HC_PG02_H25323PD",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG02_H25357D",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG02_H25378D",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG02_H25414D",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG02_H25414PD",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG02_H25430PD",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG02_H25504D",
+          "name": "Sage"
+        },
+        {
+          "id": "HC_PG02_H25504WD",
+          "name": "Meadow"
+        },
+        {
+          "id": "HC_PG02_H25820D",
+          "name": "Light Gray"
+        },
+        {
+          "id": "HC_PG02_H25821D",
+          "name": "Dolphin Gray"
+        },
+        {
+          "id": "HC_PG02_H25822D",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG02_H25823D",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG02_H25823WD",
+          "name": "Pewter"
+        },
+        {
+          "id": "HC_PG02_H25895D",
+          "name": "Dark Brown"
+        },
+        {
+          "id": "HC_PG02_H25897D",
+          "name": "Almost Black"
+        },
+        {
+          "id": "HC_PG02_H25898D",
+          "name": "Black"
+        },
+        {
+          "id": "HC_PG02_H25904D",
+          "name": "Silver Lining"
+        },
+        {
+          "id": "HC_PG02_H25905D",
+          "name": "Night Sky"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "2\" Light Filtering_S50PN",
+      "patternId": "S50PN",
+      "colors": [
+        {
+          "id": "S50PN100",
+          "name": "Bright White"
+        },
+        {
+          "id": "S50PN112",
+          "name": "Alabaster"
+        },
+        {
+          "id": "S50PN113",
+          "name": "Winter White"
+        },
+        {
+          "id": "S50PN206",
+          "name": "Blossom"
+        },
+        {
+          "id": "S50PN302",
+          "name": "Sesame"
+        },
+        {
+          "id": "S50PN322",
+          "name": "Beige"
+        },
+        {
+          "id": "S50PN823",
+          "name": "Granite"
+        },
+        {
+          "id": "S50PNS378",
+          "name": "Java"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "2\" Room Darkening_S50PNRD",
+      "patternId": "S50PNRD",
+      "colors": [
+        {
+          "id": "S50PN100D",
+          "name": "Bright White"
+        },
+        {
+          "id": "S50PN113D",
+          "name": "Winter White"
+        },
+        {
+          "id": "S50PN125D",
+          "name": "Linen"
+        },
+        {
+          "id": "S50PN145D",
+          "name": "Biscuit"
+        },
+        {
+          "id": "S50PN322D",
+          "name": "Beige"
+        },
+        {
+          "id": "S50PN414D",
+          "name": "Cornsilk"
+        },
+        {
+          "id": "S50PN823D",
+          "name": "Granite"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "2.5\" Light Filtering_S65BN",
+      "patternId": "S65BN",
+      "colors": [
+        {
+          "id": "S65BN125",
+          "name": "Parmesan 2.5"
+        },
+        {
+          "id": "S65BN206",
+          "name": "Blossom 2.5"
+        },
+        {
+          "id": "S65BN207",
+          "name": "Ecru 2.5"
+        },
+        {
+          "id": "S65BN311",
+          "name": "Heather 2.5"
+        },
+        {
+          "id": "S65BN312",
+          "name": "Blush 2.5"
+        },
+        {
+          "id": "S65BN322",
+          "name": "Beige 2.5"
+        },
+        {
+          "id": "S65BN414",
+          "name": "Oat 2.5"
+        },
+        {
+          "id": "S65BN503",
+          "name": "Smoke 2.5"
+        },
+        {
+          "id": "S65BN517",
+          "name": "Foggy 2.5"
+        },
+        {
+          "id": "S65BN627",
+          "name": "Waterfall"
+        },
+        {
+          "id": "S65BN822",
+          "name": "Whale 2.5"
+        },
+        {
+          "id": "S65BN823",
+          "name": "Granite 2.5"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "2.5\" Room Darkening_S65BNRD",
+      "patternId": "S65BNRD",
+      "colors": [
+        {
+          "id": "S65BN206D",
+          "name": "Blossom 2.5"
+        },
+        {
+          "id": "S65BN311D",
+          "name": "Heather 2.5"
+        },
+        {
+          "id": "S65BN312D",
+          "name": "Blush 2.5"
+        },
+        {
+          "id": "S65BN322D",
+          "name": "Beige 2.5"
+        },
+        {
+          "id": "S65BN627D",
+          "name": "Waterfall 2.5"
+        },
+        {
+          "id": "S65BN823D",
+          "name": "Granite 2.5"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "3\" Light Filtering_S70PN",
+      "patternId": "S70PN",
+      "colors": [
+        {
+          "id": "S70PN100",
+          "name": "Bright White 3"
+        },
+        {
+          "id": "S70PN112",
+          "name": "Alabaster 3"
+        },
+        {
+          "id": "S70PN113",
+          "name": "Winter White 3"
+        },
+        {
+          "id": "S70PN126",
+          "name": "Luna 3"
+        },
+        {
+          "id": "S70PN206",
+          "name": "Blossom 3"
+        },
+        {
+          "id": "S70PN302",
+          "name": "Sesame 3"
+        },
+        {
+          "id": "S70PN322",
+          "name": "Beige 3"
+        },
+        {
+          "id": "S70PN323",
+          "name": "Romance 3"
+        },
+        {
+          "id": "S70PN371",
+          "name": "Plank"
+        },
+        {
+          "id": "S70PNS378",
+          "name": "Java 3"
+        },
+        {
+          "id": "S70PN503",
+          "name": "Coastal Plain"
+        },
+        {
+          "id": "S70PN517",
+          "name": "Celadon 3"
+        },
+        {
+          "id": "S70PN821",
+          "name": "Dusty Blue"
+        },
+        {
+          "id": "S70PN823",
+          "name": "Granite 3"
+        },
+        {
+          "id": "S70PN824",
+          "name": "Rhinestone"
+        }
+      ]
+    },
+    {
+      "portalProgram": "lux",
+      "product": "Sheerview",
+      "pattern": "3\" Room Darkening_S70PNRD",
+      "patternId": "S70PNRD",
+      "colors": [
+        {
+          "id": "S70PN016D",
+          "name": "Midnight"
+        },
+        {
+          "id": "S70PN029D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "S70PN100D",
+          "name": "Bright White"
+        },
+        {
+          "id": "S70PN111D",
+          "name": "Eggshell"
+        },
+        {
+          "id": "S70PN114D",
+          "name": "Greek Villa"
+        },
+        {
+          "id": "S70PN125D",
+          "name": "Linen"
+        },
+        {
+          "id": "S70PN145D",
+          "name": "Biscuit"
+        },
+        {
+          "id": "S70PN303D",
+          "name": "Khaki"
+        },
+        {
+          "id": "S70PN312D",
+          "name": "Barcelona Beige"
+        },
+        {
+          "id": "S70PN321D",
+          "name": "Natural Tan"
+        },
+        {
+          "id": "S70PN322D",
+          "name": "Beige"
+        },
+        {
+          "id": "S70PN334D",
+          "name": "Brick"
+        },
+        {
+          "id": "S70PN414D",
+          "name": "Cornsilk"
+        },
+        {
+          "id": "S70PN503D",
+          "name": "Coastal Plain"
+        },
+        {
+          "id": "S70PN822D",
+          "name": "Lazy Gray"
+        },
+        {
+          "id": "S70PN823D",
+          "name": "Granite"
+        },
+        {
+          "id": "S70PNS378D",
+          "name": "Java"
+        }
+      ]
+    },
+    {
+      "portalProgram": "woven",
+      "product": "Woven",
+      "pattern": "WP_Walden Premier_WP_Walden Premier",
+      "patternId": "WP_Walden Premier",
+      "colors": [
+        {
+          "id": "WP_ArtisanWeave",
+          "name": "Artisan Weave"
+        },
+        {
+          "id": "WP_AspenCedar",
+          "name": "Aspen Cedar"
+        },
+        {
+          "id": "WP_AspenEbony",
+          "name": "Aspen Ebony"
+        },
+        {
+          "id": "WP_AspenWalnut",
+          "name": "Aspen Walnut"
+        },
+        {
+          "id": "WP_AspenWhite",
+          "name": "Aspen White"
+        },
+        {
+          "id": "WP_BambooForest",
+          "name": "Bamboo Forest"
+        },
+        {
+          "id": "WP_BambooLeafBrown",
+          "name": "Bamboo Leaf Brown"
+        },
+        {
+          "id": "WP_BarcelonaCafe",
+          "name": "Barcelona Cafe"
+        },
+        {
+          "id": "WP_BarcelonaDusk",
+          "name": "Barcelona Dusk"
+        },
+        {
+          "id": "WP_BoraBora",
+          "name": "Bora Bora"
+        },
+        {
+          "id": "WP_CapriNatural",
+          "name": "Capri Natural"
+        },
+        {
+          "id": "WP_Catalina",
+          "name": "Catalina"
+        },
+        {
+          "id": "WP_DevonCoffee",
+          "name": "Devon Coffee"
+        },
+        {
+          "id": "WP_DevonIvory",
+          "name": "Devon Ivory"
+        },
+        {
+          "id": "WP_DevonMaple",
+          "name": "Devon Maple"
+        },
+        {
+          "id": "WP_DevonWhite",
+          "name": "Devon White"
+        },
+        {
+          "id": "WP_DriftwoodNatural",
+          "name": "Driftwood Natural"
+        },
+        {
+          "id": "WP_JakartaSpice",
+          "name": "Jakarta Spice"
+        },
+        {
+          "id": "WP_JavaCocoa",
+          "name": "Java Cocoa"
+        },
+        {
+          "id": "WP_KyotoBrown",
+          "name": "Kyoto Brown"
+        },
+        {
+          "id": "WP_LatticeTwilight",
+          "name": "Lattice Twilight"
+        },
+        {
+          "id": "WP_MandalayUmber",
+          "name": "Mandalay Umber"
+        },
+        {
+          "id": "WP_NassauMahogany",
+          "name": "Nassau Mahogany"
+        },
+        {
+          "id": "WP_NaturalJute",
+          "name": "Natural Jute"
+        },
+        {
+          "id": "WP_PenangOak",
+          "name": "Penang Oak"
+        },
+        {
+          "id": "WP_PrairieGolden",
+          "name": "Prairie Golden"
+        },
+        {
+          "id": "WP_PrairieSnow",
+          "name": "Prairie Snow"
+        },
+        {
+          "id": "WP_PrairieWhite",
+          "name": "Prairie White"
+        },
+        {
+          "id": "WP_SakuraOregano",
+          "name": "Sakura Oregano"
+        },
+        {
+          "id": "WP_SavannaHusk",
+          "name": "Savanna Husk"
+        },
+        {
+          "id": "WP_SierraSand",
+          "name": "Sierra Sand"
+        },
+        {
+          "id": "WP_STMartinCappuccino",
+          "name": "ST Martin Cappuccino"
+        },
+        {
+          "id": "WP_SunshadeBrown",
+          "name": "Sunshade Brown"
+        },
+        {
+          "id": "WP_sunshadeWhite",
+          "name": "sunshade White"
+        },
+        {
+          "id": "WP_TamarindSunset",
+          "name": "Tamarind Sunset"
+        },
+        {
+          "id": "WP_TradewindNatural",
+          "name": "Tradewind Natural"
+        }
+      ]
+    },
+    {
+      "portalProgram": "woven",
+      "product": "Woven",
+      "pattern": "WS_Walden Select_WS_Walden Select",
+      "patternId": "WS_Walden Select",
+      "colors": [
+        {
+          "id": "WS_AlisiaAntiqueWhite",
+          "name": "Alisia Antique White"
+        },
+        {
+          "id": "WS_AlisiaChiffon",
+          "name": "Alisia Chiffon"
+        },
+        {
+          "id": "WS_AlisiaMorning",
+          "name": "Alisia Morning"
+        },
+        {
+          "id": "WS_AndrosBirch",
+          "name": "Andros Birch"
+        },
+        {
+          "id": "WS_AndrosHarbor",
+          "name": "Andros Harbor"
+        },
+        {
+          "id": "WS_AntillesMist",
+          "name": "Antilles Mist"
+        },
+        {
+          "id": "WS_AntillesSand",
+          "name": "Antilles Sand"
+        },
+        {
+          "id": "WS_AntillesSeagrass",
+          "name": "Antilles Seagrass"
+        },
+        {
+          "id": "WS_CalaPlatinum",
+          "name": "Cala Platinum"
+        },
+        {
+          "id": "WS_CalaTitanium",
+          "name": "Cala Titanium"
+        },
+        {
+          "id": "WS_CamdenNatural",
+          "name": "Camden Natural"
+        },
+        {
+          "id": "WS_CamdenSnow",
+          "name": "Camden Snow"
+        },
+        {
+          "id": "WS_ChelseaLace",
+          "name": "Chelsea Lace"
+        },
+        {
+          "id": "WS_ChelseaTaupe",
+          "name": "Chelsea Taupe"
+        },
+        {
+          "id": "WS_ComoCharcoal",
+          "name": "Como Charcoal"
+        },
+        {
+          "id": "WS_ComoEcru",
+          "name": "Como Ecru"
+        },
+        {
+          "id": "WS_ComoGray",
+          "name": "Como Gray"
+        },
+        {
+          "id": "WS_ComoMidnight",
+          "name": "Como Midnight"
+        },
+        {
+          "id": "WS_ComoUmber",
+          "name": "Como Umber"
+        },
+        {
+          "id": "WS_FayBlack",
+          "name": "Fay Black"
+        },
+        {
+          "id": "WS_FaySnow",
+          "name": "Fay Snow"
+        },
+        {
+          "id": "WS_FayTan",
+          "name": "Fay Tan"
+        },
+        {
+          "id": "WS_HalifaxNatural",
+          "name": "Halifax Natural"
+        },
+        {
+          "id": "WS_HarborGolden",
+          "name": "Harbor Golden"
+        },
+        {
+          "id": "WS_HarborWhite",
+          "name": "Harbor White"
+        },
+        {
+          "id": "WS_LouCoconut",
+          "name": "Lou Coconut"
+        },
+        {
+          "id": "WS_LouContrast",
+          "name": "Lou Contrast"
+        },
+        {
+          "id": "WS_LouCotton",
+          "name": "Lou Cotton"
+        },
+        {
+          "id": "WS_LouDriftwood",
+          "name": "Lou Driftwood"
+        },
+        {
+          "id": "WS_MalvernChalk",
+          "name": "Malvern Chalk"
+        },
+        {
+          "id": "WS_MalvernGray",
+          "name": "Malvern Gray"
+        },
+        {
+          "id": "WS_MalvernLightGray",
+          "name": "Malvern Light Gray"
+        },
+        {
+          "id": "WS_MalvernPlatinum",
+          "name": "Malvern Platinum"
+        },
+        {
+          "id": "WS_MatroCaramel",
+          "name": "Matro Caramel"
+        },
+        {
+          "id": "WS_MetroChalk",
+          "name": "Metro Chalk"
+        },
+        {
+          "id": "WS_MetroSmoke",
+          "name": "Metro Smoke"
+        },
+        {
+          "id": "WS_MontanaInkwash",
+          "name": "Montana Inkwash"
+        },
+        {
+          "id": "WS_MontanaMineral",
+          "name": "Montana Mineral"
+        },
+        {
+          "id": "WS_NantucketSeaMist",
+          "name": "Nantucket Sea Mist"
+        },
+        {
+          "id": "WS_OsakaGranite",
+          "name": "Osaka Granite"
+        },
+        {
+          "id": "WS_OsakaSnow",
+          "name": "Osaka Snow"
+        },
+        {
+          "id": "WS_ParchmentHusk",
+          "name": "Parchment Husk"
+        },
+        {
+          "id": "WS_PeriMist",
+          "name": "Peri Mist"
+        },
+        {
+          "id": "WS_PortlandInkwash",
+          "name": "Portland Inkwash"
+        },
+        {
+          "id": "WS_PortlandSky",
+          "name": "Portland Sky"
+        },
+        {
+          "id": "WS_PudongWhite",
+          "name": "Pudong White"
+        },
+        {
+          "id": "WS_SeleneNatural",
+          "name": "Selene Natural"
+        },
+        {
+          "id": "WS_SeleneWhite",
+          "name": "Selene White"
+        },
+        {
+          "id": "WS_SoftJuteBeige",
+          "name": "Soft Jute Beige"
+        },
+        {
+          "id": "WS_SoftJuteGray",
+          "name": "Soft Jute Gray"
+        },
+        {
+          "id": "WS_SoftJuteWhite",
+          "name": "Soft Jute White"
+        },
+        {
+          "id": "WS_SonomaDusk",
+          "name": "Sonoma Dusk"
+        },
+        {
+          "id": "WS_TerraOak",
+          "name": "Terra Oak"
+        },
+        {
+          "id": "WS_TortolaNatural",
+          "name": "Tortola Natural"
+        },
+        {
+          "id": "WS_UmbriaInk",
+          "name": "Umbria Ink"
+        },
+        {
+          "id": "WS_UmbriaMist",
+          "name": "Umbria Mist"
+        },
+        {
+          "id": "WS_UmbriaSepia",
+          "name": "Umbria Sepia"
+        }
+      ]
+    }
+  ]
+}

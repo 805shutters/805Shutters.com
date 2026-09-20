@@ -519,6 +519,25 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     authorities: ["pricing", "restrictions", "assortment", "options", "freight"],
     pageCount: 246,
   },
+{
+  "id": "onyx-shade-assortment-2026-09-20",
+  "manufacturer": "Onyx",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "onyx-shade-assortment-20260920.json",
+  "title": "Onyx CHE01 complete Signature Lux and Woven visible color assortment",
+  "revision": "Visible controls observed September 20, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation date only; manufacturer effective date unpublished",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": "2026-09-20",
+  "sha256": "05aa8047c204a4606d344b03c6e1ba9df2814acbedb9e7c95ce4f4cf5600eba1",
+  "authorities": [
+    "assortment"
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "accountScope": "CHE01 California Home Exterior; full grids, dimensions and conditional compatibility unresolved"
+},
   {
     id: "onyx-portal-assortment-2026-09-20",
     manufacturer: "Onyx Shutters",

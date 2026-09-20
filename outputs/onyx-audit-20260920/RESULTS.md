@@ -1,6 +1,6 @@
 # Onyx current catalog audit — 2026-09-20
 
-Status: supported shutter selection fixes deployed by parent in release c3ebaf4420ed9d857f50646970de6f17835d7541. Live verification exposed an additional Onyx configuration-routing defect, fixed and tested in 8f357313; deployment and resumed live proof are pending. Complete Onyx assortment/pricing certification remains open.
+Status: supported shutter selection fixes deployed by parent in release c3ebaf4420ed9d857f50646970de6f17835d7541. Live verification exposed an additional Onyx configuration-routing defect, fixed and tested in 8f357313; deployed in9c53f89213bda098716eec2b5f6a15822b0f7c62 and verified live below. Complete Onyx assortment/pricing certification remains open.
 
 Authenticated source: Onyx dealer portal, account CHE01, California Home Exterior / Mike Shepard. Observation date 2026-09-20; effective date is not published on the forms. The current account identity is confirmed, but account-specific cost must not replace 805 selling-price policy.
 
@@ -85,4 +85,22 @@ Signature's displayed line price excludes its separate surcharge. The combined d
 
 ## Production verification draft
 
-Internal customer `Onyx Catalog Verification 2026-09-20`, quote **805-0333**, has one saved and reopened 30×60 US-made line and an explicit internal do-not-send/order note. Pricing remains incomplete and customer sends disabled. The first live check found that exact Onyx program selection incorrectly required the legacy Premium/Standard wood step before showing configuration controls. Fix8f357313 makes exact authoritative Onyx catalog program/material selection reach the controls while preserving legacy routes;42 targeted tests and TypeScript checks pass. Complete US-made/VLO/Bassia selection and save/reopen proof must resume after that fix is deployed.
+Internal customer `Onyx Catalog Verification 2026-09-20`, quote **805-0333**, retains the internal do-not-send/order note and four saved/reopened shutter selection fixtures described below. The initial exact-program routing failure was repaired by8f357313 and verified after deployment. Pricing remains incomplete and customer sends disabled.
+
+
+## Live shutter selection proof and new held destinations
+
+Production release9c53f89213bda098716eec2b5f6a15822b0f7c62 was verified in the actual CRM. Quote805-0333 was closed, located in the Quotes list as Draft/Pricing incomplete, and reopened. All four30×60 line selections persisted:
+
+- US-made: Regular, Window Size, OM, VL Outside, four sides,3.5-inch louver,101_White, White hinge, panelL, H2 and one hidden-tilt section. Remaining panel/section dimensions were intentionally not invented.
+- VLO/MDF Hybrid: Regular, Window Size, OM, L Outside, four sides,3.5-inch louver,101_White, White hinge, panelL and front-center tilt.
+- Painted Bassia:150_Onyx Black with5.5-inch louver. This is a color/louver persistence fixture, not a complete construction.
+- Stained Bassia:215_Java. This is a stain-program persistence fixture, not a complete construction.
+
+Current menus were verified: US-made has two colors, five frames,3.5-only louver, H2-only tilt and White-only hinge. VLO has23 wood frames,13 colors excluding Butter/Gray and noH1. Bassia paint/stain menus contain15/16 distinct colors. All four price holds persisted; total unavailable; Send Quote and Send Payment Link disabled. No customer output was sent and no quote was marked sold/sent. Remaining generic shape and non-US hinge mismatches are explicit open exceptions.
+
+New implementation (awaiting integration/deployment/live proof) adds **eight separate catalog destinations,52 programs and734 source color entries**: `onyx_signature_roller`, `onyx_signature_sunscreen`, `onyx_signature_zebra`, `onyx_lux_fabric_blinds`, `onyx_lux_honeycomb`, `onyx_lux_sheerview`, `onyx_woven`, `onyx_ash_shutters`. The shade ledger's current destination column now names implemented IDs; its implementation-status column distinguishes this from verified live. Earlier missing-destination findings above describe the audited starting state.
+
+Each current source pattern has its own program with an empty, explicitly manual-required grid. The dedicated Onyx controls save exact collection/color IDs and observed mount/control or Ash frame/shape/louver/tilt choices. Both server and picker enforce product/collection/color identity. Menus are not universal compatibility certification; missing grid, dimensional and conditional evidence keeps all new destinations blocked for customer pricing/delivery. Existing shutter IDs, provisional rates and selling policy remain unchanged. Source evidence is pinned separately as `onyx-shade-assortment-2026-09-20`; the effective date remains unpublished. Outdoor shade series/fabrics/ordering remain unresolved and are not represented by invented choices.
+
+Validation for the held destinations:54 focused catalog/source/adapter/builder tests passed; an earlier62-test focused run covered the new exhaustive selection test plus existing Onyx pricing and42 DesignCard routing checks. TypeScript and whitespace checks passed. The734-row round-trip check exercises saved JSON and the actual server adapter; production save/reopen for these new destinations still awaits deployment.

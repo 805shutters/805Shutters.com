@@ -1,3 +1,5 @@
+import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
+import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
 import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
@@ -1589,7 +1591,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id)) {
+  if (product.priceBasis === "manual_required" && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -1598,7 +1600,7 @@ export function resolveManufacturerOptionsUiRoute(
     };
   }
 
-  const supported =
+  const supported = isOnyxHeldProduct(product.id) ||
     productSupplierKey === "norman" ||
     (productSupplierKey === "polar" &&
       (POLAR_EXTERIOR_UI_PRODUCT_IDS.has(product.id) ||
@@ -6016,7 +6018,9 @@ export function DesignCard({
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
+          manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
+            <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+          ) : manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
             <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
             <SanClementeDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />

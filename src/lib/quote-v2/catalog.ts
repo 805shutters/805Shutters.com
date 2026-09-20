@@ -1,4 +1,5 @@
 import { romanPriceGroup, romanFabricStyles } from '@/lib/quote/norman-roman-current-price-groups';
+import { isOnyxHeldProduct, onyxHeldProducts, ONYX_HELD_VERSION } from "@/lib/quote/onyx-held-catalog";
 import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "@/lib/quote/norman-synchrony";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
@@ -36,6 +37,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;
   if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r5`;
   if (productId === "roman" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-hardware-2026-09-19-r2`;
   if (productId === "norman_shutters" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-shutter-assortment-2026-09-19-r4`;
@@ -121,6 +123,7 @@ export type CatalogColorOffering = {
 };
 
 export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStatus>> = {
+  ...Object.fromEntries(onyxHeldProducts.map(p=>[p.id,"manual_quote_required" as const])),
   norman_contract_faux_wood: "manual_quote_required",
   norman_contract_vertical: "manual_quote_required",
   san_clemente_honeycomb: "manual_quote_required",

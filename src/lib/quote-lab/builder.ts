@@ -1,3 +1,4 @@
+import { onyxHeldProducts } from "@/lib/quote/onyx-held-catalog";
 import type {
   QuoteLabCatalogProduct,
   QuoteLabDesignInput,
@@ -23,11 +24,15 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Retractable Screens",
   "Awnings",
   "Vinyl Blinds",
+  "Fabric Blinds",
+  "Woven Wood Shades",
 ] as const;
 
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
 
 const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
+  "Fabric Blinds": "onyx_lux_fabric_blinds",
+  "Woven Wood Shades": "onyx_woven",
   Shutters: "norman_shutters",
   "Roller Shades": "roller",
   "Roman Shades": "roman",
@@ -93,6 +98,8 @@ function uniqueId(prefix: string): string {
 }
 
 export function quoteLabProductType(productId: string): QuoteLabProductType | null {
+  const onyxProduct=onyxHeldProducts.find(p=>p.id===productId);
+  if(onyxProduct)return onyxProduct.productType as QuoteLabProductType;
   const sundanceProduct = sundanceCatalog.products.find((product) => product.id === productId);
   if (sundanceProduct && QUOTE_LAB_PRODUCT_TYPES.includes(sundanceProduct.productType as QuoteLabProductType)) {
     return sundanceProduct.productType as QuoteLabProductType;

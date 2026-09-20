@@ -1,5 +1,6 @@
 import { romanPriceGroup, romanFabricStyles } from './norman-roman-current-price-groups';
 import { sundanceCellularColors } from "./sundance/cellular-assortment";
+import { onyxHeldColors } from "./onyx-held-catalog";
 import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors } from "./norman-shutter-assortment";
 import { ultimateFauxColor } from "./norman-ultimate-faux";
 import { smartprivacyColor } from "./norman-smartprivacy";
@@ -510,6 +511,7 @@ const normanShutterColorOptions: ProductColorOption[] = NORMAN_SHUTTER_PROGRAMS.
 
 export const productColorOptions = [
   ...sundanceCellularColors,
+  ...onyxHeldColors,
   ...normanShutterColorOptions,
   ...additionalSynchronyColors,
   ...sanClementeColors,

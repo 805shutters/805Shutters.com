@@ -265,6 +265,12 @@
       "sha256": "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e"
     },
     {
+      "sourceId": "onyx-shade-assortment-2026-09-20",
+      "fileName": "onyx-shade-assortment-20260920.json",
+      "byteLength": 65071,
+      "sha256": "05aa8047c204a4606d344b03c6e1ba9df2814acbedb9e7c95ce4f4cf5600eba1"
+    },
+    {
       "sourceId": "onyx-portal-assortment-2026-09-20",
       "fileName": "onyx-portal-20260920.json",
       "byteLength": 11652,

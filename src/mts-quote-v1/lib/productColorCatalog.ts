@@ -1,4 +1,5 @@
 import { sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
+import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { SYNCHRONY_DEALER_COLOR_CODES } from "@/lib/quote/norman-synchrony";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import {
@@ -217,6 +218,8 @@ export function getMtsProductColorProductIds(
   const explicit = stringOption(optionsJson, "catalog_product_id") || stringOption(optionsJson, "quote_lab_product_id") || stringOption(optionsJson, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
   if (explicit?.startsWith("sundance_")) return [explicit];
 
+  const onyxId=stringOption(optionsJson,"catalog_product_id")||stringOption(optionsJson,"quote_lab_product_id");
+  if(onyxId && isOnyxHeldProduct(onyxId))return [onyxId];
   if (productType === "Faux Wood Blinds") {
     const productLine = stringOption(optionsJson, "product_line");
     if (normalize(productLine).includes("smartprivacy")) {
@@ -511,6 +514,7 @@ function rowMatchesMtsContext(
   row: ProductColorOption,
 ): boolean {
   if (row.productId.startsWith("sundance_")) return sundanceCellularColorMatchesContext(row, optionsJson);
+  if(isOnyxHeldProduct(row.productId))return getMtsProductColorProductIds(productType,optionsJson).includes(row.productId);
   switch (productType) {
     case "Roman Shades": {
       if (
@@ -642,6 +646,7 @@ function contextualizeMtsProductColorRow(
   row: ProductColorOption,
 ): ProductColorOption {
   if (row.productId.startsWith("sundance_")) return row;
+  if(isOnyxHeldProduct(row.productId))return row;
   if (productType !== "Honeycomb Shades") return row;
   const exactColor = isAuthoritativeV2(optionsJson)
     ? exactHoneycombColor(row.colorCode)
