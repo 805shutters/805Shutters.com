@@ -376,6 +376,7 @@ function humanizeKey(key: string): string {
     roman_pole_total_quantity: "Total Poles or Attachments for This Line",
     roman_shim_layers: "Shim Layers per Bracket",
     roman_mount_fit: "Recess Arrangement",
+    roman_banding_layout: "Banding Layout",
     perfectsheer_chain_length: "Custom Cord Length",
     perfectsheer_chain_unobstructed: "Unobstructed Below Tension Device",
     smartfold_chain_length: "Custom Chain Length",

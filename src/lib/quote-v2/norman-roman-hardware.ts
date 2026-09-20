@@ -11,7 +11,7 @@ export function romanHardware(s:SelectionContext){
  const add=(id:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roman.hardware.${id}`,source:sourceProvenance('norman-roman-guide-2026-09',{page}),selectedValues:{...c},explanation});
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
  // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
- const mountingRevision = s.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r2');
+ const mountingRevision = /norman-roman-mounting-2026-09-20-r[23]$/.test(s.catalogVersion);
  const mountingFit = String(c.roman_mount_fit ?? '');
  const rawDepth = c.mount_depth_inches;
  const depth = rawDepth == null || rawDepth === '' ? NaN : Number(rawDepth);
@@ -38,6 +38,10 @@ export function romanHardware(s:SelectionContext){
  if(c.chain_type!=null&&(!chain||!['standard plastic','stainless steel'].includes(norm(c.chain_type))))add('chain_type',15,'Select Plastic or Stainless Steel for a chain-operated Roman shade.');
  if(c.chain_color!=null&&(!chain||norm(c.chain_type)==='stainless steel'||!['white','cottage white','black'].includes(norm(c.chain_color))))add('chain_color',15,'Plastic Roman chain colors are White, Cottage White and Black. Stainless Steel uses white clutch and tension hardware.');
  if(c.chain_location!=null&&(!chain||!['left','right'].includes(norm(c.chain_location))))add('chain_location',15,'Select Left or Right for the Roman chain position.');
+ const banded = /edge banded|ribbon banded/.test(norm(c.fold_style));
+ const bandingRevision = s.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r3');
+ const bandingLayout = String(c.roman_banding_layout ?? '');
+ if (bandingRevision && banded && !['Side Border','Wrapped Border'].includes(bandingLayout)) add('banding_layout',/ribbon/.test(norm(c.fold_style))?8:9,'Choose Side Border or Wrapped Border for the banded Roman shade.');
  const pole=norm(c.poles),hasPole=!!pole&&pole!=='none';
  const shadeCount=common?2:1;
  const totalPoles=c.roman_pole_total_quantity!=null&&c.roman_pole_total_quantity!=='';
@@ -63,8 +67,9 @@ export function romanHardware(s:SelectionContext){
  if(selected(c.magnetic_hold_down)&&!magnetic)add('legacy_magnet',22,'Reconfirm the Roman magnetic hold-down selection before repricing.');
  if((selected(c.cordless_operating_pole)||selected(c.pole_attachment_only))&&!hasPole)add('legacy_pole',23,'Reconfirm the Roman pole or attachment selection before repricing.');
  return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:shadeCount}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity,billingScope:'once_per_line' as const}]:[]),...(shimQuantity>0?[{id:'shim',units:shimQuantity}]:[])],record:{
-  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[15,16,22,23,24],
+  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[8,9,15,16,22,23,24],
   mounting:{...(mountingRevision && mount === 'inside mount' ? {fit:mountingFit,measuredDepth:depth,minimumDepth} : {}),componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
+  banding:banded&&bandingRevision?{layout:bandingLayout,type:/ribbon/.test(norm(c.fold_style))?'Ribbon':'Edge',borderWidth:/ribbon/.test(norm(c.fold_style))?1.0625:2.5,ribbonInset:/ribbon/.test(norm(c.fold_style))?2:null}:null,
   chain:chain?{length:chainLength,custom,measuredFrom:'top_of_headrail_to_bottom_of_tension_device',minimumAccessClearance:2,toleranceAbove:1.5625,material:norm(c.chain_type)==='stainless steel'?'Stainless Steel':'Plastic',color:norm(c.chain_type)==='stainless steel'?'Stainless Steel':c.chain_color??'White',clutchAndTensionColor:norm(c.chain_type)==='stainless steel'?'White':c.chain_color??'White',positions}:null,
   pole:hasPole?{type:c.poles,quantity:poleQuantity,length:pole==='pole with attachment'?poleLength:null,quantityBasis:'per_line',legacyPerShadeQuantity:!totalPoles&&legacyPoles?Number(c.roman_pole_quantity):null}:null,
   holdDown:magnetic?{quantity:shadeCount,color:c.magnet_color??'Nickel-Plated',factoryMagnetLocation:dayNight?'back_of_rear_roller_hem_bar':'bottom_backside_of_roman',catchInstalledAtJobsite:true,minimumSideClearance:1.4375,minimumBottomClearance:.3125,metalDoorRecommended:false}:null,

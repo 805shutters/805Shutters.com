@@ -89,3 +89,18 @@ describe('Roman September mounting-depth revision',()=>{
   expect(mountingIssues({...current({}),catalogVersion:'test-norman-roman-caroline-2026-09-20-r1'})).toEqual([]);
  });
 });
+
+describe('Roman exact banding layout',()=>{
+ it('requires and records both documented layouts without changing earlier snapshots',()=>{
+  for(const fold_style of ['Ribbon Banded','Edge Banded']) {
+   const s={...shade({mount_type:'Outside Mount',fold_style}),catalogVersion:'test-norman-roman-mounting-2026-09-20-r3'};
+   expect(romanHardware(s)?.issues.map(i=>i.ruleId)).toContain('roman.hardware.banding_layout');
+   for(const roman_banding_layout of ['Side Border','Wrapped Border']) {
+    const result=romanHardware({...s,configuration:{...s.configuration,roman_banding_layout}});
+    expect(result?.issues).toEqual([]);
+    expect(result?.record.banding).toMatchObject({layout:roman_banding_layout,borderWidth:fold_style==='Ribbon Banded'?1.0625:2.5});
+   }
+   expect(romanHardware({...s,catalogVersion:'test-norman-roman-mounting-2026-09-20-r2'})?.issues).toEqual([]);
+  }
+ });
+});

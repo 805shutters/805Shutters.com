@@ -10926,6 +10926,7 @@ function ShadesAndBlindsOptions({
         });
 
         if (authoritativeV2 && (foldStyle === "Edge Banded" || foldStyle === "Ribbon Banded")) {
+          options.push({key:"roman_banding_layout",label:"Banding Layout",field:"json:roman_banding_layout",type:"buttons",options:["Side Border","Wrapped Border"]});
           options.push({
             key: "banding_color",
             label: foldStyle === "Ribbon Banded" ? "Ribbon Tape Color" : "Edge Band Color",
