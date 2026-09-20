@@ -12,3 +12,7 @@ Source: Motorization Guide 2026-09-16.pdf p75, SHA256 `85c5fd2c0d813c879d22776b7
 Tests include 18/19-motor capacity, dual and coupled topology, included accessories, mixed compatible Roman membership, forged allocation/counts, owner deletion, save/reopen, exact once-only $1,133 and actual authoritative CRM backend customer-delivery blocking on overload. Separate source-backed common-valance exceptions remain unchanged.
 
 Live verification scenario: two Automate Low Voltage DC Roller lines, quantities 4 and 5, both Panel 1. Reopen with nine total connections, only the first owner charged $1,133, four/five included harnesses and one AC cord. Change quantities to nine and ten: both must block. Delete the first line: remaining line owns the panel. Dual quantity four plus Single quantity ten uses 18 motors; increase Single to eleven and both must block.
+
+### Production picker field correction
+
+Live internal quote 805-0346 exposed that the existing generic Motor / Power System picker saves `power_configuration`, while the new shared-panel UI initially read only `roller_power_configuration`. The server adapter already normalizes both. The panel component now follows the same precedence and accepts both; an incompatible explicit canonical field still wins over a stale alias. Rendering regressions verify visibility and the selected panel for both identities; the actual backend panel test now uses the production unprefixed picker field. Five focused tests and TypeScript no-emit pass. Live panel proof continues after this narrow correction is deployed.

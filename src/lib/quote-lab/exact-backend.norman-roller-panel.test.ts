@@ -9,7 +9,10 @@ function quote(quantities=[4,5]){
 function run(q:ReturnType<typeof quote>){const r=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");if(!("backend"in r)||r.backend!=="v2")throw Error("Expected V2");return r;}
 describe("Roller panels through authoritative CRM backend",()=>{
  it("rebuilds canonical panel ownership, survives reopen and charges once despite owner quantity",()=>{
-  const q=quote(),first=run(q);for(const d of first.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  const q=quote();
+  // The production generic picker persists the unprefixed source field.
+  for(const d of q.designs){d.options_json={...d.options_json,power_configuration:d.options_json!.roller_power_configuration};delete d.options_json.roller_power_configuration;}
+  const first=run(q);for(const d of first.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
   expect(first.designs[0].selection.configuration.norman_order_record_v1).toMatchObject({ownerLineId:"line-0",totalConnections:9,includedConnectorHarnesses:4});
   const panels=first.designs.flatMap(d=>d.result.ok?d.result.surchargeLines.filter(l=>l.id==="motor:automate_home:power_distribution_panel"):[]);expect(panels).toHaveLength(1);expect(panels[0].amount).toBe(1133);
   const reopened=run(JSON.parse(JSON.stringify(q)));expect(reopened.total).toBe(first.total);expect(reopened.designs.map(d=>d.selection)).toEqual(first.designs.map(d=>d.selection));
