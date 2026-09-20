@@ -12,6 +12,16 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("server-prices measured Ultimate cut-outs and keystones and preserves customer details",()=>{
+  const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_keystone_count:1,ultimate_keystone_layout:"Custom",ultimate_keystone_location_1:18,ultimate_cutout_left_type:"Corner (Bottom)",ultimate_cutout_left_width:1,ultimate_cutout_left_top:20,ultimate_cutout_right_type:"Side (Middle)",ultimate_cutout_right_width:2,ultimate_cutout_right_top:30,ultimate_cutout_right_bottom:40});
+  q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  const d=p.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);if(!d.result.ok)throw new Error("Expected price");
+  expect(d.result.total).toBe(324.65);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({keystones:{count:1,locations:[18]},cutouts:[{side:"left",width:1,top:20},{side:"right",width:2,top:30,bottom:40}]});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
+  const customer=JSON.stringify(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection)));expect(customer).toContain("Left Cut-out Width in Inches");expect(customer).toContain("Keystone 1 from Left in Inches");expect(customer).not.toContain("dealerFactor");
+ });
+
  it("prices room-darkening vane packs with the extra 20 percent and persists their contents",()=>{
   const q=currentQuote("smartdrape","Smart Drapes","F1604",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",light_control:"Room Darkening"});
   q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Room Darkening";q.lines[0].quantity=2;

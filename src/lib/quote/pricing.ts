@@ -942,16 +942,16 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
       // overage beyond the largest listed width.
       const chargeWidth = ((product.id === "smartfold" && /^smartfold_.*valance$/.test(sc.id)) || (product.id === "perfectsheer" && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance"].includes(sc.id))) ? input.valanceWidthInches ?? W : W;
       if (!Number.isFinite(chargeWidth) || chargeWidth <= 0) return fail("INVALID_DIMENSIONS", "Valance width must be a positive finite number.", warnings);
-      const smartprivacyValances = product.id === "smartprivacy_faux" && sc.id === "valance" && sourceAsOf && sourceAsOf >= "2026-09-19" && componentWidths;
-      // Retail guide p31 prices each independent valance by its blind width.
-      const valanceCells = smartprivacyValances ? componentWidths.map(width => widthGraduatedCents(sc.widthGraduated!, width)) : [widthGraduatedCents(sc.widthGraduated, chargeWidth)];
+      const independentBlindValances = ((product.id === "smartprivacy_faux" && sc.id === "valance") || (product.id === "faux_wood" && sc.id === "valance_surcharge")) && sourceAsOf && sourceAsOf >= "2026-09-19" && componentWidths;
+      // Retail guide pp30–31 prices each independent valance by its blind width.
+      const valanceCells = independentBlindValances ? componentWidths.map(width => widthGraduatedCents(sc.widthGraduated!, width)) : [widthGraduatedCents(sc.widthGraduated, chargeWidth)];
       const graduatedCents = valanceCells.some(price => price == null) ? null : valanceCells.reduce<number>((sum, price) => sum + price!, 0);
       if (graduatedCents == null) {
         return fail("NA_CELL", `${sc.name} is not available at width ${W}".`, warnings);
       }
       amountCents = graduatedCents;
       if (dealerFactor != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor));
-      detail = smartprivacyValances ? `by independent blind widths (${componentWidths.join(", ")}")` : `by width (${chargeWidth}")`;
+      detail = independentBlindValances ? `by independent blind widths (${componentWidths.join(", ")}")` : `by width (${chargeWidth}")`;
       surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }), kind: sc.kind, detail });
       perWindowCents += amountCents;
       if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;

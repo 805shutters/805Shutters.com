@@ -1,3 +1,4 @@
+import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
 import { honeycombHardware } from "./norman-honeycomb-hardware";
@@ -41,6 +42,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     delete configuration[NORMAN_ASSEMBLY_KEY];
     delete configuration[PERFECTSHEER_MATCHING_KEY];
     selection.configuration = configuration;
+    const ultimateFaux = ultimateFauxComponents(selection);
+    if (ultimateFaux) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: ultimateFaux.record};
     const smartprivacy = smartprivacyComponents(selection);
     if (smartprivacy) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartprivacy.record};
     const vertical = verticalHoneycombHardware(selection);

@@ -249,6 +249,27 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     "pageCount": 20,
     "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
   },
+{
+  "id": "norman-ultimate-faux-guide-2026-09-01",
+  "manufacturer": "Norman",
+  "kind": "product_guide",
+  "format": "pdf",
+  "fileName": "Ultimate FW Blinds Guide.pdf",
+  "title": "Ultimate Faux Wood Blinds Guide",
+  "revision": "2026-09",
+  "effectiveDate": "2026-09-01",
+  "effectiveDateEvidence": "Page 2 dates the new 3-inch Linear valance September 1, 2026.",
+  "receivedDate": "2026-09-17",
+  "modifiedDate": null,
+  "sha256": "b0cc6132087ad8f10f770a2d001415df3db54c13b098006645eea3f64d8e957c",
+  "authorities": [
+    "assortment",
+    "restrictions",
+    "options"
+  ],
+  "pageCount": 16,
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/Program/ProgramBinderSyncContainer.asp"
+},
   {
     "id": "norman-wood-blinds-guide-2026-09-01",
     "manufacturer": "Norman",

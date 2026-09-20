@@ -1,3 +1,4 @@
+import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
 import { SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS } from "@/lib/quote/norman-smartprivacy";
 import { HONEYCOMB_MOTOR_ACCESSORY_KEYS, HONEYCOMB_WAND_LENGTHS } from "@/lib/quote-v2/norman-honeycomb-motor-accessories";
 import { HONEYCOMB_GUARD_COLORS, HONEYCOMB_MAGNET_COLORS } from "@/lib/quote-v2/norman-honeycomb-hardware";
@@ -8623,7 +8624,7 @@ function ShadesAndBlindsOptions({
     const currentJson = (design?.options_json as Record<string, unknown>) || {};
     const emptyValue = value === null || value === undefined || value === "";
 
-    if (authoritativeV2 && productType === "Wood Blinds" && /^json:wood_cutout_(left|right)_type$/.test(field)) {
+    if (authoritativeV2 && ((productType === "Wood Blinds" && /^json:wood_cutout_(left|right)_type$/.test(field)) || (productType === "Faux Wood Blinds" && currentJson.product_line === "Ultimate" && /^json:ultimate_cutout_(left|right)_type$/.test(field)))) {
       const key = field.slice(5);
       const prefix = key.replace(/_type$/, "");
       onUpdateFields({ options_json: {
@@ -10085,6 +10086,34 @@ function ShadesAndBlindsOptions({
       onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
       return;
     }
+    if (productType === "Faux Wood Blinds" && authoritativeV2 && currentJson.product_line === "Ultimate" && ["mount_type", "valance", "json:ultimate_mount_fit", "json:ultimate_side_mount", "json:ultimate_valance_returns", "json:faux_blind_count"].includes(field)) {
+      const options = {...currentJson};
+      if (field.startsWith("json:")) options[field.slice(5)] = value;
+      if (field === "mount_type") {
+        options.ultimate_shim_layers = "0";
+        options.ultimate_side_mount = "No";
+        options.ultimate_bracket_installation = "Top Support";
+        options.mount_depth_inches = null;
+        options.ultimate_mount_fit = null;
+        options.ultimate_valance_returns = null;
+        options.ultimate_return_inches = null;
+      }
+      if (["valance", "json:ultimate_mount_fit"].includes(field)) {
+        options.ultimate_valance_returns = null;
+        options.ultimate_return_inches = null;
+        options.ultimate_valance_width_inches = null;
+        if (field === "valance" && value === "None" && options.ultimate_mount_fit === "Bracket Flush") options.ultimate_mount_fit = "Minimum Depth";
+      }
+      if (field === "json:ultimate_side_mount") options.ultimate_bracket_installation = "Top Support";
+      if (field === "json:ultimate_valance_returns") options.ultimate_return_inches = null;
+      if (field === "json:faux_blind_count") {
+        options.ultimate_valance_width_inches = null;
+        for(const key of Object.keys(options))if(key.startsWith("ultimate_cutout_")||key.startsWith("ultimate_keystone_"))options[key]=null;
+      }
+      if(field==="valance"&&value==="None")for(const key of Object.keys(options))if(key.startsWith("ultimate_keystone_"))options[key]=null;
+      onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
+      return;
+    }
 
     if (
       productType === "Faux Wood Blinds" &&
@@ -10106,7 +10135,7 @@ function ShadesAndBlindsOptions({
         motor_type: null,
         remote_type: null,
         options_json: {
-          ...Object.fromEntries(Object.entries(withoutProductColorDetails(currentJson)).filter(([key]) => !key.startsWith("smartprivacy_"))),
+          ...Object.fromEntries(Object.entries(withoutProductColorDetails(currentJson)).filter(([key]) => !key.startsWith("smartprivacy_") && !key.startsWith("ultimate_"))),
           product_line: productLine,
           color: null,
           quote_lab_product_id: productId,
@@ -11685,6 +11714,8 @@ function ShadesAndBlindsOptions({
             ?.faux_blind_count,
         );
         const smartprivacy = authoritativeV2 && optionsJson.product_line === "SmartPrivacy";
+        const ultimate = authoritativeV2 && optionsJson.product_line === "Ultimate";
+        const ufFit = String(optionsJson.ultimate_mount_fit ?? "Minimum Depth");
         const spSelect = (key:string,label:string,choices:readonly string[]):GridOption => ({key,label,field:`json:${key}`,type:"select",options:choices});
         const spNumber = (key:string,label:string,min:number,max:number,step="0.0625"):GridOption => ({key,label,field:`json:${key}`,type:"number",min,max,step});
         const spValance = design?.valance ?? "None";
@@ -11696,7 +11727,7 @@ function ShadesAndBlindsOptions({
             label: "Mount Type",
             field: "mount_type",
             type: "buttons",
-            options: smartprivacy ? ["Inside Mount", "Outside Mount"] : FAUX_WOOD_MOUNT_TYPES,
+            options: smartprivacy || ultimate ? ["Inside Mount", "Outside Mount"] : FAUX_WOOD_MOUNT_TYPES,
           },
           {
             key: "slat_size",
@@ -11772,6 +11803,30 @@ function ShadesAndBlindsOptions({
             ...(spInside ? [{key:"smartprivacy_side_mount",label:"Side Support Kit",field:"json:smartprivacy_side_mount",type:"yes-no" as const,noFirst:true},
               ...(optionsJson.smartprivacy_side_mount === "Yes" ? [spSelect("smartprivacy_bracket_installation","Bracket Installation",(blindCount===3 ? [1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])) : [measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)]).every(w=>w-.375<=37) ? ["Top Support","Side Only"] : ["Top Support"])]:[])] : []),
             {key:"smartprivacy_hold_down",label:"Optional Hold-Down Brackets",field:"json:smartprivacy_hold_down",type:"yes-no",noFirst:true},
+          ] satisfies GridOption[] : []),
+          ...(ultimate ? [
+            spSelect("ultimate_wand_drop","Wand Drop",ULTIMATE_FAUX_WANDS),
+            {key:"valance",label:"Valance",field:"valance",type:"select",options:ULTIMATE_FAUX_VALANCES},
+            ...(spInside ? [spSelect("ultimate_mount_fit","Recess Arrangement",spValance === "None" ? ULTIMATE_FAUX_FITS.filter(v=>v!=="Bracket Flush") : ULTIMATE_FAUX_FITS),spNumber("mount_depth_inches","Mounting Depth",0,30)] : [spSelect("ultimate_shim_layers","Shim Layers",["0","1","2"])]),
+            ...(spValance !== "None" ? [
+              spSelect("ultimate_valance_returns","Valance Returns",spInside&&ufFit==="Fully Recessed"?["None"]:["None","Left","Right","Both"]),
+              ...((optionsJson.ultimate_valance_returns ?? (spInside&&ufFit==="Fully Recessed"?"None":"Both")) !== "None" ? [spNumber("ultimate_return_inches","Custom Return Size",.5,5)] : []),
+              ...(blindCount!==3?[spNumber("ultimate_valance_width_inches","Custom Valance Width",1,101)]:[]),
+            ] : []),
+            ...(spInside ? [{key:"ultimate_side_mount",label:"Side Support Kit",field:"json:ultimate_side_mount",type:"yes-no" as const,noFirst:true},
+              ...(optionsJson.ultimate_side_mount === "Yes" ? [spSelect("ultimate_bracket_installation","Bracket Installation",(blindCount===3 ? [1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])) : [measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)]).every(w=>w-.375<=37) ? ["Top Support","Side Only"] : ["Top Support"])]:[])] : []),
+            {key:"ultimate_hold_down",label:"Optional Hold-Down Brackets",field:"json:ultimate_hold_down",type:"yes-no",noFirst:true},
+            ...(blindCount!==3 ? [
+              ...["left","right"].flatMap(side => {
+                const prefix=`ultimate_cutout_${side}`,label=side==="left"?"Left":"Right",kind=optionsJson[`${prefix}_type`]??"None";
+                return [spSelect(`${prefix}_type`,`${label} Cut-out`,["None","Corner (Bottom)","Side (Middle)"]),
+                  ...(kind!=="None"?[spNumber(`${prefix}_width`,`${label} Cut-out Width`,.125,4.375),spNumber(`${prefix}_top`,`${label} Cut-out Top from Headrail`,1.5,96),
+                    ...(kind==="Side (Middle)"?[spNumber(`${prefix}_bottom`,`${label} Cut-out Bottom from Headrail`,3.5,96)]:[])]:[])];
+              }),
+              ...(spValance!=="None"?[spSelect("ultimate_keystone_count","Keystone Count",["0","1","2","3"]),
+                ...(Number(optionsJson.ultimate_keystone_count)>0?[spSelect("ultimate_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]),
+                  ...(optionsJson.ultimate_keystone_layout==="Custom"?Array.from({length:Math.min(3,Number(optionsJson.ultimate_keystone_count))},(_,i)=>spNumber(`ultimate_keystone_location_${i+1}`,`Keystone ${i+1} from Left`,6.5,101)):[])]:[])]:[]),
+            ] : []),
           ] satisfies GridOption[] : []),
         ];
       }
@@ -12102,7 +12157,7 @@ function ShadesAndBlindsOptions({
       label: "Wand Side (from inside the room)",
       field: "json:control_side",
       type: "buttons",
-      options: productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? ["Left"] : ["Wood Blinds", "Mini Blinds"].includes(productType) && measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) - (design?.mount_type === "Inside Mount" ? 0.375 : 0) < 15 ? ["Center"] : ["Left", "Right"],
+      options: productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? ["Left"] : (["Wood Blinds", "Mini Blinds"].includes(productType) || productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" && Number(optionsJson.faux_blind_count ?? 1) === 1) && measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) - (design?.mount_type === "Inside Mount" ? 0.375 : 0) < 15 ? ["Center"] : ["Left", "Right"],
     });
   }
 

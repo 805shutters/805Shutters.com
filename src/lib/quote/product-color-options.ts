@@ -1,3 +1,4 @@
+import { ultimateFauxColor } from "./norman-ultimate-faux";
 import { smartprivacyColor } from "./norman-smartprivacy";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED, SYNCHRONY_DEALER_COLOR_CODES } from "./norman-synchrony";
 import { normanContractColors } from "./norman-contract";
@@ -384,6 +385,14 @@ const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.m
 // Apply current dealer-guide corrections after assigning IDs: historical
 // swatch references must not shift when an offering is retired or added.
 for (const row of generatedProductColorOptions) {
+  if (row.productId === "faux_wood") {
+    const color = ultimateFauxColor(row.colorCode, row.fabricType);
+    row.available = Boolean(color);
+    row.sourcePage = "Ultimate FW Blinds Guide.pdf#page=8";
+    row.sourcePageModified = "2026-09-01";
+    row.sourceNote = "September 2026 dealer guide pages 8–9: exact color/finish, both 2-inch and 2½-inch slats, and factory-code coordination.";
+    if (color) row.automaticDetails = {...row.automaticDetails, finish_type:color.finish};
+  }
   if (row.productId === "smartprivacy_faux") {
     const color = smartprivacyColor(row.colorCode, row.fabricType);
     row.available = Boolean(color);
