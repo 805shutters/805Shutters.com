@@ -75,3 +75,12 @@ This proves the representative customer retail configuration and production pers
 After initialization repair 327ccd13 reached production, added Primary Bedroom as line 9 to internal quote 805-0337. Selecting Lotus Aluminum Mini Blinds initialized the current typed program immediately; no program reselection was needed. Entered 27 × 72, White, Inside Mount, and waited for Quote saved after edits. The line priced at $117.90 while the original Office AMX retained $117.90, Living Room FTXLG retained $119.94, and the six incomplete or held lines remained blocked.
 
 A full browser reload, Staff quotes, and reopening 805-0337 retained Primary Bedroom's exact program, 27 × 72, White, Inside Mount, quantity 1 and $117.90. The quote still showed six windows needing pricing. This verifies the new-line initialization through saved production state; it does not broaden the representative AMX pricing evidence to other sizes or colors.
+
+
+### Typed vertical and customer measurement wording — 1acd1e85
+
+On verified deployment https://805-hv09cf5nd-805-shutters.vercel.app / www.805shutters.com, upgraded internal 805-0337 Dining Room to the current typed steel complete vertical configuration. Recorded 60 × 72, White, Left stack and optional 48-inch White wand; matching valance and White steel headrail are program-derived. Each edit reached Quote saved. A full browser reload retained the program, color, stack and accessory selections. Program reselection intentionally clears mounting, so completed Outside Mount explicitly, waited for Quote saved, then closed and reopened the quote. The final readback retained all these selections, quantity 1 and the unchanged dimensions. The vertical remained $0.00 / Authoritative pricing blocked.
+
+Office AMX $117.90, Living Room FTXLG $119.94 and Primary Bedroom AMX $117.90 remained intact, with six windows needing pricing. Send Quote and Send Payment Link stayed disabled. Contract still refused output with Pricing incomplete. The optional wand is captured as a source-supported selection, not a verified charge. Current custom authority, cut feasibility and accessory charges remain unresolved. This is representative steel-program persistence proof, not complete vertical-family pricing certification.
+
+After a full reload and reopening standalone 805-0339, its customer Contract preview retained $117.90 and displayed **Measurements: Inside opening; manufacturer deducts ½ inch from width**. It no longer exposes the internal `inside_opening` value. No customer delivery or order action occurred.
