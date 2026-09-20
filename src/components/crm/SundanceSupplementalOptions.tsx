@@ -4,8 +4,8 @@ import { sundanceWaldenColors, sundanceWaldenFabricPatch, sundanceWaldenSource }
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { sundanceStockVerticalPatch, sundanceWaldenChoices, sundanceWaldenLinerColors, sundanceWaldenSelectionPatch, type SundanceWaldenOptionKind } from "@/lib/quote/sundance/supplemental-configuration";
 
-export function SundanceSupplementalOptions({productId, options, onUpdateFields}: {
-  productId: string; options: Record<string, unknown>; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+export function SundanceSupplementalOptions({productId, options, onUpdateFields, widthInches=0, heightInches=0}: {
+  productId: string; widthInches?: number; heightInches?: number; options: Record<string, unknown>; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const classes = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
   const update = (key: string, value: string) => onUpdateFields({options_json: {...options, [key]: value || null}});
@@ -17,7 +17,7 @@ export function SundanceSupplementalOptions({productId, options, onUpdateFields}
     <label className="block text-sm">Vertical offering<select aria-label="Sundance vertical offering" className={classes} value={options.sundance_vertical_type === "Stock" ? "Stock" : ""} onChange={e => onUpdateFields({fabric: null, options_json: sundanceStockVerticalPatch(options, e.target.value === "Stock")})}>
       <option value="">Custom / not selected</option><option>Stock</option>
     </select></label>
-    {options.sundance_vertical_type !== "Stock" && <SundanceVerticalOptions options={options} onUpdateFields={onUpdateFields} />}
+    {options.sundance_vertical_type !== "Stock" && <SundanceVerticalOptions options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
     {options.sundance_vertical_type === "Stock" && <>
       {select("stock_vertical_color","Stock vertical color",["White","Off-White"])}
       {select("stock_vertical_valance","Stock vertical valance",["None","Square corner valance"])}
