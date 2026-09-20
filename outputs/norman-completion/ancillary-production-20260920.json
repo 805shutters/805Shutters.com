@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-20",
+  "release": "1acd1e85d768cb7a00ed3844cffe5511454856a7",
+  "quote": "805-0340",
+  "customer": "Norman Ancillary Verification 2026-09-20",
+  "picker_counts": {
+    "yardage": 201,
+    "pillow_cover": 157
+  },
+  "three_yards": {
+    "fabric": "F1599 Scarlett Cottage Linen",
+    "yards": 3,
+    "quantity": 1,
+    "reference": 345,
+    "saved_closed_reopened": true
+  },
+  "fractional": {
+    "fabric": "F1599 Scarlett Cottage Linen",
+    "yards": 2.5,
+    "quantity": 1,
+    "saved_closed_full_reload_reopened": true,
+    "reference": null,
+    "exception": "Guide does not specify fractional-yard ordering increments; exact amount requires dealer confirmation"
+  },
+  "covers": {
+    "fabric": "F1621 Alma Dusk Blue",
+    "size": "20x20",
+    "edge": "piping",
+    "quantity": 3,
+    "recommended_insert": "22x22",
+    "insert_included": false,
+    "reference_per_cover": 123.05,
+    "saved_closed_full_reload_reopened": true
+  },
+  "group2_yardage": {
+    "fabric": "F1621",
+    "yards": 10,
+    "reference": null,
+    "visible_issue": "September does not provide a Group 2 fabric-by-yard rate. The older $150 rate is not verified for this order."
+  },
+  "pillow_choices": {
+    "F1073_standard_present": true,
+    "F0210_F1050_F1055_absent": true
+  },
+  "customer_output": "Contract displays Pricing incomplete and refuses preview; Send Quote/Payment Link disabled; no customer prices authorized",
+  "no_send_or_order": true,
+  "over_maximum": {
+    "requested_yards": 10.0625,
+    "visible_issue": "Record the requested yardage greater than zero and no more than 10 yards.",
+    "pricing_blocked": true,
+    "restored": "F1599 Scarlett 2.5 yards"
+  }
+}

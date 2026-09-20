@@ -198,3 +198,6 @@ Quote 805-0323 (cd036b81-79d9-446b-bfe5-3b53301940b4) saved, closed, reopened an
 - [ ] b907fd2e deployment pending (5726tests passed28skipped): Sundance105SheerView identities with source-only holds; Lotus new-line configuration defaults.
 - [ ] Agents: Onyx now implements source-backed Roman yardage/pillow destinations; Lotus repairs native same-variant copy preserving historical snapshots; Sundance continues Zebra/Portfolio/source options.
 - [ ] Norman six-program finished-panel records need production save/reopen; current source/account exceptions remain unresolved.
+
+- [x] 1acd1e85 deployed5791tests/28skipped; ancillary805-0340 save/fullreload/reopen and heldcustomeroutput proof passed. Sixpanelrecordsbd014428 fullreloadpassed.
+- [ ] 138be0b3 deploying:Normanwood/fauxhardware anddatedRomanwithdrawals, SundanceZip, Lotuscenter-valance normalization. Livewoodhardware/shortwand proof pending.
