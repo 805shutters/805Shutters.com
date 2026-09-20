@@ -1,3 +1,4 @@
+import { currentRollerPanel, rollerPhysicalMotorCount } from "./norman-roller-panel";
 import { deriveRollerCommonValances } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
 import { smartfoldCharging } from "./norman-smartfold-charging";
@@ -220,7 +221,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   for (const [panelId, members] of groups) {
     const configurations = members.map(m => {
       const c = m.selection.configuration;
-      const power = normalizeIdentity(c.motor_type ?? c.power_source);
+      const roller = currentRollerPanel(m.selection);
+      const power = normalizeIdentity(roller ? c.roller_power_configuration : c.motor_type ?? c.power_source);
       const family = /automate|12v/.test(power) ? "automate_home" : "norman_smart";
       const lift = normalizeIdentity(c.honeycomb_operating_system ?? c.lift_system);
       const dualHC = m.selection.productId === "honeycomb" && /tdbu|day night/.test(lift);
@@ -228,9 +230,9 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       const quantity = m.selection.quantity;
       // The HC table specifies shades (including dual motors), not two ports
       // per dual-motor shade. Its larger-area branch consumes 3A vs 2A.
-      const connections = (romanDual ? 2 : 1) * quantity;
+      const connections = roller ? rollerPhysicalMotorCount(m.selection) ?? 0 : (romanDual ? 2 : 1) * quantity;
       const load = connections * (dualHC && m.selection.widthInches * m.selection.heightInches > 60 * 144 ? 3 : 2);
-      return { m, family, connections, load, valid: ["honeycomb", "roman", "smartfold", "perfectsheer"].includes(m.selection.productId) && (family !== "automate_home" || ["roman", "perfectsheer"].includes(m.selection.productId)) && /low voltage|12v/.test(power) && /motor/.test(lift) };
+      return { m, family, connections, load, valid: (roller ? power === "automate low voltage dc motor" && connections > 0 : ["honeycomb", "roman", "smartfold", "perfectsheer"].includes(m.selection.productId) && (family !== "automate_home" || ["roman", "perfectsheer"].includes(m.selection.productId))) && /low voltage|12v/.test(power) && /motor/.test(lift) };
     });
     const family = configurations[0].family;
     const hasLargeDual = configurations.some(c => c.load > 2 * c.connections);
@@ -247,7 +249,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     for (const { m, connections } of configurations) {
       const record: SelectionRecord = {
         version: 1, panelId, family, ownerLineId: owner, chargePanel: m.lineId === owner,
-        connectedLineIds: members.map(l => l.lineId).sort(), connections, totalConnections, capacity, requiredCurrentAmps: totalLoad,
+        connectedLineIds: members.map(l => l.lineId).sort(), connections, totalConnections, capacity, requiredCurrentAmps: family === "automate_home" && configurations.some(c=>currentRollerPanel(c.m.selection)) ? null : totalLoad,
+        ...(family === "automate_home" && configurations.some(c=>currentRollerPanel(c.m.selection)) ? {includedAcPowerCords:m.lineId===owner?1:0,acPowerCordColor:"Black",panelColor:"White",includedConnectorHarnesses:connections,connectorHarnessColor:"White",retailPanelChargeOwner:m.lineId===owner} : {}),
         sourceId: "norman-motorization-guide-2026-09-16", sourcePage: family === "automate_home" ? 75 : m.selection.productId === "perfectsheer" ? 41 : m.selection.productId === "roman" ? 23 : 14,
       };
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };

@@ -1,3 +1,4 @@
+import { rollerMotorizationForSelection } from "./norman-roller-panel";
 import { rollerHardware } from "./norman-roller-hardware";
 import { romanHardware } from "./norman-roman-hardware";
 import { woodComponents, woodValancePriceWidth } from "./norman-wood";
@@ -57,7 +58,6 @@ import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { rollerMotorChargeForPowerConfiguration } from "./roller-motor";
 import {
   canonicalMotorizationPriceSelections,
-  canonicalMotorizationSelectionsFromConfiguration,
 } from "./roller-motor-contract";
 import { canonicalNormanShadeMotorizationSelectionsFromConfiguration } from "./norman-shade-motorization";
 import { rollerComponentOrderWidthsForPricing } from "./roller-matrix";
@@ -818,9 +818,7 @@ function priceInputContractIssues(
   }
   const canonicalRollerMotorization =
     selection.productId === "roller"
-      ? canonicalMotorizationSelectionsFromConfiguration(
-          selection.configuration,
-        )
+      ? rollerMotorizationForSelection(selection)
       : null;
   const canonicalShadeMotorization =
     selection.productId === "honeycomb" || selection.productId === "roman" || selection.productId === "smartfold" || selection.productId === "perfectsheer"
@@ -1434,9 +1432,7 @@ function priceComponentInputs(
   );
   const canonicalContract =
     selection.productId === "roller"
-      ? canonicalMotorizationSelectionsFromConfiguration(
-          selection.configuration,
-        )
+      ? rollerMotorizationForSelection(selection)
       : null;
   const canonicalMotorization =
     canonicalContract?.selections ??

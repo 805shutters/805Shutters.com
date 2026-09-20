@@ -1,4 +1,5 @@
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
+import { rollerMotorizationForSelection } from "./norman-roller-panel";
 import { validateRollerCommon } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
 import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-ancillary";
@@ -53,7 +54,6 @@ import {
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { validateRollerMatrix } from "./roller-matrix";
 import { expectedRollerMotorForPowerConfiguration } from "./roller-motor";
-import { canonicalMotorizationSelectionsFromConfiguration } from "./roller-motor-contract";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
@@ -1234,7 +1234,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
 
   const lift = normalized(configValue(context, "lift_system"));
   const canonicalMotorization =
-    canonicalMotorizationSelectionsFromConfiguration(context.configuration);
+    rollerMotorizationForSelection(context);
   const selectedLegacyMotor = text(
     configValue(context, "motor_type", "roller_motor"),
   );

@@ -1,3 +1,4 @@
+import { currentRollerPanel, rollerMotorizationForSelection } from "@/lib/quote-v2/norman-roller-panel";
 import { findRomanFrontColor } from '@/lib/quote-v2/catalog';
 import { woodValancePriceWidth } from "@/lib/quote-v2/norman-wood";
 import { expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
@@ -1238,6 +1239,14 @@ function repriceExactQuoteBuilderV2(
   // supplied assembly or shared-panel charge allocation.
   for (const prepared of preparedDesigns) {
     if (prepared.selection.catalogAsOf < "2026-09-18") continue;
+    if (currentRollerPanel(prepared.selection)) {
+      const roller = rollerMotorizationForSelection(prepared.selection);
+      if (roller) {
+        prepared.selection.configuration = {...prepared.selection.configuration, motorization_selections:[...roller.selections]};
+        prepared.priceInput = {...prepared.priceInput,motorization:canonicalMotorizationPriceSelections(roller.selections)};
+        prepared.motorizationIssues = [...prepared.motorizationIssues, ...roller.issues];
+      }
+    }
     const motor = resolveNormanShadeMotorization(prepared.selection);
     if (motor?.canonicalSelections) {
       prepared.selection.configuration = { ...prepared.selection.configuration, motorization_selections: [...motor.canonicalSelections] };

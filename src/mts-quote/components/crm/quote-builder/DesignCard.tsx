@@ -1,5 +1,6 @@
 import { honeycombChargingClearance } from "@/lib/quote-v2/norman-honeycomb-charging-clearance";
 import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
+import { NormanRollerPanelOptions } from "@/components/crm/NormanRollerPanelOptions";
 import { NormanRollerCommonOptions } from "@/components/crm/NormanRollerCommonOptions";
 import { NormanRollerHardwareOptions } from "@/components/crm/NormanRollerHardwareOptions";
 import { ultimateSavedCommonForDisplay } from "@/lib/quote-v2/norman-ultimate-assemblies";
@@ -6044,6 +6045,7 @@ export function DesignCard({
         )}
 
         {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerHardwareOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldChargingOptions design={currentDesign} quantity={lineItem.quantity} onUpdateFields={updateFields} />}
