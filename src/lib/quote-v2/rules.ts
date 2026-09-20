@@ -1,4 +1,5 @@
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
+import { smartfoldHasDocumentedPricingBranch, validateSmartfoldEligibility } from "./norman-smartfold-eligibility";
 import { rollerMotorizationForSelection } from "./norman-roller-panel";
 import { validateRollerCommon } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
@@ -2388,6 +2389,7 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  if (smartfoldHasDocumentedPricingBranch(context)) return "documented_limited";
   if (isTypedLotusAmx(context) && context.catalogAsOf >= "2026-09-20") return "documented_limited";
   if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
   // Current CityLights assortment, mounting, hardware and matching rules are
@@ -2428,6 +2430,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   if (context.productId === "sundance_portfolio_roman") issues.push(...validateSundancePortfolioConfiguration(context));
   if (context.productId === "sundance_sheerview") issues.push(...validateSundanceSheerviewConfiguration(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
+  issues.push(...validateSmartfoldEligibility(context));
   const withdrawal = normanColorWithdrawal(
     context.productId,
     configValue(context, "fabric_color_code"),

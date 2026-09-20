@@ -1,3 +1,4 @@
+import { smartfoldOutsideClearance } from "./norman-smartfold-eligibility";
 import { currentRollerPanel, rollerPhysicalMotorCount } from "./norman-roller-panel";
 import { deriveRollerCommonValances } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
@@ -73,7 +74,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const roller = rollerHardware(selection);
     if (roller) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: roller.record};
     const smartfold = smartfoldHardware(selection);
-    if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
+    const smartfoldClearance = smartfoldOutsideClearance(selection);
+    if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: {...smartfold.record,...(smartfoldClearance?{outsideClearance:smartfoldClearance}:{})} };
     const perfectsheer = perfectsheerComponents(selection);
     if (perfectsheer) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: perfectsheer };
     const widths = romanComponentWidths(selection);
