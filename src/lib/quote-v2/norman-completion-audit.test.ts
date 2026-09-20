@@ -14,12 +14,18 @@ const honeycombCellRoutes = normanHoneycombV2Source.activeColors.flatMap(c => c.
 
 describe("Norman catalog coverage ledger", () => {
   it("accounts for every imported family, program and retained color identity", () => {
-    expect(products).toHaveLength(20);
-    expect(products.flatMap(p => p.programs)).toHaveLength(55);
-    for (const id of ["norman_roman_fabric_by_yard", "norman_roman_pillow_covers"]) {
+    expect(products).toHaveLength(21);
+    expect(products.flatMap(p => p.programs)).toHaveLength(56);
+    for (const id of ["norman_roman_fabric_by_yard", "norman_roman_pillow_covers", "norman_smartdrape_replacement_vanes"]) {
       expect(getProduct(id)?.priceBasis).toBe("manual_required");
       expect(getProduct(id)?.programs[0].grid.prices).toEqual([]);
     }
+    const replacement = getProduct("norman_smartdrape_replacement_vanes")!;
+    expect(replacement.productType).toBe("Vane Packs");
+    expect(replacement.programs[0].sourceId).toBe("norman-perfectsheer-smartdrape-guide-2026-09");
+    expect(replacement.programs[0].sourcePages).toEqual([24]);
+    expect(replacement.customerRetailStatus).toBe("unverified");
+    expect(QUOTE_V2_PRODUCT_STATUS[replacement.id]).toBe("manual_quote_required");
     expect(new Set(colors.map(c => c.id)).size).toBe(colors.length);
     for (const color of colors) {
       expect(color.sourcePage || color.sourceNote, color.id).toBeTruthy();
