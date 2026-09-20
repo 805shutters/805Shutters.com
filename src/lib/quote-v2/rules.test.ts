@@ -310,7 +310,7 @@ describe("Quote V2 authoritative manufacturer rules", () => {
 
   it("accepts the three currently verified Caroline styles while preserving historical quarantine and other exclusions", () => {
     for (const fold_style of ["Flat Fold without Seams", "Flat Fold with Batten Back", "Soft Fold"]) {
-      const current=selection("roman", {...romanConfiguration, fabric_collection:"Caroline",fabric_color_code:"F1090",fold_style},{catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-20")});
+      const current=selection("roman", {...romanConfiguration, fabric_collection:"Caroline",fabric_color_code:"F1090",fold_style,roman_mount_fit:"Semi Inside",mount_depth_inches:2},{catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-20")});
       const issues=validateSelection(current);
       expect(hardBlocks(issues)).toEqual([]);
       expect(issues.find(i=>i.ruleId==="roman.fabric.f1090.current_styles")?.source.sourceId).toBe("norman-roman-caroline-portal-2026-09-20");

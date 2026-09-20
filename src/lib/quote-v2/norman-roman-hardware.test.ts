@@ -56,3 +56,36 @@ describe('September Roman chain and hardware rules',()=>{
   expect(romanHardware(shade({hold_downs:'Magnetic'}))?.issues.length).toBeGreaterThan(0);
  });
 });
+
+describe('Roman September mounting-depth revision',()=>{
+ const current=(configuration:SelectionContext['configuration'])=>({...shade(configuration),catalogAsOf:'2026-09-20',catalogVersion:'test-norman-roman-mounting-2026-09-20-r2'});
+ const mountingIssues=(s:SelectionContext)=>romanHardware(s)?.issues.filter(i=>i.ruleId.includes('mount_'))??[];
+ it.each([
+  ['Cordless','', '',1.75,2.125],
+  ['Continuous Cord Loop','1 1/2" Headrail','',1.75,2.125],
+  ['Continuous Cord Loop','2" Headrail','',2.125,2.625],
+  ['SmartRelease','','',2.125,2.625],
+  ['Motorized','','Rechargeable Battery (AC Charger)',2,2.5],
+  ['Motorized','','AutoWand',1.625,2.125],
+ ])('enforces %s %s %s exact depths',(lift_system,headrail_size,motor_type,semi,flush)=>{
+  for(const [roman_mount_fit,minimum] of [['Semi Inside',semi],['Flush Inside',flush]] as const){
+   const s=current({lift_system,headrail_size,motor_type,roman_mount_fit,mount_depth_inches:minimum});
+   expect(mountingIssues(s)).toEqual([]);
+   expect(romanHardware(s)?.record.mounting).toMatchObject({minimumDepth:minimum,measuredDepth:minimum,fit:roman_mount_fit});
+   expect(mountingIssues({...s,configuration:{...s.configuration,mount_depth_inches:minimum-.0625}}).map(i=>i.ruleId)).toContain('roman.hardware.mount_depth');
+  }
+ });
+ it('uses Day and Night depths for all controls and rejects missing or invalid measurements',()=>{
+  for(const lift_system of ['Cordless','Continuous Cord Loop','Motorized','SmartRelease']){
+   for(const [roman_mount_fit,minimum] of [['Semi Inside',3.625],['Flush Inside',4.125]] as const){
+    const s=current({lift_system,shade_type:'Day & Night',roman_mount_fit,mount_depth_inches:minimum});
+    expect(mountingIssues(s)).toEqual([]);
+    expect(mountingIssues({...s,configuration:{...s.configuration,mount_depth_inches:minimum-.0625}})).toHaveLength(1);
+   }
+  }
+  for(const mount_depth_inches of [undefined,'',0,'abc',1.5])expect(mountingIssues(current({roman_mount_fit:'Semi Inside',mount_depth_inches}))).toHaveLength(1);
+  expect(mountingIssues(current({mount_depth_inches:4})).map(i=>i.ruleId)).toContain('roman.hardware.mount_fit');
+  expect(mountingIssues(current({mount_type:'Outside Mount'}))).toEqual([]);
+  expect(mountingIssues({...current({}),catalogVersion:'test-norman-roman-caroline-2026-09-20-r1'})).toEqual([]);
+ });
+});

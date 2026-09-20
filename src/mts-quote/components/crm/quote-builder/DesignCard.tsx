@@ -10759,6 +10759,11 @@ function ShadesAndBlindsOptions({
           },
         ];
 
+        if (authoritativeV2 && mountType === "Inside Mount") {
+          options.push({key:"roman_mount_fit",label:"Recess Arrangement",field:"json:roman_mount_fit",type:"buttons",options:["Semi Inside","Flush Inside"]});
+          options.push({key:"mount_depth_inches",label:"Mounting Depth",field:"json:mount_depth_inches",type:"number",min:0,max:30,step:"0.0625",unit:'"'});
+        }
+
         // Chain controls — Continuous Cord Loop and SmartRelease only.
         if (isChainControl) {
           if (authoritativeV2 && controlType === "Continuous Cord Loop") {

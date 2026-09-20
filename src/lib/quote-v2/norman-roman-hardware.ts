@@ -10,6 +10,23 @@ export function romanHardware(s:SelectionContext){
  const issues:ValidationIssue[]=[];
  const add=(id:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roman.hardware.${id}`,source:sourceProvenance('norman-roman-guide-2026-09',{page}),selectedValues:{...c},explanation});
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
+ // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
+ const mountingRevision = s.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r2');
+ const mountingFit = String(c.roman_mount_fit ?? '');
+ const rawDepth = c.mount_depth_inches;
+ const depth = rawDepth == null || rawDepth === '' ? NaN : Number(rawDepth);
+ const flush = mountingFit === 'Flush Inside';
+ const headrailTwo = /2/.test(String(c.headrail_size ?? '')) && !/1\s*1[\/ ]2|1\.5/.test(String(c.headrail_size ?? ''));
+ const autoWand = /auto\s*wand/.test(norm(c.motor_type ?? c.power_source));
+ const minimumDepth = dayNight ? (flush ? 4.125 : 3.625)
+   : lift === 'motorized' ? (autoWand ? (flush ? 2.125 : 1.625) : (flush ? 2.5 : 2))
+   : /smartrelease|smart release/.test(lift) || (ccl && headrailTwo) ? (flush ? 2.625 : 2.125)
+   : (flush ? 2.125 : 1.75);
+ if (mountingRevision && mount === 'inside mount') {
+   if (!['Semi Inside', 'Flush Inside'].includes(mountingFit)) add('mount_fit',16,'Choose Semi Inside or Flush Inside for this Roman shade.');
+   if (!Number.isFinite(depth) || depth < minimumDepth) add('mount_depth',16,`This Roman control and mounting arrangement requires at least ${minimumDepth} inches of mounting depth.`);
+ }
+
  const rawLength=c.roman_chain_length??c.chain_length;
  const custom=rawLength!=null&&rawLength!==''&&norm(rawLength)!=='standard';
  const chainLength=custom?Number(String(rawLength).replace(/"/g,'')):s.heightInches-3;
@@ -46,8 +63,8 @@ export function romanHardware(s:SelectionContext){
  if(selected(c.magnetic_hold_down)&&!magnetic)add('legacy_magnet',22,'Reconfirm the Roman magnetic hold-down selection before repricing.');
  if((selected(c.cordless_operating_pole)||selected(c.pole_attachment_only))&&!hasPole)add('legacy_pole',23,'Reconfirm the Roman pole or attachment selection before repricing.');
  return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:shadeCount}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity,billingScope:'once_per_line' as const}]:[]),...(shimQuantity>0?[{id:'shim',units:shimQuantity}]:[])],record:{
-  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[15,22,23,24],
-  mounting:{componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
+  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[15,16,22,23,24],
+  mounting:{...(mountingRevision && mount === 'inside mount' ? {fit:mountingFit,measuredDepth:depth,minimumDepth} : {}),componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
   chain:chain?{length:chainLength,custom,measuredFrom:'top_of_headrail_to_bottom_of_tension_device',minimumAccessClearance:2,toleranceAbove:1.5625,material:norm(c.chain_type)==='stainless steel'?'Stainless Steel':'Plastic',color:norm(c.chain_type)==='stainless steel'?'Stainless Steel':c.chain_color??'White',clutchAndTensionColor:norm(c.chain_type)==='stainless steel'?'White':c.chain_color??'White',positions}:null,
   pole:hasPole?{type:c.poles,quantity:poleQuantity,length:pole==='pole with attachment'?poleLength:null,quantityBasis:'per_line',legacyPerShadeQuantity:!totalPoles&&legacyPoles?Number(c.roman_pole_quantity):null}:null,
   holdDown:magnetic?{quantity:shadeCount,color:c.magnet_color??'Nickel-Plated',factoryMagnetLocation:dayNight?'back_of_rear_roller_hem_bar':'bottom_backside_of_roman',catchInstalledAtJobsite:true,minimumSideClearance:1.4375,minimumBottomClearance:.3125,metalDoorRecommended:false}:null,
