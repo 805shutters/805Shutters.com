@@ -6046,7 +6046,7 @@ export function DesignCard({
         ) : manufacturerOptionsRoute.status === "manual_quote" ? (
           <>
             <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
-            {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
+            {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
           manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (

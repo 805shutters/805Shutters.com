@@ -6,6 +6,7 @@ import { validateLotusVertical } from "./lotus-vertical";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
+import { validateSundanceSheerviewConfiguration } from "@/lib/quote/sundance/sheerview-configuration";
 import { romanHardware } from "./norman-roman-hardware";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
 import { validateHoneycombHardware } from "./norman-honeycomb-hardware";
@@ -2413,6 +2414,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...(romanFabricLimits(context)?.issues ?? []));
   issues.push(...validateNormanFamilyRules(context));
+  if (context.productId === "sundance_sheerview") issues.push(...validateSundanceSheerviewConfiguration(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
   const withdrawal = normanColorWithdrawal(
     context.productId,

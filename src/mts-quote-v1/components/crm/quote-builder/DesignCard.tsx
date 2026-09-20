@@ -5213,7 +5213,7 @@ export function DesignCard({
         ) : getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required" ? (
           <>
             <ManufacturerManualQuoteBadge manufacturer={currentDesign?.supplier || "Manufacturer"} />
-            {hasSundanceConfiguration(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? "")) && <SundanceDesignOptions design={currentDesign} productId={String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id)} onUpdateFields={updateFields} />}
+            {hasSundanceConfiguration(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? "")) && <SundanceDesignOptions design={currentDesign} productId={String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id)} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : isShutters ? (
           <ShutterDesignOptions
