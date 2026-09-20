@@ -49,3 +49,15 @@ The family-specific values survived the full reload/reopen. Builder reads **Pric
 ## SheerView guide-only identity — production b907fd2e
 
 In internal unsent draft 805-0335, added line 10 Primary Bathroom, 36 × 60 inches, selected **S65XN100-4 · Carbon · 2.5-inch Striped Collection · Light Filtering**. Observed Quote saved, closed the builder, and reopened the persisted draft. Vane size `2.5`, light control `Light Filtering`, and exact color ID `sundance_sheerview:S65XN100-4` all remained selected. The warning that this color is present in the current guide but absent from the captured dealer menu also remained visible. Total remained unavailable with eight windows requiring pricing. This confirms that the availability exception is preserved in the actual CRM; it does not verify current dealer orderability or price.
+
+## Zebra, Portfolio and custom vertical persistence — production 1acd1e85
+
+Verified on www.805shutters.com after parent confirmed release `1acd1e85` live. Existing internal unsent Draft **805-0335** now contains thirteen lines; no order, message, payment or sale was submitted.
+
+- Bedroom 1, 36 × 60: `ORLANDO BLACKOUT BL2901` saves and reopens as **Orlando Blackout · Group 4**, exact color `sundance_zebra:dealer:f6365af13320`, collection `sundance_zebra:collection:b5cbe30ab3c5`. The separate Orlando light-filtering Group 2 was not used. Room Darkening, 118-inch fabric width and unverified railroading remain visibly identified.
+- Bedroom 2, 36 × 60: Flat style offered 82 exact material choices and excluded Alese. Selected CLL01 Callaway Granite Flat, then changed to Knife Pleat: the old material selection cleared. Selected `ASE01 · Alese Cashew · Knife Pleat`; full browser reload and quote reopen retained both style and exact identity `sundance_portfolio_roman:ASE01:Knife Pleat`.
+- Bedroom 3, 36 × 60: Custom Alexander Ivory saved and reopened with exact identity `sundance_vertical_essence:custom:56fd60247729`; Rounded valance retained the correct group-specific `sundance_vertical_essence_valance_p6_t3`. The existing Kitchen Stock offering remained Stock, separate from the new custom identity.
+
+The builder shows **Total unavailable / 11 windows need pricing** and the actual Quotes list shows **Draft / Pricing incomplete**. Earlier manual 123.45 and 234.56 fixture amounts remain explicitly labeled internal test values, not account or selling authority. This verifies identity/style/valance persistence, not automatic pricing or exhaustive configuration correctness.
+
+Observed a separate presentation defect: the Zebra's exact Room Darkening attribute generated a legacy generic 20% Light Control chip. It did not calculate a quote price because Sundance remains held. A narrow follow-up suppresses generic automatically inferred surcharge choices/chips for Sundance while preserving explicitly saved charges; live verification of that follow-up is pending.
