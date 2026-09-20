@@ -1,0 +1,9 @@
+# Sundance cellular motor and specialty live proof
+
+Verified in the authenticated public CRM on the deployed 1d9abd98 release, internal unsent draft **805-0335**, customer **Sundance Catalog Verification 2026-09-20**. Existing job notes explicitly identify manual 123.45 and 234.56 as persistence fixtures, not price authority. No send, signature, payment, sold status or manufacturer order occurred.
+
+- Line 1: 36 × 60, exact PU422SS-766 Classic Gray 3/4-inch blackout, Somfy Cord Lift WireFree TL25, inside, single. Saved charger V2 13-foot quantity 1 and Situo 5-channel quantity 1. Source evidence displayed motor 220 + charger 36 + remote 83 = **339 net**, retail options 0, explicitly separate from customer price. Closed and reopened the quote; all selections and both quantities persisted.
+- Line 17: copied line 1 using the repaired Copy line item flow; immediate product/color/motor selection populated. Changed to Specialty Shape, which removed motor accessory allocations. Selected Standard Arch / Perfect, changed dimensions to 36 × 18 through direct measurement fields. Before correcting height, the UI displayed the standard arch range/geometry issue. After correction, source evidence displayed **116 net specialty surcharge** and explicitly unresolved base/geometry/final-price confirmation. Closed and reopened; 36 × 18, Specialty Shape, Standard Arch and Perfect persisted. No stale charger/remote fields remained on this line.
+- Existing Day/Night line 16 remained paired and saved. The quote continued to show **Pricing incomplete / Total unavailable / 13 windows need pricing**; these configuration proofs do not establish a complete customer price. Line 17 retains the copied internal manual fixture and must not be treated as an approved specialty quote.
+
+Dedicated CRM tab 1585237031 and unsubmitted dealer draft tab 1585237013 remain preserved. Cut-out/extension-pole UI and Zebra changes require their subsequent deployed live proof.
