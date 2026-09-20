@@ -3,6 +3,23 @@ import {sourceProvenance} from '@/lib/quote-v2/source-manifest';
 import {sundancePortfolioColors,sundancePortfolioSource} from './portfolio-assortment';
 export const sundancePortfolioControls=['Cordless','Cordless TDBU','Clutch and Loop','Somfy Sonesse Ultra 30','Standard LI Motor','Power Lift'] as const;
 export const sundancePortfolioLiners=['LF03 Light-Filtering Ivory','LF02 Light-Filtering Snow White','BO01 Black-Out White'] as const;
+export function sundancePortfolioDesignPatch(options:Record<string,unknown>,key:string,value:string) {
+ const next:Record<string,unknown>={...options,[key]:value||null};
+ const control=next.sundance_portfolio_control;
+ if(key==='sundance_portfolio_control'&&control==='Cordless TDBU')next.sundance_portfolio_drop='Standard';
+ if(key==='sundance_portfolio_drop'||key==='sundance_portfolio_control'){
+  next.sundance_portfolio_front_valance=next.sundance_portfolio_drop==='Standard'?'Included':null;
+  next.sundance_portfolio_back_valance=control==='Cordless TDBU'?'Yes':next.sundance_portfolio_drop==='Waterfall'?null:'No';
+  next.sundance_portfolio_interior_valance=next.sundance_portfolio_drop==='Waterfall'?null:'No';
+  next.sundance_portfolio_valance_length='Standard';
+  next.sundance_portfolio_custom_valance_length=null;
+ }
+ if(key==='mount_type'||key==='sundance_portfolio_control')next.sundance_portfolio_returns=null;
+ if(key==='sundance_portfolio_front_valance'){
+  next.sundance_portfolio_valance_length='Standard';next.sundance_portfolio_custom_valance_length=null;
+ }
+ return next;
+}
 export function validateSundancePortfolioConfiguration(s:Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'>):ValidationIssue[] {
  const c=s.configuration,issues:ValidationIssue[]=[];
  const add=(key:string,page:number,message:string)=>issues.push({severity:'hard_block',ruleId:'sundance.portfolio.'+key,source:sourceProvenance('sundance-sundance-portfolio-roman-shade-product-price-guide-2026-421a4cba9a72',{page}),selectedValues:{widthInches:s.widthInches,heightInches:s.heightInches,...c},explanation:message});
@@ -28,6 +45,18 @@ export function validateSundancePortfolioConfiguration(s:Pick<SelectionContext,'
  if(td&&(c.roman_style!=='Knife Pleat'||c.sundance_portfolio_drop!=='Standard'||!fabric?.tdbuAvailable))add('tdbu',14,'Cordless TDBU requires Standard drop, Knife Pleat, and an eligible material.');
  if(c.sundance_portfolio_assembly==='Two on one')add('assembly_components',18,'Multiple shades on one headrail require individual component dimensions and charges; the 112-inch total headrail limit alone does not verify each shade.');
  else if(c.sundance_portfolio_assembly!=='Single')add('assembly',18,'Choose single shade or identify a multiple-shade assembly requiring component verification.');
+ if(!['Inside','Outside'].includes(String(c.mount_type)))add('mount',12,'Choose inside or outside mount.');
+ const returns=String(c.sundance_portfolio_returns??'');
+ if(!['None','Standard','Extended'].includes(returns)||returns==='Extended'&&c.mount_type!=='Outside'||td&&c.mount_type==='Inside'&&returns!=='None')add('shade_returns',14,'Select no returns, standard returns, or outside-only extended returns. Inside-mount TDBU cannot have returns.');
+ const waterfall=c.sundance_portfolio_drop==='Waterfall';
+ if(waterfall?!['None','Added'].includes(String(c.sundance_portfolio_front_valance)):c.sundance_portfolio_front_valance!=='Included')add('front_valance',8,'Standard shades include a front valance; waterfall shades may omit it or add a front valance.');
+ if(!['Yes','No'].includes(String(c.sundance_portfolio_back_valance))||td&&c.sundance_portfolio_back_valance!=='Yes'||!td&&!waterfall&&c.sundance_portfolio_back_valance!=='No')add('back_valance',14,'Choose a waterfall back valance; TDBU includes one. Other standard shades do not use this waterfall option.');
+ if(!['Yes','No'].includes(String(c.sundance_portfolio_interior_valance))||!waterfall&&c.sundance_portfolio_interior_valance!=='No')add('interior_valance',8,'Interior blackout-fabric valances are documented for waterfall shades.');
+ if(c.sundance_portfolio_front_valance!=='None'&&c.sundance_portfolio_valance_length!=='Standard')add('custom_valance_length',8,'Custom front valance length requires manufacturer confirmation of the requested length and any charge.');
+ if(c.mount_type==='Inside'){
+  const depth=Number(c.sundance_portfolio_mount_depth);
+  if(!Number.isFinite(depth)||depth<0.75)add('mount_depth',18,'Top-mounted inside brackets require at least ¾ inch of mounting depth.');
+ }
  if(c.catalog_sundance_portfolio_valance_id)add('stale_valance_schedule',25,'A shade cannot use the standalone valance price schedule.');
  return issues;
 }

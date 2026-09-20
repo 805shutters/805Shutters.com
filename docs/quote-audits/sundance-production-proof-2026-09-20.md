@@ -69,3 +69,7 @@ After parent verified Zip release138be0b3, added Guest Room line14 at96×84 with
 On the same fresh page, Bedroom1 retains Orlando Blackout Group4/BL2901. The unsupported generic20% Light Control chip and generic Add Surcharge button are gone; the actual Room Darkening/fabric-width source description remains. This closes the narrow presentation regression proof.
 
 Observed remaining copy issue: the Zip line's missing dimensional-grid/manual-price condition is presented under “Manufacturer size warning” and “exceeds a manufacturer restriction.” The selected96×84 is within the published220×110 envelope; absence of an approved price calculation is not an oversize finding. This needs a separate wording/routing correction and does not invalidate identity persistence.
+
+### SheerView controls, release 3b9257e5
+
+In internal unsent 805-0335, line 10 (Primary Bathroom, 36×60, Carbon S65XN100-4) the live form exposed No Drill after choosing Cordless. Changing to Continuous Cord Loop cleared No Drill and removed it from the menu. Selected Flat Square, Safe Wand and Single; waited for Quote saved, closed and reopened the quote. All three values and the exact material persisted. The source-only availability warning remained, and no manual price was entered. This verifies the saved control path, not manufacturer orderability or approved account price.
