@@ -44,3 +44,13 @@ export function normanShutterColor(programId: string | null | undefined, value: 
 export function normanShutterLouvers(programId: string | null | undefined) {
   return normanShutterProgram(programId)?.id === "woodlore_aquashield" ? NORMAN_SHUTTER_LOUVERS.slice(1) : [...NORMAN_SHUTTER_LOUVERS];
 }
+
+export const NORMAN_SHUTTER_HINGES = ["Silk White", "Stainless Steel", "Pearl", "Bisque", "Antique Brass", "Bright Brass", "Black", "Pure White", "Nickel-Plated", "Brushed Nickel", "Crisp Linen", "String", "Sea Mist", "Stone Gray", "Brown Gray", "Taupe Gray"];
+const DIRECT_MOUNT_UNAVAILABLE_HINGES = ["Crisp Linen", "String", "Sea Mist", "Stone Gray", "Brown Gray", "Taupe Gray"];
+export function normanShutterHinges(programId: string | null | undefined, frame: unknown) {
+  if (normanShutterProgram(programId)?.id === "woodlore_aquashield") return ["Stainless Steel"];
+  return /direct mount|no frame/i.test(String(frame ?? "")) ? NORMAN_SHUTTER_HINGES.filter(h => !DIRECT_MOUNT_UNAVAILABLE_HINGES.includes(h)) : [...NORMAN_SHUTTER_HINGES];
+}
+export function normanShutterTilts(programId: string | null | undefined) {
+  return normanShutterProgram(programId)?.id === "woodlore_aquashield" ? ["Invisible Tilt"] : ["Standard Tilt", "Invisible Tilt", "Offset Tilt"];
+}

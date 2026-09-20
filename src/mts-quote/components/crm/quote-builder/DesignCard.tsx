@@ -1,4 +1,4 @@
-import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers } from "@/lib/quote/norman-shutter-assortment";
+import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
@@ -3979,7 +3979,7 @@ export function getStandardShutterGridOptions(
       label: "Tilt Type",
       field: "tilt_type",
       type: "buttons",
-      options: SHUTTER_TILT_TYPES,
+      options: authoritativeV2 ? normanShutterTilts(String(normanOptions.catalog_program_id ?? design?.material ?? "")) : SHUTTER_TILT_TYPES,
     },
     {
       key: "color",
@@ -3993,7 +3993,7 @@ export function getStandardShutterGridOptions(
       label: "Hinge Color",
       field: "hinge_color",
       type: "select",
-      options: SHUTTER_HINGE_COLORS,
+      options: authoritativeV2 ? normanShutterHinges(String(normanOptions.catalog_program_id ?? design?.material ?? ""), normanOptions.frame_type) : SHUTTER_HINGE_COLORS,
     },
     {
       key: "panel_config",

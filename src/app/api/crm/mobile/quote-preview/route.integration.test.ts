@@ -160,7 +160,7 @@ describe("mobile quote preview current-catalog integration", () => {
       },
       validationSnapshot: {
         productStatus: "restriction_source_incomplete",
-        issues: [{
+        issues: [{ ruleId: "norman.shutter.assortment.color" }, {
           ruleId: "norman.shutter.frame_pricing.missing_frame_sides",
           selectedValues: { frame_sides: null },
           explanation: "Window-size shutter pricing requires three or four framed sides.",
@@ -174,7 +174,7 @@ describe("mobile quote preview current-catalog integration", () => {
 
     const withFrameSides = {
       ...parsed.designs[0],
-      options_json: { ...parsed.designs[0].options_json, frame_sides: "4 Sided" },
+      options_json: { ...parsed.designs[0].options_json, frame_sides: "4 Sided", color: "001 - Pure White" },
     };
     const mismatch = prepareSalesQuoteV2PricingBatch({
       lines: parsed.lines,

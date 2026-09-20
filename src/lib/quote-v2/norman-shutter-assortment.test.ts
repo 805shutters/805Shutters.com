@@ -24,6 +24,16 @@ describe("Norman shutter binder assortment", () => {
     expect(validateNormanShutterAssortment(shutter("woodlore_aquashield","001 - Pure White",'1 7/8"')).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.louver"]);
     expect(validateNormanShutterAssortment(shutter("woodlore_plus","001 - Pure White",'1 7/8"'))).toEqual([]);
   });
+  it("enforces source and portal hardware compatibility on saved configurations", () => {
+    const aqua=shutter("woodlore_aquashield","001 - Pure White");
+    aqua.configuration={...aqua.configuration,hinge_color:"Pure White",tilt_type:"Standard Tilt"};
+    expect(validateNormanShutterAssortment(aqua).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.hinge","norman.shutter.assortment.tilt"]);
+    aqua.configuration={...aqua.configuration,hinge_color:"Stainless Steel",tilt_type:"Invisible Tilt"};
+    expect(validateNormanShutterAssortment(aqua)).toEqual([]);
+    const direct=shutter("normandy_painted","001 - Pure White");
+    direct.configuration={...direct.configuration,frame_type:"Direct Mount (No Frame)",hinge_color:"Taupe Gray"};
+    expect(validateNormanShutterAssortment(direct).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.hinge"]);
+  });
   it("accepts exact legacy finish names without changing saved history", () => {
     expect(validateNormanShutterAssortment(shutter("woodlore","Pure White"))).toEqual([]);
     const s=shutter("woodlore","old custom finish");s.catalogAsOf="2026-09-18";expect(validateNormanShutterAssortment(s)).toEqual([]);

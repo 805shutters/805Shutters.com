@@ -193,11 +193,17 @@ function shuffled<T>(values: T[], random: () => number): T[] {
   return copy;
 }
 
+// Shutter finishes are assortment-only; their provisional prices are tested by
+// the V2 validation suite and must not be asserted as publishable legacy prices.
+function hasPublishedLegacyPrice(row: ProductColorOption) {
+  return row.available && row.productId !== "norman_shutters" && getProduct(row.productId)?.priceBasis !== "manual_required";
+}
+
 function stratifiedRandomColorRows(): ProductColorOption[] {
   const random = rng(RANDOM_SEED);
   const byProduct = new Map<string, ProductColorOption[]>();
   for (const row of productColorOptions) {
-    if (!row.available || getProduct(row.productId)?.priceBasis === "manual_required") continue;
+    if (!hasPublishedLegacyPrice(row)) continue;
     const rows = byProduct.get(row.productId) ?? [];
     rows.push(row);
     byProduct.set(row.productId, rows);
@@ -209,14 +215,14 @@ function stratifiedRandomColorRows(): ProductColorOption[] {
     shuffled(rows, random).slice(0, Math.min(16, rows.length)).forEach(add);
   }
   productColorOptions
-    .filter((row) => row.available && getProduct(row.productId)?.priceBasis !== "manual_required" && (row.requiresProgram || row.automaticDetails[PRODUCT_COLOR_SURCHARGE_DETAIL]))
+    .filter((row) => hasPublishedLegacyPrice(row) && (row.requiresProgram || row.automaticDetails[PRODUCT_COLOR_SURCHARGE_DETAIL]))
     .forEach(add);
   return [...selected.values()].sort((a, b) => a.productId.localeCompare(b.productId) || a.id.localeCompare(b.id));
 }
 
 describe("quote builder randomized fabric/color pricing", () => {
   it("normalizes and prices every available searchable color row with a published price", () => {
-    const rows = productColorOptions.filter((row) => row.available && getProduct(row.productId)?.priceBasis !== "manual_required");
+    const rows = productColorOptions.filter((row) => hasPublishedLegacyPrice(row));
     expect(rows.length).toBe(1272);
 
     for (const row of rows) {
