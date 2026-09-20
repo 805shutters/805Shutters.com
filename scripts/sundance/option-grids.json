@@ -1,0 +1,94 @@
+[
+  {
+    "id": "sundance_walden_premier_option_p20_t1",
+    "productId": "sundance_walden_premier",
+    "sourceFile": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+    "sourcePage": 20,
+    "sourceTable": 1,
+    "name": "Light-filtering liner",
+    "kind": "liner",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_premier_option_p20_t2",
+    "productId": "sundance_walden_premier",
+    "sourceFile": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+    "sourcePage": 20,
+    "sourceTable": 2,
+    "name": "Black-out liner",
+    "kind": "liner",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_premier_option_p21_t1",
+    "productId": "sundance_walden_premier",
+    "sourceFile": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+    "sourcePage": 21,
+    "sourceTable": 1,
+    "name": "Narrow twill tape and ramie edge binding",
+    "kind": "edge_binding",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_premier_option_p21_t2",
+    "productId": "sundance_walden_premier",
+    "sourceFile": "Sundance-Walden-Premier-2026A-updated-10.01.25.pdf",
+    "sourcePage": 21,
+    "sourceTable": 2,
+    "name": "Wide twill tape edge binding",
+    "kind": "edge_binding",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_select_option_p19_t1",
+    "productId": "sundance_walden_select",
+    "sourceFile": "Sundance-Walden-Select-2026A-updated-10.21.25.pdf",
+    "sourcePage": 19,
+    "sourceTable": 1,
+    "name": "Light-filtering liner",
+    "kind": "liner",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_select_option_p19_t2",
+    "productId": "sundance_walden_select",
+    "sourceFile": "Sundance-Walden-Select-2026A-updated-10.21.25.pdf",
+    "sourcePage": 19,
+    "sourceTable": 2,
+    "name": "Black-out liner",
+    "kind": "liner",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified."
+    ]
+  },
+  {
+    "id": "sundance_walden_select_option_p19_t3",
+    "productId": "sundance_walden_select",
+    "sourceFile": "Sundance-Walden-Select-2026A-updated-10.21.25.pdf",
+    "sourcePage": 19,
+    "sourceTable": 3,
+    "name": "Edge binding",
+    "kind": "edge_binding",
+    "notes": [
+      "Supplement to base shade retail; not a standalone shade program.",
+      "Current account pricing and complete configuration rules remain unverified.",
+      "No edge-binding surcharge for fabrics that require edge binding."
+    ]
+  }
+]

@@ -19,7 +19,8 @@ for source in sources.values():
  assert hashlib.sha256((source_dir/source["file"]).read_bytes()).hexdigest()==source["sha256"],source["file"]
 docs={k:pdfplumber.open(source_dir/s['file']) for k,s in sources.items()}
 results=[]
-for p in cat['products']:
+option_grids=json.loads((root/'src/lib/quote/sundance/option-grids.source.json').read_text())
+for p in cat['products'] + [{'programs': option_grids}]:
  for program in p['programs']:
   pg=docs[program['sourceId']].pages[program['sourcePages'][0]-1]; ts=pg.find_tables();table_index=int(program['id'].rsplit('_t',1)[1])-1
   region=pg.crop(ts[table_index].bbox) if ts else pg
@@ -28,14 +29,16 @@ for p in cat['products']:
   text=upright.extract_text() or ''
   observed=[]; header_candidates=[]
   for line in text.splitlines():
-   if line.startswith('Prices subject') or 'VALANCE ONLY' in line:break
+   if line.startswith('Prices subject') or 'VALANCE ONLY' in line or line.strip() == 'Square':break
    line=re.sub(r'\[\d+\]', '', line)
    if not observed:
     header=re.sub(r'PRICE GROUP \w+|Price Group \w+', '', line)
     header=header.replace('”','').replace(chr(34),'').replace('`','')
     header=re.sub(r'(\d+)\s*[–—-]\s*(\d+)', r'\2', header)
     header_numbers=[float(v) for v in re.findall(r'(?<![\w.])\d+(?:\.\d+)?(?![\w.])',header)]
-    if len(header_numbers)>=4 and header_numbers==sorted(set(header_numbers)) and max(header_numbers)<=240:header_candidates.append(header_numbers)
+    if len(header_numbers)>=4 and header_numbers==sorted(set(header_numbers)) and max(header_numbers)<=240:
+     header_candidates.append(header_numbers)
+     if len(header_candidates)==1:continue
    line=re.sub(r'^(?:[^0-9]+)(?=\d)', '', line)
    line=re.sub(r'(\d+)\s*½', r'\1.5', line)
    line=line.replace('"','').replace('”','').replace('$','').replace(',','')
@@ -43,9 +46,8 @@ for p in cat['products']:
    if len(tokens)<5 or not re.fullmatch(r'\d+(?:\.\d+)?',tokens[0]):continue
    if not all(re.fullmatch(r'\d+(?:\.\d+)?|N/A|NA|—|-',t) for t in tokens):continue
    vals=[float(t) for t in tokens if re.fullmatch(r'\d+(?:\.\d+)?',t)]
-   # Monetary values exceed the 240-inch axis ceiling in these source tables.
-   if len(vals)<4 or max(vals[1:])<=240:continue
-   if program['id'].startswith('sundance_vertical_essence_'):vals=vals[:-1] # source's final Vanes column is not a price
+   if len(vals)<4 or not header_candidates or not 0<vals[0]<=240:continue
+   if program['id'].startswith('sundance_vertical_essence_') and program['sourcePages'][0] != 12:vals=vals[:-1] # custom grid's final Vanes column is not a price
    observed.append((vals[0],vals[1:]))
   grid=program['grid'];expected=[(h,[v for v in row if v is not None]) for h,row in zip(grid['heights'],grid['prices'])]
   result={'id':program['id'],'sourceFile':sources[program['sourceId']]['file'],'page':program['sourcePages'][0],

@@ -135,6 +135,17 @@ def main():
                 'programs': programs, 'surcharges': [], 'fabricByYard': [],
                 'notes': family['activationBlockers'],
             })
+        option_grids = []
+        for definition in json.loads((ROOT / 'scripts/sundance/option-grids.json').read_text()):
+            source = next(row for row in sources if row['file'] == definition['sourceFile'])
+            page = documents[definition['sourceFile']].pages[definition['sourcePage'] - 1]
+            grid = extract_grid(page.extract_tables()[definition['sourceTable'] - 1])
+            if grid is None:
+                raise ValueError(f"Missing supplemental grid: {definition['id']}")
+            option_grids.append({**definition, 'sourceId': source['sourceId'], 'sourceSha256': source['sha256'],
+                                 'sourcePages': [definition['sourcePage']], 'priceBasis': 'suggested_retail',
+                                 'customerPriceEligible': False, 'grid': grid})
+        (ROOT / 'src/lib/quote/sundance/option-grids.source.json').write_text(json.dumps(option_grids, indent=2) + '\n')
         catalog = {
             'source': 'Sundance manufacturer PDF sources verified 2026-09-14; account terms pending',
             'effectiveDate': '', 'currency': 'USD', 'generatedFrom': 'scripts/import-sundance-catalog.py',

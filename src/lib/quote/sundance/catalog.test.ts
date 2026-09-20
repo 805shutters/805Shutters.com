@@ -25,7 +25,7 @@ describe("Sundance source catalog isolation", () => {
 
   it("pins every program to an exact verified PDF and preserves numeric axes", () => {
     const programs = sundanceCatalog.products.flatMap((p) => p.programs);
-    expect(programs).toHaveLength(99);
+    expect(programs).toHaveLength(100);
     for (const program of programs) {
       expect(SUNDANCE_SOURCE_MANIFEST.some((s) => s.id === program.sourceId)).toBe(true);
       expect(program.sourcePages).toHaveLength(1);
@@ -80,6 +80,8 @@ describe("Sundance source catalog isolation", () => {
 
   it.each([
     // Independently read from the rendered pinned guides, including omitted axes.
+    ["sundance_vertical_essence", "sundance_vertical_essence_p12_t1", 32, 44, 32, 44, 125],
+    ["sundance_vertical_essence", "sundance_vertical_essence_p12_t1", 126, 96, 126, 96, 619],
     ["sundance_aluminum_2", "sundance_aluminum_2_p8_t1", 26, 42, 26, 42, 330],
     ["sundance_aluminum_2", "sundance_aluminum_2_p8_t1", 82, 84, 82, 84, 1126],
     ["sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 23, 42, 23, 42, 228],
