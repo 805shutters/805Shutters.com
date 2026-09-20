@@ -1,3 +1,4 @@
+import { romanFabricStyles } from "@/lib/quote/norman-roman-current-price-groups";
 import {
   normanRomanDealerFabricRows,
   type NormanRomanDealerFabricRow,
@@ -53,7 +54,7 @@ export function getRomanShadeSpecWarnings(input: RomanShadeSpecInput): RomanShad
   const isCommonValance = normalizeText(input.shadeType) === "common valance";
   const isDayNight = normalizeText(input.shadeType) === "day night";
 
-  if (input.foldStyle && !fabric.styles.includes(input.foldStyle)) {
+  if (input.foldStyle && !romanFabricStyles(fabric).includes(input.foldStyle)) {
     warnings.push({
       id: "roman-style-fabric",
       message: `${formatRomanFabric(fabric)} is not available with ${input.foldStyle} per the Norman Roman Shades order form.`,

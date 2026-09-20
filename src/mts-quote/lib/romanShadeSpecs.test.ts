@@ -175,3 +175,8 @@ describe("roman shade manufacturer spec warnings", () => {
     expect(warningMessages({ heightInches: 0 })).toEqual([]);
   });
 });
+
+ it("uses current Caroline dealer styles in manufacturer feedback",()=>{
+  for(const foldStyle of ["Flat Fold without Seams","Flat Fold with Batten Back","Soft Fold"])expect(warningMessages({fabricCollection:"Caroline",fabricColorCode:"F1090",foldStyle})).toEqual([]);
+  expect(warningMessages({fabricCollection:"Caroline",fabricColorCode:"F1090",foldStyle:"Edge Banded"}).some(message=>message.includes("not available"))).toBe(true);
+ });
