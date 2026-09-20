@@ -328,4 +328,7 @@ it("server-prices the typed inside-mount AMX example without lifting MLX holds",
   if (!("backend" in result) || result.backend !== "v2") return;
   expect(result.designs[0]?.result).toMatchObject({ok:true,productStatus:"documented_limited",wholesaleUnitPrice:26.3,unitPrice:78.9});
   expect(result.sendability.sendable).toBe(true);
+  expect(result.designs[0]?.costResult).toMatchObject({wholesaleUnitCost:26.3, freightStatus:"unresolved"});
+  expect(result.designs[0]?.result).toMatchObject({costStatus:"incomplete"});
+  expect(result.costSummary.status).toBe("incomplete");
 });
