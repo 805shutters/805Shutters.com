@@ -105,3 +105,30 @@ describe('Roman exact banding layout',()=>{
   }
  });
 });
+
+describe('Roman September finished widths and returns',()=>{
+ const current=(configuration:SelectionContext['configuration']):SelectionContext=>({...shade(configuration),catalogAsOf:'2026-09-20',catalogVersion:'test-norman-roman-mounting-2026-09-20-r6'});
+ it('derives factory finished widths without changing ordered pricing dimensions',()=>{
+  const inside=current({roman_mount_fit:'Flush Inside',mount_depth_inches:3,valance:'Fabric Valance'});
+  expect(romanHardware(inside)?.record.finishing).toMatchObject({returnType:'Wrapped Returns',orderedComponentWidths:[36],finishedComponentWidths:[35.625],widthDeductionPerShade:.375});
+  expect(romanHardware({...inside,configuration:{...inside.configuration,shade_type:'Common Valance',common_valance_panel_widths:[30,40]}})?.record.finishing).toMatchObject({finishedComponentWidths:[29.8125,39.8125],widthDeductionPerShade:.1875});
+  expect(romanHardware(current({mount_type:'Outside Mount'}))?.record.finishing).toMatchObject({returnType:'No Returns',finishedComponentWidths:[36],widthDeductionPerShade:0});
+ });
+ it('rejects unsupported return combinations while retaining historical snapshots',()=>{
+  const s=current({mount_type:'Outside Mount',valance:'Fabric Valance',valance_returns:'No Returns'});
+  expect(romanHardware(s)?.issues.map(i=>i.ruleId)).toContain('roman.hardware.valance_returns');
+  expect(romanHardware({...s,catalogVersion:s.catalogVersion.replace('-r6','-r5')})?.issues).toEqual([]);
+  expect(romanHardware(current({valance:'None',valance_returns:'Wrapped Returns',roman_mount_fit:'Flush Inside',mount_depth_inches:3}))?.issues.map(i=>i.ruleId)).toContain('roman.hardware.valance_returns');
+  expect(romanHardware(current({mount_type:'Outside Mount',valance:'None',valance_returns:'Wrapped Returns'}))?.issues).toEqual([]);
+ });
+ it('enforces every fabric exception and distinguishes the two Caroline fabrics',()=>{
+  for (const fabric_collection of ['Bali','Scarlett','Breeze','Sierra','Bora Bora','Catalina','Java','Riviera','Sumatra','Phuket']) {
+   const s=current({mount_type:'Outside Mount',valance:'Fabric Valance',valance_returns:'Pleated Returns',fabric_collection});
+   expect(romanHardware(s)?.issues.map(i=>i.ruleId)).toContain('roman.hardware.valance_returns');
+  }
+  for(const [fabric_color_code,valid] of [['F0867',false],['F1090',true]] as const){
+   const s=current({mount_type:'Outside Mount',valance:'Fabric Valance',valance_returns:'Pleated Returns',fabric_collection:'Caroline',fabric_color_code});
+   expect(romanHardware(s)?.issues.some(i=>i.ruleId==='roman.hardware.valance_returns')).toBe(!valid);
+  }
+ });
+});

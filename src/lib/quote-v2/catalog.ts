@@ -39,7 +39,7 @@ export function quoteV2CatalogVersionFor(
   asOf: string,
 ): string {
   if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;
-  if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r5`;
+  if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r6`;
   if (productId === "roman" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-hardware-2026-09-19-r2`;
   if (productId === "norman_shutters" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-shutter-assortment-2026-09-19-r4`;
   if (productId === "wood_blinds" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-wood-2026-09-19-r3`;
@@ -92,6 +92,7 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r2`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r3`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r4`) return true;
+  if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r5`) return true;
   return catalogVersion === quoteV2CatalogVersionFor(productId, asOf);
 }
 

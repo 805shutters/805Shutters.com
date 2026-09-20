@@ -1,3 +1,4 @@
+import { normanRomanDealerFabricRows } from '@/lib/quote/norman-roman-dealer-fabrics.generated';
 import type { SelectionContext, SelectionRecord, ValidationIssue } from './core';
 import { sourceProvenance } from './source-manifest';
 
@@ -9,6 +10,15 @@ export function romanFabricPatternOptions(code: unknown): string[] {
 }
 const norm=(v:unknown)=>String(v??'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const selected=(v:unknown)=>['yes','true'].includes(norm(v));
+/** September guide p19: mount/valance availability, including fabric exceptions. */
+export function romanReturnOptions(mount: unknown, valance: unknown, collection: unknown, colorCode?: unknown): string[] {
+ const inside=norm(mount)==='inside mount',hasValance=norm(valance)==='fabric valance';
+ if (!hasValance) return inside ? ['No Returns'] : ['No Returns','Wrapped Returns'];
+ if (inside) return ['Wrapped Returns','No Returns'];
+ const excluded=['bali','scarlett','breeze','sierra','bora bora','catalina','java','riviera','sumatra','phuket'];
+ const noPleated=excluded.includes(norm(collection)) || norm(normanRomanDealerFabricRows.find(row=>norm(row.colorCode)===norm(colorCode))?.clothCode)==='ab0608' || norm(collection)==='caroline ab0608';
+ return noPleated ? ['Wrapped Returns'] : ['Wrapped Returns','Pleated Returns'];
+}
 export function romanHardware(s:SelectionContext){
  if(s.productId!=='roman'||s.catalogAsOf<'2026-09-19')return null;
  const c=s.configuration,lift=norm(c.lift_system),mount=norm(c.mount_type),common=norm(c.shade_type)==='common valance',dayNight=norm(c.shade_type)==='day night';
@@ -18,7 +28,7 @@ export function romanHardware(s:SelectionContext){
  if (!romanFabricPatternOptions(c.fabric_color_code).includes(String(fabricPattern))) add('fabric_pattern',49,'Choose a documented Roman fabric pattern. Reverse is available only for the listed Patterns and Impressions colors.');
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
  // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
- const mountingRevision = /norman-roman-mounting-2026-09-20-r[2345]$/.test(s.catalogVersion);
+ const mountingRevision = /norman-roman-mounting-2026-09-20-r[23456]$/.test(s.catalogVersion);
  const mountingFit = String(c.roman_mount_fit ?? '');
  const rawDepth = c.mount_depth_inches;
  const depth = rawDepth == null || rawDepth === '' ? NaN : Number(rawDepth);
@@ -46,7 +56,7 @@ export function romanHardware(s:SelectionContext){
  if(c.chain_color!=null&&(!chain||norm(c.chain_type)==='stainless steel'||!['white','cottage white','black'].includes(norm(c.chain_color))))add('chain_color',15,'Plastic Roman chain colors are White, Cottage White and Black. Stainless Steel uses white clutch and tension hardware.');
  if(c.chain_location!=null&&(!chain||!['left','right'].includes(norm(c.chain_location))))add('chain_location',15,'Select Left or Right for the Roman chain position.');
  const banded = /edge banded|ribbon banded/.test(norm(c.fold_style));
- const bandingRevision = /norman-roman-mounting-2026-09-20-r[345]$/.test(s.catalogVersion);
+ const bandingRevision = /norman-roman-mounting-2026-09-20-r[3456]$/.test(s.catalogVersion);
  const bandingLayout = String(c.roman_banding_layout ?? '');
  if (bandingRevision && banded && !['Side Border','Wrapped Border'].includes(bandingLayout)) add('banding_layout',/ribbon/.test(norm(c.fold_style))?8:9,'Choose Side Border or Wrapped Border for the banded Roman shade.');
  const pole=norm(c.poles),hasPole=!!pole&&pole!=='none';
@@ -61,6 +71,11 @@ export function romanHardware(s:SelectionContext){
  if(hasPole&&pole==='pole with attachment'&&![36,60].includes(poleLength))add('pole_length',23,'Choose a 36-inch or 60-inch Cordless Roman pole.');
  const positions:SelectionRecord=common?{left:'Left',right:'Right'}:dayNight?{front:c.chain_location??'Right',rear:norm(c.chain_location)==='left'?'Right':'Left'}:{single:c.chain_location??'Right'};
  const componentWidths=common&&Array.isArray(c.common_valance_panel_widths)?c.common_valance_panel_widths.map(Number):[s.widthInches];
+ const finishingRevision = /norman-roman-mounting-2026-09-20-r6$/.test(s.catalogVersion);
+ const returnChoices = romanReturnOptions(c.mount_type,c.valance,c.fabric_collection,c.fabric_color_code);
+ const returnType = c.valance_returns == null || c.valance_returns === '' ? returnChoices[0] : String(c.valance_returns);
+ if (finishingRevision && !returnChoices.includes(returnType)) add('valance_returns',19,'Choose a Roman return style compatible with the mount, valance and fabric.');
+ const widthDeduction = mount === 'inside mount' ? (common ? .1875 : .375) : 0;
  const layers=Number(c.roman_shim_layers??0);
  const brackets=componentWidths.map(width=>width<=44?2:width<=70?3:4);
  const shimQuantity=brackets.reduce((sum,count)=>sum+count,0)*layers;
@@ -74,7 +89,8 @@ export function romanHardware(s:SelectionContext){
  if(selected(c.magnetic_hold_down)&&!magnetic)add('legacy_magnet',22,'Reconfirm the Roman magnetic hold-down selection before repricing.');
  if((selected(c.cordless_operating_pole)||selected(c.pole_attachment_only))&&!hasPole)add('legacy_pole',23,'Reconfirm the Roman pole or attachment selection before repricing.');
  return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:shadeCount}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity,billingScope:'once_per_line' as const}]:[]),...(shimQuantity>0?[{id:'shim',units:shimQuantity}]:[])],record:{
-  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[8,9,15,16,22,23,24,49],fabricPattern,
+  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[8,9,14,15,16,19,22,23,24,49],fabricPattern,
+  ...(finishingRevision ? {finishing:{returnType,orderedComponentWidths:componentWidths,finishedComponentWidths:componentWidths.map(width=>width-widthDeduction),widthDeductionPerShade:widthDeduction}} : {}),
   mounting:{...(mountingRevision && mount === 'inside mount' ? {fit:mountingFit,measuredDepth:Number.isFinite(depth)?depth:null,minimumDepth} : {}),componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
   banding:banded&&bandingRevision?{layout:bandingLayout,type:/ribbon/.test(norm(c.fold_style))?'Ribbon':'Edge',borderWidth:/ribbon/.test(norm(c.fold_style))?1.0625:2.5,ribbonInset:/ribbon/.test(norm(c.fold_style))?2:null}:null,
   chain:chain?{length:chainLength,custom,measuredFrom:'top_of_headrail_to_bottom_of_tension_device',minimumAccessClearance:2,toleranceAbove:1.5625,material:norm(c.chain_type)==='stainless steel'?'Stainless Steel':'Plastic',color:norm(c.chain_type)==='stainless steel'?'Stainless Steel':c.chain_color??'White',clutchAndTensionColor:norm(c.chain_type)==='stainless steel'?'White':c.chain_color??'White',positions}:null,

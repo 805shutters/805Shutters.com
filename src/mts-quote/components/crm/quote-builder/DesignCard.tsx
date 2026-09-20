@@ -4,7 +4,7 @@ import { onyxPortalAssortment, onyxPortalHingeColors, onyxPortalColors, onyxPort
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
-import { romanHardware, romanFabricPatternOptions } from "@/lib/quote-v2/norman-roman-hardware";
+import { romanHardware, romanFabricPatternOptions, romanReturnOptions } from "@/lib/quote-v2/norman-roman-hardware";
 import { LotusObservedDesignOptions } from "@/components/crm/LotusObservedDesignOptions";
 import { isLotusObservedProduct } from "@/lib/quote/lotus-observed-offerings";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
@@ -9403,6 +9403,7 @@ function ShadesAndBlindsOptions({
     if (productType === "Roman Shades" && field === "mount_type") {
       const nextMount = typeof value === "string" ? value : null;
       const nextJson = { ...currentJson };
+      if (authoritativeV2) nextJson.valance_returns = null;
       if (nextMount !== "Outside Mount") {
         if (authoritativeV2) nextJson.roman_shim_layers = "0";
         nextJson.hold_downs = null;
@@ -9427,7 +9428,7 @@ function ShadesAndBlindsOptions({
       const nextValance = typeof value === "string" ? value : null;
       onUpdateFields({
         valance: nextValance,
-        ...(nextValance !== "Fabric Valance"
+        ...(authoritativeV2 || nextValance !== "Fabric Valance"
           ? { options_json: { ...currentJson, valance_returns: null } }
           : {}),
       });
@@ -11005,16 +11006,15 @@ function ShadesAndBlindsOptions({
               ? ([...valanceChoices, valance] as readonly string[])
               : valanceChoices,
         });
-        if (valance === "Fabric Valance") {
+        if (authoritativeV2 || valance === "Fabric Valance") {
           options.push({
             key: "valance_returns",
             label: "Valance Returns",
             field: "json:valance_returns",
             type: "select",
-            options:
-              mountType === "Outside Mount"
-                ? ROMAN_VALANCE_RETURNS_OUTSIDE
-                : ROMAN_VALANCE_RETURNS_INSIDE,
+            options: authoritativeV2
+              ? romanReturnOptions(mountType, valance, opts.fabric_collection ?? opts.roman_fabric_category, opts.fabric_color_code)
+              : mountType === "Outside Mount" ? ROMAN_VALANCE_RETURNS_OUTSIDE : ROMAN_VALANCE_RETURNS_INSIDE,
           });
         }
 
@@ -12410,6 +12410,7 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Roman Shades") {
       nextJson.roman_fabric_category = fabricColor.collection;
+      if (authoritativeV2 && !romanReturnOptions(design?.mount_type,design?.valance,fabricColor.collection,fabricColor.colorCode).includes(String(nextJson.valance_returns ?? ''))) nextJson.valance_returns = null;
       if (!romanFabricPatternOptions(fabricColor.colorCode).includes("Reverse")) nextJson.roman_fabric_pattern = "Standard";
       if (
         nextJson.fold_style === "Edge Banded" &&
