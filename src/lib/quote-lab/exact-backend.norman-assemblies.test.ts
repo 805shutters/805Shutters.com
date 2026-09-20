@@ -1,3 +1,4 @@
+import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
 import { describe, expect, it } from "vitest";
 import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
 import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
@@ -80,6 +81,21 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
    expect(d.selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{family:"smart_motorization",controller:{type:"Basic Remote"}}});
    if(power.includes("Rechargeable"))expect(d.selection.configuration.norman_assembly_v1).toMatchObject({includedChargingKits:{orderQuantity:1,motorQuantity:3}});
+  }
+ });
+ it("prices all 396 current Roman rear colors through the saved quote backend",()=>{
+  const q=quote([1]);q.designs[0].lift_system="Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;
+  q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null};
+  const run=()=>{const r=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
+  const base=run().total;
+  q.designs[0].shade_type="Day & Night";
+  for(const rear of normanRomanSeptemberRearRows){
+   q.designs[0].options_json={...q.designs[0].options_json,back_fabric:rear.collection,back_fabric_color_collection:rear.collection,back_fabric_color_code:rear.colorCode,back_fabric_color_name:rear.colorName,back_hem_bar:"Plain"};
+   const result=run();
+   expect(result.designs[0].result.ok,JSON.stringify({rear,result:result.designs[0].result})).toBe(true);
+   expect(result.designs[0].result.validationStatus).toBe("valid");
+   expect(result.total-base,`${rear.collection} ${rear.colorCode}`).toBe(425);
+   expect(result.designs[0].snapshot).not.toBeNull();
   }
  });
  it("charges two Roman poles and outside magnets through the saved server configuration",()=>{

@@ -1,3 +1,4 @@
+import { romanCurrentRearCollections, romanCurrentRearCodes } from "@/lib/quote-v2/catalog";
 import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
@@ -4287,6 +4288,7 @@ function RollerFabricAutocomplete({
   onClear,
   metadataKeys = FRONT_FABRIC_METADATA_KEYS,
   allowedCollections,
+  allowedColorCodes,
   hideLabel = false,
   mobilePresentation = false,
 }: {
@@ -4296,6 +4298,7 @@ function RollerFabricAutocomplete({
   onClear: () => void;
   metadataKeys?: FabricMetadataKeys;
   allowedCollections?: readonly string[];
+  allowedColorCodes?: readonly string[];
   hideLabel?: boolean;
   mobilePresentation?: boolean;
 }) {
@@ -4317,9 +4320,9 @@ function RollerFabricAutocomplete({
   const results = useMemo(
     () =>
       searchMtsRollerFabricColors(query, { category: fabricCategory }).filter((row) =>
-        isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+        isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections) && (!allowedColorCodes || allowedColorCodes.includes(row.colorCode)),
       ),
-    [allowedCollections, query, fabricCategory]
+    [allowedCollections, allowedColorCodes, query, fabricCategory]
   );
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -4352,7 +4355,7 @@ function RollerFabricAutocomplete({
       includeUnavailable: true,
       limit: Number.MAX_SAFE_INTEGER,
     }).filter((row) =>
-      isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+      isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections) && (!allowedColorCodes || allowedColorCodes.includes(row.colorCode)),
     );
     const toMobileItem = (fabricColor: MtsRollerFabricColor): MobileCatalogPickerItem & { source: MtsRollerFabricColor } => ({
       id: fabricColor.id,
@@ -10939,7 +10942,7 @@ function ShadesAndBlindsOptions({
             label: "Back Shade Fabric",
             field: "json:back_fabric",
             type: "select",
-            options: ROMAN_BACK_SHADE_FABRICS,
+            options: authoritativeV2 ? romanCurrentRearCollections : ROMAN_BACK_SHADE_FABRICS,
           });
           if (authoritativeV2 && String(opts.back_fabric || "")) {
             options.push({
@@ -12511,7 +12514,8 @@ function ShadesAndBlindsOptions({
             value={value}
             optionsJson={optionsJson}
             metadataKeys={BACK_FABRIC_METADATA_KEYS}
-            allowedCollections={backFabric ? [backFabric] : ROMAN_BACK_SHADE_FABRICS}
+            allowedCollections={backFabric ? [backFabric] : authoritativeV2 ? romanCurrentRearCollections : ROMAN_BACK_SHADE_FABRICS}
+            allowedColorCodes={authoritativeV2 ? romanCurrentRearCodes : undefined}
             hideLabel
             mobilePresentation={mobilePresentation}
             onSelect={handleBackRollerFabricSelect}

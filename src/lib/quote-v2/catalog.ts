@@ -1,3 +1,4 @@
+import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED } from "@/lib/quote/norman-synchrony";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { normanRollerFabricColors, normanRollerJulyFabricColors } from "@/lib/quote/norman-roller-fabrics";
@@ -239,13 +240,18 @@ export function findRomanFrontColor(
   );
 }
 
+export const romanCurrentRearColors = normanRollerFabricColors.filter(row => row.available && normanRomanSeptemberRearRows.some(source => source.colorCode === row.colorCode));
+export const romanCurrentRearCollections = [...new Set(romanCurrentRearColors.map(row=>row.collection))].sort();
+export const romanCurrentRearCodes = romanCurrentRearColors.map(row=>row.colorCode);
+
 export function findRomanRearColor(
   collection: string | null | undefined,
   colorCode: string | null | undefined,
+  asOf = "2026-09-19",
 ) {
   const wantedCollection = normalizeIdentity(collection);
   const wantedCode = normalizeIdentity(colorCode);
-  return romanRearEligibleColors.find(
+  return (asOf >= "2026-09-01" ? romanCurrentRearColors : romanRearEligibleColors).find(
     (row) => normalizeIdentity(row.collection) === wantedCollection && normalizeIdentity(row.colorCode) === wantedCode,
   );
 }
@@ -269,9 +275,11 @@ const ROMAN_REAR_MAX_WIDTH_BY_COLLECTION: Readonly<Record<string, number>> = {
 export function getRomanRearMaxWidth(
   collection: string | null | undefined,
   colorCode: string | null | undefined,
+  asOf = "2026-09-19",
 ): number | null {
-  const color = findRomanRearColor(collection, colorCode);
+  const color = findRomanRearColor(collection, colorCode, asOf);
   if (!color) return null;
+  if (asOf >= "2026-09-01") return normanRomanSeptemberRearRows.find(row=>row.colorCode===color.colorCode)?.maxWidth ?? null;
   const normalizedCollection = normalizeIdentity(color.collection);
   if (normalizedCollection === "valerie") {
     return ["f0740", "f0741"].includes(normalizeIdentity(color.colorCode))

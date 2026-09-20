@@ -1440,29 +1440,29 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         issue(
           "hard_block",
           "roman.day_night.rear_exact_color_required",
-          { ...ROMAN_GUIDE, pages: [34, 35, 36, 37, 38, 39, 40, 41] },
+          context.catalogAsOf >= "2026-09-01" ? sourceProvenance("norman-roman-guide-2026-09", {pages:[35,36,37,38,39,40,41,42,43,44,45]}) : { ...ROMAN_GUIDE, pages: [34,35,36,37,38,39,40,41] },
           { rear_fabric_collection: rearCollection || null, rear_fabric_color_code: rearCode || null },
           "Day & Night requires the exact rear Roller collection and color, not only a fabric family.",
         ),
       );
-    } else if (!findRomanRearColor(rearCollection, rearCode)) {
+    } else if (!findRomanRearColor(rearCollection, rearCode, context.catalogAsOf)) {
       issues.push(
         issue(
           "hard_block",
           "roman.day_night.rear_color_ineligible",
-          { ...ROMAN_GUIDE, pages: [34, 35, 36, 37, 38, 39, 40, 41] },
+          context.catalogAsOf >= "2026-09-01" ? sourceProvenance("norman-roman-guide-2026-09", {pages:[35,36,37,38,39,40,41,42,43,44,45]}) : { ...ROMAN_GUIDE, pages: [34,35,36,37,38,39,40,41] },
           { rear_fabric_collection: rearCollection, rear_fabric_color_code: rearCode },
           "The selected rear color is excluded from Roman Day & Night use.",
         ),
       );
     } else {
-      const rearMaxWidth = getRomanRearMaxWidth(rearCollection, rearCode);
+      const rearMaxWidth = getRomanRearMaxWidth(rearCollection, rearCode, context.catalogAsOf);
       if (rearMaxWidth !== null && context.widthInches > rearMaxWidth) {
         issues.push(
           issue(
             "hard_block",
             "roman.day_night.rear_fabric.max_width",
-            { ...ROMAN_GUIDE, pages: [34, 35, 36, 37, 38, 39, 40, 41] },
+            context.catalogAsOf >= "2026-09-01" ? sourceProvenance("norman-roman-guide-2026-09", {pages:[35,36,37,38,39,40,41,42,43,44,45]}) : { ...ROMAN_GUIDE, pages: [34,35,36,37,38,39,40,41] },
             {
               rear_fabric_collection: rearCollection,
               rear_fabric_color_code: rearCode,
