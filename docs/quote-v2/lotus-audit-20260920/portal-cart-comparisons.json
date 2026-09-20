@@ -1,0 +1,72 @@
+{
+  "observedDate": "2026-09-20",
+  "source": "https://www.lotusblind.com/cart",
+  "accountVerified": "Authenticated 805 business purchasing account, MTS Installations",
+  "effectiveDate": null,
+  "lineNote": "INTERNAL AUDIT 2026-09-20 DO NOT ORDER",
+  "checkoutPerformed": false,
+  "orderPlaced": false,
+  "estimatedCartTotal": 551.3,
+  "rows": [
+    {
+      "sku": "CRTX4872W",
+      "width": 48,
+      "height": 72,
+      "quantity": 1,
+      "portalUnitPrice": 105,
+      "guideDealerNet": 38.34,
+      "guidePage": 98,
+      "result": "price_conflict"
+    },
+    {
+      "sku": "CRLX7296W",
+      "width": 72,
+      "height": 96,
+      "quantity": 1,
+      "portalUnitPrice": 105,
+      "guideDealerNet": 56.26,
+      "guidePage": 96,
+      "result": "price_conflict"
+    },
+    {
+      "sku": "CFLX2736EBW",
+      "width": 27,
+      "height": 36,
+      "quantity": 1,
+      "portalUnitPrice": 105,
+      "guideDealerNet": 30.39,
+      "guidePage": 100,
+      "result": "price_conflict"
+    },
+    {
+      "sku": "CFGX5960BW",
+      "width": 59,
+      "height": 60,
+      "quantity": 1,
+      "portalUnitPrice": 105,
+      "guideDealerNet": 62.63,
+      "guidePage": 104,
+      "result": "price_conflict"
+    },
+    {
+      "sku": "CMLX4860W",
+      "width": 48,
+      "height": 60,
+      "quantity": 1,
+      "portalUnitPrice": 105,
+      "guideDealerNet": 21.74,
+      "guidePage": 95,
+      "result": "price_conflict"
+    },
+    {
+      "sku": "CAMX2772W",
+      "width": 27,
+      "height": 72,
+      "quantity": 1,
+      "portalUnitPrice": 26.3,
+      "guideDealerNet": 26.3,
+      "guidePage": 97,
+      "result": "agrees"
+    }
+  ]
+}
