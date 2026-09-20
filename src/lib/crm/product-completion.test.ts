@@ -408,6 +408,23 @@ describe("automatic order email uses the same product invoice workflow", () => {
     expect(await apply()).toMatchObject({ addedCogs: 0 });
     expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
   });
+  it.each([['Onyx', 'Norman'], ['Norman', 'Norman']])("holds unlabelled shutters with conflicting contract suppliers %s/%s", async (first, second) => {
+    const {db, apply} = setup(); db.tables.crm_customer_products = [];
+    db.tables.crm_quotes[0].lineItems = [first, second].map((supplier, index) => ({
+      id: `line-${index}`, quantity: 1, notes: 'Shutters', selected_design_id: `design-${index}`,
+      designs: [{id:`design-${index}`, product_id:'norman_shutters', price_breakdown:{optionsJson:{catalog_manufacturer:supplier}}}]
+    }));
+    await expect(apply()).rejects.toThrow('contract supplier');
+    expect(db.writes).toHaveLength(0);
+  });
+  it("uses selected imported supplier evidence instead of the legacy product id or unselected alternative", async () => {
+    const {db, apply} = setup(); db.tables.crm_customer_products = [];
+    db.tables.crm_quotes[0].lineItems = [{id:'line', quantity:1, notes:'Shutters', selected_design_id:'chosen', designs:[
+      {id:'chosen',product_id:'norman_shutters',price_breakdown:{details:[{label:'Supplier',value:'Onyx'}]}},
+      {id:'other',product_id:'norman_shutters',price_breakdown:{optionsJson:{catalog_manufacturer:'Norman'}}}
+    ]}];
+    expect(await apply()).toMatchObject({addedCogs:2823.29});
+  });
   it("recognizes a forwarded copy in the business mailbox without charging the invoice again", async () => {
     const {db, apply} = setup(); await apply();
     const original = db.tables.crm_order_cogs_emails[0];

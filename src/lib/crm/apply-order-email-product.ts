@@ -7,6 +7,31 @@ import { allocatedOrderCost, orderCostKey, productOrderCosts } from './product-o
 import { saveProductOrderCost } from './save-product-order-cost';
 import type { CrmDashboardData, CrmOrderCogsEmail } from './types';
 import { normalizedProductLabel } from './product-workflow-groups';
+import { getProduct } from '@/lib/quote/catalog';
+
+// Imported sales can group two suppliers under the same product label. An
+// unlabelled workflow group is not evidence that one supplier covers them all.
+function quoteManufacturers(item: OperationsItem): Set<string> {
+  const quote = objectMeta(item.source.quote);
+  const lines = Array.isArray(quote.lineItems) ? quote.lineItems : [];
+  const manufacturers = new Set<string>();
+  for (const value of lines) {
+    const line = objectMeta(value);
+    if (objectMeta(line.meta).deleted_at) continue;
+    const designs = Array.isArray(line.designs) ? line.designs.map(objectMeta) : [];
+    const selected = designs.find(design => design.id === line.selected_design_id);
+    if (!selected) continue;
+    const breakdown = objectMeta(selected.price_breakdown);
+    const options = objectMeta(breakdown.optionsJson);
+    const details = Array.isArray(breakdown.details) ? breakdown.details.map(objectMeta) : [];
+    const explicit = [options.catalog_manufacturer, ...details.filter(detail => /^(supplier|manufacturer)$/i.test(String(detail.label))).map(detail => detail.value)]
+      .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()));
+    // Legacy product_id can be Norman even when the imported supplier is Onyx.
+    const values = explicit.length ? explicit : [typeof selected.product_id === 'string' ? getProduct(selected.product_id)?.manufacturer : undefined];
+    for (const manufacturer of values) if (manufacturer) manufacturers.add(normalizedProductLabel(manufacturer));
+  }
+  return manufacturers;
+}
 
 /** Never infer an allocation across a mixed-product order from the invoice total. */
 export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrderCogsEmail, manufacturer: string | null | undefined) {
@@ -32,6 +57,12 @@ export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrder
     product = products[0];
   }
   if (!product) throw new CrmAuthError(409, 'Allocate this invoice to its product in Job status; the email does not identify one unambiguous product group.');
+  if (!product.manufacturer) {
+    const suppliers = quoteManufacturers(item);
+    if (suppliers.size > 1 || (suppliers.size === 1 && !suppliers.has(normalizedProductLabel(manufacturer || '')))) {
+      throw new CrmAuthError(409, 'The contract supplier does not identify one matching product group. Allocate this invoice in Job status.');
+    }
+  }
   // A generated job product must not hide multiple product types in the signed contract.
   if (product.records.some(r => r.id.startsWith('job-product-')) && item.headerProducts.length > 1) {
     throw new CrmAuthError(409, 'The signed contract contains multiple products. Allocate the invoice in Job status.');
