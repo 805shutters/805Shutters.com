@@ -9297,6 +9297,7 @@ function ShadesAndBlindsOptions({
       const nextJson: Record<string, unknown> = { ...currentJson, fold_style: nextStyle };
       if (nextStyle !== "Edge Banded" && nextStyle !== "Ribbon Banded") {
         nextJson.banding_color = null;
+        nextJson.roman_banding_layout = null;
       } else if (currentJson.fold_style !== nextStyle) {
         nextJson.banding_color = null;
       }

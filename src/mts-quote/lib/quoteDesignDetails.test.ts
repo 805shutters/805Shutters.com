@@ -36,6 +36,18 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("omits obsolete Roman banding from customer output after a style change without rewriting the saved record", () => {
+    const design = {...miniBlindDesign(), product_type: "Roman Shades", options_json: {
+      fold_style: "Soft Fold", roman_banding_layout: "Side Border", banding_color: "White",
+    }};
+    const details = getQuoteDesignDetails(design);
+    expect(details.some(detail => /banding/i.test(detail.label))).toBe(false);
+    const banded = getQuoteDesignDetails({...design, options_json: {...design.options_json, fold_style: "Ribbon Banded"}});
+    expect(banded.some(detail => detail.value === "Side Border")).toBe(true);
+    expect(banded.some(detail => detail.value === "White")).toBe(true);
+    expect(design.options_json.roman_banding_layout).toBe("Side Border");
+  });
+
   it("omits a stale motor position after a Roman draft changes to a manual control",()=>{
     const design={...miniBlindDesign(),product_type:"Roman Shades",lift_system:"Cordless",options_json:{quote_v2_backend:true,motor_position:"Right",poles:"Pole with Attachment",roman_pole_total_quantity:1}};
     expect(getQuoteDesignDetails(design).some(d=>d.label==="Motor Position")).toBe(false);
