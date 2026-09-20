@@ -23,7 +23,9 @@ export function validateLotusAmx(context: SelectionContext): ValidationIssue[] {
     add("standard_configuration", "AMX uses cordless lift, its standard headrail without a valance, and inside-opening measurements. The factory deducts ½ inch from the ordered width.");
   }
   if (!Number.isInteger(context.widthInches * 4) || !Number.isInteger(context.heightInches)) add("cut_increments", "AMX custom width must use quarter-inch increments and custom height must use whole inches.");
-  if (!lotusAmxDonorSkus(context.widthInches, context.heightInches, String(config.color ?? "")).length) add("donor_required", "No documented same-color stock blind within this price cell supports the requested cut. AMX blinds at or below 22 inches cannot be width-cut; wider donors allow ¼–6 inches removed. Height cuts over 10 inches require confirmation because the current guides conflict.");
+  const donorSkus = lotusAmxDonorSkus(context.widthInches, context.heightInches, String(config.color ?? ""));
+  if (donorSkus.length) issues.push({severity:"auto_derive", ruleId:"lotus.amx.eligible_stock_donors", source:{...sourceProvenance("lotus-west-a26-v1"),pages:[20,21,22,23,24,97]}, selectedValues:{width:context.widthInches,height:context.heightInches,color:String(config.color ?? "")}, derivedValues:{eligible_donor_skus:donorSkus}, explanation:"Eligible same-color stock donors are retained in the immutable pricing derivations; they do not replace the custom grid price or select a fulfillment SKU."});
+  if (!donorSkus.length) add("donor_required", "No documented same-color stock blind within this price cell supports the requested cut. AMX blinds at or below 22 inches cannot be width-cut; wider donors allow ¼–6 inches removed. Height cuts over 10 inches require confirmation because the current guides conflict.");
   for (const key of ["motor_type", "remote_type", "motorization_type"]) {
     if (config[key] && !["None", "none"].includes(String(config[key]))) add("unsupported_motorization", "AMX source evidence supports cordless operation only.");
   }

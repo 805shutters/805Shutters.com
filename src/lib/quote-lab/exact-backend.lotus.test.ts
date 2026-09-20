@@ -331,4 +331,5 @@ it("server-prices the typed inside-mount AMX example without lifting MLX holds",
   expect(result.designs[0]?.costResult).toMatchObject({wholesaleUnitCost:26.3, freightStatus:"unresolved"});
   expect(result.designs[0]?.result).toMatchObject({costStatus:"incomplete"});
   expect(result.costSummary.status).toBe("incomplete");
+  expect(result.designs[0]?.snapshot?.pricingDerivations).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:"lotus.amx.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["AMX2772WH"])}})]));
 });

@@ -94,7 +94,8 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r3`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r4`) return true;
   if (productId === "roman" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r5`) return true;
-  return catalogVersion === quoteV2CatalogVersionFor(productId, asOf);
+  return catalogVersion === quoteV2CatalogVersionFor(productId, asOf) ||
+    (productId === "lotus_mini_blinds" && asOf >= "2026-09-20" && catalogVersion === QUOTE_V2_CATALOG_VERSION);
 }
 
 export type ProductCatalogStatus =

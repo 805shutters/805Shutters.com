@@ -1,3 +1,4 @@
+import { isRecognizedQuoteV2Catalog, QUOTE_V2_CATALOG_VERSION } from "./catalog";
 import { describe, expect, it } from "vitest";
 import { lotusAmxDonorSkus, LOTUS_AMX_VERSION } from "@/lib/quote/lotus-amx";
 import { validateLotusAmx } from "./lotus-amx";
@@ -12,9 +13,11 @@ const selection = (width = 27, height = 72): SelectionContext => ({
 
 describe("Lotus typed AMX physical restrictions", () => {
   it("resolves the documented inside cordless configuration and retains old status", () => {
-    expect(validateLotusAmx(selection())).toEqual([]);
+    expect(validateLotusAmx(selection()).filter(issue => issue.severity === "hard_block")).toEqual([]);
     expect(productRuleStatusForSelection(selection())).toBe("documented_limited");
     expect(productRuleStatusForSelection({...selection(), configuration:{}})).toBe("restriction_source_incomplete");
+    expect(isRecognizedQuoteV2Catalog("lotus_mini_blinds", "2026-09-20", QUOTE_V2_CATALOG_VERSION)).toBe(true);
+    expect(validateSelection({...selection(),catalogVersion:QUOTE_V2_CATALOG_VERSION,configuration:{}}).some(issue => issue.ruleId.includes("catalog") && issue.severity === "hard_block")).toBe(false);
     expect(lotusAmxDonorSkus(27,72,"White")).toContain("AMX2772WH");
   });
   it("enforces cut increments, short-donor no-cut and conservative ten-inch height bound", () => {
