@@ -1,4 +1,4 @@
-import { onyxCanonicalColor, onyxPortalAssortment } from '../quote/onyx-current-assortment';
+import { onyxCanonicalColor, onyxPortalAssortment, onyxPortalColors } from '../quote/onyx-current-assortment';
 import type { SelectionContext, ValidationIssue } from './core';
 import { sourceProvenance } from './source-manifest';
 
@@ -14,15 +14,25 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
     selectedValues: {programId:context.programId, [field]:value}, explanation,
   });
   const color = String(selected.color_name ?? selected.color ?? '');
-  if (color && !row.colors.includes(onyxCanonicalColor(color))) add('color',color,`${row.material} does not offer this color in the current dealer portal.`);
+  if (color && !(onyxPortalColors(context.programId ?? '') ?? row.colors).includes(onyxCanonicalColor(color))) add('color',color,`${row.material} does not offer this color in the current dealer portal.`);
   const size = Number(selected.louver_size_inches);
   if (Number.isFinite(size) && !row.louverSizes.includes(size)) add('louver',size,`${row.material} offers ${row.louverSizes.join(', ')} inch louvers in the current dealer portal.`);
   const frame = String(selected.frame_source_code ?? selected.frame_type ?? '');
-  // Binder-normalized frame names remain subject to the original frame checks.
-  if (frame && !frame.includes('Frame') && !row.frames.includes(frame)) add('frame',frame,`${row.material} does not offer this frame in the current dealer portal.`);
+  const mount = String(selected.mount_type ?? '');
+  const directional = mount === 'inside' ? 'Inside' : mount === 'outside' ? 'Outside' : '';
+  const frameAliases: Record<string, string> = {
+    'Z Frame Trim':'Z Trim', 'Z Frame Fine':'Z Fine', 'Z Frame Crown':'Z Crown', 'Z Frame Crest':'Z Crest',
+    'Decor Frame 2':'Decor 2', 'Decor Frame 3':'Decor 3',
+    'Vinyl Z Frame Small':'VZ Small', 'Vinyl Z Frame Large':'VZ Large',
+    'L Frame': directional ? `L ${directional}` : '',
+    'L Frame Bullnose': directional ? `L Bullnose ${directional}` : '',
+    'Vinyl L Frame': directional ? `VL ${directional}` : '',
+  };
+  const currentFrame = frameAliases[frame] ?? frame;
+  if (frame && !row.frames.includes(currentFrame)) add('frame',frame,`${row.material} does not offer this frame in the current dealer portal.`);
   const rawTilt = String(selected.tilt_source_code ?? selected.tilt_type ?? '');
-  const tilt = rawTilt.match(/^(H[123]|C)\b/)?.[1] ?? ({standard:'C',offset:'O','Offset Tilt Rod':'O'} as Record<string,string>)[rawTilt];
-  if (tilt && !row.tiltCodes.includes(tilt)) add('tilt',rawTilt,`${row.material} does not offer this tilt system in the current dealer portal.`);
+  const tilt = rawTilt.match(/^(H[123]|C|O)(?:$| - )/)?.[1] ?? ({standard:'C',offset:'O','Offset Tilt Rod':'O'} as Record<string,string>)[rawTilt];
+  if (rawTilt && (!tilt || !row.tiltCodes.includes(tilt))) add('tilt',rawTilt,`${row.material} does not offer this tilt system in the current dealer portal.`);
   if (row.material === 'US Made Vinyl' && selected.hinge_color && selected.hinge_color !== 'White') add('hinge',String(selected.hinge_color),'U.S. Made Vinyl currently offers White hinges only.');
   return issues;
 }

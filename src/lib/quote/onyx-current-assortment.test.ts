@@ -38,6 +38,21 @@ describe('Onyx observed dealer assortment',()=>{
   expect(onyxPortalColors('vlo_hybrid')).not.toContain('120_Butter');
   expect(onyxPortalAssortment('vlo_hybrid')?.frames).toContain('Z Lite');
  });
+ it('enforces the painted and stained split on server-saved configurations',()=>{
+  for(const [programId,color] of [['painted_basswood','215_Java'],['stained_basswood','101_White']]) {
+   expect(validateOnyxCurrentAssortment(context({color_name:color},programId)).map(i=>i.ruleId)).toContain('onyx.current_assortment.color');
+  }
+  expect(validateOnyxCurrentAssortment(context({color_name:'Java'},'stained_basswood'))).toEqual([]);
+ });
+ it('resolves binder frames with mount and holds ambiguous or unknown saved selections',()=>{
+  expect(validateOnyxCurrentAssortment(context({frame_type:'Vinyl L Frame',mount_type:'outside',tilt_source_code:'H2 - Hidden Tiltrod Notch On Louver'}))).toEqual([]);
+  for(const config of [{frame_type:'Vinyl Z Frame Large'},{frame_type:'Vinyl L Frame'},{frame_type:'Unknown Frame'}]) {
+   expect(validateOnyxCurrentAssortment(context(config)).map(i=>i.ruleId)).toContain('onyx.current_assortment.frame');
+  }
+  for(const tilt of ['hidden','H4','H2-invalid','unknown']) {
+   expect(validateOnyxCurrentAssortment(context({tilt_type:tilt})).map(i=>i.ruleId)).toContain('onyx.current_assortment.tilt');
+  }
+ });
  it('reconciles six dealer observations using rounded frame area without changing retail',()=>{
   for(const fixture of evidence.priceFixtures){
    const area=Math.round((fixture.width+3.5)*(fixture.height+3.5)/144*1000)/1000;
