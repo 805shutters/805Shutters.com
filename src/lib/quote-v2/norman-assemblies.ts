@@ -1,3 +1,4 @@
+import { deriveRollerCommonValances } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
 import { smartfoldCharging } from "./norman-smartfold-charging";
 import { honeycombMounting } from "./norman-honeycomb-mounting";
@@ -97,6 +98,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     if(ultimate)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:ultimate.record};
   }
   issues.push(...deriveVerticalHoneycombPairs(lines));
+  issues.push(...deriveRollerCommonValances(lines));
   issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));
   issues.push(...derivePerfectsheerCommonValances(lines));
