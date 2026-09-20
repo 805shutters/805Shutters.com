@@ -49,3 +49,9 @@ The manual-price route previously hid the entire configuration panel, so a regis
 The authenticated portal roster capture covers all eight top-level categories and 17 ordering types: Portfolio Roman 113 labels; Wovenwood 110; Euro Panel 518; Cellular 157; Clutch Roller 518; Motorized Roller 518; Caress-Zebra 77; SheerView 60; Exterior Zipper 57; 1-inch Aluminum 67; 2-inch Aluminum 25; Vertical Essence 131; 2-inch Advantage 24; 2.5-inch Advantage 4; 2-inch Wood 23; 2.5-inch Wood 5; Glydea Track 1. Total 2,408 menu rows, including shared lists and duplicates, not 2,408 certified unique offerings. Every row is retained in the local assortment ledger with a mapped destination or exact unresolved exception. Shutters, cable exterior, Flat Roman and some source-book subfamilies are absent as standalone portal types; this is an orderability question, not discontinuation evidence.
 
 Validation for this increment: 312 tests across eight relevant suites and TypeScript pass. Production save/reopen proof remains separate.
+
+## September 20 follow-up status
+
+Subsequent repairs now account for 29 destinations, 100 base grids and seven separately modeled supplemental grids. All 107 source tables pass independent text-row/width-axis comparison (1,288 rows). See `sundance-grid-repair-2026-09-20.md` and `sundance-supplemental-grids-2026-09-20.md` for current counts and exact remaining exceptions; earlier counts above describe their original increments.
+
+Production internal unsent draft 805-0335 was saved, closed and reopened. It preserved PU422SS-766 at 36×60 and all seven Glydea choices at 96×84, plus explicitly labeled manual persistence fixtures 123.45/234.56. The incompatible cell-size change cleared the selected fabric. This proves those paths and persistence, not every offering or any account price.

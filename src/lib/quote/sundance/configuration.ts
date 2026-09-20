@@ -2,7 +2,8 @@ import { sundanceCellularColors, sundanceCellularColorMatchesContext } from "./c
 import { SUNDANCE_DRAPERY_TRACK_ID } from "./drapery-track";
 
 export function hasSundanceConfiguration(productId: string | null | undefined): boolean {
-  return productId === "sundance_cellular" || productId === SUNDANCE_DRAPERY_TRACK_ID;
+  return productId === "sundance_cellular" || productId === SUNDANCE_DRAPERY_TRACK_ID
+    || ["sundance_vertical_essence", "sundance_walden_premier", "sundance_walden_select"].includes(productId ?? "");
 }
 
 /** Changing a fabric constraint must remove the old exact route, never retain a hidden color. */

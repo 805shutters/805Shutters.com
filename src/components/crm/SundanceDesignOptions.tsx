@@ -2,6 +2,7 @@
 import { sundanceCellularColors, sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
 import { sundanceDraperyTrackFields } from "@/lib/quote/sundance/drapery-track";
 import { sundanceCellularFilterPatch, sundanceCellularSelectionPatch } from "@/lib/quote/sundance/configuration";
+import { SundanceSupplementalOptions } from "./SundanceSupplementalOptions";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 /** Source-backed identity capture while the manufacturer's full pricing rules remain gated. */
@@ -32,7 +33,7 @@ export function SundanceDesignOptions({ design, productId, onUpdateFields }: {
       }}>
         <option value="">Select fabric and color</option>{rows.map(row => <option key={row.id} value={row.id}>{row.colorCode} · {row.collection} · {row.colorName} · {row.fabricType}</option>)}
       </select></label>
-    </> : sundanceDraperyTrackFields.map(field => <label key={field.id} className="block text-sm">{field.label}
+    </> : ["sundance_vertical_essence", "sundance_walden_premier", "sundance_walden_select"].includes(productId) ? <SundanceSupplementalOptions productId={productId} options={options} onUpdateFields={onUpdateFields} /> : sundanceDraperyTrackFields.map(field => <label key={field.id} className="block text-sm">{field.label}
       <select aria-label={`Sundance ${field.label}`} className={classes} value={String(options[field.id] ?? "")} onChange={e => onUpdateFields({options_json: {...options, [field.id]: e.target.value || null}})}>
         <option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>

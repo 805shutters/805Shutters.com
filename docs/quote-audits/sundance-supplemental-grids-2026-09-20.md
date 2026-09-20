@@ -35,3 +35,11 @@ Unsent internal draft **805-0335**, customer **Sundance Catalog Verification 202
 - The customer contract showed cellular identity and retained the track selections; follow-up presentation repair replaces incomplete brand-stripped track text with complete neutral descriptions. Live verification of that repair and the bounded product picker follows deployment.
 
 This is a verified import and persistence increment, not completion of Sundance's complete assortment or automatic pricing.
+
+## Source-backed selection increment
+
+Stock vertical now has its own saved stock/custom switch and exact existing-family program route. Selecting Stock exposes White/Off-White, square-corner valance and separate width/height cut-down choices. The source's wand/one-way/headrail requirements and pickup-only restriction are visible and saved. Returning to Custom clears the stock route and choices; it does not claim a verified custom-fabric route.
+
+Walden Premier/Select now expose their own liner and edge-binding selections, retaining the exact supplemental grid ID separately from the base program. Liner colors follow each book and opacity; changing liners clears stale colors and movable-liner selections. Only Premier offers the source-backed movable liner here. These choices remain manual priced. Fabric/control compatibility, binding colors, required-binding exceptions and exact accessory charges still require completion.
+
+Tests reject cross-family and wrong-option-kind IDs, verify stale dependent values clear, confirm source-specific rendered choices, and retain the automatic-pricing gate. Production save/reopen of these new controls remains pending deployment.
