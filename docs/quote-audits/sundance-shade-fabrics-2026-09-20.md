@@ -28,3 +28,15 @@ All source collections now have a CRM selection and pricing destination. Only re
 This increment does **not** certify complete fabric-width/control compatibility, charge totals, account factors, freight, or automatic selling prices. Existing source grids, historical snapshots and account pricing gates remain unchanged.
 
 Validation includes all collection and dealer-label routes resolving to same-family existing programs; independently read retail first cells (Allure roller293 vs Europanel201, Argent roller565 vs Europanel472); cross-family rejection, stale-color clearing, exact exception withholding, both saved-editor filters and source-only UI warnings. **302 Sundance tests pass; TypeScript passes.** Production save/reopen proof awaits deployment.
+
+## Price grids with no collection in the current printed index
+
+Eight imported grids have no collection assignment in their own current family index. This is a source-assortment gap, not evidence of discontinuation. They remain retained with historical IDs; no fabricated fabric routes or account prices were added.
+
+| Family | Guide price groups | Existing program IDs |
+|---|---|---|
+| Sundance roller | 1, 8, 9, 10 | `sundance_roller_p6_t1`, `sundance_roller_p20_t1`, `sundance_roller_p22_t1`, `sundance_roller_p24_t1` |
+| Sundance flat Roman | 1, 10 | `sundance_flat_roman_p41_t1`, `sundance_flat_roman_p50_t1` |
+| Sundance Europanels | 1, 10 | `sundance_europanels_p5_t1`, `sundance_europanels_p14_t1` |
+
+All three Louvolite family grid groups have at least one printed collection assignment. The unmatched Sundance groups require an authoritative current fabric-to-group roster or confirmation that the groups are retained solely for older materials.
