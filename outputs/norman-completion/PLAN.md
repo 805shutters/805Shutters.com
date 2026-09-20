@@ -1,12 +1,10 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 15:17
-- Completed live: release 8d2fa5c9 includes Roller hardware/common/panel rules, Honeycomb specialty net geometry, measured At Gaps joins, shared-assembly issue routing, and Sundance cellular controls. Gate: 6,019 passed, 28 skipped; typecheck/build/public deployment passed.
-- Production proof completed: Honeycomb manual mounting boundary 805-0343 at $454; vertical Butt Together pair 805-0344 at $2,647 including rejection of mismatched heights. SmartFold 805-0342 accessory persistence passed; broad automatic pricing remains held.
-- In progress: Honeycomb charging proof 805-0345 (saved $1,439, full reload completed; boundary and final customer preview next), then specialty net proof. Roller and At Gaps proof assigned to agents.
-- Agents: Onyx handles narrowly supported SmartFold pricing and Roller live proof; Sundance continues cellular specialty/accessory source coverage and live proof; Lotus handles SmartDrape standalone vane-pack destination and At Gaps proof.
-- Next release queue: cellular accessory schedules, human-readable mounting/charging output labels, latest proof reports, and bounded SmartFold eligibility after source-backed tests.
+## Current checkpoint — September 20, 15:40
+- Completed live: release134fef73 adds Roller panel selector correction, SmartDrape standalone replacement destination (held for source-price conflict), cellular cutout/poles and charging proof. Previous1d9 release passed6,061 tests, typecheck/build/public deployment.
+- Production proof completed: Honeycomb mounting0343 ($454), wireless charging0345 ($1,439) including blocked charging boundary, specialty net0347 ($543) including invalid ratio; all saved/reopened and customer previews verified. Vertical pair0344 ($2,647) verified with mismatched-height rejection. Roller hardware0346 ($1,332), common-valance0349 (explicit pricing hold), and SmartFold/PerfectSheer measured joins0348 passed persistence.
+- In progress: SmartFold bounded rechargeable outside-mount price proof0342; agent Roller shared-panel0350 and SmartDrape standalone pack proof. Contract group-query freshness fix and Zebra rules are undergoing combined deployment.
 - Remaining: exact family exceptions, source assortment reconciliation and dealer-price evidence, production proof for new controls, refreshed exhaustive ledger. No fully certified Norman family claim.
-- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to 805. Dealer factors remain unchanged.
+- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to805. Dealer factors remain unchanged.
 
 - [x] Isolate current main; preserve unrelated canonical changes.
 - [x] Inventory 14 families, 47 programs, 1,288 color identities, 678 Honeycomb color/cell routes and 544 option records.

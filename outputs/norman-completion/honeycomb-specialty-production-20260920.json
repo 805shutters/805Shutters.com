@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-20",
+  "deployment": "1d9abd98d9c99fad34cea2f3575069b7408f8403",
+  "quote": "805-0347",
+  "alternative": "D",
+  "source": "Norman Honeycomb Guide September, p39 NET specialty dimensions",
+  "configuration": {
+    "room": "Office",
+    "orderedWidth": 40.375,
+    "orderedHeight": 20.375,
+    "netWidth": 40,
+    "netHeight": 20,
+    "netConfirmed": true,
+    "fabric": "C7015K Brilliant White LF",
+    "cell": "3/4 Single",
+    "application": "Specialty Shapes",
+    "shape": "Perfect Arch (Half Round)",
+    "nonOperable": "Yes",
+    "mount": "Inside Flush",
+    "recessDepth": 2.625
+  },
+  "proof": {
+    "closeReopen": true,
+    "fullBrowserReload": true,
+    "customerPreview": true,
+    "baseRetail": 387,
+    "specialty": 117,
+    "installation": 25,
+    "shipping": 14,
+    "total": 543,
+    "negative": {
+      "netHeight": 20.0625,
+      "result": "Confirmation automatically clears after edit; after reconfirmation saved server audit rejects Perfect Arch height not exactly half its width; price blocked at zero. Restored20 and reconfirmed yields543."
+    }
+  },
+  "limitations": [
+    "Customer preview in original session remained stale after valid restoration. Full reload/reopen proved correct543. Query dependency freshness repair57d2bb34 is in the next release; in-session restoration retest pending.",
+    "Representative net geometry only; no inferred automatic curved-opening deduction. Dealer/account reconciliation unresolved."
+  ],
+  "externalActions": "No send, sign, sold, checkout or order."
+}
