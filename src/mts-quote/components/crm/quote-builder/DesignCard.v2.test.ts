@@ -21,6 +21,7 @@ import {
   canonicalRollerMotorizationSelections,
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
+  getAutomaticOptionSurcharges,
   getDefiningSteps,
   isStandardShutterComplete,
   ManufacturerCatalogStampChooser,
@@ -75,6 +76,15 @@ function catalogProduct(
 }
 
 describe("V2 exact-interface contract", () => {
+  it("does not display the coupled-shade charge for an authoritative common valance", () => {
+    // Roller Guide PDF p37 treats common valance as a shared cover; September
+    // Retail PDF p20 applies $117 only to coupled-shade hardware.
+    const common = { supplier: "Norman", shade_type: "Common Valance", valance: "No Valance", options_json: { quote_v2_backend: true } } as unknown as SalesQuoteDesign;
+    expect(getAutomaticOptionSurcharges("Roller Shades", common, 36).some(s => s.name === "Coupled Shade")).toBe(false);
+    // This presentation repair does not rewrite legacy quote calculations.
+    const legacy = { ...common, options_json: {} };
+    expect(getAutomaticOptionSurcharges("Roller Shades", legacy, 36)).toEqual(expect.arrayContaining([expect.objectContaining({ name: "Coupled Shade", value: 117 })]));
+  });
   it("initializes new AMX and explicitly selected roller lines with current typed defaults", () => {
     const current = { quote_v2_backend: true, temporary_shade: true, color: "stale", motorization_selections: [{ optionId: "old-motor" }] };
     const amx = buildCatalogSelectionPatch(current, catalogProduct("lotus_mini_blinds", "Lotus", [

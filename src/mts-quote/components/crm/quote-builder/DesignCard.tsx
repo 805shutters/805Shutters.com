@@ -850,7 +850,7 @@ function getMotorOptionSurcharge(
   };
 }
 
-function getAutomaticOptionSurcharges(
+export function getAutomaticOptionSurcharges(
   productType: string,
   design: SalesQuoteDesign | undefined,
   width?: number | null
@@ -907,7 +907,10 @@ function getAutomaticOptionSurcharges(
         )
       );
     }
-    if (design.shade_type === "Common Valance") {
+    // The current guide distinguishes a common cover from coupled hardware.
+    // V2 holds its shared-valance allocation separately; do not invent a
+    // coupled-shade charge in the staff fallback audit. Keep legacy behavior.
+    if (design.shade_type === "Common Valance" && opts.quote_v2_backend !== true) {
       appendSurcharge(
         surcharges,
         toAutomaticSurcharge(
