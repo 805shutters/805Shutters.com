@@ -394,10 +394,10 @@ describe("automatic order email uses the same product invoice workflow", () => {
     expect(await apply()).toMatchObject({ addedCogs: 0 });
     expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
   });
-  it("recognizes another email for the same vendor order", async () => {
+  it("recognizes a forwarded copy in the business mailbox without charging the invoice again", async () => {
     const {db, apply} = setup(); await apply();
     const original = db.tables.crm_order_cogs_emails[0];
-    db.tables.crm_order_cogs_emails.unshift({ ...original, id: "91111111-1111-4111-8111-111111111111", gmail_message_id: "resent" });
+    db.tables.crm_order_cogs_emails.unshift({ ...original, id: "91111111-1111-4111-8111-111111111111", gmail_message_id: "resent", mailbox_email: "805@805shutters.com" });
     expect(await apply()).toMatchObject({ addedCogs: 0 });
     expect(db.tables.crm_quotes[0].materials_cost).toBe(3123.29);
   });

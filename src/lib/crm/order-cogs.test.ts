@@ -1,3 +1,4 @@
+import * as gmailAccess from "./installation-invoices";
 import * as productEmailWorkflow from "./apply-order-email-product";
 import { listGmailMessages } from "./order-cogs";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -320,7 +321,7 @@ describe("extractLotusOrderCogs", () => {
 describe("customerOrderCogsQuery", () => {
   it("searches the selected mailbox, recent date range, vendors, and every customer-name token", () => {
     expect(customerOrderCogsQuery("805shutters@gmail.com", "Jack Plasmyer", 14)).toBe(
-      'in:anywhere to:805shutters@gmail.com newer_than:14d (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware") "Jack" "Plasmyer"'
+      'in:anywhere {to:805shutters@gmail.com to:805@805shutters.com} newer_than:14d (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware") "Jack" "Plasmyer"'
     );
   });
 });
@@ -999,11 +1000,12 @@ describe("processOrderCogsInbox", () => {
 
 describe("product-mode order ingestion", () => {
   afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-  function gmail() {
+  function gmail(mailbox = "805shutters@gmail.com") {
     vi.stubEnv("GMAIL_805_CLIENT_ID", "client"); vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret"); vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
     const fetcher = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes("oauth2.googleapis.com/token")) return jsonResponse({ access_token: "token" });
+      if (url.endsWith("/profile")) return jsonResponse({ emailAddress: mailbox });
       if (url.includes("/messages?")) return jsonResponse({ messages: [{ id: "msg-norman" }] });
       return jsonResponse({ id: "msg-norman", payload: { headers: [{ name: "From", value: "OrderConfirmation@normanusa.com" }], mimeType: "text/plain", body: { data: gmailTextBody(NORMAN_BODY) } } });
     });
@@ -1025,6 +1027,27 @@ describe("product-mode order ingestion", () => {
     expect(fetcher.mock.calls.some(([url]) => /modify|telegram/.test(String(url)))).toBe(false);
     const query = new URL(String(fetcher.mock.calls.find(([url]) => String(url).includes("/messages?"))![0])).searchParams.get("q");
     expect(query).not.toContain("in:inbox"); expect(query).not.toContain("-label:Processed");
+  });
+  it("uses the broker-selected business account and finds mail originally sent to either 805 address", async () => {
+    const mailbox = "805@805shutters.com";
+    const fetcher = gmail(mailbox); const db = new FakeSupabase();
+    const broker = vi.spyOn(gmailAccess, "getBrokeredGmailAccessToken").mockResolvedValue("business-token");
+    vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockResolvedValue({ addedCogs: 617.26, totalCogs: 617.26 });
+    expect(await processOrderCogsInbox(db as never, { mailbox, productAutoApply: true, archive: false })).toMatchObject({ mailbox, applied: 1 });
+    expect(broker).toHaveBeenCalledWith(mailbox);
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("oauth2"))).toBe(false);
+    const query = new URL(String(fetcher.mock.calls.find(([url]) => String(url).includes("/messages?"))![0])).searchParams.get("q");
+    expect(query).toContain("{to:805shutters@gmail.com to:805@805shutters.com}");
+    expect(db.records[0].mailbox_email).toBe(mailbox);
+  });
+  it("fails closed before reading messages or writing invoices when Gmail returns another account", async () => {
+    const fetcher = gmail(); const original = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async input => String(input).endsWith("/profile")
+      ? jsonResponse({ emailAddress: "other@example.com" }) : original(input));
+    const db = new FakeSupabase();
+    await expect(processOrderCogsInbox(db as never, { productAutoApply: true, archive: false })).rejects.toThrow("different mailbox");
+    expect(db.updates).toHaveLength(0);
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("/messages"))).toBe(false);
   });
   it("retries failed product work and preserves a prior aggregate applied receipt", async () => {
     gmail(); const db = new FakeSupabase();

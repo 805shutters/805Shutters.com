@@ -148,8 +148,14 @@ export type ProcessOrderCogsResult = {
   emails: CrmOrderCogsEmail[];
 };
 
+function orderRecipientQuery(mailbox: string) {
+  return [DEFAULT_MAILBOX, "805@805shutters.com"].includes(mailbox)
+    ? "{to:805shutters@gmail.com to:805@805shutters.com}"
+    : `to:${mailbox}`;
+}
+
 function defaultQuery(mailbox: string) {
-  return `in:inbox to:${mailbox} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
+  return `in:inbox ${orderRecipientQuery(mailbox)} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
 }
 
 export function customerOrderCogsQuery(mailbox: string, customerName: string, days = 14) {
@@ -162,7 +168,7 @@ export function customerOrderCogsQuery(mailbox: string, customerName: string, da
     .map((token) => `"${token.replace(/"/g, "")}"`)
     .join(" ");
   const vendorTerms = `(from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
-  return `in:anywhere to:${mailbox} newer_than:${safeDays}d ${vendorTerms}${nameTerms ? ` ${nameTerms}` : ""}`;
+  return `in:anywhere ${orderRecipientQuery(mailbox)} newer_than:${safeDays}d ${vendorTerms}${nameTerms ? ` ${nameTerms}` : ""}`;
 }
 
 function envValue(keys: string[]) {
@@ -215,6 +221,11 @@ async function refreshDirectAccessToken(credentials: { clientId: string; clientS
 // present, otherwise fall back to the shared Gmail access-token broker (the 805 prod
 // setup only has the broker configured). Same token is reused for read + archive.
 async function getGmailAccessToken(mailbox: string) {
+  // Direct credentials belong to the legacy Gmail inbox; the broker selects the business account.
+  if (mailbox !== DEFAULT_MAILBOX) {
+    const brokered = await getBrokeredGmailAccessToken(mailbox);
+    if (brokered) return brokered;
+  }
   const credentials = googleOAuthCredentials();
   if (credentials) return refreshDirectAccessToken(credentials);
 
@@ -1252,6 +1263,12 @@ export async function processOrderCogsInbox(
       })
     : allCandidates;
   const accessToken = productAutoApply || !options.messageIds?.length ? await getGmailAccessToken(mailbox) : null;
+  if (productAutoApply && accessToken) {
+    const profile = await gmailJson<{ emailAddress?: string }>(accessToken, "https://gmail.googleapis.com/gmail/v1/users/me/profile");
+    if (profile.emailAddress?.trim().toLowerCase() !== mailbox) {
+      throw new CrmAuthError(502, "Order email access returned a different mailbox; no invoices were processed.");
+    }
+  }
   const processedLabelId = archiveEnabled && accessToken ? await ensureProcessedLabel(accessToken) : null;
   let messages = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))

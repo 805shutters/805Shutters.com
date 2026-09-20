@@ -104,9 +104,6 @@ export async function pollOrderCogs({
   }
 
   const body = await response.text();
-  if (!response.ok) {
-    throw new Error(`Processor endpoint returned HTTP ${response.status}: ${body.slice(0, 500)}`);
-  }
 
   let payload;
   try {
@@ -115,7 +112,24 @@ export async function pollOrderCogs({
     throw new Error(`Processor endpoint did not return JSON: ${body.slice(0, 500)}`);
   }
 
-  return validateOrderCogsResult(payload, expectedMailbox);
+  const diagnostics = summarizeProcessors(payload);
+  if (!response.ok) {
+    throw new Error(`Processor endpoint returned HTTP ${response.status}: ${JSON.stringify(diagnostics)}`);
+  }
+  return { ...validateOrderCogsResult(payload, expectedMailbox), diagnostics };
+}
+
+// Keep operational counts visible on partial failure without printing customer records or email bodies.
+export function summarizeProcessors(payload) {
+  const fields = ["mailbox", "scanned", "processed", "applied", "needsReview", "unmatched", "skipped", "deferred", "errors", "recordErrors", "checked", "recorded", "duplicates", "review", "ignored"];
+  const compact = value => value && typeof value === "object"
+    ? Object.fromEntries(fields.filter(key => typeof value[key] === "number" || key === "mailbox" && typeof value[key] === "string").map(key => [key, value[key]])) : null;
+  return {
+    orderCogs: compact(payload?.orderCogs ?? payload),
+    mailboxes: Array.isArray(payload?.orderCogs?.mailboxes) ? payload.orderCogs.mailboxes.map(compact) : [],
+    squarePayments: compact(payload?.squarePayments), peerPayments: compact(payload?.peerPayments),
+    states: payload?.processorStates && Object.fromEntries(Object.entries(payload.processorStates).map(([name, state]) => [name, state?.status])),
+  };
 }
 
 function runningAsMain() {
@@ -139,6 +153,7 @@ if (runningAsMain()) {
         `errors=${summary.errors}`
       ].join(" ")
     );
+    console.log(`Intake results: ${JSON.stringify(summary.diagnostics)}`);
     for (const warning of summary.processorWarnings || []) {
       console.warn(`Auxiliary processor warning: ${warning}`);
     }

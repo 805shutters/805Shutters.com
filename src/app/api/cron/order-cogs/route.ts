@@ -1,6 +1,7 @@
 import { observeIntegration } from "@/lib/crm/integration-health";
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
+import { processScheduledOrderMailboxes } from "@/lib/crm/order-cogs-mailboxes";
 import { processOrderCogsInbox } from "@/lib/crm/order-cogs";
 import { reconcileRecentSquarePayments } from "@/lib/crm/square-api-reconciliation";
 import { processPeerPaymentEmails } from "@/lib/crm/peer-payment-emails";
@@ -30,7 +31,7 @@ const defaultDependencies: OrderCogsCronDependencies = {
     CRON_SECRET: process.env.CRON_SECRET,
   },
   getSupabase: getSupabaseServiceClient,
-  processOrderCogs: processOrderCogsInbox,
+  processOrderCogs: processScheduledOrderMailboxes,
   reconcileSquarePayments: reconcileRecentSquarePayments,
   processPeerPayments: processPeerPaymentEmails,
 };

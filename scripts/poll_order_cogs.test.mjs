@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pollOrderCogs, validateOrderCogsResult } from "./poll_order_cogs.mjs";
+import { pollOrderCogs, validateOrderCogsResult, summarizeProcessors } from "./poll_order_cogs.mjs";
 
 const successfulPayload = {
   mailbox: "805shutters@gmail.com",
@@ -113,4 +113,26 @@ test("rejects a successful non-processor response", async () => {
     pollOrderCogs({ secret: "test", fetchImpl }),
     /did not return JSON/
   );
+});
+
+
+test("partial-failure diagnostics retain mailbox and peer counts without exposing email evidence", async () => {
+  const payload = {
+    orderCogs: { ...successfulPayload, deferred: 77, emails: [{ body: "private customer email" }],
+      mailboxes: [{ ...successfulPayload, deferred: 77 }, { ...successfulPayload, mailbox: "805@805shutters.com" }] },
+    peerPayments: { checked: 2, recorded: 0, review: 2, errors: 0, results: [{ customer: "private customer" }] },
+    processorStates: { orderCogs: { status: "failed", message: "private upstream detail" }, peerPayments: { status: "completed" } },
+  };
+  const summary = summarizeProcessors(payload);
+  assert.equal(summary.orderCogs.deferred, 77);
+  assert.equal(summary.mailboxes.length, 2);
+  assert.equal(summary.peerPayments.checked, 2);
+  assert.ok(!JSON.stringify(summary).includes("private"));
+  await assert.rejects(pollOrderCogs({ secret: "test", fetchImpl: async () => new Response(JSON.stringify(payload), { status: 502 }) }), error => {
+    assert.match(error.message, /HTTP 502/);
+    assert.match(error.message, /"deferred":77/);
+    assert.match(error.message, /"checked":2/);
+    assert.ok(!error.message.includes("private"));
+    return true;
+  });
 });
