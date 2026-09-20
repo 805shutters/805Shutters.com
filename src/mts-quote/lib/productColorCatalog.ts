@@ -1,3 +1,4 @@
+import { sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
 import { expectedVerticalHoneycombProgramId } from "@/lib/quote-v2/catalog";
 import { SYNCHRONY_DEALER_COLOR_CODES } from "@/lib/quote/norman-synchrony";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
@@ -147,6 +148,7 @@ function authoritativeRowsFor(
   productType: string | null | undefined,
   optionsJson: Record<string, unknown>,
 ): ProductColorOption[] | null {
+  if (getMtsProductColorProductIds(productType, optionsJson).some(id => id.startsWith("sundance_"))) return null;
   if (!isAuthoritativeV2(optionsJson)) return null;
   if (productType === "Vertical Blinds") return authoritativeV2VerticalRows;
   return null;
@@ -214,6 +216,9 @@ export function getMtsProductColorProductIds(
   productType: string | null | undefined,
   optionsJson: Record<string, unknown> = {},
 ): string[] {
+  const explicit = stringOption(optionsJson, "catalog_product_id") || stringOption(optionsJson, "quote_lab_product_id") || stringOption(optionsJson, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
+  if (explicit?.startsWith("sundance_")) return [explicit];
+
   if (productType === "Faux Wood Blinds") {
     const productLine = stringOption(optionsJson, "product_line");
     if (normalize(productLine).includes("smartprivacy")) {
@@ -397,6 +402,7 @@ export function getMtsGridKeyForCatalogProgram(
   programId: string | null | undefined,
 ): string | null {
   if (!programId) return null;
+  if (programId.startsWith("sundance_")) return programId;
 
   if (productType === "Roller Shades") {
     if (FALL_2026_ROLLER_PROGRAM_TO_GRID[programId]) return FALL_2026_ROLLER_PROGRAM_TO_GRID[programId];
@@ -508,6 +514,7 @@ function rowMatchesMtsContext(
   optionsJson: Record<string, unknown>,
   row: ProductColorOption,
 ): boolean {
+  if (row.productId.startsWith("sundance_")) return sundanceCellularColorMatchesContext(row, optionsJson);
   switch (productType) {
     case "Roman Shades": {
       if (
@@ -637,6 +644,7 @@ function contextualizeMtsProductColorRow(
   optionsJson: Record<string, unknown>,
   row: ProductColorOption,
 ): ProductColorOption {
+  if (row.productId.startsWith("sundance_")) return row;
   if (productType !== "Honeycomb Shades") return row;
   const exactColor = isAuthoritativeV2(optionsJson)
     ? exactHoneycombColor(row.colorCode)
