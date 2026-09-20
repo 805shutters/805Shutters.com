@@ -1,0 +1,17 @@
+{
+  "verifiedAt": "2026-09-20",
+  "productionRelease": "827159e447402dee8655008c25151a96e3348d50",
+  "verification": "Internal drafts saved, closed, browser fully reloaded, staff quote list reread, reopened and customer preview checked. No send, signature, sale or vendor order.",
+  "priceQualification": "Current CRM selling policy with corrected September retail valance/style charges. Does not certify account-specific Norman dealer costs or exhaustive configuration coverage.",
+  "quotes": [
+    {"number":"805-0327","alternative":"A","total":6254,"lineTotals":[4475,1779],"mounting":"Both Semi Inside, 2-inch depth","orderProof":"Shared Panel 1: 3 of 12 motors. $931 charged once on first line; second audit says charged on another connected line."},
+    {"number":"805-0328","alternative":"B","total":6938,"lineTotals":[3544,3394],"mounting":"Both Semi Inside, 2-inch depth","orderProof":"Saved order adapter: 65W across 2 quote lines; unequal 30/40-inch common shades and 80x100 Batten Back vertical-seam single retained."},
+    {"number":"805-0329","alternative":"C","total":5484,"lineTotals":[3780,1704],"mounting":"Both Semi Inside, 2-inch depth","orderProof":"Included kits: 1 for 3 motors; first line supplied 0, second supplied 1. Remotes 1/0, channels 4/3. Extra kit $43, two black 78.74-inch 36W cables $86, repeater $107, remote $75 retained."},
+    {"number":"805-0330","alternative":"D","total":3961,"lineTotals":[2505,1456],"configuration":"Common continuous-loop, 2-inch headrail, Semi Inside depth2.125, chain57.5. Outside Cordless single, Wrapped Returns, two total60-inch poles, magnetic Stone Gray catch, shim layers2."},
+    {"number":"805-0331","alternative":"E","total":4292,"lineTotals":[1647,2645],"configuration":"F1085 Sheer Elegance + F2170 Charlotte Day & Night, Semi Inside depth3.625. F0255 Valencia quantity2 retains one total60-inch pole, Wrapped Returns, magnet/shims."},
+    {"number":"805-0332","alternative":"F","total":5509.4,"lineTotals":[1222,1532,1222,1533.4],"configuration":"Caroline Flat without seams, Batten Back, Soft Fold; Valencia AutoWand60 Cottage White, Wrapped Returns, black extension and extra kit."},
+    {"number":"805-0336","alternative":"G","total":2621.1,"lineTotals":[1232.7,1388.4],"configuration":"Alma Ribbon Side Border/T001 White and Edge Wrapped Border/F1628 Whisper White; actual banding still shown on customer preview."},
+    {"number":"805-0338","alternative":"H","total":2776.8,"lineTotals":[1388.4,1388.4],"configuration":"Both F1794 Impressions Ice White, Soft Fold, Cordless, Outside, No Valance, Reverse, side-by-side reciprocal matching.","negativeProof":"On release53a13025, one Standard versus Reverse blocked both prices and quote total. Restoring Reverse repriced both. Save/full reload/reopen retains pair.","customerProof":"Release827159e4 removes obsolete prior banding layout from both Soft Fold customer details while G retains valid banding."}
+  ],
+  "supersedesEarlierTotals": {"805-0327":5888,"805-0328":6462,"805-0329":5118,"805-0330":3595,"805-0331":3857}
+}
