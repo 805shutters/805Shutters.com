@@ -40,4 +40,32 @@ In the same native verification quote 805-0337, added and selected the following
 
 The exact three selected option values and labels survived reopening. Each showed Price confirmation required, a dealer source link, and Authoritative pricing blocked. Send Quote/Send Payment Link stayed disabled. No overrides were entered. Dimensions were not invented for these identity-only held records.
 
-This verification exposed an existing server batch failure: zero width on one draft line threw “Authoritative V2 pricing could not interpret the saved selection: width: must be greater than zero” after structural mutation had invalidated all mutable prices. Thus the previously priced FTXLG line was cleared to zero despite unchanged valid selections. The immutable history remains intact. Fix 1b021940 makes the server retain legitimate draft zeros for per-line validation, leaves malformed fractions/quantities rejected, and represents parts by item/quantity. Regression testing proves valid FTXLG35×36 retains119.94 while a dimensionless part and unfinished shade remain held. Production re-verification is pending the repair deployment.
+This verification exposed an existing server batch failure: zero width on one draft line threw “Authoritative V2 pricing could not interpret the saved selection: width: must be greater than zero” after structural mutation had invalidated all mutable prices. Thus the previously priced FTXLG line was cleared to zero despite unchanged valid selections. The immutable history remains intact. Fix 1b021940 makes the server retain legitimate draft zeros for per-line validation, leaves malformed fractions/quantities rejected, and represents parts by item/quantity. Regression testing proves valid FTXLG35×36 retains119.94 while a dimensionless part and unfinished shade remain held. Production re-verification passed after 04d74891 and fed42ad5, as recorded below.
+
+
+## Final mixed-draft and AMX customer-preview proof — fed42ad5
+
+Verified on www.805shutters.com after parent confirmed deployment https://805-eh53yrg9p-805-shutters.vercel.app. Full browser reload, Staff quotes, and reopening 805-0337 retained all eight lines and exact identities. The completed live results are:
+
+| Room | Saved result after reload |
+|---|---|
+| Office | Typed AMX 27 × 72, White, Inside Mount, Cordless, no valance: **$117.90** |
+| Living Room | FTXLG 35 × 36, Light Gray, Inside Mount, 2-inch smooth, one blind: **$119.94** |
+| Family Room | Typed RS 1%, White, cordless spring, Smooth valance, Inside Mount, Semi-inside, **2-inch recess**: held at zero |
+| Dining Room | CV steel complete, 60 × 72, Outside Mount: held at zero |
+| Kitchen | MLX 48 × 60 White, Inside Mount: held at zero |
+| Hall | Exact FCXTILTER2JTS part ID above, **By item / quantity**, quantity 1, no invented dimensions: held at zero |
+| Foyer | Exact CAMX2772W custom-listing ID above, incomplete measurements: held at zero |
+| Breakfast Nook | Exact AMX2772WH stock ID above, incomplete measurements: held at zero |
+
+The builder displayed **Quote saved**, **6 windows need pricing**, and disabled Send Quote/Send Payment Link. Contract view still displayed Pricing incomplete and refused customer output for this mixed quote. The valid AMX and FTX prices did not disappear when the incomplete siblings were repriced. All three held offering IDs were read from the selected controls after reload and matched the recorded identities.
+
+The AMX staff audit showed base retail $78.90, final per window $117.90, dealer merchandise base $26.30, source page 97, the pinned West A26.v1 hash, Effective date **Not supplied by manufacturer**, and Ledger status **Customer retail saved; dealer landed cost is separate**. Wholesale add-ons remain unresolved, and **Landed cost unresolved — margin withheld** remains explicit. The $26.30 is not total dealer landed cost.
+
+### Standalone native quote 805-0339
+
+Created through New Norman quote, then explicitly selected Lotus Aluminum Mini Blinds. Customer label **Lotus AMX Pricing Verification 2026-09-20**, with no contact details. Internal note: **INTERNAL AMX PRODUCTION VERIFICATION — DO NOT SEND, SELL OR ORDER. Customer retail follows existing 3x source merchandise policy; dealer freight and order surcharges remain unresolved.**
+
+Configured Office, 27 × 72, White, Inside Mount, Cordless, no valance, quantity 1. Waited for Quote saved and observed **$117.90**. Contract preview showed the exact program, White, Inside Mount, Cordless, dimensions, $25 installation, $14 shipping, and subtotal/total **$117.90**. Then performed a full browser reload, found quote 805-0339 in Staff quotes with Draft / $117.90, reopened it, and reread the same selections and price. Reopened Contract preview retained them again.
+
+This proves the representative customer retail configuration and production persistence. It does not certify all AMX boundary/color combinations, current source-book effective date, live stock or dealer order charges. No send, share, signature, sale, deposit, order or checkout action occurred. The new-line initialization required one explicit program reselection; repair 327ccd13 addresses that usability defect separately, without changing historical records.
