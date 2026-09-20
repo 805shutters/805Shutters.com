@@ -1,4 +1,5 @@
 import { test, expect, devices } from "@playwright/test";
+import { buildActiveJobsSnapshot } from "../src/lib/crm/active-jobs";
 import { buildDashboardData } from "../src/lib/crm/backend";
 import type { CrmJob, CrmQuote, CrmCustomerContract } from "../src/lib/crm/types";
 
@@ -27,9 +28,11 @@ for (const viewport of [{ width: 1600, height: 1000 }, { width: 820, height: 118
       if (!["localhost", "127.0.0.1"].includes(url.hostname)) return url.hostname === "jobtracking-test.supabase.co" ? route.fulfill({ json: url.pathname.startsWith("/auth/") ? user : [] }) : route.abort();
       if (!path.startsWith("/api/")) return route.continue();
       if (path === "/api/crm/session") return route.fulfill({ json: { email: user.email, displayName: "Local verification" } });
-      if (path === "/api/crm/jobs" && route.request().method() === "GET") return failed
-        ? route.fulfill({ status: 503, json: { message: "Synthetic outage" } })
-        : route.fulfill({ json: buildDashboardData({ jobs, quotes, contracts, now: reportNow, events: [], customers: [], products: [], entries: [], payments: [], credits: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 }) });
+      if (path === "/api/crm/jobs" && route.request().method() === "GET") {
+        if (failed) return route.fulfill({ status: 503, json: { message: "Synthetic outage" } });
+        const dashboard = buildDashboardData({ jobs, quotes, contracts, now: reportNow, events: [], customers: [], products: [], entries: [], payments: [], credits: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 });
+        return route.fulfill({ json: url.searchParams.get("scope") === "active" ? buildActiveJobsSnapshot(dashboard) : dashboard });
+      }
       if (path === "/api/crm/activity") return route.fulfill({ json: { activityEvents: [], payments: [], signedContracts: [] } });
       return route.fulfill({ status: 503, json: { message: "Outside read-only fixture" } });
     });

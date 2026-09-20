@@ -1,5 +1,7 @@
 "use client";
 
+import type { ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
+
 import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
 
 import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
@@ -880,6 +882,11 @@ export function CrmApp({
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
+  const [activeJobsSnapshot, setActiveJobsSnapshot] = useState<ActiveJobsSnapshot | null>(null);
+  const [fullDashboardError, setFullDashboardError] = useState<string | null>(null);
+  const dashboardDataRef = useRef<CrmDashboardData | null>(null);
+  const fullDashboardRequest = useRef<Promise<CrmDashboardData> | null>(null);
+  const startupRequest = useRef<Promise<void> | null>(null);
   const [closedSalesStart, setClosedSalesStart] = useState<string | null>(null);
   const [activitySnapshot, setActivitySnapshot] = useState<CrmActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -1350,6 +1357,8 @@ export function CrmApp({
     setSession(null);
     setUser(null);
     setData(null);
+    dashboardDataRef.current = null;
+    setActiveJobsSnapshot(null);
     setActivitySnapshot(null);
     setActivityRefreshError(null);
   }
@@ -1364,28 +1373,66 @@ export function CrmApp({
       window.location.replace("/crm/ken");
       return;
     }
-    setActivityLoading(true);
-    const [dashboardResult, activityResult] = await Promise.all([
-      crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs"),
-      crmFetch<CrmActivitySnapshot>(activeSession, "/api/crm/activity")
-        .then((snapshot) => ({ snapshot, error: null as string | null }))
-        .catch((error: unknown) => ({ snapshot: null, error: crmLoadErrorMessage(error) }))
-    ]);
+    // The home screen needs active work, not the complete financial/activity history.
+    const activeOnly = !isKenMode && initialTab === "tracking" && !window.location.search;
+    if (activeOnly) {
+      const snapshot = await crmFetch<ActiveJobsSnapshot>(activeSession, "/api/crm/jobs?scope=active");
+      setActiveJobsSnapshot(snapshot);
+    } else {
+      const dashboard = await crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs");
+      dashboardDataRef.current = dashboard;
+      setData(dashboard);
+    }
     setUser(sessionResult);
-    setData(dashboardResult);
-    if (activityResult.snapshot) setActivitySnapshot(activityResult.snapshot);
-    setActivityRefreshError(activityResult.error);
-    setActivityLoading(false);
     crmLoadedRef.current = true;
+  }
+
+  function startCrm(activeSession: Session) {
+    if (!startupRequest.current) {
+      startupRequest.current = loadCrm(activeSession).finally(() => { startupRequest.current = null; });
+    }
+    return startupRequest.current;
   }
 
   async function refresh() {
     if (!session) return null;
     const requestVersion = ++dashboardRequestVersion.current;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
-    if (requestVersion === dashboardRequestVersion.current) { setData(dashboardResult); setDashboardRefreshError(null); }
+    if (requestVersion === dashboardRequestVersion.current) {
+      dashboardDataRef.current = dashboardResult;
+      setData(dashboardResult); setDashboardRefreshError(null);
+    }
     return dashboardResult;
   }
+
+  function ensureFullDashboard(): Promise<CrmDashboardData> {
+    if (dashboardDataRef.current) return Promise.resolve(dashboardDataRef.current);
+    if (fullDashboardRequest.current) return fullDashboardRequest.current;
+    if (!session) return Promise.reject(new Error("Sign in again to load jobs."));
+    setFullDashboardError(null);
+    // Invalidate an active-only poll before upgrading to the full workspace.
+    const requestVersion = ++dashboardRequestVersion.current;
+    fullDashboardRequest.current = crmFetch<CrmDashboardData>(session, "/api/crm/jobs")
+      .then(dashboard => {
+        if (requestVersion !== dashboardRequestVersion.current) throw new Error("Jobs changed while loading. Try again.");
+        dashboardDataRef.current = dashboard;
+        setData(dashboard);
+        setDashboardRefreshError(null);
+        return dashboard;
+      })
+      .catch((error: unknown) => {
+        setFullDashboardError(crmLoadErrorMessage(error));
+        throw error;
+      })
+      .finally(() => { fullDashboardRequest.current = null; });
+    return fullDashboardRequest.current;
+  }
+
+  const needsFullDashboard = activeTab !== "tracking" || Boolean(trackingDetailId || trackingQuickAction || builderQuoteId || drill);
+  useEffect(() => {
+    if (!session || loading || data || !needsFullDashboard) return;
+    void ensureFullDashboard().catch(() => undefined);
+  }, [session, loading, data, needsFullDashboard]);
 
   async function pullInstallationInvoices() {
     if (!session) return;
@@ -1560,6 +1607,8 @@ export function CrmApp({
       setSession(null);
       setUser(null);
       setData(null);
+      dashboardDataRef.current = null;
+      setActiveJobsSnapshot(null);
       setMessage(null);
       if (notice) setEmailLoginMessage(notice);
     }
@@ -1599,7 +1648,7 @@ export function CrmApp({
         setSession(activeSession);
 
         if (activeSession) {
-          await loadCrm(activeSession);
+          await startCrm(activeSession);
         }
       } catch (error) {
         if (!mounted) return;
@@ -1633,7 +1682,7 @@ export function CrmApp({
       setSession(nextSession);
       if (nextSession) {
         setLoading(true);
-        loadCrm(nextSession)
+        startCrm(nextSession)
           .catch(async (error) => {
             if (!mounted) return;
             await handleCrmLoadError(error);
@@ -1645,6 +1694,8 @@ export function CrmApp({
         crmLoadedRef.current = false;
         setUser(null);
         setData(null);
+        dashboardDataRef.current = null;
+        setActiveJobsSnapshot(null);
         setActivitySnapshot(null);
         setActivityRefreshError(null);
       }
@@ -1668,17 +1719,24 @@ export function CrmApp({
   // clobber an edit) or while the tab is hidden (so it doesn't poll in the
   // background). Preserve the snapshot and expose failed refreshes.
   useEffect(() => {
-    if (!session) return;
+    if (!session || loading) return;
     let cancelled = false;
 
     const sync = async () => {
-      if (cancelled || busyRef.current) return;
+      if (cancelled || busyRef.current || fullDashboardRequest.current) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       const requestVersion = ++dashboardRequestVersion.current;
       try {
-        const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
-        if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
-        setData(dashboardResult);
+        if (dashboardDataRef.current) {
+          const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
+          if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
+          dashboardDataRef.current = dashboardResult;
+          setData(dashboardResult);
+        } else {
+          const snapshot = await crmFetch<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active");
+          if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
+          setActiveJobsSnapshot(snapshot);
+        }
         setDashboardRefreshError(null);
       } catch {
         if (!cancelled && requestVersion === dashboardRequestVersion.current) setDashboardRefreshError("Refresh failed. Showing the last successful snapshot; figures may be stale.");
@@ -1698,16 +1756,17 @@ export function CrmApp({
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", sync);
     };
-  }, [session]);
+  }, [session, loading]);
 
   useEffect(() => {
-    if (!session || isKenMode) return;
+    if (!session || isKenMode || loading || !["tools", "reports"].includes(activeTab)) return;
     let cancelled = false;
 
     const syncActivity = async () => {
       if (cancelled || busyRef.current) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      activityPollAbortRef.current?.abort();
+      if (activityPollAbortRef.current) return;
+      setActivityLoading(true);
       const controller = new AbortController();
       activityPollAbortRef.current = controller;
       try {
@@ -1723,9 +1782,11 @@ export function CrmApp({
         setActivityRefreshError(crmLoadErrorMessage(error));
       } finally {
         if (activityPollAbortRef.current === controller) activityPollAbortRef.current = null;
+        if (!cancelled) setActivityLoading(false);
       }
     };
 
+    void syncActivity();
     const intervalId = window.setInterval(syncActivity, 15000);
     const onVisible = () => {
       if (document.visibilityState === "visible") void syncActivity();
@@ -1739,7 +1800,7 @@ export function CrmApp({
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [isKenMode, session]);
+  }, [isKenMode, session, activeTab, loading]);
 
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3106,7 +3167,7 @@ export function CrmApp({
     );
   }
 
-  if (message && !data) {
+  if (message && !data && !activeJobsSnapshot) {
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
@@ -3119,6 +3180,17 @@ export function CrmApp({
         </section>
       </div>
     );
+  }
+
+  if (needsFullDashboard && !data) {
+    return <div className="crm-app-shell crm-platinum-shell">
+      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void ensureFullDashboard().catch(() => undefined)} onSignOut={() => void signOut()} busy={busy} />
+      <div className="crm-platinum-main"><section className="crm-login-panel" role="status">
+        <h1>{fullDashboardError ? "Jobs could not be loaded." : "Loading workspace…"}</h1>
+        {fullDashboardError && <><p>{fullDashboardError}</p><button onClick={() => void ensureFullDashboard().catch(() => undefined)}>Retry</button></>}
+        <button onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); setBuilderQuoteId(null); setDrill(null); openTab("tracking"); }}>Back to active jobs</button>
+      </section></div>
+    </div>;
   }
 
   const financialUnavailable=(data?.sourceHealth||[]).some(s=>s.state!=="complete"&&["job expenses","installation invoices","order emails","Ken payments","Ken allocations","commission payments","commission allocations","settings"].includes(s.source));
@@ -3156,7 +3228,7 @@ export function CrmApp({
 
   return (
     <div className="crm-app-shell crm-platinum-shell">
-      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void refresh().catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
+      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void (data ? refresh() : session ? crmFetch<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active").then(snapshot => { setActiveJobsSnapshot(snapshot); setDashboardRefreshError(null); }) : Promise.resolve()).catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
       <div className="crm-platinum-main">
       <div className="crm-platinum-content">
       {builderQuoteId && session ? (
@@ -3337,7 +3409,7 @@ export function CrmApp({
 
       {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
       {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
-      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview onDelete={deleteCustomerFile} data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onSaveCost={saveTrackingField} onOpen={item => setTrackingDetailId(item.id)} /> : null}
+      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview activeSnapshot={dashboardRefreshError ? null : activeJobsSnapshot} onLoadAll={ensureFullDashboard} onDeleteFileId={async id => { const dashboard = await ensureFullDashboard(); const file = dashboard.customerFiles.find(candidate => candidate.id === id); if (!file) throw new Error("Customer file could not be found. Refresh and try again."); await deleteCustomerFile(file); }} onDelete={deleteCustomerFile} data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onSaveCost={saveTrackingField} onOpen={item => setTrackingDetailId(item.id)} /> : null}
       {activeTab === "tracking" && (trackingDetailId || trackingQuickAction) ? (<>
         {trackingDetailId && <BackToStatus onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); }} />}
         <div className={trackingDetailId ? "crm-record-detail" : undefined}><JobTrackingWorkspace focusedItemId={trackingDetailId || trackingQuickAction?.itemId}

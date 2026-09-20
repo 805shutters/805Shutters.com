@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCrmJob, loadCrmDashboardData } from "@/lib/crm/backend";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 import { restrictDashboardPayablesForViewer } from "@/lib/crm/payables-visibility";
+import { buildActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +12,10 @@ export async function GET(request: NextRequest) {
   try {
     const { supabase, email } = await requireCrmUser(request);
     const dashboard = await loadCrmDashboardData(supabase);
-    const response = NextResponse.json(restrictDashboardPayablesForViewer(dashboard, email));
+    const visibleDashboard = restrictDashboardPayablesForViewer(dashboard, email);
+    const response = NextResponse.json(request.nextUrl.searchParams.get("scope") === "active"
+      ? buildActiveJobsSnapshot(visibleDashboard)
+      : visibleDashboard);
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
     return response;
   } catch (error) {

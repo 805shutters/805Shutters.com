@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { buildActiveJobsSnapshot } from "../src/lib/crm/active-jobs";
 import { buildDashboardData } from "../src/lib/crm/backend";
 import type { CrmJob, CrmQuote } from "../src/lib/crm/types";
 
@@ -48,7 +49,7 @@ async function setup(page: Page) {
         status: index === 2 ? "sold" : "draft", quote_total: index === 2 ? 9876 : 12345.67,
         archived_at: null, meta: {},
       } as CrmQuote));
-      return route.fulfill({ json: dashboard });
+      return route.fulfill({ json: url.searchParams.get("scope") === "active" ? buildActiveJobsSnapshot(dashboard) : dashboard });
     }
     if (route.request().method() === "DELETE") {
       writes.push(path);

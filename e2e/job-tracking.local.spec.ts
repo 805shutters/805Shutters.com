@@ -2,6 +2,7 @@ import {emptyFulfillment,type FulfillmentData} from "../src/lib/crm/fulfillment"
 import type {OwnedAction,OwnedActionChange} from "../src/lib/crm/owned-actions";
 import type { ProgressSourceHealth, InstallerOutcomeEvidence } from "../src/lib/crm/job-progress";
 import { test, expect, devices, type Page } from "@playwright/test";
+import { buildActiveJobsSnapshot } from "../src/lib/crm/active-jobs";
 import { buildDashboardData } from "../src/lib/crm/backend";
 import type { CrmJob, CrmQuote, CrmBookkeepingPayment, CrmBookkeepingCredit, CrmBookkeepingEntry } from "../src/lib/crm/types";
 
@@ -41,7 +42,8 @@ async function setup(page: Page, includeLegacy = false, duplicateName = false) {
     if (!url.pathname.startsWith("/api/")) return route.continue();
     if (url.pathname === "/api/crm/session") return route.fulfill({ json: { email, displayName: "Local test" } });
     if (url.pathname === "/api/crm/jobs" && route.request().method() === "GET") {
-      return route.fulfill({ json: buildDashboardData({ ...records, events: [], customers: [], products: [], contracts: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 }) });
+      const dashboard = buildDashboardData({ ...records, events: [], customers: [], products: [], contracts: [], expenses: [], installationInvoiceEmails: [], kenPayments: [], openingBalance: 0, payoffTarget: 500000 });
+      return route.fulfill({ json: url.searchParams.get("scope") === "active" ? buildActiveJobsSnapshot(dashboard) : dashboard });
     }
     if(url.pathname==='/api/crm/operations/fulfillment'&&route.request().method()==='GET') {
       const q=records.quotes.find(q=>q.id===url.searchParams.get('quoteId'))!;

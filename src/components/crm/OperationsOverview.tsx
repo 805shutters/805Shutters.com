@@ -1,6 +1,7 @@
 "use client";
 
 import { ProductShipmentEditor } from "./ProductShipmentEditor";
+import { isOpenJob, type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -86,7 +87,7 @@ export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn))].sort();
   return <small className={styles.shipmentDates}>{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
 }
-export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
+export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onAction, onDelete }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
   const [shipmentEditor, setShipmentEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
@@ -114,7 +115,8 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Pr
     catch (cause) { setError(cause instanceof Error ? cause.message : "Update failed. Refresh and try again."); }
     finally { lock.current = false; setPending(null); }
   }
-  const disabled = busy || pending !== null;
+  const [loadingAll, setLoadingAll] = useState(false);
+  const disabled = busy || pending !== null || loadingAll;
   const mark = (item: OperationsItem, step: WorkflowActionStep) => {
     const done = step === "deposit" ? item.sold && item.source.depositOutstanding !== null && item.source.depositOutstanding <= 0.005 : stepComplete(item, step);
     const label = step === "deposit" ? "Deposit" : workflowLabels[step];
@@ -123,9 +125,19 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Pr
   const [filter, setFilter] = useState("active");
   const [search, setSearch] = useState("");
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
-  const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
+  const items = useMemo(() => data ? buildOperationsItems(data) : activeSnapshot?.items || [], [data, activeSnapshot]);
+  async function selectFilter(next: string) {
+    if (loadingAll) return;
+    if (next !== "active" && !data && onLoadAll) {
+      setLoadingAll(true); setError(""); setFeedbackId(null);
+      try { await onLoadAll(); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : "Jobs could not be loaded. Try again."); return; }
+      finally { setLoadingAll(false); }
+    }
+    setFilter(next);
+  }
   const visible = items.filter(item => {
-    if (filter === "active" && (item.archived || item.closed || item.complete)) return false;
+    if (filter === "active" && !isOpenJob(item)) return false;
     if (filter === "closed" && !item.closed) return false;
     if (filter === "completed" && !(item.complete)) return false;
     if ((filter === "ordered" || filter === "shipped") && (item.archived || !item.sold || stepComplete(item, filter))) return false;
@@ -133,8 +145,10 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Pr
   });
   return <section className={styles.workspace} aria-labelledby="job-status-title" aria-busy={busy}>
     <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div><span><CompletionMark done={true} /> Completed<small>Click a circle to update</small></span></header>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} aria-pressed={filter === id} onClick={() => setFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
-    {data?.loadWarnings?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    {loadingAll && <p role="status">Loading all jobs…</p>}
+    {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
+    {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     <div className={styles.jobList}>{visible.map(item => {
       const saleDate = formatOperationsDate(item.source.soldDate);
       const contactLine = `${item.source.phone || "Phone needed"} · ${item.source.email || "Email needed"}`;
@@ -176,11 +190,12 @@ export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Pr
       </tr></tbody></table>
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}
       {onDelete && item.source.file && !item.sold && canDeleteCustomerFile(item.source.file) && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => onDelete(item.source.file!)}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
+      {!data && onDeleteFileId && activeSnapshot?.deletableFiles[item.source.id] && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => { void onDeleteFileId(activeSnapshot.deletableFiles[item.source.id]).catch(cause => { setFeedbackId(null); setError(cause instanceof Error ? cause.message : "Customer file could not be loaded."); }); }}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
     </article>;
     })}</div>
-    {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     {shipmentEditor && <ProductShipmentEditor item={shipmentEditor.item} product={shipmentEditor.product} onSave={onAction} onClose={() => setShipmentEditor(null)} />}
-    {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || []} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
+    {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || orderEditor.item.source.orderEmails} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence</footer>
   </section>;
 }
