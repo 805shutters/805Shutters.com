@@ -1,0 +1,202 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "accountId": "CHE01",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "scope": "Current visible liner and binding menus observed for each collection under all five control selections, at the named source colors. Menu membership does not certify every color/size/assembly combination or price.",
+  "profiles": [
+    {
+      "pattern": "WP_Walden Premier_WP_Walden Premier",
+      "programId": "onyx_woven_wp_walden_premier_wp_walden_premier",
+      "observedColorId": "WP_ArtisanWeave",
+      "sourceDraftLineId": 91826,
+      "controlsChecked": [
+        "Continuous Cord",
+        "Cordless",
+        "TDBU",
+        "WandM",
+        "Motor"
+      ],
+      "liners": [
+        {
+          "id": "WPL_Black-OutBeige",
+          "label": "Black-Out Beige"
+        },
+        {
+          "id": "WPL_Black-OutChocolate",
+          "label": "Black-Out Chocolate"
+        },
+        {
+          "id": "WPL_Black-OutWhite",
+          "label": "Black-Out White"
+        },
+        {
+          "id": "WPL_PrivacyBeige",
+          "label": "Privacy Beige"
+        },
+        {
+          "id": "WPL_PrivacyChocolate",
+          "label": "Privacy Chocolate"
+        },
+        {
+          "id": "WPL_PrivacyWhite",
+          "label": "Privacy White"
+        }
+      ],
+      "bindings": [
+        {
+          "id": "WPE_NarrowBeige",
+          "label": "Narrow Beige"
+        },
+        {
+          "id": "WPE_NarrowWhite",
+          "label": "Narrow White"
+        },
+        {
+          "id": "WPE_WideBeige",
+          "label": "Wide Beige"
+        },
+        {
+          "id": "WPE_WideWhite",
+          "label": "Wide White"
+        }
+      ]
+    },
+    {
+      "pattern": "WS_Walden Select_WS_Walden Select",
+      "programId": "onyx_woven_ws_walden_select_ws_walden_select",
+      "observedColorId": "WS_AlisiaAntiqueWhite",
+      "sourceDraftLineId": 91827,
+      "controlsChecked": [
+        "Continuous Cord",
+        "Cordless",
+        "TDBU",
+        "WandM",
+        "Motor"
+      ],
+      "liners": [
+        {
+          "id": "WSL_Black-OutBeige",
+          "label": "Black-Out Beige"
+        },
+        {
+          "id": "WSL_Black-OutWhite",
+          "label": "Black-Out White"
+        },
+        {
+          "id": "WSL_PrivacyBeige",
+          "label": "Privacy Beige"
+        },
+        {
+          "id": "WSL_PrivacyBlack",
+          "label": "Privacy Black"
+        },
+        {
+          "id": "WSL_PrivacyGary",
+          "label": "Privacy Gary"
+        },
+        {
+          "id": "WSL_PrivacySoftWhite",
+          "label": "Privacy SoftWhite"
+        }
+      ],
+      "bindings": [
+        {
+          "id": "WSE_NarrowBeige",
+          "label": "Narrow Beige"
+        },
+        {
+          "id": "WSE_NarrowWhite",
+          "label": "Narrow White"
+        },
+        {
+          "id": "WSE_WideBeige",
+          "label": "Wide Beige"
+        },
+        {
+          "id": "WSE_WideBlack",
+          "label": "Wide Black"
+        },
+        {
+          "id": "WSE_WideChocolate",
+          "label": "Wide Chocolate"
+        },
+        {
+          "id": "WSE_WideCream",
+          "label": "Wide Cream"
+        },
+        {
+          "id": "WSE_WideDesertSand",
+          "label": "Wide Desert Sand"
+        },
+        {
+          "id": "WSE_WideGray",
+          "label": "Wide Gray"
+        },
+        {
+          "id": "WSE_WideMocha",
+          "label": "Wide Mocha"
+        },
+        {
+          "id": "WSE_WideNatural",
+          "label": "Wide Natural"
+        },
+        {
+          "id": "WSE_WidePecan",
+          "label": "Wide Pecan"
+        },
+        {
+          "id": "WSE_WideWhite",
+          "label": "Wide White"
+        }
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "id": "Continuous Cord",
+      "label": "Continuous Cord"
+    },
+    {
+      "id": "Cordless",
+      "label": "Cordless"
+    },
+    {
+      "id": "TDBU",
+      "label": "TopDownBottomUp"
+    },
+    {
+      "id": "WandM",
+      "label": "Wand Motor"
+    },
+    {
+      "id": "Motor",
+      "label": "Remote Motor"
+    }
+  ],
+  "assemblies": [
+    {
+      "id": "single",
+      "label": "Single",
+      "portalValue": ""
+    },
+    {
+      "id": "2ON1",
+      "label": "2 ON 1",
+      "portalValue": "2ON1"
+    },
+    {
+      "id": "3ON1",
+      "label": "3 ON 1",
+      "portalValue": "3ON1"
+    }
+  ],
+  "customValanceMaxWidthInches": 120,
+  "insideMountFactoryWidthDeductionInches": 0.375,
+  "displayedDealerControlSurcharges": {
+    "TDBU": 150,
+    "WandM": 200,
+    "Motor": 250
+  },
+  "pricingAuthority": "No grids or805selling rates authorized by these menu labels."
+}

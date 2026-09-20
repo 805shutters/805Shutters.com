@@ -1,12 +1,14 @@
 "use client";
 import { onyxHeldProducts, onyxHeldColors, onyxHeldControlChoices, onyxAshAssortment, ONYX_HELD_REASON } from '@/lib/quote/onyx-held-catalog';
 import { onyxImportedHingeColors } from "@/lib/quote/onyx-current-assortment";
+import { onyxWovenProfile, onyxWovenOptions, clearOnyxWovenDetails } from "@/lib/quote/onyx-woven-options";
 import type { SalesQuoteDesign } from '@mts/types/quote';
 
 export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:SalesQuoteDesign|undefined;productId:string;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
   const product=onyxHeldProducts.find(p=>p.id===productId)!;
   const options=(design?.options_json??{}) as Record<string,unknown>;
   const selectedProgram=String(options.catalog_program_id??options.quote_lab_program_id??'');
+  const woven=productId==='onyx_woven'?onyxWovenProfile(selectedProgram):undefined;
   const colors=onyxHeldColors.filter(c=>c.productId===productId&&c.programId===selectedProgram);
   const update=(patch:Record<string,unknown>,fields:Partial<SalesQuoteDesign>={})=>onUpdateFields({...fields,options_json:{...options,...patch}});
   const cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
@@ -14,7 +16,7 @@ export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:
   return <section data-testid="onyx-held-design-options" className="space-y-3 rounded-lg border border-slate-200 p-3">
     <div className="font-semibold">{product.name}</div>
     <p role="status" className="text-sm text-amber-900">{ONYX_HELD_REASON} Selections remain saved as an internal draft.</p>
-    <label className="block text-sm">Onyx collection<select aria-label="Onyx collection" className={cls} value={selectedProgram} onChange={e=>{const p=product.programs.find(p=>p.id===e.target.value);if(!p)return;update({catalog_program_id:p.id,quote_lab_program_id:p.id,fabric_program_id:p.id,fabric_product_id:productId,fabric_color_id:null,fabric_color_code:null,fabric_color_name:null,fabric_color_collection:null},{material:p.name,fabric:p.name});}}><option value="">Select collection</option>{product.programs.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+    <label className="block text-sm">Onyx collection<select aria-label="Onyx collection" className={cls} value={selectedProgram} onChange={e=>{const p=product.programs.find(p=>p.id===e.target.value);if(!p)return;update({...clearOnyxWovenDetails(),catalog_program_id:p.id,quote_lab_program_id:p.id,fabric_program_id:p.id,fabric_product_id:productId,fabric_color_id:null,fabric_color_code:null,fabric_color_name:null,fabric_color_collection:null},{material:p.name,fabric:p.name});}}><option value="">Select collection</option>{product.programs.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
     <label className="block text-sm">Onyx color<select aria-label="Onyx color" className={cls} value={String(options.fabric_color_id??'')} disabled={!selectedProgram} onChange={e=>{const c=colors.find(c=>c.id===e.target.value);if(!c)return;update({...c.automaticDetails,fabric_color_id:c.id,fabric_color_code:c.colorCode,fabric_color_name:c.colorName,fabric_color_collection:c.collection,fabric_product_id:productId,fabric_program_id:c.programId},{fabric:c.collection});}}><option value="">Select color</option>{colors.map(c=><option key={c.id} value={c.id}>{c.colorCode} · {c.colorName}</option>)}</select></label>
     {select('Onyx mount',design?.mount_type,['Inside Mount','Outside Mount'],mount_type=>update({},{mount_type}))}
     {productId==='onyx_ash_shutters'?<>
@@ -27,6 +29,16 @@ export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:
       {select('Onyx control',design?.lift_system,onyxHeldControlChoices(productId),lift_system=>update({},{lift_system}))}
       {select('Onyx control side',options.control_side,['Left','Right'],v=>update({control_side:v}))}
     </>}
+    {woven && <fieldset className="space-y-3 border-t border-slate-200 pt-3">
+      <legend className="text-sm font-medium">Woven accessories</legend>
+      {([
+        ['Onyx Woven liner','onyx_woven_liner_id',woven.liners],
+        ['Onyx Woven edge binding','onyx_woven_binding_id',woven.bindings],
+        ['Onyx Woven assembly','onyx_woven_assembly',onyxWovenOptions.assemblies],
+      ] as const).map(([label,key,choices])=><label key={key} className="block text-sm">{label}<select aria-label={label} className={cls} value={String(options[key]??'')} onChange={e=>update({[key]:e.target.value||null})}><option value="">Select / not specified</option>{choices.map(choice=><option key={choice.id} value={choice.id}>{choice.label}</option>)}</select></label>)}
+      <label className="block text-sm">Custom valance width (inches)<input aria-label="Onyx Woven custom valance width" type="number" min="0" max={onyxWovenOptions.customValanceMaxWidthInches} step="0.0625" className={cls} defaultValue={String(options.onyx_woven_custom_valance_inches??'')} key={`${selectedProgram}:${String(options.onyx_woven_custom_valance_inches??'')}`} onBlur={e=>update({onyx_woven_custom_valance_inches:e.target.value===''?null:Number(e.target.value)})}/></label>
+      <p className="text-xs text-slate-600">Custom valance maximum: 120 inches. Multiple shades on one headrail require separate dimensions and dealer confirmation. Accessory charges remain unverified.</p>
+    </fieldset>}
     <p className="text-xs text-slate-600">Menus record current dealer offerings. Conditional compatibility, size limits, motor accessories and final charges require dealer confirmation.</p>
   </section>;
 }

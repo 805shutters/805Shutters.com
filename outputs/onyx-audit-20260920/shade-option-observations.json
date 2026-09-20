@@ -1,0 +1,204 @@
+{
+  "observedDate": "2026-09-20",
+  "account": "CHE01",
+  "effectiveDate": null,
+  "scope": "Visible option menus in correctly selected source order-program contexts. These are baseline pattern/control observations, not complete compatibility matrices or pricing authority.",
+  "observations": [
+    {
+      "product": "Signature Roller",
+      "pattern": "Amelia BO_ZG601",
+      "color": "20205BO_01",
+      "control": "Cord",
+      "draftLine": 91828,
+      "menus": {
+        "cassette": [
+          "Square",
+          "No Cassette",
+          "Fascia",
+          "Full Enclosed"
+        ],
+        "cassetteColor": [
+          "White",
+          "Beige",
+          "Grey",
+          "Black"
+        ],
+        "cordColor": [
+          "White",
+          "Beige",
+          "Almond",
+          "Tan",
+          "Grey",
+          "Black",
+          "Metal"
+        ],
+        "bottomRail": [
+          "Flat",
+          "Tear Drop",
+          "Round",
+          "Square"
+        ],
+        "bottomColor": [
+          "White",
+          "Beige",
+          "Grey",
+          "Black"
+        ],
+        "fabricWrappedBottom": true
+      }
+    },
+    {
+      "product": "Signature Sunscreen",
+      "pattern": "1% SC-1_s1001",
+      "color": "S1001_01",
+      "control": "Cord",
+      "draftLine": 91829,
+      "menus": {
+        "cassette": [
+          "Square",
+          "No Cassette",
+          "Fascia",
+          "Full Enclosed"
+        ],
+        "cassetteColor": [
+          "White",
+          "Beige",
+          "Grey",
+          "Black"
+        ],
+        "bottomRail": [
+          "Round",
+          "Square"
+        ],
+        "bottomColor": [
+          "Silver"
+        ],
+        "fabricWrappedBottom": false
+      },
+      "exception": "Current edit form only offers Silver for Round bottom; prior fixture annotation Round White is not verified by saved order-summary output. Retain cost observation but require exact bottom-finish reconciliation."
+    },
+    {
+      "product": "Signature Zebra",
+      "pattern": "Arcadia BO_A242",
+      "color": "A242_1",
+      "control": "Cord",
+      "draftLine": 91830,
+      "menus": {
+        "cassette": [
+          "Square",
+          "Full Enclosed"
+        ],
+        "bottomRail": [
+          "Zebra Bottom"
+        ],
+        "bottomColor": [
+          "White",
+          "Beige",
+          "Grey",
+          "Black"
+        ],
+        "fabricWrappedBottom": true
+      }
+    },
+    {
+      "product": "Lux Fabric Blinds",
+      "pattern": "2\" Light Filtering_FB_PG1",
+      "color": "FB_PG1_50016",
+      "control": "Cordless",
+      "draftLine": 91831,
+      "menus": {
+        "valance": [
+          "Dover",
+          "Westminister",
+          "No Valance"
+        ],
+        "valanceColor": [
+          "Bright White",
+          "Ash",
+          "Camel",
+          "Cream",
+          "Gray Stone",
+          "Maize",
+          "Mocha",
+          "Onyx",
+          "Pine",
+          "Sand"
+        ],
+        "valanceReturn": [
+          "No Valance Return",
+          "Standard",
+          "Left Return",
+          "Right Return",
+          "Custom"
+        ],
+        "clothTape": [
+          "Grey",
+          "Black"
+        ],
+        "assembly": [
+          "Single",
+          "2 ON 1",
+          "3 ON 1"
+        ]
+      },
+      "exception": "Valance fabric names form a separate58-name menu; exact fabric-match and charge relationships unresolved."
+    },
+    {
+      "product": "Lux Honeycomb",
+      "pattern": "3/4 Single LF_HC_PG05",
+      "color": "HC_PG05_H45034M",
+      "control": "Cordless",
+      "draftLine": 91832,
+      "menus": {
+        "tileCut": [
+          "No",
+          "Yes"
+        ],
+        "assembly": [
+          "Single",
+          "2 ON 1",
+          "3 ON 1"
+        ]
+      },
+      "displayedDealerLabels": {
+        "tileCut": 7
+      }
+    },
+    {
+      "product": "Lux Sheerview",
+      "pattern": "2\" Light Filtering_S50PN",
+      "color": "S50PN100",
+      "control": "Cord",
+      "draftLine": 91833,
+      "menus": {
+        "valance": [
+          "Curved Valance",
+          "Flat Valance"
+        ],
+        "chain": [
+          "Cord",
+          "Metal",
+          "Plastic Chain (color coordinating)"
+        ],
+        "assembly": [
+          "Single",
+          "2 ON 1",
+          "3 ON 1"
+        ],
+        "cordLength": [
+          "Standard",
+          "Custom"
+        ]
+      },
+      "displayedDealerLabels": {
+        "customCord": 10
+      }
+    },
+    {
+      "product": "Woven Premier and Select",
+      "source": "src/lib/quote/onyx-woven-options-20260920.json",
+      "exception": "All10 pattern/control menu profiles observed. Color/size/assembly compatibility and pricing remain unresolved."
+    }
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx"
+}

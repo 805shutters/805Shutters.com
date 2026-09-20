@@ -597,6 +597,27 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
   "accountScope": "CHE01; Regular shutter menu observations; shape compatibility and charges unresolved"
 },
+{
+  "id": "onyx-woven-options-2026-09-20",
+  "manufacturer": "Onyx",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "onyx-woven-options-20260920.json",
+  "title": "Onyx Woven collection and control option observations",
+  "revision": "Observed September20,2026; two collections by five controls",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation only; effective schedule unavailable",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": "2026-09-20",
+  "sha256": "ad305634719c48d06c7692f35b19c5c2ee32cfc7c9f8f09a05a6b6863b657bb7",
+  "authorities": [
+    "assortment",
+    "restrictions",
+    "options"
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "accountScope": "CHE01; visible menus and stated120-inch custom valance maximum; grids and complete compatibility held"
+},
   {
     id: "onyx-portal-assortment-2026-09-20",
     manufacturer: "Onyx Shutters",

@@ -289,6 +289,12 @@
       "sha256": "f26305e1d588365ce8fce713dc90d0b03f5ec284f1a1d4cec21cdda83376682a"
     },
     {
+      "sourceId": "onyx-woven-options-2026-09-20",
+      "fileName": "onyx-woven-options-20260920.json",
+      "byteLength": 4667,
+      "sha256": "ad305634719c48d06c7692f35b19c5c2ee32cfc7c9f8f09a05a6b6863b657bb7"
+    },
+    {
       "sourceId": "onyx-portal-assortment-2026-09-20",
       "fileName": "onyx-portal-20260920.json",
       "byteLength": 11652,
