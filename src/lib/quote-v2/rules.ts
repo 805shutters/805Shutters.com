@@ -7,6 +7,7 @@ import { SYNCHRONY_HARDWARE_COLORS, synchronyDefaultHardware } from "@/lib/quote
 import { validateHoneycombMultiFabricPricing } from "./norman-honeycomb-dual";
 import { romanComponentWidths } from "./norman-assemblies";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
+import { validateLotusColor } from "./lotus-colors";
 import { validateNormanFamilyRules } from "./norman-family-rules";
 import { findFall2026RollerCollection } from "@/lib/quote/norman-roller-fall-2026";
 import {
@@ -2471,6 +2472,10 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       break;
     case "lotus_faux_wood_blinds":
       issues.push(...validateLotusFauxWood(context));
+      break;
+    case "lotus_vinyl_blinds":
+    case "lotus_mini_blinds":
+      issues.push(...validateLotusColor(context));
       break;
     case "smartprivacy_faux":
     case "faux_wood":

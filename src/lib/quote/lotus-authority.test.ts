@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   LOTUS_FLX_PORTAL_AUDIT,
+  LOTUS_CUSTOM_CART_AUDIT_20260920,
+  lotusCustomerDeliveryBlock,
   summarizeLotusFlxPortalAudit,
   wholesaleAuthorityFindings,
 } from "./lotus-authority";
@@ -82,5 +84,45 @@ describe("Lotus FLX authority reconciliation", () => {
         heightInches: 96,
       }),
     ).toMatchObject({ ok: false, code: "NA_CELL" });
+  });
+});
+
+describe("September 20 Lotus custom cart conflicts", () => {
+  it.each(LOTUS_CUSTOM_CART_AUDIT_20260920.rows)(
+    "$programCode retains the guide price but cannot be treated as verified dealer authority",
+    (row) => {
+      const cost = requireCost(lookupWholesaleLedgerCost({
+        productId: row.productId,
+        programId: row.programId,
+        widthInches: row.width,
+        heightInches: row.height,
+      }));
+      expect(cost).toMatchObject({
+        wholesaleBase: row.guideDealerNet,
+        provenanceStatus: "source_conflict",
+        customerPriceEligible: false,
+        authorityFindings: [
+          { code: "SOURCE_PRICE_CONFLICT", blocking: true },
+          { code: "EFFECTIVE_DATE_MISSING", blocking: true },
+        ],
+      });
+      expect(lotusCustomerDeliveryBlock(row.productId, row.programId, "Inside Mount"))
+        .toContain(`Lotus ${row.programCode} dealer-guide and portal prices conflict`);
+      expect(wholesaleAuthorityFindings("norman_faux_wood", row.programId)).toEqual([]);
+    },
+  );
+
+  it("leaves unrelated FTX, aluminum and vinyl programs outside these cart conflicts", () => {
+    for (const [productId, programId] of [
+      ["lotus_faux_wood_blinds", "lotus_ftx_2in_snow_white_custom"],
+      ["lotus_faux_wood_blinds", "lotus_ftxlg_2in_light_gray_custom"],
+      ["lotus_mini_blinds", "lotus_amx_1in_aluminum_custom"],
+      ["lotus_vinyl_blinds", "lotus_mlx_1in_vinyl_custom"],
+    ]) {
+      expect(wholesaleAuthorityFindings(productId, programId)).toEqual([]);
+      expect(lotusCustomerDeliveryBlock(productId, programId, "Inside Mount")).toBeNull();
+    }
+    expect(lotusCustomerDeliveryBlock("lotus_faux_wood_blinds", "lotus_ftx_2in_snow_white_custom", "Side Mount"))
+      .toContain("Side Mount");
   });
 });

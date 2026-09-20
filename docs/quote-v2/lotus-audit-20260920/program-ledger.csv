@@ -1,0 +1,21 @@
+productId,programId,name,sourcePages,cells,pricedCells,unavailableCells,pricedCellsWithoutSku,status,exception
+lotus_vinyl_blinds,lotus_mlx_1in_vinyl_custom,1-inch Vinyl Mini Blind - Custom Cut,95,91,82,9,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vinyl_blinds,lotus_rlx_1in_vinyl_plus_custom,1-inch Vinyl Plus Mini Blind - Custom Cut,96,119,111,8,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vinyl_blinds,lotus_rtx_2in_vinyl_plus_custom,2-inch Vinyl Plus Blind - Custom Cut,98,72,72,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_mini_blinds,lotus_amx_1in_aluminum_custom,1-inch Aluminum Mini Blind - Custom Cut,97,136,124,12,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_flx_2in_bright_white_custom,"2-inch Faux Wood, Smooth Bright White - Custom Cut",99,119,111,8,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_flxe_2in_embossed_bright_white_custom,"2-inch Faux Wood, Embossed Bright White - Custom Cut",100,119,99,20,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_ftx_2in_snow_white_custom,"2-inch Faux Wood, Snow White - Custom Cut",101,91,89,2,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_ftxlg_2in_light_gray_custom,"2-inch Faux Wood, Light Gray - Custom Cut",101,91,89,2,14,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_fcx_2in_soft_white_custom,"2-inch Faux Wood, Soft White - Custom Cut",102,119,111,8,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_fpx_2in_privacy_bright_white_custom,"2-inch Privacy Faux Wood, Bright White - Custom Cut",103,112,106,6,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_faux_wood_blinds,lotus_fgx_2_5in_bright_white_custom,"2.5-inch Faux Wood, Bright White - Custom Cut",104,91,88,3,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_roller_shades,lotus_rs_1pct_custom,1% Roller Shade - Custom Cut,105,84,80,4,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_roller_shades,lotus_rs_blackout_unpriced,Blackout Roller Shade - Custom Cut,83;105,84,80,4,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cv_steel_complete_custom,3.5-inch Steel Vertical Blind - Custom Cut,106,78,78,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvh_steel_headrail_custom,3.5-inch Steel Headrail - Custom Cut,106,13,13,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvn_aluminum_one_way_custom,3.5-inch Aluminum One-Way Vertical Blind - Custom Cut,107,96,96,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvno_aluminum_one_way_headrail_custom,3.5-inch Aluminum One-Way Headrail - Custom Cut,107,16,16,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvnc_aluminum_center_draw_custom,3.5-inch Aluminum Center-Draw Vertical Blind - Custom Cut,108,36,36,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvnc_aluminum_center_draw_headrail_custom,3.5-inch Aluminum Center-Draw Headrail - Custom Cut,108,6,6,0,0,unresolved_exception,See README program matrix; no program declared verified live
+lotus_vertical_blinds,lotus_cvv_vertical_vanes_custom,3.5-inch Vertical Vanes - Custom Cut,108,7,7,0,0,unresolved_exception,See README program matrix; no program declared verified live

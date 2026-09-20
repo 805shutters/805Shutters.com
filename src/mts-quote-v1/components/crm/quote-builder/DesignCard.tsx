@@ -5220,7 +5220,7 @@ export function DesignCard({
             allowManualPriceEditing={!authoritativeV2}
           />
         ) : currentDesign?.supplier?.trim().toLowerCase() === "lotus" ? (
-          <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} onUpdateFields={updateFields} />
+          <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} widthInches={widthIn} heightInches={heightIn} onUpdateFields={updateFields} />
         ) : (
           <ShadesAndBlindsOptions
             design={currentDesign}

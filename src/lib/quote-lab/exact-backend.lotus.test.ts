@@ -288,3 +288,16 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     expect(result.designs.every((item) => item.costResult.ok)).toBe(true);
   });
 });
+
+it("enforces the new Lotus color contract through server repricing and preserves valid selections", () => {
+  const colorLine = { ...line("Mini Blinds"), width_whole: 17, height_whole: 36 };
+  const reprice = (color: string) => repriceExactQuoteBuilder({
+    lines: [colorLine],
+    designs: [{ ...design({ quote_v2_backend: true, catalog_product_id: "lotus_mini_blinds", catalog_program_id: "lotus_amx_1in_aluminum_custom", lotus_color_configuration_version: "lotus-color-v1", color }), supplier: "Lotus", mount_type: "Inside Mount" } as SalesQuoteDesign],
+    selectedVariantByLine: { [colorLine.id]: "A" },
+  });
+  const rejected = reprice("Alabaster");
+  expect(rejected.designs[0]?.result).toMatchObject({ ok: false, code: "CONFIGURATION_INCOMPLETE" });
+  const accepted = reprice("White");
+  expect(accepted.designs[0]?.result.ok).toBe(true);
+});

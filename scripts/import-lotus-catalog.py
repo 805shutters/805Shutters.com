@@ -429,6 +429,16 @@ def build_catalog(pdf_path: Path) -> dict[str, Any]:
                     "Customer retail is the dealer-net cell multiplied by 3, "
                     "confirmed by the 805 Shutters owner on 2026-07-27."
                 )
+                # Page 101 shares costs, but its two SKU lines identify different
+                # finishes. Never offer the other finish's ordering code.
+                for target, suffix in (
+                    (products[product_id]["programs"][-1], "SNW"),
+                    (light_gray, "L"),
+                ):
+                    target["grid"]["skuCodes"] = [
+                        [[sku for sku in cell if sku.endswith(suffix)] for cell in row]
+                        for row in target["grid"]["skuCodes"]
+                    ]
                 products[product_id]["programs"].append(light_gray)
             if page_number in (106, 107, 108):
                 headrail_ids = {

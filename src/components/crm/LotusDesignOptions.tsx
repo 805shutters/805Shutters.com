@@ -2,6 +2,7 @@
 
 import { getProduct, getProgram } from "@/lib/quote/catalog";
 import { lotusProductId } from "@/lib/quote/lotus-selection";
+import { LOTUS_COLOR_CONFIGURATION_VERSION, LOTUS_COLOR_PRODUCTS, lotusColorsForSelection } from "@/lib/quote/lotus-colors";
 import { lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
@@ -25,15 +26,18 @@ export function lotusProgramSelectionPatch(
       catalog_program_id: program.id, quote_lab_program_id: program.id,
       catalog_manufacturer: "Lotus", catalog_product_type: productType,
       surcharges: [], motorization_selections: [],
+      ...((LOTUS_COLOR_PRODUCTS as readonly string[]).includes(product.id) ? { lotus_color_configuration_version: LOTUS_COLOR_CONFIGURATION_VERSION, color: null } : {}),
       ...lotusFauxWoodConfigurationForProgram(program.id),
     },
   };
 }
 
 /** Only controls supported by the selected Lotus program; never Norman controls. */
-export function LotusDesignOptions({ design, productType, onUpdateFields }: {
+export function LotusDesignOptions({ design, productType, widthInches, heightInches, onUpdateFields }: {
   design: SalesQuoteDesign | undefined;
   productType: string;
+  widthInches?: number;
+  heightInches?: number;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const product = getProduct(lotusProductId(productType) ?? "");
@@ -42,6 +46,8 @@ export function LotusDesignOptions({ design, productType, onUpdateFields }: {
   const programId = String(options.catalog_program_id ?? options.quote_lab_program_id ?? "");
   const program = getProgram(product, programId);
   const isFaux = product.id === "lotus_faux_wood_blinds";
+  const hasColorChoice = (LOTUS_COLOR_PRODUCTS as readonly string[]).includes(product.id);
+  const colors = lotusColorsForSelection(product.id, programId, widthInches, heightInches);
   const selectClass = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
   const updateOptions = (patch: Record<string, unknown>) => onUpdateFields({ options_json: { ...options, ...patch } });
   return <section className="space-y-3 rounded-lg border border-slate-200 p-3" data-testid="lotus-design-options">
@@ -55,6 +61,13 @@ export function LotusDesignOptions({ design, productType, onUpdateFields }: {
         {product.programs.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
     </label>
+    {program && hasColorChoice && <label className="block text-sm">Color
+      <select aria-label="Lotus color" className={selectClass} value={colors.includes(String(options.color ?? "")) ? String(options.color) : ""} onChange={event => updateOptions({ color: event.target.value || null, lotus_color_configuration_version: LOTUS_COLOR_CONFIGURATION_VERSION })}>
+        <option value="">Select color</option>
+        {colors.map(color => <option key={color}>{color}</option>)}
+      </select>
+      {!colors.length && <span className="text-sm text-amber-800">No source-backed color is available at these dimensions.</span>}
+    </label>}
     <label className="block text-sm">Mount
       <select aria-label="Lotus mount" className={selectClass} value={design?.mount_type ?? ""} onChange={event => onUpdateFields({ mount_type: event.target.value })}>
         <option value="">Select mount</option><option>Inside Mount</option><option>Outside Mount</option>

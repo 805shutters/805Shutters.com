@@ -37,3 +37,13 @@ describe("Lotus manufacturer options", () => {
     expect(html).toContain('value=""');
   });
 });
+
+it("persists a color contract and filters the visible colors by source dimensions", () => {
+  const patch = lotusProgramSelectionPatch({}, "Mini Blinds", "lotus_amx_1in_aluminum_custom")!;
+  expect(patch.options_json).toMatchObject({ lotus_color_configuration_version: "lotus-color-v1", color: null });
+  const design = patch as SalesQuoteDesign;
+  const render = (widthInches: number) => renderToStaticMarkup(createElement(LotusDesignOptions, { productType: "Mini Blinds", design, widthInches, heightInches: 36, onUpdateFields: () => {} }));
+  expect(render(17)).toContain('aria-label="Lotus color"');
+  expect(render(17)).not.toContain('>Alabaster</option>');
+  expect(render(23)).toContain('>Alabaster</option>');
+});

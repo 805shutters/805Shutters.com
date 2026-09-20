@@ -6029,7 +6029,7 @@ export function DesignCard({
             />
           ) : currentDesign?.supplier?.trim().toLowerCase() === "lotus" &&
             (!authoritativeV2 || !isLotusFauxWoodProductId(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id))) ? (
-            <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} onUpdateFields={updateFields} />
+            <LotusDesignOptions design={currentDesign} productType={lineItem.product_type} widthInches={widthIn} heightInches={heightIn} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId &&
             POLAR_EXTERIOR_UI_PRODUCT_IDS.has(
               manufacturerOptionsRoute.productId,

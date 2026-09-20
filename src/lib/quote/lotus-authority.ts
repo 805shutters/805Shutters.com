@@ -111,6 +111,24 @@ export const LOTUS_FLX_PORTAL_AUDIT = {
   ],
 } as const;
 
+/** Exact custom SKUs entered with their stated dimensions and read back in the
+ * authenticated dealer cart. These are observations, not a replacement rate
+ * schedule: discounts, shipping and taxes are still deferred to checkout.
+ */
+export const LOTUS_CUSTOM_CART_AUDIT_20260920 = {
+  observedDate: "2026-09-20",
+  accountScope: "Authenticated current 805 Lotus dealer account",
+  portalUrl: "https://www.lotusblind.com/cart",
+  guideSourceId: "lotus-west-a26-v1",
+  effectiveDate: null,
+  rows: [
+    { productId: "lotus_faux_wood_blinds", programId: "lotus_flxe_2in_embossed_bright_white_custom", programCode: "FLXE", sku: "CFLX2736EBW", width: 27, height: 36, guideDealerNet: 30.39, portalCartUnitPrice: 105, guidePage: 100 },
+    { productId: "lotus_faux_wood_blinds", programId: "lotus_fgx_2_5in_bright_white_custom", programCode: "FGX", sku: "CFGX5960BW", width: 59, height: 60, guideDealerNet: 62.63, portalCartUnitPrice: 105, guidePage: 104 },
+    { productId: "lotus_vinyl_blinds", programId: "lotus_rlx_1in_vinyl_plus_custom", programCode: "RLX", sku: "CRLX7296W", width: 72, height: 96, guideDealerNet: 56.26, portalCartUnitPrice: 105, guidePage: 96 },
+    { productId: "lotus_vinyl_blinds", programId: "lotus_rtx_2in_vinyl_plus_custom", programCode: "RTX", sku: "CRTX4872W", width: 48, height: 72, guideDealerNet: 38.34, portalCartUnitPrice: 105, guidePage: 98 },
+  ],
+} as const;
+
 export type WholesaleAuthorityFinding = Readonly<{
   code:
     | "SOURCE_PRICE_CONFLICT"
@@ -164,19 +182,37 @@ export function wholesaleAuthorityFindings(
   productId: string,
   programId: string,
 ): readonly WholesaleAuthorityFinding[] {
-  return productId === LOTUS_FLX_PORTAL_AUDIT.productId &&
-    programId === LOTUS_FLX_PORTAL_AUDIT.programId
-    ? LOTUS_FLX_AUTHORITY_FINDINGS
-    : [];
+  if (productId === LOTUS_FLX_PORTAL_AUDIT.productId &&
+      programId === LOTUS_FLX_PORTAL_AUDIT.programId) return LOTUS_FLX_AUTHORITY_FINDINGS;
+  const row = LOTUS_CUSTOM_CART_AUDIT_20260920.rows.find(
+    (item) => item.productId === productId && item.programId === programId,
+  );
+  if (!row) return [];
+  return [{
+    code: "SOURCE_PRICE_CONFLICT",
+    blocking: true,
+    summary: "Dealer guide and current authenticated cart prices conflict",
+    detail: `${row.sku} at ${row.width} × ${row.height} inches shows $${row.portalCartUnitPrice.toFixed(2)} in the authenticated cart, versus $${row.guideDealerNet.toFixed(2)} in West A26.v1. Preserve the source grid pending confirmation of the controlling rate schedule.`,
+    evidence: [`lotus-west-a26-v1 page ${row.guidePage}`, `Authenticated dealer cart observation ${LOTUS_CUSTOM_CART_AUDIT_20260920.observedDate}: ${row.sku}`],
+  }, {
+    code: "EFFECTIVE_DATE_MISSING",
+    blocking: true,
+    summary: "Current pricing effective date is not published",
+    detail: "The current linked assortment catalog and ordering guide do not resolve the conflicting custom dealer rates or identify a controlling effective date.",
+    evidence: ["Lotus FAQs Digital Catalog V1.1.25", "Lotus FAQs orderguide_form.pdf", "Authenticated dealer cart 2026-09-20"],
+  }];
 }
 
-/** The known portal conflict concerns FLX, not the other six faux-wood programs. */
+/** Block only programs with recorded source conflicts; preserve their guide grids. */
 export function lotusCustomerDeliveryBlock(
   productId: string, programId: string, mountType?: unknown,
 ): string | null {
   if (!productId.startsWith("lotus_")) return null;
   if (wholesaleAuthorityFindings(productId, programId).length) {
-    return "Lotus FLX dealer-guide and portal prices conflict. Customer delivery requires source authority confirmation.";
+    const code = LOTUS_CUSTOM_CART_AUDIT_20260920.rows.find(
+      (row) => row.productId === productId && row.programId === programId,
+    )?.programCode ?? "FLX";
+    return `Lotus ${code} dealer-guide and portal prices conflict. Customer delivery requires source authority confirmation.`;
   }
   // July 22 authenticated three-product cart: CFCX4872W was $105 in the
   // portal versus $53.97 in West A26.v1 (fresh-portal-order-recipes.json).

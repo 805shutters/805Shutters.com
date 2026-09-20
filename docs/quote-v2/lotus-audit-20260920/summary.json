@@ -1,0 +1,27 @@
+{
+  "products": 5,
+  "programs": 20,
+  "customListings": 820,
+  "customMapped": 702,
+  "customExceptions": {
+    "Price not displayed on collection": 286,
+    "No exact source SKU destination": 118,
+    "Price conflict": 374,
+    "Source price agrees; production configuration not verified": 42
+  },
+  "stockPages": 270,
+  "stockVariants": 2890,
+  "stockMapped": 2216,
+  "stockExceptions": {
+    "No exact imported stock SKU destination": 672,
+    "Source price agrees; stock ordering selection and production persistence unverified": 2213,
+    "Price conflict": 3,
+    "Explicit discontinued portal label; preserve historical records": 2
+  },
+  "gridCells": 1580,
+  "sourceStockRecords": 3206,
+  "pricedGridCells": 1494,
+  "gridPricedWithoutSku": 14,
+  "sourceEffectiveDate": null,
+  "verifiedLive": 0
+}
