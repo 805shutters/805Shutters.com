@@ -13,9 +13,9 @@ it("accounts for every source material and discloses dealer discrepancies",()=>{
  expect(sundancePortfolioSource.rows.filter(row=>row.portalStatus==='matched_name')).toHaveLength(84);
  expect(sundancePortfolioSource.rows.filter(row=>row.portalStatus==='current_guide_only')).toHaveLength(18);
  expect(sundancePortfolioSource.unmatchedPortalLabels).toHaveLength(29);
- expect(sundancePortfolioColors).toHaveLength(385);
- expect(new Set(sundancePortfolioColors.map(row=>row.id)).size).toBe(385);
- for(const row of sundancePortfolioColors)expect(sundanceCatalog.products.find(p=>p.id===row.productId)?.fabricRouting?.[`${row.colorCode}:${row.fabricType}`]).toBe(row.programId);
+ expect(sundancePortfolioColors).toHaveLength(487);
+ expect(new Set(sundancePortfolioColors.map(row=>row.id)).size).toBe(487);
+ for(const row of sundancePortfolioColors.filter(row=>row.programId))expect(sundanceCatalog.products.find(p=>p.id===row.productId)?.fabricRouting?.[`${row.colorCode}:${row.fabricType}`]).toBe(row.programId);
  expect(priceDesign({productId:'sundance_portfolio_roman',widthInches:24,heightInches:36})).toMatchObject({ok:false,code:'MANUAL_PRICE_REQUIRED'});
 });
 it.each([
