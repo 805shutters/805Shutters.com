@@ -148,8 +148,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     if ((filter === "ordered" || filter === "shipped") && (item.archived || !item.sold || stepComplete(item, filter))) return false;
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
-  return <section className={styles.workspace} aria-labelledby="job-status-title" aria-busy={busy}>
-    <header className={styles.heading}><div><h1 id="job-status-title">Job status</h1><p>Every customer. Every product. Every completed step.</p></div></header>
+  return <section className={styles.workspace} aria-label="Job status" aria-busy={busy}>
     <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll && <p role="status">Loading all jobs…</p>}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
