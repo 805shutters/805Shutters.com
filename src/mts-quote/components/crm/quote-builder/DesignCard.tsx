@@ -366,6 +366,7 @@ import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
 import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
+import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import {
   manufacturerStampFromLabel,
   resolveManufacturerStamp,
@@ -1762,6 +1763,7 @@ function PriceExplanation({
       surcharges={auditSurcharges}
       authoritativeWholesaleCost={authoritativeWholesaleCost}
       canonicalWholesaleCost={canonicalWholesaleCost}
+      savedConfigurationNotes={normanSavedPricingAudit(design)}
     />
   );
 }

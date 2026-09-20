@@ -103,6 +103,7 @@ type PricingAuditPanelProps = {
   surcharges: PricingAuditSurcharge[];
   authoritativeWholesaleCost: PricingAuditWholesaleCost | null;
   canonicalWholesaleCost?: WholesaleCostResult | null;
+  savedConfigurationNotes?: readonly string[];
 };
 
 function roundMoney(value: number): number {
@@ -337,6 +338,7 @@ export function PricingAuditPanel({
   surcharges,
   authoritativeWholesaleCost: protectedWholesaleCost,
   canonicalWholesaleCost,
+  savedConfigurationNotes = [],
 }: PricingAuditPanelProps) {
   const canonicalWholesaleSuccess =
     canonicalWholesaleCost?.ok === true ? canonicalWholesaleCost : null;
@@ -647,6 +649,14 @@ export function PricingAuditPanel({
             />
           )}
           <DetailRow label="Quantity" value={quantity} />
+          {savedConfigurationNotes.length > 0 && (
+            <div className="mt-2 border-t border-slate-200 pt-2" aria-label="Saved Norman configuration">
+              <h5 className="font-semibold">Saved configuration</h5>
+              <ul className="list-disc space-y-1 pl-4 text-sm">
+                {savedConfigurationNotes.map(note => <li key={note}>{note}</li>)}
+              </ul>
+            </div>
+          )}
           <DetailRow
             label="Pricing mode"
             value={

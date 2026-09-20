@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
@@ -33,6 +34,12 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(result.designs[0].selection.configuration.norman_order_record_v1).toMatchObject({ownerLineId:"line-1",chargePanel:true,totalConnections:7});
   const overload=price(quote([5,8]));
   expect(overload.designs.every(d=>!d.result.ok)).toBe(true);
+  const saved={...q.designs[0],quote_v2_selection:result.designs[0].selection,options_json:{authoritative_price_status:"authoritative"}} as unknown as SalesQuoteDesign;
+  expect(normanSavedPricingAudit(saved)).toEqual(["Shared panel: 7 of 12 motor connections; panel charged on this line."]);
+  const invalid=JSON.parse(JSON.stringify(saved));
+  invalid.options_json.authoritative_price_status="blocked";
+  invalid.quote_v2_selection.configuration.motor_type=null;
+  expect(normanSavedPricingAudit(invalid).some(message=>/power source/i.test(message))).toBe(true);
  });
 
  it("prices and snapshots both Roman common-valance panels and motors",()=>{
@@ -45,4 +52,26 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(result.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:2});
   expect(result.snapshot).not.toBeNull();
  });
+ it("persists mixed Roman AC adapters with unequal common-valance widths",()=>{
+  const q=quote([1,1]);
+  const color=getProductColorOptions("roman").find(c=>c.colorCode==="F0178")!;
+  for(const d of q.designs){
+   d.motor_type="Norman Smart AC Adapter";d.remote_type="Basic Remote";d.fabric=color.collection;d.valance="Fabric Valance";
+   d.options_json={...d.options_json,dc_power_supply:null,shared_power_panel_id:null,remote_type:"Basic Remote",fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName,fabric_program_id:color.programId,quote_lab_program_id:color.programId,valance_returns:"No Returns"};
+  }
+  q.lines[0].width_whole=71;q.designs[0].shade_type="Common Valance";
+  q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1};
+  q.lines[1].width_whole=90;q.lines[1].height_whole=96;
+  q.designs[1].options_json={...q.designs[1].options_json,fold_style:"Flat Fold with Batten Back",seaming:"Vertical Seams"};
+  const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
+  for(const d of result.designs){
+   expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+   expect(d.selection.configuration.norman_order_record_v1).toMatchObject({adapterWatts:65,adapterLineIds:["line-0","line-1"]});
+   const saved = {...q.designs[0],quote_v2_selection:d.selection,options_json:{authoritative_price_status:"authoritative"}} as unknown as SalesQuoteDesign;
+   expect(normanSavedPricingAudit(saved)).toEqual(["Saved order adapter: 65W across 2 quote lines."]);
+   expect(normanSavedPricingAudit({...saved,options_json:{authoritative_price_status:"stale"}})).toEqual([]);
+  }
+ });
+
 });
