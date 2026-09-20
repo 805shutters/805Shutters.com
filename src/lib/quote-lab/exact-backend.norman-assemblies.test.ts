@@ -87,11 +87,11 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null};
   const run=()=>{const r=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
   const base=run();
-  q.designs[0].options_json={...q.designs[0].options_json,poles:"Pole with Attachment",pole_length:'60"',roman_pole_quantity:2,hold_downs:"Magnetic",magnet_color:"Stone Gray"};
+  q.designs[0].options_json={...q.designs[0].options_json,poles:"Pole with Attachment",pole_length:'60"',roman_pole_quantity:2,hold_downs:"Magnetic",magnet_color:"Stone Gray",roman_shim_layers:2};
   const added=run();
   expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
   expect(added.designs[0].result.validationStatus,JSON.stringify(added.designs[0].result.validationIssues)).toBe("valid");
-  expect(added.total-base.total).toBe(2*89+28);
+  expect(added.total-base.total).toBe(2*89+28+4*7);
   expect(added.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({hardware:{pole:{quantity:2,length:60},holdDown:{color:"Stone Gray"}}});
   q.designs=JSON.parse(JSON.stringify(q.designs));expect(run().total).toBe(added.total);
  });

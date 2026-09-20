@@ -4,6 +4,21 @@ import {romanHardware,ROMAN_HARDWARE_MAGNET_COLORS} from './norman-roman-hardwar
 import {authoritativeAutomaticSurchargeSelections} from './engine';
 const shade=(configuration:SelectionContext['configuration']={}):SelectionContext=>({manufacturerId:'Norman',productId:'roman',programId:'roman-test',catalogVersion:'test',catalogAsOf:'2026-09-19',widthInches:36,heightInches:60,quantity:1,options:{},configuration:{lift_system:'Continuous Cord Loop',mount_type:'Inside Mount',shade_type:'Single',...configuration}});
 describe('September Roman chain and hardware rules',()=>{
+ it('preserves historical catalogs and derives bracket quantities at exact boundaries',()=>{
+  expect(romanHardware({...shade(),catalogAsOf:'2026-09-18'})).toBeNull();
+  for(const [width,count] of [[44,2],[44.125,3],[70,3],[70.125,4],[96,4]]){
+   const s={...shade({mount_type:'Outside Mount',roman_shim_layers:3,shim_quantity:999}),widthInches:width};
+   expect(romanHardware(s)?.record.mounting).toMatchObject({brackets:[count],shimQuantity:count*3,shimExtension:1.125});
+   expect(authoritativeAutomaticSurchargeSelections(s).filter(x=>x.id==='shim')).toEqual([{id:'shim',units:count*3}]);
+  }
+  for(const configuration of [{roman_shim_layers:1},{mount_type:'Outside Mount',shade_type:'Day & Night',roman_shim_layers:1},{mount_type:'Outside Mount',roman_shim_layers:4},{mount_type:'Outside Mount',roman_shim_layers:1.5}]) expect(romanHardware(shade(configuration))?.issues.length).toBeGreaterThan(0);
+ });
+ it('counts common-valance hardware per constituent shade',()=>{
+  const s=shade({mount_type:'Outside Mount',lift_system:'Cordless',shade_type:'Common Valance',common_valance_panel_widths:[30,60],roman_shim_layers:2,hold_downs:'Magnetic',poles:'Pole with Attachment',pole_length:'60"',roman_pole_quantity:2});
+  expect(romanHardware(s)?.issues).toEqual([]);
+  expect(authoritativeAutomaticSurchargeSelections(s)).toEqual(expect.arrayContaining([{id:'shim',units:10},{id:'magnetic_hold_down',units:2},{id:'cordless_operating_pole',units:4}]));
+  expect(romanHardware(s)?.record.pole).toMatchObject({quantity:4,quantityPerShade:2});
+ });
  it('allows custom inside CCL lengths from height minus three and retains exact geometry',()=>{
   expect(romanHardware(shade({roman_chain_length:57.5}))?.issues).toEqual([]);
   expect(romanHardware(shade({roman_chain_length:56.875}))?.issues.map(i=>i.ruleId)).toContain('roman.hardware.chain_length');

@@ -34,6 +34,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === "roman" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-hardware-2026-09-19-r1`;
   if (productId === "norman_shutters" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-shutter-assortment-2026-09-19-r4`;
   if (productId === "wood_blinds" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-wood-2026-09-19-r3`;
   if (productId === "citylights_aluminum" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-citylights-2026-09-19-r2`;

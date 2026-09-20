@@ -550,7 +550,7 @@ export function authoritativeAutomaticSurchargeSelections(
   const sdExtras=smartdrapeVanePacks(selection);
   if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
   const roman=romanHardware(selection);
-  const romanHardwareIds=new Set(["magnetic_hold_down","pole_attachment_only","cordless_operating_pole"]);
+  const romanHardwareIds=new Set(["magnetic_hold_down","pole_attachment_only","cordless_operating_pole","shim"]);
   const wood=woodComponents(selection);
   const woodIds=new Set(["designer_color","premium_color","shim","side_mount_bracket","valance_surcharge_designer_crown","valance_surcharge_contempo","cut_out","keystone"]);
   const citylights=citylightsComponents(selection);

@@ -9142,6 +9142,7 @@ function ShadesAndBlindsOptions({
         nextJson.roman_fabric_category = null;
         clearFabric = true;
       }
+      if (authoritativeV2 && nextShadeType === "Day & Night") nextJson.roman_shim_layers = "0";
       if (nextShadeType !== "Day & Night") {
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
@@ -9381,6 +9382,7 @@ function ShadesAndBlindsOptions({
       const nextMount = typeof value === "string" ? value : null;
       const nextJson = { ...currentJson };
       if (nextMount !== "Outside Mount") {
+        if (authoritativeV2) nextJson.roman_shim_layers = "0";
         nextJson.hold_downs = null;
         nextJson.magnet_color = null;
         // Pleated returns are an outside-mount option at Norman.
@@ -10794,6 +10796,8 @@ function ShadesAndBlindsOptions({
           }
         }
 
+        if (authoritativeV2 && mountType === "Outside Mount" && !isDayNight) options.push({key:"roman_shim_layers",label:"Shim Layers per Bracket",field:"json:roman_shim_layers",type:"select",options:["0","1","2","3"]});
+
         // Cordless pole options.
         if (controlType === "Cordless") {
           options.push({
@@ -10803,7 +10807,7 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: ROMAN_POLE_OPTIONS,
           });
-          if (authoritativeV2 && poles && poles !== "None") options.push({key:"roman_pole_quantity",label:"Pole or Attachment Quantity",field:"json:roman_pole_quantity",type:"select",options:["1","2"]});
+          if (authoritativeV2 && poles && poles !== "None") options.push({key:"roman_pole_quantity",label:"Poles or Attachments per Shade",field:"json:roman_pole_quantity",type:"select",options:["1","2"]});
           if (poles === "Pole with Attachment") {
             options.push({
               key: "pole_length",

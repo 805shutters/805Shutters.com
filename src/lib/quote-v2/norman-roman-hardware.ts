@@ -27,16 +27,25 @@ export function romanHardware(s:SelectionContext){
  if(hasPole&&(lift!=='cordless'||!['pole with attachment','attachment only'].includes(pole)||!Number.isInteger(poleQuantity)||poleQuantity<1||poleQuantity>2))add('pole_quantity',23,'Choose one or two poles or attachments for a Cordless Roman shade.');
  if(hasPole&&pole==='pole with attachment'&&![36,60].includes(poleLength))add('pole_length',23,'Choose a 36-inch or 60-inch Cordless Roman pole.');
  const positions:SelectionRecord=common?{left:'Left',right:'Right'}:dayNight?{front:c.chain_location??'Right',rear:norm(c.chain_location)==='left'?'Right':'Left'}:{single:c.chain_location??'Right'};
+ const componentWidths=common&&Array.isArray(c.common_valance_panel_widths)?c.common_valance_panel_widths.map(Number):[s.widthInches];
+ const shadeCount=common?2:1;
+ const layers=Number(c.roman_shim_layers??0);
+ const brackets=componentWidths.map(width=>width<=44?2:width<=70?3:4);
+ const shimQuantity=brackets.reduce((sum,count)=>sum+count,0)*layers;
+ if(!Number.isInteger(layers)||layers<0||layers>3)add('shim_layers',24,'Choose zero through three shim layers per bracket.');
+ if(layers>0&&(mount!=='outside mount'||dayNight))add('shim_mount',24,'Roman shims are available only for outside-mounted Single or Common Valance shades; Day & Night cannot use shims.');
+ if((selected(c.shim)||Number(c.shims)>0||Number(c.shim_quantity)>0)&&c.roman_shim_layers==null)add('legacy_shims',24,'Reconfirm Roman shim layers so each bracket receives the correct quantity.');
  const hold=norm(c.hold_downs),magnetic=hold==='magnetic';
  if(hold&&!['none','magnetic'].includes(hold))add('hold_down',22,'Select None or Magnetic for Roman hold-downs.');
  if(magnetic&&mount!=='outside mount')add('hold_down_mount',22,'Roman magnetic hold-downs require outside mount.');
  if(c.magnet_color!=null&&(!magnetic||!ROMAN_HARDWARE_MAGNET_COLORS.some(color=>norm(color)===norm(c.magnet_color))))add('magnet_color',22,'Choose a documented Roman magnet catch finish with magnetic hold-downs.');
  if(selected(c.magnetic_hold_down)&&!magnetic)add('legacy_magnet',22,'Reconfirm the Roman magnetic hold-down selection before repricing.');
  if((selected(c.cordless_operating_pole)||selected(c.pole_attachment_only))&&!hasPole)add('legacy_pole',23,'Reconfirm the Roman pole or attachment selection before repricing.');
- return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:1}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity}]:[])],record:{
-  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[15,22,23],
+ return {issues,surchargeSelections:[...(magnetic?[{id:'magnetic_hold_down',units:shadeCount}]:[]),...(hasPole?[{id:pole==='attachment only'?'pole_attachment_only':'cordless_operating_pole',units:poleQuantity*shadeCount}]:[]),...(shimQuantity>0?[{id:'shim',units:shimQuantity}]:[])],record:{
+  version:1,sourceId:'norman-roman-guide-2026-09',sourcePages:[15,22,23,24],
+  mounting:{componentWidths,brackets,shimLayers:layers,shimQuantity,shimExtension:layers*.375},
   chain:chain?{length:chainLength,custom,measuredFrom:'top_of_headrail_to_bottom_of_tension_device',minimumAccessClearance:2,toleranceAbove:1.5625,material:norm(c.chain_type)==='stainless steel'?'Stainless Steel':'Plastic',color:norm(c.chain_type)==='stainless steel'?'Stainless Steel':c.chain_color??'White',clutchAndTensionColor:norm(c.chain_type)==='stainless steel'?'White':c.chain_color??'White',positions}:null,
-  pole:hasPole?{type:c.poles,quantity:poleQuantity,length:pole==='pole with attachment'?poleLength:null,quantityBasis:'per_ordered_shade'}:null,
-  holdDown:magnetic?{color:c.magnet_color??'Nickel-Plated',factoryMagnetLocation:dayNight?'back_of_rear_roller_hem_bar':'bottom_backside_of_roman',catchInstalledAtJobsite:true,minimumSideClearance:1.4375,minimumBottomClearance:.3125,metalDoorRecommended:false}:null,
+  pole:hasPole?{type:c.poles,quantity:poleQuantity*shadeCount,quantityPerShade:poleQuantity,length:pole==='pole with attachment'?poleLength:null,quantityBasis:'per_component_shade'}:null,
+  holdDown:magnetic?{quantity:shadeCount,color:c.magnet_color??'Nickel-Plated',factoryMagnetLocation:dayNight?'back_of_rear_roller_hem_bar':'bottom_backside_of_roman',catchInstalledAtJobsite:true,minimumSideClearance:1.4375,minimumBottomClearance:.3125,metalDoorRecommended:false}:null,
  }};
 }
