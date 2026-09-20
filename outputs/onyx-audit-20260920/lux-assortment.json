@@ -1,0 +1,1421 @@
+{
+  "observedDate": "2026-09-20",
+  "account": "CHE01",
+  "effectiveDate": null,
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "note": "All current Lux product-pattern-color dropdown entries. Preserve anomalous IDs and duplicate names exactly; source prefix mismatches are not corrected by assumption. Pricing grids and compatibility not yet certified.",
+  "fabrics": [
+    {
+      "product": "Fabric Blinds",
+      "pattern": "2\" Light Filtering_FB_PG1",
+      "patternId": "FB_PG1",
+      "colors": [
+        {
+          "id": "FB_PG1_50016",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG1_50017",
+          "name": "chestnut"
+        },
+        {
+          "id": "FB_PG1_50018",
+          "name": "Gray Mood"
+        },
+        {
+          "id": "FB_PG1_50023",
+          "name": "Dusk Blue"
+        },
+        {
+          "id": "FB_PG1_50029",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG1_50031",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG1_50032",
+          "name": "chalk beige"
+        },
+        {
+          "id": "FB_PG1_50100",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG1_50100J897",
+          "name": "Black and White"
+        },
+        {
+          "id": "FB_PG1_50113",
+          "name": "Off white"
+        },
+        {
+          "id": "FB_PG1_50125",
+          "name": "vanilla"
+        },
+        {
+          "id": "FB_PG1_50206",
+          "name": "peach"
+        },
+        {
+          "id": "FB_PG1_50206J897",
+          "name": "Peach and Black"
+        },
+        {
+          "id": "FB_PG1_50295",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG1_50302",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG1_50303",
+          "name": "Kelp"
+        },
+        {
+          "id": "FB_PG1_50323",
+          "name": "Boulder"
+        },
+        {
+          "id": "FB_PG1_50334-1",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG1_50336",
+          "name": "Agilawood"
+        },
+        {
+          "id": "FB_PG1_50349",
+          "name": "Crushed Berry"
+        },
+        {
+          "id": "FB_PG1_50357",
+          "name": "Coral"
+        },
+        {
+          "id": "FB_PG1_50357J897",
+          "name": "Praline and Black"
+        },
+        {
+          "id": "FB_PG1_50360",
+          "name": "Beigegrau"
+        },
+        {
+          "id": "FB_PG1_50370",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG1_50375",
+          "name": "Cub"
+        },
+        {
+          "id": "FB_PG1_50376",
+          "name": "Beluga"
+        },
+        {
+          "id": "FB_PG1_50378",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG1_50417J897",
+          "name": "Canary and Black"
+        },
+        {
+          "id": "FB_PG1_50430-1",
+          "name": "Maple"
+        },
+        {
+          "id": "FB_PG1_50430J897",
+          "name": "Wheat and Black"
+        },
+        {
+          "id": "FB_PG1_50433",
+          "name": "Olive"
+        },
+        {
+          "id": "FB_PG2_50446",
+          "name": "Oak"
+        },
+        {
+          "id": "FB_PG1_50447",
+          "name": "Dijon"
+        },
+        {
+          "id": "FB_PG1_50504",
+          "name": "Moss"
+        },
+        {
+          "id": "FB_PG1_50515",
+          "name": "Aspen Green"
+        },
+        {
+          "id": "FB_PG1_50601J897",
+          "name": "Blue Ice and Black"
+        },
+        {
+          "id": "FB_PG1_50627",
+          "name": "Providence Blue"
+        },
+        {
+          "id": "FB_PG1_50701",
+          "name": "Branch Water"
+        },
+        {
+          "id": "FB_PG1_50711",
+          "name": "Maltose"
+        },
+        {
+          "id": "FB_PG1_50712",
+          "name": "Almond"
+        },
+        {
+          "id": "FB_PG1_50714",
+          "name": "Pamirs"
+        },
+        {
+          "id": "FB_PG1_50722",
+          "name": "Plant Soot"
+        },
+        {
+          "id": "FB_PG1_50723",
+          "name": "Water Caltrop"
+        },
+        {
+          "id": "FB_PG1_50731",
+          "name": "Toffee"
+        },
+        {
+          "id": "FB_PG1_50732",
+          "name": "Mugwort"
+        },
+        {
+          "id": "FB_PG1_50733",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG1_50734",
+          "name": "Alabaster"
+        },
+        {
+          "id": "FB_PG1_50736",
+          "name": "Glacier"
+        },
+        {
+          "id": "FB_PG1_50737",
+          "name": "Cyanus"
+        },
+        {
+          "id": "FB_PG1_50751",
+          "name": "Toffee"
+        },
+        {
+          "id": "FB_PG1_50752",
+          "name": "Mugwort"
+        },
+        {
+          "id": "FB_PG1_50753",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG1_50754",
+          "name": "Alabaster"
+        },
+        {
+          "id": "FB_PG1_50756",
+          "name": "Glacier"
+        },
+        {
+          "id": "FB_PG1_50757",
+          "name": "Cyanus"
+        },
+        {
+          "id": "FB_PG1_50821",
+          "name": "Reed Catkins"
+        },
+        {
+          "id": "FB_PG1_50822",
+          "name": "Silver"
+        },
+        {
+          "id": "FB_PG1_50823",
+          "name": "Grey"
+        },
+        {
+          "id": "FB_PG1_50895",
+          "name": "Turbulence"
+        },
+        {
+          "id": "FB_PG1_50897",
+          "name": "Black"
+        },
+        {
+          "id": "FB_PG1_50901",
+          "name": "Moon Silver"
+        },
+        {
+          "id": "FB_PG1_50902",
+          "name": "Luxury Gold"
+        },
+        {
+          "id": "FB_PG1_50903",
+          "name": "Rose Gold"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Fabric Blinds",
+      "pattern": "2\" Room Darkening_FB_PG2",
+      "patternId": "FB_PG2",
+      "colors": [
+        {
+          "id": "FB_PG2_50016D",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG2_50017D",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG2_50029D",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG2_50031D",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG2_50100-897",
+          "name": "Ash"
+        },
+        {
+          "id": "FB_PG3_50100D",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG2_50113D",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG2_50125D",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG2_50295D",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG2_50302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG2_50320D",
+          "name": "Gold"
+        },
+        {
+          "id": "FB_PG2_50334D",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG2_50357-897",
+          "name": "Acorn"
+        },
+        {
+          "id": "FB_PG2_50370D",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG2_50378D",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG2_50822-897",
+          "name": "Pewter"
+        },
+        {
+          "id": "FB_PG2_50822D",
+          "name": "Silver"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Fabric Blinds",
+      "pattern": "2.5\" Light Filtering_FB_PG3",
+      "patternId": "FB_PG3",
+      "colors": [
+        {
+          "id": "FB_PG3_65031",
+          "name": "Sand"
+        },
+        {
+          "id": "FB_PG3_65100",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG3_65113",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG3_65125",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG3_65206",
+          "name": "Peach"
+        },
+        {
+          "id": "FB_PG3_65302",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG3_65334",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG3_65357",
+          "name": "Praline"
+        },
+        {
+          "id": "FB_PG3_65370",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG3_65378",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG4_65517",
+          "name": "Willow"
+        },
+        {
+          "id": "FB_PG3_65613",
+          "name": "Surf"
+        },
+        {
+          "id": "FB_PG3_65823",
+          "name": "Grey"
+        },
+        {
+          "id": "FB_PG3_65987",
+          "name": "Black"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Fabric Blinds",
+      "pattern": "2.5\" Room Darkening_FB_PG4",
+      "patternId": "FB_PG4",
+      "colors": [
+        {
+          "id": "FB_PG4_65016D",
+          "name": "Slate"
+        },
+        {
+          "id": "FB_PG4_65017D",
+          "name": "Chestnut"
+        },
+        {
+          "id": "FB_PG4_65029D",
+          "name": "Blueberry"
+        },
+        {
+          "id": "FB_PG4_65031D",
+          "name": "Sand"
+        },
+        {
+          "id": "HC_PG01_65100D",
+          "name": "White"
+        },
+        {
+          "id": "FB_PG4_65113D",
+          "name": "Off White"
+        },
+        {
+          "id": "FB_PG4_65125D",
+          "name": "Vanilla"
+        },
+        {
+          "id": "FB_PG4_65295D",
+          "name": "Country Redwood"
+        },
+        {
+          "id": "FB_PG4_65302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "FB_PG4_65320D",
+          "name": "Gold"
+        },
+        {
+          "id": "FB_PG4_65334D",
+          "name": "Pecan"
+        },
+        {
+          "id": "FB_PG4_65370D",
+          "name": "Teak"
+        },
+        {
+          "id": "FB_PG4_65378D",
+          "name": "Cocoa"
+        },
+        {
+          "id": "FB_PG4_65822D",
+          "name": "Silver"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/4 Single LF_HC_PG05",
+      "patternId": "HC_PG05",
+      "colors": [
+        {
+          "id": "HC_PG05_H45034M",
+          "name": "Roswell"
+        },
+        {
+          "id": "HC_PG05_H45034S",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG05_H45047",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG05_H45100",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG05_H45100S",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG05_H45125",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG05_H45145",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG05_H45145P",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG05_H45206",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG05_H45206P",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG05_H45295",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG05_H45302",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG05_H45302P",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG05_H45323P",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG05_H45357",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG05_H45378",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG05_H45414",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG05_H45414P",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG05_H45430M",
+          "name": "Antique"
+        },
+        {
+          "id": "HC_PG05_H45430P",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG05_H45503K",
+          "name": "Jade"
+        },
+        {
+          "id": "HC_PG05_H45652K",
+          "name": "Icicle"
+        },
+        {
+          "id": "HC_PG05_H45822",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG05_H45823",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG05_H45895K",
+          "name": "Meteorite"
+        },
+        {
+          "id": "HC_PG06_H45895M",
+          "name": "Flint"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/4 Single RD_HC_PG06",
+      "patternId": "HC_PG06",
+      "colors": [
+        {
+          "id": "HC_PG06_H45034SD",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG06_H45047D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG06_H45047WD",
+          "name": "Nebula"
+        },
+        {
+          "id": "HC_PG06_H45100D",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG06_H45100SD",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG06_H45100WD",
+          "name": "Cloud"
+        },
+        {
+          "id": "HC_PG06_H45101WD",
+          "name": "Paper"
+        },
+        {
+          "id": "HC_PG06_H45125D",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG06_H45145D",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG06_H45145PD",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG06_H45206D",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG06_H45206PD",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG06_H45206WD",
+          "name": "Powder Pink"
+        },
+        {
+          "id": "HC_PG06_H45295D",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG06_H45302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG06_H45302PD",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG06_H45323PD",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG06_H45357D",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG06_H45378D",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG06_H45414D",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG06_H45414PD",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG06_H45430PD",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG06_H45504WD",
+          "name": "Meadow"
+        },
+        {
+          "id": "HC_PG06_H45822D",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG06_H45823D",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG06_H45823WD",
+          "name": "Pewter"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/8 Double LF_HC_PG03",
+      "patternId": "HC_PG03",
+      "colors": [
+        {
+          "id": "HC_PG04_H38000",
+          "name": "White Sheer"
+        },
+        {
+          "id": "HC_PG03_H38047T",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG03_H38100T",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG03_H38125T",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG03_H38145T",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG03_H38206T",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG03_H38295T",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG03_H38302T",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG03_H38357T",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG03_H38378T",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG03_H38414T",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG03_H38822T",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG03_H38823T",
+          "name": "Pebble"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/8 Double RD_HC_PG04",
+      "patternId": "HC_PG04",
+      "colors": [
+        {
+          "id": "HC_PG05_H38047TD",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG04_H38100TD",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG04_H38125TD",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG04_H38145TD",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG04_H38206TD",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG04_H38295TD",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG04_H38302TD",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG04_H38357TD",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG04_H38378TD",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG04_H38414TD",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG04_H38822TD",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG04_H38823TD",
+          "name": "Pebble"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/8 Single LF_HC_PG01",
+      "patternId": "HC_PG01",
+      "colors": [
+        {
+          "id": "HC_PG01_H25000",
+          "name": "White Sheer"
+        },
+        {
+          "id": "HC_PG01_H25016",
+          "name": "Nautical Gray"
+        },
+        {
+          "id": "HC_PG01_H25034M",
+          "name": "Roswell"
+        },
+        {
+          "id": "HC_PG01_H25034S",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG01_H25047",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG01_H25100",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG01_H25100S",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG01_H25125",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG01_H25145",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG01_H25145P",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG01_H25206",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG01_H25206P",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG01_H25295",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG01_H25302",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG01_H25302P",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG01_H25307",
+          "name": "Neutral"
+        },
+        {
+          "id": "HC_PG01_H25323P",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG01_H25357",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG01_H25378",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG01_H25414",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG01_H25414P",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG01_H25430M",
+          "name": "Antique"
+        },
+        {
+          "id": "HC_PG01_H25430P",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG01_H25504",
+          "name": "Sage"
+        },
+        {
+          "id": "HC_PG01_H25820",
+          "name": "Light Gray"
+        },
+        {
+          "id": "HC_PG01_H25822",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG01_H25823",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG01_H25895",
+          "name": "Dark Brown"
+        },
+        {
+          "id": "HC_PG02_H25895M",
+          "name": "Flint"
+        },
+        {
+          "id": "HC_PG01_H25897",
+          "name": "Almost Black"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Honeycomb",
+      "pattern": "3/8 Single RD_HC_PG02",
+      "patternId": "HC_PG02",
+      "colors": [
+        {
+          "id": "HC_PG02_H25016D",
+          "name": "Nautical Gray"
+        },
+        {
+          "id": "HC_PG02_H25034SD",
+          "name": "Quicksilver"
+        },
+        {
+          "id": "HC_PG02_H25047D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "HC_PG02_H25047WD",
+          "name": "Nebula"
+        },
+        {
+          "id": "HC_PG02_H25100D",
+          "name": "Snow White"
+        },
+        {
+          "id": "HC_PG02_H25100SD",
+          "name": "Swan"
+        },
+        {
+          "id": "HC_PG02_H25100WD",
+          "name": "Cloud"
+        },
+        {
+          "id": "HC_PG02_H25101WD",
+          "name": "Paper"
+        },
+        {
+          "id": "HC_PG02_H25125D",
+          "name": "Linen"
+        },
+        {
+          "id": "HC_PG02_H25145D",
+          "name": "Beige"
+        },
+        {
+          "id": "HC_PG02_H25145PD",
+          "name": "Camel"
+        },
+        {
+          "id": "HC_PG02_H25206D",
+          "name": "Petal"
+        },
+        {
+          "id": "HC_PG02_H25206PD",
+          "name": "Seashell"
+        },
+        {
+          "id": "HC_PG02_H25206WD",
+          "name": "Powder Pink"
+        },
+        {
+          "id": "HC_PG02_H25295D",
+          "name": "Mahogany"
+        },
+        {
+          "id": "HC_PG02_H25302D",
+          "name": "Sesame"
+        },
+        {
+          "id": "HC_PG03_H25302PD",
+          "name": "Ecru"
+        },
+        {
+          "id": "HC_PG02_H25306D",
+          "name": "Greige"
+        },
+        {
+          "id": "HC_PG02_H25307D",
+          "name": "Neutral"
+        },
+        {
+          "id": "HC_PG02_H25323PD",
+          "name": "Mushroom"
+        },
+        {
+          "id": "HC_PG02_H25357D",
+          "name": "Coral"
+        },
+        {
+          "id": "HC_PG02_H25378D",
+          "name": "Java"
+        },
+        {
+          "id": "HC_PG02_H25414D",
+          "name": "Straw"
+        },
+        {
+          "id": "HC_PG02_H25414PD",
+          "name": "Wheat"
+        },
+        {
+          "id": "HC_PG02_H25430PD",
+          "name": "Cork"
+        },
+        {
+          "id": "HC_PG02_H25504D",
+          "name": "Sage"
+        },
+        {
+          "id": "HC_PG02_H25504WD",
+          "name": "Meadow"
+        },
+        {
+          "id": "HC_PG02_H25820D",
+          "name": "Light Gray"
+        },
+        {
+          "id": "HC_PG02_H25821D",
+          "name": "Dolphin Gray"
+        },
+        {
+          "id": "HC_PG02_H25822D",
+          "name": "Granite"
+        },
+        {
+          "id": "HC_PG02_H25823D",
+          "name": "Pebble"
+        },
+        {
+          "id": "HC_PG02_H25823WD",
+          "name": "Pewter"
+        },
+        {
+          "id": "HC_PG02_H25895D",
+          "name": "Dark Brown"
+        },
+        {
+          "id": "HC_PG02_H25897D",
+          "name": "Almost Black"
+        },
+        {
+          "id": "HC_PG02_H25898D",
+          "name": "Black"
+        },
+        {
+          "id": "HC_PG02_H25904D",
+          "name": "Silver Lining"
+        },
+        {
+          "id": "HC_PG02_H25905D",
+          "name": "Night Sky"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "2\" Light Filtering_S50PN",
+      "patternId": "S50PN",
+      "colors": [
+        {
+          "id": "S50PN100",
+          "name": "Bright White"
+        },
+        {
+          "id": "S50PN112",
+          "name": "Alabaster"
+        },
+        {
+          "id": "S50PN113",
+          "name": "Winter White"
+        },
+        {
+          "id": "S50PN206",
+          "name": "Blossom"
+        },
+        {
+          "id": "S50PN302",
+          "name": "Sesame"
+        },
+        {
+          "id": "S50PN322",
+          "name": "Beige"
+        },
+        {
+          "id": "S50PN823",
+          "name": "Granite"
+        },
+        {
+          "id": "S50PNS378",
+          "name": "Java"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "2\" Room Darkening_S50PNRD",
+      "patternId": "S50PNRD",
+      "colors": [
+        {
+          "id": "S50PN100D",
+          "name": "Bright White"
+        },
+        {
+          "id": "S50PN113D",
+          "name": "Winter White"
+        },
+        {
+          "id": "S50PN125D",
+          "name": "Linen"
+        },
+        {
+          "id": "S50PN145D",
+          "name": "Biscuit"
+        },
+        {
+          "id": "S50PN322D",
+          "name": "Beige"
+        },
+        {
+          "id": "S50PN414D",
+          "name": "Cornsilk"
+        },
+        {
+          "id": "S50PN823D",
+          "name": "Granite"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "2.5\" Light Filtering_S65BN",
+      "patternId": "S65BN",
+      "colors": [
+        {
+          "id": "S65BN125",
+          "name": "Parmesan 2.5"
+        },
+        {
+          "id": "S65BN206",
+          "name": "Blossom 2.5"
+        },
+        {
+          "id": "S65BN207",
+          "name": "Ecru 2.5"
+        },
+        {
+          "id": "S65BN311",
+          "name": "Heather 2.5"
+        },
+        {
+          "id": "S65BN312",
+          "name": "Blush 2.5"
+        },
+        {
+          "id": "S65BN322",
+          "name": "Beige 2.5"
+        },
+        {
+          "id": "S65BN414",
+          "name": "Oat 2.5"
+        },
+        {
+          "id": "S65BN503",
+          "name": "Smoke 2.5"
+        },
+        {
+          "id": "S65BN517",
+          "name": "Foggy 2.5"
+        },
+        {
+          "id": "S65BN627",
+          "name": "Waterfall"
+        },
+        {
+          "id": "S65BN822",
+          "name": "Whale 2.5"
+        },
+        {
+          "id": "S65BN823",
+          "name": "Granite 2.5"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "2.5\" Room Darkening_S65BNRD",
+      "patternId": "S65BNRD",
+      "colors": [
+        {
+          "id": "S65BN206D",
+          "name": "Blossom 2.5"
+        },
+        {
+          "id": "S65BN311D",
+          "name": "Heather 2.5"
+        },
+        {
+          "id": "S65BN312D",
+          "name": "Blush 2.5"
+        },
+        {
+          "id": "S65BN322D",
+          "name": "Beige 2.5"
+        },
+        {
+          "id": "S65BN627D",
+          "name": "Waterfall 2.5"
+        },
+        {
+          "id": "S65BN823D",
+          "name": "Granite 2.5"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "3\" Light Filtering_S70PN",
+      "patternId": "S70PN",
+      "colors": [
+        {
+          "id": "S70PN100",
+          "name": "Bright White 3"
+        },
+        {
+          "id": "S70PN112",
+          "name": "Alabaster 3"
+        },
+        {
+          "id": "S70PN113",
+          "name": "Winter White 3"
+        },
+        {
+          "id": "S70PN126",
+          "name": "Luna 3"
+        },
+        {
+          "id": "S70PN206",
+          "name": "Blossom 3"
+        },
+        {
+          "id": "S70PN302",
+          "name": "Sesame 3"
+        },
+        {
+          "id": "S70PN322",
+          "name": "Beige 3"
+        },
+        {
+          "id": "S70PN323",
+          "name": "Romance 3"
+        },
+        {
+          "id": "S70PN371",
+          "name": "Plank"
+        },
+        {
+          "id": "S70PNS378",
+          "name": "Java 3"
+        },
+        {
+          "id": "S70PN503",
+          "name": "Coastal Plain"
+        },
+        {
+          "id": "S70PN517",
+          "name": "Celadon 3"
+        },
+        {
+          "id": "S70PN821",
+          "name": "Dusty Blue"
+        },
+        {
+          "id": "S70PN823",
+          "name": "Granite 3"
+        },
+        {
+          "id": "S70PN824",
+          "name": "Rhinestone"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Sheerview",
+      "pattern": "3\" Room Darkening_S70PNRD",
+      "patternId": "S70PNRD",
+      "colors": [
+        {
+          "id": "S70PN016D",
+          "name": "Midnight"
+        },
+        {
+          "id": "S70PN029D",
+          "name": "Royal Blue"
+        },
+        {
+          "id": "S70PN100D",
+          "name": "Bright White"
+        },
+        {
+          "id": "S70PN111D",
+          "name": "Eggshell"
+        },
+        {
+          "id": "S70PN114D",
+          "name": "Greek Villa"
+        },
+        {
+          "id": "S70PN125D",
+          "name": "Linen"
+        },
+        {
+          "id": "S70PN145D",
+          "name": "Biscuit"
+        },
+        {
+          "id": "S70PN303D",
+          "name": "Khaki"
+        },
+        {
+          "id": "S70PN312D",
+          "name": "Barcelona Beige"
+        },
+        {
+          "id": "S70PN321D",
+          "name": "Natural Tan"
+        },
+        {
+          "id": "S70PN322D",
+          "name": "Beige"
+        },
+        {
+          "id": "S70PN334D",
+          "name": "Brick"
+        },
+        {
+          "id": "S70PN414D",
+          "name": "Cornsilk"
+        },
+        {
+          "id": "S70PN503D",
+          "name": "Coastal Plain"
+        },
+        {
+          "id": "S70PN822D",
+          "name": "Lazy Gray"
+        },
+        {
+          "id": "S70PN823D",
+          "name": "Granite"
+        },
+        {
+          "id": "S70PNS378D",
+          "name": "Java"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    }
+  ]
+}

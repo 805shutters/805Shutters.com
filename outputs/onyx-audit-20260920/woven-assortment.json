@@ -1,0 +1,428 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "account": "CHE01",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "fabrics": [
+    {
+      "product": "Woven",
+      "pattern": "WP_Walden Premier_WP_Walden Premier",
+      "patternId": "WP_Walden Premier",
+      "colors": [
+        {
+          "id": "WP_ArtisanWeave",
+          "name": "Artisan Weave"
+        },
+        {
+          "id": "WP_AspenCedar",
+          "name": "Aspen Cedar"
+        },
+        {
+          "id": "WP_AspenEbony",
+          "name": "Aspen Ebony"
+        },
+        {
+          "id": "WP_AspenWalnut",
+          "name": "Aspen Walnut"
+        },
+        {
+          "id": "WP_AspenWhite",
+          "name": "Aspen White"
+        },
+        {
+          "id": "WP_BambooForest",
+          "name": "Bamboo Forest"
+        },
+        {
+          "id": "WP_BambooLeafBrown",
+          "name": "Bamboo Leaf Brown"
+        },
+        {
+          "id": "WP_BarcelonaCafe",
+          "name": "Barcelona Cafe"
+        },
+        {
+          "id": "WP_BarcelonaDusk",
+          "name": "Barcelona Dusk"
+        },
+        {
+          "id": "WP_BoraBora",
+          "name": "Bora Bora"
+        },
+        {
+          "id": "WP_CapriNatural",
+          "name": "Capri Natural"
+        },
+        {
+          "id": "WP_Catalina",
+          "name": "Catalina"
+        },
+        {
+          "id": "WP_DevonCoffee",
+          "name": "Devon Coffee"
+        },
+        {
+          "id": "WP_DevonIvory",
+          "name": "Devon Ivory"
+        },
+        {
+          "id": "WP_DevonMaple",
+          "name": "Devon Maple"
+        },
+        {
+          "id": "WP_DevonWhite",
+          "name": "Devon White"
+        },
+        {
+          "id": "WP_DriftwoodNatural",
+          "name": "Driftwood Natural"
+        },
+        {
+          "id": "WP_JakartaSpice",
+          "name": "Jakarta Spice"
+        },
+        {
+          "id": "WP_JavaCocoa",
+          "name": "Java Cocoa"
+        },
+        {
+          "id": "WP_KyotoBrown",
+          "name": "Kyoto Brown"
+        },
+        {
+          "id": "WP_LatticeTwilight",
+          "name": "Lattice Twilight"
+        },
+        {
+          "id": "WP_MandalayUmber",
+          "name": "Mandalay Umber"
+        },
+        {
+          "id": "WP_NassauMahogany",
+          "name": "Nassau Mahogany"
+        },
+        {
+          "id": "WP_NaturalJute",
+          "name": "Natural Jute"
+        },
+        {
+          "id": "WP_PenangOak",
+          "name": "Penang Oak"
+        },
+        {
+          "id": "WP_PrairieGolden",
+          "name": "Prairie Golden"
+        },
+        {
+          "id": "WP_PrairieSnow",
+          "name": "Prairie Snow"
+        },
+        {
+          "id": "WP_PrairieWhite",
+          "name": "Prairie White"
+        },
+        {
+          "id": "WP_SakuraOregano",
+          "name": "Sakura Oregano"
+        },
+        {
+          "id": "WP_SavannaHusk",
+          "name": "Savanna Husk"
+        },
+        {
+          "id": "WP_SierraSand",
+          "name": "Sierra Sand"
+        },
+        {
+          "id": "WP_STMartinCappuccino",
+          "name": "ST Martin Cappuccino"
+        },
+        {
+          "id": "WP_SunshadeBrown",
+          "name": "Sunshade Brown"
+        },
+        {
+          "id": "WP_sunshadeWhite",
+          "name": "sunshade White"
+        },
+        {
+          "id": "WP_TamarindSunset",
+          "name": "Tamarind Sunset"
+        },
+        {
+          "id": "WP_TradewindNatural",
+          "name": "Tradewind Natural"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    },
+    {
+      "product": "Woven",
+      "pattern": "WS_Walden Select_WS_Walden Select",
+      "patternId": "WS_Walden Select",
+      "colors": [
+        {
+          "id": "WS_AlisiaAntiqueWhite",
+          "name": "Alisia Antique White"
+        },
+        {
+          "id": "WS_AlisiaChiffon",
+          "name": "Alisia Chiffon"
+        },
+        {
+          "id": "WS_AlisiaMorning",
+          "name": "Alisia Morning"
+        },
+        {
+          "id": "WS_AndrosBirch",
+          "name": "Andros Birch"
+        },
+        {
+          "id": "WS_AndrosHarbor",
+          "name": "Andros Harbor"
+        },
+        {
+          "id": "WS_AntillesMist",
+          "name": "Antilles Mist"
+        },
+        {
+          "id": "WS_AntillesSand",
+          "name": "Antilles Sand"
+        },
+        {
+          "id": "WS_AntillesSeagrass",
+          "name": "Antilles Seagrass"
+        },
+        {
+          "id": "WS_CalaPlatinum",
+          "name": "Cala Platinum"
+        },
+        {
+          "id": "WS_CalaTitanium",
+          "name": "Cala Titanium"
+        },
+        {
+          "id": "WS_CamdenNatural",
+          "name": "Camden Natural"
+        },
+        {
+          "id": "WS_CamdenSnow",
+          "name": "Camden Snow"
+        },
+        {
+          "id": "WS_ChelseaLace",
+          "name": "Chelsea Lace"
+        },
+        {
+          "id": "WS_ChelseaTaupe",
+          "name": "Chelsea Taupe"
+        },
+        {
+          "id": "WS_ComoCharcoal",
+          "name": "Como Charcoal"
+        },
+        {
+          "id": "WS_ComoEcru",
+          "name": "Como Ecru"
+        },
+        {
+          "id": "WS_ComoGray",
+          "name": "Como Gray"
+        },
+        {
+          "id": "WS_ComoMidnight",
+          "name": "Como Midnight"
+        },
+        {
+          "id": "WS_ComoUmber",
+          "name": "Como Umber"
+        },
+        {
+          "id": "WS_FayBlack",
+          "name": "Fay Black"
+        },
+        {
+          "id": "WS_FaySnow",
+          "name": "Fay Snow"
+        },
+        {
+          "id": "WS_FayTan",
+          "name": "Fay Tan"
+        },
+        {
+          "id": "WS_HalifaxNatural",
+          "name": "Halifax Natural"
+        },
+        {
+          "id": "WS_HarborGolden",
+          "name": "Harbor Golden"
+        },
+        {
+          "id": "WS_HarborWhite",
+          "name": "Harbor White"
+        },
+        {
+          "id": "WS_LouCoconut",
+          "name": "Lou Coconut"
+        },
+        {
+          "id": "WS_LouContrast",
+          "name": "Lou Contrast"
+        },
+        {
+          "id": "WS_LouCotton",
+          "name": "Lou Cotton"
+        },
+        {
+          "id": "WS_LouDriftwood",
+          "name": "Lou Driftwood"
+        },
+        {
+          "id": "WS_MalvernChalk",
+          "name": "Malvern Chalk"
+        },
+        {
+          "id": "WS_MalvernGray",
+          "name": "Malvern Gray"
+        },
+        {
+          "id": "WS_MalvernLightGray",
+          "name": "Malvern Light Gray"
+        },
+        {
+          "id": "WS_MalvernPlatinum",
+          "name": "Malvern Platinum"
+        },
+        {
+          "id": "WS_MatroCaramel",
+          "name": "Matro Caramel"
+        },
+        {
+          "id": "WS_MetroChalk",
+          "name": "Metro Chalk"
+        },
+        {
+          "id": "WS_MetroSmoke",
+          "name": "Metro Smoke"
+        },
+        {
+          "id": "WS_MontanaInkwash",
+          "name": "Montana Inkwash"
+        },
+        {
+          "id": "WS_MontanaMineral",
+          "name": "Montana Mineral"
+        },
+        {
+          "id": "WS_NantucketSeaMist",
+          "name": "Nantucket Sea Mist"
+        },
+        {
+          "id": "WS_OsakaGranite",
+          "name": "Osaka Granite"
+        },
+        {
+          "id": "WS_OsakaSnow",
+          "name": "Osaka Snow"
+        },
+        {
+          "id": "WS_ParchmentHusk",
+          "name": "Parchment Husk"
+        },
+        {
+          "id": "WS_PeriMist",
+          "name": "Peri Mist"
+        },
+        {
+          "id": "WS_PortlandInkwash",
+          "name": "Portland Inkwash"
+        },
+        {
+          "id": "WS_PortlandSky",
+          "name": "Portland Sky"
+        },
+        {
+          "id": "WS_PudongWhite",
+          "name": "Pudong White"
+        },
+        {
+          "id": "WS_SeleneNatural",
+          "name": "Selene Natural"
+        },
+        {
+          "id": "WS_SeleneWhite",
+          "name": "Selene White"
+        },
+        {
+          "id": "WS_SoftJuteBeige",
+          "name": "Soft Jute Beige"
+        },
+        {
+          "id": "WS_SoftJuteGray",
+          "name": "Soft Jute Gray"
+        },
+        {
+          "id": "WS_SoftJuteWhite",
+          "name": "Soft Jute White"
+        },
+        {
+          "id": "WS_SonomaDusk",
+          "name": "Sonoma Dusk"
+        },
+        {
+          "id": "WS_TerraOak",
+          "name": "Terra Oak"
+        },
+        {
+          "id": "WS_TortolaNatural",
+          "name": "Tortola Natural"
+        },
+        {
+          "id": "WS_UmbriaInk",
+          "name": "Umbria Ink"
+        },
+        {
+          "id": "WS_UmbriaMist",
+          "name": "Umbria Mist"
+        },
+        {
+          "id": "WS_UmbriaSepia",
+          "name": "Umbria Sepia"
+        }
+      ],
+      "crmDestination": null,
+      "status": "missing_catalog_and_grids"
+    }
+  ],
+  "options": {
+    "liners": [
+      "WPL_Black-OutBeige",
+      "WPL_Black-OutChocolate",
+      "WPL_Black-OutWhite",
+      "WPL_PrivacyBeige",
+      "WPL_PrivacyChocolate",
+      "WPL_PrivacyWhite"
+    ],
+    "edgeBinding": [
+      "WPE_NarrowBeige",
+      "WPE_NarrowWhite",
+      "WPE_WideBeige",
+      "WPE_WideWhite"
+    ],
+    "controls": [
+      "Continuous Cord",
+      "Cordless",
+      "TopDownBottomUp ($150)",
+      "Wand Motor ($200)",
+      "Remote Motor ($250)"
+    ],
+    "insideMountWidthDeductionInches": 0.375,
+    "customValanceMaximumInches": 120,
+    "configurations": [
+      "Single",
+      "2 ON 1",
+      "3 ON 1"
+    ]
+  }
+}
