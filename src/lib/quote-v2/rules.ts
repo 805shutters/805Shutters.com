@@ -2,6 +2,7 @@ import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-a
 import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
 import { validateLotusRoller } from "./lotus-roller";
+import { validateLotusVertical } from "./lotus-vertical";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
@@ -2408,6 +2409,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusRoller(context));
+  issues.push(...validateLotusVertical(context));
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...(romanFabricLimits(context)?.issues ?? []));
   issues.push(...validateNormanFamilyRules(context));

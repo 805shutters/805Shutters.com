@@ -2298,7 +2298,7 @@ export function buildCatalogSelectionPatch(
           ? programs[0]
           : null;
   const lotusDefaults = program && product.manufacturer === "Lotus" &&
-    ["lotus_mini_blinds", "lotus_roller_shades"].includes(product.id)
+    ["lotus_mini_blinds", "lotus_roller_shades", "lotus_vertical_blinds"].includes(product.id)
     ? lotusProgramSelectionPatch(current, product.productType, program.id)
     : null;
 
