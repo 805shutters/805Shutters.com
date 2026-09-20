@@ -1,5 +1,6 @@
 import type { SelectionContext, ValidationIssue } from '@/lib/quote-v2/core';
 import { sourceProvenance } from '@/lib/quote-v2/source-manifest';
+import { clearSundanceZebraAccessories, sundanceZebraAccessoryIssues, sundanceZebraAccessoryEvidence } from './zebra-accessories';
 import { sundanceShadeColors } from './shade-fabrics';
 export const sundanceZebraSourceId = 'sundance-g-zebra-shades-v2-2e3b46c6b809';
 export const sundanceZebraControls = [
@@ -17,7 +18,7 @@ export const sundanceZebraCassettes = ['3-inch Small Rounded with Fabric Insert'
 export const sundanceZebraCassetteColors = ['White', 'Ivory', 'Silver', 'Bronze', 'Black'] as const;
 export const sundanceZebraChains = ['White', 'Ivory', 'Gray', 'Bronze', 'Black', 'Nickel Plated', 'Stainless Steel'] as const;
 export function sundanceZebraControlPatch(options: Record<string, unknown>, control: string) {
-  return { ...options, sundance_zebra_control: control || null, sundance_zebra_chain: null };
+  return { ...clearSundanceZebraAccessories(options), sundance_zebra_control: control || null, sundance_zebra_chain: null };
 }
 export function validateSundanceZebraConfiguration(s: Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'>): ValidationIssue[] {
   const c=s.configuration, issues:ValidationIssue[]=[];
@@ -37,6 +38,7 @@ export function validateSundanceZebraConfiguration(s: Pick<SelectionContext,'wid
   else if(c.sundance_zebra_assembly!=='Single')add('assembly',9,'Choose single shade or identify a two-on-one assembly.');
   if(c.sundance_zebra_cutouts||Number(c.sundance_cellular_cutout_qty)>0)add('cutouts',5,'Tile cut-outs are not available for Zebra shades.');
   if(c.sundance_zebra_alignment_group)add('alignment',5,'Side-by-side alignment requires shades ordered together in identical fabric and size. The source only guarantees alignment within3/8 inch; verify the entire group.');
+  sundanceZebraAccessoryIssues(c).forEach((issue,index)=>add(`accessory_${index}`,issue.page,issue.explanation));
   return issues;
 }
 export function sundanceZebraOptionEvidence(options:Record<string,unknown>) {
@@ -45,5 +47,6 @@ export function sundanceZebraOptionEvidence(options:Record<string,unknown>) {
   if(control&&control.net)entries.push({label:control.name,net:control.net,page:control.page});
   if(control?.name==='Beaded Chain'&&options.sundance_zebra_chain==='Stainless Steel')entries.push({label:'Stainless Steel Bead Chain',net:10,page:9});
   if(options.sundance_zebra_assembly==='Two on one')entries.push({label:'Two-on-one side-by-side alignment',net:35,page:9});
+  entries.push(...sundanceZebraAccessoryEvidence(options));
   return {sourceId:sundanceZebraSourceId,entries,netSubtotal:entries.reduce((sum,e)=>sum+e.net,0),customerPriceEligible:false as const};
 }
