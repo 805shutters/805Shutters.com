@@ -1,3 +1,4 @@
+import { honeycombChargingClearance } from "@/lib/quote-v2/norman-honeycomb-charging-clearance";
 import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
 import { ultimateSavedCommonForDisplay } from "@/lib/quote-v2/norman-ultimate-assemblies";
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
@@ -11266,6 +11267,11 @@ function ShadesAndBlindsOptions({
           const quantity = Math.max(1,_lineItem.quantity ?? 1);
           const number = (key:string,label:string,max=999,min=0):GridOption => ({key,label,field:`json:${key}`,type:"number",min,max,step:"1"});
           const choice = (key:string,label:string,values:readonly string[]):GridOption => ({key,label,field:`json:${key}`,type:"select",options:values});
+          if (/charging wand/i.test(powerSource)) options.push(
+            {key:"honeycomb_charging_port_recess_inches",label:"Charging Port Recess behind Opening Face",field:"json:honeycomb_charging_port_recess_inches",type:"number",min:0,step:"0.0625",unit:'"'},
+            {key:"honeycomb_charging_opening_height_inches",label:"Clear Opening Height for Charging",field:"json:honeycomb_charging_opening_height_inches",type:"number",min:0,step:"0.0625",unit:'"'},
+            {key:"honeycomb_charging_obstruction",label:"Sill or Other Charging Obstruction",field:"json:honeycomb_charging_obstruction",type:"yes-no",noFirst:true},
+          );
           if (wand) {
             options.push(choice("honeycomb_wand_length","AutoWand Length",HONEYCOMB_WAND_LENGTHS),choice("honeycomb_wand_color","AutoWand Color",["White","Cottage White","Black"]),number("honeycomb_extra_charging_kits","Extra Charging Kits for This Line",quantity),number("honeycomb_extension_cables","Extension Cables for This Line",quantity));
             if(Number(honeycombOptions.honeycomb_extension_cables)>0)options.push(choice("honeycomb_extension_color","Extension Cable Color",["White","Black"]));
@@ -12330,8 +12336,8 @@ function ShadesAndBlindsOptions({
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,...perfectsheerSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
-  const honeycombMountingIssues = productType === "Honeycomb Shades" && authoritativeV2 ? validateHoneycombMounting({
-    manufacturerId:"norman",productId:/Patio Door Vertical/.test(String(optionsJson.honeycomb_application)) ? "vertical_honeycomb" : "honeycomb",catalogAsOf:"2026-09-20",catalogVersion:String(design?.quote_v2_selection?.catalogVersion ?? "preview-norman-honeycomb-mounting-2026-09-20-r1"),programId:"preview",quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},configuration:{...optionsJson,application:String(optionsJson.honeycomb_application ?? "Standard Horizontal"),cell_size:String(optionsJson.cell_size ?? ""),mount_type:design?.mount_type,lift_system:design?.lift_system,motor_type:design?.motor_type} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  const honeycombMountingIssues = productType === "Honeycomb Shades" && authoritativeV2 ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateHoneycombMounting(context), ...(honeycombChargingClearance(context)?.issues ?? [])])({
+    manufacturerId:"norman",productId:/Patio Door Vertical/.test(String(optionsJson.honeycomb_application)) ? "vertical_honeycomb" : "honeycomb",catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("honeycomb",new Date().toISOString().slice(0,10)),programId:"preview",quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},configuration:{...optionsJson,application:String(optionsJson.honeycomb_application ?? "Standard Horizontal"),cell_size:String(optionsJson.cell_size ?? ""),mount_type:design?.mount_type,lift_system:design?.lift_system,motor_type:design?.motor_type} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
     productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",

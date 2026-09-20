@@ -1,3 +1,4 @@
+import { honeycombChargingClearance } from "./norman-honeycomb-charging-clearance";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import type { CanonicalMotorizationSelection } from "./roller-motor-contract";
 import { sourceProvenance } from "./source-manifest";
@@ -17,7 +18,8 @@ export function honeycombMotorAccessories(s: SelectionContext) {
   const chargingWand=smart&&power.includes("charging wand"), dc=smart&&power.includes("low voltage");
   const battery=automate&&/battery|rechargeable/.test(power);
   const family=wand?"autowand":automate?"automate_home":"smart_motorization";
-  const issues: ValidationIssue[]=[], selections: CanonicalMotorizationSelection[]=[];
+  const clearance=honeycombChargingClearance(s);
+  const issues: ValidationIssue[]=[...(clearance?.issues??[])], selections: CanonicalMotorizationSelection[]=[];
   const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`honeycomb.accessory.${id}`,source:sourceProvenance("norman-motorization-guide-2026-09-16",{page}),selectedValues:{...c},explanation});
   if(wand && /breeze/.test(norm(c.fabric_class ?? c.fabric_collection ?? c.fabric_family)))add("autowand_breeze",80,"AutoWand woven Honeycomb is available in Windsong and Ashton; Breeze is not listed for this system.");
   const present=(key:string)=>c[key]!=null&&c[key]!=="";
@@ -52,7 +54,7 @@ export function honeycombMotorAccessories(s: SelectionContext) {
   const cableExit=String(c.honeycomb_power_cable_exit??"Front of Headrail");
   if(present("honeycomb_power_cable_exit")&&(!(smart&&!chargingWand)||!["Front of Headrail","Back of Headrail","Top of Headrail"].includes(cableExit)||cableExit==="Top of Headrail"&&norm(c.mount_type)!=="outside mount"))add("cable_exit",11,"AC/DC cable exit is front or back of the headrail; top exit requires outside mount.");
   if(smart&&power.includes("ac adapter")&&order?.adapterWatts===65&&norm(c.mount_type)==="outside mount"&&cableExit==="Back of Headrail"&&Number(c.honeycomb_shim_layers??0)<1)add("65w_back_shim",17,"Outside-mounted 65W Honeycomb with a back cable exit requires at least one shim behind each mounting bracket.");
-  return {selections,issues,record:{version:1,family,network,sourceId:"norman-motorization-guide-2026-09-16",sourcePages:wand?[80,81,82]:automate?[66,67,68,69]:[10,11,12,13,14,15,16,17,18],quantityBasis:"per_line",extraChargingKits:kits,extraHarnesses:harnesses,includedHarnesses:dc?s.quantity:0,repeaters,solarPanels:solar?s.quantity:0,
+  return {selections,issues,record:{...(clearance?{chargingClearance:clearance.record}:{}),version:1,family,network,sourceId:"norman-motorization-guide-2026-09-16",sourcePages:wand?[80,81,82]:automate?[66,67,68,69]:[10,11,12,13,14,15,16,17,18],quantityBasis:"per_line",extraChargingKits:kits,extraHarnesses:harnesses,includedHarnesses:dc?s.quantity:0,repeaters,solarPanels:solar?s.quantity:0,
     extension:extensions?{quantity:extensions,length:118,color:c.honeycomb_extension_color??null}:null,
     chargingExtensionPoles:extensionPoles,chargingExtensionPoleLength:extensionPoles?36:null,
     chargingWand:chargingWand?{type:c.motor_type,length:35.5,color:"Black",wiredConnectorLength:power.includes("wired charging")?59:null,includedExtensionLength:power.includes("wired charging")?78.74:null}:null,
