@@ -513,7 +513,8 @@ function rowMatchesMtsContext(
   optionsJson: Record<string, unknown>,
   row: ProductColorOption,
 ): boolean {
-  if (row.productId.startsWith("sundance_")) return sundanceCellularColorMatchesContext(row, optionsJson);
+  if (row.productId === "sundance_cellular") return sundanceCellularColorMatchesContext(row, optionsJson);
+  if (row.productId === "sundance_walden_premier" || row.productId === "sundance_walden_select") return true;
   if(isOnyxHeldProduct(row.productId))return getMtsProductColorProductIds(productType,optionsJson).includes(row.productId);
   switch (productType) {
     case "Roman Shades": {

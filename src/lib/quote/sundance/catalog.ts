@@ -1,3 +1,4 @@
+import { sundanceWaldenSource } from "./walden-assortment";
 import { sundanceDraperyTrack } from "./drapery-track";
 import { SUNDANCE_CELLULAR_PROGRAMS, sundanceCellularSource } from "./cellular-assortment";
 import catalogJson from "../catalog/sundance.catalog.json";
@@ -13,9 +14,17 @@ export const sundanceCatalog: Catalog = {
       priceGroup: Object.entries(SUNDANCE_CELLULAR_PROGRAMS).find(([, id]) => id === program.id)?.[0] ?? null,
       fabricCollections: [{ category: "Exact cellular color/cell codes", fabrics: sundanceCellularSource.rows.filter(row => SUNDANCE_CELLULAR_PROGRAMS[row.priceGroup] === program.id).map(row => row.code) }],
     })),
-  })), sundanceDraperyTrack],
+  })).map(product => {
+    const rows = sundanceWaldenSource.rows.filter(row => row.productId === product.id);
+    return rows.length ? {...product, fabricRouting: Object.fromEntries(rows.map(row => [row.code,row.programId])),
+      programs: product.programs.map(program => ({...program,
+        priceGroup: rows.find(row => row.programId === program.id)?.priceGroup ?? null,
+        fabricCollections: [{category:"Exact Walden material codes",fabrics:rows.filter(row => row.programId === program.id).map(row => row.code)}],
+      })),
+    } : product;
+  }), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r5";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r6";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);
