@@ -1,11 +1,11 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 14:09
-- Completed: eight Roman production drafts repriced, saved/reopened and customer previews matched; native All-lines copy now saves onto existing priced designs without deleting historical snapshots (live UI proof plus automated preservation tests).
-- In progress: six Norman shutter panel records; atomic form-save repair passed 5,758 tests and is deploying as bd014428. Account pricing remains held.
-- Ready for integration: Norman Roman yardage/pillow-cover destinations (201/157 source colors, natural units, explicit price holds); Lotus vertical component/control rules and plain-language measurement output.
-- Agents: Onyx agent audits remaining Norman wood/faux rules; Sundance agent completes vertical assortment/valance schedules and live Portfolio/Zebra proof; Lotus agent completes current configuration live proof and precise results ledger.
-- Remaining: source conflicts and option gaps by family, production proof of each new destination, consolidated exact exceptions ledger. No fully certified Norman family claim.
-- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to 805; no account factors changed.
+## Current checkpoint — September 20, 15:06
+- Completed live: combined release b199da0c includes Honeycomb mounting and charging access, vertical Butt Together controls, Sundance Portfolio/SheerView source rules, and historical SmartFold revision recognition. Gate: 5,934 passed, 28 skipped; typecheck/build passed.
+- In progress: Honeycomb mounting boundary and save/reopen proof in 805-0343; SmartFold accessory persistence passed in 805-0342, while its broader automatic-pricing hold remains.
+- Next release: Roller installation hardware and common-valance records, measured At Gaps joinery, shared assembly issue routing, copy refresh, and Honeycomb specialty net geometry. Combined release 87b6912f is running its production gate.
+- Agents: Onyx agent handles Roller motorization and bounded SmartFold eligibility; Sundance agent handles remaining cellular controls and live source-option proof; Lotus agent verifies vertical pair persistence and shared-valance geometry.
+- Remaining: exact family exceptions, current source assortment reconciliation and dealer-price evidence, production proof for new controls, refreshed results ledger. No fully certified Norman family claim.
+- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to 805. Dealer factors remain unchanged.
 
 - [x] Isolate current main; preserve unrelated canonical changes.
 - [x] Inventory 14 families, 47 programs, 1,288 color identities, 678 Honeycomb color/cell routes and 544 option records.

@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-20",
+  "deployment": "f9fb2389",
+  "quote": "805-0342",
+  "alternative": "B",
+  "customer": "Norman SmartFold Assembly Internal Verification 2026-09-19",
+  "configuration": {
+    "room": "Office",
+    "orderedWidth": 36,
+    "orderedHeight": 60,
+    "quantity": 4,
+    "fabric": "Louise F1709 White Jade",
+    "mount": "Outside Mount",
+    "installation": "Back / Wall Mount with Raceway",
+    "fold": 6,
+    "valance": "No Valance",
+    "power": "Norman Smart Rechargeable Battery (AC Charger)",
+    "remote": "Basic Remote",
+    "motorPosition": "Right",
+    "hubRequired": "No",
+    "extraChargingKits": 2,
+    "extensionCables": 3
+  },
+  "observedAfterCloseAndReopen": {
+    "includedChargingKits": 2,
+    "motorCount": 4,
+    "kitsSuppliedOnLine": 2,
+    "extensionLength": 78.74,
+    "extensionColor": "Black",
+    "adapterWatts": 36,
+    "quoteSaved": true,
+    "pricingStatus": "blocked"
+  },
+  "automatedOnly": {
+    "extraAccessoryRetail": 215,
+    "formula": "2*43 + 3*43; once per line, not multiplied by four shades"
+  },
+  "unresolved": "SmartFold product rule status remains restriction_source_incomplete. This verifies saved accessory quantities and derived allocation, not live customer pricing.",
+  "sent": false,
+  "orderPlaced": false
+}
