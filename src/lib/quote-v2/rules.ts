@@ -6,6 +6,7 @@ import { validateLotusVertical } from "./lotus-vertical";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
+import { validateSundanceExteriorZipConfiguration } from "@/lib/quote/sundance/exterior-zip-configuration";
 import { validateSundancePortfolioConfiguration } from "@/lib/quote/sundance/portfolio-configuration";
 import { validateSundanceSheerviewConfiguration } from "@/lib/quote/sundance/sheerview-configuration";
 import { romanHardware } from "./norman-roman-hardware";
@@ -2415,6 +2416,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...(romanFabricLimits(context)?.issues ?? []));
   issues.push(...validateNormanFamilyRules(context));
+  if (context.productId === "sundance_exterior_zip") issues.push(...validateSundanceExteriorZipConfiguration(context));
   if (context.productId === "sundance_portfolio_roman") issues.push(...validateSundancePortfolioConfiguration(context));
   if (context.productId === "sundance_sheerview") issues.push(...validateSundanceSheerviewConfiguration(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));

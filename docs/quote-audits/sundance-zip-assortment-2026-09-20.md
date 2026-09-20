@@ -1,0 +1,2 @@
+
+Published Zip dimensions are now checked independently of missing grid evidence: 220-inch width and 110-inch height are accepted endpoints; exceeding either is a dimensional block. A 96 × 84 selection no longer gets a false size warning solely because this is a net square-foot product without a grid. The shared server rule also checks exact material identity/class and rejects stale grid IDs. Account pricing and complete motor compatibility remain unverified. Validation: 424 focused Sundance/catalog/rules tests and TypeScript passed.

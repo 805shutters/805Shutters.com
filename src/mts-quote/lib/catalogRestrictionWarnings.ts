@@ -1,4 +1,5 @@
 import { smartdrapeCurrentPriceProgram } from "@/lib/quote/norman-smartdrape-pricing";
+import { sundanceExteriorZipDimensionWarnings } from "@/lib/quote/sundance/exterior-zip-configuration";
 import { getProduct } from "@/lib/quote/catalog";
 
 export type CatalogRestrictionWarning = {
@@ -33,6 +34,10 @@ export function getCatalogRestrictionWarnings(
   }
   const product = getProduct(input.productId);
   if (!product) return [];
+  // A missing Zip grid is a pricing-evidence hold, not a dimensional violation.
+  if (input.productId === "sundance_exterior_zip") {
+    return sundanceExteriorZipDimensionWarnings(input.widthInches, input.heightInches);
+  }
   if (!product.programs.length) {
     if (product.priceBasis === "unavailable") {
       return [{
