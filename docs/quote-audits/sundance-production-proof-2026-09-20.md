@@ -77,3 +77,16 @@ In internal unsent 805-0335, line 10 (Primary Bathroom, 36×60, Carbon S65XN100-
 ### Copy-line refresh race found during Portfolio proof
 
 On release f9fb2389, copying Portfolio line 12 into line 15 initially displayed generic Roman controls without a manufacturer, despite the source being saved. Closing and reopening restored the copied Sundance identity, TDBU, BO01 liner and Standard drop: the persisted copy was intact. The native success handler invalidated parent line and child design queries concurrently; the child read the old cached line IDs. Current and legacy builders now await the existing parent-before-child refresh helper, and legacy child reads use current cached IDs. Validation: the slow-parent query regression and both design-copy suites passed (22 checks), plus TypeScript. Live proof of the corrected immediate copy flow is pending deployment.
+
+### Portfolio, SheerView accessory and Zip rules — production b199da0c
+
+Fresh public CRM reload and full close/reopen of internal unsent805-0335 verified:
+
+- Portfolio line12,36×60,ASE01 Knife Pleat: BO01 White liner, Cordless TDBU, Standard drop, Inside,1-inch available bracket depth, None returns, Included front valance, Yes back valance, Standard6-inch valance length, Single.
+- Standalone line15,36×12,ASE01 Valance Only: BO01 White liner, Outside,2½-inch depth, Extended returns. The standalone material remains separate from the shade grid.
+- SheerView line10,36×60,S65XN100-4 Carbon: Rechargeable Motor with Wand, Flat Square, LD-S503 Dolphin Gray, Inside,4-inch mounting depth, Flush recess, Single. One multi-channel remote and one USB10-foot charger persisted. The staff source-retail breakdown showed motor365+flatvalance47+remote167+charger78=657, explicitly excluding base shade/account factors/tax/unresolved charges and labeled not a customer price. Guide-only availability remains visible.
+- Zip line14,96×84,PROSHIELD4% BLUE SKY Premium: the old saved manufacturer-restriction message survived initial reload as historical derived metadata; changing the source fabric then restoring Blue Sky revalidated it. Reopen retained the exact material and generic manual/incomplete-price hold without the false oversize message.
+
+One old Portfolio Standard configuration lacked its newly introduced hidden interior-valance No field. The live alert exposed that migration/default edge; follow-up da8c0c41 accepts absent/null/empty as no interior valance only on Standard shades. Explicit Yes is still invalid, and Waterfall still requires an explicit selection. No pricing eligibility changed.
+
+All15 lines remain Draft. Total unavailable/13 windows need pricing; the two original manual amounts remain explicitly labeled test fixtures. No message, order, payment or sale occurred.
