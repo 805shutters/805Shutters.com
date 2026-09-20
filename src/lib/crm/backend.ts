@@ -2356,6 +2356,24 @@ export async function deleteCrmCustomerFile(
   let productIds = uniqueTextValues(payloadStringArray(payload, "productIds"));
   let contractIds = uniqueTextValues(payloadStringArray(payload, "contractIds"));
 
+  // Older clients send the synthetic rows built by buildCustomerFiles. These
+  // describe their parent records; they are not UUIDs in the product/contract tables.
+  productIds = productIds.filter((productId) => {
+    if (!productId.startsWith("job-product-")) return true;
+    if (!jobIds.includes(productId.slice("job-product-".length))) {
+      throw new CrmAuthError(400, "The product's job must be included before deleting.");
+    }
+    return false;
+  });
+  contractIds = contractIds.filter((contractId) => {
+    if (!contractId.startsWith("row-contract-")) return true;
+    const rowId = contractId.slice("row-contract-".length);
+    if (!quoteIds.includes(rowId) && !bookkeepingEntryIds.includes(rowId)) {
+      throw new CrmAuthError(400, "The document's source record must be included before deleting.");
+    }
+    return false;
+  });
+
   if (!customerIds.length && !jobIds.length && !quoteIds.length && !bookkeepingEntryIds.length && !customerName) {
     throw new CrmAuthError(400, "Customer file details are required before deleting.");
   }

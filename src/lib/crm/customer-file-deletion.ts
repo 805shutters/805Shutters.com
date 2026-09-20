@@ -14,3 +14,22 @@ export function hasCustomerSaleEvidence(record: Record<string, unknown>): boolea
 export function canDeleteCustomerFile(file: CrmCustomerFile): boolean {
   return ![...(file.customer ? [file.customer] : []), ...file.jobs, ...file.quotes, ...file.contracts, ...file.bookkeepingRows].some(record => hasCustomerSaleEvidence(record as unknown as Record<string, unknown>));
 }
+
+function uniqueCustomerFileIds(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+}
+
+export function customerFileDeletePayload(file: CrmCustomerFile) {
+  const rowQuoteIds = file.bookkeepingRows.map((row) => row.quoteId || (row.source === "crm_quote" ? row.id : null));
+  return {
+    customerName: file.customerName,
+    customerId: file.customer?.id || null,
+    jobIds: uniqueCustomerFileIds([...file.jobs.map((job) => job.id), ...file.bookkeepingRows.map((row) => row.jobId)]),
+    quoteIds: uniqueCustomerFileIds([...file.quotes.map((quote) => quote.id), ...rowQuoteIds]),
+    bookkeepingEntryIds: uniqueCustomerFileIds(
+      file.bookkeepingRows.map((row) => (row.source === "crm_quote" ? null : row.id))
+    ),
+    productIds: uniqueCustomerFileIds(file.products.filter((product) => !product.id.startsWith("job-product-")).map((product) => product.id)),
+    contractIds: uniqueCustomerFileIds(file.contracts.filter((contract) => !contract.id.startsWith("row-contract-")).map((contract) => contract.id))
+  };
+}

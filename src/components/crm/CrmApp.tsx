@@ -1,6 +1,6 @@
 "use client";
 
-import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
+import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
 
 import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
 
@@ -9875,21 +9875,6 @@ function jobMatchesSearch(job: CrmJob, query: string) {
 
 function uniqueCustomerFileIds(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
-}
-
-function customerFileDeletePayload(file: CrmCustomerFile) {
-  const rowQuoteIds = file.bookkeepingRows.map((row) => row.quoteId || (row.source === "crm_quote" ? row.id : null));
-  return {
-    customerName: file.customerName,
-    customerId: file.customer?.id || null,
-    jobIds: uniqueCustomerFileIds([...file.jobs.map((job) => job.id), ...file.bookkeepingRows.map((row) => row.jobId)]),
-    quoteIds: uniqueCustomerFileIds([...file.quotes.map((quote) => quote.id), ...rowQuoteIds]),
-    bookkeepingEntryIds: uniqueCustomerFileIds(
-      file.bookkeepingRows.map((row) => (row.source === "crm_quote" ? null : row.id))
-    ),
-    productIds: uniqueCustomerFileIds(file.products.map((product) => product.id)),
-    contractIds: uniqueCustomerFileIds(file.contracts.map((contract) => contract.id))
-  };
 }
 
 function customerFileDetailLine(parts: Array<string | number | null | undefined | false>) {
