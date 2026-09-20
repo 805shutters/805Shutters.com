@@ -6258,9 +6258,14 @@ export function ManufacturerCatalogStampChooser({
   const availablePrograms = selectedProduct
     ? usableCatalogPrograms(selectedProduct)
     : [];
+  // Fabric selections already determine the Norman grid. Do not offer the
+  // product-resetting program picker after that route has been selected.
   const programId =
     stringOption(options, "catalog_program_id") ||
     stringOption(options, "quote_lab_program_id") ||
+    (selectedProduct?.manufacturer?.trim().toLowerCase() === "norman"
+      ? stringOption(options, PRODUCT_COLOR_PROGRAM_DETAIL)
+      : null) ||
     "";
   const selectedProgram = availablePrograms.find(
     (program) => program.id === programId,

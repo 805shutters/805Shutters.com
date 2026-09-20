@@ -1299,6 +1299,26 @@ describe("V2 exact-interface contract", () => {
     expect(legacyShapeHtml).toContain('aria-label="Manufacturer: Norman"');
   });
 
+  it("does not offer a resetting program picker for a fabric-routed Norman Roman", () => {
+    const roman = catalogProduct("roman", "Norman", [
+      {id:"roman_group_1",name:"Group 1",priceAxis:"wh"},
+      {id:"roman_group_2",name:"Group 2",priceAxis:"wh"},
+    ], {productType:"Roman Shades",system:"Centerpiece Roman Shades"});
+    const render = (fabricProgram: string | null) => renderToStaticMarkup(
+      createElement(ManufacturerCatalogStampChooser, {
+        productType:"Roman Shades",
+        design:{supplier:"Norman",shade_type:"Common Valance",lift_system:"Motorized",
+          options_json:{catalog_product_id:"roman",catalog_program_id:null,
+            fabric_program_id:fabricProgram,left_panel_width:30,right_panel_width:40,panel_gap:1}} as unknown as SalesQuoteDesign,
+        manufacturerStamp:{label:"Norman",tone:"norman"},
+        onUpdateFields:()=>undefined,catalogProducts:[roman, {...roman,id:"other_roman",manufacturer:"Other"}],
+      }),
+    );
+    expect(render("roman_group_2")).not.toContain('data-testid="manufacturer-program-chooser"');
+    expect(render(null)).toContain('data-testid="manufacturer-program-chooser"');
+    expect(render("unknown")).toContain('data-testid="manufacturer-program-chooser"');
+  });
+
   it("renders a usable manufacturer chooser for a brand-new design with no identity", () => {
     const norman = catalogProduct("roller", "Norman", [
       { id: "norman_pg1", name: "Norman PG1", priceAxis: "wh" },
