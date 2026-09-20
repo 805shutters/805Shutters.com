@@ -1,3 +1,4 @@
+import { citylightsComponents } from "./norman-citylights";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
 import { validateSmartdrapeVanePacks } from "./norman-smartdrape-vane-packs";
@@ -21,7 +22,7 @@ const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [...(ultimateFauxComponents(context)?.issues ?? []),...(smartprivacyComponents(context)?.issues ?? []), ...(smartdrapeMotorAccessories(context)?.issues ?? []), ...validateSmartdrapeComponents(context), ...validateSmartdrapeHardware(context), ...validateSmartdrapeTrack(context), ...validateSmartdrapeVanePacks(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
+  const issues: ValidationIssue[] = [...(citylightsComponents(context)?.issues ?? []),...(ultimateFauxComponents(context)?.issues ?? []),...(smartprivacyComponents(context)?.issues ?? []), ...(smartdrapeMotorAccessories(context)?.issues ?? []), ...validateSmartdrapeComponents(context), ...validateSmartdrapeHardware(context), ...validateSmartdrapeTrack(context), ...validateSmartdrapeVanePacks(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];
@@ -69,7 +70,7 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     }
   }
 
-  if (context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-08-01") {
+  if (context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-08-01" && context.catalogAsOf < "2026-09-19") {
     const source = "norman-citylights-guide-2026-08-01";
     const slat = text("slat_size");
     const size = slat.startsWith("2") ? 2 : slat === "1" || slat === "1_in" ? 1 : null;

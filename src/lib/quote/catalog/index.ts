@@ -44,6 +44,11 @@ export const catalog: Catalog = {
     programs: [...product.programs, normanRollerPg4Program],
     fabricRouting: { ...product.fabricRouting, Springtide: normanRollerPg4Program.id,
       "Olivia RD": normanRollerPg4Program.id, "Etch RD": normanRollerPg4Program.id },
+  } : product.id === "citylights_aluminum" ? {
+    ...product,
+    // USA is the printed grid header, not a fabric price group. Preserve its
+    // imported program identity and explicitly designate that grid as the base.
+    pricingFamilies: [{id:"citylights_cordless",baselineProgramId:"citylights_aluminum_1in_slats_cordless_pgusa",memberProgramIds:["citylights_aluminum_1in_slats_cordless_pgusa"]}],
   } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...sanClementeProducts, ...normanContractProducts, ...polarCatalog.products, ...lotusCatalog.products, ...sundanceCatalog.products],
   motorization: { ...baseCatalog.motorization, ...polarCatalog.motorization, ...lotusCatalog.motorization },
 };

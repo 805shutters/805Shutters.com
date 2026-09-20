@@ -12,6 +12,21 @@ function currentQuote(productId: string, productType: string, code: string, opti
  return {lines:[line],designs:[design],selectedVariantByLine:{[line.id]:"A"}};
 }
 describe("Current Norman production configurations",()=>{
+ it("server-prices CityLights source hardware, saves matching and preserves customer output",()=>{
+  const q=currentQuote("citylights_aluminum","Mini Blinds","7031",{slat_size:'2"',light_control:"SmartPrivacy",control_side:"Right",citylights_wand_drop:47.25,citylights_shim_layers:2,citylights_hold_down:"Yes",citylights_matching_group:"1",shim_quantity:999});
+  q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance=null;
+  q.lines.push({...q.lines[0],id:"right",width_whole:48});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json}});q.selectedVariantByLine.right="A";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend" in p)||p.backend!=="v2")throw new Error("Expected V2");
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(421.9);
+  expect(p.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({slatSize:2,color:{code:"7031",finish:"matte"},mounting:{brackets:2,shims:4,holdDowns:2},wand:{drop:47.25,side:"Right",split:true}});
+  expect(p.designs[1].selection.configuration.norman_assembly_v1).toMatchObject({mounting:{brackets:4,shims:8}});
+  expect(p.designs[0].selection.configuration.citylights_matching_v1).toMatchObject({lineIds:["audit-line","right"]});
+  const reopened=JSON.parse(JSON.stringify(q));p.designs.forEach((d,i)=>reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration});expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
+  const customer=JSON.stringify(v2CustomerConfigurationOptions(customerConfigurationFromSelection(p.designs[0].selection)));expect(customer).toContain("Wand Drop in Inches");expect(customer).toContain("Shim Layers");expect(customer).not.toContain("dealerFactor");
+  q.designs[1].options_json={...q.designs[1].options_json,fabric_color_code:"7024"};const invalid=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in invalid)||invalid.backend!=="v2")throw new Error("Expected V2");expect(invalid.designs.every(d=>!d.result.ok)).toBe(true);
+ });
+
  it("saves Ultimate matching and common groups through the real quote backend",()=>{
   const q=currentQuote("faux_wood","Faux Wood Blinds","P001",{product_line:"Ultimate",faux_configuration_version:"faux-wood-v2",faux_blind_count:1,slat_size:'2"',finish_type:"Smooth",ultimate_matching_group:"1"});
   q.designs[0].mount_type="Outside Mount";q.designs[0].lift_system="Cordless";q.designs[0].valance="3-inch Linear";

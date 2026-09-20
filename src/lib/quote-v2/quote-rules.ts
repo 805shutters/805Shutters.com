@@ -98,6 +98,7 @@ const BLIND_MATCH_FIELDS: readonly MatchField[] = [
 
 function relationshipKind(context: SelectionContext): RelationshipKind | null {
   const product = normalizeIdentity(context.productId);
+  if (product === "citylights aluminum" && context.catalogAsOf >= "2026-09-19") return null;
   if (product === "citylights aluminum" && context.catalogAsOf >= "2026-08-01") return "citylights";
   if (product === "wood blinds" && context.catalogAsOf >= "2026-09-01") return "wood";
   if (product === "roman") return "roman";

@@ -1,3 +1,4 @@
+import { citylightsComponents, deriveCitylightsMatching } from "./norman-citylights";
 import { deriveUltimateAssemblies } from "./norman-ultimate-assemblies";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
@@ -43,6 +44,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     delete configuration[NORMAN_ASSEMBLY_KEY];
     delete configuration[PERFECTSHEER_MATCHING_KEY];
     selection.configuration = configuration;
+    const citylights=citylightsComponents(selection);
+    if(citylights)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:citylights.record};
     const ultimateFaux = ultimateFauxComponents(selection);
     if (ultimateFaux) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: ultimateFaux.record};
     const smartprivacy = smartprivacyComponents(selection);
@@ -67,6 +70,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       motorPositions: ["left", "right"], sourceId: "norman-motorization-guide-2026-09-16", sourcePage: 21,
     }};
   }
+  issues.push(...deriveCitylightsMatching(lines));
   issues.push(...deriveUltimateAssemblies(lines));
   for (const {selection} of lines) {
     const ultimate=ultimateFauxComponents(selection);

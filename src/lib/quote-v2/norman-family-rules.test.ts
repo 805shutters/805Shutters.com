@@ -8,7 +8,7 @@ import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import { authoritativeAutomaticSurchargeSelections } from "./engine";
 
 function selection(productId: string, width = 36, height = 60, configuration: SelectionContext["configuration"] = {}): SelectionContext {
-  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration: productId === "smartdrape" ? {installation_method:"Wall Mount",...configuration} : productId === "palladian_shelf" ? {shelf_supported_weight_lbs: 20, ...configuration} : productId === "smartfold" ? {mount_type:"Outside Mount",smartfold_installation:"Back / Wall Mount with Raceway",smartfold_shim_layers:0,fold_size:6,...configuration} : configuration, options: {}, catalogAsOf: "2026-09-19", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-19") };
+  return { productId, manufacturerId: "Norman", programId: null, quantity: 1, widthInches: width, heightInches: height, configuration: productId === "citylights_aluminum" ? {mount_type:"Outside Mount",fabric_color_code:"7024",mount_depth_inches:3,...configuration} : productId === "smartdrape" ? {installation_method:"Wall Mount",...configuration} : productId === "palladian_shelf" ? {shelf_supported_weight_lbs: 20, ...configuration} : productId === "smartfold" ? {mount_type:"Outside Mount",smartfold_installation:"Back / Wall Mount with Raceway",smartfold_shim_layers:0,fold_size:6,...configuration} : configuration, options: {}, catalogAsOf: "2026-09-19", catalogVersion: quoteV2CatalogVersionFor(productId, "2026-09-19") };
 }
 const rules = (s: SelectionContext) => validateNormanFamilyRules(s).map((r) => r.ruleId);
 
@@ -18,7 +18,7 @@ describe("Norman current family source rules", () => {
       expect(getMtsProductColorRows("Mini Blinds", { slat_size: `${size}\"` }).map((r) => r.colorCode).sort()).toEqual([...codes].sort());
       for (const code of codes) expect(rules(selection("citylights_aluminum", 36, 60, { slat_size: `${size}\"`, fabric_color_code: code }))).toEqual([]);
     }
-    expect(rules(selection("citylights_aluminum", 36, 60, { slat_size: '2"', fabric_color_code: "7113" }))).toContain("norman.citylights_aluminum.color_slat");
+    expect(rules(selection("citylights_aluminum", 36, 60, { slat_size: '2"', fabric_color_code: "7113" }))).toContain("norman.citylights.color_slat");
   });
   it.each([
     [1,9,10,true], [1,8.9375,10,false], [1,78,92,true], [1,78,96,false],
@@ -28,7 +28,7 @@ describe("Norman current family source rules", () => {
   });
   it("applies CityLights inside-mount deduction before checking net width", () => {
     expect(rules(selection("citylights_aluminum", 9.375,10,{slat_size:'1"',mount_type:"Inside Mount"}))).toEqual([]);
-    expect(rules(selection("citylights_aluminum", 9.3125,10,{slat_size:'1"',mount_type:"Inside Mount"}))).toContain("norman.citylights_aluminum.dimensions");
+    expect(rules(selection("citylights_aluminum", 9.3125,10,{slat_size:'1"',mount_type:"Inside Mount"}))).toContain("norman.citylights.dimensions");
   });
   it("retains reverse-image IDs while exposing exactly 15 SmartFold ordering fabrics", () => {
     const rows=getProductColorOptions("smartfold");

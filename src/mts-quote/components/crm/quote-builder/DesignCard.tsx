@@ -1,3 +1,4 @@
+import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
 import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
 import { SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS } from "@/lib/quote/norman-smartprivacy";
 import { HONEYCOMB_MOTOR_ACCESSORY_KEYS, HONEYCOMB_WAND_LENGTHS } from "@/lib/quote-v2/norman-honeycomb-motor-accessories";
@@ -9061,6 +9062,13 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Mini Blinds" && authoritativeV2 && ["mount_type","json:citylights_mount_fit","json:side_mount_bracket"].includes(field)) {
+      const options={...currentJson,citylights_bracket_installation:null};
+      if(field==="mount_type"){Object.assign(options,{citylights_mount_fit:null,mount_depth_inches:null,citylights_shim_layers:null,side_mount_bracket:null});onUpdateFields({mount_type:value as string,options_json:options});return;}
+      if(field==="json:citylights_mount_fit"){Object.assign(options,{citylights_mount_fit:value,mount_depth_inches:null,...(value==="Shallow Mounting Holes"?{side_mount_bracket:null}:{})});}
+      else Object.assign(options,{side_mount_bracket:value});
+      onUpdateFields({options_json:options});return;
+    }
     if (productType === "Mini Blinds" && field === "json:slat_size") {
       const slatSize = typeof value === "string" ? value : null;
       if (slatSize) requestOpenOptionField("json:color");
@@ -9068,6 +9076,7 @@ function ShadesAndBlindsOptions({
         options_json: {
           ...withoutProductColorDetails(currentJson),
           slat_size: slatSize,
+          citylights_wand_drop:null, citylights_mount_fit:null, mount_depth_inches:null, citylights_bracket_installation:null, control_side:null,
           color: null,
           light_control: getMiniBlindDefaultLightControl(slatSize),
           side_mount_bracket: slatSize === '2"' ? currentJson.side_mount_bracket : null,
@@ -11838,53 +11847,23 @@ function ShadesAndBlindsOptions({
       }
 
       case "Mini Blinds": {
-        const slatSize = getFieldValue(design, "json:slat_size");
+        const slatSize=getFieldValue(design,"json:slat_size"),one=slatSize==='1"',inside=getFieldValue(design,"mount_type")==="Inside Mount";
+        const netWidth=measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)-(inside?.375:0);
+        const select=(key:string,label:string,options:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options});
+        const number=(key:string,label:string,min=0):GridOption=>({key,label,field:`json:${key}`,type:"number",min,step:"0.0625",unit:"in"});
         return [
-          ...(authoritativeV2 ? [{ key: "side_by_side", label: "Side by Side", field: "json:side_by_side", type: "yes-no" as const, noFirst: true }] : []),
-          {
-            key: "mount",
-            label: "Mount Type",
-            field: "mount_type",
-            type: "buttons",
-            options: MINI_BLIND_MOUNT_TYPES,
-          },
-          {
-            key: "slat_size",
-            label: "Slat Size",
-            field: "json:slat_size",
-            type: "buttons",
-            options: MINI_BLIND_SLAT_SIZES,
-          },
-          {
-            key: "color",
-            label: "Color",
-            field: "json:color",
-            type: "select",
-            options: [] as readonly string[],
-          },
-          {
-            key: "slat_finish",
-            label: "Slat Finish",
-            field: "json:slat_finish",
-            type: "buttons",
-            options: [CITYLIGHTS_FINISH_BY_CODE[String(optionsJson.fabric_color_code ?? "")] ?? "Standard"],
-          },
-          {
-            key: "light_control",
-            label: "Light Control",
-            field: "json:light_control",
-            type: "buttons",
-            options: getMiniBlindLightControlOptions(slatSize),
-          },
-          ...(slatSize === '2"'
-            ? [{
-                key: "side_mount_bracket",
-                label: "Side Mount Bracket",
-                field: "json:side_mount_bracket",
-                type: "yes-no" as const,
-                noFirst: true,
-              }]
-            : []),
+          {key:"mount",label:"Mount Type",field:"mount_type",type:"buttons",options:MINI_BLIND_MOUNT_TYPES},
+          {key:"slat_size",label:"Slat Size",field:"json:slat_size",type:"buttons",options:MINI_BLIND_SLAT_SIZES},
+          {key:"color",label:"Color",field:"json:color",type:"select",options:[]},
+          {key:"slat_finish",label:"Slat Finish",field:"json:slat_finish",type:"buttons",options:[CITYLIGHTS_FINISH_BY_CODE[String(optionsJson.fabric_color_code??"")]??"Standard"]},
+          {key:"light_control",label:"Light Control",field:"json:light_control",type:"buttons",options:getMiniBlindLightControlOptions(slatSize)},
+          ...(authoritativeV2?[
+            select("citylights_wand_drop","Wand Drop",CITYLIGHTS_WANDS[one?1:2]),
+            ...(inside?[select("citylights_mount_fit","Recess Arrangement",one?["Fully Recessed","Minimum Depth"]:["Fully Recessed","Minimum Depth","Shallow Mounting Holes"]),number("mount_depth_inches","Mounting Depth")]:[select("citylights_shim_layers","Shim Layers",["0","1","2"])]),
+            ...(!one&&inside&&optionsJson.citylights_mount_fit!=="Shallow Mounting Holes"?[{key:"side_mount_bracket",label:"Side Mount Bracket",field:"json:side_mount_bracket",type:"yes-no" as const,noFirst:true},...(optionsJson.side_mount_bracket==="Yes"?[select("citylights_bracket_installation","Bracket Support",netWidth<=37?["Top Support","Side Only"]:["Top Support"])]:[])]:[]),
+            {key:"citylights_hold_down",label:"Hold-down Brackets",field:"json:citylights_hold_down",type:"yes-no" as const,noFirst:true},
+            select("citylights_matching_group","Side-by-Side Matching Group",["None","1","2","3","4","5","6","7","8","9","10"]),
+          ]:[]),
         ];
       }
 
