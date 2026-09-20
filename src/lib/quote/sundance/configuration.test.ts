@@ -7,7 +7,6 @@ import { sundanceDraperyTrackFields, SUNDANCE_DRAPERY_TRACK_ID } from "./drapery
 import { buildUiCatalog } from "../ui-catalog";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
 import { priceDesign } from "../pricing";
-import type { SalesQuoteDesign } from "@mts/types/quote";
 
 describe("Sundance saved manual configuration", () => {
   it("selects exact fabric identity and clears it when an incompatible filter is changed", () => {
@@ -20,7 +19,7 @@ describe("Sundance saved manual configuration", () => {
     expect(sundanceCellularSelectionPatch(changed,"sundance_cellular:PU422SS-766")).toBeNull();
   });
   it("renders filtered cellular choices in the dedicated manual panel", () => {
-    const markup=renderToStaticMarkup(createElement(SundanceDesignOptions,{productId:'sundance_cellular',design:{options_json:{cell_size:'3/4"',light_control:'Blackout'}} as SalesQuoteDesign,onUpdateFields:()=>{}}));
+    const markup=renderToStaticMarkup(createElement(SundanceDesignOptions,{productId:'sundance_cellular',design:{options_json:{cell_size:'3/4"',light_control:'Blackout'}},onUpdateFields:()=>{}}));
     expect(markup).toContain('PU422SS-766');
     expect(markup).not.toContain('PS41RA-023');
     expect(markup).toContain('dealer-confirmed manual price');

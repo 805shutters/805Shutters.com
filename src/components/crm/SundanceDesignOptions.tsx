@@ -6,7 +6,7 @@ import type { SalesQuoteDesign } from "@mts/types/quote";
 
 /** Source-backed identity capture while the manufacturer's full pricing rules remain gated. */
 export function SundanceDesignOptions({ design, productId, onUpdateFields }: {
-  design: SalesQuoteDesign | undefined;
+  design: Pick<SalesQuoteDesign, "options_json"> | undefined;
   productId: string;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
