@@ -3545,8 +3545,10 @@ export function parseDeferredNumberDraft(value: string): number | null | undefin
 
 // --- Step/Grid logic for Standard Shutter ---
 
-function getDefiningSteps(design: SalesQuoteDesign | undefined, authoritativeV2 = false): DefiningStep[] {
+export function getDefiningSteps(design: SalesQuoteDesign | undefined, authoritativeV2 = false): DefiningStep[] {
   if (authoritativeV2 && design?.supplier === "Norman") return [{key:"norman_program",label:"Norman Program",field:"material",options:NORMAN_BINDER_SHUTTER_PROGRAMS.map(p=>p.name)}];
+  // Exact Onyx programs are selected above the configuration grid; never route them through the legacy wood choice.
+  if (authoritativeV2 && design?.supplier === "Onyx" && (design.options_json as Record<string, unknown> | undefined)?.catalog_product_id === "onyx_shutters") return [];
   const steps: DefiningStep[] = [];
   const opts = (design?.options_json as Record<string, string>) || {};
 
@@ -3581,7 +3583,7 @@ function getDefiningSteps(design: SalesQuoteDesign | undefined, authoritativeV2 
   return steps;
 }
 
-function isStandardShutterComplete(design: SalesQuoteDesign | undefined): boolean {
+export function isStandardShutterComplete(design: SalesQuoteDesign | undefined, authoritativeV2 = false): boolean {
   if (!design?.supplier) return false;
   const opts = design.options_json as Record<string, string>;
 
@@ -3592,6 +3594,7 @@ function isStandardShutterComplete(design: SalesQuoteDesign | undefined): boolea
   }
 
   if (design.supplier === "Onyx") {
+    if (authoritativeV2 && opts?.catalog_product_id === "onyx_shutters") return Boolean(opts.catalog_program_id && design.material);
     if (!opts?.material_type) return false;
     return !!design.material;
   }
@@ -6945,7 +6948,7 @@ function ShutterDesignOptions({
   const definingSteps = mobilePresentation
     ? allDefiningSteps.filter((step) => step.field !== "json:wood_route")
     : allDefiningSteps;
-  const standardComplete = isStandardShutterComplete(workingDesign);
+  const standardComplete = isStandardShutterComplete(workingDesign, authoritativeV2);
   const useOldSteps = isTrackedOrSpecialty(workingDesign);
   const optionsJson = (workingDesign.options_json as Record<string, unknown>) || {};
   const definingOptions: GridOption[] = definingSteps.map((step) => ({

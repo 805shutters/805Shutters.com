@@ -21,6 +21,8 @@ import {
   canonicalRollerMotorizationSelections,
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
+  getDefiningSteps,
+  isStandardShutterComplete,
   ManufacturerCatalogStampChooser,
   ManualQuoteOnlyBadge,
   mobileShutterMaterialRoutePatch,
@@ -1548,5 +1550,22 @@ describe("current Onyx portal choices", () => {
       expect(options("tilt_type")).toEqual(["H2 - Hidden Tiltrod Notch On Louver"]);
       expect(options("hinge_color")).toEqual(["White"]);
     }
+  });
+});
+
+
+describe("exact Onyx configuration entry", () => {
+  it("opens the grid after exact program selection without redirecting to legacy wood routing", () => {
+    for (const [id, name] of [["onyx_us_made_vinyl", "Onyx U.S. Made Vinyl"], ["vlo_hybrid", "MDF Hybrid"], ["painted_basswood", "Basswood"]]) {
+      const product = catalogProduct("onyx_shutters", "Onyx", [{id, name, priceAxis:"sqft"}], {productType:"Shutters"});
+      const patch = buildCatalogSelectionPatch({}, product, id);
+      const saved = JSON.parse(JSON.stringify({...buildDraftShutterDesign("A", true), ...patch})) as SalesQuoteDesign;
+      expect(getDefiningSteps(saved, true)).toEqual([]);
+      expect(isStandardShutterComplete(saved, true)).toBe(true);
+      expect(getStandardShutterGridOptions(saved, true).some(option => option.field === "louver_size")).toBe(true);
+      expect(isStandardShutterComplete({...saved, material:null}, true)).toBe(false);
+    }
+    const legacy = {...buildDraftShutterDesign("A", false), supplier:"Onyx"} as SalesQuoteDesign;
+    expect(getDefiningSteps(legacy, false).map(step => step.field)).toContain("json:wood_route");
   });
 });
