@@ -1,3 +1,4 @@
+import { smartfoldCharging } from "./norman-smartfold-charging";
 import { romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
 import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
@@ -1207,6 +1208,9 @@ function resolveSmartFold(context: SelectionContext, config: MotorConfig): Norma
     components.push(...panelSelections(context, "smart_motorization"));
   }
   const limits: SourceBackedMotorLimits = { id: autowand ? "autowand" : rechargeable ? "rechargeable" : "ac_dc", minWidth: autowand ? 22 : rechargeable ? 24 : 16, maxWidth: 96, minHeight: Number(value(context, "fold_size")) === 8 ? 15.125 : Number(value(context, "fold_size")) === 7 ? 13.625 : 12, maxHeight: 96, sourcePage: autowand ? 93 : 56 };
+  const charging = smartfoldCharging(context);
+  components.push(...(charging?.selections ?? []));
+  issues.push(...(charging?.issues ?? []));
   const oldIssues = [...validateControlAndPosition(context, config, autowand ? "autowand" : "norman_smart", [limits.sourcePage]), ...dimensionIssues(context, [limits], "smartfold.motorization.dimension"), ...canonicalContractIssues(config, components, [limits.sourcePage])];
   issues.push(...oldIssues.map(i => ({ ...i, source: sourceProvenance("norman-motorization-guide-2026-09-16", { page: limits.sourcePage }) })));
   if (context.catalogAsOf < "2026-10-01" && normalized(value(context, "motor_revision")).includes("october")) issues.push({ severity: "hard_block", ruleId: "smartfold.motorization.revision_not_effective", source: sourceProvenance("norman-smartfold-guide-2026-09-10", { page: 2 }), selectedValues: { motor_revision: value(context, "motor_revision") ?? null }, explanation: "The October SmartFold motor upgrade is not effective before October 1, 2026." });
@@ -1330,7 +1334,7 @@ export function validateNormanShadeMotorization(
   context: SelectionContext,
 ): readonly ValidationIssue[] {
   const resolution = resolveNormanShadeMotorization(context);
-  if (!resolution) return romanMotorAccessories(context)?.issues ?? honeycombMotorAccessories(context)?.issues ?? [];
+  if (!resolution) return smartfoldCharging(context)?.issues ?? romanMotorAccessories(context)?.issues ?? honeycombMotorAccessories(context)?.issues ?? [];
   return resolution.issues;
 }
 

@@ -1,5 +1,6 @@
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
 import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
+import { NormanSmartfoldChargingOptions } from "@/components/crm/NormanSmartfoldChargingOptions";
 import { NormanShutterPanelOptions } from "@/components/crm/NormanShutterPanelOptions";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
@@ -6037,6 +6038,7 @@ export function DesignCard({
         )}
 
         {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldChargingOptions design={currentDesign} quantity={lineItem.quantity} onUpdateFields={updateFields} />}
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.productId && isLotusObservedProduct(manufacturerOptionsRoute.productId) ? (

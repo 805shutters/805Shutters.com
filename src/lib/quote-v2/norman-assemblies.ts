@@ -1,3 +1,4 @@
+import { smartfoldCharging } from "./norman-smartfold-charging";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { deriveRomanMatching } from "./norman-roman-matching";
 import { romanHardware } from "./norman-roman-hardware";
@@ -261,11 +262,22 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:networkSourcePage}}};
     }
   }
+  for(const {selection} of lines) {
+    const charging=smartfoldCharging(selection);
+    if(!charging)continue;
+    issues.push(...charging.issues);
+    selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...(selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord),motorAccessories:charging.record}};
+  }
   // Allocate included kits across selected lines, not once per line.
   // Do not merge charging connectors or infer a shared dealer order across products.
   const chargingGroups = new Map<string, typeof lines[number][]>();
   for (const line of lines) {
     const s=line.selection, power=normalizeIdentity(s.configuration.motor_type);
+    if(s.productId==="smartfold") {
+      const charging=smartfoldCharging(s),key=charging?.includedFamily;
+      if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
+      continue;
+    }
     if(!["perfectsheer","smartdrape","honeycomb","roman"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
     const key=s.productId==="roman" ? power==="autowand"?"roman_autowand":isRomanSmartPower(power) && power.includes("rechargeable")?"roman_smart_36w":power.includes("automate") && power.includes("arc")?"roman_automate_5v":null : s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
     if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
@@ -274,13 +286,13 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const connectedLineIds=members.map(m=>m.lineId).sort();
     const motors=members.reduce((n,m)=>n+m.selection.quantity*(m.selection.productId === "roman" && /common valance|day night/.test(normalizeIdentity(m.selection.configuration.shade_type))?2:1),0);
     const kits=family.endsWith("automate_5v")?motors:Math.ceil(motors/3);
-    const page=family==="roman_autowand"?85:family==="roman_smart_36w"?22:family==="roman_automate_5v"?74:family==="honeycomb_autowand_usb_c"?81:family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
+    const page=family==="smartfold_autowand"?94:family==="smartfold_smart_36w"?57:family==="roman_autowand"?85:family==="roman_smart_36w"?22:family==="roman_automate_5v"?74:family==="honeycomb_autowand_usb_c"?81:family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
     for(const line of members) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,includedChargingKits:{
         version:1,productId:line.selection.productId,family,connectedLineIds,ownerLineId:connectedLineIds[0],motorQuantity:motors,
         orderQuantity:kits,fulfillmentQuantity:line.lineId===connectedLineIds[0]?kits:0,retailCharge:0,
-        description:family==="roman_autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="roman_smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":family==="honeycomb_autowand_usb_c"?"White 78.75-inch USB-C cable; 5V charger excluded":family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
+        description:family==="smartfold_autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smartfold_smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":family==="roman_autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="roman_smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":family==="honeycomb_autowand_usb_c"?"White 78.75-inch USB-C cable; 5V charger excluded":family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
         sourceId:"norman-motorization-guide-2026-09-16",sourcePage:page,
       }}};
     }
