@@ -1,0 +1,137 @@
+{
+  "observedDate": "2026-09-20",
+  "release": "bc4bea39",
+  "url": "https://www.805shutters.com",
+  "quote": "805-0333",
+  "customer": "Onyx Catalog Verification 2026-09-20",
+  "status": "Draft / Pricing incomplete",
+  "verification": "Closed builder, located quote in Quotes list, reopened; all8 exact selections and30x60 dimensions retained",
+  "customerDelivery": {
+    "sendQuoteDisabled": true,
+    "sendPaymentLinkDisabled": true,
+    "total": "unavailable"
+  },
+  "scope": "Representative saved selection for every new family. Exhaustive734 identities are code/adapter-tested; this does not certify all options, combinations or prices.",
+  "lines": [
+    {
+      "productId": "onyx_signature_roller",
+      "collection": "Amelia BO_ZG601",
+      "colorCode": "20205BO_01",
+      "colorName": "White",
+      "room": "Office",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_signature_sunscreen",
+      "collection": "1% SC-1_s1001",
+      "colorCode": "S1001_01",
+      "colorName": "Ice White",
+      "room": "Family Room",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_signature_zebra",
+      "collection": "Arcadia BO_A242",
+      "colorCode": "A242_1",
+      "colorName": "Cloud Meadow",
+      "room": "Dining Room",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_lux_fabric_blinds",
+      "collection": "2\" Light Filtering_FB_PG1",
+      "colorCode": "FB_PG1_50016",
+      "colorName": "Slate",
+      "room": "Kitchen",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_lux_honeycomb",
+      "collection": "3/4 Single LF_HC_PG05",
+      "colorCode": "HC_PG05_H45034M",
+      "colorName": "Roswell",
+      "room": "Breakfast Nook",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_lux_sheerview",
+      "collection": "2\" Light Filtering_S50PN",
+      "colorCode": "S50PN100",
+      "colorName": "Bright White",
+      "room": "Hall",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_woven",
+      "collection": "WP_Walden Premier_WP_Walden Premier",
+      "colorCode": "WP_ArtisanWeave",
+      "colorName": "Artisan Weave",
+      "room": "Foyer",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    },
+    {
+      "productId": "onyx_ash_shutters",
+      "collection": "Ash",
+      "colorCode": "215",
+      "colorName": "Java",
+      "room": "Primary Bedroom",
+      "width": 30,
+      "height": 60,
+      "quantity": 1,
+      "selectionPreserved": true,
+      "pricing": "held"
+    }
+  ],
+  "finalRelease": "d28bd77d",
+  "finalApplicationAndHingeProof": {
+    "usMadeApplications": [
+      "Regular",
+      "French Door"
+    ],
+    "importedHinges": [
+      "White",
+      "Cream",
+      "Antique Brass",
+      "Bright Brass",
+      "Nickle",
+      "Black"
+    ],
+    "ashSavedReopened": {
+      "hinge": "Black",
+      "frame": "L Outside",
+      "shape": "Regular",
+      "louver": "3.5",
+      "tilt": "C",
+      "color": "onyx_ash_shutters:onyx_ash:215"
+    },
+    "customerDeliveryHeld": true
+  }
+}

@@ -8,7 +8,7 @@ Authenticated source: Onyx dealer portal, account CHE01, California Home Exterio
 
 Commits `3a7d17c9` and `338e4ad5` preserve existing catalog identities and historical prices. They add account-scoped current assortment evidence; material-specific picker choices; and matching server validation for color, frame, louver, tilt, and US-made hinge restrictions. Painted/stained Bassia are separately enforced. Binder frame names require an unambiguous current frame mapping. Unknown and generic hidden tilt selections remain held until an exact source code is provided. Existing construction/pricing holds are preserved.
 
-The original shutter fixes are verified live in internal quote805-0333. The additional eight held catalog destinations and application/hinge repairs are implemented and tested but await release and live verification. All automatic pricing evidence gaps remain open.
+The original shutter fixes are verified live in internal quote805-0333. All eight held catalog destinations and application/hinge repairs are deployed and representative selections are verified live in0333; details are recorded below. All automatic pricing evidence gaps remain open.
 
 ## Current shutter ledger
 
@@ -20,11 +20,11 @@ Every row is sourced to https://admin.onyxshutters.com/OrderDetail.aspx and the 
 | Sycamore | secamore | 15 | 23 | 2.5, 3.5, 4.5 | C, H1, H2, H3, O | Dealer rate conflict; exact specialty and charge coverage |
 | Vinyl | vinyl | 15 | 14 | 2.5, 3.5, 4.5 | C, H2, H3, O | Dealer rate conflict; exact specialty and charge coverage |
 | VLO | vlo_hybrid | 13 | 23 wood frames | 2.5, 3.5, 4.5 | C, H2, H3, O | Dealer rate conflict; exact specialty and charge coverage |
-| Ash | onyx_ash_shutters / onyx_ash (implemented, awaiting live proof) | 31 | 23 | 2.5, 3.5, 4.5 | C, H1, H2, H3, O | Complete restrictions/charges unresolved; distinct destination, not Poly Composite |
+| Ash | onyx_ash_shutters / onyx_ash (deployed; held selection verified) | 31 | 23 | 2.5, 3.5, 4.5 | C, H1, H2, H3, O | Complete restrictions/charges unresolved; distinct destination, not Poly Composite |
 | US Made Vinyl | onyx_us_made_vinyl | 2 | 5 | 3.5 only | H2 only | Dealer rate conflict; French-door rules, sill-plate side codes and charges |
 | Poly Composite (legacy CRM) | poly_composite | Unverified | Unverified | Unverified | Unverified | Not present as a material in current dealer ordering menu; no discontinuation evidence, preserve historical identity |
 
-Current imported hinges are White, Cream, Antique Brass, Bright Brass, Nickle and Black (Paint to Match disabled). The application/hinge follow-up implements these choices in the UI and server, pending deployment. Frame-side variants, shape-specific options, raised/flat panels, flush rails, hinge dependencies and all size limits still require reconciliation.
+Current imported hinges are White, Cream, Antique Brass, Bright Brass, Nickle and Black (Paint to Match disabled). The application/hinge follow-up implements these choices in the UI and server, deployed and verified live. Frame-side variants, shape-specific options, raised/flat panels, flush rails, hinge dependencies and all size limits still require reconciliation.
 
 ## Account price comparisons
 
@@ -43,7 +43,7 @@ No dealer factor, customer markup, shipping, tax or selling-price policy was cha
 
 ## Shade assortment reconciliation
 
-The current order-program menu has Onyx Signature, Onyx Lux and Woven. The initial audit found no CRM destinations; eight distinct held destinations are now implemented, awaiting release/live proof. Exact Signature menu inventory is in `signature-assortment.json`: **33 fabric groups and293 color identities** (Roller20/185, Sunscreen3/33, Zebra10/75). Each row has source, observation date, effective-date unknown, exact color IDs/names and the exception `missing_catalog_and_grids`. Their implemented destinations preserve exact source identities; pricing remains held.
+The current order-program menu has Onyx Signature, Onyx Lux and Woven. The initial audit found no CRM destinations; eight distinct held destinations are now implemented, now deployed with representative family save/reopen proof. Exact Signature menu inventory is in `signature-assortment.json`: **33 fabric groups and293 color identities** (Roller20/185, Sunscreen3/33, Zebra10/75). Each row has source, observation date, effective-date unknown, exact color IDs/names and the exception `missing_catalog_and_grids`. Their implemented destinations preserve exact source identities; pricing remains held.
 
 Signature visible options include IM/OM (IM factory width deduction1/8 inch), continuous cord/cordless/motorization, product-specific cassettes, cassette colors/wrap, cord color/position, bottom rail/color/wrap, same-order side-by-side alignment conditions and custom cord-length surcharge $10. Roller and Zebra cassette/bottom-rail menus differ. Motor variants, combinations, grids, dimensions, freight and effective schedule remain unverified. Lux and Woven enumeration is complete below.
 
@@ -51,11 +51,11 @@ Signature visible options include IM/OM (IM factory width deduction1/8 inch), co
 
 Unsubmitted comparison drafts preserved:123320 / AUDIT0920ONYX (five imported shutter lines);123321 / AUDIT0920US (one US-made line);123322 / AUDIT0920SIGN (three shade price fixtures);123323 / AUDIT0920LUX (three fixtures);123324 / AUDIT0920WOVEN (two fixtures). Side mark INTERNAL AUDIT DO NOT ORDER. No checkout, order placement, warranty acceptance or payment performed.
 
-The original live CRM proof below confirms: US-made only Pure White/White, 3.5-inch louvers, H2, White hinges and five current frames; VLO current wood frames and no Butter/Gray/H1; Bassia painted/stained separation and exact codes; invalid saved/server configurations blocked; save/reopen representative quotes preserves selection and customer output. The new shade/Ash destinations and application/hinge follow-up still require live save/reopen proof. Complete grids and compatibility remain unresolved.
+The original live CRM proof below confirms: US-made only Pure White/White, 3.5-inch louvers, H2, White hinges and five current frames; VLO current wood frames and no Butter/Gray/H1; Bassia painted/stained separation and exact codes; invalid saved/server configurations blocked; save/reopen representative quotes preserves selection and customer output. The new shade/Ash destinations and application/hinge follow-up have passed the live save/reopen checks below. Complete grids and compatibility remain unresolved.
 
 ## Completed Lux / Woven assortment enumeration
 
-`lux-assortment.json` captures every visible Lux product/pattern/color entry: Fabric Blinds4 groups/108 colors, Honeycomb6/144, Sheerview6/65, total16/317. `woven-assortment.json` captures Walden Premier36 and Walden Select57 colors, total2/93. Signature + Lux + Woven total **51 groups and703 exact color identities**, each mapped to an implemented held CRM destination, awaiting deployment/live proof. Source anomalies such as `FB_PG2_50446` appearing under FB_PG1, `HC_PG01_65100D` under FB_PG4, and repeat color names with different codes are deliberately preserved, not silently normalized.
+`lux-assortment.json` captures every visible Lux product/pattern/color entry: Fabric Blinds4 groups/108 colors, Honeycomb6/144, Sheerview6/65, total16/317. `woven-assortment.json` captures Walden Premier36 and Walden Select57 colors, total2/93. Signature + Lux + Woven total **51 groups and703 exact color identities**, each mapped to an implemented held CRM destination, with representative family save/reopen verified. Source anomalies such as `FB_PG2_50446` appearing under FB_PG1, `HC_PG01_65100D` under FB_PG4, and repeat color names with different codes are deliberately preserved, not silently normalized.
 
 Lux honeycomb offers cordless, continuous cord, TDBU cordless and motorization; tile cut displays $7 per blind. Fabric blinds offer cordless/motor, Dover/Westminister/no valance, return options and cloth tapes. Sheerview offers continuous cord/cordless/motor, curved/flat valance, cord/metal/plastic chain and $10 custom cord-length surcharge. These are menu observations; dependent motor/size/assembly prices still need grids.
 
@@ -66,7 +66,7 @@ Authenticated Forms was rechecked: https://admin.onyxshutters.com/Forms.aspx exp
 
 ## Per-color mapping ledger and shade cost fixtures
 
-`shade-mapping-ledger.csv` records all703 color identities individually, with exact source pattern/color IDs, unknown effective date, implemented product destinations, unresolved price grids/compatibility and explicit implementation status. These runtime IDs are implemented; none is yet represented as verified live or automatically priced.
+`shade-mapping-ledger.csv` records all703 color identities individually, with exact source pattern/color IDs, unknown effective date, implemented product destinations, unresolved price grids/compatibility and explicit implementation status. These runtime IDs are implemented; representative family selections are verified live; the complete per-color identities are exhaustively adapter-tested. Automatic pricing remains held.
 
 `shade-cost-fixtures.json` preserves eight 30×60 IM, quantity-one account CHE01 comparisons. These are dealer costs, not suggested retail or 805 selling prices:
 
@@ -99,16 +99,24 @@ Production release9c53f89213bda098716eec2b5f6a15822b0f7c62 was verified in the a
 
 Current menus were verified: US-made has two colors, five frames,3.5-only louver, H2-only tilt and White-only hinge. VLO has23 wood frames,13 colors excluding Butter/Gray and noH1. Bassia paint/stain menus contain15/16 distinct colors. All four price holds persisted; total unavailable; Send Quote and Send Payment Link disabled. No customer output was sent and no quote was marked sold/sent. Remaining generic shape and non-US hinge mismatches are explicit open exceptions.
 
-New implementation (awaiting integration/deployment/live proof) adds **eight separate catalog destinations,52 programs and734 source color entries**: `onyx_signature_roller`, `onyx_signature_sunscreen`, `onyx_signature_zebra`, `onyx_lux_fabric_blinds`, `onyx_lux_honeycomb`, `onyx_lux_sheerview`, `onyx_woven`, `onyx_ash_shutters`. The shade ledger's current destination column now names implemented IDs; its implementation-status column distinguishes this from verified live. Earlier missing-destination findings above describe the audited starting state.
+Deployed implementation (representative selection/save/reopen verified) adds **eight separate catalog destinations,52 programs and734 source color entries**: `onyx_signature_roller`, `onyx_signature_sunscreen`, `onyx_signature_zebra`, `onyx_lux_fabric_blinds`, `onyx_lux_honeycomb`, `onyx_lux_sheerview`, `onyx_woven`, `onyx_ash_shutters`. The shade ledger's current destination column now names implemented IDs; its implementation-status column distinguishes exhaustive identity tests from representative live family proof. Earlier missing-destination findings above describe the audited starting state.
 
 Each current source pattern has its own program with an empty, explicitly manual-required grid. The dedicated Onyx controls save exact collection/color IDs and observed mount/control or Ash frame/shape/louver/tilt choices. Both server and picker enforce product/collection/color identity. Menus are not universal compatibility certification; missing grid, dimensional and conditional evidence keeps all new destinations blocked for customer pricing/delivery. Existing shutter IDs, provisional rates and selling policy remain unchanged. Source evidence is pinned separately as `onyx-shade-assortment-2026-09-20`; the effective date remains unpublished. Outdoor shade series/fabrics/ordering remain unresolved and are not represented by invented choices.
 
-Validation for the held destinations:54 focused catalog/source/adapter/builder tests passed; an earlier62-test focused run covered the new exhaustive selection test plus existing Onyx pricing and42 DesignCard routing checks. TypeScript and whitespace checks passed. The734-row round-trip check exercises saved JSON and the actual server adapter; production save/reopen for these new destinations still awaits deployment.
+Validation for the held destinations:54 focused catalog/source/adapter/builder tests passed; an earlier62-test focused run covered the new exhaustive selection test plus existing Onyx pricing and42 DesignCard routing checks. TypeScript and whitespace checks passed. The734-row round-trip check exercises saved JSON and the actual server adapter; the production save/reopen proof is recorded below.
 
 ## Follow-up application and hinge repair
 
 The existing shutter picker now uses each material's exact current application menu (US-made Regular/French Door only; imported products keep their observed Cafe/ByPass-Close/ByPass-Open/Bi-Fold Tracking/specialty distinctions). The server validates the same material-specific choices; historical generic ByPass remains unresolved rather than silently choosing open or closed. Construction and pricing rules still independently apply.
 
-On September 20 all five saved imported comparison lines were reopened read-only, confirming identical enabled hinges: White, Cream, Antique Brass, Bright Brass, Nickle and Black. Paint to Match is explicitly disabled. These observations are pinned in a separate immutable hinge addendum. UI and server now use those choices for imported shutters/Ash; legacy unambiguous Anti Brass/Bri Brass/Nickel aliases remain recognized, while Match/ORB/unknown choices are held. US-made remains White only. No saved portal line or dealer/selling rate was changed. This increment awaits deployment and live UI proof.
+On September 20 all five saved imported comparison lines were reopened read-only, confirming identical enabled hinges: White, Cream, Antique Brass, Bright Brass, Nickle and Black. Paint to Match is explicitly disabled. These observations are pinned in a separate immutable hinge addendum. UI and server now use those choices for imported shutters/Ash; legacy unambiguous Anti Brass/Bri Brass/Nickel aliases remain recognized, while Match/ORB/unknown choices are held. US-made remains White only. No saved portal line or dealer/selling rate was changed. This increment is now deployed and its live proof is recorded below.
 
 Latest application/hinge validation:97 targeted tests and TypeScript passed. The source identity remains immutable: the hinge observations use a new addendum rather than altering the prior shutter snapshot.
+
+## Final production selection proof for every new family
+
+On releasebc4bea39, one30×60 internal fixture was added for each of the eight new families, making12 total lines in quote805-0333. The builder was closed, the quote located as Draft/Pricing incomplete in the Quotes list, and reopened. All exact collection/color IDs persisted. `held-destinations-live-proof.json` records the exact selections: Signature Roller Amelia White, Sunscreen1% Ice White, Zebra Arcadia Cloud Meadow, Lux Fabric Blinds Slate, Lux Honeycomb3/4 LF Roswell, Lux Sheerview2-inch LF Bright White, Woven Premier Artisan Weave and distinct Ash Java.
+
+Release d28bd77d was subsequently loaded by a full page refresh. All eight family selections persisted. The U.S.-made expanded application menu contained only Regular/French Door; the imported hinge dropdown contained the six observed enabled choices. Ash Black hinge was selected and the quote closed/reopened again: Black, Java215, L Outside, Regular,3.5 and C all persisted.
+
+The quote retained12 pricing holds, an unavailable total, and disabled Send Quote/Send Payment Link actions. No manual price was entered; no customer output was sent or status marked sent/sold. These are selection/persistence fixtures, not complete orderable configurations or full pricing certification. The ledger explicitly separates the734 exhaustively adapter-tested color identities from one live saved fixture per new family.
