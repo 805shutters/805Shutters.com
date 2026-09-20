@@ -84,3 +84,10 @@ On verified deployment https://805-hv09cf5nd-805-shutters.vercel.app / www.805sh
 Office AMX $117.90, Living Room FTXLG $119.94 and Primary Bedroom AMX $117.90 remained intact, with six windows needing pricing. Send Quote and Send Payment Link stayed disabled. Contract still refused output with Pricing incomplete. The optional wand is captured as a source-supported selection, not a verified charge. Current custom authority, cut feasibility and accessory charges remain unresolved. This is representative steel-program persistence proof, not complete vertical-family pricing certification.
 
 After a full reload and reopening standalone 805-0339, its customer Contract preview retained $117.90 and displayed **Measurements: Inside opening; manufacturer deducts ½ inch from width**. It no longer exposes the internal `inside_opening` value. No customer delivery or order action occurred.
+
+
+### Aluminum one-way complete vertical — 1acd1e85
+
+Added Primary Bathroom as line 10 to internal 805-0337, explicitly selected the aluminum one-way complete program, then saved 60 × 72, White, Outside Mount and Right stack. The program retained its standard 30-inch wand, White headrail and matching valance. After Quote saved, closed and reopened the quote from Staff quotes. All selections, dimensions, quantity 1 and the exact program remained, with the line held at $0.00 and seven windows needing pricing. This closes individual persistence proof for the second of seven imported vertical programs.
+
+The remaining headrail and vane component proofs require single-axis measurements. Repair 2f55345a adds a width-only headrail form and length-only vane form, leaves the irrelevant axis zero, and preserves all existing pricing holds. Its production proof remains pending deployment.
