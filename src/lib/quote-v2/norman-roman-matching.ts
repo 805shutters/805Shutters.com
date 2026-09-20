@@ -25,7 +25,7 @@ export function deriveRomanMatching(lines:readonly SmartfoldOrderLine[]):Validat
   };
   const first=criteria(members[0]);
   for(const key of Object.keys(first) as (keyof typeof first)[]){
-   if((key==='room'&&!first.room)||members.some(m=>criteria(m)[key]!==first[key]))issues.push({severity:'hard_block',ruleId:`roman.side_by_side.september.${key}`,source:sourceProvenance('norman-roman-guide-2026-09',{page:21}),selectedValues:{lineIds:ids,values:members.map(m=>criteria(m)[key])},explanation:`Side-by-side Roman shades require the same ${key} across all connected shades.`});
+   if((key==='room'&&!first.room)||members.some(m=>criteria(m)[key]!==first[key]))for(const member of members)issues.push({severity:'hard_block',ruleId:`roman.side_by_side.september.${key}`,source:sourceProvenance('norman-roman-guide-2026-09',{page:21}),selectedValues:{lineId:member.lineId,lineIds:ids,values:members.map(m=>criteria(m)[key])},explanation:`Side-by-side Roman shades require the same ${key} across all connected shades.`});
   }
   const shortestHeight=Math.min(...members.map(m=>m.selection.heightInches));
   for(const m of members)m.selection.configuration={...m.selection.configuration,norman_assembly_v1:{...(m.selection.configuration.norman_assembly_v1 as SelectionRecord??{}),sideBySide:{version:1,lineIds:ids.slice().sort(),room:members[0].roomName??null,alignmentTolerance:.125,alignmentFrom:'top',alignmentThroughHeight:shortestHeight,sourceId:'norman-roman-guide-2026-09',sourcePage:21}}};

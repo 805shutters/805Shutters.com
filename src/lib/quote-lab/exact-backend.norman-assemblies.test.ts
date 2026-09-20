@@ -19,6 +19,28 @@ const price = (q:ReturnType<typeof quote>)=>{
 };
 
 describe("Norman shared accessories through the authoritative CRM backend",()=>{
+ it("blocks mismatched Roman patterns on both connected saved lines while preserving an unrelated shade",()=>{
+  const q=quote([1,1,1]);
+  const color=getProductColorOptions("roman").find(c=>c.colorCode==="F1794")!;
+  for(const [i,d] of q.designs.entries()){
+   q.lines[i].room_name="Office";d.lift_system="Cordless";d.motor_type=null;d.remote_type=null;d.fabric=color.collection;
+   d.options_json={...clearNormanMotorPowerConnection(d.options_json),remote_type:null,motor_position:null,hub_required:null,quote_lab_program_id:color.programId,fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName,fold_style:"Soft Fold",fabric_orientation:"Standard / Non-Railroaded",seaming:"No Seams",roman_fabric_pattern:i===1?"Standard":"Reverse",side_by_side:i<2,side_by_side_match_line_id:i<2?q.lines[1-i].id:null};
+  }
+  const run=()=>{const r=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");if (!("backend" in r)||r.backend!=="v2")throw new Error("Expected V2");return r;};
+  const blocked=run();
+  for(const d of blocked.designs.slice(0,2))expect(d.result.validationIssues.map(x=>x.ruleId)).toContain("roman.side_by_side.september.pattern");
+  expect(blocked.designs[2].result.ok).toBe(true);
+  q.designs[1].options_json={...q.designs[1].options_json,roman_fabric_pattern:"Reverse"};
+  const valid=run();for(const d of valid.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  for(const d of valid.designs.slice(0,2))expect(d.selection.configuration.norman_assembly_v1).toMatchObject({sideBySide:{lineIds:["line-0","line-1"]}});
+ });
+ it("enforces aggregate repeater capacity on each connected saved motor line",()=>{
+  const q=quote([1,1]);
+  for(const d of q.designs)d.options_json={...d.options_json,roman_repeaters:3,roman_remote_quantity:1,roman_motor_network:1};
+  const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");
+  if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
+  for(const d of result.designs)expect(d.result.validationIssues.map(x=>x.ruleId)).toContain("norman.roman.network_repeater_capacity");
+ });
  it("charges one panel and rebuilds identical allocations after JSON save/reopen",()=>{
   const q=quote(); const first=price(q);
   for(const d of first.designs) expect(d.result.ok,JSON.stringify(d.result)).toBe(true);

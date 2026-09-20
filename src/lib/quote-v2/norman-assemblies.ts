@@ -256,7 +256,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     }
     for(const {line} of members) {
       const networkSourcePage=line.selection.productId === "roman" ? first.family === "automate_home" ? 76 : 24 : line.selection.productId === "honeycomb" ? first.family === "automate_home" ? 68 : 15 : line.selection.productId === "smartdrape" ? 49 : first.family === "automate_home" ? 76 : 43;
-      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:line.selection.productId === "roman" ? "norman.roman.network_repeater_capacity" : "norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
+      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:line.selection.productId === "roman" ? "norman.roman.network_repeater_capacity" : "norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{lineId:line.lineId,network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:networkSourcePage}}};
     }
