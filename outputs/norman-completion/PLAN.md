@@ -1,10 +1,11 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 15:06
-- Completed live: combined release b199da0c includes Honeycomb mounting and charging access, vertical Butt Together controls, Sundance Portfolio/SheerView source rules, and historical SmartFold revision recognition. Gate: 5,934 passed, 28 skipped; typecheck/build passed.
-- In progress: Honeycomb mounting boundary and save/reopen proof in 805-0343; SmartFold accessory persistence passed in 805-0342, while its broader automatic-pricing hold remains.
-- Next release: Roller installation hardware and common-valance records, measured At Gaps joinery, shared assembly issue routing, copy refresh, and Honeycomb specialty net geometry. Combined release 87b6912f is running its production gate.
-- Agents: Onyx agent handles Roller motorization and bounded SmartFold eligibility; Sundance agent handles remaining cellular controls and live source-option proof; Lotus agent verifies vertical pair persistence and shared-valance geometry.
-- Remaining: exact family exceptions, current source assortment reconciliation and dealer-price evidence, production proof for new controls, refreshed results ledger. No fully certified Norman family claim.
+## Current checkpoint — September 20, 15:17
+- Completed live: release 8d2fa5c9 includes Roller hardware/common/panel rules, Honeycomb specialty net geometry, measured At Gaps joins, shared-assembly issue routing, and Sundance cellular controls. Gate: 6,019 passed, 28 skipped; typecheck/build/public deployment passed.
+- Production proof completed: Honeycomb manual mounting boundary 805-0343 at $454; vertical Butt Together pair 805-0344 at $2,647 including rejection of mismatched heights. SmartFold 805-0342 accessory persistence passed; broad automatic pricing remains held.
+- In progress: Honeycomb charging proof 805-0345 (saved $1,439, full reload completed; boundary and final customer preview next), then specialty net proof. Roller and At Gaps proof assigned to agents.
+- Agents: Onyx handles narrowly supported SmartFold pricing and Roller live proof; Sundance continues cellular specialty/accessory source coverage and live proof; Lotus handles SmartDrape standalone vane-pack destination and At Gaps proof.
+- Next release queue: cellular accessory schedules, human-readable mounting/charging output labels, latest proof reports, and bounded SmartFold eligibility after source-backed tests.
+- Remaining: exact family exceptions, source assortment reconciliation and dealer-price evidence, production proof for new controls, refreshed exhaustive ledger. No fully certified Norman family claim.
 - External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to 805. Dealer factors remain unchanged.
 
 - [x] Isolate current main; preserve unrelated canonical changes.
