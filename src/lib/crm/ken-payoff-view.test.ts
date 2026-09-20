@@ -37,6 +37,7 @@ describe("Ken payoff view",()=>{
    {id:"owner",person:"mike",amount:200}
   ] as CrmPartnerPaymentHistoryBatch[];
   const before=structuredClone(ledger);const view=kenPayoffView([],ledger);
+  expect(view.paidTotal).toBe(100);expect(view.remainingBuyout).toBe(499900);
   expect(view.ready).toHaveLength(0);expect(view.history.map(b=>b.id)).toEqual(["paid"]);
   expect(view.duplicates.map(b=>b.id)).toEqual(["duplicate"]);expect(view.review.map(b=>b.id)).toEqual(["review"]);
   expect(ledger).toEqual(before);

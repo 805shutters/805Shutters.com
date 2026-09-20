@@ -13,8 +13,10 @@ export function kenPayoffView(rows: CrmBookkeepingRow[], ledger?: CrmPartnerPaym
     seen.add(item.itemKey); ready.push({ row, item });
   }
   const batches = (ledger?.history || []).filter(batch => batch.person === "ken");
-  return { ready, total: payableMoney(ready.reduce((sum, { item }) => sum + item.remainingAmount, 0)), dueDate: ledger?.kenMonthly?.dueDate,
-    history: batches.filter(batch => batch.reconciliation?.status === "payment"),
+  const history = batches.filter(batch => batch.reconciliation?.status === "payment");
+  const paidTotal = payableMoney(history.reduce((sum, batch) => sum + (batch.recordedAmount ?? batch.amount), 0));
+  return { paidTotal, remainingBuyout: payableMoney(Math.max(0, (ledger?.kenBuyout.target || 0) - paidTotal)), ready, total: payableMoney(ready.reduce((sum, { item }) => sum + item.remainingAmount, 0)), dueDate: ledger?.kenMonthly?.dueDate,
+    history,
     review: batches.filter(batch => !batch.reconciliation || batch.reconciliation.status === "review"),
     duplicates: batches.filter(batch => batch.reconciliation?.status === "confirmed_duplicate") };
 }
