@@ -1,0 +1,28 @@
+{
+  "date": "2026-09-20",
+  "verifiedAgainst": "138be0b3",
+  "quote": "805-0341",
+  "alternative": "B",
+  "configuration": {
+    "width": 37,
+    "height": 36,
+    "color": "ND080 Taupe Gray Paint",
+    "slat": "2 inch",
+    "mount": "Outside",
+    "valance": "Linear",
+    "wandDrop": 17.75,
+    "wandSide": "Left",
+    "shimLayers": 0,
+    "quantity": 1
+  },
+  "customerTotal": 609.9,
+  "persistedAfterFullReload": true,
+  "customerPreview": true,
+  "shortWandNegative": {
+    "wandDrop": 11.75,
+    "held": true,
+    "savedReason": "running-change availability must be confirmed; established default remains17.75",
+    "restored": true
+  },
+  "scope": "UI verifies selections, price, persistence and hold; exact clip and fastener counts are covered by source-backed tests, not exposed in this customer preview. Original A805-0325 remains1653."
+}
