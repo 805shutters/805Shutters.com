@@ -35,6 +35,12 @@ function romanFabric(collection: string, colorCode: string) {
 }
 
 describe("roman shade manufacturer spec warnings", () => {
+  it("recognizes selected vertical seams on joinable Batten Back fabric", () => {
+    const input={widthInches:90,heightInches:96,fabricCollection:"Ella",fabricColorCode:"F0178",foldStyle:"Flat Fold with Batten Back",liftSystem:"Motorized"};
+    expect(warningMessages(input).some(message=>message.includes("requires this fabric to be seamed"))).toBe(true);
+    expect(warningMessages({...input,seaming:"Vertical Seams"})).toEqual([]);
+    expect(warningMessages({...input,seaming:"Vertical Seams",fabricCollection:"Alma",fabricColorCode:"F1621",widthInches:110}).some(message=>message.includes("not joinable"))).toBe(true);
+  });
   it("warns when a non-joinable fabric exceeds its effective width", () => {
     expect(
       warningMessages({

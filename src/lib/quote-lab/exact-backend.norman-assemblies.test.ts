@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
 import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { repriceExactQuoteBuilderForServerDate } from "./exact-backend";
@@ -51,6 +52,19 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(result.selection.configuration.norman_assembly_v1).toMatchObject({panelWidths:[30,40],motorCount:2});
   expect(result.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:2});
   expect(result.snapshot).not.toBeNull();
+ });
+ it("clears a prior DC panel when a Roman changes to an AC adapter",()=>{
+  const q=quote([1]);q.designs[0].motor_type="Norman Smart AC Adapter";
+  const blocked=price(q);expect(blocked.designs[0].result.ok).toBe(false);
+  const saved={...q.designs[0],quote_v2_selection:blocked.designs[0].selection,options_json:{authoritative_price_status:"blocked"}} as unknown as SalesQuoteDesign;
+  expect(normanSavedPricingAudit(saved)).toContain("A DC panel connection remains saved with a different power source. Reselect Power Source to clear the old panel connection.");
+  q.designs[0].options_json=clearNormanMotorPowerConnection(q.designs[0].options_json);
+  const updated=price(q);
+  expect(updated.designs[0].result.ok,JSON.stringify(updated.designs[0].result)).toBe(true);
+  expect(q.designs[0].options_json.fabric_color_code).toBe("F0031");
+  const reopened=price(JSON.parse(JSON.stringify(q)));
+  expect(reopened.total).toBe(updated.total);
+  expect(reopened.designs[0].selection.configuration.norman_order_record_v1).toMatchObject({adapterWatts:36});
  });
  it("persists mixed Roman AC adapters with unequal common-valance widths",()=>{
   const q=quote([1,1]);

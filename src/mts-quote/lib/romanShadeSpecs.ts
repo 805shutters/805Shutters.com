@@ -21,6 +21,7 @@ export type RomanShadeSpecInput = {
   liftSystem?: string | null;
   mountType?: string | null;
   lining?: string | null;
+  seaming?: string | null;
 };
 
 type RomanStyleCode = "RM001" | "RM003" | "RM003E" | "RM003R" | "RM004";
@@ -94,7 +95,8 @@ export function getRomanShadeSpecWarnings(input: RomanShadeSpecInput): RomanShad
       effectiveWidth > maxFabricWidth &&
       Number.isFinite(effectiveWidth)
     ) {
-      warnings.push({
+      const verticalSeamSelected = fabric.joinable === "Y" && styleCode === "RM003" && normalizeText(input.seaming) === "vertical seams";
+      if (!verticalSeamSelected) warnings.push({
         id: "roman-fabric-width",
         message: buildFabricWidthMessage({
           fabric,

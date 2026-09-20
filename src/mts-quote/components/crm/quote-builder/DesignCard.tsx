@@ -366,6 +366,7 @@ import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
 import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
+import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
 import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import {
   manufacturerStampFromLabel,
@@ -1988,6 +1989,8 @@ function clearMotorizationOptions(
     power_configuration: null,
     [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
     hub_required: null,
+    dc_power_supply: null,
+    shared_power_panel_id: null,
   };
 }
 
@@ -5041,6 +5044,7 @@ export function DesignCard({
     liftSystem: currentDesign?.lift_system,
     mountType: currentDesign?.mount_type,
     lining: stringOption(currentOptions, "lining"),
+    seaming: stringOption(currentOptions, "seaming"),
   });
   const miniBlindSpecWarnings = getMiniBlindSpecWarnings({
     productType: normanSpecProductType,
@@ -9358,9 +9362,7 @@ function ShadesAndBlindsOptions({
       onUpdateFields({
         motor_type: nextSource,
         ...(keepRemote ? {} : { remote_type: null }),
-        ...(nextSource === "AutoWand"
-          ? { options_json: { ...currentJson, hub_required: null } }
-          : {}),
+        options_json: { ...(authoritativeV2 ? clearNormanMotorPowerConnection(currentJson) : currentJson), ...(nextSource === "AutoWand" ? { hub_required: null } : {}) },
       });
       return;
     }
@@ -9835,7 +9837,7 @@ function ShadesAndBlindsOptions({
       const keepRemote =
         design?.remote_type && (remotes as readonly string[]).includes(design.remote_type);
       const nextJson = {...currentJson};
-      if (authoritativeV2) for (const key of HONEYCOMB_MOTOR_ACCESSORY_KEYS) nextJson[key] = null;
+      if (authoritativeV2) for (const key of [...HONEYCOMB_MOTOR_ACCESSORY_KEYS, "dc_power_supply", "shared_power_panel_id"]) nextJson[key] = null;
       if (nextSource === "AutoWand") nextJson.hub_required = null;
       onUpdateFields({
         motor_type: nextSource,
@@ -10035,6 +10037,11 @@ function ShadesAndBlindsOptions({
     }
     if (productType === "Sheer Shades" && field === "valance") {
       onUpdateFields({valance:typeof value === "string" ? value : null, options_json:{...currentJson,perfectsheer_valance_height:null,perfectsheer_valance_fabric:null,perfectsheer_wood_finish:null,perfectsheer_valance_returns:null,perfectsheer_valance_return_size:null,perfectsheer_valance_width:null,perfectsheer_valance_joinery:null,perfectsheer_keystone_count:null,perfectsheer_keystone_layout:null,perfectsheer_keystone_location_1:null,perfectsheer_keystone_location_2:null,perfectsheer_keystone_location_3:null,perfectsheer_keystone_location_4:null,perfectsheer_keystone_location_5:null}});
+      return;
+    }
+
+    if (productType === "SmartFold Shades" && authoritativeV2 && field === "motor_type") {
+      onUpdateFields({ motor_type: typeof value === "string" ? value : null, remote_type: null, options_json: clearMotorizationOptions(currentJson) });
       return;
     }
 

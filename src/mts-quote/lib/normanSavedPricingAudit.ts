@@ -21,6 +21,7 @@ export function normanSavedPricingAudit(design: SalesQuoteDesign | undefined): s
     if (typeof order.totalConnections === 'number' && typeof order.capacity === 'number') rows.push(`Shared panel: ${order.totalConnections} of ${order.capacity} motor connections; ${order.chargePanel === true ? 'panel charged on this line' : 'panel charged on another connected line'}.`);
   }
   if (design?.options_json.authoritative_price_status !== 'authoritative') {
+    if (/distribution panel/i.test(String(selection.configuration.dc_power_supply)) && !/low voltage|12v/i.test(String(selection.configuration.motor_type))) rows.push("A DC panel connection remains saved with a different power source. Reselect Power Source to clear the old panel connection.");
     rows.push(...validateSelection(selection).filter(issue => issue.severity === 'hard_block').map(issue => issue.explanation));
   }
   return [...new Set(rows)];
