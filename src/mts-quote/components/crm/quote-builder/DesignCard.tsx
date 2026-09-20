@@ -1,3 +1,4 @@
+import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
 import { ULTIMATE_FAUX_VALANCES, ULTIMATE_FAUX_FITS, ULTIMATE_FAUX_WANDS } from "@/lib/quote/norman-ultimate-faux";
 import { SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS } from "@/lib/quote/norman-smartprivacy";
@@ -10095,6 +10096,38 @@ function ShadesAndBlindsOptions({
       onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
       return;
     }
+    if (productType === "Wood Blinds" && authoritativeV2 && field === "json:wood_common_group") {
+      onUpdateFields({options_json:{...currentJson,wood_common_group:value,wood_common_position:null,wood_common_gap_after:null,wood_valance_width_inches:null}});return;
+    }
+    if (productType === "Wood Blinds" && authoritativeV2 && ["mount_type", "valance", "json:wood_mount_fit", "json:side_mount_bracket", "json:wood_valance_returns", "json:faux_blind_count"].includes(field)) {
+      const options = {...currentJson};
+      if (field.startsWith("json:")) options[field.slice(5)] = value;
+      if (field === "mount_type") {
+        options.wood_shim_layers = "0";
+        options.side_mount_bracket = "No";
+        options.wood_bracket_installation = "Top Support";
+        options.mount_depth_inches = null;
+        options.wood_mount_fit = null;
+        options.wood_valance_returns = null;
+        options.wood_return_inches = null;
+      }
+      if (["valance", "json:wood_mount_fit"].includes(field)) {
+        options.wood_valance_returns = null;
+        options.wood_return_inches = null;
+        options.wood_valance_width_inches = null;
+        if (field === "valance" && value === "No Valance" && options.wood_mount_fit === "Bracket Flush") options.wood_mount_fit = "Minimum Depth";
+      }
+      if (field === "json:side_mount_bracket") options.wood_bracket_installation = "Top Support";
+      if (field === "json:wood_valance_returns") options.wood_return_inches = null;
+      if (field === "json:faux_blind_count") {
+        options.wood_valance_width_inches = null;
+        for(const key of Object.keys(options))if(key.startsWith("wood_cutout_")||key.startsWith("wood_keystone_")||key.startsWith("wood_common_")||key==="wood_matching_group")options[key]=null;
+      }
+      if(field==="valance"&&value==="No Valance")for(const key of Object.keys(options))if(key.startsWith("wood_keystone_"))options[key]=null;
+      onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
+      return;
+    }
+
     if (productType === "Faux Wood Blinds" && authoritativeV2 && currentJson.product_line === "Ultimate" && field === "json:ultimate_common_group") {
       onUpdateFields({options_json:{...currentJson,ultimate_common_group:value,ultimate_common_position:null,ultimate_common_gap_after:null,ultimate_valance_width_inches:null}});return;
     }
@@ -11867,9 +11900,12 @@ function ShadesAndBlindsOptions({
         ];
       }
 
-      case "Wood Blinds":
+      case "Wood Blinds": {
+        const inside=design?.mount_type==="Inside Mount",valance=design?.valance??"No Valance",fit=String(optionsJson.wood_mount_fit??"Minimum Depth");
+        const select=(key:string,label:string,choices:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options:choices});
+        const number=(key:string,label:string,min:number,max:number):GridOption=>({key,label,field:`json:${key}`,type:"number",min,max,step:"0.0625"});
         return [
-          ...(authoritativeV2 ? [{ key: "side_by_side", label: "Side by Side", field: "json:side_by_side", type: "yes-no" as const, noFirst: true }] : []),
+
           {
             key: "mount",
             label: "Mount Type",
@@ -11892,7 +11928,24 @@ function ShadesAndBlindsOptions({
             options: [] as readonly string[],
           },
           { key: "valance", label: "Valance", field: "valance", type: "buttons", options: ["No Valance", "Designer Crown", "Contempo", "Linear"] },
-          { key: "side_mount_bracket", label: "Side Mount Bracket", field: "json:side_mount_bracket", type: "yes-no", noFirst: true },
+          ...(authoritativeV2 ? [
+            select("wood_wand_drop","Wand Drop",WOOD_WANDS),
+            select("wood_common_group","Common Valance Group",["None","1","2","3","4","5","6","7","8","9","10"]),
+            ...(optionsJson.wood_common_group&&optionsJson.wood_common_group!=="None"?[select("wood_common_position","Blind Position from Left",["1","2","3","4"]),number("wood_common_gap_after","Gap after This Blind",0,12)]:[]),
+            select("wood_matching_group","Side-by-Side Matching Group",["None","1","2","3","4","5","6","7","8","9","10"]),
+            ...(inside?[select("wood_mount_fit","Recess Arrangement",valance==="No Valance"?WOOD_FITS.filter(v=>v!=="Bracket Flush"):WOOD_FITS),number("mount_depth_inches","Mounting Depth",0,30)]:[select("wood_shim_layers","Shim Layers",["0","1","2"])]),
+            ...(valance!=="No Valance"?[
+              select("wood_valance_returns","Valance Returns",inside&&fit==="Fully Recessed"?["None"]:["None","Left","Right","Both"]),
+              ...((optionsJson.wood_valance_returns??(inside&&fit==="Fully Recessed"?"None":"Both"))!=="None"?[number("wood_return_inches","Custom Return Size",.5,5)]:[]),
+              number("wood_valance_width_inches","Custom Valance Width",1,420),
+              select("wood_keystone_count","Keystone Count",["0","1","2","3"]),
+              ...(Number(optionsJson.wood_keystone_count)>0?[select("wood_keystone_layout","Keystone Locations",["Equally Spaced","Custom"]),
+                ...(optionsJson.wood_keystone_layout==="Custom"?Array.from({length:Math.min(3,Number(optionsJson.wood_keystone_count))},(_,i)=>number(`wood_keystone_location_${i+1}`,`Keystone ${i+1} from Left`,6.5,420)):[])]:[]),
+            ]:[]),
+            ...(inside&&fit!=="Shallow Mounting Holes"?[{key:"side_mount_bracket",label:"Side Support Kit",field:"json:side_mount_bracket",type:"yes-no" as const,noFirst:true},
+              ...(optionsJson.side_mount_bracket==="Yes"?[select("wood_bracket_installation","Bracket Installation",measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)-.375<=37?["Top Support","Side Only"]:["Top Support"])]:[])]:[]),
+            {key:"wood_hold_down",label:"Optional Hold-Down Brackets",field:"json:wood_hold_down",type:"yes-no" as const,noFirst:true},
+          ]: [{ key: "side_mount_bracket", label: "Side Mount Bracket", field: "json:side_mount_bracket", type: "yes-no" as const, noFirst: true }]),
           ...(authoritativeV2 ? ["left", "right"].flatMap((side): GridOption[] => {
             const label = side === "left" ? "Left" : "Right";
             const kind = String(optionsJson[`wood_cutout_${side}_type`] ?? "None");
@@ -11907,6 +11960,7 @@ function ShadesAndBlindsOptions({
             return fields;
           }) : []),
         ];
+      }
 
       case "Vertical Blinds": {
         const mountType = getFieldValue(design, "mount_type");
@@ -12106,6 +12160,11 @@ function ShadesAndBlindsOptions({
     quantity: _lineItem.quantity, widthInches: measurementToInches(_lineItem.width_whole, _lineItem.width_fraction),
     heightInches: measurementToInches(_lineItem.height_whole, _lineItem.height_fraction), options: {},
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
+  const woodIssues = authoritativeV2 && productType === "Wood Blinds" ? validateNormanFamilyRules({
+    productId:"wood_blinds",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const smartprivacyIssues = authoritativeV2 && productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? validateNormanFamilyRules({
     productId:"smartprivacy_faux",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
@@ -12536,7 +12595,6 @@ function ShadesAndBlindsOptions({
   const showSideBySidePairSelector =
     authoritativeV2 &&
     ((productType === "Roman Shades" && romanSideBySideEnabled) ||
-      (["Mini Blinds", "Wood Blinds"].includes(productType) && romanSideBySideEnabled) ||
       (productType === "Honeycomb Shades" &&
       stringOption(optionsJson, "honeycomb_application") === "Side-by-Side") ||
       (productType === "Vertical Blinds" &&
@@ -12619,6 +12677,7 @@ function ShadesAndBlindsOptions({
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {woodIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{woodIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartprivacyIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartprivacyIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}

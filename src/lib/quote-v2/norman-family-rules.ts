@@ -1,3 +1,4 @@
+import { woodComponents } from "./norman-wood";
 import { citylightsComponents } from "./norman-citylights";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
@@ -22,7 +23,7 @@ const enabled = (value: unknown) => value === true || ["yes", "true", "basic", "
 
 /** Shared by the builder and authoritative server. Dimensions are ordered sizes. */
 export function validateNormanFamilyRules(context: SelectionContext): ValidationIssue[] {
-  const issues: ValidationIssue[] = [...(citylightsComponents(context)?.issues ?? []),...(ultimateFauxComponents(context)?.issues ?? []),...(smartprivacyComponents(context)?.issues ?? []), ...(smartdrapeMotorAccessories(context)?.issues ?? []), ...validateSmartdrapeComponents(context), ...validateSmartdrapeHardware(context), ...validateSmartdrapeTrack(context), ...validateSmartdrapeVanePacks(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
+  const issues: ValidationIssue[] = [...(woodComponents(context)?.issues ?? []),...(citylightsComponents(context)?.issues ?? []),...(ultimateFauxComponents(context)?.issues ?? []),...(smartprivacyComponents(context)?.issues ?? []), ...(smartdrapeMotorAccessories(context)?.issues ?? []), ...validateSmartdrapeComponents(context), ...validateSmartdrapeHardware(context), ...validateSmartdrapeTrack(context), ...validateSmartdrapeVanePacks(context), ...validatePerfectsheerComponents(context), ...validateSanClemente(context), ...validateNormanContract(context), ...validateSmartfoldHardware(context), ...validateSmartfoldAccessories(context), ...validateSmartfoldStyle(context), ...validateSmartfoldValance(context)];
   const c = context.configuration;
   const value = (...keys: string[]): SelectionValue | undefined => {
     for (const key of keys) if (c[key] != null && c[key] !== "") return c[key];
@@ -91,7 +92,7 @@ export function validateNormanFamilyRules(context: SelectionContext): Validation
     if (enabled(value("cutout", "cut_out")) || /two_on_one|2_on_1/.test(text("application"))) add("application", source, 7, "CityLights does not offer cut-outs or two-on-one blinds.");
   }
 
-  if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-01") {
+  if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-01" && context.catalogAsOf < "2026-09-19") {
     const source = "norman-wood-blinds-guide-2026-09-01";
     if (code === "ND118") add("legacy_color_conflict", source, 9, "The current dealer guide lists Rustic Gray as ND108. ND118 is retained for historical quotes and requires dealer confirmation before new ordering.");
     const netWidth = w - (inside ? 0.375 : 0);

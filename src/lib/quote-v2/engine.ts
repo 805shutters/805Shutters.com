@@ -1,3 +1,4 @@
+import { woodComponents } from "./norman-wood";
 import { citylightsComponents } from "./norman-citylights";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
@@ -547,6 +548,8 @@ export function authoritativeAutomaticSurchargeSelections(
   }
   const sdExtras=smartdrapeVanePacks(selection);
   if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
+  const wood=woodComponents(selection);
+  const woodIds=new Set(["designer_color","premium_color","shim","side_mount_bracket","valance_surcharge_designer_crown","valance_surcharge_contempo","cut_out","keystone"]);
   const citylights=citylightsComponents(selection);
   const citylightsIds=new Set(["shim","side_mount_bracket_available_in_2in_only","metallic_slats_matte_finishes_perforated_slats","2in_slats_smartprivacy_included_textured_slats","privacy","micro_1_2in_slats"]);
   const ultimateFaux = ultimateFauxComponents(selection);
@@ -560,7 +563,7 @@ export function authoritativeAutomaticSurchargeSelections(
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
   const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);

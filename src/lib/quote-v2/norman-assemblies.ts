@@ -1,3 +1,5 @@
+import { woodComponents } from "./norman-wood";
+import { deriveWoodAssemblies } from "./norman-wood-assemblies";
 import { citylightsComponents, deriveCitylightsMatching } from "./norman-citylights";
 import { deriveUltimateAssemblies } from "./norman-ultimate-assemblies";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
@@ -72,7 +74,10 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   }
   issues.push(...deriveCitylightsMatching(lines));
   issues.push(...deriveUltimateAssemblies(lines));
+  issues.push(...deriveWoodAssemblies(lines));
   for (const {selection} of lines) {
+    const wood=woodComponents(selection);
+    if(wood)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:wood.record};
     const ultimate=ultimateFauxComponents(selection);
     if(ultimate)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:ultimate.record};
   }

@@ -2360,6 +2360,7 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
   // Current CityLights assortment, mounting, hardware and matching rules are
   // normalized. Unsupported sizes and combinations still fail their rules.
   if (context.productId === "citylights_aluminum" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
