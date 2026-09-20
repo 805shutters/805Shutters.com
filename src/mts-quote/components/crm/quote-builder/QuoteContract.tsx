@@ -8,6 +8,7 @@ import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/
 import { supabase } from "@mts/integrations/supabase/client";
 import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
 import { queryKeys } from "@mts/lib/queryKeys";
+import { contractDesignQueryKey, contractGroupQueryKeys } from "@mts/lib/quoteContractQueryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@mts/components/ui/card";
 import { Button } from "@mts/components/ui/button";
@@ -229,7 +230,7 @@ export function QuoteContract({
   // Fetch designs
   const lineItemIds = lineItems.map((i) => i.id);
   const { data: designs = [] } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
+    queryKey: contractDesignQueryKey(activeQuoteId || "", lineItemIds),
     queryFn: async () => {
       if (lineItemIds.length === 0) return [];
       const { data, error } = await (supabase as any)
@@ -259,9 +260,10 @@ export function QuoteContract({
   });
 
   // Fetch line items + designs for all sibling quotes (for contract display)
-  const siblingQuoteIds = groupQuotes.map((q) => q.id);
+  const groupQueryKeys = contractGroupQueryKeys(groupId, groupQuotes, quote);
+  const siblingQuoteIds = groupQueryKeys.quoteIds;
   const { data: allGroupLineItems = [], isPending: groupLinesPending, isError: groupLinesError } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.all, "group-line-items", groupId],
+    queryKey: groupQueryKeys.lines,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
@@ -276,7 +278,7 @@ export function QuoteContract({
 
   const allGroupLineItemIds = allGroupLineItems.map((i) => i.id);
   const { data: allGroupDesigns = [] } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.all, "group-designs", groupId],
+    queryKey: groupQueryKeys.designs(allGroupLineItemIds),
     queryFn: async () => {
       if (allGroupLineItemIds.length === 0) return [];
       const { data, error } = await (supabase as any)
