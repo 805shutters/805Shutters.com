@@ -84,6 +84,7 @@ describe('Roman September mounting-depth revision',()=>{
    }
   }
   for(const mount_depth_inches of [null,'',0,'abc',1.5])expect(mountingIssues(current({roman_mount_fit:'Semi Inside',mount_depth_inches}))).toHaveLength(1);
+  expect(romanHardware(current({}))?.record.mounting).toMatchObject({measuredDepth:null});
   expect(mountingIssues(current({mount_depth_inches:4})).map(i=>i.ruleId)).toContain('roman.hardware.mount_fit');
   expect(mountingIssues(current({mount_type:'Outside Mount'}))).toEqual([]);
   expect(mountingIssues({...current({}),catalogVersion:'test-norman-roman-caroline-2026-09-20-r1'})).toEqual([]);
