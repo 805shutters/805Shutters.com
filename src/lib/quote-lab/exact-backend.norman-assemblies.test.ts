@@ -1,3 +1,4 @@
+import { romanSeptemberFrontRows } from "@/lib/quote-v2/norman-roman-fabric-limits";
 import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
 import { describe, expect, it } from "vitest";
 import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
@@ -40,6 +41,21 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");
   if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
   for(const d of result.designs)expect(d.result.validationIssues.map(x=>x.ruleId)).toContain("norman.roman.network_repeater_capacity");
+ });
+ it("routes every September front fabric to its exact saved price grid",()=>{
+  const q=quote([1]);q.designs[0].lift_system="Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;
+  for(const fabric of romanSeptemberFrontRows){
+   const color=getProductColorOptions("roman").find(c=>c.colorCode===fabric.colorCode)!;
+   expect(color, fabric.colorCode).toBeDefined();
+   q.designs[0].fabric=color.collection;
+   q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:null,motor_position:null,hub_required:null,quote_lab_program_id:color.programId,fabric_color_id:color.id,fabric_color_collection:color.collection,fabric_color_code:color.colorCode,fabric_color_name:color.colorName,fold_style:"Flat Fold with Batten Back",fabric_orientation:"Standard / Non-Railroaded",seaming:"No Seams"};
+   const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-20");
+   if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
+   const d=result.designs[0];expect(d.result.ok,JSON.stringify({fabric,result:d.result})).toBe(true);
+   expect(d.selection.programId).toContain(`group_${fabric.priceGroup}`);
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({fabricLimits:{fabricCode:fabric.clothCode,fabricWidth:fabric.fabricWidth}});
+   expect(d.snapshot).not.toBeNull();
+  }
  });
  it("charges one panel and rebuilds identical allocations after JSON save/reopen",()=>{
   const q=quote(); const first=price(q);
