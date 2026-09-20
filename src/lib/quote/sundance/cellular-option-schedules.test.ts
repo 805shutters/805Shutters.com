@@ -31,3 +31,8 @@ it('keeps specialty and non-perfect arch trim net charges separate from fabric b
  expect(e.netSubtotal).toBe(216);expect(e.retailSubtotal).toBe(0);expect(e.unresolved[0]).toContain('base pricing');
  expect(evidence({sundance_cellular_system:'Specialty Shape',sundance_cellular_shape:'Circle',sundance_cellular_shape_geometry:'Non-perfect'},36).netSubtotal).toBe(116);
 });
+it('preserves cut-out and both extension-pole net schedules with geometry review',()=>{
+ const e=evidence({sundance_cellular_system:'Cordless',sundance_cellular_cutout_qty:2,sundance_cellular_pole_short_qty:1,sundance_cellular_pole_long_qty:1},36);
+ expect(e.retailSubtotal).toBe(194);expect(e.netSubtotal).toBe(190);expect(e.unresolved).toContain('Cut-out positions and dimensions require manufacturer/template verification; the $25 net unit surcharge does not approve the geometry.');
+ expect(sundanceCellularAccessoryIssues({sundance_cellular_pole_short_qty:.5})[0].explanation).toContain('whole number');
+});

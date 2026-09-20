@@ -41,6 +41,12 @@ export function sundanceCellularAccessoryIssues(options: Record<string, unknown>
     else if (quantity > 0 && !(accessory.systems as readonly string[]).includes(system)) issues.push({ explanation: `${accessory.label} is not a documented accessory for ${system || 'the unselected system'}.`, page: accessory.page });
     else if (quantity > 0 && 'review' in accessory) issues.push({ explanation: accessory.review, page: accessory.page });
   }
+  for (const [key,label] of [['sundance_cellular_cutout_qty','Cut-out'],['sundance_cellular_pole_short_qty','3–5-foot extension pole'],['sundance_cellular_pole_long_qty','5–9-foot extension pole']] as const) {
+    const raw=options[key];if(raw==null||raw==='')continue;
+    const quantity=Number(raw);
+    if(!Number.isSafeInteger(quantity)||quantity<0)issues.push({explanation:`${label} quantity must be a nonnegative whole number.`,page:7});
+  }
+  if(Number(options.sundance_cellular_cutout_qty)>0)issues.push({explanation:'Cut-out positions and dimensions require manufacturer/template verification; the $25 net unit surcharge does not approve the geometry.',page:12});
   return issues;
 }
 export type CellularOptionEntry = { label: string; basis: 'retail' | 'net'; unitPrice: number; quantity: number; page: number; matchedWidth?: number };
@@ -69,6 +75,10 @@ export function sundanceCellularOptionEvidence(options: Record<string, unknown>,
     const quantity = Number(options[sundanceCellularAccessoryKey(accessory.key)] ?? 0);
     if (Number.isSafeInteger(quantity) && quantity > 0 && (accessory.systems as readonly string[]).includes(system))
       entries.push({ label: accessory.label, basis: 'net', unitPrice: accessory.net, quantity, page: accessory.page });
+  }
+  for(const [key,label,price] of [['sundance_cellular_cutout_qty','Cut-out',25],['sundance_cellular_pole_short_qty','3–5-foot extension pole',64],['sundance_cellular_pole_long_qty','5–9-foot extension pole',76]] as const){
+    const quantity=Number(options[key]??0);
+    if(Number.isSafeInteger(quantity)&&quantity>0)entries.push({label,unitPrice:price,quantity,basis:'net',page:7});
   }
   return { sourceId: sundanceCellularSource.sourceId, effectiveDate: sundanceCellularSource.effectiveDate, entries, unresolved,
     retailSubtotal: entries.filter(e => e.basis === 'retail').reduce((sum,e) => sum + e.quantity * e.unitPrice,0),

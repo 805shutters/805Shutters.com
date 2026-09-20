@@ -43,3 +43,7 @@ Added Standard Arch, Quarter Arch, Circle, Hexagon and Octagon under a separate 
 PDF14 was rendered and visually inspected because plain text interleaves the adjacent shape columns: **Quarter Arch maximum width50 inches; Circle maximum width42 inches**. Standard Arch18–84 wide and9–48 high; perfect width=2×height. Quarter Arch9–50 wide; height geometry still requires manufacturer review. Circle9/16 pleat9–42 wide and7/16 pleat12–42 wide; other cells remain explicit confirmation exceptions. Perfect circles require equal width/height. Hexagon/Octagon21–48 wide and12–48 high; all sides and actual template required. A template reference is saved evidence metadata and does not assert that the actual file has been attached or approved.
 
 Source specialty surcharge116 net and non-perfect arch template trim100 net are shown separately from unverified fabric-base pricing. The trim charge is not assigned speculatively to non-perfect circles.456 focused Sundance/quote-rule checks and TypeScript passed. New production proof pending release.
+
+## Cut-outs and extension poles
+
+PDF7–11 source rows now have saved quantities: cut-outs25 net each,3–5-foot extension pole64 net and5–9-foot pole76 net. Cut-out detail/template-reference text is preserved, while positive cut-out quantity explicitly requires geometry/template verification. This is source charge capture, not geometric approval. All quantities require nonnegative whole values. Pole reach and operating compatibility remain visibly subject to confirmation.457 focused checks and TypeScript passed.
