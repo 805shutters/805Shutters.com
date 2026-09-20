@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import styles from "./ReportingWorkspace.module.css";
 import { MarketingAgentPanel } from "@/components/crm/MarketingAgentPanel";
 import { buildSalesIntelligenceReport, trailingCalendarDayRange, type SalesIntelligenceRange } from "@/lib/crm/sales-intelligence";
 import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
@@ -61,17 +62,17 @@ export function SalesIntelligencePage({
   ];
 
   return (
-    <main className="crm-si">
+    <main className={`crm-si ${styles.sales}`}>
       <header className="crm-si-hero">
         <div>
-          <p className="crm-si-eyebrow">Sales performance</p>
-          <h2>Sales Intelligence</h2>
+          <p className="crm-si-eyebrow">805 / SALES</p>
+          <h1>Sales intelligence</h1>
           <p>Rolling trailing 30-day ledger by default, ending today. Adjust From and Through for a custom inclusive range.</p>
         </div>
         <div className="crm-si-date-controls" aria-label="Reporting period">
           <div className="crm-si-presets">
             {[7, 30, 60, 90].map((days) => (
-              <button type="button" key={days} onClick={() => setRange(trailingCalendarDayRange(days))}>
+              <button type="button" key={days} aria-pressed={range.start === trailingCalendarDayRange(days).start && range.end === trailingCalendarDayRange(days).end} onClick={() => setRange(trailingCalendarDayRange(days))}>
                 Trailing {days} days
               </button>
             ))}
@@ -81,9 +82,11 @@ export function SalesIntelligencePage({
         </div>
       </header>
 
-      <MarketingAgentPanel jobs={jobs} quotes={quotes} rows={rows} />
+      <nav className={styles.tabs} aria-label="Sales sections">
+        <a href="#sales-overview">Overview</a><a href="#sales-sources">Lead sources</a><a href="#sales-team">Team</a><a href="#sales-leads">Lead ledger</a>
+      </nav>
 
-      <section className="crm-si-kpis" aria-label="Performance summary">
+      <section id="sales-overview" className="crm-si-kpis" aria-label="Performance summary">
         <article><span>New leads</span><strong>{report.totals.leads}</strong><small>{change === null ? "No prior-period baseline" : `${change >= 0 ? "+" : ""}${change}% vs prior period`}</small></article>
         <article><span>Lead-source coverage</span><strong>{percent(report.totals.attributed, report.totals.leads)}</strong><small>{report.totals.leads - report.totals.attributed} missing attribution</small></article>
         <article><span>Close rate</span><strong>{percent(report.totals.won, report.totals.won + report.totals.lost)}</strong><small>{report.totals.won} won · {report.totals.lost} lost</small></article>
@@ -117,7 +120,7 @@ export function SalesIntelligencePage({
         </article>
       </section>
 
-      <section className="crm-si-card">
+      <section id="sales-sources" className="crm-si-card">
         <div className="crm-si-card-head"><div><span>Traceable attribution</span><h3>Lead source performance</h3></div><small>Leads → wins → revenue</small></div>
         <div className="crm-si-table-wrap">
           <table className="crm-si-table">
@@ -137,7 +140,7 @@ export function SalesIntelligencePage({
         </div>
       </section>
 
-      <section className="crm-si-card">
+      <section id="sales-team" className="crm-si-card">
         <div className="crm-si-card-head"><div><span>Team performance</span><h3>Rep scorecard</h3></div><small>Ownership on lead record</small></div>
         <div className="crm-si-reps">
           {report.reps.map((rep) => (
@@ -154,13 +157,13 @@ export function SalesIntelligencePage({
         </div>
       </section>
 
-      <section className="crm-si-card">
+      <section id="sales-leads" className="crm-si-card">
         <div className="crm-si-card-head crm-si-lead-head">
           <div><span>Complete lead ledger</span><h3>Every lead in the period</h3></div>
           <div className="crm-si-filters">
-            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, phone, city…" />
-            <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>{sources.map((source) => <option key={source}>{source}</option>)}</select>
-            <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>{owners.map((owner) => <option key={owner}>{owner}</option>)}</select>
+            <input type="search" aria-label="Search leads" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, phone, city…" />
+            <select aria-label="Filter by lead source" value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>{sources.map((source) => <option key={source}>{source}</option>)}</select>
+            <select aria-label="Filter by sales rep" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>{owners.map((owner) => <option key={owner}>{owner}</option>)}</select>
           </div>
         </div>
         <div className="crm-si-table-wrap">
@@ -183,6 +186,10 @@ export function SalesIntelligencePage({
         </div>
         <footer className="crm-si-ledger-footer">Showing {visibleLeads.length} of {report.leads.length} leads · Period is based on lead creation date.</footer>
       </section>
+      <details className={styles.diagnostics}>
+        <summary>Marketing diagnostics <span>Channel connections, data quality and planning</span></summary>
+        <MarketingAgentPanel jobs={jobs} quotes={quotes} rows={rows} />
+      </details>
     </main>
   );
 }

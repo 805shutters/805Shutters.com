@@ -1,10 +1,18 @@
 "use client";
 import { useMemo, useState } from "react";
+import styles from "./ReportingWorkspace.module.css";
 import {
   buildOperationsReports,
   businessDate,
 } from "@/lib/crm/operations-reports";
 import type { CrmDashboardData, CrmActivitySnapshot } from "@/lib/crm/types";
+export const OPERATIONS_REPORT_GROUPS = [
+  { label: "Sales", ids: ["booked", "pipeline", "conversion", "margin"] },
+  { label: "Money", ids: ["collected", "net-collected", "receivables", "invoiced", "refunds", "credits", "overpayments"] },
+  { label: "Operations", ids: ["actions", "backlog", "aging", "vendor-delays", "ready", "service", "cancellations"] },
+  { label: "Data review", ids: ["grouping", "missing-dates", "documents"] },
+];
+const coverageLabel = { complete: "Available", incomplete: "Needs review", unavailable: "Unavailable" };
 const currency = (v: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     v,
@@ -20,7 +28,8 @@ export function OperationsReports({
   const today = businessDate(asOf)!;
   const [from, setFrom] = useState(`${today.slice(0, 4)}-01-01`),
     [through, setThrough] = useState(today),
-    [selected, setSelected] = useState("actions"),
+    [selected, setSelected] = useState("booked"),
+    [category, setCategory] = useState("Sales"),
     [search, setSearch] = useState(""),
     [status, setStatus] = useState("all");
   const reports = useMemo(
@@ -41,36 +50,33 @@ export function OperationsReports({
   const stale = Date.now() - Date.parse(asOf) > 90_000;
   return (
     <section
-      className="crm-workspace"
+      className={styles.workspace}
       aria-label="Operations reports"
-      style={{ display: "block", padding: 20 }}
     >
-      <div className="crm-section-head">
+      <header className={styles.header}>
         <div>
-          <p className="eyebrow">Source-backed reports</p>
-          <h2>Operations & reporting</h2>
+          <p className={styles.eyebrow}>805 / OPERATIONS</p>
+          <h1>Operations reports</h1>
           <p>
             As of{" "}
             {new Date(asOf).toLocaleString("en-US", {
               timeZone: "America/Los_Angeles",
             })}{" "}
-            Pacific. Order counts and distinct parent jobs are shown separately.
+            Pacific · A clear view of sales, cash and job progress.
           </p>
         </div>
-      </div>
+      </header>
       {stale ? (
-        <p role="alert">
+        <p role="alert" className={styles.alert}>
           Snapshot is stale. Refresh is pending; these figures are not current.
         </p>
       ) : null}
       {data.loadWarnings?.length ? (
-        <p role="alert">{data.loadWarnings.join(" ")}</p>
+        <p role="alert" className={styles.alert}>{data.loadWarnings.join(" ")}</p>
       ) : null}
-      <div
-        style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "16px 0" }}
-      >
+      <div className={styles.filters}>
         <label>
-          Cohort from{" "}
+          From{" "}
           <input
             type="date"
             value={from}
@@ -90,17 +96,15 @@ export function OperationsReports({
             onChange={(e) => setThrough(e.target.value || today)}
           />
         </label>
-        <span>Snapshot queues use the current as-of date.</span>
+        <span className={styles.filterNote}>Sales and cash use this date range.<br />Work queues show the current snapshot.</span>
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))",
-          gap: 10,
-        }}
-        aria-label="Report totals"
-      >
-        {reports.map((original) => {
+      <nav className={styles.tabs} aria-label="Report categories">
+        {OPERATIONS_REPORT_GROUPS.map(group => <button key={group.label} type="button" aria-pressed={category === group.label} onClick={() => {
+          setCategory(group.label); setSelected(group.ids[0]); setSearch(""); setStatus("all");
+        }}>{group.label}</button>)}
+      </nav>
+      <div className={styles.metrics} aria-label="Report totals">
+        {OPERATIONS_REPORT_GROUPS.find(group => group.label === category)!.ids.map(id => reports.find(r => r.id === id)!).map((original) => {
           const r =
             original.id === selected
               ? {
@@ -134,17 +138,10 @@ export function OperationsReports({
                 setSearch("");
                 setStatus("all");
               }}
-              style={{
-                color: "#172d2a",
-                textAlign: "left",
-                padding: 14,
-                border: `2px solid ${selected === r.id ? "#236c77" : "#d8dedb"}`,
-                background: selected === r.id ? "#eaf3f1" : "white",
-                borderRadius: 8,
-              }}
+              className={styles.metric}
             >
-              <strong>{r.title}</strong>
-              <div style={{ fontSize: 22 }}>
+              <span className={styles.metricLabel}>{r.title}</span>
+              <strong className={styles.metricValue}>
                 {r.value === null
                   ? "Unavailable"
                   : r.format === "money"
@@ -152,39 +149,32 @@ export function OperationsReports({
                     : r.format === "percent"
                       ? `${r.value.toFixed(1)}%`
                       : r.value}
-              </div>
+              </strong>
               <small>
-                {r.records.length} {r.records.length === 1 ? r.unit : r.unit === "opportunity" ? "opportunities" : `${r.unit}s`} · {r.jobCount} parent jobs ·{" "}
-                {r.status}
+                {r.records.length} {r.records.length === 1 ? r.unit : r.unit === "opportunity" ? "opportunities" : `${r.unit}s`} · {r.jobCount} {r.jobCount === 1 ? "job" : "jobs"}
               </small>
+              <span className={styles.coverage} data-status={r.status}>{coverageLabel[r.status]}</span>
             </button>
           );
         })}
       </div>
       <section
         aria-label={`${report.title} contributing records`}
-        style={{ marginTop: 24 }}
+        className={styles.detail}
       >
-        <h3>{report.title}</h3>
-        <p>{report.definition}</p>
-        <p>
+        <div className={styles.detailHead}><div><p className={styles.eyebrow}>REPORT DETAILS</p><h2>{report.title}</h2></div><span className={styles.coverage} data-status={report.status}>{coverageLabel[report.status]}</span></div>
+        <p className={styles.definition}>Review the records behind this total. Open a customer for the full job.</p>
+        <details className={styles.method}><summary>How this report is calculated</summary><p>{report.definition}</p><p>
           <strong>Date basis:</strong> {report.dateBasis}. America/Los_Angeles.
         </p>
         {report.notes.map((n, index) => (
           <p key={index}>{n}</p>
         ))}
-        <div
-          style={{
-            display: "flex",
-            gap: 16,
-            alignItems: "center",
-            flexWrap: "wrap",
-            margin: "16px 0",
-          }}
-        >
+        </details>
+        <div className={styles.filters}>
           <label>
-            Search contributing records{" "}
-            <input value={search} onChange={(e) => setSearch(e.target.value)} />
+            Search records{" "}
+            <input placeholder="Customer, quote or keyword" value={search} onChange={(e) => setSearch(e.target.value)} />
           </label>
           <label>
             Outcome / stage{" "}
@@ -196,22 +186,21 @@ export function OperationsReports({
             </select>
           </label>
           <strong>
-            {rows.length} contributing records
+            {rows.length} contributing {rows.length === 1 ? "record" : "records"}
             {report.format === "money" && report.status !== "unavailable"
               ? ` · ${currency(filteredAmount)}`
               : ""}
           </strong>
         </div>
         {report.status === "unavailable" ? (
-          <p role="alert">
+          <p role="alert" className={styles.alert}>
             This source-dependent total is unavailable. Any records below are
             partial evidence and must not be treated as a complete result.
           </p>
         ) : null}
-        <div style={{ overflowX: "auto", maxHeight: 650 }}>
+        <div className={styles.tableWrap}>
           <table
-            className="crm-ledger-table"
-            style={{ minWidth: 1100, width: "100%" }}
+            className={styles.table}
           >
             <thead>
               <tr>
@@ -223,7 +212,7 @@ export function OperationsReports({
                   "Owner / next action",
                   "Evidence & missing information",
                 ].map((t) => (
-                  <th key={t} style={{ textAlign: "left", padding: 10 }}>
+                  <th key={t}>
                     {t}
                   </th>
                 ))}
@@ -232,14 +221,7 @@ export function OperationsReports({
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td
-                    style={{
-                      position: "sticky",
-                      left: 0,
-                      background: "white",
-                      padding: 10,
-                    }}
-                  >
+                  <td>
                     <a href={r.href}>{r.name}</a>
                     <br />
                     <small>{r.quoteId || r.jobId || r.id}</small>
