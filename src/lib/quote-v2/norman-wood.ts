@@ -38,7 +38,6 @@ export function woodComponents(s:SelectionContext) {
  if(present(c.wood_return_inches)&&returnSize===null||returnSize!==null&&(!Number.isFinite(returnSize)||returnSize<.5||returnSize>5))add("return_size",15,"Custom returns require a valance with returns and measure ½–5 inches.");
  const custom=present(c.wood_valance_width_inches)?Number(c.wood_valance_width_inches):null;
  if(custom!==null&&(!hasValance||widths.length!==1||!Number.isFinite(custom)||custom<=0||!woodCommonId(s)&&custom>(netWidths[0]??0)+5))add("custom_valance",16,"Custom valance width must be positive and no greater than net blind width plus 5 inches. Use separate lines for independent custom valances.");
- if(custom!==null&&!common)add("custom_valance_price_basis",15,"The custom valance is recorded, but the retail charge-width basis requires dealer confirmation.");
  const layers=Number(c.wood_shim_layers??0),sideMount=yes(c.side_mount_bracket),sideOnly=c.wood_bracket_installation==="Side Only";
  if(![0,1,2].includes(layers)||inside&&layers>0)add("shims",15,"Shims are outside mount only, with zero, one or two layers per mounting bracket.");
  if(sideMount&&(!inside||fit==="Shallow Mounting Holes")||sideOnly&&(!sideMount||netWidths.some(w=>w>37)))add("side_mount",7,"Side-only support requires inside mount and net widths up to 37 inches. Wider blinds also require top support.");
@@ -47,7 +46,6 @@ export function woodComponents(s:SelectionContext) {
  // Common assemblies must retain every blind and gap before they can be priced safely.
  if(yes(c.common_valance)&&!woodCommonId(s)||yes(c.side_by_side)&&(!c.wood_matching_group||c.wood_matching_group==="None")||/common|2.on|3.on|two.on|three.on/i.test(String(c.application??c.shade_type??""))&&!woodCommonId(s))add("assembly",17,"Choose a common-valance or matching group and record each blind on its own quote line.");
  if(woodCommonId(s)&&!common)add("common_members",17,"The common valance requires the complete selected blind group on this quote.");
- if(common)issues.push({severity:"hard_block",ruleId:"norman.wood_blinds.common_price_basis",source:sourceProvenance("norman-retail-guide-2026-09",{page:33}),selectedValues:{...c},explanation:"The retail table does not explain the common/custom valance charge-width basis. The assembly is saved; dealer confirmation is required before pricing its shared valance."});
  const cutouts = ["left", "right"].flatMap(side => {
   const prefix=`wood_cutout_${side}`,kind=String(c[`${prefix}_type`]??"None");
   if(kind==="None")return [];
@@ -68,8 +66,6 @@ export function woodComponents(s:SelectionContext) {
  if(keystoneCount>0&&!["Equally Spaced","Custom"].includes(layout))add("keystone_layout",16,"Keystones can be equally spaced or at measured custom locations; placement at blind gaps is unavailable.");
  const locations=Array.from({length:Math.min(3,Math.max(0,keystoneCount||0))},(_,i)=>layout==="Custom"?Number(c[`wood_keystone_location_${i+1}`]):valanceWidth*(i+1)/(keystoneCount+1));
  if(locations.some((n,i)=>!Number.isFinite(n)||n<6.5||n>valanceWidth-6.5||i>0&&n-locations[i-1]<18))add("keystone_spacing",16,"Keystone centers must be at least 6½ inches from each valance end and 18 inches apart.");
- // The retail page lists $81 without stating whether a multiple-keystone request is per piece or per blind.
- if(keystoneCount>1)add("keystone_price_basis",16,"The guide permits multiple keystones but does not identify the $81 charge basis. Dealer confirmation is required for two or three keystones.");
  if(!keystoneCount&&(Number(c.keystone_quantity)>0||yes(c.keystone)))add("keystone_measurements",16,"Record the keystone count and locations before pricing.");
  const components=netWidths.map((netWidth,index)=>({orderedWidth:widths[index],netWidth,height:h,brackets:woodBrackets(netWidth),shims:woodBrackets(netWidth)*layers,sideSupport:sideMount,topSupport:!sideOnly,holdDowns:yes(c.wood_hold_down)?2:0,lift:netWidth<15?"No Lift":"Cordless",wandSide:side,
  valance:hasValance?{style:valance,width:common?.finishedWidth??custom??netWidth+(inside?returns!=="None"?.625:.25:returns!=="None"?1:2),returns,returnSize,clips:valanceWidth<=37?2:valanceWidth<60?3:valanceWidth<=96?4:null,minimumClips:valanceWidth>96?4:null,spliceCount:Math.max(0,Math.ceil(valanceWidth/96)-1),returnConnectors:(returns==="Both"?2:returns==="None"?0:1)*(valance==="Contempo"?1:2)}:null}));
@@ -78,8 +74,17 @@ export function woodComponents(s:SelectionContext) {
  if(color&&WOOD_PREMIUM_CODES.includes(color as never))surchargeSelections.push({id:"premium_color",units:1});
  const shims=components.reduce((n,c)=>n+c.shims,0);if(shims)surchargeSelections.push({id:"shim",units:shims});
  if(sideMount)surchargeSelections.push({id:"side_mount_bracket",units:components.length});
- if(hasValance)surchargeSelections.push({id:valance==="Designer Crown"?"valance_surcharge_designer_crown":"valance_surcharge_contempo",units:1});
+ // Dealer reconciliation September 19: shared valance and keystones are charged once per assembly.
+ const chargeShared=!common || common.chargeSharedOptions===true;
+ if(hasValance&&chargeShared)surchargeSelections.push({id:valance==="Designer Crown"?"valance_surcharge_designer_crown":"valance_surcharge_contempo",units:1});
  if(cutouts.length)surchargeSelections.push({id:"cut_out",units:cutouts.length});
- if(keystoneCount)surchargeSelections.push({id:"keystone",units:keystoneCount});
+ if(keystoneCount&&chargeShared)surchargeSelections.push({id:"keystone",units:keystoneCount});
  return {issues,surchargeSelections,record:{version:1,type:"wood_blinds_independent_blinds",sourceId:WOOD_SOURCE,sourcePages:[7,8,9,11,12,13,14,15,16,17,19,20,23,24],components:components.map(component=>({...component,...woodLadders(component.netWidth,c.slat_size!=='2"'),screws:{mounting:component.brackets*2,mountingLength:layers?2:1.25,holdDown:component.holdDowns,holdDownLength:.75,sideNutBolt:sideOnly?4:0},orderedWidth:finiteOrNull(component.orderedWidth),netWidth:finiteOrNull(component.netWidth),height:finiteOrNull(component.height),valance:component.valance?{...component.valance,width:finiteOrNull(Number(component.valance.width)),returnSize:component.valance.returnSize===null?null:finiteOrNull(component.valance.returnSize)}:null})),commonValance:common,cutouts:cutouts.map(cut=>({...cut,width:finiteOrNull(cut.width),top:finiteOrNull(cut.top),...(cut.bottom!==undefined?{bottom:finiteOrNull(cut.bottom)}:{})})),keystones:{count:finiteOrNull(keystoneCount),layout,locations:locations.map(finiteOrNull)},color,wandDrop:finiteOrNull(wand),wandMaterial:"Metal",splitWand:false,mountFit:inside?fit:null,requiredMountDepth:inside?depth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
+}
+
+/** Standard valances use blind width; explicit custom/shared valances use their finished width. */
+export function woodValancePriceWidth(s:SelectionContext):number|undefined {
+ if(s.productId!=="wood_blinds"||s.catalogAsOf<"2026-09-19")return undefined;
+ const common=woodCommon(s);
+ return common ? Number(common.finishedWidth) : present(s.configuration.wood_valance_width_inches) ? Number(s.configuration.wood_valance_width_inches) : undefined;
 }

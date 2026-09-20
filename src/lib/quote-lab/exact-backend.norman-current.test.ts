@@ -347,6 +347,20 @@ describe("Current Norman production configurations",()=>{
   const out=customerConfigurationFromSelection(p.designs[0].selection);expect(out.selections).toMatchObject({wood_wand_drop:60,wood_keystone_count:1,wood_matching_group:"1"});expect(out.selections).not.toHaveProperty("norman_assembly_v1");
   const reopened=JSON.parse(JSON.stringify(q));p.designs.forEach((d,i)=>reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration});expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
  });
+
+ it("prices wood common valances once after rebuilding forged shared records and reopening",()=>{
+  const q=currentQuote("wood_blinds","Wood Blinds","ND001",{slat_size:'2"',mount_depth_inches:3,wood_common_group:"1",wood_common_position:1,wood_common_gap_after:1.125,wood_valance_width_inches:73,wood_keystone_count:2,wood_common_valance_v1:{chargeSharedOptions:false,finishedWidth:1}});
+  q.designs[0].lift_system="Cordless";q.designs[0].valance="Linear";
+  q.lines.push({...q.lines[0],id:"right"});q.designs.push({...q.designs[0],id:"right-A",line_item_id:"right",options_json:{...q.designs[0].options_json,wood_common_position:2,wood_common_gap_after:0}});q.selectedVariantByLine.right="A";
+  const p=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");if(!("backend"in p)||p.backend!=="v2")throw new Error("Expected V2");
+  for(const d of p.designs)expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+  expect(p.designs[0].result.ok&&p.designs[0].result.total).toBe(877);
+  expect(p.designs[1].result.ok&&p.designs[1].result.total).toBe(535);
+  expect(p.designs[0].selection.configuration.wood_common_valance_v1).toMatchObject({chargeSharedOptions:true,finishedWidth:73,pricingStatus:"dealer_reconciled"});
+  const reopened=JSON.parse(JSON.stringify(q));p.designs.forEach((d,i)=>reopened.designs[i].options_json={...reopened.designs[i].options_json,...d.selection.configuration});expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(p);
+  const saved=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(saved.prepared.every(p=>p.priceStatus==="authoritative")).toBe(true);
+  q.designs[1].options_json={...q.designs[1].options_json,wood_common_group:null};const broken=prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:"2026-09-19"});expect(broken.prepared.some(p=>p.priceStatus==="blocked")).toBe(true);
+ });
  it("retains measured wood cut-outs and derives their price after serialization",()=>{
   const q=currentQuote("wood_blinds","Wood Blinds","ND001",{slat_size:'2"',cut_out_sides:"two",wood_cutout_left_type:"Corner (Bottom)",wood_cutout_left_width:1,wood_cutout_left_top:20,mount_depth_inches:3});
   q.designs[0].lift_system="Cordless";q.designs[0].valance="No Valance";

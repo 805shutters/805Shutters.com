@@ -1,4 +1,4 @@
-import { woodComponents } from "./norman-wood";
+import { woodComponents, woodValancePriceWidth } from "./norman-wood";
 import { citylightsComponents } from "./norman-citylights";
 import { ultimateFauxComponents } from "./norman-ultimate-faux";
 import { smartprivacyComponents } from "./norman-smartprivacy";
@@ -790,6 +790,7 @@ function priceInputContractIssues(
       )}], got [${actualComponentWidths.join(", ")}]`;
     }
   }
+  if (selection.productId === "wood_blinds" && input.valanceWidthInches !== woodValancePriceWidth(selection)) mismatches.valanceWidthInches="Valance price width must match the server-derived wood common/custom valance.";
   if (selection.productId === "perfectsheer" && input.valanceWidthInches !== perfectsheerValancePriceWidth(selection)) mismatches.valanceWidthInches="Valance price width must match the server-derived common/custom valance.";
   if (selection.productId === "smartfold" && input.valanceWidthInches !== smartfoldValancePriceWidth(selection)) mismatches.valanceWidthInches="Valance price width must match the server-derived common/custom valance.";
   if (inputQuantity !== selection.quantity) {

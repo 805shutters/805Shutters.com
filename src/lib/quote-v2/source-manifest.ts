@@ -53,6 +53,26 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+  "id": "norman-wood-valance-portal-2026-09-19",
+  "manufacturer": "Norman",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "wood-portal-20260919.json",
+  "title": "Normandy Wood valance and keystone dealer reconciliation",
+  "revision": "Observed September 19, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observed saved dealer draft reconciled to September retail guide; portal does not state an effective date.",
+  "receivedDate": "2026-09-19",
+  "modifiedDate": null,
+  "sha256": "4b5c65081d0830690a7eacc3c07a6ae50457e96fa257e94b6de31251d3c3f549",
+  "authorities": [
+    "pricing",
+    "options"
+  ],
+  "accountScope": "Observed account factor is evidence only; no dealer-factor or selling-policy change is authorized by this record.",
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/ProductOnly/QB_Order.asp"
+},
+  {
     id: "norman-smartprivacy-guide-2024-10", manufacturer: "Norman", kind: "product_guide", format: "pdf",
     fileName: "SmartPrivacy FW Blinds Guide.pdf", title: "SmartPrivacy Cordless Faux Wood Blinds Guide",
     revision: "October 2024", effectiveDate: null,
