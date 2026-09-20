@@ -1,3 +1,4 @@
+import { quoteQuantityLabel, quoteQuantityUnit } from "@/lib/quote/quantity-label";
 import type { ReactNode } from "react";
 import { cn } from "@mts-v1/lib/utils";
 
@@ -335,6 +336,8 @@ export function PricingAuditPanel({
   surcharges,
   authoritativeWholesaleCost,
 }: PricingAuditPanelProps) {
+  const quantityUnit = quoteQuantityUnit(options);
+  const quantityLabel = quoteQuantityLabel(quantity, options);
   const isManual = options.manual_price_override === true;
   const authoritativeRetailResult =
     options.authoritative_price_breakdown &&
@@ -753,9 +756,9 @@ export function PricingAuditPanel({
               value={`- ${money(discountAmount)}`}
             />
           )}
-          <DetailRow label="Final per window" value={money(finalUnitPrice)} emphasized />
+          <DetailRow label={`Final per ${quantityUnit}`} value={money(finalUnitPrice)} emphasized />
           {(quantity > 1 || retailOnceTotal > 0) && (
-            <DetailRow label={`Line total (${quantity} window${quantity === 1 ? "" : "s"})`} value={money(retailLineTotal)} emphasized />
+            <DetailRow label={`Line total (${quantityLabel})`} value={money(retailLineTotal)} emphasized />
           )}
           {retailOnceTotal > 0 && (
             <DetailRow label="Once-per-line customer charges" value={money(retailOnceTotal)} />
@@ -860,10 +863,10 @@ export function PricingAuditPanel({
                 )}
               </div>
               <div>
-                <DetailRow label="Our cost per window" value={money(wholesaleUnitCost)} emphasized wholesaleCost />
+                <DetailRow label={`Our cost per ${quantityUnit}`} value={money(wholesaleUnitCost)} emphasized wholesaleCost />
                 {quantity > 1 && (
                   <DetailRow
-                    label={`Our line cost (${quantity} windows)`}
+                    label={`Our line cost (${quantityLabel})`}
                     value={money(wholesaleLineCost)}
                     emphasized
                     wholesaleCost

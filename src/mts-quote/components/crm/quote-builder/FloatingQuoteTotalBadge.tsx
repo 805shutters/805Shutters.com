@@ -1,3 +1,4 @@
+import { incompleteQuantityLabel } from "@/lib/quote/quantity-label";
 import { incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import {
@@ -46,7 +47,8 @@ export function FloatingQuoteTotalBadge({
     useHistoricalTotal && Number.isFinite(lockedTotal) && lockedTotal > 0;
   const total = fromHistoricalLock ? lockedTotal : preferStoredTotal ? calculatedTotal : calculateQuoteTotalBreakdown(calculatedTotal, adminControls, calculateQuoteFixedCharges(lineItems, designs, { mode: authoritativeV2 ? "authoritative_v2" : "legacy" })).total;
 
-  const missingPrices = checkPricingCompleteness && !fromHistoricalLock ? incompleteQuoteLineIds(lineItems, designs, authoritativeV2).length : 0;
+  const incompleteIds = checkPricingCompleteness && !fromHistoricalLock ? incompleteQuoteLineIds(lineItems, designs, authoritativeV2) : [];
+  const missingPrices = incompleteIds.length;
   const incomplete = checkPricingCompleteness && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);
   const label = fromHistoricalLock ? "Original Contract Total" : incomplete ? "Pricing incomplete" : "Contract Total";
 
@@ -63,7 +65,7 @@ export function FloatingQuoteTotalBadge({
         {incomplete ? "Total unavailable" : formatCurrency(total)}
       </div>
       {incomplete && <p className="mt-1 text-xs font-semibold text-amber-800">
-        {missingPrices ? `${missingPrices} ${missingPrices === 1 ? "window needs" : "windows need"} pricing` : "Add a window to price this quote"}
+        {missingPrices ? incompleteQuantityLabel(lineItems, designs, incompleteIds) : "Add a window to price this quote"}
       </p>}
     </aside>
   );

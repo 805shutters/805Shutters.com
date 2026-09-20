@@ -46,3 +46,13 @@ it("includes contract-level discounts, fees, and tax in the badge", () => {
     adminControls: { showDiscount: true, discountPercent: 10 } }))
     .toContain("Contract Total $3,679.20");
 });
+it('describes held natural quantities and ignores unselected alternatives', () => {
+  const html = render({ lineItems: [{id:'packs',quantity:2},{id:'cut',quantity:1}], designs: [
+    {line_item_id:'packs',variant:'A',unit_price:0,options_json:{catalog_product_id:'norman_smartdrape_replacement_vanes',authoritative_price_status:'blocked'}},
+    {line_item_id:'packs',variant:'B',unit_price:0,options_json:{catalog_product_id:'honeycomb',authoritative_price_status:'blocked'}},
+    {line_item_id:'cut',unit_price:0,options_json:{catalog_product_id:'norman_roman_fabric_by_yard',authoritative_price_status:'blocked'}},
+  ]});
+  expect(html).toContain('2 packs and 1 fabric cut need pricing');
+  expect(html).not.toContain('windows');
+  expect(html).not.toContain('$726.78');
+});
