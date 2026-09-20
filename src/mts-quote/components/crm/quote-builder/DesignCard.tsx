@@ -1,5 +1,5 @@
 import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
-import { romanCurrentRearCollections, romanCurrentRearCodes } from "@/lib/quote-v2/catalog";
+import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
@@ -12247,9 +12247,9 @@ function ShadesAndBlindsOptions({
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
   const romanHardwareIssues=authoritativeV2 && productType === "Roman Shades" ? romanHardware({
-    productId:"roman",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
+    productId:"roman",manufacturerId:"Norman",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-20"),catalogAsOf:"2026-09-20",programId:String(optionsJson.fabric_program_id??""),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
-    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+    configuration:{...optionsJson,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,shade_type:design?.shade_type??null,motor_type:design?.motor_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   })?.issues ?? [] : [];
   const woodIssues = authoritativeV2 && productType === "Wood Blinds" ? validateNormanFamilyRules({
     productId:"wood_blinds",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??""),
