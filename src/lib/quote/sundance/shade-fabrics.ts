@@ -1,4 +1,6 @@
-import source from "./shade-fabrics.source.json";
+import shadeSource from "./shade-fabrics.source.json";
+import zebraSource from "./zebra-fabrics.source.json";
+const source = {...shadeSource, collections:[...shadeSource.collections,...zebraSource.collections], colors:[...shadeSource.colors,...zebraSource.colors]};
 import type { ProductColorOption } from "../product-color-options";
 
 export const sundanceShadeFabricSource = source;
@@ -16,7 +18,7 @@ export const sundanceShadeColors: ProductColorOption[] = source.colors.map(row =
     automaticDetails: {
       catalog_sundance_shade_collection_id: collection.id, sundance_shade_collection: collection.name,
       light_control: collection.privacyType, catalog_sundance_fabric_width: collection.fabricWidth,
-      catalog_sundance_railroad_available: String(collection.railroaded),
+      catalog_sundance_railroad_available: collection.railroaded === null ? "unverified" : String(collection.railroaded),
     },
     searchText: `${row.portalLabel} ${collection.name} ${collection.privacyType}`.toLowerCase(),
   };
@@ -32,7 +34,7 @@ export function sundanceShadeCollectionPatch(options: Record<string, unknown>, p
     fabric_color_collection: null, fabric_color_type: null,
     fabric_program_id: collection.programId, catalog_program_id: collection.programId, quote_lab_program_id: collection.programId,
     light_control: collection.privacyType, catalog_sundance_fabric_width: collection.fabricWidth,
-    catalog_sundance_railroad_available: String(collection.railroaded),
+    catalog_sundance_railroad_available: collection.railroaded === null ? "unverified" : String(collection.railroaded),
   };
 }
 

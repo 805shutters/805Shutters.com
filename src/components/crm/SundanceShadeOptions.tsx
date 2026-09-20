@@ -19,7 +19,7 @@ export function SundanceShadeOptions({productId, options, onUpdateFields}: {
       const patch = sundanceShadeColorPatch(options,productId,e.target.value);
       if (row && patch) onUpdateFields({fabric:row.colorName,options_json:patch});
     }}><option value="">Select exact dealer fabric</option>{colors.map(row => <option key={row.id} value={row.id}>{row.colorName}</option>)}</select></label>
-    {selected && <p className="text-sm">{selected.privacyType} · Fabric width {selected.fabricWidth} · Railroading {selected.railroaded ? "available" : "not available"}. Final shade limits also depend on the control and top treatment.</p>}
+    {selected && <p className="text-sm">{selected.privacyType} · Fabric width {selected.fabricWidth} · Railroading {selected.railroaded === null ? "unverified" : selected.railroaded ? "available" : "not available"}. Final shade limits also depend on the control and top treatment.</p>}
     {colors.length === 0 && <p className="text-sm text-amber-900">The source collection has a pricing destination, but no unambiguous current dealer color is reconciled here. Confirm availability and exact material before quoting.</p>}
     {productId.includes("flat_roman") && <p className="text-sm text-amber-900">A dedicated current dealer ordering type for this flat Roman family was not found. Confirm current orderability before quoting.</p>}
     <p className="text-sm text-amber-900">Source collection routes do not verify control, mounting, fabric-width, accessory or account-price compatibility. Confirm the complete configuration and charges with the dealer.</p>

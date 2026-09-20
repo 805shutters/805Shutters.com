@@ -8,9 +8,9 @@ import { sundanceCatalog, lookupSundanceSourceGrid } from "./catalog";
 import { sundanceShadeColors, sundanceShadeColorPatch, sundanceShadeCollectionPatch, sundanceShadeFabricSource } from "./shade-fabrics";
 
 it("retains every family-specific source index and maps only reconciled dealer labels", () => {
-  expect(sundanceShadeFabricSource.collections).toHaveLength(287);
-  expect(sundanceShadeColors).toHaveLength(553);
-  expect(new Set(sundanceShadeColors.map(row => row.id)).size).toBe(553);
+  expect(sundanceShadeFabricSource.collections).toHaveLength(325);
+  expect(sundanceShadeColors).toHaveLength(630);
+  expect(new Set(sundanceShadeColors.map(row => row.id)).size).toBe(630);
   expect(sundanceShadeFabricSource.exceptions).toHaveLength(120);
   for (const row of sundanceShadeFabricSource.collections) {
     const product = sundanceCatalog.products.find(p => p.id === row.productId)!;

@@ -52,7 +52,7 @@ export const sundanceCatalog: Catalog = {
     })),
   })), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r9";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r10";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);

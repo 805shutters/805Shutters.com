@@ -1,0 +1,1430 @@
+{
+  "observedOn": "2026-09-20",
+  "collections": [
+    {
+      "id": "sundance_zebra:collection:736001faca59",
+      "productId": "sundance_zebra",
+      "name": "Aria",
+      "priceGroup": "4",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "108\"",
+      "bandSize": "3\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:062dda15f883",
+      "productId": "sundance_zebra",
+      "name": "Barcelona",
+      "priceGroup": "3",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:8f3bb51eb6a4",
+      "productId": "sundance_zebra",
+      "name": "Corsica",
+      "priceGroup": "4",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "3.75\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:544c789e852c",
+      "productId": "sundance_zebra",
+      "name": "Florence",
+      "priceGroup": "2",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p5_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:1432897a6136",
+      "productId": "sundance_zebra",
+      "name": "Legacy",
+      "priceGroup": "3",
+      "privacyType": "Room Darkening",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "3.75\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:0e36a50d629e",
+      "productId": "sundance_zebra",
+      "name": "Orlando",
+      "priceGroup": "2",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p5_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:b5cbe30ab3c5",
+      "productId": "sundance_zebra",
+      "name": "Orlando Blackout",
+      "priceGroup": "4",
+      "privacyType": "Room Darkening",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:d894f76dcd15",
+      "productId": "sundance_zebra",
+      "name": "Peninsula",
+      "priceGroup": "4",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "108\"",
+      "bandSize": "3.25\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:c4ac90f9183a",
+      "productId": "sundance_zebra",
+      "name": "Prado",
+      "priceGroup": "4",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:08de33c678f0",
+      "productId": "sundance_zebra",
+      "name": "Ravenwood",
+      "priceGroup": "2",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "102\"",
+      "bandSize": "3\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p5_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:852f6017a9b0",
+      "productId": "sundance_zebra",
+      "name": "Santa Fe",
+      "priceGroup": "4",
+      "privacyType": "Room Darkening",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:36788b6871c3",
+      "productId": "sundance_zebra",
+      "name": "Scapes",
+      "priceGroup": "1",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "102\"",
+      "bandSize": "3\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p5_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:3a719c25d5f0",
+      "productId": "sundance_zebra",
+      "name": "Sedona",
+      "priceGroup": "4",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "3\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:4f0330ebcf31",
+      "productId": "sundance_zebra",
+      "name": "Siena",
+      "priceGroup": "3",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:5ac0213c34c3",
+      "productId": "sundance_zebra",
+      "name": "Tuscany",
+      "priceGroup": "4",
+      "privacyType": "Room Darkening",
+      "openness": null,
+      "fabricWidth": "118\"",
+      "bandSize": "5.25\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p6_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_zebra:collection:307891a3356c",
+      "productId": "sundance_zebra",
+      "name": "Westin",
+      "priceGroup": "2",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3\"",
+      "railroaded": null,
+      "programId": "sundance_zebra_p5_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:8e002e874625",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Albero",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3.93\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:db3bc702a2f1",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Argento",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:7406423b49ea",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Arrezzo",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:7b9091fdc255",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Capri",
+      "priceGroup": "5",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p7_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:3ec67d210bfd",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Capri Black & Navy",
+      "priceGroup": "6",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p7_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:1939b8fe63e3",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Cirro",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "108\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:3f3d9ba8da23",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Classica",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:483d9d430c06",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Ecco",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:3b4e60cf5e0c",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Ferrara",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:d74421ae9206",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Fiore",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:5c1a4924ed3e",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Firenze",
+      "priceGroup": "6",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p7_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:41315e7a2bb7",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Floreale",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3.93\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:fa459827911c",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Linso",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:f6711925c99f",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Lusso",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "108\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:522d4e6a0f68",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Modella",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:624e1b9e90e2",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Modina",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:92b5aa4b5768",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Nola BO",
+      "priceGroup": "7",
+      "privacyType": "Room Darkening",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:6301417622b4",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Palermo",
+      "priceGroup": "6",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3.93\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p7_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:f282c8bd95df",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Rimini",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3.93\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:d13fe1053b1a",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Setosa",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:3ba7cccbe928",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Trento",
+      "priceGroup": "7",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "108\"",
+      "bandSize": "2.95\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t1",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    },
+    {
+      "id": "sundance_louvolite_zebra:collection:0dad5e75d936",
+      "productId": "sundance_louvolite_zebra",
+      "name": "Viale",
+      "priceGroup": "8",
+      "privacyType": "Light Filtering",
+      "openness": null,
+      "fabricWidth": "110\"",
+      "bandSize": "3.93\"",
+      "railroaded": null,
+      "programId": "sundance_louvolite_zebra_p8_t2",
+      "sourceFile": "G-Zebra-Shades-V2.pdf",
+      "sourcePage": 3,
+      "sourceId": "sundance-g-zebra-shades-v2-2e3b46c6b809",
+      "sourceSha256": "2e3b46c6b809c2dc31ad95cf63b3b82aad8573cd7e55553706ce73c8dbf04816",
+      "effectiveDate": "2024-08-01"
+    }
+  ],
+  "colors": [
+    {
+      "id": "sundance_zebra:dealer:93469902f668",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:062dda15f883",
+      "portalLabel": "BARCELONA BL22-01",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:4ab714594d31",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:062dda15f883",
+      "portalLabel": "BARCELONA BL22-02",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:0b77909b8434",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:062dda15f883",
+      "portalLabel": "BARCELONA BL22-03",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:bccf9e0ac770",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:062dda15f883",
+      "portalLabel": "BARCELONA BL22-04",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:c169132e84a2",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:062dda15f883",
+      "portalLabel": "BARCELONA BL22-05",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:7d14d21f360c",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:8f3bb51eb6a4",
+      "portalLabel": "CORSICA BL2501",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:d3ac5bdd1e17",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:8f3bb51eb6a4",
+      "portalLabel": "CORSICA BL2502",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:02a7a02ee123",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:8f3bb51eb6a4",
+      "portalLabel": "CORSICA BL2503",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:a50a5355aeca",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:8f3bb51eb6a4",
+      "portalLabel": "CORSICA BL2504",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:567342102ab1",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:8f3bb51eb6a4",
+      "portalLabel": "CORSICA BL2505",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4742eba0a447",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:544c789e852c",
+      "portalLabel": "FLORENCE B15-01",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:809dfdb77837",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:544c789e852c",
+      "portalLabel": "FLORENCE B15-02",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:0c4b598901c8",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:544c789e852c",
+      "portalLabel": "FLORENCE B15-03",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:c2ac54f77625",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:544c789e852c",
+      "portalLabel": "FLORENCE B15-04",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:f96bb1ae0496",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1001",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:11199a7c4e97",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1002",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:944a975fd290",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1003",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:14eb1048d5a5",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1005",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:3a5533c4328e",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1007",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:f6e75b2f9a78",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1010",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:c42b58f829fe",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1011",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:de34e4a6e70f",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1012",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:a46ce9a834ff",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:1432897a6136",
+      "portalLabel": "LEGACY CARESS B1022",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_louvolite_zebra:dealer:fe89814dfee5",
+      "productId": "sundance_louvolite_zebra",
+      "collectionId": "sundance_louvolite_zebra:collection:522d4e6a0f68",
+      "portalLabel": "MODELLA- SAND-VISION 110",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_louvolite_zebra_p8_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:ade23c2707c8",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:0e36a50d629e",
+      "portalLabel": "ORLANDO BL21-01",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:030972f5ee49",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:0e36a50d629e",
+      "portalLabel": "ORLANDO BL21-02",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:1e569cada5df",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:0e36a50d629e",
+      "portalLabel": "ORLANDO BL21-03",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:d494a6d2f61a",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:0e36a50d629e",
+      "portalLabel": "ORLANDO BL21-04",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:f6365af13320",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:b5cbe30ab3c5",
+      "portalLabel": "ORLANDO BLACKOUT BL2901",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:6552f0b81230",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:b5cbe30ab3c5",
+      "portalLabel": "ORLANDO BLACKOUT BL2902",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:9a2e74787f6a",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:b5cbe30ab3c5",
+      "portalLabel": "ORLANDO BLACKOUT BL2903",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4bc5a08c4ebe",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:b5cbe30ab3c5",
+      "portalLabel": "ORLANDO BLACKOUT BL2904",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:854ce8256436",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:d894f76dcd15",
+      "portalLabel": "PENINSULA 01 WHITE",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:e2b51a33acac",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:d894f76dcd15",
+      "portalLabel": "PENINSULA 04 CHARCOAL",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:7dc874e19e9c",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:c4ac90f9183a",
+      "portalLabel": "PRADO SC-TB6-101 WHITE SWAN",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:554fcc6c1036",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:c4ac90f9183a",
+      "portalLabel": "PRADO SC-TB6-102 EGSHELL WHITE",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:cf136f2a94ae",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:c4ac90f9183a",
+      "portalLabel": "PRADO SC-TB6-104 SILVER STRAND",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:3f8b44b8b526",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B501",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:95b4edcf7a12",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B502",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:cd4f28db9f0e",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B503",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:87f7ab7e2d49",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B504",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:12988450dfee",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B505",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:b56ec9fbb315",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:08de33c678f0",
+      "portalLabel": "RAVENWOOD  CARESS  B506",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t2"
+    },
+    {
+      "id": "sundance_louvolite_zebra:dealer:d4b53f5bcba7",
+      "productId": "sundance_louvolite_zebra",
+      "collectionId": "sundance_louvolite_zebra:collection:f282c8bd95df",
+      "portalLabel": "RIMINI- ASH",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_louvolite_zebra_p8_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4f0dfe5fb2d1",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-01",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4001c5917675",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-02",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4fcdd7f01683",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-03",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:605bc3422475",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-04",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:a6de2113f310",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-05",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:01c9aa83ec06",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:852f6017a9b0",
+      "portalLabel": "SANTA FE BL20-08",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:1efbc03efae5",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B102",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:f6aa1eb296d1",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B109",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:bd455e78c268",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B110",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:8e9c19862241",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B111",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:9f0e1e9d7bab",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B112",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:6655de718808",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B114",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:ba3e428c4db7",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B117",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:7ac1a4755fbe",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B122",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:fc5af67ed7cb",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B123",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:8588f269976e",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:36788b6871c3",
+      "portalLabel": "SCAPES  CARESS  B125",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p5_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:fe552a158d6b",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:3a719c25d5f0",
+      "portalLabel": "SEDONA SC-TB1-101",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:0988457ae9ae",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:3a719c25d5f0",
+      "portalLabel": "SEDONA SC-TB1-102",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:36ffd70d7da2",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:3a719c25d5f0",
+      "portalLabel": "SEDONA SC-TB1-103",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:0a171cc7d281",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:3a719c25d5f0",
+      "portalLabel": "SEDONA SC-TB1-104",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:bbe9feb5fba8",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:3a719c25d5f0",
+      "portalLabel": "SEDONA SC-TB1-105",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:e3a1cce64289",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL201",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:a00c81f738a8",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL202",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:ef7f87505011",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL203",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:15c8cf649ddd",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL207",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:edb3849b02fc",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL208",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:9bc8ac967b9f",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:4f0330ebcf31",
+      "portalLabel": "SIENA  CARESS  BL210",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t1"
+    },
+    {
+      "id": "sundance_zebra:dealer:ca9b39057bd1",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL901",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:4039eb74668e",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL902",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:a83ba93799bc",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL904",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:c669948eccd8",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL907",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:53fa878f42a7",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL911",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    },
+    {
+      "id": "sundance_zebra:dealer:272d89a56d38",
+      "productId": "sundance_zebra",
+      "collectionId": "sundance_zebra:collection:5ac0213c34c3",
+      "portalLabel": "TUSCANY  CARESS  BL912",
+      "portalFamilies": [
+        "Caress-Zebra"
+      ],
+      "programId": "sundance_zebra_p6_t2"
+    }
+  ],
+  "exceptions": [],
+  "notes": [
+    "All source patterns retained; exact colors exist only where the dealer menu supplies them.",
+    "Capri Black & Navy is group 6; other Capri is group 5. No Capri dealer colors were captured.",
+    "Orlando Blackout group 4 must never map to Orlando Light Filtering group 2.",
+    "August 1 2024 effective date is printed on page 3; the cover separately says October 2024 update."
+  ]
+}
