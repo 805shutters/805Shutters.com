@@ -90,4 +90,25 @@ After a full reload and reopening standalone 805-0339, its customer Contract pre
 
 Added Primary Bathroom as line 10 to internal 805-0337, explicitly selected the aluminum one-way complete program, then saved 60 × 72, White, Outside Mount and Right stack. The program retained its standard 30-inch wand, White headrail and matching valance. After Quote saved, closed and reopened the quote from Staff quotes. All selections, dimensions, quantity 1 and the exact program remained, with the line held at $0.00 and seven windows needing pricing. This closes individual persistence proof for the second of seven imported vertical programs.
 
-The remaining headrail and vane component proofs require single-axis measurements. Repair 2f55345a adds a width-only headrail form and length-only vane form, leaves the irrelevant axis zero, and preserves all existing pricing holds. Its production proof remains pending deployment.
+The remaining headrail and vane component proofs require single-axis measurements. Repair 2f55345a adds a width-only headrail form and length-only vane form, leaves the irrelevant axis zero, and preserves all existing pricing holds. Its production proof completed on 418226b6, as recorded below.
+
+
+### Aluminum center-draw complete vertical — 138be0b3
+
+After the parent confirmed 138be0b3 live (including the null-valance adapter correction), configured Bedroom 3 as line 14 in internal 805-0337. Saved 60 × 72, White, Outside Mount, center draw and the standard 30-inch wand. Valance inclusion remained explicitly unresolved. After Quote saved, closed and reopened the quote. The exact program, dimensions, color, mount, center draw, wand and unresolved valance statement remained, with $0.00 / pricing held. Three headrail programs and the vane program were also saved as distinct identities but had no invented dimensions while their natural-axis form awaited release.
+
+
+### Four component programs and natural measurement axes — 418226b6
+
+On www.805shutters.com after the verified 418226b6 release, completed the remaining four component programs in internal quote 805-0337. The measurement dialog asked only for Headrail width on headrails and Vane length on vanes. No irrelevant dimension was fabricated.
+
+| Line / room | Persisted source configuration |
+| --- | --- |
+| 11 Bedroom 1 | Steel headrail; width 60 only; White; Outside Mount; Left stack; standard 30-inch wand; no valance |
+| 12 Bedroom 2 | Aluminum one-way headrail; width 48 only; White; Outside Mount; Right stack; standard 30-inch wand; no valance |
+| 13 Guest Room | Aluminum center-draw headrail; width 72 only; White; Outside Mount; Center draw; standard 30-inch wand; no valance |
+| 15 Nursery | Vanes only; length 48 only; Alabaster; quantity 1; no headrail, mounting, stack or control; no valance |
+
+After Quote saved, closed the builder and reopened 805-0337 from Staff quotes. Read back each exact program, measurement label and selected option. All four remained held at $0.00, with the vane per-piece/carton quantity basis explicitly unresolved. Center-draw complete line 14 also retained its distinct identity and unresolved valance inclusion. All seven imported vertical programs now have individual production save/reopen evidence; this proves persistence and source-backed selection rules, not verified current pricing.
+
+The mixed quote retained Office AMX $117.90, Living Room FTXLG $119.94 and Primary Bedroom AMX $117.90. Twelve held or incomplete lines remained blocked. Contract refused customer output with Pricing incomplete. No send, sell, signature, payment or order action occurred.
