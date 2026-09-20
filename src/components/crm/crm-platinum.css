@@ -28,7 +28,9 @@
 .crm-platinum-sidebar button svg { flex:none; }
 .crm-platinum-sidebar button small { margin-left:auto; font-size:9px; letter-spacing:.08em; }
 .crm-platinum-sidebar button:hover { background:#1d1d1b; }
-.crm-platinum-sidebar button[aria-current=page] { background:#fbfbfa; color:#0b0b0b; }
+.crm-platinum-sidebar button[aria-current=page] { background:#102d21; color:#75dfab; box-shadow:inset 3px 0 0 #75dfab, inset 0 0 0 1px #39654e; }
+.crm-platinum-sidebar button:focus-visible { outline:2px solid #75dfab; outline-offset:2px; }
+.crm-platinum-sidebar button:focus:not(:focus-visible) { outline:none; }
 .crm-platinum-sidebar-actions { display:grid; gap:5px; border-top:1px solid #343330; padding-top:16px; margin-top:25px; }
 .crm-platinum-sidebar button:disabled { opacity:.5; cursor:wait; }
 .crm-platinum-main { min-width:0; }
