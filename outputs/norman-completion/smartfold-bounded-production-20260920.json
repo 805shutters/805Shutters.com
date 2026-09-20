@@ -1,0 +1,64 @@
+{
+  "date": "2026-09-20",
+  "deployment": "134fef733b91df7bdead0e0a6bcdc8e750cc4436",
+  "quote": "805-0342",
+  "alternative": "B",
+  "configuration": {
+    "room": "Office",
+    "width": 36,
+    "height": 60,
+    "quantity": 4,
+    "fabric": "Louise F1709 White Jade LF",
+    "mount": "Outside Back / Wall Mount with Raceway",
+    "motor": "Norman Smart Rechargeable Battery (AC Charger)",
+    "remote": "Basic Remote",
+    "position": "Right",
+    "hub": false,
+    "fold": 6,
+    "valance": "No Valance",
+    "lightGuard": false,
+    "shimLayers": 0,
+    "screwMountingAreaHeight": 0.75,
+    "shadeMountingSpaceHeight": 1.5,
+    "extraChargingKits": 2,
+    "extensionCables": 3
+  },
+  "proof": {
+    "fullBrowserReload": true,
+    "closeReopen": true,
+    "customerPreview": true,
+    "baseRetailEach": 606,
+    "motorEach": 482,
+    "remoteEach": 75,
+    "installationEach": 25,
+    "shippingEach": 14,
+    "perShade": 1202,
+    "extraKitsOnce": 86,
+    "extensionsOnce": 129,
+    "onceTotal": 215,
+    "total": 5023,
+    "includedChargingKits": 2,
+    "motorCount": 4,
+    "extension": "78.74 inches, Black,36W",
+    "negative": [
+      {
+        "area": 0.749,
+        "space": 1.5,
+        "savedServerIssue": "The4.5-inch bracket requires at least0.75 inch of screw mounting area.",
+        "price": 0
+      },
+      {
+        "area": 0.75,
+        "space": 1.499,
+        "savedServerIssue": "The4.5-inch bracket requires at least1.5 inches of mounting space for the shade.",
+        "price": 0
+      }
+    ]
+  },
+  "limitations": [
+    "Only the bounded September outside-mount individual rechargeable path is enabled; common-valance alternativeA remains held.",
+    "Customer preview price and choices passed, but raw atomic labels leaked. Presentation fixf5d52906 is committed; live recheck pending.",
+    "Dealer landed cost and account applicability unresolved; existing selling-price policy unchanged."
+  ],
+  "externalActions": "No customer send/sign/sold/vendor order."
+}
