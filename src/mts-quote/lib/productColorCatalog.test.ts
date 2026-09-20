@@ -101,7 +101,10 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(getV2HoneycombFabricFamiliesForCellSize('9/16" Single Cell')).toContain(
       "Sheer",
     );
-    expect(searchMtsProductColors("Roman Shades", v2, "F1090")).toHaveLength(0);
+    for (const fold_style of ["Flat Fold without Seams", "Flat Fold with Batten Back", "Soft Fold"]) {
+      expect(searchMtsProductColors("Roman Shades", {...v2, fold_style, roman_fabric_category:"Caroline"}, "F1090")).toHaveLength(1);
+    }
+    expect(searchMtsProductColors("Roman Shades", {...v2,fold_style:"Edge Banded (Flat Fold with Batten Back)"}, "F1090")).toHaveLength(0);
   });
 
   it("filters autocomplete rows to the selected product group", () => {

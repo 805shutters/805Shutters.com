@@ -58,7 +58,7 @@ describe('September Roman chain and hardware rules',()=>{
 });
 
 describe('Roman September mounting-depth revision',()=>{
- const current=(configuration:SelectionContext['configuration'])=>({...shade(configuration),catalogAsOf:'2026-09-20',catalogVersion:'test-norman-roman-mounting-2026-09-20-r2'});
+ const current=(configuration:SelectionContext['configuration']):SelectionContext=>({...shade(configuration),catalogAsOf:'2026-09-20',catalogVersion:'test-norman-roman-mounting-2026-09-20-r2'});
  const mountingIssues=(s:SelectionContext)=>romanHardware(s)?.issues.filter(i=>i.ruleId.includes('mount_'))??[];
  it.each([
   ['Cordless','', '',1.75,2.125],
@@ -83,7 +83,7 @@ describe('Roman September mounting-depth revision',()=>{
     expect(mountingIssues({...s,configuration:{...s.configuration,mount_depth_inches:minimum-.0625}})).toHaveLength(1);
    }
   }
-  for(const mount_depth_inches of [undefined,'',0,'abc',1.5])expect(mountingIssues(current({roman_mount_fit:'Semi Inside',mount_depth_inches}))).toHaveLength(1);
+  for(const mount_depth_inches of [null,'',0,'abc',1.5])expect(mountingIssues(current({roman_mount_fit:'Semi Inside',mount_depth_inches}))).toHaveLength(1);
   expect(mountingIssues(current({mount_depth_inches:4})).map(i=>i.ruleId)).toContain('roman.hardware.mount_fit');
   expect(mountingIssues(current({mount_type:'Outside Mount'}))).toEqual([]);
   expect(mountingIssues({...current({}),catalogVersion:'test-norman-roman-caroline-2026-09-20-r1'})).toEqual([]);

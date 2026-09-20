@@ -517,12 +517,6 @@ function rowMatchesMtsContext(
   if (row.productId.startsWith("sundance_")) return sundanceCellularColorMatchesContext(row, optionsJson);
   switch (productType) {
     case "Roman Shades": {
-      if (
-        isAuthoritativeV2(optionsJson) &&
-        normalize(row.colorCode) === "f1090"
-      ) {
-        return false;
-      }
       const selectedCategory = stringOption(optionsJson, "roman_fabric_category");
       if (selectedCategory && normalize(row.collection) !== normalize(selectedCategory)) {
         return false;
