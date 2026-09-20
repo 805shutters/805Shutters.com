@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-20",
+  "release": "bd0144286a20d9a3ed4dc9cde9429af4cf8fc928",
+  "quote": "805-0326",
+  "workflow": [
+    "complete local form",
+    "Save panel construction once per line",
+    "Quote saved",
+    "close",
+    "full browser reload",
+    "search saved quote",
+    "reopen"
+  ],
+  "programs": [
+    "Woodlore",
+    "Woodlore Plus",
+    "Woodlore AquaShield",
+    "Brightwood",
+    "Normandy Painted",
+    "Normandy Stained"
+  ],
+  "all_programs_retained": {
+    "application": "Regular",
+    "motor": "No motor",
+    "panel_heights_inches": [
+      58,
+      58
+    ],
+    "dividers": [
+      "No divider rail",
+      "No divider rail"
+    ],
+    "opening_inches": [
+      36,
+      60
+    ]
+  },
+  "negative_case": {
+    "program": "Woodlore",
+    "panel1_height": 74.0625,
+    "divider": "none",
+    "visible_audit_message": "Panel 1 exceeds the 74-inch no-divider limit for this program/application.",
+    "restored_height": 58,
+    "warning_removed": true
+  },
+  "pricing_status": "All six lines remain held; quote Total unavailable; panel persistence does not certify rates or full construction",
+  "no_send_order_or_checkout": true
+}

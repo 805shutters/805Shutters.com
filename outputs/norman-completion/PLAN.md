@@ -1,4 +1,12 @@
 # Norman completion — 2026-09-18
+## Current checkpoint — September 20, 14:09
+- Completed: eight Roman production drafts repriced, saved/reopened and customer previews matched; native All-lines copy now saves onto existing priced designs without deleting historical snapshots (live UI proof plus automated preservation tests).
+- In progress: six Norman shutter panel records; atomic form-save repair passed 5,758 tests and is deploying as bd014428. Account pricing remains held.
+- Ready for integration: Norman Roman yardage/pillow-cover destinations (201/157 source colors, natural units, explicit price holds); Lotus vertical component/control rules and plain-language measurement output.
+- Agents: Onyx agent audits remaining Norman wood/faux rules; Sundance agent completes vertical assortment/valance schedules and live Portfolio/Zebra proof; Lotus agent completes current configuration live proof and precise results ledger.
+- Remaining: source conflicts and option gaps by family, production proof of each new destination, consolidated exact exceptions ledger. No fully certified Norman family claim.
+- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to 805; no account factors changed.
+
 - [x] Isolate current main; preserve unrelated canonical changes.
 - [x] Inventory 14 families, 47 programs, 1,288 color identities, 678 Honeycomb color/cell routes and 544 option records.
 - [x] Compare current catalog against September retail: all 371 grid rows match; six shutter rates remain provisional.

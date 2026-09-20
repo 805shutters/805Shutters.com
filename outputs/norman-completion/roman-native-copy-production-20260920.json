@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-20",
+  "release": "e1b9ccaa8e7e92d8191ded7a3b4331009f2b88fb",
+  "quote": "805-0338",
+  "action": "First line All lines on existing priced native quote",
+  "saved_and_reopened": true,
+  "dimensions": [
+    "36x60",
+    "36x60"
+  ],
+  "room": [
+    "Office",
+    "Office"
+  ],
+  "quantity": [
+    1,
+    1
+  ],
+  "price_each": [
+    1388.4,
+    1388.4
+  ],
+  "total": 2776.8,
+  "copied_configuration": [
+    "F1794 Impressions Ice White",
+    "Soft Fold",
+    "Reverse",
+    "No Valance",
+    "No Returns"
+  ],
+  "relationship_cleanup": "Both Side-by-Side Match No and paired line selectors removed after copy; confirmed after close and reopen",
+  "restoration": "Yes and reciprocal existing line IDs restored; same total repriced",
+  "line_ids": [
+    "e7aeab94-af75-4b7b-8bdc-4438d1ab6a53",
+    "6b4ee7be-14cf-4efd-8585-31ee411ab449"
+  ],
+  "history_evidence": "Existing design IDs preserved; code path uses upsert and never deletes snapshots. Historical snapshot preservation covered by automated tests, not asserted from UI alone.",
+  "no_customer_send_or_order": true
+}
