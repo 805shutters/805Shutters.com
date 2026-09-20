@@ -11,6 +11,7 @@ import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { ManufacturerProductButtons } from "./ManufacturerProductButtons";
 import { RoomPresetButtons } from "./RoomPresetButtons";
 import { MeasurementGridModal } from "./MeasurementGridModal";
+import { buildNativeDesignCopyOperations } from "@mts/lib/quoteV2DesignCopy";
 import {
   buildCatalogSelectionPatch,
   DesignCard,
@@ -1577,23 +1578,7 @@ export function QuoteBuilder({
       if (targets.length === 0) throw new Error("No matching line items selected to copy to.");
 
       if (serverOwnedV2) {
-        const linePatch = quoteV2LinePatch(
-          buildCopiedLineItemPatch(sourceItem),
-        );
-        const operations = targets.flatMap<QuoteV2StructureOperation>(
-          (targetLineItemId) => [
-            {
-              type: "line.update",
-              lineItemId: targetLineItemId,
-              patch: linePatch,
-            },
-            {
-              type: "design.copySet",
-              sourceLineItemId: sourceItemId,
-              targetLineItemId,
-            },
-          ],
-        );
+        const operations = buildNativeDesignCopyOperations(sourceItem, lineItems, designs, targets);
         await mutateAndRepriceServerOwnedV2(operations, targets[0]);
         return targets;
       }

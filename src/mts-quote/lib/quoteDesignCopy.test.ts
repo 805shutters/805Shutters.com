@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildNativeDesignCopyOperations } from "./quoteV2DesignCopy";
 import {
   buildCopiedDesignSet,
   buildCopiedDesignRows,
@@ -64,6 +65,45 @@ function design(
 }
 
 describe("quote design copy target matching", () => {
+  it("copies priced native variants onto existing IDs without touching line dimensions or historical snapshots", () => {
+    const identity = { catalog_product_id: "roller", catalog_program_id: "roller_pg1" };
+    const source = lineItem({ id: "source-line", width_whole: 36 });
+    const target = lineItem({ id: "target-line", width_whole: 48, room_name: "Office", quantity: 2 });
+    const sourceDesigns = [design("A", false, identity), design("B", true, { ...identity, color: "White", authoritative_price_status: "priced", manual_price_override: true, priced_selection_fingerprint: "source-price" })];
+    const targetDesigns = sourceDesigns.map(row => ({ ...row, id: `target-${row.variant}`, line_item_id: target.id, current_v2_snapshot_id: `old-${row.variant}`, options_json: { ...identity, color: "Old" } }));
+    const designs = [...sourceDesigns, ...targetDesigns];
+    const before = structuredClone({ source, target, designs });
+    const operations = buildNativeDesignCopyOperations(source, [source, target], designs, [target.id]);
+    expect(operations).toHaveLength(2);
+    expect(operations.map(operation => operation.type)).toEqual(["design.upsert", "design.upsert"]);
+    expect(operations[0]).toMatchObject({ designId: "target-A", lineItemId: target.id, variant: "A", selectDesign: false });
+    expect(operations[1]).toMatchObject({ designId: "target-B", lineItemId: target.id, variant: "B", selectDesign: true, patch: { optionsJson: { color: "White" } } });
+    const encoded = JSON.stringify(operations);
+    for (const forbidden of ["current_v2_snapshot_id", "source-price", "manual_price_override", "unit_price", "widthWhole", "roomName", "quantity", "design.copySet", "design.delete"]) expect(encoded).not.toContain(forbidden);
+    expect({ source, target, designs }).toEqual(before);
+  });
+
+  it("blocks the entire copy when one target has an unmatched historical variant", () => {
+    const identity = { catalog_product_id: "roller" };
+    const source = lineItem({ id: "source-line" });
+    const targets = [lineItem({ id: "target-one" }), lineItem({ id: "target-two" })];
+    const sourceDesign = design("A", true, identity);
+    const designs = [sourceDesign, ...targets.map(target => ({ ...sourceDesign, id: target.id, line_item_id: target.id })), { ...design("B", false, identity), id: "historical-B", line_item_id: "target-two" }];
+    expect(() => buildNativeDesignCopyOperations(source, [source, ...targets], designs, targets.map(row => row.id))).toThrow("Different variant sets cannot be replaced");
+  });
+
+  it("clears a reciprocal external relationship using its existing design ID without changing its selection", () => {
+    const identity = { catalog_product_id: "roller" };
+    const source = lineItem({ id: "source-line" });
+    const target = lineItem({ id: "target" });
+    const partner = lineItem({ id: "partner" });
+    const sourceDesign = design("A", true, identity);
+    const targetDesign = { ...sourceDesign, id: "target-A", line_item_id: target.id, options_json: { ...identity, side_by_side: "Yes", side_by_side_match_line_id: partner.id } };
+    const partnerDesign = { ...sourceDesign, id: "partner-A", line_item_id: partner.id, options_json: { ...identity, side_by_side: "Yes", side_by_side_match_line_id: target.id } };
+    const operations = buildNativeDesignCopyOperations(source, [source, target, partner], [sourceDesign, targetDesign, partnerDesign], [target.id]);
+    expect(operations[0]).toMatchObject({ type: "design.upsert", designId: "partner-A", lineItemId: partner.id, selectDesign: false, patch: { optionsJson: { side_by_side: "No" } } });
+    expect(JSON.stringify(operations)).not.toContain("side_by_side_match_line_id");
+  });
   it("matches product types case-insensitively after trimming", () => {
     expect(
       lineItemsHaveMatchingProductType(
