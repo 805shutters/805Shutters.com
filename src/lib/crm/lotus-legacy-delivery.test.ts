@@ -15,6 +15,11 @@ describe("Lotus source authority at the legacy customer delivery boundary", () =
     expect(lotusLegacyDeliveryBlock([{ supplier: "Lotus", material: "old blind", unit_price: 40 }])).toBeNull();
     expect(lotusLegacyDeliveryBlock([{ options_json: { catalog_product_id: "lotus_mini_blinds", catalog_program_id: "lotus_amx_1in_aluminum_custom" } }])).toBeNull();
   });
+  it("requires new typed AMX and roller configurations to use native validation", () => {
+    for (const version of [{lotus_amx_configuration_version:"lotus-amx-v1"},{lotus_roller_configuration_version:"lotus-roller-v1"}]) {
+      expect(lotusLegacyDeliveryBlock([{unit_price:999,options_json:{...version,manual_price_override:true}}])).toContain("native quote workflow");
+    }
+  });
   it("preserves signed contract terms without looking up current catalog selections", async () => {
     const from = vi.fn();
     await assertLegacyLotusDeliveryAllowed({ from } as never, { signed_at: "2026-08-01" });

@@ -9,6 +9,7 @@ export function lotusLegacyDeliveryBlock(designs: Row[]): string | null {
   for (const design of designs) {
     const options = design.options_json && typeof design.options_json === "object" && !Array.isArray(design.options_json)
       ? design.options_json as Row : {};
+    if (options.lotus_amx_configuration_version || options.lotus_roller_configuration_version) return "This current Lotus configuration requires the native quote workflow to validate its saved options, dimensions and price before customer delivery.";
     const productId = String(options.catalog_product_id ?? options.quote_lab_product_id ?? "");
     if (productId.startsWith("lotus_dealer_listed_") || options.lotus_observed_offering_id) return "This exact dealer-listed Lotus item requires verified configuration and price confirmation in the native quote workflow before delivery.";
     const programId = String(options.catalog_program_id ?? options.quote_lab_program_id ?? "");
