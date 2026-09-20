@@ -1,7 +1,7 @@
 export type ShutterFrameManufacturer = "Norman" | "Onyx";
 export type ShutterMeasurementBasis = "window_size" | "frame_to_frame";
 export type ShutterMountType = "inside" | "outside";
-export type ShutterFrameSides = 3 | 4;
+export type ShutterFrameSides = 2 | 3 | 4;
 export type ShutterFramePricingInput = {
   manufacturer: ShutterFrameManufacturer;
   widthInches: number;
@@ -243,7 +243,7 @@ export function resolveShutterFramePricing(
   if (!base.frameType) {
     return { ...base, supported: false, reason: "missing_frame" };
   }
-  if (base.frameSides !== 3 && base.frameSides !== 4) {
+  if (base.frameSides !== 3 && base.frameSides !== 4 && !(input.manufacturer === "Norman" && base.frameSides === 2)) {
     return { ...base, supported: false, reason: "missing_frame_sides" };
   }
 
@@ -268,7 +268,7 @@ export function resolveShutterFramePricing(
 
   const perSide = definition.perSidePricingAdditionInches;
   const widthAdditionInches = perSide * 2;
-  const heightAdditionInches = perSide * (base.frameSides === 4 ? 2 : 1);
+  const heightAdditionInches = perSide * (base.frameSides - 2);
   return {
     ...base,
     canonicalFrameType: definition.canonicalFrameType,

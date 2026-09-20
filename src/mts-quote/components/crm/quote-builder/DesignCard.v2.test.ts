@@ -1488,3 +1488,16 @@ describe("Norman shutter source-backed program choices", () => {
     expect(values("normandy_painted", "frame_type")).toContain("Colonial L Frame");
   });
 });
+
+
+it("offers Norman frame-compatible mounting, measurement and two-sided layouts", () => {
+  const values = (frame_type:string, mount_type:string, key:string) => {
+    const options = getStandardShutterGridOptions({supplier:"Norman",material:"Woodlore",mount_type,options_json:{catalog_program_id:"woodlore",frame_type,size_type:"W - Window Size"}} as unknown as SalesQuoteDesign,true);
+    const choice = options.find(o=>o.key===key);
+    return choice && "options" in choice ? choice.options : [];
+  };
+  expect(values("Beaded L Frame","Outside Mount","frame_sides")).toEqual(["2","3","4"]);
+  expect(values("Beaded L Frame","Inside Mount","size_type")).toEqual(["F - Frame to Frame"]);
+  expect(values('3" Crown Z Frame',"Inside Mount","mount_type")).toEqual(["Inside Mount"]);
+  expect(values('3" Ridge Deco Frame',"Outside Mount","mount_type")).toEqual(["Outside Mount"]);
+});

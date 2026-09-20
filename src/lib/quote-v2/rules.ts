@@ -78,10 +78,6 @@ const POLAR_DEALER_BOOK: RuleSource = {
 const LOTUS_WEST_A26: RuleSource = {
   sourceId: "lotus-west-a26-v1",
 };
-const NORMAN_SHUTTER_FRAME_PRICING: RuleSource = {
-  sourceId: "norman-shutter-frame-pricing-2026-05",
-  pages: [1, 2, 3],
-};
 
 function programMatchesGroup(programId: string | null, priceGroup: string): boolean {
   const groupNumber = priceGroup.match(/(\d+)/)?.[1];
@@ -2344,7 +2340,7 @@ function validateNormanShutterFramePricing(
     not_applicable: "The Norman shutter frame-pricing selection is incomplete.",
     invalid_dimensions: "Shutter width and height must be positive before frame pricing can be calculated.",
     missing_frame: "Window-size shutter pricing requires an exact Norman frame.",
-    missing_frame_sides: "Window-size shutter pricing requires three or four framed sides.",
+    missing_frame_sides: context.catalogAsOf >= "2026-09-19" ? "Window-size shutter pricing requires two, three or four framed sides." : "Window-size shutter pricing requires three or four framed sides.",
     mount_frame_mismatch: "The selected Norman frame is not valid for the selected mount type.",
     unsupported_frame: "The selected Norman frame has no source-backed window-size pricing addition.",
   } as const;
@@ -2353,7 +2349,7 @@ function validateNormanShutterFramePricing(
     issue(
       "hard_block",
       `norman.shutter.frame_pricing.${reason}`,
-      NORMAN_SHUTTER_FRAME_PRICING,
+      resolution.source,
       selectedValues,
       explanationByReason[reason],
     ),

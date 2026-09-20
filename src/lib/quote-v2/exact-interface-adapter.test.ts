@@ -556,6 +556,13 @@ describe("V2 exact-interface adapter", () => {
     });
   });
 
+  it("preserves Norman two-sided frames without expanding Onyx choices", () => {
+    for (const productId of ["norman_shutters", "onyx_shutters"]) {
+      const context = selectionContextFromExactInterface(line, {supplier:productId === "norman_shutters" ? "Norman" : "Onyx", options_json:{size_type:"W - Window Size",frame_sides:"2"}}, {productId,programId:productId === "norman_shutters" ? "woodlore" : "bassia"});
+      expect(context.configuration.frame_sides ?? null).toBe(productId === "norman_shutters" ? 2 : null);
+    }
+  });
+
   it("keeps an Onyx outside opening unchanged while the engine resolver derives its pricing size", () => {
     const context = selectionContextFromExactInterface({
       ...line,

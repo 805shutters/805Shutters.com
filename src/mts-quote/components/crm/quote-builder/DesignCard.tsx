@@ -1,4 +1,4 @@
-import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames } from "@/lib/quote/norman-shutter-assortment";
+import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { WOOD_FITS, WOOD_WANDS } from "@/lib/quote/norman-wood";
 import { CITYLIGHTS_WANDS } from "@/lib/quote/norman-citylights";
@@ -3940,14 +3940,14 @@ export function getStandardShutterGridOptions(
             label: "Measurement Basis",
             field: "json:size_type",
             type: "buttons",
-            options: ONYX_SIZE_TYPES,
+            options: normanShutterMeasurements(String(normanOptions.catalog_program_id ?? design?.material ?? ""), normanOptions.frame_type, design?.mount_type),
           },
           {
             key: "mount_type",
             label: "Mount Type",
             field: "mount_type",
             type: "buttons",
-            options: ["Inside Mount", "Outside Mount"],
+            options: normanShutterMounts(String(normanOptions.catalog_program_id ?? design?.material ?? ""), normanOptions.frame_type),
           },
         ] satisfies GridOption[]
       : []),
@@ -3965,7 +3965,7 @@ export function getStandardShutterGridOptions(
             label: "Frame Sides",
             field: "json:frame_sides",
             type: "buttons",
-            options: ONYX_FRAME_SIDE_OPTIONS,
+            options: authoritativeV2 ? ["2", "3", "4"] : ONYX_FRAME_SIDE_OPTIONS,
           },
         ] satisfies GridOption[]
       : []),

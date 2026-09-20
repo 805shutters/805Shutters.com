@@ -1,3 +1,4 @@
+import { normanShutterFrame, normanShutterProgram } from "@/lib/quote/norman-shutter-assortment";
 import { resolveShutterFramePricing } from "@/lib/quote/shutter-frame-pricing";
 import type { SelectionContext } from "./core";
 import { sourceProvenance } from "./source-manifest";
@@ -10,7 +11,7 @@ export type NormanShutterWindowSizePricingResolution = Readonly<{
   applicable: boolean;
   supported: boolean;
   frameType: string | null;
-  frameSides: 3 | 4 | null;
+  frameSides: 2 | 3 | 4 | null;
   mountType: "inside" | "outside" | null;
   perSidePricingAdditionInches: number | null;
   widthAdditionInches: number | null;
@@ -33,10 +34,10 @@ function selectionText(context: SelectionContext, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function selectionFrameSides(context: SelectionContext): 3 | 4 | null {
+function selectionFrameSides(context: SelectionContext): 2 | 3 | 4 | null {
   const value = context.configuration.frame_sides ?? context.options.frame_sides;
   const numeric = typeof value === "number" ? value : Number(value);
-  return numeric === 3 || numeric === 4 ? numeric : null;
+  return numeric === 3 || numeric === 4 || (numeric === 2 && context.catalogAsOf >= "2026-09-19") ? numeric : null;
 }
 
 function selectionMount(context: SelectionContext): "inside" | "outside" | null {
@@ -67,7 +68,10 @@ export function resolveNormanShutterWindowSizePricing(
     };
   }
 
-  const frameType = selectionText(context, "frame_type");
+  const selectedFrame = selectionText(context, "frame_type");
+  const currentProgram = context.catalogAsOf >= "2026-09-19" ? normanShutterProgram(context.programId) : undefined;
+  const frameType = currentProgram ? normanShutterFrame(currentProgram.id, selectedFrame)?.label ?? selectedFrame : selectedFrame;
+  const source = currentProgram ? sourceProvenance(currentProgram.sourceId, { pages: currentProgram.id === "woodlore" ? [106,107,108] : currentProgram.id.startsWith("woodlore_") ? [140,141,142,143] : currentProgram.id === "brightwood" ? [138,139,140] : [148,149,150,151,152] }) : NORMAN_SHUTTER_FRAME_SOURCE;
   const frameSides = selectionFrameSides(context);
   const resolution = resolveShutterFramePricing({
     manufacturer: "Norman",
@@ -91,6 +95,6 @@ export function resolveNormanShutterWindowSizePricing(
     pricingWidthInches: resolution.pricingWidthInches,
     pricingHeightInches: resolution.pricingHeightInches,
     reason: resolution.reason,
-    source: NORMAN_SHUTTER_FRAME_SOURCE,
+    source,
   };
 }

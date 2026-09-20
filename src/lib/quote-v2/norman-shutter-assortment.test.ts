@@ -63,6 +63,15 @@ describe("Norman shutter binder assortment", () => {
       expect(validateNormanShutterAssortment(line)).toEqual([]);
     }
   });
+  it("rejects incompatible mounts even when frame-to-frame pricing needs no expansion", () => {
+    for (const [frame_type, mount_type] of [['3" Crown Z Frame', 'outside'], ['3" Ridge Deco Frame', 'inside']]) {
+      const line = shutter("woodlore", "001 - Pure White");
+      line.configuration = {...line.configuration, frame_type, mount_type, measurement_basis:"frame_to_frame"};
+      expect(validateNormanShutterAssortment(line).map(i=>i.ruleId)).toEqual(["norman.shutter.assortment.frame_mount"]);
+      line.catalogAsOf = "2026-09-18";
+      expect(validateNormanShutterAssortment(line)).toEqual([]);
+    }
+  });
   it("accepts exact legacy finish names without changing saved history", () => {
     expect(validateNormanShutterAssortment(shutter("woodlore","Pure White"))).toEqual([]);
     const s=shutter("woodlore","old custom finish");s.catalogAsOf="2026-09-18";expect(validateNormanShutterAssortment(s)).toEqual([]);

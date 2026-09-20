@@ -1,4 +1,4 @@
-import { normanShutterColor, normanShutterLouvers, normanShutterProgram, normanShutterHinges, normanShutterTilts, normanShutterFrame, NORMAN_SHUTTER_FRAME_SOURCE } from "@/lib/quote/norman-shutter-assortment";
+import { normanShutterColor, normanShutterLouvers, normanShutterProgram, normanShutterHinges, normanShutterTilts, normanShutterFrame, normanShutterMounts, NORMAN_SHUTTER_FRAME_SOURCE } from "@/lib/quote/norman-shutter-assortment";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
 
@@ -21,6 +21,9 @@ export function validateNormanShutterAssortment(s: SelectionContext): Validation
     selectedValues: { programId: p.id, frame_type: s.configuration.frame_type },
     explanation: "This frame is not offered for the selected Norman shutter program. Reselect a compatible frame.",
   });
+  const mount = String(s.configuration.mount_type ?? "");
+  const mountLabel = /inside|^im$|^i$/i.test(mount) ? "Inside Mount" : /outside|^om$|^o$/i.test(mount) ? "Outside Mount" : null;
+  if (mountLabel && !normanShutterMounts(p.id, s.configuration.frame_type).includes(mountLabel)) add("frame_mount", "The selected Norman frame does not offer this mount type. Reselect the frame or mount.", p.id === "woodlore" ? [16,17,18,19,20] : p.id.startsWith("woodlore_") ? [20,21,22,23,24] : p.id === "brightwood" ? [17,18,19,20,21] : [18,19,20,21,22]);
   // Premium finishes remain selectable, with an explicit unresolved price exception.
   if (color?.premium) add("premium_price", "This Normandy premium finish is documented, but its current account surcharge has not been verified.");
   return issues;

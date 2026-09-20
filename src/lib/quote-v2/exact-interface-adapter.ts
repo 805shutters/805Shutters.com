@@ -718,7 +718,7 @@ export function selectionContextFromExactInterface(
       canonicalOnyxMeasurementBasis(sourceOptions.size_type),
     );
     delete configuration.frame_sides;
-    alias(configuration, "frame_sides", onyxFrameSides(sourceOptions.frame_sides));
+    alias(configuration, "frame_sides", Number(sourceOptions.frame_sides) === 2 ? 2 : onyxFrameSides(sourceOptions.frame_sides));
   }
   const sideBySidePosition = firstString(sourceOptions, "side_by_side_position");
   const normalizedSideBySide = sideBySidePosition

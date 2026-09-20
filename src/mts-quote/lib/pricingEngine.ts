@@ -288,7 +288,7 @@ export function resolveShutterPricingDimensions(
   const measurementBasis = canonicalMeasurementBasis(options.measurementBasis);
   if (!measurementBasis) return null;
   const numericSides = Number(options.frameSides);
-  const frameSides = numericSides === 3 || numericSides === 4 ? numericSides : null;
+  const frameSides = numericSides === 3 || numericSides === 4 || (options.supplier === "Norman" && numericSides === 2) ? numericSides : null;
   return resolveShutterFramePricing({
     manufacturer: options.supplier,
     widthInches: options.width,

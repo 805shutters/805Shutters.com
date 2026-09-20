@@ -608,3 +608,15 @@ export function normanShutterFrames(programId: string | null | undefined) {
 export function normanShutterFrame(programId: string | null | undefined, value: unknown) {
   return normanShutterFrames(programId).find(f => [f.label, f.portalLabel, f.code].some(v => normalize(v) === normalize(value)));
 }
+
+/** Regular frame styles, binder section e. L frames accept both mounts, but
+ * inside-mounted L frames are ordered by frame-to-frame measurement. */
+export function normanShutterMounts(programId: string | null | undefined, value: unknown) {
+  const frame = normanShutterFrame(programId, value);
+  return frame?.code.startsWith("FD") ? ["Outside Mount"] : frame?.code.startsWith("FZ") ? ["Inside Mount"] : ["Inside Mount", "Outside Mount"];
+}
+export function normanShutterMeasurements(programId: string | null | undefined, value: unknown, mount: unknown) {
+  const frame = normanShutterFrame(programId, value);
+  const inside = /inside|^im$|^i$/i.test(String(mount ?? ""));
+  return frame?.code.startsWith("FL") && inside ? ["F - Frame to Frame"] : ["W - Window Size", "F - Frame to Frame"];
+}
