@@ -1,3 +1,4 @@
+import { sundancePortfolioColors } from "./portfolio-assortment";
 import { sundanceSheerviewSource } from "./sheerview-assortment";
 import { sundanceWaldenSource } from "./walden-assortment";
 import { sundanceHorizontalSource } from "./horizontal-assortment";
@@ -50,9 +51,12 @@ export const sundanceCatalog: Catalog = {
       priceGroup:sundanceSheerviewSource.rows.find(row=>row.programId===program.id)?.priceGroup ?? null,
       fabricCollections:[{category:"Exact SheerView color/vane codes",fabrics:sundanceSheerviewSource.rows.filter(row=>row.programId===program.id).map(row=>row.code)}],
     })),
+  })).map(product => product.id !== "sundance_portfolio_roman" ? product : ({
+    ...product, fabricRouting:Object.fromEntries(sundancePortfolioColors.map(row=>[`${row.colorCode}:${row.fabricType}`,row.programId!])),
+    programs:product.programs.map(program=>({...program, fabricCollections:[{category:"Exact Portfolio material and style", fabrics:sundancePortfolioColors.filter(row=>row.programId===program.id).map(row=>`${row.colorCode}:${row.fabricType}`)}]})),
   })), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r10";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r11";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);

@@ -1,3 +1,4 @@
+import { sundancePortfolioColorMatchesContext } from "@/lib/quote/sundance/portfolio-assortment";
 import { sundanceSheerviewColorMatchesContext } from "@/lib/quote/sundance/sheerview-assortment";
 import { sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
@@ -517,6 +518,7 @@ function rowMatchesMtsContext(
   row: ProductColorOption,
 ): boolean {
   if (row.productId === "sundance_cellular") return sundanceCellularColorMatchesContext(row, optionsJson);
+  if (row.productId === "sundance_portfolio_roman") return sundancePortfolioColorMatchesContext(row, optionsJson);
   if (row.productId === "sundance_sheerview") return sundanceSheerviewColorMatchesContext(row, optionsJson);
   if (sundanceHorizontalProductIds.includes(row.productId)) return true;
   if (sundanceShadeProductIds.includes(row.productId)) return !optionsJson.catalog_sundance_shade_collection_id || row.automaticDetails.catalog_sundance_shade_collection_id === optionsJson.catalog_sundance_shade_collection_id;
