@@ -289,6 +289,12 @@
       "sha256": "f26305e1d588365ce8fce713dc90d0b03f5ec284f1a1d4cec21cdda83376682a"
     },
     {
+      "sourceId": "onyx-frame-sides-2026-09-20",
+      "fileName": "onyx-frame-sides-20260920.json",
+      "byteLength": 1531,
+      "sha256": "a43ab83828f1d31ad146e57c0377fc20bd67e37c906fa844a573a87449cba048"
+    },
+    {
       "sourceId": "onyx-woven-options-2026-09-20",
       "fileName": "onyx-woven-options-20260920.json",
       "byteLength": 4667,

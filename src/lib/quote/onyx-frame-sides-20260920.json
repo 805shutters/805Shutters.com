@@ -1,0 +1,71 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "account": "CHE01",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
+  "scope": "Visible frame-side options on saved Regular, 30 x 60 inch audit drafts. Frame/application cross-compatibility, dimensional allowances and charges for special constructions are unresolved. No order submitted.",
+  "imported": [
+    {
+      "value": "4",
+      "label": "4"
+    },
+    {
+      "value": "3",
+      "label": "3"
+    },
+    {
+      "value": "3SP_B",
+      "label": "3 Side With Sill Plate - Bottom"
+    },
+    {
+      "value": "3SP_T",
+      "label": "3 Side With Sill Plate - Top"
+    },
+    {
+      "value": "3SP_R",
+      "label": "3 Side With Sill Plate - Right"
+    },
+    {
+      "value": "3SP_L",
+      "label": "3 Side With Sill Plate - Left"
+    },
+    {
+      "value": "3FC",
+      "label": "3 Side With Floor Clearance"
+    },
+    {
+      "value": "2",
+      "label": "2"
+    }
+  ],
+  "usMade": [
+    {
+      "value": "4",
+      "label": "4"
+    },
+    {
+      "value": "3SP_B",
+      "label": "3 Side With Sill Plate - Bottom"
+    },
+    {
+      "value": "3SP_T",
+      "label": "3 Side With Sill Plate - Top"
+    },
+    {
+      "value": "3SP_R",
+      "label": "3 Side With Sill Plate - Right"
+    },
+    {
+      "value": "3SP_L",
+      "label": "3 Side With Sill Plate - Left"
+    }
+  ],
+  "verifiedLines": {
+    "Bassia": 409240,
+    "Sycamore": 409241,
+    "Vinyl": 409242,
+    "VLO": 409243,
+    "Ash": 409244,
+    "US Made Vinyl": 409245
+  }
+}

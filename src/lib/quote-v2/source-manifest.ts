@@ -598,6 +598,27 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "accountScope": "CHE01; Regular shutter menu observations; shape compatibility and charges unresolved"
 },
 {
+  "id": "onyx-frame-sides-2026-09-20",
+  "manufacturer": "Onyx",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "onyx-frame-sides-20260920.json",
+  "title": "Onyx imported and US-made shutter frame-side menu observations",
+  "revision": "Observed September 20, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation only; effective schedule unavailable",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": "2026-09-20",
+  "sha256": "a43ab83828f1d31ad146e57c0377fc20bd67e37c906fa844a573a87449cba048",
+  "authorities": [
+    "assortment",
+    "restrictions",
+    "options"
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
+  "accountScope": "Visible frame-side options on saved Regular, 30 x 60 inch audit drafts. Frame/application cross-compatibility, dimensional allowances and charges for special constructions are unresolved. No order submitted."
+},
+{
   "id": "onyx-woven-options-2026-09-20",
   "manufacturer": "Onyx",
   "kind": "dealer_portal_snapshot",

@@ -1,4 +1,4 @@
-import { onyxCanonicalColor, onyxCanonicalHinge, onyxPortalHingeColors, onyxPortalAssortment, onyxPortalColors } from '../quote/onyx-current-assortment';
+import { onyxCanonicalFrameSides, onyxPortalFrameSides, ONYX_FRAME_SIDE_SOURCE, onyxCanonicalColor, onyxCanonicalHinge, onyxPortalHingeColors, onyxPortalAssortment, onyxPortalColors } from '../quote/onyx-current-assortment';
 import type { SelectionContext, ValidationIssue } from './core';
 import { sourceProvenance } from './source-manifest';
 
@@ -10,7 +10,7 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
   const issues: ValidationIssue[] = [];
   const add = (field: string, value: string | number, explanation: string) => issues.push({
     severity: 'hard_block', ruleId: `onyx.current_assortment.${field}`,
-    source: sourceProvenance(field==='hinge' && row.material!=='US Made Vinyl' ? 'onyx-hinge-assortment-2026-09-20' : 'onyx-portal-assortment-2026-09-20'),
+    source: sourceProvenance(field.startsWith('frame_sides') ? ONYX_FRAME_SIDE_SOURCE : field==='hinge' && row.material!=='US Made Vinyl' ? 'onyx-hinge-assortment-2026-09-20' : 'onyx-portal-assortment-2026-09-20'),
     selectedValues: {programId:context.programId, [field]:value}, explanation,
   });
   const color = String(selected.color_name ?? selected.color ?? '');
@@ -40,5 +40,10 @@ export function validateOnyxCurrentAssortment(context: SelectionContext): Valida
   if (shape && !row.shapes.includes(canonicalShapes[shape] ?? shape)) add('shape',shape,`${row.material} does not offer this exact application in the current dealer portal; select a listed application.`);
   const hinge=String(selected.hinge_color??'');
   if (hinge && !onyxPortalHingeColors(context.programId??'')?.includes(onyxCanonicalHinge(hinge))) add('hinge',hinge,`${row.material} does not offer this enabled hinge finish in the current dealer portal.`);
+  const frameSides=onyxCanonicalFrameSides(selected.frame_sides_source_code ?? selected.frame_sides);
+  if(frameSides){
+    if(!onyxPortalFrameSides(context.programId??'')?.some(choice=>choice.value===frameSides)) add('frame_sides',frameSides,`${row.material} does not offer this frame-side construction in the current dealer portal.`);
+    else if(!['3','4'].includes(frameSides)) add('frame_sides_pricing',frameSides,'This exact frame-side construction is saved. Its dimensional allowance and charges require dealer confirmation before pricing.');
+  }
   return issues;
 }

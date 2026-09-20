@@ -1,3 +1,4 @@
+import frameSideEvidence from './onyx-frame-sides-20260920.json';
 import hingeEvidence from './onyx-hinge-assortment-20260920.json';
 import evidence from './onyx-portal-20260920.json';
 
@@ -46,4 +47,15 @@ export function onyxPortalHingeColors(programOrMaterial:string) {
 }
 export function onyxCanonicalHinge(value:string) {
   return ({'Anti Brass':'Antique Brass','Bri Brass':'Bright Brass',Nickel:'Nickle'} as Record<string,string>)[value] ?? value;
+}
+
+export const ONYX_FRAME_SIDE_SOURCE = 'onyx-frame-sides-2026-09-20';
+export function onyxPortalFrameSides(programOrMaterial: string) {
+  const row=onyxPortalAssortment(programOrMaterial);
+  return row ? row.material==='US Made Vinyl' ? frameSideEvidence.usMade : frameSideEvidence.imported : null;
+}
+export function onyxCanonicalFrameSides(value: unknown): string {
+  const raw=String(value??'').trim();
+  const historical: Record<string,string>={'three':'3','3-sided':'3','3 sided':'3','four':'4','4-sided':'4','4 sided':'4'};
+  return historical[raw.toLowerCase()] ?? frameSideEvidence.imported.find(choice=>choice.label===raw || choice.value===raw)?.value ?? raw;
 }

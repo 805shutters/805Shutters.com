@@ -1,3 +1,4 @@
+import { onyxCanonicalFrameSides } from '@/lib/quote/onyx-current-assortment';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { getProduct } from "@/lib/quote/catalog";
 import type {
@@ -610,6 +611,8 @@ export function selectionContextFromExactInterface(
     // The normalized browser payload is not authoritative for this numeric
     // enum. Keep only a canonical three- or four-sided selection.
     delete configuration.frame_sides;
+    delete configuration.frame_sides_source_code;
+    alias(configuration, "frame_sides_source_code", onyxCanonicalFrameSides(sourceOptions.frame_sides));
     alias(configuration, "frame_sides", onyxFrameSides(sourceOptions.frame_sides));
     alias(configuration, "panel_configuration", design.panel_config);
     alias(configuration, "louver_size_inches", canonicalOnyxLouverSize(design.louver_size));

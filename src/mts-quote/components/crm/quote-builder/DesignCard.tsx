@@ -1,6 +1,6 @@
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
-import { onyxPortalAssortment, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
+import { onyxPortalAssortment, onyxPortalFrameSides, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanFabricConstructionChoices } from "@/lib/quote-v2/norman-roman-fabric-limits";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
@@ -8,6 +8,7 @@ import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
 import { romanHardware, romanFabricPatternOptions, romanReturnOptions } from "@/lib/quote-v2/norman-roman-hardware";
 import { LotusObservedDesignOptions } from "@/components/crm/LotusObservedDesignOptions";
 import { isLotusObservedProduct } from "@/lib/quote/lotus-observed-offerings";
+
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
@@ -3747,7 +3748,7 @@ export function getStandardShutterGridOptions(
         label: "Frame Sides",
         field: "json:frame_sides",
         type: "buttons",
-        options: ONYX_FRAME_SIDE_OPTIONS,
+        options: onyxPortalFrameSides(currentOnyxIdentity)?.map(choice=>choice.label) ?? ONYX_FRAME_SIDE_OPTIONS,
       });
     }
 

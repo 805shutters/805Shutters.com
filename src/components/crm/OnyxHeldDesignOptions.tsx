@@ -1,6 +1,6 @@
 "use client";
 import { onyxHeldProducts, onyxHeldColors, onyxHeldControlChoices, onyxAshAssortment, ONYX_HELD_REASON } from '@/lib/quote/onyx-held-catalog';
-import { onyxImportedHingeColors } from "@/lib/quote/onyx-current-assortment";
+import { onyxImportedHingeColors, onyxPortalFrameSides } from "@/lib/quote/onyx-current-assortment";
 import { onyxWovenProfile, onyxWovenOptions, clearOnyxWovenDetails } from "@/lib/quote/onyx-woven-options";
 import type { SalesQuoteDesign } from '@mts/types/quote';
 
@@ -22,6 +22,7 @@ export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:
     {productId==='onyx_ash_shutters'?<>
       {select('Onyx Ash hinge',design?.hinge_color,onyxImportedHingeColors,hinge_color=>update({},{hinge_color}))}
       {select('Onyx Ash frame',options.onyx_frame,onyxAshAssortment.frames,v=>update({onyx_frame:v}))}
+      <label className="block text-sm">Onyx Ash frame sides<select aria-label="Onyx Ash frame sides" className={cls} value={String(options.onyx_frame_sides??'')} onChange={e=>update({onyx_frame_sides:e.target.value})}><option value="">Select</option>{onyxPortalFrameSides('painted_basswood')!.map(choice=><option key={choice.value} value={choice.value}>{choice.label}</option>)}</select></label>
       {select('Onyx Ash shape',options.onyx_shape,onyxAshAssortment.shapes,v=>update({onyx_shape:v}))}
       {select('Onyx Ash louver',design?.louver_size,onyxAshAssortment.louverSizes.map(String),louver_size=>update({},{louver_size}))}
       {select('Onyx Ash tilt',options.onyx_tilt_code,onyxAshAssortment.tiltCodes,v=>update({onyx_tilt_code:v}))}
