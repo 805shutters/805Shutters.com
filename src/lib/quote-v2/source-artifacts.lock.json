@@ -7,6 +7,12 @@
   },
   "artifacts": [
     {
+      "sourceId": "lotus-digital-catalog-v1-1-25",
+      "fileName": "Lotus Digital Catalog V1.1.25.pdf",
+      "byteLength": 3250849,
+      "sha256": "8faa4c75054e8e5434df85fa5a9c56ae6bebe78dc37c91ec81a20178b5ca71b9"
+    },
+    {
       "sourceId": "lotus-dealer-observed-2026-09-20",
       "fileName": "lotus-observed-offerings-20260920.json",
       "byteLength": 1820487,

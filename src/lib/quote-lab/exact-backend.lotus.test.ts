@@ -318,3 +318,14 @@ it("keeps a saved typed MLX White configuration outside automatic customer deliv
     expect.objectContaining({ ruleId: "lotus.faux.send_authority_pending", explanation: expect.stringContaining("Lotus MLX dealer-guide and portal prices conflict") }),
   ]));
 });
+
+
+it("server-prices the typed inside-mount AMX example without lifting MLX holds", () => {
+  const amxLine = {...line("Mini Blinds"),width_whole:27,height_whole:72};
+  const amxDesign = {...design({quote_v2_backend:true,catalog_product_id:"lotus_mini_blinds",catalog_program_id:"lotus_amx_1in_aluminum_custom",lotus_color_configuration_version:"lotus-color-v1",lotus_amx_configuration_version:"lotus-amx-v1",lotus_measurement_basis:"inside_opening",color:"White"}),supplier:"Lotus",mount_type:"Inside Mount",lift_system:"Cordless",valance:"None"} as SalesQuoteDesign;
+  const result = repriceExactQuoteBuilder({lines:[amxLine],designs:[amxDesign],selectedVariantByLine:{[amxLine.id]:"A"}});
+  expect("backend" in result && result.backend).toBe("v2");
+  if (!("backend" in result) || result.backend !== "v2") return;
+  expect(result.designs[0]?.result).toMatchObject({ok:true,productStatus:"documented_limited",wholesaleUnitPrice:26.3,unitPrice:78.9});
+  expect(result.sendability.sendable).toBe(true);
+});

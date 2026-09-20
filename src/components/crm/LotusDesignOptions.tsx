@@ -1,5 +1,6 @@
 "use client";
 
+import { LOTUS_AMX_PROGRAM, LOTUS_AMX_VERSION } from "@/lib/quote/lotus-amx";
 import { getProduct, getProgram } from "@/lib/quote/catalog";
 import { lotusProductId } from "@/lib/quote/lotus-selection";
 import { LOTUS_COLOR_CONFIGURATION_VERSION, LOTUS_COLOR_PRODUCTS, lotusColorsForSelection } from "@/lib/quote/lotus-colors";
@@ -19,8 +20,8 @@ export function lotusProgramSelectionPatch(
   );
   return {
     supplier: "Lotus", material: program.name, unit_price: 0,
-    mount_type: null, fabric: null, shade_type: null, lift_system: null,
-    motor_type: null, remote_type: null, valance: null,
+    mount_type: null, fabric: null, shade_type: null, lift_system: program.id === LOTUS_AMX_PROGRAM ? "Cordless" : null,
+    motor_type: null, remote_type: null, valance: program.id === LOTUS_AMX_PROGRAM ? "None" : null,
     options_json: {
       ...metadata, catalog_product_id: product.id, quote_lab_product_id: product.id,
       catalog_program_id: program.id, quote_lab_program_id: program.id,
@@ -28,6 +29,7 @@ export function lotusProgramSelectionPatch(
       surcharges: [], motorization_selections: [],
       ...((LOTUS_COLOR_PRODUCTS as readonly string[]).includes(product.id) ? { lotus_color_configuration_version: LOTUS_COLOR_CONFIGURATION_VERSION, color: null } : {}),
       ...lotusFauxWoodConfigurationForProgram(program.id),
+      ...(program.id === LOTUS_AMX_PROGRAM ? { lotus_amx_configuration_version: LOTUS_AMX_VERSION, lotus_measurement_basis: "inside_opening" } : {}),
     },
   };
 }
@@ -70,9 +72,10 @@ export function LotusDesignOptions({ design, productType, widthInches, heightInc
     </label>}
     <label className="block text-sm">Mount
       <select aria-label="Lotus mount" className={selectClass} value={design?.mount_type ?? ""} onChange={event => onUpdateFields({ mount_type: event.target.value })}>
-        <option value="">Select mount</option><option>Inside Mount</option><option>Outside Mount</option>
+        <option value="">Select mount</option><option>Inside Mount</option>{programId !== LOTUS_AMX_PROGRAM && <option>Outside Mount</option>}
       </select>
     </label>
+    {programId === LOTUS_AMX_PROGRAM && <p className="text-sm text-slate-600">Cordless lift · Standard headrail · No valance. Enter inside-opening dimensions; the factory deducts ½ inch from the ordered width. Custom widths use ¼-inch increments and heights use whole inches. Outside mounting requires dimension confirmation.</p>}
     {isFaux && <>
       <label className="block text-sm">Blinds in this opening
         <select aria-label="Lotus blind count" className={selectClass} value={Number(options.lotus_blind_count) || 1} onChange={event => updateOptions({ lotus_blind_count: Number(event.target.value), lotus_blind_1_width_inches: null, lotus_blind_2_width_inches: null, lotus_blind_3_width_inches: null })}>

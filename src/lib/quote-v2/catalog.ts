@@ -55,6 +55,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;
   if (productId.startsWith("norman_contract_")) return "805-v2-norman-contract-2026-09-19-r1";
   if (productId.startsWith("san_clemente_")) return "805-v2-norman-san-clemente-2025-11-19-r1";
+  if (productId === "lotus_mini_blinds" && asOf >= "2026-09-20") return "805-v2-lotus-amx-2026-09-20-r1";
   if (isLotusObservedProduct(productId)) return LOTUS_OBSERVED_VERSION;
   if (isSundanceProductId(productId)) return SUNDANCE_CATALOG_VERSION;
   if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {

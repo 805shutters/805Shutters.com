@@ -1,4 +1,5 @@
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
+import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanHardware } from "./norman-roman-hardware";
 import { validateNormanShutterAssortment } from "./norman-shutter-assortment";
@@ -2366,6 +2367,7 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  if (isTypedLotusAmx(context) && context.catalogAsOf >= "2026-09-20") return "documented_limited";
   if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
   // Current CityLights assortment, mounting, hardware and matching rules are
   // normalized. Unsupported sizes and combinations still fail their rules.
@@ -2393,6 +2395,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
   issues.push(...validateOnyxHeldSelection(context));
+  issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...validateNormanFamilyRules(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));

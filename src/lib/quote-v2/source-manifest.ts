@@ -52,6 +52,27 @@ export interface SourceManifestEntry {
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
 {
+  "id": "lotus-digital-catalog-v1-1-25",
+  "manufacturer": "Lotus",
+  "kind": "product_guide",
+  "format": "pdf",
+  "fileName": "Lotus Digital Catalog V1.1.25.pdf",
+  "title": "Lotus current linked product catalog",
+  "revision": "V1.1.25",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Revision is printed; no controlling pricing effective date is stated.",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": null,
+  "sha256": "8faa4c75054e8e5434df85fa5a9c56ae6bebe78dc37c91ec81a20178b5ca71b9",
+  "authorities": [
+    "restrictions",
+    "assortment",
+    "options"
+  ],
+  "pageCount": 36,
+  "sourceUrl": "https://cdn.shopify.com/s/files/1/0723/5085/9514/files/V1.1.25_catalog-compressed.pdf?v=1749232524"
+},
+{
   "id": "lotus-dealer-observed-2026-09-20",
   "manufacturer": "Lotus",
   "kind": "dealer_portal_snapshot",

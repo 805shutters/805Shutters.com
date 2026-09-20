@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(66);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(67);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(66);
+    ).toBe(67);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(66);
+    ).toBe(67);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -92,6 +92,7 @@ describe("quote V2 source manifest", () => {
       "2026Sep Retail Price Guide.pdf": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd",
       "2026Jul Retail Price Guide (1).pdf":
         "ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3",
+      "Lotus Digital Catalog V1.1.25.pdf": "8faa4c75054e8e5434df85fa5a9c56ae6bebe78dc37c91ec81a20178b5ca71b9",
       "Lotus.pdf":
         "4e9aba91a601e1212a3e8a1531c361caf033c28ef6ca1fdac3ad6247502a982f",
       "_Polar Shades Dealer Book - CURRENT.pdf":
