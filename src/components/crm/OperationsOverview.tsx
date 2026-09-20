@@ -42,8 +42,8 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
     cash: "Recorded customer payments received in the selected period, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
   };
   const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
-  return <section className={styles.workspace} aria-labelledby="operations-dashboard-title" aria-busy={busy}>
-    <header className={styles.heading}><div><h1 id="operations-dashboard-title">Dashboard</h1><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>{selectedPeriod.description} · Los Angeles</small></span></header>
+  return <section className={styles.workspace} aria-label="Dashboard" aria-busy={busy}>
+    <header className={styles.heading}><div><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>{selectedPeriod.description} · Los Angeles</small></span></header>
     {data.loadWarnings?.map(warning => <p className={styles.warning} role="status" key={warning}>{warning}</p>)}
     <div className={styles.periodToolbar}>
       <div className={styles.periodTabs} role="tablist" aria-label="Dashboard time period">{performancePeriods.map((option, index) => <button type="button" role="tab" id={`period-${option.id}`} aria-controls="dashboard-period-metrics" aria-selected={period === option.id} tabIndex={period === option.id ? 0 : -1} key={option.id} onClick={() => setPeriod(option.id)} onKeyDown={event => {
