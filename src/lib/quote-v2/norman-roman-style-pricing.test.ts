@@ -17,7 +17,7 @@ describe('Roman configurator style pricing',()=>{
  });
  it('does not mutate prior snapshot pricing and removes stale style charges from current plain styles',()=>{
   const s=shade('Soft Fold');
-  expect(authoritativeAutomaticSurchargeSelections({...s,catalogVersion:s.catalogVersion.replace('-r7','-r3')})).not.toContainEqual({id:'soft_fold_edge_banding_border',units:1});
+  expect(authoritativeAutomaticSurchargeSelections({...s,catalogVersion:s.catalogVersion.replace('-r8','-r3')})).not.toContainEqual({id:'soft_fold_edge_banding_border',units:1});
   const plain=shade('Flat Fold without Seams');plain.configuration={...plain.configuration,roman_style:'soft_fold',decorative_trim:'ribbon_banding'};
   expect(authoritativeAutomaticSurchargeSelections(plain).filter(x=>['soft_fold_edge_banding_border','ribbon_banding'].includes(x.id))).toEqual([]);
  });

@@ -1378,7 +1378,12 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
 
   const isDayNight = shadeType === "day night";
   const isCommonValance = shadeType === "common valance";
-  const panelWidths = romanComponentWidths(context) ?? [context.widthInches];
+  const finishedSizeRules = context.catalogVersion.endsWith("norman-roman-mounting-2026-09-20-r8");
+  const sizeSource = finishedSizeRules ? sourceProvenance("norman-roman-guide-2026-09", { page: 13 }) : { ...ROMAN_GUIDE, pages: [11, 12] };
+  const orderedPanelWidths = romanComponentWidths(context) ?? [context.widthInches];
+  const inside = normalized(configValue(context, "mount_type")) === "inside mount";
+  const panelWidths = orderedPanelWidths.map(width => width -
+    (finishedSizeRules && inside ? (isCommonValance ? 0.1875 : 0.375) : 0));
   const widestPanel = Math.max(...panelWidths);
   const area = (widestPanel * context.heightInches) / 144;
   let minWidth = 12;
@@ -1396,14 +1401,14 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         issue(
           "hard_block",
           "roman.continuous_loop.headrail_required",
-          { ...ROMAN_GUIDE, pages: [11, 12] },
+          sizeSource,
           { lift_system: text(configValue(context, "lift_system")), headrail_size: null },
           "Continuous Cord Loop requires the exact 1 1/2-inch or 2-inch headrail before its width limit can be validated.",
         ),
       );
     }
     maxWidth = headrail.includes("1.5") || headrail.includes("1 1 2") ? 50 : 96;
-    maxArea = widestPanel <= 50 ? 33 : 64;
+    maxArea = finishedSizeRules ? (maxWidth === 50 ? 33 : 64) : (widestPanel <= 50 ? 33 : 64);
   } else if (lift.includes("smartrelease") || lift.includes("smart release")) {
     maxArea = 52;
   }
@@ -1414,8 +1419,8 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         issue(
           "hard_block",
           "roman.dimension.width",
-          { ...ROMAN_GUIDE, pages: [11, 12] },
-          { widthInches: context.widthInches, minWidthInches: minWidth, maxWidthInches: maxWidth, lift_system: lift },
+          sizeSource,
+          { widthInches: context.widthInches, finishedPanelWidths: panelWidths, minWidthInches: minWidth, maxWidthInches: maxWidth, lift_system: lift },
           `Roman width must be between ${minWidth} and ${maxWidth} inches for the selected control/headrail configuration.`,
         ),
       );
@@ -1425,18 +1430,18 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         issue(
           "hard_block",
           "roman.dimension.height",
-          { ...ROMAN_GUIDE, pages: [11, 12] },
+          sizeSource,
           { heightInches: context.heightInches, minHeightInches: minHeight, maxHeightInches: maxHeight, lift_system: lift },
           `Roman height must be between ${minHeight} and ${maxHeight} inches for the selected control.`,
         ),
       );
     }
-    if (panelWidths.some(width => width * context.heightInches / 144 > ((lift.includes("continuous") || lift.includes("cord loop")) ? (width <= 50 ? 33 : 64) : maxArea))) {
+    if (panelWidths.some(width => width * context.heightInches / 144 > (!finishedSizeRules && (lift.includes("continuous") || lift.includes("cord loop")) ? (width <= 50 ? 33 : 64) : maxArea))) {
       issues.push(
         issue(
           "hard_block",
           "roman.dimension.area",
-          { ...ROMAN_GUIDE, pages: [11, 12] },
+          sizeSource,
           { areaSqft: area, maxAreaSqft: maxArea, lift_system: lift },
           `Roman area exceeds the ${maxArea}-square-foot limit for this configuration.`,
         ),
@@ -1486,12 +1491,12 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
         );
       }
     }
-    if (context.heightInches / context.widthInches > 3) {
+    if (context.heightInches / (finishedSizeRules ? Math.min(...panelWidths) : context.widthInches) > 3) {
       issues.push(
         issue(
           "hard_block",
           "roman.day_night.max_ratio",
-          { ...ROMAN_GUIDE, page: 12 },
+          sizeSource,
           { widthInches: context.widthInches, heightInches: context.heightInches, maxHeightToWidthRatio: 3 },
           "Roman Day & Night height-to-width ratio cannot exceed 3:1.",
         ),

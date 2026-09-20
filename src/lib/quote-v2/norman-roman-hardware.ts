@@ -28,7 +28,7 @@ export function romanHardware(s:SelectionContext){
  if (!romanFabricPatternOptions(c.fabric_color_code).includes(String(fabricPattern))) add('fabric_pattern',49,'Choose a documented Roman fabric pattern. Reverse is available only for the listed Patterns and Impressions colors.');
  const chain=/continuous cord loop|smartrelease|smart release/.test(lift),ccl=lift==='continuous cord loop';
  // A new catalog revision requires measured recess data; earlier quote snapshots retain their rules.
- const mountingRevision = /norman-roman-mounting-2026-09-20-r[234567]$/.test(s.catalogVersion);
+ const mountingRevision = /norman-roman-mounting-2026-09-20-r[2345678]$/.test(s.catalogVersion);
  const mountingFit = String(c.roman_mount_fit ?? '');
  const rawDepth = c.mount_depth_inches;
  const depth = rawDepth == null || rawDepth === '' ? NaN : Number(rawDepth);
@@ -56,7 +56,7 @@ export function romanHardware(s:SelectionContext){
  if(c.chain_color!=null&&(!chain||norm(c.chain_type)==='stainless steel'||!['white','cottage white','black'].includes(norm(c.chain_color))))add('chain_color',15,'Plastic Roman chain colors are White, Cottage White and Black. Stainless Steel uses white clutch and tension hardware.');
  if(c.chain_location!=null&&(!chain||!['left','right'].includes(norm(c.chain_location))))add('chain_location',15,'Select Left or Right for the Roman chain position.');
  const banded = /edge banded|ribbon banded/.test(norm(c.fold_style));
- const bandingRevision = /norman-roman-mounting-2026-09-20-r[34567]$/.test(s.catalogVersion);
+ const bandingRevision = /norman-roman-mounting-2026-09-20-r[345678]$/.test(s.catalogVersion);
  const bandingLayout = String(c.roman_banding_layout ?? '');
  if (bandingRevision && banded && !['Side Border','Wrapped Border'].includes(bandingLayout)) add('banding_layout',/ribbon/.test(norm(c.fold_style))?8:9,'Choose Side Border or Wrapped Border for the banded Roman shade.');
  const pole=norm(c.poles),hasPole=!!pole&&pole!=='none';
@@ -71,7 +71,7 @@ export function romanHardware(s:SelectionContext){
  if(hasPole&&pole==='pole with attachment'&&![36,60].includes(poleLength))add('pole_length',23,'Choose a 36-inch or 60-inch Cordless Roman pole.');
  const positions:SelectionRecord=common?{left:'Left',right:'Right'}:dayNight?{front:c.chain_location??'Right',rear:norm(c.chain_location)==='left'?'Right':'Left'}:{single:c.chain_location??'Right'};
  const componentWidths=common&&Array.isArray(c.common_valance_panel_widths)?c.common_valance_panel_widths.map(Number):[s.widthInches];
- const finishingRevision = /norman-roman-mounting-2026-09-20-r[67]$/.test(s.catalogVersion);
+ const finishingRevision = /norman-roman-mounting-2026-09-20-r[678]$/.test(s.catalogVersion);
  const returnChoices = romanReturnOptions(c.mount_type,c.valance,c.fabric_collection,c.fabric_color_code);
  const returnType = c.valance_returns == null || c.valance_returns === '' ? returnChoices[0] : String(c.valance_returns);
  if (finishingRevision && !returnChoices.includes(returnType)) add('valance_returns',19,'Choose a Roman return style compatible with the mount, valance and fabric.');

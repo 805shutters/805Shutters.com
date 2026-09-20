@@ -11,7 +11,7 @@ export function romanFabricConstructionChoices(code:unknown,style:unknown,orient
  return {orientations,seams};
 }
 export function romanFabricLimits(s:SelectionContext){
- if(s.productId!=='roman'||!s.catalogVersion.endsWith('norman-roman-mounting-2026-09-20-r7'))return null;
+ if(s.productId!=='roman'||!/norman-roman-mounting-2026-09-20-r[78]$/.test(s.catalogVersion))return null;
  const c=s.configuration,fabric=rows.find(r=>r.colorCode===String(c.fabric_color_code??'').toUpperCase());
  const issues:ValidationIssue[]=[];
  const add=(id:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roman.fabric_limits.${id}`,source:sourceProvenance('norman-roman-guide-2026-09',{page}),selectedValues:{fabric_color_code:c.fabric_color_code??null,fold_style:c.fold_style??null,width:s.widthInches,height:s.heightInches},explanation});
