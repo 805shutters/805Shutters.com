@@ -24,17 +24,29 @@ def number(value):
     return float(value) if re.fullmatch(r'\d+(?:\.\d+)?', value) else None
 
 
+def width_number(value):
+    """A printed width band uses its inclusive upper bound, never a price cell."""
+    clean = (value or "").replace('"', "").replace("”", "").replace(" ", "").strip()
+    band = re.fullmatch(r"(\d+(?:\.\d+)?)[–—-](\d+(?:\.\d+)?)", clean)
+    if band and 0 < float(band[1]) <= float(band[2]):
+        return float(band[2])
+    return number(clean.rstrip("`"))
+
+
 def extract_grid(table):
     for row_index, row in enumerate(table[:3]):
-        indices = [i for i, cell in enumerate(row) if number(cell) is not None]
+        indices = [i for i, cell in enumerate(row) if width_number(cell) is not None]
         if len(indices) < 4 or indices != list(range(indices[0], indices[-1] + 1)):
             continue
-        widths = [number(row[i]) for i in indices]
+        widths = [width_number(row[i]) for i in indices]
         if widths != sorted(set(widths)) or max(widths) > 240:
             continue
         heights, prices = [], []
         for cells in table[row_index + 1:]:
-            height = number(cells[indices[0] - 1]) if indices[0] else None
+            # A merged height header may create multiple leading columns.
+            # Accept exactly one numeric height; never shift a price into it.
+            leading_numbers = [number(cell) for cell in cells[:indices[0]] if number(cell) is not None]
+            height = leading_numbers[0] if len(leading_numbers) == 1 else None
             if height is None or (heights and height <= heights[-1]):
                 break
             values = [number(cells[i]) for i in indices]

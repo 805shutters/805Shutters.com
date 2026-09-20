@@ -25,7 +25,7 @@ describe("Sundance source catalog isolation", () => {
 
   it("pins every program to an exact verified PDF and preserves numeric axes", () => {
     const programs = sundanceCatalog.products.flatMap((p) => p.programs);
-    expect(programs).toHaveLength(98);
+    expect(programs).toHaveLength(99);
     for (const program of programs) {
       expect(SUNDANCE_SOURCE_MANIFEST.some((s) => s.id === program.sourceId)).toBe(true);
       expect(program.sourcePages).toHaveLength(1);
@@ -79,6 +79,16 @@ describe("Sundance source catalog isolation", () => {
   });
 
   it.each([
+    // Independently read from the rendered pinned guides, including omitted axes.
+    ["sundance_aluminum_2", "sundance_aluminum_2_p8_t1", 26, 42, 26, 42, 330],
+    ["sundance_aluminum_2", "sundance_aluminum_2_p8_t1", 82, 84, 82, 84, 1126],
+    ["sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 23, 42, 23, 42, 228],
+    ["sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 72, 96, 72, 96, 702],
+    ["sundance_roller", "sundance_roller_p10_t1", 118, 36, 118, 36, 867],
+    ["sundance_roller", "sundance_roller_p10_t1", 118, 120, 118, 120, 2888],
+    ["sundance_sheerview", "sundance_sheerview_p24_t1", 24, 36, 24, 36, 559],
+    ["sundance_sheerview", "sundance_sheerview_p24_t1", 36, 60, 36, 60, 845],
+    ["sundance_sheerview", "sundance_sheerview_p24_t1", 116, 144, 116, 144, 5410],
     ["sundance_advantage_ii_2_5", "sundance_advantage_ii_2_5_p4_t1", 24, 48, 24, 48, 552],
     ["sundance_advantage_ii_2_5", "sundance_advantage_ii_2_5_p4_t1", 24.0625, 48, 30, 48, 569],
     ["sundance_cellular", "sundance_cellular_p7_t1", 47.5, 58, 48, 60, 630],
@@ -93,6 +103,12 @@ describe("Sundance source catalog isolation", () => {
     ["sundance_walden_select", "sundance_walden_select_p17_t1", 96, 108, 96, 108, 1332],
   ] as const)("matches source cell %s %s at %s × %s", (product, program, width, height, gridWidth, gridHeight, sourceRetail) => {
     expect(lookupSundanceSourceGrid(product, program, width, height)).toMatchObject({ gridWidth, gridHeight, sourceRetail });
+  });
+
+  it("preserves the independently verified aluminum unavailable region", () => {
+    expect(lookupSundanceSourceGrid("sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 82, 48)?.sourceRetail).toBe(486);
+    expect(lookupSundanceSourceGrid("sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 82, 54)).toBeNull();
+    expect(lookupSundanceSourceGrid("sundance_aluminum_1", "sundance_aluminum_1_p9_t1", 92, 96)).toBeNull();
   });
 
   it("keeps merged N/A cells unavailable and never clamps or substitutes a grid", () => {
