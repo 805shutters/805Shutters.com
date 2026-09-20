@@ -75,6 +75,22 @@ function catalogProduct(
 }
 
 describe("V2 exact-interface contract", () => {
+  it("initializes new AMX and explicitly selected roller lines with current typed defaults", () => {
+    const current = { quote_v2_backend: true, temporary_shade: true, color: "stale", motorization_selections: [{ optionId: "old-motor" }] };
+    const amx = buildCatalogSelectionPatch(current, catalogProduct("lotus_mini_blinds", "Lotus", [
+      { id: "lotus_amx_1in_aluminum_custom", name: "AMX", priceAxis: "wh" },
+    ], { productType: "Mini Blinds" }));
+    expect(amx).toMatchObject({ lift_system: "Cordless", valance: "None", mount_type: null, unit_price: 0,
+      options_json: { lotus_amx_configuration_version: "lotus-amx-v1", lotus_color_configuration_version: "lotus-color-v1", lotus_measurement_basis: "inside_opening", color: null, temporary_shade: true, motorization_selections: [] } });
+    const roller = catalogProduct("lotus_roller_shades", "Lotus", [
+      { id: "lotus_rs_1pct_custom", name: "RS", priceAxis: "wh" },
+      { id: "lotus_rs_blackout_unpriced", name: "Blackout", priceAxis: "wh" },
+    ]);
+    expect(buildCatalogSelectionPatch(current, roller).options_json).not.toHaveProperty("lotus_roller_configuration_version");
+    const selected = buildCatalogSelectionPatch(current, roller, "lotus_rs_1pct_custom");
+    expect(selected).toMatchObject({ lift_system: "Cordless Spring Roller", valance: "Smooth valance", mount_type: null,
+      options_json: { lotus_roller_configuration_version: "lotus-roller-v1", color: "White", lotus_roller_shade_count: 1, temporary_shade: true } });
+  });
   it("renders the reusable customer-safe manual quote badge", () => {
     const html = renderToStaticMarkup(createElement(ManualQuoteOnlyBadge));
     expect(html).toContain("QUOTE ONLY");

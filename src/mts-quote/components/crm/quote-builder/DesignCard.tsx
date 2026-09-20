@@ -45,7 +45,7 @@ import {
   customerChargeLabels,
 } from "@/lib/quote/customer-charges";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
-import { LotusDesignOptions } from "@/components/crm/LotusDesignOptions";
+import { LotusDesignOptions, lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import {
@@ -2295,6 +2295,10 @@ export function buildCatalogSelectionPatch(
         : programs.length === 1
           ? programs[0]
           : null;
+  const lotusDefaults = program && product.manufacturer === "Lotus" &&
+    ["lotus_mini_blinds", "lotus_roller_shades"].includes(product.id)
+    ? lotusProgramSelectionPatch(current, product.productType, program.id)
+    : null;
 
   return {
     supplier: product.manufacturer?.trim() || null,
@@ -2311,11 +2315,15 @@ export function buildCatalogSelectionPatch(
     motor_type: null,
     remote_type: null,
     unit_price: 0,
-    options_json: buildCleanCatalogSelectionOptions(
+    ...lotusDefaults,
+    options_json: {
+      ...buildCleanCatalogSelectionOptions(
       current,
       product,
       program?.id ?? null,
-    ),
+      ),
+      ...lotusDefaults?.options_json,
+    },
   };
 }
 
