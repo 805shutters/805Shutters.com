@@ -158,7 +158,7 @@ export function ManufacturerProductButtons({
               Select a manufacturer to see only its independent products.
             </p>
           ) : (
-            <div className="quote-add-button-row flex flex-wrap gap-2">
+            <div className="quote-add-button-row flex max-h-[min(24dvh,11rem)] flex-wrap content-start gap-2 overflow-y-auto overscroll-contain" role="group" aria-label="Exact product">
               {manufacturerProducts.map((product) => {
                 const isSelected = product.id === selectedProductId;
                 return (
@@ -250,7 +250,7 @@ export function ManufacturerProductButtons({
             selected={productId}
             compact={compactMobile}
             label="Exact product"
-            className="gap-2"
+            className="max-h-[min(24dvh,11rem)] content-start gap-2 overflow-y-auto overscroll-contain"
             choiceLabel={(id) => quoteProductLabel(manufacturerProducts.find((candidate) => candidate.id === id)!)}
             catalogProductIds
             buttonClassName={(isSelected) => cn(
