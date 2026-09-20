@@ -1,3 +1,4 @@
+import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
 import { woodSavedCommonForDisplay } from "@/lib/quote-v2/norman-wood-assemblies";
 import { NORMAN_STILE_PROFILES, NORMAN_PANEL_CLOSURES, normanStileWidths, normanStileJoins, normanRegularPanelCount, normanRegularPanelMaxWidth } from "@/lib/quote/norman-shutter-construction";
@@ -9194,7 +9195,7 @@ function ShadesAndBlindsOptions({
         nextJson.pole_length = null;
       }
       if (nextControl !== "Motorized") {
-        nextJson = clearMotorizationOptions(nextJson);
+        nextJson = {...clearMotorizationOptions(nextJson),...Object.fromEntries(ROMAN_MOTOR_ACCESSORY_KEYS.map(key=>[key,null]))};
       }
       onUpdateFields({
         lift_system: nextControl,
@@ -9350,6 +9351,11 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Roman Shades" && authoritativeV2 && field === "remote_type") {
+      onUpdateFields({remote_type:typeof value === "string"?value:null,options_json:{...currentJson,roman_remote_quantity:null,roman_remote_channel:null,roman_color_ring_sets:null,motorization_selections:null}});
+      return;
+    }
+
     if (productType === "Roman Shades" && field === "motor_type") {
       const nextSource = typeof value === "string" ? value : null;
       const remotes = nextSource
@@ -9362,7 +9368,7 @@ function ShadesAndBlindsOptions({
       onUpdateFields({
         motor_type: nextSource,
         ...(keepRemote ? {} : { remote_type: null }),
-        options_json: { ...(authoritativeV2 ? clearNormanMotorPowerConnection(currentJson) : currentJson), ...(nextSource === "AutoWand" ? { hub_required: null } : {}) },
+        options_json: { ...(authoritativeV2 ? {...clearNormanMotorPowerConnection(currentJson), ...Object.fromEntries(ROMAN_MOTOR_ACCESSORY_KEYS.map(key=>[key,null]))} : currentJson), ...(nextSource === "AutoWand" ? { hub_required: null } : {}) },
       });
       return;
     }
@@ -10828,6 +10834,26 @@ function ShadesAndBlindsOptions({
               type: "yes-no",
               noFirst: true,
             });
+          }
+        }
+
+        if (authoritativeV2 && controlType === "Motorized" && powerSource) {
+          const wand=powerSource === "AutoWand", automate=ROMAN_AUTOMATE_POWER_SOURCES.has(powerSource);
+          const quantity=Math.max(1,_lineItem.quantity ?? 1), motors=quantity*(isDayNight || shadeType === "Common Valance"?2:1);
+          const number=(key:string,label:string,max=999,min=0):GridOption=>({key,label,field:`json:${key}`,type:"number",min,max,step:"1"});
+          const choice=(key:string,label:string,values:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options:values});
+          if(wand) {
+            options.push(choice("roman_wand_length","AutoWand Length",ROMAN_WAND_LENGTHS),choice("roman_wand_color","AutoWand Color",["White","Cottage White","Black"]),number("roman_extra_charging_kits","Extra Charging Kits for This Line",quantity),number("roman_extension_cables","Extension Cables for This Line",motors));
+            if(Number(optionsJson.roman_extension_cables)>0)options.push(choice("roman_extension_color","Extension Cable Color",["White","Black"]));
+          } else {
+            options.push(number("roman_repeaters","Repeaters for This Line",automate?2:5),number("roman_motor_network","Motor Network",999,1));
+            if(design?.remote_type) options.push(number("roman_remote_quantity","Remotes for This Line"),number("roman_remote_channel","Shade Remote Channel",automate && /15.Channel/.test(design.remote_type)?15:5,1));
+            options.push({key:"existing_remote_work_order_number",label:"Existing Remote Work Order",field:"json:existing_remote_work_order_number",type:"text"});
+            if(/SmartDial/.test(design?.remote_type || ""))options.push(number("roman_color_ring_sets","Extra Four-Color Ring Sets"));
+            if(/Low Voltage|12V/i.test(powerSource))options.push(number("roman_extra_harnesses","Extra DC Harnesses for This Line"));
+            if(!automate && /Rechargeable/i.test(powerSource))options.push(number("roman_extra_charging_kits","Extra Charging Kits for This Line",quantity));
+            if(!automate && /Rechargeable|AC Adapter/i.test(powerSource))options.push(number("roman_extension_cables","Extension Cables for This Line"));
+            if(automate && /ARC|Rechargeable/i.test(powerSource))options.push({key:"roman_solar_panel",label:"Solar Panel for Each Motor",field:"json:roman_solar_panel",type:"yes-no",noFirst:true});
           }
         }
 

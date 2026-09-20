@@ -1,3 +1,4 @@
+import { romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { woodComponents } from "./norman-wood";
 import { deriveWoodAssemblies } from "./norman-wood-assemblies";
 import { citylightsComponents, deriveCitylightsMatching } from "./norman-citylights";
@@ -220,14 +221,14 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
       const record: SelectionRecord = {
         version: 1, panelId, family, ownerLineId: owner, chargePanel: m.lineId === owner,
         connectedLineIds: members.map(l => l.lineId).sort(), connections, totalConnections, capacity, requiredCurrentAmps: totalLoad,
-        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: family === "automate_home" ? 75 : m.selection.productId === "perfectsheer" ? 41 : 14,
+        sourceId: "norman-motorization-guide-2026-09-16", sourcePage: family === "automate_home" ? 75 : m.selection.productId === "perfectsheer" ? 41 : m.selection.productId === "roman" ? 23 : 14,
       };
       m.selection.configuration = { ...m.selection.configuration, [NORMAN_ORDER_RECORD_KEY]: record };
     }
   }
-  const motorNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories> | ReturnType<typeof smartdrapeMotorAccessories> | ReturnType<typeof honeycombMotorAccessories>>}[]>();
+  const motorNetworks = new Map<string, {line: typeof lines[number]; accessories: NonNullable<ReturnType<typeof perfectsheerMotorAccessories> | ReturnType<typeof smartdrapeMotorAccessories> | ReturnType<typeof honeycombMotorAccessories> | ReturnType<typeof romanMotorAccessories>>}[]>();
   for(const line of lines) {
-    const accessories=perfectsheerMotorAccessories(line.selection) ?? smartdrapeMotorAccessories(line.selection) ?? honeycombMotorAccessories(line.selection);
+    const accessories=romanMotorAccessories(line.selection) ?? perfectsheerMotorAccessories(line.selection) ?? smartdrapeMotorAccessories(line.selection) ?? honeycombMotorAccessories(line.selection);
     if(accessories) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorAccessories:accessories.record}};
@@ -240,9 +241,14 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const first=members[0].accessories.record;
     const repeaters=members.reduce((n,m)=>n+m.accessories.record.repeaters,0);
     const capacity=first.family === "automate_home"?2:5;
+    const romanControls = members.filter(m => m.line.selection.productId === "roman");
+    const suppliedRemotes = members.reduce((n,m)=>n+(m.accessories.record.controller?.quantity ?? 0),0);
+    if (romanControls.length && suppliedRemotes === 0 && !members.some(m=>String(m.accessories.record.controller?.existingRemoteWorkOrder ?? "").trim())) {
+      for (const {line} of romanControls) issues.push({severity:"hard_block",ruleId:"roman.motorization.order_remote_required",source:source(first.family === "automate_home"?76:24),selectedValues:{lineId:line.lineId},explanation:"Supply at least one compatible remote for this motor network or identify the previous remote work order."});
+    }
     for(const {line} of members) {
-      const networkSourcePage=line.selection.productId === "honeycomb" ? first.family === "automate_home" ? 68 : 15 : line.selection.productId === "smartdrape" ? 49 : first.family === "automate_home" ? 76 : 43;
-      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:"norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
+      const networkSourcePage=line.selection.productId === "roman" ? first.family === "automate_home" ? 76 : 24 : line.selection.productId === "honeycomb" ? first.family === "automate_home" ? 68 : 15 : line.selection.productId === "smartdrape" ? 49 : first.family === "automate_home" ? 76 : 43;
+      if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:line.selection.productId === "roman" ? "norman.roman.network_repeater_capacity" : "norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,motorNetwork:{version:1,network:first.network,family:first.family,connectedLineIds:members.map(m=>m.line.lineId).sort(),repeaters,capacity,sourceId:"norman-motorization-guide-2026-09-16",sourcePage:networkSourcePage}}};
     }
@@ -252,21 +258,21 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   const chargingGroups = new Map<string, typeof lines[number][]>();
   for (const line of lines) {
     const s=line.selection, power=normalizeIdentity(s.configuration.motor_type);
-    if(!["perfectsheer","smartdrape","honeycomb"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
-    const key=s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
+    if(!["perfectsheer","smartdrape","honeycomb","roman"].includes(s.productId) || s.catalogAsOf<"2026-09-19" || !/motor|autowand/.test(normalizeIdentity(s.configuration.control_type ?? s.configuration.lift_system)))continue;
+    const key=s.productId==="roman" ? power==="autowand"?"roman_autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"roman_smart_36w":power.includes("automate") && power.includes("arc")?"roman_automate_5v":null : s.productId==="honeycomb" ? power==="autowand"?"honeycomb_autowand_usb_c":null : s.productId==="smartdrape"?power==="norman smart rechargeable battery"?"smartdrape_usb_c":null:power==="autowand"?"autowand":power.startsWith("norman smart") && power.includes("rechargeable")?"smart_36w":power.includes("automate") && power.includes("arc")?"automate_5v":null;
     if(key)chargingGroups.set(key,[...(chargingGroups.get(key)??[]),line]);
   }
   for (const [family,members] of chargingGroups) {
     const connectedLineIds=members.map(m=>m.lineId).sort();
-    const motors=members.reduce((n,m)=>n+m.selection.quantity,0);
-    const kits=family==="automate_5v"?motors:Math.ceil(motors/3);
-    const page=family==="honeycomb_autowand_usb_c"?81:family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
+    const motors=members.reduce((n,m)=>n+m.selection.quantity*(m.selection.productId === "roman" && /common valance|day night/.test(normalizeIdentity(m.selection.configuration.shade_type))?2:1),0);
+    const kits=family.endsWith("automate_5v")?motors:Math.ceil(motors/3);
+    const page=family==="roman_autowand"?85:family==="roman_smart_36w"?22:family==="roman_automate_5v"?74:family==="honeycomb_autowand_usb_c"?81:family==="smartdrape_usb_c"?46:family==="autowand"?91:family==="smart_36w"?42:74;
     for(const line of members) {
       const assembly=line.selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord;
       line.selection.configuration={...line.selection.configuration,[NORMAN_ASSEMBLY_KEY]:{...assembly,includedChargingKits:{
         version:1,productId:line.selection.productId,family,connectedLineIds,ownerLineId:connectedLineIds[0],motorQuantity:motors,
         orderQuantity:kits,fulfillmentQuantity:line.lineId===connectedLineIds[0]?kits:0,retailCharge:0,
-        description:family==="honeycomb_autowand_usb_c"?"White 78.75-inch USB-C cable; 5V charger excluded":family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
+        description:family==="roman_autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="roman_smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":family==="honeycomb_autowand_usb_c"?"White 78.75-inch USB-C cable; 5V charger excluded":family==="smartdrape_usb_c"?"White 118-inch USB-C cable, adapter and adapter head":family==="autowand"?"White 78.75-inch cable; factory-matched USB/USB-C; 5V charger excluded":family==="smart_36w"?"Black 36W adapter, 59-inch cable and black 6-inch connector":"White 5V/2A USB wall charger and 4-meter cable",
         sourceId:"norman-motorization-guide-2026-09-16",sourcePage:page,
       }}};
     }

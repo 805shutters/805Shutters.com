@@ -53,6 +53,19 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   expect(result.selection.configuration.norman_order_record_v1).toMatchObject({totalConnections:2});
   expect(result.snapshot).not.toBeNull();
  });
+ it("prices Roman accessory counts once and preserves them after JSON reopen",()=>{
+  const q=quote([4]);q.designs[0].motor_type="Norman Smart Rechargeable Battery (AC Charger)";q.designs[0].remote_type="Basic Remote";
+  q.designs[0].options_json={...clearNormanMotorPowerConnection(q.designs[0].options_json),remote_type:"Basic Remote"};
+  const run=(input:typeof q)=>repriceExactQuoteBuilderForServerDate(input,"2026-09-19");
+  const baseline=run(q);if (!("backend" in baseline)||baseline.backend!=="v2")throw new Error("Expected V2");
+  q.designs[0].options_json={...q.designs[0].options_json,roman_extra_charging_kits:2,roman_extension_cables:3,roman_repeaters:1,roman_remote_quantity:1,roman_remote_channel:5};
+  const added=run(q);if (!("backend" in added)||added.backend!=="v2")throw new Error("Expected V2");
+  expect(added.designs[0].result.ok,JSON.stringify(added.designs[0].result)).toBe(true);
+  expect(added.total-baseline.total).toBe(2*43+3*43+107-3*75);
+  const reopened=run(JSON.parse(JSON.stringify(q)));if (!("backend" in reopened)||reopened.backend!=="v2")throw new Error("Expected V2");
+  expect(reopened.total).toBe(added.total);
+  expect(reopened.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({motorAccessories:{extraChargingKits:2,extension:{quantity:3,adapterWatts:36},controller:{quantity:1,channel:5}},includedChargingKits:{orderQuantity:2,motorQuantity:4}});
+ });
  it("clears a prior DC panel when a Roman changes to an AC adapter",()=>{
   const q=quote([1]);q.designs[0].motor_type="Norman Smart AC Adapter";
   const blocked=price(q);expect(blocked.designs[0].result.ok).toBe(false);
@@ -75,12 +88,13 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
   }
   q.lines[0].width_whole=71;q.designs[0].shade_type="Common Valance";
   q.designs[0].options_json={...q.designs[0].options_json,common_valance_panel_widths:[30,40],common_valance_gap:1};
-  q.lines[1].width_whole=90;q.lines[1].height_whole=96;
+  q.lines[1].width_whole=80;q.lines[1].height_whole=100;
   q.designs[1].options_json={...q.designs[1].options_json,fold_style:"Flat Fold with Batten Back",seaming:"Vertical Seams"};
-  const result=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  const result=repriceExactQuoteBuilderForServerDate({...q,applyCustomerCharges:true},"2026-09-19");
   if (!("backend" in result)||result.backend!=="v2")throw new Error("Expected V2");
   for(const d of result.designs){
    expect(d.result.ok,JSON.stringify(d.result)).toBe(true);
+   expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
    expect(d.selection.configuration.norman_order_record_v1).toMatchObject({adapterWatts:65,adapterLineIds:["line-0","line-1"]});
    const saved = {...q.designs[0],quote_v2_selection:d.selection,options_json:{authoritative_price_status:"authoritative"}} as unknown as SalesQuoteDesign;
    expect(normanSavedPricingAudit(saved)).toEqual(["Saved order adapter: 65W across 2 quote lines."]);

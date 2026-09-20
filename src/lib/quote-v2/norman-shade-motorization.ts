@@ -1,3 +1,4 @@
+import { romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
 import { smartdrapeMotorAccessories } from "./norman-smartdrape-motor-accessories";
 import { perfectsheerMatching } from "./norman-perfectsheer-matching";
@@ -1111,8 +1112,12 @@ function resolveRoman(
     };
   }
 
+  const accessories = romanMotorAccessories(context);
   const controller = controllerSelection(family, config.remoteType);
-  if (controller) canonicalSelections.push(controller);
+  const supplied = accessories?.record.controller;
+  if (controller && supplied?.quantityExplicit) {
+    if (supplied.quantity > 0) canonicalSelections.push({...controller,units:supplied.quantity,billingScope:"once_per_line"});
+  } else if (controller) canonicalSelections.push(controller);
   if (config.hubRequired === true && family !== "autowand") {
     canonicalSelections.push(
       canonicalSelection(
@@ -1128,9 +1133,10 @@ function resolveRoman(
   }
   if (context.productId === "roman" && normalized(value(context, "shade_type")).includes("common valance")) {
     for (let i = 0; i < canonicalSelections.length; i++) {
-      if (canonicalSelections[i].role === "base_motor") canonicalSelections[i] = { ...canonicalSelections[i], units: 2 };
+      if (canonicalSelections[i].role === "base_motor" || (context.catalogAsOf >= "2026-09-19" && canonicalSelections[i].optionId === "external_battery_pack")) canonicalSelections[i] = { ...canonicalSelections[i], units: 2 };
     }
   }
+  if (accessories) {canonicalSelections.push(...accessories.selections);issues.push(...accessories.issues);}
   issues.push(
     ...validateControlAndPosition(context, config, family, sourcePages),
     ...dimensionIssues(context, [limits], "roman.motorization.dimension"),
@@ -1324,7 +1330,7 @@ export function validateNormanShadeMotorization(
   context: SelectionContext,
 ): readonly ValidationIssue[] {
   const resolution = resolveNormanShadeMotorization(context);
-  if (!resolution) return honeycombMotorAccessories(context)?.issues ?? [];
+  if (!resolution) return romanMotorAccessories(context)?.issues ?? honeycombMotorAccessories(context)?.issues ?? [];
   return resolution.issues;
 }
 
