@@ -145,6 +145,12 @@
       "sha256": "da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f"
     },
     {
+      "sourceId": "norman-roman-caroline-portal-2026-09-20",
+      "fileName": "roman-caroline-portal-20260920.json",
+      "byteLength": 1380,
+      "sha256": "df4e132d3c91cee2a9eddbc647c1163468cf7bf00dde8b3620b2f4c674858d88"
+    },
+    {
       "sourceId": "norman-roman-portal-2026-09-19",
       "fileName": "roman-portal-20260919.json",
       "sha256": "dab17f868f881dfa884c954672e29efc60da0828fdf8addf7fbe1a9d27d5e1fd",

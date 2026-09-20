@@ -1348,7 +1348,12 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  if (colorCode.toUpperCase() === "F1090") {
+  if (collection === "Caroline" && colorCode.toUpperCase() === "F1090" && context.catalogAsOf >= "2026-09-20") {
+    issues.push(issue("auto_derive", "roman.fabric.f1090.current_styles", sourceProvenance("norman-roman-caroline-portal-2026-09-20"),
+      {fabric_collection: collection, fabric_color_code: colorCode},
+      "Current dealer comparisons confirm Flat Fold without Seams, Flat Fold with Batten Back and Soft Fold for Caroline F1090; all other product restrictions still apply."));
+  }
+  if (colorCode.toUpperCase() === "F1090" && context.catalogAsOf < "2026-09-20") {
     issues.push(
       issue(
         "hard_block",

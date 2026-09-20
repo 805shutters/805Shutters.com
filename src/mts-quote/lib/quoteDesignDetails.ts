@@ -116,7 +116,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || isInternalOptionKey(key)) return;
-    if (pairedRoman && key === "motor_position") return;
+    if (key === "motor_position" && (pairedRoman || (design.supplier === "Norman" && design.product_type === "Roman Shades" && !/motor/i.test(String(design.lift_system))))) return;
     if (pairedRomanChains && key === "chain_location") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 

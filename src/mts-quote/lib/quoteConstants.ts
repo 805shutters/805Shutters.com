@@ -1,3 +1,4 @@
+import { romanFabricStyles } from "@/lib/quote/norman-roman-current-price-groups";
 import { FALL_2026_ROLLER_PROGRAM_TO_GRID } from "@/lib/quote/norman-roller-fall-2026";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 import { normanColorWithdrawal } from "@/lib/quote/norman-assortment-2026-09";
@@ -1563,7 +1564,7 @@ export function getRomanFabricCategoryNamesFor(
   }
   return names.filter((name) => ROMAN_FABRIC_CATEGORY_NAMES.includes(name) &&
     normanRomanDealerFabricRows.some((row) => row.collection === name && !row.discontinued &&
-      !normanColorWithdrawal("roman", row.colorCode) && (!foldStyle || row.styles.includes(foldStyle))));
+      !normanColorWithdrawal("roman", row.colorCode) && (!foldStyle || romanFabricStyles(row).includes(foldStyle))));
 }
 
 export const ROMAN_ALL_FABRICS = ROMAN_FABRIC_CATEGORIES.flatMap((category) =>

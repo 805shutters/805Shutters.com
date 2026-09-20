@@ -152,6 +152,25 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "pageCount": 154
 },
   {
+  "id": "norman-roman-caroline-portal-2026-09-20",
+  "manufacturer": "Norman",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "roman-caroline-portal-20260920.json",
+  "title": "Caroline F1090 current Roman style reconciliation",
+  "revision": "Observed September 20, 2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Three styles accepted and priced in saved dealer comparison September20; no earlier effective date inferred.",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": null,
+  "sha256": "df4e132d3c91cee2a9eddbc647c1163468cf7bf00dde8b3620b2f4c674858d88",
+  "authorities": [
+    "options"
+  ],
+  "accountScope": "R00743 costs are comparison evidence only; dealer factors and selling policy unchanged.",
+  "sourceUrl": "https://www.normanwindowcoverings.com/Login/RomanShades/order.asp?Service=PO"
+},
+  {
   "id": "norman-roman-portal-2026-09-19",
   "manufacturer": "Norman",
   "kind": "dealer_portal_snapshot",

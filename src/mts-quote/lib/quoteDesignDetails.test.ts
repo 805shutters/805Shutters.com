@@ -36,6 +36,14 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("omits a stale motor position after a Roman draft changes to a manual control",()=>{
+    const design={...miniBlindDesign(),product_type:"Roman Shades",lift_system:"Cordless",options_json:{quote_v2_backend:true,motor_position:"Right",poles:"Pole with Attachment",roman_pole_total_quantity:1}};
+    expect(getQuoteDesignDetails(design).some(d=>d.label==="Motor Position")).toBe(false);
+    expect(getQuoteDesignDetails({...design,lift_system:"Motorized"})).toContainEqual({label:"Motor Position",value:"Right"});
+    expect(getQuoteDesignDetails(design)).toContainEqual({label:"Total Poles or Attachments for This Line",value:"1"});
+    expect(design.options_json.motor_position).toBe("Right");
+  });
+
   it("shows the current PerfectSheer guard without a contradictory legacy default", () => {
     const design = miniBlindDesign();design.product_type="Sheer Shades";
     design.options_json={perfectsheer_light_guard:"Premium Wood Light Guard",perfectsheer_light_guard_color:"049 Stone Gray",light_guard:"none",basic_light_guard:false};

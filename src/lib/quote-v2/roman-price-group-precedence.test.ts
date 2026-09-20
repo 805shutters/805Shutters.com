@@ -12,6 +12,12 @@ describe("Roman July 2026 price-group source precedence", () => {
       expect(getProductColorOptions("roman").find(c=>c.colorCode===code)?.programId).toBe("roman_cordless_usa_price_group_2_pg2");
     }
   });
+  it("exposes current Caroline styles without rewriting imported historical fabric rows",()=>{
+    const current=["Flat Fold without Seams","Flat Fold with Batten Back","Soft Fold"];
+    expect(getProductColorOptions("roman").find(c=>c.colorCode==="F1090")?.romanStyles).toEqual(current);
+    expect(findRomanFrontColor("Caroline","F1090","2026-09-20")?.styles).toEqual(current);
+    expect(findRomanFrontColor("Caroline","F1090","2026-09-19")?.styles).toEqual(["Flat Fold with Batten Back"]);
+  });
   it("pins all ten guide-versus-price-book conflicts", () => {
     expect(ROMAN_JULY_PRICE_GROUP_CONFLICTS).toHaveLength(10);
     expect(

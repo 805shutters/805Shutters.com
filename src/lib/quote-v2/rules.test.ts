@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   QUOTE_V2_CATALOG_VERSION,
+  quoteV2CatalogVersionFor,
   QUOTE_V2_ROLLER_PREVIEW_VERSION,
 } from "./catalog";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
@@ -305,6 +306,18 @@ describe("Quote V2 authoritative manufacturer rules", () => {
     expect(
       ruleIds(selection("roman", { ...continuous, headrail_size: '1 1/2" Headrail' })),
     ).not.toContain("roman.continuous_loop.headrail_required");
+  });
+
+  it("accepts the three currently verified Caroline styles while preserving historical quarantine and other exclusions", () => {
+    for (const fold_style of ["Flat Fold without Seams", "Flat Fold with Batten Back", "Soft Fold"]) {
+      const current=selection("roman", {...romanConfiguration, fabric_collection:"Caroline",fabric_color_code:"F1090",fold_style},{catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-20")});
+      const issues=validateSelection(current);
+      expect(hardBlocks(issues)).toEqual([]);
+      expect(issues.find(i=>i.ruleId==="roman.fabric.f1090.current_styles")?.source.sourceId).toBe("norman-roman-caroline-portal-2026-09-20");
+      expect(ruleIds({...current,catalogAsOf:"2026-09-19",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-19")})).toContain("roman.fabric.f1090.quarantined");
+      expect(ruleIds({...current,widthInches:96.125})).toContain("roman.dimension.width");
+    }
+    expect(ruleIds(selection("roman",{...romanConfiguration,fabric_collection:"Caroline",fabric_color_code:"F1090",fold_style:"Edge Banded (Flat Fold with Batten Back)"},{catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("roman","2026-09-20")}))).toContain("roman.fabric.style_ineligible");
   });
 
   it("quarantines Caroline F1090 and fails closed on incomplete Roman motorization evidence", () => {
