@@ -2522,6 +2522,48 @@ function customerDeleteRecorder() {
 }
 
 describe("deleteCrmCustomerFile", () => {
+  it.each([
+    ["crm_jobs", { status: "sold" }],
+    ["crm_quotes", { status: "sold" }],
+    ["crm_quotes", { status: "archived", signed_at: "2026-09-19T12:00:00Z" }],
+    ["crm_quote_bookkeeping_entries", { sold_date: "2026-09-19" }],
+    ["crm_customer_contracts", { status: "draft", signed_at: "2026-09-19T12:00:00Z" }],
+    ["crm_customers", { latest_status: "sold" }]
+  ])("rejects current sale evidence in %s before writing anything", async (table, patch) => {
+    const { supabase, tables } = customerDeleteRecorder();
+    Object.assign(tables[table as string][0], patch);
+    const before = JSON.stringify(tables);
+    await expect(deleteCrmCustomerFile(supabase, "customer-1", {
+      customerId: "customer-1", jobIds: ["job-1"], status: "draft"
+    }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(JSON.stringify(tables)).toBe(before);
+  });
+
+  it("protects a sold sibling omitted from a stale unsold quote payload", async () => {
+    const { supabase, tables } = customerDeleteRecorder();
+    tables.crm_quotes.push({ id: "sold-sibling", job_id: "job-1", status: "sold" });
+    const before = JSON.stringify(tables);
+    await expect(deleteCrmCustomerFile(supabase, "quote-file", { quoteIds: ["quote-1"] }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(JSON.stringify(tables)).toBe(before);
+  });
+
+  it("checks V2 acceptance even if the CRM quote still says draft", async () => {
+    const { supabase, tables } = customerDeleteRecorder();
+    tables.crm_quotes[0].meta = { sales_quote_id: "sales-1" };
+    tables.sales_quotes = [{ id: "sales-1", status: "sold" }];
+    const before = JSON.stringify(tables);
+    await expect(deleteCrmCustomerFile(supabase, "quote-file", { quoteIds: ["quote-1"] }, actor)).rejects.toMatchObject({ status: 409 });
+    expect(JSON.stringify(tables)).toBe(before);
+  });
+
+  it("does not confuse a separate sold customer with the same name", async () => {
+    const { supabase, tables } = customerDeleteRecorder();
+    tables.crm_quotes.push({ id: "other-quote", job_id: "other-job", customer_name: "Kelly Krasner", status: "sold", meta: {} });
+    const result = await deleteCrmCustomerFile(supabase, "customer-1", { customerId: "customer-1", jobIds: ["job-1"] }, actor);
+    expect(result.deleted).toBe(true);
+    expect(tables.crm_quotes[1].meta).toEqual({});
+  });
+
   it("tombstones the customer file and linked CRM records without physical deletes", async () => {
     const { supabase, tables } = customerDeleteRecorder();
 

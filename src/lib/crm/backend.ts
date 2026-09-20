@@ -1,3 +1,4 @@
+import { assertCustomerFileDeletable } from "./customer-file-delete-guard";
 import { allocateReceivedMoney } from "./payment-allocation";
 import { eligibleBeforeCutoff, pacificDate, nextKenDueDate } from "./ken-monthly-ledger";
 import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MODEL } from "./owner-payables";
@@ -2457,6 +2458,10 @@ export async function deleteCrmCustomerFile(
     )
   ]);
   contractIds = uniqueTextValues([...contractIds, ...contractIdSources.flat()]);
+
+  await assertCustomerFileDeletable(supabase, {
+    customerIds: existingCustomerIds, jobIds, quoteIds, bookkeepingEntryIds, productIds, contractIds
+  });
 
   const deletedAt = new Date().toISOString();
   const deleteMeta = {

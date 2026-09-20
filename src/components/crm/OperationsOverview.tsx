@@ -4,8 +4,9 @@ import { ProductShipmentEditor } from "./ProductShipmentEditor";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search } from "lucide-react";
-import type { CrmDashboardData } from "@/lib/crm/types";
+import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search, Trash2 } from "lucide-react";
+import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
+import type { CrmCustomerFile, CrmDashboardData } from "@/lib/crm/types";
 import { performancePeriods, type PerformancePeriod, attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
@@ -85,7 +86,7 @@ export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn))].sort();
   return <small className={styles.shipmentDates}>{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
 }
-export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost }) {
+export function JobStatusOverview({ data, busy, onOpen, onAction, onDelete }: Props & { onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
   const [shipmentEditor, setShipmentEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
@@ -174,6 +175,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
 
       </tr></tbody></table>
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}
+      {onDelete && item.source.file && !item.sold && canDeleteCustomerFile(item.source.file) && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => onDelete(item.source.file!)}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
     </article>;
     })}</div>
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}

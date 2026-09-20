@@ -193,3 +193,9 @@
 .periodTabs button[aria-selected=true] { background:#75dfab; color:#102d21; font-weight:600; }
 .periodTabs button:focus-visible { outline:2px solid #fbfbfa; outline-offset:2px; }
 @media(max-width:600px) { .periodTabs { width:100%; } .periodTabs button { flex:1; padding:10px 6px; font-size:12px; } }
+
+.cardActions { display: flex; justify-content: flex-end; padding: 0 16px 10px; }
+.workspace .deleteFile { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; color: #fff; background: transparent; border: 1px solid transparent; border-radius: 10px; cursor: pointer; }
+.workspace .deleteFile:hover { background: #ffffff0d; border-color: var(--op-line); }
+.workspace .deleteFile:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.workspace .deleteFile:disabled { opacity: .4; cursor: wait; }
