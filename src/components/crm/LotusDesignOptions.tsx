@@ -97,6 +97,6 @@ export function LotusDesignOptions({ design, productType, widthInches, heightInc
         <input aria-label={`Lotus blind ${index} width`} className={selectClass} type="number" min="0" step="0.0625" value={String(options[`lotus_blind_${index}_width_inches`] ?? "")} onChange={event => updateOptions({ [`lotus_blind_${index}_width_inches`]: event.target.value === "" ? null : Number(event.target.value) })} />
       </label>)}
     </>}
-    {program && <p className="text-sm text-slate-600">Measurements use the next available cell in the selected Lotus grid. {program.priceAxis === "width" ? "This program prices a headrail by width." : program.priceAxis === "height" ? "Vane quantity basis requires manufacturer confirmation before customer delivery." : "Enter the actual opening width and height above."}</p>}
+    {program && <p className="text-sm text-slate-600">Measurements use the next available cell in the selected Lotus grid. {program.priceAxis === "width" ? "This program prices a headrail by width." : program.priceAxis === "height" ? "Vane quantity basis requires manufacturer confirmation before customer delivery." : product.id === "lotus_vertical_blinds" ? "Enter the exact finished width and height above; no automatic deduction applies." : "Enter the actual opening width and height above."}</p>}
   </section>;
 }
