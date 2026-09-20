@@ -1535,3 +1535,18 @@ it("offers Norman frame-compatible mounting, measurement and two-sided layouts",
   expect(values('3" Crown Z Frame',"Inside Mount","mount_type")).toEqual(["Inside Mount"]);
   expect(values('3" Ridge Deco Frame',"Outside Mount","mount_type")).toEqual(["Outside Mount"]);
 });
+
+
+describe("current Onyx portal choices", () => {
+  it("uses the same material-specific choices in legacy and authoritative grid fields", () => {
+    for (const authoritative of [false, true]) {
+      const fields = getStandardShutterGridOptions({supplier:"Onyx",material:"Onyx US Made Vinyl",options_json:{}} as unknown as SalesQuoteDesign, authoritative);
+      const options = (field:string) => { const item = fields.find(f=>f.field===field); return item && "options" in item ? item.options : undefined; };
+      expect(options("json:color")).toEqual(["100_Pure White", "101_White"]);
+      expect(options("louver_size")).toEqual(['3 1/2"']);
+      expect(options("json:frame_type")).toEqual(["VL Outside","VL Inside","VL 68","VZ Fine","VZ Crest FS"]);
+      expect(options("tilt_type")).toEqual(["H2 - Hidden Tiltrod Notch On Louver"]);
+      expect(options("hinge_color")).toEqual(["White"]);
+    }
+  });
+});

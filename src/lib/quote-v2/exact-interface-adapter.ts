@@ -610,6 +610,7 @@ export function selectionContextFromExactInterface(
     alias(configuration, "frame_sides", onyxFrameSides(sourceOptions.frame_sides));
     alias(configuration, "panel_configuration", design.panel_config);
     alias(configuration, "louver_size_inches", canonicalOnyxLouverSize(design.louver_size));
+    alias(configuration, "tilt_source_code", stringValue(design.tilt_type));
     alias(configuration, "tilt_type", canonicalOnyxTilt(design.tilt_type));
     alias(
       configuration,

@@ -1,3 +1,4 @@
+import { validateOnyxCurrentAssortment } from "./onyx-current-assortment";
 import type {
   ProductRuleStatus,
   SelectionContext,
@@ -1021,6 +1022,7 @@ export function validateOnyxShutterRestrictions(
     );
   }
 
+  issues.push(...validateOnyxCurrentAssortment(context));
   const materialClass = validateProgramAndMaterial(context, issues);
   validateFrameAndDepth(context, issues);
   if (materialClass === "Vinyl") {

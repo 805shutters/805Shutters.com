@@ -1,0 +1,549 @@
+{
+  "observedDate": "2026-09-20",
+  "effectiveDate": null,
+  "accountId": "CHE01",
+  "accountCompany": "California Home Exterior",
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetail.aspx",
+  "scope": "Visible material-specific regular-shutter controls, not a universal construction or pricing certification. Unsubmitted comparison drafts only.",
+  "orderPrograms": [
+    "Shutters",
+    "US Made Shutters",
+    "Onyx Signature",
+    "Onyx Lux",
+    "Woven"
+  ],
+  "materials": [
+    {
+      "material": "Bassia",
+      "programIds": [
+        "painted_basswood",
+        "stained_basswood",
+        "bassia"
+      ],
+      "colors": [
+        "100_Pure White",
+        "101_White",
+        "102_Studio",
+        "103_Blanco",
+        "105_Snow",
+        "106_Silk White",
+        "107_Swiss Coffee",
+        "110_Creamy",
+        "120_Butter",
+        "130_Gray",
+        "150_Onyx Black",
+        "190_Paint (Primed)",
+        "191_Norman Paint",
+        "192_Sunland Paint",
+        "900_Custom Paint",
+        "200_Nature",
+        "201_Honey",
+        "215_Java",
+        "216_Rose",
+        "220_Mahogany",
+        "230_Black Walnut",
+        "235_Auburn Chestnut",
+        "240_Walnut",
+        "250_Chestnut",
+        "290_Stain (Raw)",
+        "291_Norman Stain",
+        "292_Sunland Stain",
+        "404_Pewter",
+        "407_Almond",
+        "414_Wenge",
+        "901_Custom Stain"
+      ],
+      "frames": [
+        "Decor 2",
+        "Decor 2 FS",
+        "Decor 3",
+        "Decor 3 FS",
+        "Z Fine",
+        "Z Fine FS",
+        "Z Crown",
+        "Z Crown FS",
+        "Z Trim",
+        "Z Trim FS",
+        "Z Crest",
+        "Z Crest FS",
+        "Z Lite",
+        "L Outside",
+        "L Outside FS",
+        "L Inside",
+        "L Inside FS",
+        "L Bullnose Outside",
+        "L Bullnose Outside FS",
+        "L Bullnose Inside",
+        "L Bullnose Inside FS",
+        "Hang Strip",
+        "Panel Only"
+      ],
+      "louverSizes": [
+        2.5,
+        3.5,
+        4.5,
+        5.5
+      ],
+      "shapes": [
+        "Regular",
+        "Cafe",
+        "ByPass-Close",
+        "ByPass-Open",
+        "Bi-Fold Tracking",
+        "French Door",
+        "Sunburst",
+        "Half Circle",
+        "Elongated Eyebrow",
+        "Eyebrow",
+        "Circle",
+        "Oval",
+        "Quarterburst",
+        "Octagon",
+        "Sunburst Shutters",
+        "Arch Shutters",
+        "Elongated Eyebrow Shutters",
+        "Half Rake L",
+        "Full Rake",
+        "Half Rake R",
+        "Barn Door"
+      ],
+      "tiltCodes": [
+        "C",
+        "H1",
+        "H2",
+        "H3",
+        "O"
+      ]
+    },
+    {
+      "material": "Sycamore",
+      "programIds": [
+        "secamore"
+      ],
+      "colors": [
+        "100_Pure White",
+        "101_White",
+        "102_Studio",
+        "103_Blanco",
+        "105_Snow",
+        "106_Silk White",
+        "107_Swiss Coffee",
+        "110_Creamy",
+        "120_Butter",
+        "130_Gray",
+        "150_Onyx Black",
+        "190_Paint (Primed)",
+        "191_Norman Paint",
+        "192_Sunland Paint",
+        "900_Custom Paint"
+      ],
+      "frames": [
+        "Decor 2",
+        "Decor 2 FS",
+        "Decor 3",
+        "Decor 3 FS",
+        "Z Fine",
+        "Z Fine FS",
+        "Z Crown",
+        "Z Crown FS",
+        "Z Trim",
+        "Z Trim FS",
+        "Z Crest",
+        "Z Crest FS",
+        "Z Lite",
+        "L Outside",
+        "L Outside FS",
+        "L Inside",
+        "L Inside FS",
+        "L Bullnose Outside",
+        "L Bullnose Outside FS",
+        "L Bullnose Inside",
+        "L Bullnose Inside FS",
+        "Hang Strip",
+        "Panel Only"
+      ],
+      "louverSizes": [
+        2.5,
+        3.5,
+        4.5
+      ],
+      "shapes": [
+        "Regular",
+        "Cafe",
+        "ByPass-Close",
+        "ByPass-Open",
+        "Bi-Fold Tracking"
+      ],
+      "tiltCodes": [
+        "C",
+        "H1",
+        "H2",
+        "H3",
+        "O"
+      ]
+    },
+    {
+      "material": "Vinyl",
+      "programIds": [
+        "vinyl"
+      ],
+      "colors": [
+        "100_Pure White",
+        "101_White",
+        "102_Studio",
+        "103_Blanco",
+        "105_Snow",
+        "106_Silk White",
+        "107_Swiss Coffee",
+        "110_Creamy",
+        "120_Butter",
+        "130_Gray",
+        "150_Onyx Black",
+        "190_Paint (Primed)",
+        "191_Norman Paint",
+        "192_Sunland Paint",
+        "900_Custom Paint"
+      ],
+      "frames": [
+        "VZ Small",
+        "VZ Large",
+        "VL Outside",
+        "VL Outside FS",
+        "VL Inside",
+        "VL Inside FS",
+        "VZ Fine",
+        "VZ Fine FS",
+        "VZ Crest",
+        "VZ Crest FS",
+        "VZ Crown",
+        "VZ Crown FS",
+        "VDecor 2",
+        "Panel Only"
+      ],
+      "louverSizes": [
+        2.5,
+        3.5,
+        4.5
+      ],
+      "shapes": [
+        "Regular",
+        "Cafe",
+        "ByPass-Close",
+        "ByPass-Open",
+        "Bi-Fold Tracking"
+      ],
+      "tiltCodes": [
+        "C",
+        "H2",
+        "H3",
+        "O"
+      ]
+    },
+    {
+      "material": "VLO",
+      "programIds": [
+        "vlo_hybrid",
+        "hybrid"
+      ],
+      "colors": [
+        "100_Pure White",
+        "101_White",
+        "102_Studio",
+        "103_Blanco",
+        "105_Snow",
+        "106_Silk White",
+        "107_Swiss Coffee",
+        "110_Creamy",
+        "150_Onyx Black",
+        "190_Paint (Primed)",
+        "191_Norman Paint",
+        "192_Sunland Paint",
+        "900_Custom Paint"
+      ],
+      "frames": [
+        "Decor 2",
+        "Decor 2 FS",
+        "Decor 3",
+        "Decor 3 FS",
+        "Z Fine",
+        "Z Fine FS",
+        "Z Crown",
+        "Z Crown FS",
+        "Z Trim",
+        "Z Trim FS",
+        "Z Crest",
+        "Z Crest FS",
+        "Z Lite",
+        "L Outside",
+        "L Outside FS",
+        "L Inside",
+        "L Inside FS",
+        "L Bullnose Outside",
+        "L Bullnose Outside FS",
+        "L Bullnose Inside",
+        "L Bullnose Inside FS",
+        "Hang Strip",
+        "Panel Only"
+      ],
+      "louverSizes": [
+        2.5,
+        3.5,
+        4.5
+      ],
+      "shapes": [
+        "Regular",
+        "Cafe",
+        "ByPass-Close",
+        "ByPass-Open",
+        "Bi-Fold Tracking",
+        "French Door"
+      ],
+      "tiltCodes": [
+        "C",
+        "H2",
+        "H3",
+        "O"
+      ]
+    },
+    {
+      "material": "Ash",
+      "programIds": [],
+      "colors": [
+        "100_Pure White",
+        "101_White",
+        "102_Studio",
+        "103_Blanco",
+        "105_Snow",
+        "106_Silk White",
+        "107_Swiss Coffee",
+        "110_Creamy",
+        "120_Butter",
+        "130_Gray",
+        "150_Onyx Black",
+        "190_Paint (Primed)",
+        "191_Norman Paint",
+        "192_Sunland Paint",
+        "900_Custom Paint",
+        "200_Nature",
+        "201_Honey",
+        "215_Java",
+        "216_Rose",
+        "220_Mahogany",
+        "230_Black Walnut",
+        "235_Auburn Chestnut",
+        "240_Walnut",
+        "250_Chestnut",
+        "290_Stain (Raw)",
+        "291_Norman Stain",
+        "292_Sunland Stain",
+        "404_Pewter",
+        "407_Almond",
+        "414_Wenge",
+        "901_Custom Stain"
+      ],
+      "frames": [
+        "Decor 2",
+        "Decor 2 FS",
+        "Decor 3",
+        "Decor 3 FS",
+        "Z Fine",
+        "Z Fine FS",
+        "Z Crown",
+        "Z Crown FS",
+        "Z Trim",
+        "Z Trim FS",
+        "Z Crest",
+        "Z Crest FS",
+        "Z Lite",
+        "L Outside",
+        "L Outside FS",
+        "L Inside",
+        "L Inside FS",
+        "L Bullnose Outside",
+        "L Bullnose Outside FS",
+        "L Bullnose Inside",
+        "L Bullnose Inside FS",
+        "Hang Strip",
+        "Panel Only"
+      ],
+      "louverSizes": [
+        2.5,
+        3.5,
+        4.5
+      ],
+      "shapes": [
+        "Regular",
+        "Cafe",
+        "ByPass-Close",
+        "ByPass-Open",
+        "Bi-Fold Tracking",
+        "French Door",
+        "Sunburst",
+        "Half Circle",
+        "Elongated Eyebrow",
+        "Eyebrow",
+        "Circle",
+        "Oval",
+        "Quarterburst",
+        "Octagon",
+        "Sunburst Shutters",
+        "Arch Shutters",
+        "Elongated Eyebrow Shutters",
+        "Half Rake L",
+        "Full Rake",
+        "Half Rake R"
+      ],
+      "tiltCodes": [
+        "C",
+        "H1",
+        "H2",
+        "H3",
+        "O"
+      ]
+    },
+    {
+      "material": "US Made Vinyl",
+      "programIds": [
+        "onyx_us_made_vinyl"
+      ],
+      "colors": [
+        "100_Pure White",
+        "101_White"
+      ],
+      "frames": [
+        "VL Outside",
+        "VL Inside",
+        "VL 68",
+        "VZ Fine",
+        "VZ Crest FS"
+      ],
+      "louverSizes": [
+        3.5
+      ],
+      "shapes": [
+        "Regular",
+        "French Door"
+      ],
+      "tiltCodes": [
+        "H2"
+      ],
+      "hingeColors": [
+        "White"
+      ]
+    }
+  ],
+  "priceFixtures": [
+    {
+      "material": "Bassia",
+      "programId": "painted_basswood",
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "L Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 13.5,
+      "portalLinePrice": 199.436,
+      "surcharge": 0
+    },
+    {
+      "material": "Sycamore",
+      "programId": "secamore",
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "L Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 10.95,
+      "portalLinePrice": 161.764,
+      "surcharge": 0
+    },
+    {
+      "material": "Vinyl",
+      "programId": "vinyl",
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "VL Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 12,
+      "portalLinePrice": 177.276,
+      "surcharge": 0
+    },
+    {
+      "material": "VLO",
+      "programId": "vlo_hybrid",
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "L Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 12,
+      "portalLinePrice": 177.276,
+      "surcharge": 0
+    },
+    {
+      "material": "Ash",
+      "programId": null,
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "L Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 22,
+      "portalLinePrice": 325.006,
+      "surcharge": 0
+    },
+    {
+      "material": "US Made Vinyl",
+      "programId": "onyx_us_made_vinyl",
+      "width": 30,
+      "height": 60,
+      "measurementBasis": "Window Size",
+      "frame": "VL Outside",
+      "frameSides": 4,
+      "louverSize": 3.5,
+      "color": "101_White",
+      "panelConfiguration": "L",
+      "quantity": 1,
+      "billableSqft": 14.773,
+      "dealerRate": 13.65,
+      "portalLinePrice": 201.651,
+      "surcharge": 0
+    }
+  ],
+  "drafts": [
+    {
+      "id": "123320",
+      "po": "AUDIT0920ONYX"
+    },
+    {
+      "id": "123321",
+      "po": "AUDIT0920US"
+    }
+  ]
+}

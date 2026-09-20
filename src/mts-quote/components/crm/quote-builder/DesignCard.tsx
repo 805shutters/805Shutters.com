@@ -1,3 +1,4 @@
+import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanCurrentRearCollections, romanCurrentRearCodes } from "@/lib/quote-v2/catalog";
 import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
@@ -3622,6 +3623,8 @@ export function getStandardShutterGridOptions(
   if (design?.supplier === "Onyx") {
     const onyxOptions =
       (design.options_json as Record<string, unknown> | undefined) || {};
+    const currentOnyx = onyxPortalAssortment(String(onyxOptions.catalog_program_id ?? design.material ?? ""));
+    const currentOnyxIdentity = String(onyxOptions.catalog_program_id ?? design.material ?? "");
     const options: GridOption[] = [
       {
         key: "onyx_order_type",
@@ -3649,38 +3652,38 @@ export function getStandardShutterGridOptions(
         label: "Frame Type",
         field: "json:frame_type",
         type: "buttons",
-        options: frameOptions,
+        options: currentOnyx?.frames ?? frameOptions,
       },
       {
         key: "louver_size",
         label: "Louver Size",
         field: "louver_size",
         type: "buttons",
-        options: authoritativeV2
+        options: onyxPortalLouverLabels(currentOnyxIdentity) ?? (authoritativeV2
           ? SHUTTER_LOUVER_SIZES.filter((size) =>
               ['2 1/2"', '3 1/2"', '4 1/2"'].includes(size),
             )
-          : SHUTTER_LOUVER_SIZES,
+          : SHUTTER_LOUVER_SIZES),
       },
       {
         key: "color",
         label: "Color",
         field: "json:color",
         type: "select",
-        options: authoritativeV2
+        options: onyxPortalColors(currentOnyxIdentity) ?? (authoritativeV2
           ? ONYX_COLORS.filter((color) =>
               ["101_White", "105_Snow", "107_Swiss Coffee", "110_Creamy", "120_Butter"].includes(
                 color,
               ),
             )
-          : ONYX_COLORS,
+          : ONYX_COLORS),
       },
       {
         key: "hinge_color",
         label: "Hinge Color",
         field: "hinge_color",
         type: "select",
-        options: ONYX_HINGE_COLORS,
+        options: currentOnyx?.material === "US Made Vinyl" ? ["White"] : ONYX_HINGE_COLORS,
       },
       {
         key: "panel_config",
@@ -3700,7 +3703,7 @@ export function getStandardShutterGridOptions(
         label: "Tilt Rod",
         field: "tilt_type",
         type: "select",
-        options: ONYX_TILT_TYPES,
+        options: onyxPortalTiltLabels(currentOnyxIdentity) ?? ONYX_TILT_TYPES,
       },
       {
         key: "extension_rod",
