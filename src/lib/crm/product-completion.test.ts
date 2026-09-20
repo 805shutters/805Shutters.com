@@ -20,6 +20,7 @@ const input = { step: "ordered", quoteId, records: [{id:p1,updatedAt:timestamp},
 type Row = Record<string, any>;
 function database() {
   const tables: Record<string, Row[]> = {
+    crm_customer_contracts: [],
     crm_customer_products: [p1,p2].map(id => ({id,updated_at:timestamp,quote_id:quoteId,job_id:jobId,bookkeeping_entry_id:null,product_type:"Shutters",status:"pending",meta:{keep:true}})),
     crm_quotes: [{id:quoteId,job_id:jobId,meta:{}}],
     crm_jobs: [{id:jobId,meta:{}}],
@@ -31,6 +32,7 @@ function database() {
     const filters: [string,unknown][] = []; let patch:Row|null=null;
     const query = {
       select:()=>query,
+      then:(resolve:(value:unknown)=>unknown)=>Promise.resolve({data:structuredClone((tables[table] || []).filter(row=>filters.every(([key,value])=>row[key]===value))),error:controls.failRead?{message:"failed"}:null}).then(resolve),
       eq:(key:string,value:unknown)=>{filters.push([key,value]);return query;},
       in:async(key:string,values:unknown[])=>({data:structuredClone(tables[table].filter(row=>values.includes(row[key]))),error:controls.failRead?{message:"failed"}:null}),
       update:(value:Row)=>{patch=value;return query;},
@@ -503,5 +505,69 @@ describe("confirmed shipment dates", () => {
   });
   it("rejects shipment evidence on generated product or whole-job records", () => {
     expect(() => parseProductCompletion({ step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp }], shipment })).toThrow();
+  });
+});
+
+
+describe("signed products without customer-product rows", () => {
+  function setup() {
+    const db = database();
+    db.tables.crm_customer_products = [];
+    Object.assign(db.tables.crm_quotes[0], { status: "sold", sold_at: timestamp, updated_at: timestamp, created_at: timestamp, quote_total: 3893.94, materials_cost: 2261.70,
+      lineItems: [{ id: "shutters-line", product_type: "Shutters", quantity: 8 }, { id: "shade-line", product_type: "Roller Shades", quantity: 1 }],
+      meta: { keep: true, whole_job_workflow_checks: { ordered: { at: timestamp }, shipped: { at: timestamp } } }
+    });
+    return db;
+  }
+  function overview(db: ReturnType<typeof database>) {
+    return buildOperationsItems({ jobs: [], quotes: structuredClone(db.tables.crm_quotes), customerFiles: [], customerProducts: [], bookkeepingRows: [], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData)[0];
+  }
+  const records = (db: ReturnType<typeof database>, type: string) => [{ id: `whole-job-quote-${quoteId}`, updatedAt: db.tables.crm_quotes[0].updated_at, productType: type }];
+  const shipment = { shippedOn: "2026-09-10", mailbox: "805@805shutters.com", messageId: "evidence12345", orderReference: "SHADE-ORDER" };
+  it("shows both signed types and keeps whole-job checks out of each product", () => {
+    expect(overview(setup()).products).toMatchObject([
+      { name: "Shutters", quantity: 8, ordered: false, shipped: false },
+      { name: "Roller Shades", quantity: 1, ordered: false, shipped: false }
+    ]);
+  });
+  it("saves separate invoices and reloads each check without doubling existing COGS", async () => {
+    const db = setup();
+    const save = (type: string, amount: number, requestId: string) => saveProductOrderCost(db.client, { step: "ordered", quoteId, jobId, records: records(db,type),
+      invoice: { amount, reference: type, includedInCogs: true, requestId, expectedUpdatedAt: db.tables.crm_quotes[0].updated_at } }, actor);
+    await save("shutters", 2000, p1);
+    expect(overview(db).products.map(p => p.ordered)).toEqual([true,false]);
+    await save("roller shades", 261.70, p2);
+    await save("roller shades", 261.70, p2);
+    expect(overview(db).products.map(p => p.ordered)).toEqual([true,true]);
+    expect(db.tables.crm_quotes[0].materials_cost).toBe(2261.70);
+    expect(Object.values(productOrderCosts(db.tables.crm_quotes[0].meta)).map(cost => cost.amount)).toEqual([2000,261.70]);
+    expect(db.tables.crm_quotes[0].meta.product_order_cost_history).toHaveLength(2);
+    expect(db.tables.crm_quotes[0].meta.keep).toBe(true);
+  });
+  it("persists a shipment date only for the selected signed type and rejects conflicting evidence", async () => {
+    const db=setup();
+    const body={step:"shipped",quoteId,jobId,records:records(db,"roller shades"),shipment};
+    await completeProductMilestone(db.client,body,actor);
+    await completeProductMilestone(db.client,body,actor);
+    expect(db.writes).toHaveLength(1);
+    expect(overview(db).products).toMatchObject([{shipped:false,shipments:[]},{shipped:true,shipments:[shipment]}]);
+    await expect(completeProductMilestone(db.client,{...body,shipment:{...shipment,shippedOn:"2026-09-11"}},actor)).rejects.toThrow("different shipment");
+  });
+  it.each(["unknown product","unsold","deleted quote","stale","wrong job","load failed"])("rejects %s before changing money or status",async reason=>{
+    const db=setup(); const target=records(db,"shutters");
+    if(reason==="unknown product")target[0].productType="Blinds".toLowerCase();
+    if(reason==="unsold")Object.assign(db.tables.crm_quotes[0],{status:"sent",sold_at:null});
+    if(reason==="deleted quote")db.tables.crm_quotes[0].meta.deleted_at=timestamp;
+    if(reason==="stale")target[0].updatedAt="2026-01-01T00:00:00Z";
+    if(reason==="load failed")db.controls.failRead=true;
+    await expect(saveProductOrderCost(db.client,{step:"ordered",quoteId,jobId:reason==="wrong job"?p1:jobId,records:target,
+      invoice:{amount:2000,reference:"test",includedInCogs:true,requestId:p1,expectedUpdatedAt:timestamp}},actor)).rejects.toBeInstanceOf(CrmAuthError);
+    expect(db.writes).toHaveLength(0);
+  });
+  it("validates against the signed snapshot before changed quote lines",async()=>{
+    const db=setup();
+    db.tables.crm_customer_contracts=[{id:p1,quote_id:quoteId,signed_at:timestamp,meta:{contract_snapshot:{schema:"805_signed_quote_contract_v1",signedAt:timestamp,lines:[{lineItemId:"s",productName:"Shutters",quantity:8}]}}}];
+    await expect(completeProductMilestone(db.client,{step:"shipped",quoteId,jobId,records:records(db,"roller shades"),shipment},actor)).rejects.toThrow("not in the signed sale");
+    expect(db.writes).toHaveLength(0);
   });
 });

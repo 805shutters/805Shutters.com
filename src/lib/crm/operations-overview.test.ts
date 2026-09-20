@@ -28,7 +28,27 @@ describe("operations overview source integrity", () => {
       { id: "roller shades", name: "Roller Shades", quantity: 4 }
     ]);
     expect(item.headerProductSource).toBe("signed_snapshot");
-    expect(item.products).toEqual([]);
+    expect(item.products).toMatchObject([
+      { name: "Plantation Shutters", quantity: 3, ordered: false, shipped: false, records: [{ productType: "plantation shutters" }] },
+      { name: "Roller Shades", quantity: 4, ordered: false, shipped: false, records: [{ productType: "roller shades" }] }
+    ]);
+  });
+
+  it("fills missing signed products without borrowing checks from a sibling quote or duplicating existing manufacturers", () => {
+    const quoted = quote({ status: "sold", signed_at: "2026-09-15", lineItems: [
+      { id: "shutter-line", quantity: 8, product_type: "Shutters" },
+      { id: "shade-line", quantity: 1, product_type: "Roller Shades" }
+    ] } as unknown as Partial<CrmQuote>);
+    const item = buildOperationsItems(data({ quotes: [quoted, quote({ id: "alternative" })], customerProducts: [
+      product({ id: "other-quote", quote_id: "alternative", product_type: "Roller Shades", status: "shipped" }),
+      product({ supplier: "Onyx", quantity: 8, status: "ordered" })
+    ] }))[0];
+    expect(item.products).toHaveLength(2);
+    expect(item.products).toMatchObject([
+      { name: "Shutters", manufacturer: "Onyx", quantity: 8, ordered: true, records: [{ id: "p1" }] },
+      { name: "Roller Shades", quantity: 1, ordered: false, shipped: false, records: [{ id: "whole-job-quote-q1", productType: "roller shades" }] }
+    ]);
+    expect(workflowSummary([item], "ordered")).toMatchObject({ done: 1, total: 2 });
   });
 
   it("prefers the signed snapshot and never adds duplicate quote or customer-product fallback", () => {

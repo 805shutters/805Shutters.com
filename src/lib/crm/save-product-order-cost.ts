@@ -1,4 +1,4 @@
-import { validProductTarget, productManufacturerKey, normalizedProductLabel, productTargetIdentity } from './product-workflow-groups';
+import { scopedProductMeta, validProductTarget, productManufacturerKey, normalizedProductLabel, productTargetIdentity } from './product-workflow-groups';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmAuthError } from './auth';
 import { objectMeta } from './measure-needed-state';
@@ -31,7 +31,7 @@ export async function saveProductOrderCost(db: SupabaseClient, value: unknown, a
   const generated = input.records[0].id.startsWith('job-product-');
   const wholeJob = await loadWholeJobCompletionParent(db,input);
   if(wholeJob) {
-    const alreadyComplete=Boolean(objectMeta(wholeJobWorkflowChecks(wholeJob.row.meta)[input.step]).at);
+    const alreadyComplete=Boolean(input.records[0].productType ? scopedProductMeta(wholeJob.row.meta,input.records[0])[`${input.step}_at`] : objectMeta(wholeJobWorkflowChecks(wholeJob.row.meta)[input.step]).at);
     if(!replay && !alreadyComplete && wholeJob.row.updated_at !== input.records[0].updatedAt) throw new CrmAuthError(409,'The source changed. Refresh the job.');
   } else if(generated) {
     const job = table === 'crm_jobs' ? parent : await load('crm_jobs',input.jobId!);

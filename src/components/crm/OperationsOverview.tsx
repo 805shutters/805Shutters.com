@@ -1,5 +1,6 @@
 "use client";
 
+import { parseWholeJobRecordId } from "@/lib/crm/whole-job-workflow";
 import { ProductShipmentEditor } from "./ProductShipmentEditor";
 import { isOpenJob, type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
@@ -113,7 +114,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
     if (lock.current || busy) return;
     if (step === "ordered" && product) { setOrderEditor({item,product}); return; }
-    if (step === "shipped" && product && product.records.every(record => /^[a-f\d-]{36}$/i.test(record.id))) { setShipmentEditor({item,product}); return; }
+    if (step === "shipped" && product && product.records.every(record => /^[a-f\d-]{36}$/i.test(record.id) || Boolean(parseWholeJobRecordId(record.id) && record.productType))) { setShipmentEditor({item,product}); return; }
     setFeedbackId(item.source.id);
     lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
     try { const message = await onAction(item, step, product); if (message) setNotice(message); }
