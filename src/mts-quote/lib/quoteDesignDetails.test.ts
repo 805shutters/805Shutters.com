@@ -111,6 +111,15 @@ describe("getQuoteDesignDetails", () => {
       { label: "Product Line", value: "FLX" },
     ]);
   });
+  it("explains Lotus measurement conventions on customer output", () => {
+    const design = miniBlindDesign();
+    design.supplier = "Lotus";
+    for (const [basis, text] of [["inside_opening", "Inside opening; manufacturer deducts ½ inch from width"], ["exact_finished_size", "Exact finished size; no manufacturer deduction"]]) {
+      design.options_json = { lotus_measurement_basis: basis };
+      expect(getQuoteDesignDetails(design)).toContainEqual({ label: "Measurements", value: text });
+      expect(getQuoteDesignDetails(design).some(detail => detail.value === basis)).toBe(false);
+    }
+  });
 
   it("filters generated catalog metadata for every manufacturer", () => {
     const design = miniBlindDesign();

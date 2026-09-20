@@ -143,6 +143,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
       if (value === true) details.push({ label: "Complementary temporary paper shade", value: "Free" });
       return;
     }
+    if (key === "lotus_measurement_basis" && ["inside_opening", "exact_finished_size"].includes(String(value))) {
+      details.push({ label: "Measurements", value: value === "inside_opening" ? "Inside opening; manufacturer deducts ½ inch from width" : "Exact finished size; no manufacturer deduction" });
+      return;
+    }
     details.push({ label: humanizeKey(key), value: formatOptionValue(value) });
   });
 
