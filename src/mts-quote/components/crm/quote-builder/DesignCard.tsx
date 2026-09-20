@@ -1,3 +1,4 @@
+import { NormanShutterPanelOptions } from "@/components/crm/NormanShutterPanelOptions";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
 import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
 import { onyxPortalAssortment, onyxPortalFrameSides, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
@@ -6016,6 +6017,8 @@ export function DesignCard({
             onUpdateFields={updateFields}
           />
         )}
+
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.productId && isLotusObservedProduct(manufacturerOptionsRoute.productId) ? (

@@ -1,3 +1,4 @@
+import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
 import { validateLotusRoller } from "./lotus-roller";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
@@ -2464,6 +2465,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       break;
     case "norman_shutters":
       issues.push(...validateNormanShutterAssortment(context));
+      issues.push(...validateNormanShutterPanels(context));
       issues.push(...validateNormanShutterFramePricing(context));
       break;
     case "polar_elite_patio":

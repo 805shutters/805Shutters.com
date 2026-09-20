@@ -160,7 +160,7 @@ describe("mobile quote preview current-catalog integration", () => {
       },
       validationSnapshot: {
         productStatus: "restriction_source_incomplete",
-        issues: [{ ruleId: "norman.shutter.assortment.color" }, {
+        issues: [{ ruleId: "norman.shutter.assortment.color" }, {ruleId: "norman.shutter.panels.record_required"}, {
           ruleId: "norman.shutter.frame_pricing.missing_frame_sides",
           selectedValues: { frame_sides: null },
           explanation: "Window-size shutter pricing requires two, three or four framed sides.",
@@ -188,7 +188,7 @@ describe("mobile quote preview current-catalog integration", () => {
 
     const completeRestricted = prepareSalesQuoteV2PricingBatch({
       lines: parsed.lines,
-      selectedDesigns: [{ ...withFrameSides, mount_type: "Outside Mount" }],
+      selectedDesigns: [{ ...withFrameSides, mount_type: "Outside Mount", options_json: {...withFrameSides.options_json, norman_shutter_panels_v1: {version:1,application:"regular",motor:"none",existingDoorGlassOrSidelight:false,panels:[{heightInches:44,divider:"none"},{heightInches:44,divider:"none"}]}} }],
       serverDate: quoteV2ServerCatalogDate(),
     }).prepared[0];
     expect(completeRestricted.rpcResult).toMatchObject({
