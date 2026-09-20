@@ -847,7 +847,7 @@ export function PricingAuditPanel({
                     />
                     <DetailRow
                       label="Effective date"
-                      value={canonicalWholesaleSuccess.source.effectiveDate ?? "Not stated — customer pricing remains blocked"}
+                      value={canonicalWholesaleSuccess.source.effectiveDate ?? "Not supplied by manufacturer"}
                     />
                     {canonicalWholesaleSuccess.source.pages.length > 0 && (
                       <DetailRow
@@ -865,7 +865,9 @@ export function PricingAuditPanel({
                   <DetailRow
                     label="Ledger status"
                     value={
-                      canonicalWholesaleSuccess.customerPriceEligible
+                      hasAuthoritativeRetail
+                        ? "Customer retail saved; dealer landed cost is separate"
+                        : canonicalWholesaleSuccess.customerPriceEligible
                         ? "Wholesale verified; customer pricing eligible"
                         : `Internal cost only · ${canonicalWholesaleSuccess.productStatus.replaceAll("_", " ")}`
                     }
