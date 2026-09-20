@@ -61,3 +61,11 @@ Verified on www.805shutters.com after parent confirmed release `1acd1e85` live. 
 The builder shows **Total unavailable / 11 windows need pricing** and the actual Quotes list shows **Draft / Pricing incomplete**. Earlier manual 123.45 and 234.56 fixture amounts remain explicitly labeled internal test values, not account or selling authority. This verifies identity/style/valance persistence, not automatic pricing or exhaustive configuration correctness.
 
 Observed a separate presentation defect: the Zebra's exact Room Darkening attribute generated a legacy generic 20% Light Control chip. It did not calculate a quote price because Sundance remains held. A narrow follow-up suppresses generic automatically inferred surcharge choices/chips for Sundance while preserving explicitly saved charges; live verification of that follow-up is pending.
+
+## Exterior Zip and generic surcharge presentation — production 418226b6
+
+After parent verified Zip release138be0b3, added Guest Room line14 at96×84 with exact `PROSHIELD 4% BLUE SKY · Premium`. Waited for Quote saved, reloaded the full browser after release418226b6, and reopened805-0335. The premium material label/class and96×84 dimensions persisted. Its source warning still explicitly excludes motor cost and requests current rate/minimum/rounding confirmation. No customer price was entered. Builder remains Total unavailable with12 unpriced windows.
+
+On the same fresh page, Bedroom1 retains Orlando Blackout Group4/BL2901. The unsupported generic20% Light Control chip and generic Add Surcharge button are gone; the actual Room Darkening/fabric-width source description remains. This closes the narrow presentation regression proof.
+
+Observed remaining copy issue: the Zip line's missing dimensional-grid/manual-price condition is presented under “Manufacturer size warning” and “exceeds a manufacturer restriction.” The selected96×84 is within the published220×110 envelope; absence of an approved price calculation is not an oversize finding. This needs a separate wording/routing correction and does not invalidate identity persistence.
