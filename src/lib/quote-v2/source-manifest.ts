@@ -53,6 +53,15 @@ export interface SourceManifestEntry {
 export const QUOTE_V2_SOURCE_MANIFEST = [
   ...SUNDANCE_SOURCE_MANIFEST,
   {
+    id: "norman-smartprivacy-guide-2024-10", manufacturer: "Norman", kind: "product_guide", format: "pdf",
+    fileName: "SmartPrivacy FW Blinds Guide.pdf", title: "SmartPrivacy Cordless Faux Wood Blinds Guide",
+    revision: "October 2024", effectiveDate: null,
+    effectiveDateEvidence: "Cover identifies October 2024 revision, with no exact effective day; revision log last change is September 30, 2024. Downloaded from the current dealer binder September 17, 2026.",
+    receivedDate: "2026-09-17", modifiedDate: null, pageCount: 11,
+    sha256: "c92a08153e7fa04c4da17d48bef8b8d00d4fe954e40cd83ad29f04c76fb17879",
+    authorities: ["assortment", "restrictions", "options"],
+  },
+  {
   "id": "norman-ps-sd-coordination-2026-08-11",
   "manufacturer": "Norman",
   "kind": "color_workbook",

@@ -1,3 +1,4 @@
+import { smartprivacyColor } from "./norman-smartprivacy";
 import { SYNCHRONY_ACTIVE_COLLECTIONS, SYNCHRONY_DISCONTINUED, SYNCHRONY_DEALER_COLOR_CODES } from "./norman-synchrony";
 import { normanContractColors } from "./norman-contract";
 import { sanClementeColors } from "./norman-san-clemente";
@@ -383,6 +384,15 @@ const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.m
 // Apply current dealer-guide corrections after assigning IDs: historical
 // swatch references must not shift when an offering is retired or added.
 for (const row of generatedProductColorOptions) {
+  if (row.productId === "smartprivacy_faux") {
+    const color = smartprivacyColor(row.colorCode, row.fabricType);
+    row.available = Boolean(color);
+    row.sourcePage = "SmartPrivacy FW Blinds Guide.pdf#page=6";
+    row.sourcePageModified = null;
+    row.sourceNote = color ? "SmartPrivacy dealer guide October 2024 revision, downloaded September 17, 2026; exact color/finish and factory coordination."
+      : "Unverified SmartPrivacy availability: this historical swatch was copied from Ultimate Faux Wood and is absent from the SmartPrivacy dealer guide. Retained for history; not classified as discontinued.";
+    if (color) row.automaticDetails = {...row.automaticDetails, finish_type: color.finish};
+  }
   if (row.productId === "synchrony_vertical") {
     const group = SYNCHRONY_ACTIVE_COLLECTIONS.find(group => group.collection === row.collection && group.colors.includes(row.colorName));
     row.available = Boolean(group);

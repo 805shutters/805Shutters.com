@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(52);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(53);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(52);
+    ).toBe(53);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(52);
+    ).toBe(53);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -70,6 +70,7 @@ describe("quote V2 source manifest", () => {
         ).map((source) => [source.fileName, source.sha256]),
       ),
     ).toEqual({
+      "SmartPrivacy FW Blinds Guide.pdf": "c92a08153e7fa04c4da17d48bef8b8d00d4fe954e40cd83ad29f04c76fb17879",
       "Contract Cordless Faux Wood Blind Product Specifications.pdf": "df9eeb465da4dfe8c3f36a9c715b3af8d87375a4cf8d4a26745c047804ca9def",
       "Contract Vertical Blind Product Specifications.pdf": "8c36f24afb4c7c828f974a59f4c6b20e6962b6f10c5cfb650b3eec09d44ac1a4",
       "Contract Quotation Request Form.pdf": "526ffb35f412c68437d9049cc073f5c71df348a8d1e59f22d66449f22383be7e",

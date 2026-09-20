@@ -1,0 +1,50 @@
+import type { SelectionContext, ValidationIssue } from "./core";
+import type { SurchargeSelection } from "@/lib/quote/pricing";
+import { SMARTPRIVACY_SOURCE, SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS, smartprivacyColor, smartprivacyWandDrop, smartprivacyBracketCount } from "@/lib/quote/norman-smartprivacy";
+import { sourceProvenance } from "./source-manifest";
+const present=(v:unknown)=>v!=null&&v!=="";
+const yes=(v:unknown)=>v===true||v==="Yes";
+/** Current rules apply independently to every blind in a measured three-blind opening. */
+export function smartprivacyComponents(s:SelectionContext) {
+  if(s.productId!=="smartprivacy_faux"||s.catalogAsOf<"2026-09-19")return null;
+  const c=s.configuration,inside=c.mount_type==="Inside Mount",issues:ValidationIssue[]=[];
+  const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.smartprivacy.${id}`,source:sourceProvenance(SMARTPRIVACY_SOURCE,{page}),selectedValues:{...c,width:s.widthInches,height:s.heightInches},explanation});
+  if(!inside&&c.mount_type!=="Outside Mount")add("mount",7,"Choose Inside Mount or Outside Mount. Side support is an inside-mount hardware option.");
+  const count=Number(c.faux_blind_count??1),raw=c.faux_blind_widths_inches;
+  const widths=count===1?[s.widthInches]:count===3&&Array.isArray(raw)&&raw.length===3?raw.map(Number):[];
+  if(!widths.length||widths.some(w=>!Number.isFinite(w)||w<=0))add("component_widths",7,"Enter the measured width of every independent blind; choose one or three blinds.");
+  const netWidths=widths.map(w=>w-(inside?.375:0)),h=s.heightInches;
+  if(netWidths.some(w=>w<16.5||w>72||w*h>48*144)||!Number.isFinite(h)||h<24||h>96)add("dimensions",7,"Each SmartPrivacy blind requires net width 16½–72 inches, height 24–96 inches, and area no greater than 48 square feet. Inside mount deducts ⅜ inch from each ordered width.");
+  if(!['2"','2 1/2"','2.5"'].includes(String(c.slat_size)))add("slat",5,"Choose 2-inch or 2½-inch SmartPrivacy slats.");
+  if(widths.some((w,i)=>w>72&&netWidths[i]<=72))add("grid_boundary",7,"This inside-mount width meets the net-size limit but exceeds the 72-inch retail grid. Dealer confirmation is required for the final grid cell; no price is extrapolated.");
+  const color=smartprivacyColor(c.fabric_color_code,c.fabric_color_type??c.finish_type);
+  if(!color)add("color",6,"Select one of the six SmartPrivacy color/finish combinations. Ultimate Faux Wood swatches are not evidence of SmartPrivacy availability.");
+  if(present(c.control_side)&&c.control_side!=="Left"||present(c.lift_system)&&c.lift_system!=="Cordless"||c.motor_type||c.remote_type||(Array.isArray(c.motorization_selections)&&c.motorization_selections.length))add("operation",9,"SmartPrivacy uses cordless lift and left wand tilt; motorization and right tilt are not documented.");
+  if([c.cutout,c.cut_out,c.common_valance,c.side_by_side].some(yes)||/common|2.on|3.on|two.on|three.on|stacked/i.test(String(c.application??c.shade_type??""))||Number(c.keystone_quantity)>0)add("application",2,"Cut-outs, common valances, keystones and side-by-side/stacked matching are not offered. A three-blind opening contains independently made blinds.");
+  const wand=Number(c.smartprivacy_wand_drop??smartprivacyWandDrop(h));
+  if(!SMARTPRIVACY_WAND_DROPS.some(v=>Number(v)===wand))add("wand",9,"Choose a listed wand drop measured from the headrail top to the wand grip.");
+  const valance=String(c.valance??"None"),hasValance=valance!=="None",fit=String(c.smartprivacy_mount_fit??"Minimum Depth");
+  if(!SMARTPRIVACY_VALANCES.includes(valance as never))add("valance",10,"Choose no valance, 2½-inch Modern Curved or 3¼-inch Designer Crown.");
+  if(inside&&(!SMARTPRIVACY_FITS.includes(fit as never)||fit==="Bracket Flush"&&!hasValance))add("mount_fit",11,"Bracket-flush mounting requires a valance. Choose a documented recess arrangement.");
+  const requiredDepth=hasValance?fit==="Fully Recessed"?valance==="2.5-inch Modern Curved"?3.875:4.0625:fit==="Bracket Flush"?2.875:1.625:fit==="Fully Recessed"?2.8125:1.5;
+  if(inside&&(!present(c.mount_depth_inches)||!Number.isFinite(Number(c.mount_depth_inches))||Number(c.mount_depth_inches)<requiredDepth))add("mount_depth",11,`This arrangement requires at least ${requiredDepth} inches of mounting depth.`);
+  const returns=String(c.smartprivacy_valance_returns??(inside&&fit==="Fully Recessed"?"None":"Both"));
+  if(hasValance&&(!["None","Both"].includes(returns)||inside&&fit==="Fully Recessed"&&returns!=="None"))add("returns",11,"Returns are both left and right or none. Fully recessed valances have no returns.");
+  const returnSize=returns==="Both"&&hasValance?Number(c.smartprivacy_return_inches??(inside?fit==="Bracket Flush"?.75:2:3.5625)):null;
+  if(present(c.smartprivacy_return_inches)&&(!hasValance||returns!=="Both")||returnSize!==null&&(!Number.isFinite(returnSize)||returnSize<.5||returnSize>5))add("return_size",11,"Custom returns require a valance with both returns and measure ½–5 inches.");
+  const custom=present(c.smartprivacy_valance_width_inches)?Number(c.smartprivacy_valance_width_inches):null;
+  if(custom!==null&&(!hasValance||widths.length!==1||!Number.isFinite(custom)||custom<=0||custom>(netWidths[0]??0)+5))add("custom_valance",10,"A custom valance must be positive and no wider than net blind width plus 5 inches. Enter independent custom valances on separate quote lines.");
+  const layers=Number(c.smartprivacy_shim_layers??0),side=yes(c.smartprivacy_side_mount),sideOnly=c.smartprivacy_bracket_installation==="Side Only";
+  if(![0,1,2].includes(layers)||inside&&layers>0)add("shims",10,"Shims are outside mount only, with zero, one or two layers per mounting bracket.");
+  if(side&&!inside||sideOnly&&(!side||netWidths.some(w=>w>37)))add("side_mount",7,"Side-only support requires inside mount and net widths up to 37 inches. Wider blinds require top brackets in conjunction with side support.");
+  for(const key of ["smartprivacy_side_mount","smartprivacy_hold_down"])if(present(c[key])&&!["Yes","No"].includes(String(c[key])))add("hardware_choice",10,"Choose Yes or No for optional hardware.");
+  if(present(c.smartprivacy_bracket_installation)&&!["Top Support","Side Only"].includes(String(c.smartprivacy_bracket_installation)))add("bracket_installation",7,"Choose top support or the eligible side-only arrangement.");
+  const components=netWidths.map((netWidth,index)=>({orderedWidth:widths[index],netWidth,height:h,brackets:smartprivacyBracketCount(netWidth),shims:smartprivacyBracketCount(netWidth)*layers,sideSupport:side,topSupport:!sideOnly,holdDowns:netWidth<=30||yes(c.smartprivacy_hold_down)?2:0,
+    valance:hasValance?{style:valance,width:custom??netWidth+(inside?returns==="Both"?.625:.25:returns==="Both"?1:2),returns,returnSize,clips:netWidth<=37?2:netWidth<60?3:4,returnConnectors:returns==="Both"?valance==="2.5-inch Modern Curved"?2:4:0}:null}));
+  const surchargeSelections:SurchargeSelection[]=[];
+  if(color?.code==="6957")surchargeSelections.push({id:"printed_colors",units:1});
+  const shims=components.reduce((n,c)=>n+c.shims,0);if(shims)surchargeSelections.push({id:"shim",units:shims});
+  if(side)surchargeSelections.push({id:"side_mount_bracket",units:components.length});
+  if(hasValance)surchargeSelections.push({id:"valance",units:1});
+  return {issues,surchargeSelections,record:{version:1,type:"smartprivacy_independent_blinds",sourceId:SMARTPRIVACY_SOURCE,sourcePages:[6,7,8,9,10,11],components,color:color??null,lift:"Cordless",wandSide:"Left",wandDrop:wand,mountFit:inside?fit:null,requiredMountDepth:inside?requiredDepth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
+}

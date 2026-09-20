@@ -64,6 +64,10 @@ function Preview() {
       setDesigns([{...initial,product_type:product.type,mount_type:null,lift_system:null,valance:null,options_json:{quote_v2_backend:true,catalog_product_id:product.id,quote_lab_product_id:product.id,catalog_program_id:product.program,quote_lab_program_id:product.program}}]);
       setLine({...item,product_type:product.type,selected_design_id:initial.id});
     }}>{product.label}</button>)}
+    <button onClick={() => {
+      setDesigns([{...initial,product_type:"Faux Wood Blinds",lift_system:"Cordless",valance:null,mount_type:null,options_json:{quote_v2_backend:true,catalog_product_id:"smartprivacy_faux",quote_lab_product_id:"smartprivacy_faux",catalog_program_id:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",quote_lab_program_id:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",product_line:"SmartPrivacy",faux_configuration_version:"faux-wood-v2",faux_blind_count:1}}]);
+      setLine({...item,product_type:"Faux Wood Blinds",selected_design_id:initial.id});
+    }}>SmartPrivacy fixture</button>
     <p>Local test data. Uses the CRM design card; saves only in this browser.</p>
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBlock: 16 }}>
       <button onClick={() => { localStorage.setItem(storageKey, JSON.stringify({design, designs, line, locked})); setMessage("Saved locally"); }}>Save fixture</button>

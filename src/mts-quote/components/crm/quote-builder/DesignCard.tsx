@@ -1,3 +1,4 @@
+import { SMARTPRIVACY_VALANCES, SMARTPRIVACY_FITS, SMARTPRIVACY_WAND_DROPS } from "@/lib/quote/norman-smartprivacy";
 import { HONEYCOMB_MOTOR_ACCESSORY_KEYS, HONEYCOMB_WAND_LENGTHS } from "@/lib/quote-v2/norman-honeycomb-motor-accessories";
 import { HONEYCOMB_GUARD_COLORS, HONEYCOMB_MAGNET_COLORS } from "@/lib/quote-v2/norman-honeycomb-hardware";
 import { SMARTDRAPE_CEILING_ATTACHMENTS, smartdrapeKeystoneChoices } from "@/lib/quote-v2/norman-smartdrape-hardware";
@@ -10060,6 +10061,31 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Faux Wood Blinds" && authoritativeV2 && currentJson.product_line === "SmartPrivacy" && ["mount_type", "valance", "json:smartprivacy_mount_fit", "json:smartprivacy_side_mount", "json:smartprivacy_valance_returns", "json:faux_blind_count"].includes(field)) {
+      const options = {...currentJson};
+      if (field.startsWith("json:")) options[field.slice(5)] = value;
+      if (field === "mount_type") {
+        options.smartprivacy_shim_layers = "0";
+        options.smartprivacy_side_mount = "No";
+        options.smartprivacy_bracket_installation = "Top Support";
+        options.mount_depth_inches = null;
+        options.smartprivacy_mount_fit = null;
+        options.smartprivacy_valance_returns = null;
+        options.smartprivacy_return_inches = null;
+      }
+      if (["valance", "json:smartprivacy_mount_fit"].includes(field)) {
+        options.smartprivacy_valance_returns = null;
+        options.smartprivacy_return_inches = null;
+        options.smartprivacy_valance_width_inches = null;
+        if (field === "valance" && value === "None" && options.smartprivacy_mount_fit === "Bracket Flush") options.smartprivacy_mount_fit = "Minimum Depth";
+      }
+      if (field === "json:smartprivacy_side_mount") options.smartprivacy_bracket_installation = "Top Support";
+      if (field === "json:smartprivacy_valance_returns") options.smartprivacy_return_inches = null;
+      if (field === "json:faux_blind_count") options.smartprivacy_valance_width_inches = null;
+      onUpdateFields({...(!field.startsWith("json:") ? {[field]: value} : {}), options_json: options});
+      return;
+    }
+
     if (
       productType === "Faux Wood Blinds" &&
       authoritativeV2 &&
@@ -10080,7 +10106,7 @@ function ShadesAndBlindsOptions({
         motor_type: null,
         remote_type: null,
         options_json: {
-          ...withoutProductColorDetails(currentJson),
+          ...Object.fromEntries(Object.entries(withoutProductColorDetails(currentJson)).filter(([key]) => !key.startsWith("smartprivacy_"))),
           product_line: productLine,
           color: null,
           quote_lab_product_id: productId,
@@ -11658,13 +11684,19 @@ function ShadesAndBlindsOptions({
           (design?.options_json as Record<string, unknown> | undefined)
             ?.faux_blind_count,
         );
+        const smartprivacy = authoritativeV2 && optionsJson.product_line === "SmartPrivacy";
+        const spSelect = (key:string,label:string,choices:readonly string[]):GridOption => ({key,label,field:`json:${key}`,type:"select",options:choices});
+        const spNumber = (key:string,label:string,min:number,max:number,step="0.0625"):GridOption => ({key,label,field:`json:${key}`,type:"number",min,max,step});
+        const spValance = design?.valance ?? "None";
+        const spInside = design?.mount_type === "Inside Mount";
+        const spFit = String(optionsJson.smartprivacy_mount_fit ?? "Minimum Depth");
         return [
           {
             key: "mount",
             label: "Mount Type",
             field: "mount_type",
             type: "buttons",
-            options: FAUX_WOOD_MOUNT_TYPES,
+            options: smartprivacy ? ["Inside Mount", "Outside Mount"] : FAUX_WOOD_MOUNT_TYPES,
           },
           {
             key: "slat_size",
@@ -11728,6 +11760,19 @@ function ShadesAndBlindsOptions({
                 },
               ] satisfies GridOption[])
             : []),
+          ...(smartprivacy ? [
+            spSelect("smartprivacy_wand_drop","Wand Drop",SMARTPRIVACY_WAND_DROPS),
+            {key:"valance",label:"Valance",field:"valance",type:"select",options:SMARTPRIVACY_VALANCES},
+            ...(spInside ? [spSelect("smartprivacy_mount_fit","Recess Arrangement",spValance === "None" ? SMARTPRIVACY_FITS.filter(v=>v!=="Bracket Flush") : SMARTPRIVACY_FITS),spNumber("mount_depth_inches","Mounting Depth",0,30)] : [spSelect("smartprivacy_shim_layers","Shim Layers",["0","1","2"])]),
+            ...(spValance !== "None" ? [
+              spSelect("smartprivacy_valance_returns","Valance Returns",spInside&&spFit==="Fully Recessed"?["None"]:["None","Both"]),
+              ...((optionsJson.smartprivacy_valance_returns ?? (spInside&&spFit==="Fully Recessed"?"None":"Both")) === "Both" ? [spNumber("smartprivacy_return_inches","Custom Return Size",.5,5)] : []),
+              ...(blindCount!==3?[spNumber("smartprivacy_valance_width_inches","Custom Valance Width",1,77)]:[]),
+            ] : []),
+            ...(spInside ? [{key:"smartprivacy_side_mount",label:"Side Support Kit",field:"json:smartprivacy_side_mount",type:"yes-no" as const,noFirst:true},
+              ...(optionsJson.smartprivacy_side_mount === "Yes" ? [spSelect("smartprivacy_bracket_installation","Bracket Installation",(blindCount===3 ? [1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])) : [measurementToInches(_lineItem.width_whole,_lineItem.width_fraction)]).every(w=>w-.375<=37) ? ["Top Support","Side Only"] : ["Top Support"])]:[])] : []),
+            {key:"smartprivacy_hold_down",label:"Optional Hold-Down Brackets",field:"json:smartprivacy_hold_down",type:"yes-no",noFirst:true},
+          ] satisfies GridOption[] : []),
         ];
       }
 
@@ -12022,6 +12067,11 @@ function ShadesAndBlindsOptions({
     heightInches: measurementToInches(_lineItem.height_whole, _lineItem.height_fraction), options: {},
     configuration: { ...optionsJson, mount_type: design?.mount_type ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
+  const smartprivacyIssues = authoritativeV2 && productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? validateNormanFamilyRules({
+    productId:"smartprivacy_faux",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+    quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
+    configuration:{...optionsJson,faux_blind_widths_inches:Number(optionsJson.faux_blind_count)===3?[1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])):undefined,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   const gridOptions = getGridOptions();
   const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context),...validateNormanShadeMotorization(context).filter(i=>i.severity==="hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.startsWith("smartdrape.accessory."))])({
     productId:"smartdrape",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??"smartdrape_smartdrape_light_filtering"),
@@ -12052,7 +12102,7 @@ function ShadesAndBlindsOptions({
       label: "Wand Side (from inside the room)",
       field: "json:control_side",
       type: "buttons",
-      options: ["Wood Blinds", "Mini Blinds"].includes(productType) && measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) - (design?.mount_type === "Inside Mount" ? 0.375 : 0) < 15 ? ["Center"] : ["Left", "Right"],
+      options: productType === "Faux Wood Blinds" && optionsJson.product_line === "SmartPrivacy" ? ["Left"] : ["Wood Blinds", "Mini Blinds"].includes(productType) && measurementToInches(_lineItem.width_whole, _lineItem.width_fraction) - (design?.mount_type === "Inside Mount" ? 0.375 : 0) < 15 ? ["Center"] : ["Left", "Right"],
     });
   }
 
@@ -12528,6 +12578,7 @@ function ShadesAndBlindsOptions({
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
+      {smartprivacyIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartprivacyIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
       {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}

@@ -1,3 +1,4 @@
+import { smartprivacyComponents } from "./norman-smartprivacy";
 import { honeycombHardware } from "./norman-honeycomb-hardware";
 import { verticalHoneycombHardware } from "./norman-honeycomb-vertical";
 import { smartdrapeVanePacks } from "./norman-smartdrape-vane-packs";
@@ -544,6 +545,8 @@ export function authoritativeAutomaticSurchargeSelections(
   }
   const sdExtras=smartdrapeVanePacks(selection);
   if(sdExtras)for(const key of Object.keys(details))if(key.startsWith("additional_vanes_pack_of_6_length_")||key==="additional_wand")delete details[key];
+  const smartprivacy = smartprivacyComponents(selection);
+  const smartprivacyIds = new Set(["printed_colors", "shim", "side_mount_bracket", "valance"]);
   const hcHardware = honeycombHardware(selection);
   const hcHardwareIds = new Set(["side_mount_bracket", "shim", "lightguard_pole_attachment_only", "cut_out_cordless_operating_pole", "magnetic_hold_down"]);
   const currentHoneycomb = ["honeycomb", "vertical_honeycomb"].includes(selection.productId) && selection.catalogAsOf >= "2026-09-19";
@@ -551,7 +554,7 @@ export function authoritativeAutomaticSurchargeSelections(
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
   const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
