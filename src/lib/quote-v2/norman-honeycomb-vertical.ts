@@ -1,3 +1,4 @@
+import { honeycombMounting, validateHoneycombMounting } from "./norman-honeycomb-mounting";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { findHoneycombColor, normalizeIdentity } from "./catalog";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
@@ -19,6 +20,7 @@ export function verticalHoneycombHardware(s: SelectionContext) {
   const splice = w >= 97.625 && w > h - (inside ? 2.3125 : 2.1875);
   return { dayNight, inside, attachment, layers, predrilled, record: {
     version: 1, type: "vertical_honeycomb", sourceId: "norman-honeycomb-guide-2026-07", sourcePages: [7,36,37,38,47,49],
+    ...(honeycombMounting(s) ? {mountingDepth: honeycombMounting(s)!.record} : {}),
     orderWidth: w, orderHeight: h, finishedWidth: w - (inside ? .1875 : 0), finishedHeight: h - (inside ? .625 : .5),
     mounting: attachment, mountingBracketCount: mountingBrackets, floorBracketCount: floorBrackets,
     shimLayers: layers, shimQuantity: predrilled ? 0 : layers * (mountingBrackets + floorBrackets),
@@ -30,7 +32,7 @@ export function verticalHoneycombHardware(s: SelectionContext) {
 
 export function validateVerticalHoneycombHardware(s: SelectionContext): ValidationIssue[] {
   const v = verticalHoneycombHardware(s); if (!v) return [];
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...validateHoneycombMounting(s)];
   const add = (id: string, page: number, explanation: string) => issues.push({severity: "hard_block", ruleId: `honeycomb.vertical.${id}`, source: sourceProvenance("norman-honeycomb-guide-2026-07", {page}), selectedValues: {...s.configuration}, explanation});
   if (normalizeIdentity(s.configuration.application) !== "patio door vertical" || !["patio door vertical", "patio door vertical day night"].includes(normalizeIdentity(s.configuration.lift_system))) add("application",36,"Vertical Honeycomb requires the Patio Door Vertical application and its vertical operating system.");
   if (v.inside && !["Pre-Drilled Headrail", "Installation Brackets"].includes(v.attachment)) add("mounting",37,"Select a pre-drilled headrail or installation brackets for inside-mounted Vertical Honeycomb.");

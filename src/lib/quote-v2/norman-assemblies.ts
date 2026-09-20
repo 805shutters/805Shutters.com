@@ -1,4 +1,5 @@
 import { smartfoldCharging } from "./norman-smartfold-charging";
+import { honeycombMounting } from "./norman-honeycomb-mounting";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { deriveRomanMatching } from "./norman-roman-matching";
 import { romanHardware } from "./norman-roman-hardware";
@@ -123,6 +124,16 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
         adapterLineIds: requirements.map(r => r.lineId),
         sourceId: "norman-motorization-guide-2026-09-16", sourcePage: row.selection.productId === "honeycomb" ? 10 : row.selection.productId === "smartfold" ? 56 : row.selection.productId === "perfectsheer" ? 39 : 21,
       }};
+    }
+  }
+  // Recompute depth after shared AC adapters are allocated: a small shade can
+  // require the 65W cable clearance because another line needs that adapter.
+  for (const {selection} of lines) {
+    const mounting = honeycombMounting(selection);
+    const assembly = selection.configuration[NORMAN_ASSEMBLY_KEY] as SelectionRecord | undefined;
+    if (mounting && assembly) {
+      const hardware = assembly.hardware as SelectionRecord | undefined;
+      selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: hardware ? {...assembly, hardware:{...hardware, mountingDepth:mounting.record}} : {...assembly,mountingDepth:mounting.record}};
     }
   }
   for (const line of lines) {

@@ -1,0 +1,9 @@
+# Honeycomb mounting-depth implementation, September 20
+
+Implemented the manual Honeycomb Guide PDF p10 and Motorization Guide September 16 PDF pp16–18,69,82 tables. Table images were rendered and visually checked. Current horizontal and vertical catalogs now capture inside-mount arrangement and measured unobstructed recess depth; the authoritative server rejects unavailable combinations and depth below the applicable minimum. Earlier catalog revisions remain recognized without imposing new inputs on historical snapshots.
+
+Coverage: SmartRise, cordless TDBU/Day & Night, Cord Loop/TD/Day & Night/SmartRelease, cord-tensioner-holder branches, woven cordless/TDBU, SmartFit/Dual/sloped, specialty, vertical installation brackets/predrilled mounting, Norman Smart battery/36W/DC/65W with front/back exit, skylight, Automate Home and AutoWand. Framed SmartFit retains its separate frame geometry rules. Light Guard branches use their own exact depths; N/A cells remain unavailable. A saved hardware subrecord includes source, arrangement, measured depth and minimum. The subrecord is recomputed after order-wide AC adapter allocation, including restoration to 36W when the requiring line is removed.
+
+Exact remaining source scope: p10 large-cell vertical predrilled Semi-IB cell repeats the ¾-inch cell label; 1¼-inch applicability is held. SmartFit without mounting plate is not assigned the with-plate depth. Running-change bracket variation remains explicit. The separate charging-clearance recommendation and specialty net-dimension geometry are not covered by this change.
+
+Validation: 23 mounting tests plus 36 existing motor accessory tests pass, including exact/one-sixteenth-below boundaries, N/A cells, historic revisions, mixed-order 65W→36W recomputation and JSON persistence. Full suite: 5,850 passed, 28 skipped; TypeScript passes. Deployment and live save/reopen proof still pending.

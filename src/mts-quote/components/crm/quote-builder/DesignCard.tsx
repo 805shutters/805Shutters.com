@@ -1,3 +1,4 @@
+import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
 import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
 import { NormanSmartfoldChargingOptions } from "@/components/crm/NormanSmartfoldChargingOptions";
@@ -11662,6 +11663,11 @@ function ShadesAndBlindsOptions({
           options: HONEYCOMB_RAIL_COLORS,
         });
 
+        if (authoritativeV2 && mountType === "Inside Mount" && !(HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application)) {
+          options.push({key:"honeycomb_mount_fit",label:"Inside Mount Arrangement",field:"json:honeycomb_mount_fit",type:"select",options:HONEYCOMB_MOUNT_FITS});
+          options.push({key:"honeycomb_recess_depth_inches",label:"Unobstructed Recess Depth",field:"json:honeycomb_recess_depth_inches",type:"number",min:0,step:"0.0625",unit:'"'});
+          if (["Continuous Cord Loop", "Cord Loop", "Cord Loop Top Down", "Cord Loop Day & Night", "SmartRelease"].includes(operatingSystem || "") || /Cord Loop|SmartRelease/.test(operatingSystem || "")) options.push({key:"honeycomb_semi_inside_tensioner_holder",label:"Semi-IM Cord Tensioner Holder",field:"json:honeycomb_semi_inside_tensioner_holder",type:"yes-no",noFirst:true});
+        }
         const hardwareHoldAllowed = !verticalApplication && !specialtyShapeApplication && !operatingSystem?.startsWith("SmartFit") && application !== "Motorized Skylights";
         if (authoritativeV2 && !verticalApplication) {
           const smartfit = ["SmartFit", "SmartFit Dual Shade"].includes(operatingSystem || "");
@@ -12317,6 +12323,9 @@ function ShadesAndBlindsOptions({
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,...perfectsheerSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
+  const honeycombMountingIssues = productType === "Honeycomb Shades" && authoritativeV2 ? validateHoneycombMounting({
+    manufacturerId:"norman",productId:/Patio Door Vertical/.test(String(optionsJson.honeycomb_application)) ? "vertical_honeycomb" : "honeycomb",catalogAsOf:"2026-09-20",catalogVersion:String(design?.quote_v2_selection?.catalogVersion ?? "preview-norman-honeycomb-mounting-2026-09-20-r1"),programId:"preview",quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},configuration:{...optionsJson,application:String(optionsJson.honeycomb_application ?? "Standard Horizontal"),cell_size:String(optionsJson.cell_size ?? ""),mount_type:design?.mount_type,lift_system:design?.lift_system,motor_type:design?.motor_type} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
+  }) : [];
   const smartfoldIssues = productType === "SmartFold Shades" ? validateNormanFamilyRules({
     productId:"smartfold",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:"smartfold_smartfold_shades",
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
@@ -12815,6 +12824,7 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
+      {honeycombMountingIssues.length > 0 && <div role="alert"><ul>{honeycombMountingIssues.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul></div>}
       {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /common valance/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">Two motors: the left shade has its motor on the left; the right shade has its motor on the right. Each shade retains its own width.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /day.*night/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">The rear roller motor is on the opposite side from the front Roman motor. The standard arrangement is front right and rear left.</p>}

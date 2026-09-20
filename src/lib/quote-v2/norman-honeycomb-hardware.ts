@@ -1,3 +1,4 @@
+import { honeycombMounting, validateHoneycombMounting } from "./norman-honeycomb-mounting";
 import { normalizeHoneycombCellSize, normalizeHoneycombSystem } from "./honeycomb-matrix";
 import { findHoneycombColor, normalizeIdentity } from "./catalog";
 import type { SelectionContext, ValidationIssue } from "./core";
@@ -59,6 +60,7 @@ export function honeycombHardware(s: SelectionContext) {
   ];
   return {system, cell, inside, frame, skylight, specialty, smartfit, twoOnOne, plate, brackets, layers, shimsAllowed, polesAllowed, pole, poleSelected, poleCount, guardSelected, guardAllowed, hold, holdAllowed, magnetic, guardColor, sideKit, sideMount, sideAllowed, surchargeSelections, record: {
     sourceId: "norman-honeycomb-guide-2026-07", sourcePages: [6, 45, 47, 48, 49],
+    ...(honeycombMounting(s) ? {mountingDepth: honeycombMounting(s)!.record} : {}),
     quantityBasis: "per_ordered_shade", mountingBracketCount: brackets,
     mountingPlate: smartfit ? plate : null,
     sideMountSupportKit: sideKit, regularSupportBracketsRequired: sideKit && w > 37,
@@ -71,7 +73,7 @@ export function honeycombHardware(s: SelectionContext) {
 
 export function validateHoneycombHardware(s: SelectionContext): ValidationIssue[] {
   const h = honeycombHardware(s); if (!h) return [];
-  const c = s.configuration, issues: ValidationIssue[] = [];
+  const c = s.configuration, issues: ValidationIssue[] = [...validateHoneycombMounting(s)];
   const add = (id: string, page: number, explanation: string) => issues.push({severity: "hard_block", ruleId: `honeycomb.hardware.${id}`, source: sourceProvenance("norman-honeycomb-guide-2026-07", {page}), selectedValues: {...c}, explanation});
   for (const key of ["honeycomb_light_guard", "honeycomb_side_mount_kit"]) if (c[key] != null && !["yes", "no", "true", "false"].includes(normalizeIdentity(c[key]))) add("choice",45,"Choose Yes or No for the requested accessory.");
   if (c.installation_method && !["side mount", "regular support brackets"].includes(normalizeIdentity(c.installation_method))) add("installation",6,"Select regular support brackets or a valid side-mount installation.");
