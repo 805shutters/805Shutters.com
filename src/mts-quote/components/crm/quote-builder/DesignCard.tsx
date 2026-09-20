@@ -1,5 +1,7 @@
 import { onyxPortalAssortment, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
+import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
+import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
 import { romanHardware } from "@/lib/quote-v2/norman-roman-hardware";
 import { ROMAN_MOTOR_ACCESSORY_KEYS, ROMAN_WAND_LENGTHS } from "@/lib/quote-v2/norman-roman-motor-accessories";
 import { NORMAN_SHUTTER_PROGRAMS as NORMAN_BINDER_SHUTTER_PROGRAMS, normanShutterProgram, normanShutterColors, normanShutterLouvers, normanShutterHinges, normanShutterTilts, normanShutterFrames, normanShutterMounts, normanShutterMeasurements } from "@/lib/quote/norman-shutter-assortment";
@@ -6006,7 +6008,10 @@ export function DesignCard({
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.status === "manual_quote" ? (
-          <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
+          <>
+            <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
+            {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
+          </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
           manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
             <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />

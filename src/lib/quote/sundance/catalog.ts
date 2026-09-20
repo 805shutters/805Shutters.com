@@ -1,10 +1,11 @@
+import { sundanceDraperyTrack } from "./drapery-track";
 import { SUNDANCE_CELLULAR_PROGRAMS, sundanceCellularSource } from "./cellular-assortment";
 import catalogJson from "../catalog/sundance.catalog.json";
 import type { Catalog, CatalogProgram } from "../catalog/types";
 
 export const sundanceCatalog: Catalog = {
   ...(catalogJson as unknown as Catalog),
-  products: (catalogJson as unknown as Catalog).products.map(product => product.id !== "sundance_cellular" ? product : ({
+  products: [...(catalogJson as unknown as Catalog).products.map(product => product.id !== "sundance_cellular" ? product : ({
     ...product,
     fabricRouting: Object.fromEntries(sundanceCellularSource.rows.map(row => [row.code, SUNDANCE_CELLULAR_PROGRAMS[row.priceGroup]])),
     programs: product.programs.map(program => ({
@@ -12,9 +13,9 @@ export const sundanceCatalog: Catalog = {
       priceGroup: Object.entries(SUNDANCE_CELLULAR_PROGRAMS).find(([, id]) => id === program.id)?.[0] ?? null,
       fabricCollections: [{ category: "Exact cellular color/cell codes", fabrics: sundanceCellularSource.rows.filter(row => SUNDANCE_CELLULAR_PROGRAMS[row.priceGroup] === program.id).map(row => row.code) }],
     })),
-  })),
+  })), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r2";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r3";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);

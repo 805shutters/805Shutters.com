@@ -12,9 +12,9 @@ import { lookupSundanceSourceGrid, sundanceCatalog, SUNDANCE_CATALOG_VERSION } f
 import { SUNDANCE_SOURCE_MANIFEST } from "./source-manifest";
 
 describe("Sundance source catalog isolation", () => {
-  it("retains all 28 distinct families, with a separate manufacturer and quote category", () => {
-    expect(sundanceCatalog.products).toHaveLength(28);
-    expect(new Set(sundanceCatalog.products.map((p) => p.id)).size).toBe(28);
+  it("retains all 29 distinct families, with a separate manufacturer and quote category", () => {
+    expect(sundanceCatalog.products).toHaveLength(29);
+    expect(new Set(sundanceCatalog.products.map((p) => p.id)).size).toBe(29);
     for (const product of sundanceCatalog.products) {
       expect(product.id).toMatch(/^sundance_/);
       expect(getProduct(product.id)?.manufacturer).toBe("Sundance");

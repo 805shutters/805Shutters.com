@@ -1,0 +1,67 @@
+{
+  "audit": "sundance-glydea-options-20260920",
+  "sourceUrl": "https://sundance.blindata.app",
+  "observedOn": "2026-09-20",
+  "blindId": "97",
+  "blindTypeId": "421",
+  "fabricId": "34694",
+  "options": [
+    {
+      "name": "Motor Type",
+      "choices": [
+        "GLYDEA MOTOR /1.O NM/ 110 VOLTS",
+        "GLYDEA MOTOR/ 0.6 NM /110 VOLTS",
+        "IRISMO 35/ 24VOLTS/ 0.6 NM (WITH   TRANSFORMER)",
+        "IRISMO 45/LI-ON RECHARGEABLE/0.8 NM",
+        "No"
+      ]
+    },
+    {
+      "name": "Headrail Colors",
+      "choices": [
+        "Bronze",
+        "White"
+      ]
+    },
+    {
+      "name": "Motor Position",
+      "choices": [
+        "Make Selection",
+        "Motor Left",
+        "Motor Right"
+      ]
+    },
+    {
+      "name": "Curved Track",
+      "choices": [
+        "No",
+        "Yes"
+      ]
+    },
+    {
+      "name": "Stack Type",
+      "choices": [
+        "Make Selection",
+        "ONE WAY LEFT",
+        "ONE WAY RIGHT",
+        "Split."
+      ]
+    },
+    {
+      "name": "Drapery Style Track",
+      "choices": [
+        "Pinch Pleat Drapery Style",
+        "Ripple Fold Drapery style."
+      ]
+    },
+    {
+      "name": "Remote Control",
+      "choices": [
+        "No",
+        "Situo 1 (Single Line)",
+        "Situo 5 (5 Lines)",
+        "Telis 16"
+      ]
+    }
+  ]
+}

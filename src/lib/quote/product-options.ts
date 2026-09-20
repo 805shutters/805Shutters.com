@@ -1,3 +1,4 @@
+import { SUNDANCE_DRAPERY_TRACK_ID, sundanceDraperyTrackFields } from "./sundance/drapery-track";
 import { PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
 import { PERFECTSHEER_LIGHT_GUARDS, PERFECTSHEER_BASIC_GUARD_COLORS, PERFECTSHEER_WOOD_GUARD_COLORS, PERFECTSHEER_MAGNET_COLORS } from "@/lib/quote-v2/norman-perfectsheer-hardware";
@@ -1074,7 +1075,7 @@ const productMotorizationGroups: Record<string, string[]> = {
 };
 
 export function getDetailFieldsForProduct(productId: string): QuoteDetailField[] {
-  const base = productDetails[productId] ?? [];
+  const base = productId === SUNDANCE_DRAPERY_TRACK_ID ? sundanceDraperyTrackFields : productDetails[productId] ?? [];
   const seen = new Set(base.map((field) => field.id));
   const automatic = automaticSurchargeFields(productId, seen);
   return automatic.length ? [...base, ...automatic] : base;

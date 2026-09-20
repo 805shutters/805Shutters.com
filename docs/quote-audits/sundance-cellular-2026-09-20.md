@@ -32,7 +32,7 @@ The additional dealer labels are `3C-002 SNOW WHITE`, `3C-005 SMOOTH CREAM`, `3C
 
 Cellular still needs exhaustive control, dimensional, specialty, Verticell, mounting, motor/accessory and charge rules; account-factor/retail-versus-net exceptions, freight and fees; and actual production CRM save/reopen/customer-output proof. The five dealer fixtures do not certify every color or configuration.
 
-Across Sundance, 28 existing families and 98 source programs remain manual priced. Six families have no extracted grids. Current dealer menus also expose `Drapery Tracks → DRAPERY MOTOR AND TRACK → GLYDEA TRACK`, absent from those 28 destinations. Its complete rates/rules require reconciliation before creating an automatically priced destination. The legacy Flat Roman family was not in the dealer Roman menu observed; absence alone is not discontinuation evidence.
+Across Sundance, 28 pre-existing families and 98 source programs remain manual priced. Six families have no extracted grids. Current dealer menus also expose `Drapery Tracks → DRAPERY MOTOR AND TRACK → GLYDEA TRACK`, absent from those 28 destinations. A 29th, explicitly manual-required CRM destination `sundance_drapery_track` now accounts for it, with all seven observed option menus. Its complete rates/rules still require reconciliation before automatic pricing. The legacy Flat Roman family was not in the dealer Roman menu observed; absence alone is not discontinuation evidence.
 
 ## Validation and release proof
 
@@ -41,3 +41,11 @@ Focused tests cover all 148 unique identities, five independent dealer compariso
 Production verification scenario: choose Sundance cellular (`sundance_cellular`), 3/4-inch cell, Blackout, `PU422SS-766` Classic Gray. It must retain `sundance_cellular_p10_t1`, show only valid cell/opacity color choices, remain manual-priced, save and reopen with those exact identifiers, and preserve an explicitly entered manual customer price. Repeat Bamboo LF (`PS41RA-023`, group 3), Bamboo BO (`PS42RA-023`, group 5), and switch cell sizes to verify hidden invalid colors cannot silently retain a mismatched selection.
 
 Detailed local evidence: `outputs/sundance-audit-20260920/{portal-fabric-inventory.json,cellular-mapping-ledger.json,dealer-cellular-comparisons.json,unresolved-cellular-portal-labels.json,family-ledger.csv,program-ledger.csv}`. Source hashes are pinned in `scripts/sundance/sources.lock.json`.
+
+## Dedicated CRM configuration panel
+
+The manual-price route previously hid the entire configuration panel, so a registry-only change was insufficient. Both CRM versions now render a dedicated Sundance panel beneath the retained manual-price notice. Cellular colors save all three program keys and exact code/identity; changing cell size or light control clears the previous color and grid. Glydea stores its seven choices under vendor-specific keys and cannot inherit Polar motors or prices. These panels expose source-backed identities; they do not claim complete control/dimension compatibility certification.
+
+The authenticated portal roster capture covers all eight top-level categories and 17 ordering types: Portfolio Roman 113 labels; Wovenwood 110; Euro Panel 518; Cellular 157; Clutch Roller 518; Motorized Roller 518; Caress-Zebra 77; SheerView 60; Exterior Zipper 57; 1-inch Aluminum 67; 2-inch Aluminum 25; Vertical Essence 131; 2-inch Advantage 24; 2.5-inch Advantage 4; 2-inch Wood 23; 2.5-inch Wood 5; Glydea Track 1. Total 2,408 menu rows, including shared lists and duplicates, not 2,408 certified unique offerings. Every row is retained in the local assortment ledger with a mapped destination or exact unresolved exception. Shutters, cable exterior, Flat Roman and some source-book subfamilies are absent as standalone portal types; this is an orderability question, not discontinuation evidence.
+
+Validation for this increment: 312 tests across eight relevant suites and TypeScript pass. Production save/reopen proof remains separate.
