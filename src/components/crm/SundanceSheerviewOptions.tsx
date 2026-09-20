@@ -1,4 +1,5 @@
 "use client";
+import {SundanceAccessoryOptions} from "./SundanceAccessoryOptions";
 import type { SelectionRecord } from "@/lib/quote-v2/core";
 import { sundanceSheerviewControls, sundanceSheerviewHeadrails, sundanceSheerviewCordOptions, sundanceSheerviewControlPatch, sundanceSheerviewHeadrailPatch, validateSundanceSheerviewConfiguration } from "@/lib/quote/sundance/sheerview-configuration";
 import type { SalesQuoteDesign } from "@mts/types/quote";
@@ -23,6 +24,7 @@ export function SundanceSheerviewOptions({options,onUpdateFields,widthInches=0,h
     <label className="block text-sm">Headrail<select aria-label="Sundance SheerView headrail" className={classes} value={String(options.sundance_sheerview_headrail??"")} onChange={e=>{const patch=sundanceSheerviewHeadrailPatch(options,e.target.value);if(patch)onUpdateFields({options_json:patch});}}><option value="">Select headrail</option>{sundanceSheerviewHeadrails.filter(rail=>rail!=="No Drill"||options.sundance_sheerview_control==="Cordless").map(rail=><option key={rail}>{rail}</option>)}</select></label>
     {options.sundance_sheerview_control==="Continuous Cord Loop"&&<label className="block text-sm">Cord option<select aria-label="Sundance SheerView cord option" className={classes} value={String(options.sundance_sheerview_cord_option??"")} onChange={e=>onUpdateFields({options_json:{...options,sundance_sheerview_cord_option:e.target.value||null}})}><option value="">Select cord option</option>{sundanceSheerviewCordOptions.map(cord=><option key={cord}>{cord}</option>)}</select></label>}
     <label className="block text-sm">Assembly<select aria-label="Sundance SheerView assembly" className={classes} value={String(options.sundance_sheerview_assembly??"")} onChange={e=>onUpdateFields({options_json:{...options,sundance_sheerview_assembly:e.target.value||null}})}><option value="">Select assembly</option><option>Single</option><option>Two on one</option></select></label>
+    {options.roman_style!=="Valance Only"&&<SundanceAccessoryOptions product="sheerview" options={options} widthInches={widthInches} onChange={(key,value)=>onUpdateFields({options_json:{...options,[key]:value||null}})}/>}
     {issues.length>0&&<div role="alert" className="space-y-1 text-sm text-amber-900">{issues.map(issue=><p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
     {selected?.portalStatus==="current_guide_only"&&<p className="text-sm text-amber-900">This exact color is in the current guide but absent from the captured dealer menu. Confirm ordering availability and price with Sundance.</p>}
     {selected?.name==="Blh"&&<p className="text-sm text-amber-900">The guide lists this code as Blh; the dealer calls it Blush. Confirm the finish using its exact code.</p>}

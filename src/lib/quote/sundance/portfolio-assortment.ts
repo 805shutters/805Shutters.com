@@ -1,3 +1,4 @@
+import { clearSundanceAccessoryQuantities } from './option-schedules';
 import source from "./portfolio-assortment.source.json";
 import type { ProductColorOption } from "../product-color-options";
 
@@ -33,7 +34,7 @@ export function sundancePortfolioColorPatch(options: Record<string, unknown>, id
 }
 
 export function sundancePortfolioStylePatch(options: Record<string, unknown>, style: string): Record<string, unknown> {
-  return {...options, roman_style: style || null, fabric_color_id:null, fabric_color_code:null,
+  return {...clearSundanceAccessoryQuantities('portfolio',options), roman_style: style || null, fabric_color_id:null, fabric_color_code:null,
     fabric_color_name:null, fabric_color_collection:null, fabric_color_type:null,
     fabric_program_id:null, catalog_program_id:null, quote_lab_program_id:null,
     sundance_portfolio_front_valance:null,sundance_portfolio_back_valance:null,sundance_portfolio_interior_valance:null,sundance_portfolio_valance_length:null,sundance_portfolio_custom_valance_length:null,catalog_sundance_portfolio_valance_id:null,sundance_portfolio_control:null,sundance_portfolio_drop:null,sundance_portfolio_assembly:null,sundance_portfolio_valance_depth:null,sundance_portfolio_returns:null,

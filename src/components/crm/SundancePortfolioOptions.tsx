@@ -1,4 +1,5 @@
 "use client";
+import {SundanceAccessoryOptions} from "./SundanceAccessoryOptions";
 import type { SelectionRecord } from "@/lib/quote-v2/core";
 import { sundancePortfolioControls, sundancePortfolioLiners, sundancePortfolioDesignPatch, validateSundancePortfolioConfiguration } from "@/lib/quote/sundance/portfolio-configuration";
 import type { SalesQuoteDesign } from "@mts/types/quote";
@@ -40,6 +41,7 @@ export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,h
       <p className="text-sm text-amber-900">Waterfall front valance adds $51 to source retail. Returns requested with the shade and the waterfall back valance have no additional source charge. Inside width deductions conflict in the guide and require confirmation before ordering.</p>
       <label className="block text-sm">Assembly<select aria-label="Sundance Portfolio assembly" className={classes} value={String(options.sundance_portfolio_assembly??"")} onChange={e=>field("sundance_portfolio_assembly",e.target.value)}><option value="">Select assembly</option><option>Single</option><option>Two on one</option></select></label>
     </>}
+    {options.roman_style!=="Valance Only"&&<SundanceAccessoryOptions product="portfolio" options={options} widthInches={widthInches} onChange={(key,value)=>onUpdateFields({options_json:{...options,[key]:value||null}})}/>}
     {issues.length>0&&<div role="alert" className="space-y-1 text-sm text-amber-900">{issues.map(issue=><p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
     {selected?.portalStatus==="current_guide_only"&&<p className="text-sm text-amber-900">This exact material is in the current guide but absent from the captured dealer menu. Confirm ordering availability and price with Sundance.</p>}
     {selected&&!selected.tdbuAvailable&&<p className="text-sm text-amber-900">This material is not available with top-down/bottom-up.</p>}

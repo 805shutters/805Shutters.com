@@ -41,3 +41,7 @@ it('offers No Drill only for cordless and shows saved dimension errors',()=>{
  expect(render('Cordless')).toContain('<option>No Drill</option>');
  expect(render('Cordless')).toContain('width 20–96 inches');
 });
+it('blocks saved incompatible accessories and clears their quantities on a control change',()=>{
+ expect(validateSelection(context({sundance_sheerview_usb6_qty:1})).some(i=>i.ruleId.startsWith('sundance.sheerview.accessory_'))).toBe(true);
+ expect(sundanceSheerviewControlPatch({...options,sundance_sheerview_usb6_qty:2},'Cordless')).toMatchObject({sundance_sheerview_usb6_qty:null});
+});

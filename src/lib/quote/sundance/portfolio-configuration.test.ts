@@ -55,3 +55,6 @@ it('shows only no-return choice for inside-mount TDBU and includes front/back va
  const c=context('Knife Pleat','Cordless TDBU');const html=renderToStaticMarkup(createElement(SundancePortfolioOptions,{options:{...c.configuration,mount_type:'Inside',sundance_portfolio_mount_depth:0.75},widthInches:36,heightInches:60,onUpdateFields:()=>{}}));
  expect(html).toContain('Sundance Portfolio shade returns');expect(html).not.toContain('<option>Extended</option>');expect(html).toContain('Sundance Portfolio front valance');expect(html).toContain('Sundance Portfolio back valance');
 });
+it('blocks a saved Somfy accessory on a cordless shade at the server boundary',()=>{
+ const c=context();expect(validateSelection({...c,configuration:{...c.configuration,sundance_portfolio_somfy_charger_qty:1}}).some(i=>i.ruleId.startsWith('sundance.portfolio.accessory_'))).toBe(true);
+});

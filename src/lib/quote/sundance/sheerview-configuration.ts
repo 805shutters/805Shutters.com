@@ -1,3 +1,4 @@
+import { sundanceAccessoryIssues,clearSundanceAccessoryQuantities } from './option-schedules';
 import type {SelectionContext,ValidationIssue} from '@/lib/quote-v2/core';
 import {sourceProvenance} from '@/lib/quote-v2/source-manifest';
 import {sundanceSheerviewSource} from './sheerview-assortment';
@@ -5,7 +6,7 @@ export const sundanceSheerviewControls=['Continuous Cord Loop','Cordless','Recha
 export const sundanceSheerviewHeadrails=['Curved','Flat Square','No Drill'] as const;
 export const sundanceSheerviewCordOptions=['Cord','Metal Chain','Plastic Chain','Safe Wand'] as const;
 export function sundanceSheerviewControlPatch(options:Record<string,unknown>,control:string) {
- return {...options,sundance_sheerview_control:control||null,sundance_sheerview_cord_option:null,
+ return {...clearSundanceAccessoryQuantities('sheerview',options),sundance_sheerview_control:control||null,sundance_sheerview_cord_option:null,
   ...(control!=='Cordless'&&options.sundance_sheerview_headrail==='No Drill'?{sundance_sheerview_headrail:null,catalog_sundance_sheerview_valance_id:null}:{})};
 }
 export function sundanceSheerviewHeadrailPatch(options:Record<string,unknown>,headrail:string) {
@@ -32,5 +33,6 @@ export function validateSundanceSheerviewConfiguration(s:Pick<SelectionContext,'
  else if(c.sundance_sheerview_assembly!=='Single')add('assembly',25,'Choose single shade or identify a two-on-one assembly requiring manual component verification.');
  const expected=headrail==='Flat Square'?'sundance_sheerview_valance_p24_t3':null;
  if((c.catalog_sundance_sheerview_valance_id??null)!==expected)add('valance_route',24,'The selected headrail must retain its exact flat square valance schedule or no flat-valance schedule.');
+ for(const message of sundanceAccessoryIssues('sheerview',c))add('accessory_'+issues.length,27,message);
  return issues;
 }

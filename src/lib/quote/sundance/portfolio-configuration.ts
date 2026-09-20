@@ -1,10 +1,11 @@
+import { sundanceAccessoryIssues,clearSundanceAccessoryQuantities } from './option-schedules';
 import type {SelectionContext,ValidationIssue} from '@/lib/quote-v2/core';
 import {sourceProvenance} from '@/lib/quote-v2/source-manifest';
 import {sundancePortfolioColors,sundancePortfolioSource} from './portfolio-assortment';
 export const sundancePortfolioControls=['Cordless','Cordless TDBU','Clutch and Loop','Somfy Sonesse Ultra 30','Standard LI Motor','Power Lift'] as const;
 export const sundancePortfolioLiners=['LF03 Light-Filtering Ivory','LF02 Light-Filtering Snow White','BO01 Black-Out White'] as const;
 export function sundancePortfolioDesignPatch(options:Record<string,unknown>,key:string,value:string) {
- const next:Record<string,unknown>={...options,[key]:value||null};
+ const next:Record<string,unknown>={...(key==='sundance_portfolio_control'?clearSundanceAccessoryQuantities('portfolio',options):options),[key]:value||null};
  const control=next.sundance_portfolio_control;
  if(key==='sundance_portfolio_control'&&control==='Cordless TDBU')next.sundance_portfolio_drop='Standard';
  if(key==='sundance_portfolio_drop'||key==='sundance_portfolio_control'){
@@ -23,6 +24,7 @@ export function sundancePortfolioDesignPatch(options:Record<string,unknown>,key:
 export function validateSundancePortfolioConfiguration(s:Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'>):ValidationIssue[] {
  const c=s.configuration,issues:ValidationIssue[]=[];
  const add=(key:string,page:number,message:string)=>issues.push({severity:'hard_block',ruleId:'sundance.portfolio.'+key,source:sourceProvenance('sundance-sundance-portfolio-roman-shade-product-price-guide-2026-421a4cba9a72',{page}),selectedValues:{widthInches:s.widthInches,heightInches:s.heightInches,...c},explanation:message});
+ for(const message of sundanceAccessoryIssues('portfolio',c))add('accessory_'+issues.length,25,message);
  const row=sundancePortfolioColors.find(row=>row.id===c.fabric_color_id);
  const fabric=sundancePortfolioSource.rows.find(row=>row.code===c.fabric_color_code);
  if(!row||row.colorCode!==c.fabric_color_code||row.fabricType!==c.roman_style||row.programId!==s.programId)add('material_style',3,'Select an exact Portfolio material and a valid style with its matching source route.');
