@@ -201,6 +201,7 @@
 .workspace .deleteFile:disabled { opacity: .4; cursor: wait; }
 
 /* The condensed view changes presentation only; every job remains one non-wrapping row. */
+.viewOptions { display:flex; align-items:center; gap:6px; }
 .toolbar .densityToggle { width:auto; flex:none; padding:8px 12px; white-space:nowrap; }
 .toolbar .densityToggle input { width:16px; height:16px; padding:0; accent-color:#75dfab; }
 .condensedWorkspace { display:flex; flex-direction:column; max-height:calc(100dvh - 56px); }

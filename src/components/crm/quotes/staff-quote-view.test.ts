@@ -27,6 +27,20 @@ describe("staff quote presentation", () => {
     expect(staffQuoteStage({ id: "paid", status: "paid" })).toBe("installed");
     expect(staffQuoteStage({ id: "lost", status: "lost" })).toBe("archived");
   });
+  it("includes downstream and evidenced archived sales in the same sold total and results", () => {
+    const lifecycle: QuoteTableRow[] = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid", "closed"].map(status => ({ id: status, status }));
+    const history: QuoteTableRow[] = [
+      { id: "archived-sale", status: "archived", sold_at: "2026-08-01" },
+      { id: "lost-unsold", status: "lost" },
+      { id: "archived-unsold", status: "archived" },
+      { id: "alternative", status: "sold", pendingAlternative: true },
+      { id: "draft", status: "draft" },
+    ];
+    const result = staffQuoteView([...lifecycle, ...history], "sold", "");
+    expect(result.counts.sold).toBe(9);
+    expect(result.matching.map(q => q.id)).toEqual([...lifecycle.map(q => q.id), "archived-sale"]);
+    expect(staffQuoteView(lifecycle, "ordered", "").matching.map(q => q.id)).toEqual(["ordered"]);
+  });
   it("distinguishes a real zero total from a missing or invalid amount", () => {
     expect(staffQuoteAmount({ id: "zero", total_amount: 0 })).toBe("$0.00");
     expect(staffQuoteAmount({ id: "missing" })).toBe("Amount unavailable");

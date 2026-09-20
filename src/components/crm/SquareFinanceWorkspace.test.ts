@@ -38,7 +38,9 @@ describe('Square transaction home', () => {
     expect(container.querySelector('nav button[aria-pressed=true]')?.textContent).toBe('Transactions');
     expect([...container.querySelectorAll('tbody button')].map(b => b.getAttribute('aria-label'))).toEqual(['View payment newer', 'View payment older']);
     expect(postCount()).toBe(1);
-    expect(container.textContent).toContain('Checks Square every minute while open');
+    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('.square-payment-toolbar input')).not.toBeNull();
+    expect(container.querySelectorAll('.square-payment-toolbar button')).toHaveLength(3);
   });
   it('automatically inserts the newest payment and cleans up its timer on unmount', async () => {
     await mount(); data.objects.push(payment('latest', '2026-09-19T19:01:00Z'));
@@ -72,12 +74,11 @@ describe('Square transaction home', () => {
     await tick();
     expect(container.querySelector('[role=alert]')?.textContent).toContain('Square is unavailable');
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
-    expect(container.textContent).toContain('Refresh needs attention');
   });
   it('refreshes read-only users without initiating a provider sync', async () => {
     data.canReview = false; await mount(); await tick();
     expect(postCount()).toBe(0);
     expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
-    expect(container.textContent).toContain('Updates this list every minute');
+    expect([...container.querySelectorAll('button')].some(button => button.textContent === 'Refresh from Square')).toBe(false);
   });
 });

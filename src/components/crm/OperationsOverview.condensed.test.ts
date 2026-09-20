@@ -11,7 +11,7 @@ const data = { jobs: [], quotes: [{ id: 'q1', job_id: 'j1', customer_name: 'Samp
 let host: HTMLDivElement, root: Root;
 const action = vi.fn<WorkflowAction>(async () => {});
 async function render(busy = false) { await act(async () => { root.render(createElement(JobStatusOverview, { data, busy, onOpen: vi.fn(), onSaveCost: async () => true, onAction: action })); }); }
-async function toggle() { await act(async () => { host.querySelector<HTMLInputElement>('input[type=checkbox]')!.click(); }); }
+async function toggle() { await act(async () => { const radios = host.querySelectorAll<HTMLInputElement>('input[type=radio]'); (radios[0].checked ? radios[1] : radios[0]).click(); }); }
 function button(label: string) { return host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!; }
 beforeEach(() => { vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); localStorage.clear(); action.mockClear(); host = document.createElement('div'); document.body.append(host); root = createRoot(host); });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
@@ -31,12 +31,11 @@ describe('condensed job view', () => {
     expect(host.querySelector('article')).toBeNull();
     expect(action).not.toHaveBeenCalled();
   });
-  it('remembers the view after remount and restores cards without writing CRM data', async () => {
+  it('defaults to cards after remount even with an old condensed preference, without writing CRM data', async () => {
+    localStorage.setItem("805-job-status-condensed", "true");
     await render(); await toggle();
     await act(async () => root.unmount()); root = createRoot(host); await render();
-    expect(host.querySelector<HTMLInputElement>('input[type=checkbox]')!.checked).toBe(true);
-    expect(host.querySelectorAll('tbody tr')).toHaveLength(1);
-    await toggle();
+    expect(host.querySelectorAll<HTMLInputElement>('input[type=radio]')[0].checked).toBe(true);
     expect(host.querySelector('article[aria-label="Job status for Sample customer"]')).not.toBeNull();
     expect(action).not.toHaveBeenCalled();
   });

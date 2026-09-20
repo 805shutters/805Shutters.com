@@ -18,6 +18,14 @@ export const staffNextSteps: Record<StaffQuoteStage, string> = {
 export function staffQuoteStage(quote: QuoteTableRow): StaffQuoteStage {
   return quote.pendingAlternative ? "pending" : getQuoteStatsStatus(quote);
 }
+export function isStaffQuoteSold(quote: QuoteTableRow): boolean {
+  if (quote.pendingAlternative) return false;
+  const soldStages = ["sold", "ordered", "received", "installed"];
+  if (soldStages.includes(staffQuoteStage(quote))) return true;
+  // Archived history still belongs to all sold when its original sale is evidenced.
+  if (staffQuoteStage(quote) !== "archived") return false;
+  return soldStages.includes(getQuoteStatsStatus({ ...quote, status: "", live_status: "", archived_at: null }));
+}
 export function staffQuoteAmount(quote: QuoteTableRow): string {
   if (isSavedQuotePricingIncomplete(quote.salesQuote)) return "Pricing incomplete";
   if (quote.total_amount == null || !Number.isFinite(Number(quote.total_amount))) return "Amount unavailable";
@@ -26,6 +34,7 @@ export function staffQuoteAmount(quote: QuoteTableRow): string {
 export function staffQuoteView(quotes: QuoteTableRow[], filter: StaffQuoteFilter, search: string) {
   const counts = Object.fromEntries(staffQuoteStages.map(stage => [stage, 0])) as Record<StaffQuoteStage, number>;
   for (const quote of quotes) counts[staffQuoteStage(quote)]++;
-  const matching = searchQuotes(quotes, search).filter(quote => filter === "all" || staffQuoteStage(quote) === filter);
+  counts.sold = quotes.filter(isStaffQuoteSold).length;
+  const matching = searchQuotes(quotes, search).filter(quote => filter === "all" || (filter === "sold" ? isStaffQuoteSold(quote) : staffQuoteStage(quote) === filter));
   return { counts, matching };
 }

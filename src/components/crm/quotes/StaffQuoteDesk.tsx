@@ -50,7 +50,7 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
     <div className={styles.metrics}>
       <button type="button" onClick={() => changeFilter("draft")}><span>Draft quotes</span><strong>{unavailable ? "—" : counts.draft}</strong><small>Complete the details <ArrowUpRight size={14} /></small></button>
       <button type="button" onClick={() => changeFilter("sent")}><span>Awaiting a decision</span><strong>{unavailable ? "—" : counts.sent}</strong><small>Follow up on sent quotes <ArrowUpRight size={14} /></small></button>
-      <button type="button" onClick={() => changeFilter("sold")}><span>Sold quotes</span><strong>{unavailable ? "—" : counts.sold}</strong><small>Review order handoff <ArrowUpRight size={14} /></small></button>
+      <button type="button" onClick={() => changeFilter("sold")}><span>Sold quotes</span><strong>{unavailable ? "—" : counts.sold}</strong><small>All sold · Including later stages <ArrowUpRight size={14} /></small></button>
     </div>
     <div className={styles.toolbar}>
       <div className={styles.filters} aria-label="Quote filters">

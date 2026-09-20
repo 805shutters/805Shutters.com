@@ -40,7 +40,6 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
   const reviewRef = useRef<HTMLElement>(null);
   const operationRef = useRef(false), lastAutoRefresh = useRef(0);
   const [autoRefreshing, setAutoRefreshing] = useState(false);
-  const [checkedAt, setCheckedAt] = useState<string | null>(null);
   useEffect(() => { if (selected) reviewRef.current?.focus(); }, [selected]);
   const [target, setTarget] = useState(''), [existing, setExisting] = useState(''), [amount, setAmount] = useState(''), [evidence, setEvidence] = useState(''), [bankDate, setBankDate] = useState('');
   const [decisionId, setDecisionId] = useState('');
@@ -50,7 +49,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
     if (!response.ok) throw new Error(result.message || 'Square finance request failed.');
     return result;
   }, [session.access_token]);
-  const load = useCallback(async () => { try { setData(await api()); setCheckedAt(new Date().toISOString()); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Could not load Square finances.'); } }, [api]);
+  const load = useCallback(async () => { try { setData(await api()); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Could not load Square finances.'); } }, [api]);
   useEffect(() => { void load(); }, [load]);
   // Refresh the visible activity feed without interrupting a review form. The
   // existing server lease prevents simultaneous browser/cron imports.
@@ -94,7 +93,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
     ...data.quotes.filter(t => !['archived', 'lost'].includes(t.status || '') && !t.meta?.deleted_at && !t.meta?.bookkeeping_deleted_at).map(t => ({ ...t, key: `quote:${t.id}`, total: t.quote_total })),
     ...data.entries.filter(t => ['manual', 'legacy_sheet'].includes(t.source || '') && !t.meta?.deleted_at && !t.meta?.bookkeeping_deleted_at).map(t => ({ ...t, key: `entry:${t.id}`, total: t.total_amount })),
   ].sort((a, b) => a.customer_name.localeCompare(b.customer_name)) : [], [data]);
-  if (!data) return <section className="square-finance"><h1>Payment Hub</h1><p role={error ? 'alert' : 'status'}>{error || 'Loading payments…'}</p><button onClick={() => void load()}>Try again</button></section>;
+  if (!data) return <section className="square-finance" aria-label="Payment Hub"><p role={error ? 'alert' : 'status'}>{error || 'Loading payments…'}</p><button onClick={() => void load()}>Try again</button></section>;
   const hubRows = buildPaymentHub(data);
   const allocated = (id: string) => data.allocations.filter(a => a.square_payment_id === id).reduce((sum, a) => sum + Number(a.amount_cents), 0);
   const excluded = (id: string) => data.classifications.some(c => c.square_payment_id === id);
@@ -122,10 +121,11 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
   const resources = ['recent_payments', 'payment', 'refund', 'dispute', 'payout'];
   const incomplete = resources.some(k => !data.sync.state[k]?.completedThrough || data.sync.state[k]?.error);
   return <section className="square-finance">
-    <header><div><p className="square-eyebrow">805 SHUTTERS <span> / {data.environment === 'production' ? 'PAYMENTS' : 'SANDBOX'}</span></p><h1>Payment Hub</h1><p>Every payment. One place.</p></div><div className="square-actions"><button disabled={busy || autoRefreshing} onClick={() => void load()}>Refresh list</button>{data.canReview && <button className="square-primary" disabled={busy || autoRefreshing} onClick={() => void act({ action: 'sync' })}>{busy || autoRefreshing ? 'Checking Square…' : 'Refresh from Square'}</button>}<button onClick={download}>Export Square records</button></div></header>
+
     {error && <p role="alert" className="square-alert">{error}</p>}{notice && <p role="status" className="square-notice">{notice}</p>}
     {tab === 'Connection health' && <p className="square-coverage">Last refresh attempt: {date(data.sync.last_finished_at)}. {incomplete ? 'History is incomplete or needs attention; totals cover imported records only.' : `Records checked from ${date(data.sync.history_from)}. See coverage by category below.`}</p>}
     <nav aria-label="Square finance views">{tabs.map(t => <button key={t} aria-pressed={tab === t} onClick={() => { setTab(t); setQuery(''); setSelected(null); }}>{t}{t === 'Needs review' ? ` (${review.length})` : ''}</button>)}</nav>
+    <div className="square-payment-toolbar">{["Transactions", "Needs review"].includes(tab) && <label className="square-search"><span>Find a payment or customer</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Customer, payment ID, or note" /></label>}<div className="square-actions"><button disabled={busy || autoRefreshing} onClick={() => void load()}>Refresh list</button>{data.canReview && <button className="square-primary" disabled={busy || autoRefreshing} onClick={() => void act({ action: 'sync' })}>{busy || autoRefreshing ? 'Checking Square…' : 'Refresh from Square'}</button>}<button onClick={download}>Export Square records</button></div></div>
     {tab === 'Overview' && <>{incomplete && <p className="square-coverage">History is still loading or needs attention. Totals cover imported records only; check Connection health for coverage.</p>}<div className="square-metrics">{[
       ['Square gross collected', dollars(data.totals.completedGrossCents), 'All completed USD payments at this Square location', 'Transactions'],
       ['Assigned to 805 jobs', dollars(data.totals.assignedGrossCents), 'Gross credits linked to the CRM ledger', 'Transactions'],
@@ -142,7 +142,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
       const balance = target ? ledgerTotals(target.key, Number(target.total)).balance : null;
       return <tr key={r.id}><td>{date(r.created_at)}<small>{target?.customer_name || 'Ledger needs review'}</small></td><td>{dollars(r.amount_cents)}<small>{r.payment_type}</small></td><td>{dollars(collected)}</td><td>{collected >= Number(r.amount_cents) ? related.some(p => Number(p.details.refunded_cents)>0) ? 'Paid — refund review' : 'Paid' : collected > 0 ? 'Partially paid' : balance !== null && balance < Number(r.amount_cents) ? 'Balance changed — replace this link in Square' : r.order_id ? 'Awaiting completed payment' : 'Order link needs review'}</td><td>{r.id}<small>{r.order_id}</small></td></tr>;
     })}</tbody></table>{!data.requests.length && <p>No new payment requests have been created yet.</p>}</div></>}
-    {(tab === 'Transactions' || tab === 'Needs review') && <>{tab === 'Transactions' && <div className="square-feed-heading"><div><p className="square-eyebrow">PAYMENT ACTIVITY</p><h2>Latest transactions <span>{hubRows.length}</span></h2><p>Newest first · All payment methods</p></div><div className="square-live-status" aria-live="polite"><span className="square-live-dot" aria-hidden="true" />{autoRefreshing ? 'Checking for payments…' : error ? 'Refresh needs attention' : selected || hubOpen ? 'Paused while reviewing' : 'Auto-refresh on'}<small>{data.canReview ? 'Checks Square every minute while open' : 'Updates this list every minute'}{checkedAt ? ` · List updated ${new Date(checkedAt).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit', timeZone:'America/Los_Angeles'})}` : ''}</small></div></div>}<label className="square-search"><span>Find a payment or customer</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Customer, payment ID, or note" /></label>{tab === 'Needs review' && <p>Link an existing CRM credit when it was already recorded manually or from email. Only add a new credit when your evidence confirms it is missing. Split a payment by assigning part of its gross amount to each job.</p>}{tab === 'Transactions' ? <PaymentHubFeed rows={hubRows} targets={targets} token={session.access_token} canReview={data.canReview} query={query} onSquare={id => { const row=payments.find(p=>p.id===id); if(row) choose(row); }} onReload={load} onOpenChange={setHubOpen}/> : paymentTable(review)}</>}
+    {(tab === 'Transactions' || tab === 'Needs review') && <>{tab === 'Needs review' && <p>Link an existing CRM credit when it was already recorded manually or from email. Only add a new credit when your evidence confirms it is missing. Split a payment by assigning part of its gross amount to each job.</p>}{tab === 'Transactions' ? <PaymentHubFeed rows={hubRows} targets={targets} token={session.access_token} canReview={data.canReview} query={query} onSquare={id => { const row=payments.find(p=>p.id===id); if(row) choose(row); }} onReload={load} onOpenChange={setHubOpen}/> : paymentTable(review)}</>}
     {tab === 'Payouts' && <div className="square-table-scroll"><table><thead><tr><th>Payout / expected arrival</th><th>Square status</th><th>Net transfer</th><th>Breakdown check</th><th>Bank evidence</th></tr></thead><tbody>{payoutRows.map(p => {
       const entries = data.objects.filter(e => e.payout_id === p.id), state = data.sync.state[`entries:${p.id}`];
       const complete = Boolean(state?.completedThrough && !state.cursor && !state.error && Date.parse(state.completedThrough) >= Date.parse(p.provider_updated_at));

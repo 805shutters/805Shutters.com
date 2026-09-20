@@ -36,7 +36,6 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
   if (!data || !metrics) return <section className={styles.workspace} role="status">{busy ? "Loading dashboard…" : "Dashboard records are unavailable. Refresh to try again."}</section>;
   const attention = items.filter(item => !item.archived && (["quote", "sold"].includes(step) || item.sold) && !stepComplete(item, step));
   const selected = metrics.periods[period];
-  const selectedPeriod = performancePeriods.find(option => option.id === period)!;
   const dateRange = `${displayDate(selected.start)} – ${displayDate(selected.end)}`;
   const definitions = {
     close: "Customers first sent a quote in this period who have a dated sale, divided by all customers first sent a quote in this period. Each customer counts once; quote alternatives do not inflate the rate.",
@@ -46,7 +45,6 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onB
   };
   const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
   return <section className={styles.workspace} aria-label="Dashboard" aria-busy={busy}>
-    <header className={styles.heading}><div><p>Sales performance & workflow</p></div><span>{displayDate(metrics.today)}<small>{selectedPeriod.description} · Los Angeles</small></span></header>
     {data.loadWarnings?.map(warning => <p className={styles.warning} role="status" key={warning}>{warning}</p>)}
     <div className={styles.periodToolbar}>
       <div className={styles.periodTabs} role="tablist" aria-label="Dashboard time period">{performancePeriods.map((option, index) => <button type="button" role="tab" id={`period-${option.id}`} aria-controls="dashboard-period-metrics" aria-selected={period === option.id} tabIndex={period === option.id ? 0 : -1} key={option.id} onClick={() => setPeriod(option.id)} onKeyDown={event => {
@@ -129,13 +127,9 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     return <CompletionButton done={done} label={`${done ? "Review" : step === "quote" ? "Open" : ["sold", "paid", "deposit"].includes(step) ? "Record" : "Mark"} ${label} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:`} onClick={() => void act(item, step)} />;
   };
   const [condensed, setCondensed] = useState(false);
-  useEffect(() => {
-    try { setCondensed(window.localStorage.getItem("805-job-status-condensed") === "true"); } catch { /* Storage may be disabled. */ }
-  }, []);
   function changeDensity(value: boolean) {
     setCondensed(value);
     setContractId(null);
-    try { window.localStorage.setItem("805-job-status-condensed", String(value)); } catch { /* Keep the view usable without storage. */ }
   }
   const [filter, setFilter] = useState("active");
   const [search, setSearch] = useState("");
@@ -159,7 +153,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><label className={styles.densityToggle}><input type="checkbox" checked={condensed} onChange={event => changeDensity(event.target.checked)} />Condensed view</label><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll && <p role="status">Loading all jobs…</p>}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
     {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
