@@ -7,6 +7,19 @@
 }
 .crm-platinum-shell * { box-sizing:border-box; }
 .crm-platinum-sidebar { align-self:stretch; background:#0b0b0b; border-right:1px solid #343330; padding:22px 14px; }
+/* Keep desktop navigation in view while the workspace scrolls independently. */
+@media (min-width:601px) {
+  .crm-platinum-shell > .crm-platinum-sidebar {
+    position:sticky;
+    top:0;
+    align-self:start;
+    height:100vh;
+    height:100dvh;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    scrollbar-width:thin;
+  }
+}
 .crm-platinum-logo { display:block; width:134px; margin:0 auto 26px; }
 /* Same transparent asset and white-on-dark treatment as the website masthead. */
 .crm-platinum-logo img { display:block; width:100%; height:auto; filter:brightness(0) invert(1); object-fit:contain; }
