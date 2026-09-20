@@ -66,6 +66,7 @@ export function LotusDesignOptions({ design, productType, widthInches, heightInc
         {product.programs.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
     </label>
+    {program && ((programId === LOTUS_AMX_PROGRAM && options.lotus_amx_configuration_version !== LOTUS_AMX_VERSION) || (lotusRollerOpacity(programId) && options.lotus_roller_configuration_version !== LOTUS_ROLLER_VERSION)) && <p className="text-sm text-amber-800">This saved design uses earlier options. Reselect the Lotus program above to apply the current options, then complete its selections.</p>}
     {program && hasColorChoice && <label className="block text-sm">Color
       <select aria-label="Lotus color" className={selectClass} value={colors.includes(String(options.color ?? "")) ? String(options.color) : ""} onChange={event => updateOptions({ color: event.target.value || null, lotus_color_configuration_version: LOTUS_COLOR_CONFIGURATION_VERSION })}>
         <option value="">Select color</option>
