@@ -460,7 +460,7 @@ export function authoritativeAutomaticSurchargeSelections(
     ]),
   );
 
-  if (selection.productId === "roman" && selection.catalogVersion.endsWith("norman-roman-mounting-2026-09-20-r4")) {
+  if (selection.productId === "roman" && /norman-roman-mounting-2026-09-20-r[45]$/.test(selection.catalogVersion)) {
     // The saved configurator uses fold_style. Derive the guide charge from that
     // authoritative selection, superseding stale legacy surcharge aliases.
     delete details.roman_style;
@@ -468,6 +468,10 @@ export function authoritativeAutomaticSurchargeSelections(
     if (details.fold_style === "soft_fold") details.roman_style = "soft_fold";
     if (details.fold_style === "edge_banded") details.decorative_trim = "edge_banding_border";
     if (details.fold_style === "ribbon_banded") details.decorative_trim = "ribbon_banding";
+  }
+
+  if (selection.productId === "roman" && selection.catalogVersion.endsWith("norman-roman-mounting-2026-09-20-r5") && details.valance === "fabric_valance") {
+    details.valance = "fabric";
   }
 
   if (selection.productId === "roller") {

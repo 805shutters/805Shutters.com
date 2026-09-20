@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { priceDesign } from '@/lib/quote/pricing';
 import { quoteV2CatalogVersionFor } from './catalog';
 import type { SelectionContext } from './core';
 import { authoritativeAutomaticSurchargeSelections, priceQuoteV2Selection } from './engine';
@@ -16,8 +17,23 @@ describe('Roman configurator style pricing',()=>{
  });
  it('does not mutate prior snapshot pricing and removes stale style charges from current plain styles',()=>{
   const s=shade('Soft Fold');
-  expect(authoritativeAutomaticSurchargeSelections({...s,catalogVersion:s.catalogVersion.replace('-r4','-r3')})).not.toContainEqual({id:'soft_fold_edge_banding_border',units:1});
+  expect(authoritativeAutomaticSurchargeSelections({...s,catalogVersion:s.catalogVersion.replace('-r5','-r3')})).not.toContainEqual({id:'soft_fold_edge_banding_border',units:1});
   const plain=shade('Flat Fold without Seams');plain.configuration={...plain.configuration,roman_style:'soft_fold',decorative_trim:'ribbon_banding'};
   expect(authoritativeAutomaticSurchargeSelections(plain).filter(x=>['soft_fold_edge_banding_border','ribbon_banding'].includes(x.id))).toEqual([]);
+ });
+});
+
+describe('Roman saved fabric valance pricing',()=>{
+ it.each([[24,128],[24.125,133],[31,133],[31.125,145],[36,145],[71,221],[96,293]])('uses the guide width boundary for %s inches',(width,expected)=>{
+  const s=shade('Flat Fold without Seams');s.widthInches=width;s.configuration={...s.configuration,valance:'Fabric Valance'};
+  expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'roman_fabric_valance_surcharge',units:1});
+  const result=priceDesign({productId:'roman',programId:s.programId!,widthInches:width,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(s)});
+  expect(result.ok).toBe(true);
+  if(result.ok)expect(result.surchargeLines.find(x=>x.id==='roman_fabric_valance_surcharge')?.amount).toBe(expected);
+ });
+ it('charges a36inch fabric valance145 once in the saved server-priced configuration',()=>{
+  const s=shade('Flat Fold without Seams');s.configuration={...s.configuration,valance:'Fabric Valance',valance_returns:'No Returns'};
+  const result=priceQuoteV2Selection({selection:s,priceInput:{productId:'roman',programId:s.programId!,widthInches:36,heightInches:60,surcharges:authoritativeAutomaticSurchargeSelections(s)}});
+  expect(result,JSON.stringify(result)).toMatchObject({ok:true,unitPrice:1183,total:1183});
  });
 });
