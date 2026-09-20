@@ -1,3 +1,4 @@
+import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { hasRomanAncillaryUnits } from "./norman-roman-ancillary";
 import { onyxCanonicalFrameSides } from '@/lib/quote/onyx-current-assortment';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
@@ -14,6 +15,7 @@ const INTERNAL_OPTION_KEYS = new Set([
   "norman_order_record_v1",
   "norman_assembly_v1",
   "vertical_honeycomb_pair_v1",
+  "smartdrape_replacement_source_v1",
   "authoritative_price_status",
   "authoritative_price_error",
   "authoritative_price_breakdown",
@@ -764,7 +766,7 @@ export function selectionContextFromExactInterface(
     firstString(sourceOptions, "draw_direction", "control_side", "control_type"),
   );
 
-  const naturalUnits = hasRomanAncillaryUnits(input.productId, configuration);
+  const naturalUnits = input.productId === SMARTDRAPE_REPLACEMENT || hasRomanAncillaryUnits(input.productId, configuration);
   const measuredWidthInches = naturalUnits ? 0 : authoritativeV2Measurement(
     line.width_whole,
     line.width_fraction,

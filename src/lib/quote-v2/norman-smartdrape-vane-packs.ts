@@ -1,3 +1,4 @@
+import { smartdrapePackCounts } from "../quote/norman-smartdrape-replacement";
 import type {SelectionContext,ValidationIssue} from "./core";
 import {smartdrapeTrack,smartdrapeIsPaired} from "./norman-smartdrape-tracks";
 import {sourceProvenance} from "./source-manifest";
@@ -7,7 +8,7 @@ export function smartdrapeVanePacks(s:SelectionContext){
  const c=s.configuration,track=smartdrapeTrack(s),packs=Number(c.smartdrape_extra_vane_packs??0),wands=Number(c.smartdrape_extra_wands??0),option=norm(c.smartdrape_vane_pack_style),alternating=norm(c.vane_style)==="alternating",center=norm(c.stack_option)==="center opening";
  const length=[48,60,72,84,100,120,132,144].find(h=>h>=s.heightInches)??null;
  const middleOnly=option==="b middle vanes only",doubleEnds=center||smartdrapeIsPaired(s)&&alternating;
- const firstCount=middleOnly?0:doubleEnds?2:1,lastCount=firstCount,middleCount=6-firstCount-lastCount;
+ const {first:firstCount,last:lastCount,middle:middleCount}=smartdrapePackCounts(middleOnly,doubleEnds);
  const lastColor=alternating&&track?.vaneCount!=null&&track.vaneCount%2===0?c.smartdrape_second_color:c.fabric_color_code;
  const safePacks=Number.isSafeInteger(packs)&&packs>=0?packs:null,safeWands=Number.isSafeInteger(wands)&&wands>=0?wands:null;
  return {packs,wands,safePacks,safeWands,length,record:{version:1,sourceId:"norman-perfectsheer-smartdrape-guide-2026-09",sourcePage:24,quantityBasis:"per_shade",extraWands:safeWands,

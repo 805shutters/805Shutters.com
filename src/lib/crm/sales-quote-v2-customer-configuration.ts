@@ -9,6 +9,13 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
+  ["replacement_pack_style", "Vane pack style"],
+  ["replacement_vane_length", "Requested vane length in inches"],
+  ["replacement_shade_type", "Original shade arrangement"],
+  ["replacement_stack", "Original stack"],
+  ["replacement_color_mode", "Vane colors"],
+  ["replacement_second_color", "Second vane color"],
+  ["replacement_pack_contents", "Vanes per pack"],
   ["ancillary_unit", "Unit"],
   ["ancillary_yards", "Yards per cut"],
   ["ancillary_cover_size", "Cover size in inches"],

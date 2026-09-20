@@ -1,3 +1,5 @@
+import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
+import { validateSmartdrapeReplacement } from "./norman-smartdrape-replacement";
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
 import { smartfoldHasDocumentedPricingBranch, validateSmartfoldEligibility } from "./norman-smartfold-eligibility";
 import { rollerMotorizationForSelection } from "./norman-roller-panel";
@@ -216,7 +218,7 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  const dimensionlessPart = context.productId === "lotus_dealer_listed_parts" || hasRomanAncillaryUnits(context.productId, context.configuration);
+  const dimensionlessPart = context.productId === SMARTDRAPE_REPLACEMENT || context.productId === "lotus_dealer_listed_parts" || hasRomanAncillaryUnits(context.productId, context.configuration);
   if (!dimensionlessPart && (!Number.isFinite(context.widthInches) || context.widthInches <= 0)) {
     issues.push(
       issue(
@@ -2418,6 +2420,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
 export function validateSelection(context: SelectionContext): readonly ValidationIssue[] {
   const issues = validateCommon(context);
   issues.push(...validateRomanAncillary(context));
+  issues.push(...validateSmartdrapeReplacement(context));
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusRoller(context));

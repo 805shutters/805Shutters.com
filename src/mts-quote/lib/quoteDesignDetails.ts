@@ -33,6 +33,8 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "smartdrape_replacement_request_v1",
+  "smartdrape_replacement_source_v1",
   "back_fabric_color_id",
   "back_fabric_product_id",
   "back_fabric_program_id",

@@ -1,3 +1,4 @@
+import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_VERSION } from "@/lib/quote/norman-smartdrape-replacement";
 import { romanPriceGroup, romanFabricStyles } from '@/lib/quote/norman-roman-current-price-groups';
 import { isRomanAncillary, romanAncillaryProducts, ROMAN_ANCILLARY_VERSION } from "@/lib/quote/norman-roman-ancillary";
 import { isOnyxHeldProduct, onyxHeldProducts, ONYX_HELD_VERSION } from "@/lib/quote/onyx-held-catalog";
@@ -39,6 +40,7 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === SMARTDRAPE_REPLACEMENT) return SMARTDRAPE_REPLACEMENT_VERSION;
   if (isRomanAncillary(productId)) return ROMAN_ANCILLARY_VERSION;
   if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;
   if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r9`;
@@ -148,6 +150,7 @@ export type CatalogColorOffering = {
 };
 
 export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStatus>> = {
+  [SMARTDRAPE_REPLACEMENT]: "manual_quote_required",
   ...Object.fromEntries(romanAncillaryProducts.map(p=>[p.id,"manual_quote_required" as const])),
   ...Object.fromEntries(onyxHeldProducts.map(p=>[p.id,"manual_quote_required" as const])),
   norman_contract_faux_wood: "manual_quote_required",
