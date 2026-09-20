@@ -58,3 +58,12 @@ it('shows only no-return choice for inside-mount TDBU and includes front/back va
 it('blocks a saved Somfy accessory on a cordless shade at the server boundary',()=>{
  const c=context();expect(validateSelection({...c,configuration:{...c.configuration,sundance_portfolio_somfy_charger_qty:1}}).some(i=>i.ruleId.startsWith('sundance.portfolio.accessory_'))).toBe(true);
 });
+
+it('does not require a hidden interior valance default on preexisting standard shades',()=>{
+ for(const missing of [undefined,null,'']){
+  const c=context();c.configuration={...c.configuration,sundance_portfolio_interior_valance:missing};
+  expect(validateSundancePortfolioConfiguration(c)).toEqual([]);
+  const w=context('Hobbled');w.configuration={...w.configuration,sundance_portfolio_interior_valance:missing};
+  expect(validateSundancePortfolioConfiguration(w).map(i=>i.ruleId)).toContain('sundance.portfolio.interior_valance');
+ }
+});

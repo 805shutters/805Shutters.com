@@ -53,7 +53,7 @@ export function validateSundancePortfolioConfiguration(s:Pick<SelectionContext,'
  const waterfall=c.sundance_portfolio_drop==='Waterfall';
  if(waterfall?!['None','Added'].includes(String(c.sundance_portfolio_front_valance)):c.sundance_portfolio_front_valance!=='Included')add('front_valance',8,'Standard shades include a front valance; waterfall shades may omit it or add a front valance.');
  if(!['Yes','No'].includes(String(c.sundance_portfolio_back_valance))||td&&c.sundance_portfolio_back_valance!=='Yes'||!td&&!waterfall&&c.sundance_portfolio_back_valance!=='No')add('back_valance',14,'Choose a waterfall back valance; TDBU includes one. Other standard shades do not use this waterfall option.');
- if(!['Yes','No'].includes(String(c.sundance_portfolio_interior_valance))||!waterfall&&c.sundance_portfolio_interior_valance!=='No')add('interior_valance',8,'Interior blackout-fabric valances are documented for waterfall shades.');
+ if(waterfall?!['Yes','No'].includes(String(c.sundance_portfolio_interior_valance)):c.sundance_portfolio_interior_valance!=null&&c.sundance_portfolio_interior_valance!==''&&c.sundance_portfolio_interior_valance!=='No')add('interior_valance',8,'Interior blackout-fabric valances are documented for waterfall shades.');
  if(c.sundance_portfolio_front_valance!=='None'&&c.sundance_portfolio_valance_length!=='Standard')add('custom_valance_length',8,'Custom front valance length requires manufacturer confirmation of the requested length and any charge.');
  if(c.mount_type==='Inside'){
   const depth=Number(c.sundance_portfolio_mount_depth);
