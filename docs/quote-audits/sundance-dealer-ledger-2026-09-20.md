@@ -2,7 +2,7 @@
 
 This is an exact captured-menu accounting, not proof that all configurations are orderable or correctly account-priced. All Sundance families remain on the explicit manual-pricing gate. Raw dealer rows include duplicates and overlapping ordering types. Source-only offerings absent from these menus are separately listed in the family source ledgers. No item is declared discontinued solely because a menu or source is missing it.
 
-Total: **17 ordering types, 2,408 raw rows, 1,565 rows with a source-backed destination, 843 rows with an exact unresolved identity/source exception**. These counts are not unique products or fabric colors.
+Total: **17 ordering types, 2,408 raw rows, 1,622 rows with a source-backed destination, 786 rows with an exact unresolved identity/source exception**. These counts are not unique products or fabric colors.
 
 | Dealer ordering type | Raw menu rows | Source-mapped rows | Unresolved rows |
 |---|---:|---:|---:|
@@ -14,7 +14,7 @@ Total: **17 ordering types, 2,408 raw rows, 1,565 rows with a source-backed dest
 | Caress-Zebra | 77 | 77 | 0 |
 | SheerView Plus | 60 | 59 | 1 |
 | Motorized Roller | 518 | 333 | 185 |
-| Zipper Screen Exterior | 57 | 0 | 57 |
+| Zipper Screen Exterior | 57 | 57 | 0 |
 | 1-inch Aluminum | 67 | 40 | 27 |
 | 2-inch Aluminum | 25 | 11 | 14 |
 | Vertical Essence | 131 | 129 | 2 |

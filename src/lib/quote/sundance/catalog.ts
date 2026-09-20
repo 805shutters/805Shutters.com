@@ -60,7 +60,7 @@ export const sundanceCatalog: Catalog = {
     programs:product.programs.map(program=>({...program, fabricCollections:[{category:"Exact custom vertical pattern/color", fabrics:sundanceVerticalSource.rows.filter(row=>row.programId===program.id).map(row=>`${row.pattern} ${row.color}`)}]})),
   })), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r12";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r13";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);

@@ -58,6 +58,10 @@ zebra=json.loads((root/'src/lib/quote/sundance/zebra-fabrics.source.json').read_
 for entry in ledger:
  row=next((r for r in zebra['colors'] if entry['portalFamily']=='Caress-Zebra' and entry['portalLabel']==r['portalLabel']),None)
  if row:entry.update(exactCatalogDestination=row['productId'],canonicalCode=None,programId=row['programId'],effectiveDate='2024-08-01',status='source_mapped_manual_pricing_required',exception='Exact dealer label reconciled; source options, account prices and full compatibility remain unresolved')
+exterior=json.loads((root/'src/lib/quote/sundance/exterior-zip.source.json').read_text())
+for entry in ledger:
+ row=next((r for r in exterior['rows'] if entry['portalFamily']=='Zipper Screen Exterior' and entry['portalLabel']==r['portalLabel']),None)
+ if row:entry.update(exactCatalogDestination='sundance_exterior_zip',canonicalCode=None,programId=None,effectiveDate=None,status='source_mapped_manual_pricing_required',exception='Exact dealer label and '+row['priceClass']+' net square-foot source class mapped; motor, rounding/minimum, account applicability and current rate unresolved')
 for entry in ledger:
  if entry['exactCatalogDestination'] and entry['status']=='implemented_pending_live_proof':
   entry['status']='source_mapped_manual_pricing_required'

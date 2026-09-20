@@ -522,6 +522,7 @@ function rowMatchesMtsContext(
   row: ProductColorOption,
 ): boolean {
   if (row.productId === "sundance_cellular") return sundanceCellularColorMatchesContext(row, optionsJson);
+  if (row.productId === "sundance_exterior_zip") return true;
   if (row.productId === "sundance_vertical_essence") return optionsJson.sundance_vertical_type !== "Stock";
   if (row.productId === "sundance_portfolio_roman") return sundancePortfolioColorMatchesContext(row, optionsJson);
   if (row.productId === "sundance_sheerview") return sundanceSheerviewColorMatchesContext(row, optionsJson);
