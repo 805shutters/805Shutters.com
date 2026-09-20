@@ -1,6 +1,6 @@
 # Onyx current catalog audit — 2026-09-20
 
-Status: supported shutter selection fixes implemented and tested; not deployed or verified live by this agent. Complete Onyx assortment/pricing certification remains open.
+Status: supported shutter selection fixes deployed by parent in release c3ebaf4420ed9d857f50646970de6f17835d7541. Live verification exposed an additional Onyx configuration-routing defect, fixed and tested in 8f357313; deployment and resumed live proof are pending. Complete Onyx assortment/pricing certification remains open.
 
 Authenticated source: Onyx dealer portal, account CHE01, California Home Exterior / Mike Shepard. Observation date 2026-09-20; effective date is not published on the forms. The current account identity is confirmed, but account-specific cost must not replace 805 selling-price policy.
 
@@ -45,11 +45,11 @@ No dealer factor, customer markup, shipping, tax or selling-price policy was cha
 
 The current order-program menu has Onyx Signature, Onyx Lux and Woven; no current Onyx shade CRM catalog destination was found. Exact Signature menu inventory is in `signature-assortment.json`: **33 fabric groups and293 color identities** (Roller20/185, Sunscreen3/33, Zebra10/75). Each row has source, observation date, effective-date unknown, exact color IDs/names and the exception `missing_catalog_and_grids`. These must receive distinct source-backed destinations; existing shutter IDs are unsuitable.
 
-Signature visible options include IM/OM (IM factory width deduction1/8 inch), continuous cord/cordless/motorization, product-specific cassettes, cassette colors/wrap, cord color/position, bottom rail/color/wrap, same-order side-by-side alignment conditions and custom cord-length surcharge $10. Roller and Zebra cassette/bottom-rail menus differ. Motor variants, combinations, grids, dimensions, freight and effective schedule remain unverified. Lux and Woven enumeration is in progress.
+Signature visible options include IM/OM (IM factory width deduction1/8 inch), continuous cord/cordless/motorization, product-specific cassettes, cassette colors/wrap, cord color/position, bottom rail/color/wrap, same-order side-by-side alignment conditions and custom cord-length surcharge $10. Roller and Zebra cassette/bottom-rail menus differ. Motor variants, combinations, grids, dimensions, freight and effective schedule remain unverified. Lux and Woven enumeration is complete below.
 
 ## Draft preservation / next live proof
 
-Unsubmitted comparison drafts preserved:123320 / AUDIT0920ONYX (five imported shutter lines);123321 / AUDIT0920US (one US-made line);123322 / AUDIT0920SIGN (empty assortment inspection). Side mark INTERNAL AUDIT DO NOT ORDER. No checkout, order placement, warranty acceptance or payment performed.
+Unsubmitted comparison drafts preserved:123320 / AUDIT0920ONYX (five imported shutter lines);123321 / AUDIT0920US (one US-made line);123322 / AUDIT0920SIGN (three shade price fixtures);123323 / AUDIT0920LUX (three fixtures);123324 / AUDIT0920WOVEN (two fixtures). Side mark INTERNAL AUDIT DO NOT ORDER. No checkout, order placement, warranty acceptance or payment performed.
 
 After integration/deployment, parent must verify the actual CRM: US-made only Pure White/White, 3.5-inch louvers, H2, White hinges and five current frames; VLO current wood frames and no Butter/Gray/H1; Bassia painted/stained separation and exact codes; invalid saved/server configurations blocked; save/reopen representative quotes preserves selection and customer output. Existing manual-price holds must remain visible. New shade destinations and Ash remain unresolved until catalog/rules/grids are implemented and live-proven.
 
@@ -59,6 +59,30 @@ After integration/deployment, parent must verify the actual CRM: US-made only Pu
 
 Lux honeycomb offers cordless, continuous cord, TDBU cordless and motorization; tile cut displays $7 per blind. Fabric blinds offer cordless/motor, Dover/Westminister/no valance, return options and cloth tapes. Sheerview offers continuous cord/cordless/motor, curved/flat valance, cord/metal/plastic chain and $10 custom cord-length surcharge. These are menu observations; dependent motor/size/assembly prices still need grids.
 
-Woven shows IM deduction3/8 inch, six liner choices, four edge bindings, continuous cord/cordless/TDBU($150)/wand motor($200)/remote motor($250), single/2-on-1/3-on-1 and maximum custom valance120 inches. Charges are dealer-form labels and do not establish 805 selling prices. Lux audit draft123323/AUDIT0920LUX is empty; Woven audit header also preserved with PO AUDIT0920WOVEN, empty.
+Woven shows IM deduction3/8 inch, six liner choices, four edge bindings, continuous cord/cordless/TDBU($150)/wand motor($200)/remote motor($250), single/2-on-1/3-on-1 and maximum custom valance120 inches. Charges are dealer-form labels and do not establish 805 selling prices. Lux audit draft123323/AUDIT0920LUX contains three baseline fixtures; Woven draft123324/AUDIT0920WOVEN contains two. All remain unsubmitted.
 
 Authenticated Forms was rechecked: https://admin.onyxshutters.com/Forms.aspx exposes only shutter order sheet, shade order sheet, check-by-fax and2020 Reference Manual. No current Signature/Lux/Woven/Ash price-grid download is linked. A focused official-domain search also found no current shade price guide. The official indoor page https://www.onyxshutters.com/shades corroborates the six indoor product types. https://www.onyxshutters.com/outdoor-shades documents a current outdoor-shade offering, absent from the authenticated five-program order menu and CRM; exact series, fabrics, controls, dimensions, pricing and ordering route remain an additional unresolved exception.
+
+
+## Per-color mapping ledger and shade cost fixtures
+
+`shade-mapping-ledger.csv` records all 703 color identities individually, with exact source pattern/color IDs, unknown effective date, current CRM destination absent, proposed product destinations, unresolved price grid and availability exception. Proposed destinations are audit recommendations, not implemented runtime IDs. All 703 remain `missing_catalog_and_grids`; none is represented as verified live.
+
+`shade-cost-fixtures.json` preserves eight 30×60 IM, quantity-one account CHE01 comparisons. These are dealer costs, not suggested retail or 805 selling prices:
+
+| Draft | Offering and control | Base | Separate surcharge | Before tax |
+|---|---|---:|---:|---:|
+| 123322 | Roller Amelia BO White, cord, square cassette | 53.70 | 24.26 | 77.96 |
+| 123322 | Sunscreen 1% SC-1 Ice White, cord, square cassette | 58.29 | 24.26 | 82.55 |
+| 123322 | Zebra Arcadia BO Cloud Meadow, cord, square cassette | 90.63 | 11.97 | 102.60 |
+| 123323 | Fabric Blinds 2-inch LF Slate, cordless, Dover | 165.20 | 0.00 | 165.20 |
+| 123323 | Honeycomb 3/4 Single LF Roswell, cordless, no valance | 164.00 | 0.00 | 164.00 |
+| 123323 | Sheerview 2-inch LF Bright White, cord, curved valance | 165.20 | 0.00 | 165.20 |
+| 123324 | Walden Premier Artisan Weave, cordless | 189.50 | 0.00 | 189.50 |
+| 123324 | Walden Select Alisia Antique White, cordless | 235.50 | 0.00 | 235.50 |
+
+Signature's displayed line price excludes its separate surcharge. The combined draft subtotal is202.62 plus60.49 surcharge; tax25.65; grand288.76. Lux subtotal494.40, tax48.20, grand542.60. Woven subtotal425.00, tax41.44, grand466.44. These samples cannot replace full grids, size boundaries, motorization/accessory charges, freight or effective schedules.
+
+## Production verification draft
+
+Internal customer `Onyx Catalog Verification 2026-09-20`, quote **805-0333**, has one saved and reopened 30×60 US-made line and an explicit internal do-not-send/order note. Pricing remains incomplete and customer sends disabled. The first live check found that exact Onyx program selection incorrectly required the legacy Premium/Standard wood step before showing configuration controls. Fix8f357313 makes exact authoritative Onyx catalog program/material selection reach the controls while preserving legacy routes;42 targeted tests and TypeScript checks pass. Complete US-made/VLO/Bassia selection and save/reopen proof must resume after that fix is deployed.
