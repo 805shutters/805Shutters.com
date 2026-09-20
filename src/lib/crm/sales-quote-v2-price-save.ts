@@ -73,6 +73,9 @@ const SOURCE_COST_PLUS_PRODUCTS = new Set([
   "faux_wood",
   "smartprivacy_faux",
   "lotus_faux_wood_blinds",
+  // AMX retail uses the existing source-cell x3 policy. Typed configuration
+  // validation remains mandatory; unresolved landed dealer cost stays visible.
+  "lotus_mini_blinds",
 ]);
 
 function plainRecord(value: unknown): JsonRecord | null {

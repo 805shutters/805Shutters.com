@@ -28,6 +28,16 @@ describe("Mixed measured and unmeasured Lotus native draft",()=>{
   expect(batch.repriced.sendability.sendable).toBe(false);
   expect(batch.prepared[1].rpcResult.authoritativeSnapshot).toBeNull();
  });
+ it("persists typed AMX source retail while retaining incomplete dealer freight and sibling holds",()=>{
+  const amxLine={...lines[2],width_whole:27,height_whole:72};
+  const amxDesign={...designs[2],lift_system:"Cordless",valance:"None",options_json:{...designs[2].options_json,color:"White",lotus_color_configuration_version:"lotus-color-v1",lotus_amx_configuration_version:"lotus-amx-v1",lotus_measurement_basis:"inside_opening"}};
+  const batch=prepareSalesQuoteV2PricingBatch({lines:[lines[0],lines[1],amxLine],selectedDesigns:[designs[0],designs[1],amxDesign],serverDate:"2026-09-20"});
+  expect(batch.prepared[2]).toMatchObject({priceStatus:"authoritative",customerPrice:{unitPrice:117.9},rpcResult:{internalCostSnapshot:{freightStatus:"unresolved"},validationSnapshot:{costStatus:"incomplete"}}});
+  expect(batch.prepared[0]).toMatchObject({priceStatus:"authoritative",customerPrice:{unitPrice:119.94}});
+  expect(batch.prepared[1].priceStatus).toBe("blocked");
+  expect(batch.repriced.sendability.sendable).toBe(false);
+  expect(batch.prepared[2].rpcResult.authoritativeSnapshot).toMatchObject({pricingDerivations:expect.arrayContaining([expect.objectContaining({ruleId:"lotus.amx.eligible_stock_donors"})])});
+ });
  it("does not relax strict adapter or malformed input validation",()=>{
   expect(()=>selectionContextFromExactInterface(lines[2],designs[2],{productId:"lotus_mini_blinds",programId:"lotus_amx_1in_aluminum_custom"})).toThrow("width: must be greater than zero");
   expect(()=>prepareSalesQuoteV2PricingBatch({lines:lines.map(row=>row.id==="draft"?{...row,width_fraction:"2/4"}:row),selectedDesigns:designs,serverDate:"2026-09-20"})).toThrow("supported sixteenth-inch tokens");
