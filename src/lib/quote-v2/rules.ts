@@ -1,4 +1,5 @@
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
+import { rollerHardware } from "./norman-roller-hardware";
 import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-ancillary";
 import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
@@ -1308,6 +1309,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
   }
 
   issues.push(...validateRollerMatrix(context));
+  issues.push(...(rollerHardware(context)?.issues ?? []));
 
   return issues;
 }

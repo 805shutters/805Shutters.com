@@ -1,3 +1,4 @@
+import { rollerHardware } from "./norman-roller-hardware";
 import { smartfoldCharging } from "./norman-smartfold-charging";
 import { honeycombMounting } from "./norman-honeycomb-mounting";
 import { deriveVerticalHoneycombPairs } from "./norman-vertical-pair";
@@ -67,6 +68,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     if (hcHardware) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: {...(honeycomb?.record ?? {version: 1, type: "honeycomb_hardware"}), hardware: hcHardware.record}};
     const smartdrape = smartdrapeComponents(selection);
     if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
+    const roller = rollerHardware(selection);
+    if (roller) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: roller.record};
     const smartfold = smartfoldHardware(selection);
     if (smartfold) selection.configuration = { ...selection.configuration, [NORMAN_ASSEMBLY_KEY]: smartfold.record };
     const perfectsheer = perfectsheerComponents(selection);
