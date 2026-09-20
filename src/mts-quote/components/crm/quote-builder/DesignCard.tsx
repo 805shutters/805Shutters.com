@@ -3245,12 +3245,15 @@ function SurchargePicker({
   onUpdate: (field: string, value: unknown) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design, width);
+  const opts = (design?.options_json as Record<string, unknown> | undefined) || {};
+  // Sundance selections use their own source charges; generic product-type fees are not evidence.
+  const sundanceSourceCharges = String(opts.catalog_product_id ?? opts.quote_lab_product_id ?? "").startsWith("sundance_")
+    || design?.supplier?.trim().toLowerCase() === "sundance";
+  const automaticSurcharges = sundanceSourceCharges ? [] : getAutomaticOptionSurcharges(productType, design, width);
   const savedSurcharges = getSelectedSurcharges(design);
   const selectedSurcharges = dedupeQuoteSurcharges([...automaticSurcharges, ...savedSurcharges]);
   const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
-  const catalog = getAvailableSurcharges(productType, design);
-  const opts = (design?.options_json as Record<string, unknown> | undefined) || {};
+  const catalog = sundanceSourceCharges ? [] : getAvailableSurcharges(productType, design);
   const basePrice = Number(opts.base_price) || 0;
   const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
   const selectedIds = new Set(selectedSurcharges.map((item) => item.id));
