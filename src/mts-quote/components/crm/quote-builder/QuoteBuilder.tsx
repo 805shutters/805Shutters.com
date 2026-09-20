@@ -2128,7 +2128,7 @@ export function QuoteBuilder({
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
-      <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
+      <div className="quote-builder-sticky-shell relative z-40 -mx-4 -mt-4 mb-3">
         <header id="quote-builder-command-bar" className="quote-builder-command-bar" aria-label="Quote workspace header">
           <div className="quote-header-main">
             <div className="quote-header-identity">

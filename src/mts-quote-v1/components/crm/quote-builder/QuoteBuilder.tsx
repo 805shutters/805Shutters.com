@@ -1398,7 +1398,7 @@ export function QuoteBuilder() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
-      <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
+      <div className="quote-builder-sticky-shell relative z-40 -mx-4 -mt-4 mb-3">
         <div className={cn("quote-command-menu", isCommandMenuOpen && "quote-command-menu--open")}>
           <button
             type="button"
