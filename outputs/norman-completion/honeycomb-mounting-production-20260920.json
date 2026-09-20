@@ -1,0 +1,41 @@
+{
+  "date": "2026-09-20",
+  "deployment": "b199da0cf0f086441a28de67c1773f98ac92785d",
+  "quote": "805-0343",
+  "alternative": "B",
+  "customer": "Norman Honeycomb Internal Verification 2026-09-19",
+  "source": "Honeycomb Guide September revision, p10",
+  "configuration": {
+    "room": "Office",
+    "width": 36,
+    "height": 60,
+    "fabric": "C7015K Brilliant White Light Filtering",
+    "cell": "3/4 Single Cell",
+    "operation": "SmartRise Cordless",
+    "mount": "Inside",
+    "mountFit": "Flush Inside",
+    "recessDepthInches": 1.9375
+  },
+  "verified": {
+    "savedAndReopened": true,
+    "customerPreview": true,
+    "baseRetail": 415,
+    "installation": 25,
+    "shipping": 14,
+    "total": 454,
+    "negative": {
+      "recessDepthInches": 1.875,
+      "result": "Server-saved configuration and inline rule reject depth below 1.9375; pricing unavailable. Restoring 1.9375 restored 454."
+    },
+    "historicalAlternativeA": {
+      "quote": "805-0319",
+      "total": 3605,
+      "unchanged": true
+    }
+  },
+  "limitations": [
+    "Representative manual mounting boundary only; not certification of every mounting table row or motorized charging branch.",
+    "Existing dealer factor unchanged; landed cost remains unresolved."
+  ],
+  "externalActions": "No send, signature, sold, checkout or order."
+}
