@@ -128,6 +128,7 @@ export function JobStatusOverview({ data, busy, onOpen, onAction }: Props & { on
             <button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button>
             <small title={item.source.project || "Project needed"}>{item.source.project || "Project needed"}</small>
             {item.closed && <small className={styles.completeText}>Closed · Paid in full</small>}
+            {!item.closed && item.paid && <small>Active · Paid in full</small>}
             {item.source.progress.stage === "attention" && <small className={styles.attentionLine} title={`Needs review · ${item.source.progress.nextAction || "Next action needed"}`}>Needs review · {item.source.progress.nextAction || "Next action needed"}</small>}
           </div>
           <div className={styles.headerContact}>

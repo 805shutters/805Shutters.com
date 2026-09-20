@@ -1,3 +1,4 @@
+import { trackingJobClosed } from "./job-closure";
 import { shipmentEvidence, type ShipmentEvidence } from "./shipment-evidence";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { buildJobTrackingView, type JobTrackingViewItem } from "./job-tracking-view";
@@ -193,7 +194,7 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
     return { source, products: progress, headerProducts: header.products, headerProductSource: header.source, wholeJob: wholeJobProgress(source), quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
       paid: source.isSale && (source.total ?? 0) > 0 && ["settled", "overpaid"].includes(source.progress.payment),
-      closed: source.isSale && (source.total ?? 0) > 0 && source.balanceOutstanding !== null && source.balanceOutstanding <= 0.005,
+      closed: trackingJobClosed(source),
       complete: source.progress.stage === "complete",
       archived: ["lost", "archived"].includes(source.stageId) };
   });

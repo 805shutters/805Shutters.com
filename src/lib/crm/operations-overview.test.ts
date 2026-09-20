@@ -341,3 +341,12 @@ describe("shipment date display evidence", () => {
     expect(item.products[0]).toMatchObject({shipped:true,shipments:[],undatedShipments:1});
   });
 });
+
+it('keeps paid shipped jobs with an explicit reopening in Active without clearing checks',()=>{
+ const row={id:'q1',quoteId:'q1',jobId:'j1',source:'crm_quote',status:'paid',total:1000,depositDue:500,depositPaid:500,balancePaid:500,paidTotal:1000,balance:0} as CrmBookkeepingRow;
+ const job={id:'j1',status:'ordered',meta:{job_closure_override:{closed:false,reason:'Shipped, not installed'},product_workflow_checks:{product_type:'shutters',ordered:{at:'2026-09-18'},shipped:{at:'2026-09-18'}}}} as unknown as CrmJob;
+ const item=buildOperationsItems(data({jobs:[job],quotes:[quote({status:'paid',quote_total:1000,balance_due:0})],bookkeepingRows:[row],customerProducts:[product({status:'shipped',meta:{ordered_at:'2026-09-18'}})]}))[0];
+ expect(item).toMatchObject({closed:false,paid:true,installed:false,complete:false,products:[{ordered:true,shipped:true}]});
+ const other=buildOperationsItems(data({jobs:[{...job,meta:{}}],quotes:[quote({status:'paid',quote_total:1000,balance_due:0})],bookkeepingRows:[row]}))[0];
+ expect(other.closed).toBe(true);
+});

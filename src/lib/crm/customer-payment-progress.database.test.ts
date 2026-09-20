@@ -15,6 +15,7 @@ beforeEach(async()=>{
  create table crm_installer_delivery_outbox(quote_id uuid,kind text,version_key text,unique(quote_id,kind,version_key));
  create function installer_delivery_quote_eligible(q crm_quotes) returns boolean language sql as $$ select q.signed_at is not null $$;`);
  await db.exec(readFileSync('supabase/migrations/20260919210000_consistent_customer_payment_progress.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20260920010000_honor_manual_job_reopening.sql','utf8'));
  await db.query("insert into crm_jobs(id,status,next_action) values($1,'ordered','Install when product arrives')",[j]);
  await db.query("insert into crm_quotes(id,job_id,status,quote_total,deposit_required,balance_due,signed_at) values($1,$2,'sold',1000,500,1000,now())",[q,j]);
 });
@@ -78,4 +79,23 @@ it('does not enqueue old installer packets during payment reconciliation',async(
  await db.exec('create trigger crm_quotes_enqueue_installer_delivery after update on crm_quotes for each row execute function installer_delivery_enqueue_base_trigger()');
  await receipt(500);await receipt(500);
  expect((await db.query('select count(*)::int n from crm_installer_delivery_outbox')).rows[0]).toEqual({n:0});
+});
+
+it('keeps an explicitly reopened shipment active through payment replay and preserves its receipts',async()=>{
+ await receipt(1000,'check','Full',q,'paid-shipment');
+ const payments=(await db.query('select * from crm_quote_bookkeeping_payments')).rows;
+ await db.query(`update crm_jobs set status='ordered',meta=(meta-'closedAt')||'{"job_closure_override":{"closed":false,"reason":"Shipped; installation pending","updatedAt":"2026-09-19T23:00:00Z"}}' where id=$1`,[j]);
+ await db.query('select crm_sync_customer_payment_progress($1,null)',[q]);
+ expect(await state()).toMatchObject({status:'ordered',deposit_paid:500,meta:{payment_progress:{closed:false,balanceDue:0}}});
+ expect((await db.query('select * from crm_quote_bookkeeping_payments')).rows).toEqual(payments);
+ expect((await db.query('select status,installed_at from crm_quotes')).rows).toEqual([{status:'paid',installed_at:null}]);
+ const snapshot=await state(); await db.query('select crm_sync_customer_payment_progress($1,null)',[q]); expect(await state()).toEqual(snapshot);
+ // A later receipt correction still updates the financial balance without dropping the hold.
+ await db.query("update crm_quote_bookkeeping_payments set amount=900 where external_id='paid-shipment'");
+ expect(await state()).toMatchObject({status:'ordered',meta:{payment_progress:{closed:false,balanceDue:100}}});
+ await db.query("update crm_quote_bookkeeping_payments set amount=1000 where external_id='paid-shipment'");
+ expect((await state()).status).toBe('ordered');
+ // Releasing the explicit hold restores the existing automatic closure policy.
+ await db.query("update crm_jobs set meta=meta-'job_closure_override' where id=$1",[j]);
+ await db.query('select crm_sync_customer_payment_progress($1,null)',[q]); expect((await state()).status).toBe('closed');
 });
