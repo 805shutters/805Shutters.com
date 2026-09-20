@@ -85,3 +85,7 @@ AMX's verified $26.30 is **dealer merchandise cost only**, not an all-in landed 
 ### Exhaustive source-grid routing check
 
 `pricing.lotus-grid-audit.test.ts` checks all 1,580 cells across the original 20 programs, both at the exact boundary and one sixteenth below it. All 1,494 priced cells reach the expected independent dealer-net and retail values; all 86 unavailable cells remain unavailable. This is 6,320 price-engine assertions, including width-only headrails and height-only vanes. It verifies routing and retained selling-policy arithmetic; it does not resolve current dealer authority, fabric/option compatibility or the vane quantity basis.
+
+### RS roller configuration capture
+
+New `lotus-roller-v1` records preserve the exact 1%/Blackout program, White fabric, cordless spring lift, one shade and smooth included valance (or installation without it). Inside-mount fit and measured recess depth now have explicit controls. Server validation enforces page29 minimums: with valance, 2 inches semi-inside or 3-15/16 flush; without valance, 3/4 inch semi-inside or 2-3/4 flush. Opacity/program mismatch, unsupported colors/motors and multiple-shade configuration are rejected. Existing untyped history stays readable. These rules do not enable automatic RS pricing: custom source authority, exact Blackout ordering codes and cut feasibility remain unresolved. Tests cover each exact depth boundary and1/16 inch below it. Deployment/live persistence verification remains pending.
