@@ -403,6 +403,7 @@ smartfold,configuration_field,fold_size,Fold size,select,,,,UNRESOLVED EXCEPTION
 smartfold,configuration_field,smartfold_hold_down,Hold-downs,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
 smartfold,configuration_field,smartfold_magnet_color,Magnet catch color,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
 smartfold,configuration_field,smartfold_pole,Additional pole per shade,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
+smartfold,configuration_field,smartfold_light_guard_recess,Light Guard recess arrangement,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
 smartfold,configuration_field,smartfold_light_guard_color,Light Guard color,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
 smartfold,configuration_field,smartfold_valance_returns,Valance returns,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
 smartfold,configuration_field,smartfold_valance_joinery,Valance joinery,select,,,,UNRESOLVED EXCEPTION,Field inventoried; complete source/condition/UI/server certification pending.
