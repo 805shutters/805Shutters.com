@@ -1,4 +1,5 @@
 "use client";
+import {sundancePortfolioBaseEvidence} from "@/lib/quote/sundance/portfolio-base-evidence";
 import {SundanceAccessoryOptions} from "./SundanceAccessoryOptions";
 import type { SelectionRecord } from "@/lib/quote-v2/core";
 import { sundancePortfolioControls, sundancePortfolioLiners, sundancePortfolioDesignPatch, validateSundancePortfolioConfiguration } from "@/lib/quote/sundance/portfolio-configuration";
@@ -11,6 +12,7 @@ export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,h
   const rows = sundancePortfolioColors.filter(row => sundancePortfolioColorMatchesContext(row,options));
   const selected = sundancePortfolioSource.rows.find(row => row.code === options.fabric_color_code);
   const classes = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+  const baseEvidence=sundancePortfolioBaseEvidence(options,widthInches,heightInches);
   const valanceOnly=options.roman_style==="Valance Only";
   const issues=validateSundancePortfolioConfiguration({widthInches,heightInches,programId:options.catalog_program_id?String(options.catalog_program_id):null,configuration:options as SelectionRecord});
   const field=(key:string,value:string)=>onUpdateFields({options_json:sundancePortfolioDesignPatch(options,key,value)});
@@ -42,6 +44,7 @@ export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,h
       <label className="block text-sm">Assembly<select aria-label="Sundance Portfolio assembly" className={classes} value={String(options.sundance_portfolio_assembly??"")} onChange={e=>field("sundance_portfolio_assembly",e.target.value)}><option value="">Select assembly</option><option>Single</option><option>Two on one</option></select></label>
     </>}
     {options.roman_style!=="Valance Only"&&<SundanceAccessoryOptions product="portfolio" options={options} widthInches={widthInches} onChange={(key,value)=>onUpdateFields({options_json:{...options,[key]:value||null}})}/>}
+    {baseEvidence&&<p className="text-sm">Published base retail ${baseEvidence.baseRetail.toFixed(2)} plus blackout liner ${baseEvidence.blackoutRetail.toFixed(2)} = ${baseEvidence.baseWithLinerRetail.toFixed(2)} (PDF {baseEvidence.sourcePage}). This includes only the exact base and liner; motors, accessories, assembly charges and account pricing remain separate.</p>}
     {issues.length>0&&<div role="alert" className="space-y-1 text-sm text-amber-900">{issues.map(issue=><p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
     {selected?.portalStatus==="current_guide_only"&&<p className="text-sm text-amber-900">This exact material is in the current guide but absent from the captured dealer menu. Confirm ordering availability and price with Sundance.</p>}
     {selected&&!selected.tdbuAvailable&&<p className="text-sm text-amber-900">This material is not available with top-down/bottom-up.</p>}
