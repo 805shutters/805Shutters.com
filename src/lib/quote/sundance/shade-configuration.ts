@@ -104,10 +104,12 @@ export function validateSundanceShadeConfiguration(s:Pick<SelectionContext,'prod
   if(c.sundance_shade_railroad==='Yes'&&collection.railroaded!==true)add('railroad_unavailable','This fabric is not documented as permitting railroading.');
   if(c.sundance_shade_railroad==='Yes'&&s.heightInches>widths[0])add('seam','Railroaded height exceeds roll width; factory-confirmed seam position and material feasibility are required.');
  }
+ if(c.sundance_simphony_panel_id && (control?.name!=='Simphony 24V DC' || kind!=='roller')) add('panel_control','Shared Simphony 24V panel selection requires its exact roller DC control.');
+ if(c.sundance_simphony_panel_id && (Number(c.sundance_shade_accessory_simphony24_qty??0)>0 || Number(c.sundance_shade_accessory_simphony_distribution_qty??0)>0)) add('panel_duplicate','A shared panel connection cannot also carry a transformer or distribution-box quantity.');
  sundanceShadeAccessoryIssues(p,c).forEach((r,i)=>add(`accessory_${i}`,r.explanation,r.page));
  return issues;
 }
-export function sundanceShadeConfigurationPatch(options:Record<string,unknown>,control:string){return{...Object.fromEntries(Object.entries(options).filter(([k])=>!k.startsWith('sundance_shade_accessory_'))),sundance_shade_control:control||null,sundance_shade_chain:null,sundance_shade_control_side:null};}
+export function sundanceShadeConfigurationPatch(options:Record<string,unknown>,control:string){return{...Object.fromEntries(Object.entries(options).filter(([k])=>!k.startsWith('sundance_shade_accessory_'))),sundance_simphony_panel_id:null,sundance_order_power_v1:null,sundance_shade_control:control||null,sundance_shade_chain:null,sundance_shade_control_side:null};}
 export function sundanceShadeOptionEvidence(p:string,program:string,c:Record<string,unknown>,width:number){
  const source=sundanceShadeSource(p),kind=sundanceShadeKind(p),control=sundanceShadeControls(p).find(r=>r.name===c.sundance_shade_control),entries:{label:string;amount:number;basis:'net'|'retail'|'unverified';page:number}[]=[],unresolved:string[]=[];
  const add=(label:string,amount:number,basis:'net'|'retail'|'unverified',page=source.optionPage)=>entries.push({label,amount,basis,page});

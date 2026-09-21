@@ -39,6 +39,8 @@ export function sundanceComponentConfiguration(configuration: Record<string, unk
   const next: Record<string, unknown> = {...configuration};
   delete next[SUNDANCE_ASSEMBLY_KEY];
   delete next.sundance_walden_twin_v1;
+  delete next.sundance_order_power_v1;
+  delete next.sundance_simphony_panel_id;
   for (const key of Object.keys(next)) {
     if (/qty$|quantity$|^manual_|^quote_v2_|^pricing_|^price_|^dealer_|^cost_|^unit_price|^surcharges$|^motorization$/i.test(key)) delete next[key];
   }
