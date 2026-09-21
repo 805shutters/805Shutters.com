@@ -1,11 +1,10 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 20:13
-- Completed live: abaf1d63 at https://805-5fbquq9ar-805-shutters.vercel.app; 6,793 tests passed, 28 skipped, typecheck/build/public deployment passed. Adds standard SmartFold valances, exact Roller chain and inline specification rules, curved/single-louver shutter controls, and Sundance shared order accessories.
-- Current live verification: SmartFold I805-0369 six-inch fabric valance saves $3,200; J805-0370 Modern Wood 001 Pure White saves $3,112. Both saved totals survive full browser reload; detailed reopened/customer preview checks underway.
-- In deployment: 14240264 adds SmartFold r14 AutoWand exact seven lengths/three colors, 315 actual-backend configurations and customer details; Roller r10 poles; actual individual shutter widths/narrow joins; Sundance measured Europanel layout.
-- Next queued: Roller Light Guard exact finishes/length/splice rules; source-backed Double Hung row rules; remaining finite Sundance source items and associated live proof. Each agent will consolidate exact remaining source/account/factory exceptions.
-- Previously completed production proofs and 4,788 Vertical source configurations remain recorded below and in RESULTS.md.
-- External intervention still pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to 805. Dealer factors and selling policy remain unchanged. No manufacturer or whole Norman family is certified complete.
+## Current checkpoint — September 20, 20:35
+- Completed live:76fe135b at https://805-flvkro2pg-805-shutters.vercel.app;7,587 tests passed,28 skipped, typecheck/build/public deployment passed. Includes SmartFold AutoWand and inside fascia, Roller chains/poles/Light Guard, typed quote-copy associations/A–Z labels, shutter panel widths/Double Hung, Sundance component measurements/order accessories/references.
+- Completed production: SmartFold I0369/J0370 standard valances, K0376 AutoWand$3,463, L0378 inside Square Fascia$3,112; saved, closed, fully reloaded, reopened and customer preview checked. AutoWand5-cable excess and fascia4.086 depth rejected/restored. Inside preview showed stale outside clearance; formatter repair5c367bcb tested and queued for final live recheck.
+- In progress: Lotus source-backed donor/cut/mount restrictions; remaining shutter source branches; PerfectSheer finite source-gap review; Sundance final source-section live proofs. Independent source-backed tasks continue while account evidence remains unavailable.
+- Current inventory:25 families/60 programs,1,448 retained identities/1,422 selectable,678 Honeycomb routes,627 option records/853 choices; all371 rows/4,963 cells source-matched. Inventory counts do not mean complete configuration certification.
+- External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805; exact account/factory/source exceptions in RESULTS.md and manufacturer ledgers. Factors and selling policy remain unchanged.
 
 Historical progress entries below are retained as an execution log; this checkpoint and RESULTS.md determine current status.
 

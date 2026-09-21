@@ -1,0 +1,38 @@
+{
+  "date": "2026-09-20",
+  "release_created": "3cc28cc183010a25834fa5b666dfd9b40bd1af9c",
+  "release_reopened": "76fe135b5c6c8a8beacf30d6fef26f4de98f2856",
+  "quotes": [
+    {
+      "quote": "805-0376",
+      "alternative": "K",
+      "configuration": "4 x 36x60 Louise F1709 White Jade, Motorized AutoWand, 36-inch White wand, Right, Outside Wall Raceway, No Valance",
+      "base_total": 3244,
+      "extra_charging_kits": 2,
+      "extension_cables": 3,
+      "extension_color": "Black",
+      "once_per_line_accessories": 219,
+      "saved_reopened_customer_total": 3463,
+      "negative": "5 extensions for 4 shades blocks authoritative pricing; restored3",
+      "customer": "36-inch White motorized wand, Right, 2 kits, 3 Black cables, exact total persisted"
+    },
+    {
+      "quote": "805-0378",
+      "alternative": "L",
+      "configuration": "4 x 36x60 Louise F1709 White Jade, Cordless, 6-inch fold, Inside Back Wall Raceway, Square Fascia White, Fully Recessed",
+      "depth": 4.087,
+      "saved_reopened_customer_total": 3112,
+      "negative": "4.086-inch depth blocks authoritative pricing; restored4.087",
+      "customer": "Inside mount, Square Fascia White, fully recessed and4.087 depth persisted; stale outside clearance display found, fix5c367bcb pending live recheck"
+    }
+  ],
+  "verification": [
+    "save",
+    "close",
+    "full_browser_reload",
+    "reopen",
+    "customer_preview"
+  ],
+  "scope": "Representative September retail and existing805 selling policy; no account cost approval or whole-family certification",
+  "transactions": "No send, signature, sold, payment, checkout or manufacturer order"
+}
