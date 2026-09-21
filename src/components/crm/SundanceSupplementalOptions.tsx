@@ -1,4 +1,5 @@
 "use client";
+import { SundanceWaldenConfiguration } from "./SundanceWaldenConfiguration";
 import { SundanceVerticalOptions } from "./SundanceVerticalOptions";
 import { sundanceWaldenColors, sundanceWaldenFabricPatch, sundanceWaldenSource } from "@/lib/quote/sundance/walden-assortment";
 import type { SalesQuoteDesign } from "@mts/types/quote";
@@ -45,8 +46,9 @@ export function SundanceSupplementalOptions({productId, options, onUpdateFields,
       }}><option value="">None / not selected</option>{sundanceWaldenChoices(productId,kind).map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select>
     </label>)}
     {colors.length > 0 && select("walden_liner_color","Walden liner color",colors)}
-    {colors.length > 0 && productId === "sundance_walden_premier" && select("walden_movable_liner","Movable liner (twin shade)",["No","Yes"])}
+    {colors.length > 0 && select("walden_movable_liner","Movable liner (twin shade)",["No","Yes"])}
     <p className="text-sm text-amber-900">Confirm the fabric, control and liner or binding compatibility before ordering. Liner, binding and movable-liner charges must be included in the confirmed manual price. Valance-only pricing is separate.</p>
+    <SundanceWaldenConfiguration productId={productId} options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />
     {productId === "sundance_walden_select" && <p className="text-sm">No edge-binding surcharge applies to fabrics that require edge binding.</p>}
   </>;
 }

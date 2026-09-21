@@ -1,7 +1,7 @@
 import {expect,it} from 'vitest';
 import {lookupSundanceValanceSource,sundanceValanceSchedules} from './valance-schedules';
-it('keeps all five width schedules and 61 cells separate from shade programs',()=>{
- expect(sundanceValanceSchedules).toHaveLength(5);expect(sundanceValanceSchedules.reduce((n,row)=>n+row.widths.length,0)).toBe(61);
+it('keeps all 17 width schedules and 169 cells separate from shade programs',()=>{
+ expect(sundanceValanceSchedules).toHaveLength(17);expect(sundanceValanceSchedules.reduce((n,row)=>n+row.widths.length,0)).toBe(169);
 });
 it.each([['a',275,580],['b',303,618],['c',313,631],['d',346,709]])('matches independently read Portfolio %s first/last rates',(group,first,last)=>{
  const id=`sundance_portfolio_roman_valance_p25_t1_${group}`;
@@ -17,4 +17,17 @@ it('matches independently read SheerView values and fractional width boundaries'
  expect(lookupSundanceValanceSource(id,116)?.sourceRetail).toBe(152);
  for(const width of [0,-1,NaN,116.0625])expect(lookupSundanceValanceSource(id,width)).toBeNull();
  expect(lookupSundanceValanceSource(id,24,undefined,true)).toBeNull();
+});
+
+it.each([
+ ['premier','a',138,373],['premier','b',166,443],['premier','c',193,595],['premier','d',224,639],['premier','e',246,703],['premier','f',289,893],
+ ['select','a',138,373],['select','b',166,443],['select','c',193,595],['select','d',224,639],['select','e',277,753],['select','f',320,943],
+])('matches independent Walden %s group %s valance-only first/last source rates',(family,group,first,last)=>{
+ const id=`sundance_walden_${family}_valance_${group}`;
+ expect(lookupSundanceValanceSource(id,24,18)?.sourceRetail).toBe(first);
+ expect(lookupSundanceValanceSource(id,96,18)?.sourceRetail).toBe(last);
+ expect(lookupSundanceValanceSource(id,24.0625,18)?.gridWidth).toBe(30);
+ expect(lookupSundanceValanceSource(id,96.0625,18)).toBeNull();
+ expect(lookupSundanceValanceSource(id,96,18.0625)).toBeNull();
+ expect(lookupSundanceValanceSource(id,36,18,true)).toBeNull();
 });

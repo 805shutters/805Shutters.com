@@ -27,7 +27,7 @@ it("renders only the source-specific choices while keeping all pricing manual", 
   expect(select).toContain('Espresso');
   expect(select).not.toContain('Bright White');
   expect(select).not.toContain('Wide twill');
-  expect(select).not.toContain('Movable liner');
+  expect(select).toContain('Movable liner');
   const premier = render('sundance_walden_premier',{catalog_sundance_liner_grid_id:'sundance_walden_premier_option_p20_t1'});
   expect(premier).toContain('Wide twill tape');
   expect(premier).toContain('Movable liner');
