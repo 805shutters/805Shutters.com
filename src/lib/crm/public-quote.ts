@@ -1061,7 +1061,8 @@ async function projectPublicQuote(
     const { data: sourceLines, error: selectionError } = await supabase
       .from("sales_quote_line_items")
       .select("id,selected_design_id")
-      .eq("quote_id", sourceQuoteId);
+      .eq("quote_id", sourceQuoteId)
+      .is("archived_at", null);
     if (selectionError) throw new CrmAuthError(502, "The selected contract items could not be verified. Please try again.");
     lineItems = projectLegacySelectedDesigns(lineItems, sourceLines ?? []);
   }

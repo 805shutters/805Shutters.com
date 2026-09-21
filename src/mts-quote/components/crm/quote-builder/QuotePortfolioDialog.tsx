@@ -14,6 +14,7 @@ import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { uploadMultipleToR2 } from "@mts/lib/quote-image-upload";
 import { getPortfolioManufacturerImages, type SalesQuoteMedia } from "@mts/lib/quoteProductImages";
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import type { SalesQuote, SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { toast } from "sonner";
 
@@ -36,9 +37,10 @@ export function QuotePortfolioDialog({ quote, open, onOpenChange }: QuotePortfol
         .from("sales_quote_line_items")
         .select("*")
         .eq("quote_id", quoteId)
+        .is("archived_at", null)
         .order("sort_order");
       if (error) throw error;
-      return (data || []) as SalesQuoteLineItem[];
+      return activeQuoteLines((data || []) as SalesQuoteLineItem[]);
     },
     enabled: open && !!quoteId,
   });

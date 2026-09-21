@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "@/lib/quote-v2/quote-pricing-policy";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
@@ -203,9 +204,10 @@ async function loadQuoteLines(
     .from("sales_quote_line_items")
     .select("*")
     .eq("quote_id", quoteId)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true });
   if (error) throw databaseError("The V2 quote lines could not be loaded.");
-  return ([...(data ?? [])] as unknown as PersistedV2Line[]).sort(
+  return activeQuoteLines(([...(data ?? [])] as unknown as PersistedV2Line[])).sort(
     (left, right) =>
       Number(left.sort_order) - Number(right.sort_order) ||
       left.id.localeCompare(right.id),

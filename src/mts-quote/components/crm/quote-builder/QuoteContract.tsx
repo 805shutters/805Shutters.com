@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
@@ -220,9 +221,10 @@ export function QuoteContract({
         .from("sales_quote_line_items")
         .select("*")
         .eq("quote_id", activeQuoteId!)
+        .is("archived_at", null)
         .order("sort_order");
       if (error) throw error;
-      return (data || []) as SalesQuoteLineItem[];
+      return activeQuoteLines((data || []) as SalesQuoteLineItem[]);
     },
     enabled: !!activeQuoteId,
   });
@@ -269,9 +271,10 @@ export function QuoteContract({
         .from("sales_quote_line_items")
         .select("*")
         .in("quote_id", siblingQuoteIds)
+        .is("archived_at", null)
         .order("sort_order");
       if (error) throw error;
-      return (data || []) as SalesQuoteLineItem[];
+      return activeQuoteLines((data || []) as SalesQuoteLineItem[]);
     },
     enabled: siblingQuoteIds.length > 0,
   });

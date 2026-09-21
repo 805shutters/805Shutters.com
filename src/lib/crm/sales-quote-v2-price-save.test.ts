@@ -30,15 +30,20 @@ function fakeSupabase(
     from(table: string) {
       const filters: Array<
         | { kind: "eq"; column: string; value: unknown }
+        | { kind: "is"; column: string; value: unknown }
         | { kind: "in"; column: string; values: unknown[] }
       > = [];
       const evaluate = () =>
         (rows[table] ?? []).filter((row) =>
-          filters.every((filter) =>
-            filter.kind === "eq"
-              ? row[filter.column] === filter.value
-              : filter.values.includes(row[filter.column]),
-          ),
+          filters.every((filter) => {
+            if (filter.kind === "eq") return row[filter.column] === filter.value;
+            if (filter.kind === "is") {
+              return filter.value === null
+                ? row[filter.column] == null
+                : row[filter.column] === filter.value;
+            }
+            return filter.values.includes(row[filter.column]);
+          }),
         );
       const query = {
         select() {
@@ -46,6 +51,10 @@ function fakeSupabase(
         },
         eq(column: string, value: unknown) {
           filters.push({ kind: "eq", column, value });
+          return query;
+        },
+        is(column: string, value: unknown) {
+          filters.push({ kind: "is", column, value });
           return query;
         },
         async in(column: string, values: unknown[]) {

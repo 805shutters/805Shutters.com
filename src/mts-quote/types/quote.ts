@@ -109,6 +109,7 @@ export interface SalesQuoteLineItem {
   quantity: number;
   sort_order: number;
   selected_design_id?: string | null;
+  archived_at?: string | null;
   created_at: string;
   order_status?: "outstanding" | "ordered" | "confirmed";
   ordered_at?: string | null;

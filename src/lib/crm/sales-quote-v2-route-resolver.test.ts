@@ -97,6 +97,11 @@ function sentMirrorSupabase(
         reads.push({ table, column, value });
         return query;
       },
+      is: (column: string, value: unknown) => {
+        filters.push([column, value]);
+        reads.push({ table, column, value });
+        return query;
+      },
       in: (column: string, value: unknown[]) => {
         filters.push([column, value]);
         reads.push({ table, column, value });
@@ -253,6 +258,11 @@ function aggregateSentMirrorSupabase(options: { customerMirrors?: Row[] } = {}) 
     const query = {
       select: () => query,
       eq: (column: string, value: unknown) => {
+        filters.push([column, value]);
+        reads.push({ table, column, value });
+        return query;
+      },
+      is: (column: string, value: unknown) => {
         filters.push([column, value]);
         reads.push({ table, column, value });
         return query;

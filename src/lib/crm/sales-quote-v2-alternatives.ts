@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { remapCopiedQuoteAssociations } from './quote-alternative-associations';
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -163,13 +164,14 @@ export async function createSalesQuoteAlternative(
         "This quote changed. Refresh it before adding an alternative.",
       );
     if (input.mode === "copy") {
-      const lines = checked(
+      const lines = activeQuoteLines(checked(
         await db
           .from("sales_quote_line_items")
           .select("*")
           .eq("quote_id", sourceId)
+          .is("archived_at", null)
           .order("sort_order"),
-      ) as SalesQuoteLineItem[];
+      ) as SalesQuoteLineItem[]);
       const designs = lines.length
         ? (checked(
             await db

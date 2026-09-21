@@ -34,6 +34,7 @@ async function loadStates(
     .from("sales_quote_line_items")
     .select("id,quote_id,room_name,product_type,sort_order")
     .in("quote_id", quoteIds)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true });
   if (lineError) throw new CrmAuthError(502, "Product lines could not be loaded.");
 
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
       .select("id,quote_id,room_name,product_type,sort_order")
       .eq("quote_id", quoteId)
       .eq("id", lineItemId)
+      .is("archived_at", null)
       .maybeSingle();
     if (lineError || !lineData) throw new CrmAuthError(404, "Product line was not found on this quote.");
 
