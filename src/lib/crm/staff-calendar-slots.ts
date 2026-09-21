@@ -3,14 +3,21 @@ import { normalizeWorkingRanges } from "@/lib/booking/working-ranges";
 import type { CrmAvailabilitySlot, CrmCalendarEvent } from "./types";
 import { monthDayEvents, publishedCalendarRanges } from "./staff-month-calendar";
 
-export function calendarHour(date: string, minute: number) {
-  if (!Number.isInteger(minute) || minute < 0 || minute >= 1440 || minute % 60 !== 0) throw new Error("Choose an hourly calendar slot.");
-  const time = `${String(minute / 60).padStart(2, "0")}:00`;
+export const staffCalendarIntervalMinutes = 30;
+
+export function calendarSlot(date: string, minute: number, duration: 30 | 60 = staffCalendarIntervalMinutes) {
+  if (!Number.isInteger(minute) || minute < 0 || minute + duration > 1440 || minute % duration !== 0) throw new Error(duration === 60 ? "Choose an hourly calendar slot." : "Choose a half-hour calendar slot.");
+  const format = (value: number) => `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+  const time = format(minute);
   const start = zonedTimeToUtc(date, time);
-  // Use the next local boundary, including midnight, rather than a fixed UTC offset.
   const nextDate = new Date(Date.parse(`${date}T12:00:00Z`) + 86400000).toISOString().slice(0, 10);
-  const end = zonedTimeToUtc(minute === 1380 ? nextDate : date, minute === 1380 ? "00:00" : `${String(minute / 60 + 1).padStart(2, "0")}:00`);
+  const endMinute = minute + duration;
+  const end = zonedTimeToUtc(endMinute === 1440 ? nextDate : date, endMinute === 1440 ? "00:00" : format(endMinute));
   return { date, time, startAt: start.toISOString(), endAt: end.toISOString() };
+}
+
+export function calendarHour(date: string, minute: number) {
+  return calendarSlot(date, minute, 60);
 }
 
 export function calendarHourState(ranges: CrmAvailabilitySlot[], startAt: string, endAt: string) {
@@ -31,8 +38,12 @@ export function calendarHourOccupied(events: CrmCalendarEvent[], date: string, s
 }
 
 export function changeCalendarHour(ranges: CrmAvailabilitySlot[], date: string, minute: number, available: boolean) {
+  return changeCalendarSlot(ranges, date, minute, available, 60);
+}
+
+export function changeCalendarSlot(ranges: CrmAvailabilitySlot[], date: string, minute: number, available: boolean, duration: 30 | 60 = staffCalendarIntervalMinutes) {
   if (ranges.some(range => range.status === "draft")) throw new Error("Review unpublished working hours before changing a slot.");
-  const slot = calendarHour(date, minute), start = Date.parse(slot.startAt), end = Date.parse(slot.endAt);
+  const slot = calendarSlot(date, minute, duration), start = Date.parse(slot.startAt), end = Date.parse(slot.endAt);
   const next = publishedCalendarRanges(ranges).flatMap(range => {
     const a = Date.parse(range.start_at), b = Date.parse(range.end_at);
     if (b <= start || a >= end) return [{ start_at: range.start_at, end_at: range.end_at }];
@@ -59,21 +70,21 @@ export function changeCalendarHour(ranges: CrmAvailabilitySlot[], date: string, 
 
 // A day toggle opens only the visible unbooked hours. This never creates,
 // moves, or removes appointments, and uses the existing monthly write contract.
-export function calendarDayState(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[]) {
-  const free = minutes.map(minute => calendarHour(date, minute)).filter(slot => !calendarHourOccupied(events, date, slot.startAt, slot.endAt));
+export function calendarDayState(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[], duration: 30 | 60 = 60) {
+  const free = minutes.map(minute => calendarSlot(date, minute, duration)).filter(slot => !calendarHourOccupied(events, date, slot.startAt, slot.endAt));
   if (!free.length) return "booked";
   const states = free.map(slot => calendarHourState(ranges, slot.startAt, slot.endAt));
   if (states.every(state => state === "available")) return "available";
   return states.every(state => state === "blocked") ? "blocked" : "partial";
 }
 
-export function changeCalendarDayHours(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[]) {
+export function changeCalendarDayHours(ranges: CrmAvailabilitySlot[], events: CrmCalendarEvent[], date: string, minutes: number[], duration: 30 | 60 = 60) {
   if (ranges.some(range => range.status === "draft")) throw new Error("Review unpublished working hours before changing a day.");
   let next = ranges;
   for (const minute of minutes) {
-    const slot = calendarHour(date, minute);
+    const slot = calendarSlot(date, minute, duration);
     if (calendarHourOccupied(events, date, slot.startAt, slot.endAt)) continue;
-    next = changeCalendarHour(next, date, minute, true).map((range, index) => ({
+    next = changeCalendarSlot(next, date, minute, true, duration).map((range, index) => ({
       ...range, id: `calendar-hour-${index}`, owner: "Jessica", status: "available", source: "crm_working_ranges",
     } as CrmAvailabilitySlot));
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { baseSlotReason, zonedTimeToUtc } from "@/lib/booking/availability";
-import { calendarHour, calendarHourOccupied, calendarHourState, changeCalendarHour, calendarDayState, changeCalendarDayHours } from "./staff-calendar-slots";
+import { calendarSlot, changeCalendarSlot, calendarHour, calendarHourOccupied, calendarHourState, changeCalendarHour, calendarDayState, changeCalendarDayHours } from "./staff-calendar-slots";
 import type { CrmAvailabilitySlot, CrmCalendarEvent } from "./types";
 
 const date = "2035-10-01";
@@ -98,5 +98,35 @@ describe("minimal calendar day availability", () => {
   it("does not publish drafts or expand a partial hour until explicitly toggled", () => {
     expect(calendarDayState([range("08:30","09:00")],[],date,hours)).toBe("partial");
     expect(()=>changeCalendarDayHours([{...range("08:00","09:00"),status:"draft"}],[],date,hours)).toThrow(/unpublished/);
+  });
+});
+
+
+describe("half-hour staff calendar", () => {
+  it("selects exact half-hour starts including the final slot of the month", () => {
+    expect(calendarSlot(date, 570)).toEqual({ date, time: "09:30", startAt: at("09:30"), endAt: at("10:00") });
+    expect(calendarSlot("2026-09-30", 1410)).toMatchObject({ time: "23:30", startAt: "2026-10-01T06:30:00.000Z", endAt: "2026-10-01T07:00:00.000Z" });
+    expect(calendarSlot("2026-11-01", 570).startAt).toBe("2026-11-01T17:30:00.000Z");
+    expect(calendarSlot("2026-03-08", 570).startAt).toBe("2026-03-08T16:30:00.000Z");
+    expect(() => calendarSlot(date, 575)).toThrow(/half-hour/);
+  });
+  it("changes only the selected half-hour, preserving its neighbor and other dates", () => {
+    const source = [range("09:00", "11:00"), range("09:00", "11:00", "2035-10-02")];
+    const next = changeCalendarSlot(source, date, 570, false);
+    expect(next).toEqual([
+      { start_at: at("09:00"), end_at: at("09:30") },
+      { start_at: at("10:00"), end_at: at("11:00") },
+      { start_at: at("09:00", "2035-10-02"), end_at: at("11:00", "2035-10-02") },
+    ]);
+    expect(changeCalendarSlot([], date, 570, true)).toEqual([{ start_at: at("09:30"), end_at: at("10:00") }]);
+    expect(changeCalendarSlot(asSlots(next), date, 570, true)).toEqual(source.map(({ start_at, end_at }) => ({ start_at, end_at })));
+  });
+  it("preserves occupied half-hours and exposes the free halves on either side", () => {
+    const slots = [540, 570, 600, 630];
+    const events = [event("09:30", "10:30")];
+    const next = changeCalendarDayHours([], events, date, slots, 30);
+    expect(next).toEqual([{ start_at: at("09:00"), end_at: at("09:30") }, { start_at: at("10:30"), end_at: at("11:00") }]);
+    expect(calendarDayState(asSlots(next), events, date, slots, 30)).toBe("available");
+    expect(slots.map(minute => { const slot = calendarSlot(date, minute); return calendarHourOccupied(events, date, slot.startAt, slot.endAt); })).toEqual([false, true, true, false]);
   });
 });

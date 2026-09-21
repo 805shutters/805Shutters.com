@@ -101,3 +101,23 @@
 .appointment[data-sale=sold] .saleBadge { color:#185335; }
 .appointment[data-sale=unsold] { border-left:3px solid #947746; }
 .appointment[data-sale=unsold] .saleBadge { color:#6b4a19; }
+
+/* Independent day timelines keep half-hour booking slots readable at any height. */
+.weekScroll { flex:1; min-height:0; overflow-x:auto; overflow-y:hidden; }
+.grid { grid-template-columns:repeat(7,minmax(180px,1fr)); height:100%; min-width:1296px; container-type:normal; }
+.day { display:flex; flex-direction:column; overflow:hidden; }
+.dayHead { flex:none; min-height:46px; }
+.timeHeading { padding:0; font-size:9px; }
+.dayScroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; scrollbar-width:thin; scrollbar-color:#69796e #171b18; scrollbar-gutter:stable; }
+.dayScroll:focus-visible { outline:2px solid #79d7a7; outline-offset:-2px; }
+.timeline { position:relative; height:calc(var(--slot-count) * 76px); }
+.timeAxis { position:absolute; inset:0 auto 0 0; width:47px; }
+.timeAxis span { font-size:9px; padding-top:10px; white-space:nowrap; }
+.hourSlot,.appointment { left:47px; width:calc(100% - 47px); }
+.appointment { font-size:12px!important; padding:5px 7px; }
+.bookSlot { padding:8px; }
+.bookSlot span { font-size:11px; }
+.slotStatus { font-size:10px; left:8px; bottom:7px; }
+.hourSlot .availabilityToggle { top:2px; right:2px; width:28px; height:28px; }
+.dayHead .date { font-size:22px!important; height:30px; }
+.dayHead .date small { display:inline; font-size:10px; }

@@ -6,7 +6,7 @@ import { Check, Minus, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { losAngelesDateString, losAngelesTimeString, bookingSlotDurationMinutes } from "@/lib/booking/availability";
 import type { CrmAvailabilitySlot, CrmCalendarEvent, CrmJob } from "@/lib/crm/types";
 import { changeCalendarDay, monthAppointmentDetails, monthDayEvents, publishedCalendarRanges } from "@/lib/crm/staff-month-calendar";
-import { calendarHour, calendarHourState, calendarHourOccupied, changeCalendarHour, calendarDayState, changeCalendarDayHours } from "@/lib/crm/staff-calendar-slots";
+import { calendarSlot, staffCalendarIntervalMinutes, calendarHourState, calendarHourOccupied, changeCalendarSlot, calendarDayState, changeCalendarDayHours } from "@/lib/crm/staff-calendar-slots";
 import { weekCalendarDays, shiftCalendarWeek, weekTimeBounds, weekDayLayout } from "@/lib/crm/staff-week-calendar";
 import { calendarEventSalePresentation } from "@/lib/crm/calendar-event-sales";
 import { JessicaWorkingRanges } from "./JessicaWorkingRanges";
@@ -84,12 +84,12 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     inFlight.current = true; setSaving(true); setError(""); setNotice("");
     try {
       const ranges = minute === null
-        ? available ? changeCalendarDayHours(snapshot.ranges, events, date, hours) : changeCalendarDay(snapshot.ranges, date, false, "", "")
-        : changeCalendarHour(snapshot.ranges, date, minute, available);
+        ? available ? changeCalendarDayHours(snapshot.ranges, events, date, slots, staffCalendarIntervalMinutes) : changeCalendarDay(snapshot.ranges, date, false, "", "")
+        : changeCalendarSlot(snapshot.ranges, date, minute, available);
       const body = await request("/api/crm/availability", { method: "PUT", body: JSON.stringify({ month, revision: snapshot.revision, ranges }) });
       if (activeWeek.current === week) {
         setSnapshots(current => ({ ...current, [month]: { ...body, month } }));
-        setNotice(`${date}${minute === null ? "" : ` ${calendarHour(date, minute).time}`}: ${available ? minute === null ? "unbooked hours published for public booking" : "hour published for public booking" : minute === null ? "day blocked for new public bookings; existing appointments stay scheduled" : "hour blocked for new public bookings"}.`);
+        setNotice(`${date}${minute === null ? "" : ` ${calendarSlot(date, minute).time}`}: ${available ? minute === null ? "unbooked half-hours published for public booking" : "half-hour published for public booking" : minute === null ? "day blocked for new public bookings; existing appointments stay scheduled" : "half-hour blocked for new public bookings"}.`);
       }
     } catch (reason) {
       if (activeWeek.current === week) {
@@ -100,16 +100,16 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     } finally { inFlight.current = false; setSaving(false); }
   }
   function beginBooking(date: string, minute: number) {
-    const slot = calendarHour(date, minute);
+    const slot = calendarSlot(date, minute);
     onSelectSlot({ ...slot, endAt: new Date(Date.parse(slot.startAt) + bookingSlotDurationMinutes * 60000).toISOString() });
   }
   function availabilityToggle(date: string, minute: number | null, state: string, disabled = false) {
     const full = state === "available";
     const partial = state === "partial";
-    const label = minute === null ? `${full ? "Block" : "Make available"} day ${date}` : `${full ? "Block" : "Make available"} ${date} ${calendarHour(date, minute).time}`;
-    return <button type="button" className={styles.availabilityToggle} data-scope={minute === null ? "day" : "hour"}
+    const label = minute === null ? `${full ? "Block" : "Make available"} day ${date}` : `${full ? "Block" : "Make available"} ${date} ${calendarSlot(date, minute).time}`;
+    return <button type="button" className={styles.availabilityToggle} data-scope={minute === null ? "day" : "slot"}
       disabled={!canChange || disabled} aria-label={label} aria-pressed={partial ? "mixed" : full}
-      title={minute === null ? `${full ? "Block public booking for this day" : "Publish all displayed unbooked hours"}. Existing appointments stay scheduled.` : `${full ? "Block this hour" : partial ? "Publish the rest of this hour" : "Make this hour available"} for public booking`}
+      title={minute === null ? `${full ? "Block public booking for this day" : "Publish all displayed unbooked half-hours"}. Existing appointments stay scheduled.` : `${full ? "Block this half-hour" : partial ? "Publish the rest of this half-hour" : "Make this half-hour available"} for public booking`}
       onClick={() => void updateAvailability(date, minute, !full)}>
       {full ? <Check aria-hidden="true" /> : partial ? <Minus aria-hidden="true" /> : null}
     </button>;
@@ -117,8 +117,8 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   const labelDate = (date: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
   const weekLabel = `${labelDate(days[0])} – ${labelDate(days[6])}, ${days[6].slice(0, 4)}`;
   const bounds = weekTimeBounds(events, days);
-  const hours = Array.from({ length: (bounds.end - bounds.start) / 60 }, (_, index) => bounds.start + index * 60);
-  const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12} ${minute < 720 ? "AM" : "PM"}`;
+  const slots = Array.from({ length: (bounds.end - bounds.start) / staffCalendarIntervalMinutes }, (_, index) => bounds.start + index * staffCalendarIntervalMinutes);
+  const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12}:${String(minute % 60).padStart(2, "0")} ${minute < 720 ? "AM" : "PM"}`;
   return <section ref={section} className={styles.calendar} aria-label="Appointment calendar">
     <header className={styles.header}>
       <div className={styles.navigation}>
@@ -133,30 +133,29 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
       </div>
     </header>
     <div className={`${styles.status} ${error || hasDrafts ? styles.statusVisible : styles.statusQuiet}`} role={error ? "alert" : "status"}>
-      <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Circle: toggle availability. Slot: book appointment. Day circle: toggle the day’s unbooked hours.")}</span>
+      <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Circle: toggle availability. Slot: book appointment. Day circle: toggle the day’s unbooked half-hours.")}</span>
       {error && <button type="button" disabled={saving} onClick={() => setReload(value => value + 1)}>Reload calendar</button>}
     </div>
-    <div className={styles.weekHeader}>
-      <span className={styles.timeHeading}>Pacific</span>
+    <div className={styles.weekScroll}>
+    <div className={styles.grid}>
       {days.map((date, index) => {
-        const dayState = ready ? calendarDayState(published, events, date, hours) : "unknown";
-        return <div key={date} className={styles.dayHead}>
-          <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span><small>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][index]}</small> {Number(date.slice(-2))}</span></button>
-          {availabilityToggle(date, null, dayState, dayState === "booked")}
-        </div>;
-      })}
-    </div>
-    <div className={styles.grid} style={{ "--hour-count": hours.length } as CSSProperties}>
-      <div className={styles.timeAxis}>{hours.map((minute, index) => <span key={minute} style={{ top: `${index / hours.length * 100}%` }}>{timeLabel(minute)}</span>)}</div>
-      {days.map(date => {
         const state = !ready ? "unknown" : "loaded";
+        const dayState = ready ? calendarDayState(published, events, date, slots, staffCalendarIntervalMinutes) : "unknown";
         const layout = weekDayLayout(events, date, bounds);
         return <article key={date} className={styles.day} data-date={date} data-state={state} aria-label={`${date}, ${state}`}>
-          {hours.map(minute => {
-            const slot = calendarHour(date, minute);
+          <div className={styles.dayHead}>
+            <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span><small>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][index]}</small> {Number(date.slice(-2))}</span></button>
+            <span className={styles.timeHeading}>Pacific</span>
+            {availabilityToggle(date, null, dayState, dayState === "booked")}
+          </div>
+          <div className={styles.dayScroll} tabIndex={0} role="region" aria-label={`Scroll appointments for ${date}`}>
+          <div className={styles.timeline} style={{ "--slot-count": slots.length } as CSSProperties}>
+          <div className={styles.timeAxis} aria-hidden="true">{slots.map((minute, index) => <span key={minute} style={{ top: `${index / slots.length * 100}%` }}>{timeLabel(minute)}</span>)}</div>
+          {slots.map(minute => {
+            const slot = calendarSlot(date, minute);
             const occupied = calendarHourOccupied(events, date, slot.startAt, slot.endAt);
             const state = !ready ? "unknown" : calendarHourState(published, slot.startAt, slot.endAt);
-            return <div key={minute} className={styles.hourSlot} data-time={slot.time} data-state={state} data-occupied={occupied} style={{ top: `calc(${(minute - bounds.start) / (bounds.end - bounds.start) * 100}% + 3px)`, height: `calc(${60 / (bounds.end - bounds.start) * 100}% - 6px)` }} aria-label={`${date} ${slot.time}, ${occupied ? "appointment" : state}`}>
+            return <div key={minute} className={styles.hourSlot} data-time={slot.time} data-state={state} data-occupied={occupied} style={{ top: `calc(${(minute - bounds.start) / (bounds.end - bounds.start) * 100}% + 3px)`, height: `calc(${staffCalendarIntervalMinutes / (bounds.end - bounds.start) * 100}% - 6px)` }} aria-label={`${date} ${slot.time}, ${occupied ? "appointment" : state}`}>
               {!occupied && <>
                 <button type="button" className={styles.bookSlot} disabled={!ready || saving || !!error} aria-label={`Book Appointment ${date} ${slot.time}`} onClick={() => beginBooking(date, minute)}><span>+ Book appointment</span></button>
                 {availabilityToggle(date, minute, state)}
@@ -169,12 +168,15 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
             const sale = calendarEventSalePresentation(event);
             const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "NOT SOLD" : "";
             const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
-            return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)`, left: 0, width: "100%" }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
+            return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)` }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
               {saleLabel && <span className={styles.saleBadge}>{saleLabel}</span>}<strong>{details.name}</strong><span>{details.city}</span><span>{details.product}</span>
             </button>;
           })}
+          </div>
+          </div>
         </article>;
       })}
+    </div>
     </div>
     <dialog ref={dialog} className={styles.dialog} onCancel={closeDialog} onClose={closeDialog} aria-labelledby="week-dialog-title">
       <div className={styles.dialogHead}><h2 id="week-dialog-title">{showHours ? "Working hours" : selectedDay}</h2><button type="button" aria-label="Close calendar details" onClick={closeDialog}><X /></button></div>
