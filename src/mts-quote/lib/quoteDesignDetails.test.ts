@@ -227,3 +227,11 @@ it("retains Synchrony customer selections without exposing saved engine identifi
   ]));
   expect(JSON.stringify(details)).not.toMatch(/internal|sha256|Quote V2|Priced|Norman Assembly|Norman Order Record/);
 });
+
+
+it("omits inactive SmartFold motor positions from cordless customer details while preserving saved history", () => {
+ const design={...miniBlindDesign(),supplier:"Norman",product_type:"SmartFold Shades",lift_system:"PrecisionLift Cordless",options_json:{quote_v2_backend:true,motor_position:"Right"}} as SalesQuoteDesign;
+ expect(getQuoteDesignDetails(design).some(d=>d.label==="Motor Position")).toBe(false);
+ expect(getQuoteDesignDetails({...design,lift_system:"Motorized"})).toContainEqual({label:"Motor Position",value:"Right"});
+ expect(design.options_json?.motor_position).toBe("Right");
+});

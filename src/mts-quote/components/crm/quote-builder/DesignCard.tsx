@@ -2033,7 +2033,7 @@ function clearMotorizationOptions(
 }
 
 export function clearSmartfoldMotorizationOptions(options: Record<string, unknown>): Record<string, unknown> {
-  return { ...clearMotorizationOptions(options), [SMARTFOLD_CHARGING_KEY]: null };
+  return { ...clearMotorizationOptions(options), [SMARTFOLD_CHARGING_KEY]: null, motor_position: null };
 }
 
 export function buildLegacyRollerTopTreatmentUpdate(
