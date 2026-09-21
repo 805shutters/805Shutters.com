@@ -1,3 +1,5 @@
+import { isInternalQuoteDetail } from "./customer-quote-detail-policy";
+
 /** Presentation only: never rewrite catalog, supplier, pricing, or order records. */
 const PRODUCT_BRANDS: Array<[RegExp, string]> = [
   [/\b(?:PerfectSheer|SmartFold)\b/gi, "Sheer"],
@@ -36,6 +38,14 @@ export function customerQuoteText(value: string | null | undefined, specificatio
 
 export function customerQuoteProductName(value: string | null | undefined): string {
   return customerQuoteText(value) || "Window treatment";
+}
+
+/** Imported program names sometimes contain the source table instead of a style. */
+export function customerQuoteStyleName(value: string | null | undefined): string {
+  return customerQuoteText(value, true)
+    .replace(/\b(?:PDF|page)\s*\d+(?:\s*,?\s*table\s*\d+)?/gi, "")
+    .replace(/\b(?:fabric\s+)?price\s+group\s+[\w.-]+/gi, "")
+    .replace(/^[\s·|,—–-]+|[\s·|,—–-]+$/g, "").trim();
 }
 
 export function isManufacturerDetail(label: string): boolean {
@@ -87,7 +97,7 @@ export function customerQuoteOptions(options: string[]): string[] {
   return options.flatMap((option) => {
     const separator = option.indexOf(":");
     let label = separator < 0 ? "" : option.slice(0, separator);
-    if (isManufacturerDetail(label) || isInternalPricingDetail(label || option) || /^(?:catalog|quote lab)\b/i.test(label)) return [];
+    if (isManufacturerDetail(label) || isInternalPricingDetail(label || option) || isInternalQuoteDetail(label)) return [];
     if (separator < 0) {
       const cleaned = customerQuoteText(option);
       return cleaned ? [cleaned] : [];

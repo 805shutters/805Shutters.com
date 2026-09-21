@@ -3,7 +3,8 @@ import { LOTUS_PARTS_VERSION, lotusPartModelProfile } from "@/lib/quote/lotus-pa
 import { useMemo, useState } from "react";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { lotusObservedOfferings, lotusObservedOffering, LOTUS_OBSERVED_VERSION } from "@/lib/quote/lotus-observed-offerings";
-export function LotusObservedDesignOptions({ design, productId, onUpdateFields }: {
+export function LotusObservedDesignOptions({ design, productId, onUpdateFields, pricingOnly = false }: {
+  pricingOnly?: boolean;
   design: SalesQuoteDesign | undefined; productId: string; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -14,7 +15,7 @@ export function LotusObservedDesignOptions({ design, productId, onUpdateFields }
     (!search.trim() || `${row.sku ?? ""} ${row.label}`.toLowerCase().includes(search.trim().toLowerCase()))), [productId, search]);
   return <section className="space-y-3 rounded-lg border border-amber-300 p-3" data-testid="lotus-observed-options">
     <p className="font-semibold">Dealer-listed Lotus item</p>
-    <p>Choose the exact listing. Current availability, compatible options and price require confirmation.</p>
+    <p>{pricingOnly ? "Choose the exact item. Price confirmation required." : "Choose the exact listing. Current availability, compatible options and price require confirmation."}</p>
     <label className="block text-sm">Find by SKU, color or description
       <input aria-label="Find Lotus dealer item" className="w-full rounded border p-2" value={search} onChange={event => setSearch(event.target.value)} />
     </label>
@@ -37,8 +38,8 @@ export function LotusObservedDesignOptions({ design, productId, onUpdateFields }
         {choices.map(row => <option key={row.id} value={row.id}>{row.sku ? `${row.sku} — ` : "No published SKU — "}{row.label} ({row.kind})</option>)}
       </select>
     </label>
-    <p className="text-sm">{choices.length} matching listings observed September 20, 2026. Effective date not supplied.</p>
-    {partProfile && <div className="space-y-2"><label className="block text-sm">Intended installed model<select aria-label="Lotus part intended model" className="w-full rounded border p-2" value={String(options.lotus_part_target_model ?? "")} onChange={event => onUpdateFields({options_json:{...options,lotus_part_configuration_version:LOTUS_PARTS_VERSION,lotus_part_target_model:event.target.value || null}})}><option value="">Select documented model</option>{partProfile.models.map(model => <option key={model} value={model}>{model}</option>)}</select></label><label className="block text-sm">Installed part / mechanism reference (if known)<input aria-label="Lotus installed mechanism reference" className="w-full rounded border p-2" value={String(options.lotus_part_installed_reference ?? "")} onChange={event => onUpdateFields({options_json:{...options,lotus_part_configuration_version:LOTUS_PARTS_VERSION,lotus_part_installed_reference:event.target.value}})} /></label><p className="text-sm">These models are named in the exact dealer listing. Installed mechanism revision and fit still require confirmation; no part price or stock is inferred.</p></div>}
-    {selected && <div className="text-sm"><p>{selected.exception}</p><p>{selected.discontinued ? "Discontinued — history only." : "Price confirmation required."}</p><a href={selected.sourceUrl} target="_blank" rel="noreferrer">Dealer source listing</a></div>}
+    {!pricingOnly && <p className="text-sm">{choices.length} matching listings observed September 20, 2026. Effective date not supplied.</p>}
+    {partProfile && <div className="space-y-2"><label className="block text-sm">Intended installed model<select aria-label="Lotus part intended model" className="w-full rounded border p-2" value={String(options.lotus_part_target_model ?? "")} onChange={event => onUpdateFields({options_json:{...options,lotus_part_configuration_version:LOTUS_PARTS_VERSION,lotus_part_target_model:event.target.value || null}})}><option value="">Select documented model</option>{partProfile.models.map(model => <option key={model} value={model}>{model}</option>)}</select></label>{!pricingOnly && <label className="block text-sm">Installed part / mechanism reference (if known)<input aria-label="Lotus installed mechanism reference" className="w-full rounded border p-2" value={String(options.lotus_part_installed_reference ?? "")} onChange={event => onUpdateFields({options_json:{...options,lotus_part_configuration_version:LOTUS_PARTS_VERSION,lotus_part_installed_reference:event.target.value}})} /></label>}{!pricingOnly && <p className="text-sm">These models are named in the exact dealer listing. Installed mechanism revision and fit still require confirmation; no part price or stock is inferred.</p>}</div>}
+    {selected && <div className="text-sm">{!pricingOnly && <p>{selected.exception}</p>}<p>{selected.discontinued ? "Discontinued — history only." : "Price confirmation required."}</p>{!pricingOnly && <a href={selected.sourceUrl} target="_blank" rel="noreferrer">Dealer source listing</a>}</div>}
   </section>;
 }

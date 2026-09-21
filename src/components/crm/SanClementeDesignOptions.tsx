@@ -1,4 +1,5 @@
 "use client";
+import { isOrderingOnlyIssue } from "@/lib/quote-v2/quote-pricing-policy";
 import { getProduct } from "@/lib/quote/catalog";
 import { sanClementeColors, SAN_CLEMENTE_HONEYCOMB } from "@/lib/quote/norman-san-clemente";
 import { validateSanClemente } from "@/lib/quote-v2/norman-san-clemente-rules";
@@ -7,7 +8,8 @@ import type { SalesQuoteLineItem } from "@mts/types/quote";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 /** Dedicated controls prevent Portrait and Ultimate options crossing this product boundary. */
-export function SanClementeDesignOptions({ design, productId, lineItem, onUpdateFields }: {
+export function SanClementeDesignOptions({ design, productId, lineItem, onUpdateFields, pricingOnly = false }: {
+  pricingOnly?: boolean;
   design: SalesQuoteDesign | undefined;
   productId: string;
   lineItem: SalesQuoteLineItem;
@@ -23,7 +25,7 @@ export function SanClementeDesignOptions({ design, productId, lineItem, onUpdate
   const validation = validateSanClemente({ productId, manufacturerId: "Norman", programId: String(options.catalog_program_id ?? options.quote_lab_program_id ?? ""), catalogVersion: "", catalogAsOf: "2026-09-19", quantity: lineItem.quantity,
     widthInches: measurementToInches(lineItem.width_whole, lineItem.width_fraction), heightInches: measurementToInches(lineItem.height_whole, lineItem.height_fraction), options: {},
     configuration: { ...options, mount_type: design?.mount_type ?? null, lift_system: design?.lift_system ?? null, valance: design?.valance ?? null } as import("@/lib/quote-v2/core").SelectionContext["configuration"],
-  });
+  }).filter(issue => !pricingOnly || !isOrderingOnlyIssue(issue));
   const classes = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
   const select = (label: string, value: unknown, choices: readonly string[], change: (v: string) => void) => <label className="block text-sm">{label}
     <select aria-label={label} className={classes} value={String(value ?? "")} onChange={e => change(e.target.value)}>
@@ -47,9 +49,9 @@ export function SanClementeDesignOptions({ design, productId, lineItem, onUpdate
     </label>
     {select("San Clemente mount", design?.mount_type, ["Inside Mount", "Outside Mount"], mount_type => update({ san_clemente_mount_fit: null, mount_depth_inches: null, installation_method: null }, { mount_type }))}
     {hc ? select("San Clemente lift", design?.lift_system, ["Cordless", "Cordless TDBU"], lift_system => update({}, { lift_system })) : <p className="text-sm">2-inch embossed slats · Cordless lift · Left wand · Standard valance</p>}
-    {inside && select("San Clemente mount fit", options.san_clemente_mount_fit, ["Flush", "Semi Inside"], v => update({ san_clemente_mount_fit: v }))}
-    {inside && <label className="block text-sm">Recess depth (inches)<input type="number" aria-label="San Clemente recess depth" className={classes} min="0" step="0.0625" value={String(options.mount_depth_inches ?? "")} onChange={e => update({ mount_depth_inches: e.target.value === "" ? null : Number(e.target.value) })} /></label>}
-    {!hc && select("San Clemente bracket mounting", options.installation_method, inside ? ["Top / Back", "Side Only", "Side With Top Support"] : ["Top / Back"], v => update({ installation_method: v }))}
+    {!pricingOnly && inside && select("San Clemente mount fit", options.san_clemente_mount_fit, ["Flush", "Semi Inside"], v => update({ san_clemente_mount_fit: v }))}
+    {!pricingOnly && inside && <label className="block text-sm">Recess depth (inches)<input type="number" aria-label="San Clemente recess depth" className={classes} min="0" step="0.0625" value={String(options.mount_depth_inches ?? "")} onChange={e => update({ mount_depth_inches: e.target.value === "" ? null : Number(e.target.value) })} /></label>}
+    {!pricingOnly && !hc && select("San Clemente bracket mounting", options.installation_method, inside ? ["Top / Back", "Side Only", "Side With Top Support"] : ["Top / Back"], v => update({ installation_method: v }))}
     {validation.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{validation.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
     {hc && <div className="grid gap-3 sm:grid-cols-3">{[
       ["san_clemente_pole_36_quantity", '36-inch black pole with attachment'],

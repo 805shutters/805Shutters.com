@@ -16,6 +16,8 @@ const ORDERING_ONLY_RULES = new Set([
   'sundance.portfolio.mount_depth',
   'sundance.cellular.mount_depth',
   'sundance.cellular.recess',
+  'sundance.cellular.shape_sides',
+  'sundance.cellular.shape_template',
 ]);
 
 export function isNonNormanOrderingOnlyRule(ruleId: string): boolean {

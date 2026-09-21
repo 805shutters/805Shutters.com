@@ -109,6 +109,40 @@ describe("signed customer contract email", () => {
     expect(document.versions).toEqual([]);
   });
 
+  it("filters serialized signed line and purchased-option details without changing the signed evidence or amounts", () => {
+    const source = structuredClone(snapshot);
+    source.lines[0].options = ["Fabric: Garden Ecru", "Dealer cost: 612", "Manufacturer: Norman"];
+    source.lines[0].showDesignOptions = true;
+    source.lines[0].designOptions = [{
+      id: "purchased-roman", label: "A", productName: "Roman Shade", styleName: "Garden Ecru",
+      options: ["Fabric: Garden Ecru", "Wholesale: 221", "Catalog Product: internal-roman"],
+      unitPrice: 1200, lineTotal: 2400, priceReady: true,
+    }];
+    const before = JSON.stringify(source);
+    function freeze(value: unknown): void {
+      if (!value || typeof value !== "object") return;
+      Object.values(value).forEach(freeze);
+      Object.freeze(value);
+    }
+    freeze(source);
+
+    const document = signedSnapshotPublicQuote(source);
+    expect(document.lines[0].options).toEqual(["Fabric: Garden Ecru"]);
+    expect(document.lines[0].designOptions[0].options).toEqual(["Fabric: Garden Ecru"]);
+    expect(document.lines[0]).toMatchObject({
+      quantity: 2, unitPrice: 1200, lineTotal: 2400, discountPercent: 10,
+      productName: "Roller Shade", styleName: "Garden - Ecru", showDesignOptions: true,
+    });
+    expect(document.lines[0].designOptions[0]).toMatchObject({
+      id: "purchased-roman", productName: "Roman Shade", styleName: "Garden Ecru", unitPrice: 1200, lineTotal: 2400,
+    });
+    expect(document).toMatchObject(source.totals);
+    expect(JSON.stringify(document)).not.toMatch(/Dealer cost|Wholesale|Catalog Product|Manufacturer/);
+    expect(JSON.stringify(source)).toBe(before);
+    expect(document.lines[0].options).not.toBe(source.lines[0].options);
+    expect(document.lines[0].designOptions[0]).not.toBe(source.lines[0].designOptions[0]);
+  });
+
   it("blocks a saved payload from the rejected PDF generator without sending", async () => {
     const payload = { ...frozenPayload(), idempotencyKey: "805-signed-contract-30000000-0000-4000-8000-000000000001-customer-signed-contract-v1" };
     const h = harness({ claims: [claim({ payload, idempotency_key: payload.idempotencyKey })] });

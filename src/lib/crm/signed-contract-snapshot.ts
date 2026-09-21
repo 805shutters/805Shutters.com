@@ -1,4 +1,5 @@
 import type { CustomerContractTerms } from "./customer-contract-terms";
+import { customerQuoteOptions, customerQuoteStyleName } from "./customer-quote-branding";
 import type { PublicQuote, SignedContractSnapshot } from "./public-quote";
 
 export class ContractContentError extends Error {}
@@ -104,7 +105,13 @@ export function signedSnapshotPublicQuote(snapshot: SignedContractSnapshot): Pub
     // Freeze the same display decision as the signed page. Legacy grouped lines
     // can contain multiple purchased configurations; do not collapse them.
     lines: snapshot.lines.map(line => ({ ...line, id: line.lineItemId, priceReady: true,
-      designOptions: line.showDesignOptions ? line.designOptions : [],
+      // Filter only this customer projection; retain the original signed
+      // specifications and amounts in the immutable source snapshot.
+      options: customerQuoteOptions(line.options),
+      styleName: customerQuoteStyleName(line.styleName),
+      designOptions: line.showDesignOptions ? line.designOptions.map(option => ({
+        ...option, styleName: customerQuoteStyleName(option.styleName), options: customerQuoteOptions(option.options),
+      })) : [],
       showDesignOptions: Boolean(line.showDesignOptions) })),
     ...snapshot.totals, allPriced: true, hasOnyxShutters: snapshot.hasOnyxShutters,
     payment: { available: false, dueType: null, amountDue: 0, outstanding: 0, depositPaid: 0, paidTotal: 0 },

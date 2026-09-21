@@ -14,7 +14,7 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  const evidence=sundanceHorizontalOptionEvidence(p,options,widthInches),wand=sundanceChateauWandReference(heightInches);
  const tapeCodes=options.sundance_blind_ladder==='Solid 1-inch tape'?sundanceSolidTapeCodes:options.sundance_blind_ladder==='Decorative 1-inch tape'?sundanceDecorativeTapeCodes:[];
  return <>
- {sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)&&<p className="text-sm">{sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)!.text}</p>}
+ {!pricingOnly&&sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)&&<p className="text-sm">{sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)!.text}</p>}
  {select('mount_type','Mount',['Inside','Outside'])}
  {select('sundance_blind_wand','Wand side',basic?['Left']:['Left','Right'])}
  {select('sundance_blind_assembly','Assembly',['Single','Two on one','Three on one'])}
@@ -22,10 +22,10 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  {basic&&select('sundance_blind_valance','BasicVue valance',['Crown Hollow'])}
  {select('sundance_blind_hold_down','Hold-down brackets',['No','Yes'])}
  {!basic&&select('sundance_blind_spacer','Spacer blocks',['No','Yes'])}
- {!basic&&<>{number('sundance_blind_cutout_sides','Cut-out sides')}{Number(options.sundance_blind_cutout_sides)>0&&<label className="block text-sm">Cut-out dimensions and template reference<textarea aria-label="Sundance blind cut-out details" className={classes} value={String(options.sundance_blind_cutout_details??'')} onChange={e=>field('sundance_blind_cutout_details',e.target.value)}/></label>}</>}
- {(p.includes('advantage_ii')||p.includes('premium_ii'))&&<>{select('sundance_blind_extra_valance','Extra valance charge',['None','Extra valance','Valance with dust cover'])}{options.sundance_blind_extra_valance&&options.sundance_blind_extra_valance!=='None'&&number('sundance_blind_extra_valance_inches','Extra valance length in inches','0.0625')}<p className="text-sm">Standard returns: inside ⅝ inch, outside 2¾ inches. Multiple blinds under one valance are priced individually.</p></>}
+ {!basic&&<>{number('sundance_blind_cutout_sides','Cut-out sides')}{!pricingOnly&&Number(options.sundance_blind_cutout_sides)>0&&<label className="block text-sm">Cut-out dimensions and template reference<textarea aria-label="Sundance blind cut-out details" className={classes} value={String(options.sundance_blind_cutout_details??'')} onChange={e=>field('sundance_blind_cutout_details',e.target.value)}/></label>}</>}
+ {(p.includes('advantage_ii')||p.includes('premium_ii'))&&<>{select('sundance_blind_extra_valance','Extra valance charge',['None','Extra valance','Valance with dust cover'])}{options.sundance_blind_extra_valance&&options.sundance_blind_extra_valance!=='None'&&number('sundance_blind_extra_valance_inches','Extra valance length in inches','0.0625')}<p className="text-sm">{!pricingOnly&&<>Standard returns: inside ⅝ inch, outside 2¾ inches. </>}Multiple blinds under one valance are priced individually.</p></>}
  {chateau&&<>
- {wand&&<p className="text-sm">Published matching wood wand: {wand.wandLength} inches for blind heights through {wand.heightThrough} inches (PDF19). Custom wand lengths and raised-stack clearance require confirmation.</p>}
+ {!pricingOnly&&wand&&<p className="text-sm">Published matching wood wand: {wand.wandLength} inches for blind heights through {wand.heightThrough} inches (PDF19). Custom wand lengths and raised-stack clearance require confirmation.</p>}
  {select('sundance_blind_valance','Chateau valance',['3-inch Metro','3-inch Sutton','3-inch Harvard','4-inch Rope'])}
  {select('sundance_blind_rounded_corners','Rounded corners',['No','Yes'])}
  {select('sundance_blind_ladder','Ladder',['Standard Ladder','Solid 1-inch tape','Decorative 1-inch tape'])}
@@ -33,11 +33,11 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  {options.sundance_blind_assembly!=='Single'&&select('sundance_blind_connection','Valance connection',['Keystone','Edge-joint'])}
  {!pricingOnly&&options.mount_type==='Inside'&&<>{select('sundance_blind_flush','Flush mount',['No','Yes'])}{number('sundance_blind_depth','Mounting depth in inches','0.0625')}</>}
  {number('sundance_blind_custom_return','Custom return inches (optional)','0.0625')}
- <p className="text-sm">Chateau over 84 inches requires separate blinds and joined valance. Standard returns: inside ¾ inch, outside 3 inches; custom returns ½–6 inches. Included wand matches the blind color. Valance width: inside without returns minus ⅛ inch; inside with returns/outside plus ½ inch.</p>
+ {!pricingOnly&&<p className="text-sm">Chateau over 84 inches requires separate blinds and joined valance. Standard returns: inside ¾ inch, outside 3 inches; custom returns ½–6 inches. Included wand matches the blind color. Valance width: inside without returns minus ⅛ inch; inside with returns/outside plus ½ inch.</p>}
  </>}
  {p==='sundance_aluminum_1'&&<>{number('sundance_blind_pole_short_qty','3–5-foot extension pole quantity')}{number('sundance_blind_pole_long_qty','5–9-foot extension pole quantity')}</>}
- {basic&&<p className="text-sm">BasicVue has White only, a left wand, Crown Hollow valance and hollow rectangular bottomrail. Standard returns: inside ⅞ inch, outside 3 inches. FOB Arcadia.</p>}
- <p className="text-sm">Cordless wand-tilt only. {basic?'Confirm the BasicVue factory deduction before ordering.':'Factory inside blind-width deduction is ½ inch; outside no deduction. Keep opening dimensions and do not deduct twice.'} Null source grid cells remain unavailable.</p>
+ {basic&&<p className="text-sm">BasicVue has White only, a left wand, Crown Hollow valance and hollow rectangular bottomrail.{!pricingOnly&&<> Standard returns: inside ⅞ inch, outside 3 inches. FOB Arcadia.</>}</p>}
+ <p className="text-sm">Cordless wand-tilt only.{!pricingOnly&&<> {basic?'Confirm the BasicVue factory deduction before ordering.':'Factory inside blind-width deduction is ½ inch; outside no deduction. Keep opening dimensions and do not deduct twice.'} Null source grid cells remain unavailable.</>}</p>
  <details className="text-sm"><summary className="cursor-pointer">Published horizontal option evidence</summary>{evidence.percentages.map(e=><p key={e.label}>{e.label}: {e.percent}% (PDF {e.page})</p>)}{evidence.entries.map(e=><p key={e.label}>{e.label}: ${e.amount.toFixed(2)} {e.basis} (PDF {e.page})</p>)}<p>Retail fixed options: ${evidence.retailSubtotal.toFixed(2)}. Net options: ${evidence.netSubtotal.toFixed(2)}. Percentage additions, component base prices, account factors and freight remain separate. These are not customer selling prices.</p></details>
  {issues.length>0&&<div role="alert" className="text-sm text-amber-900">{issues.map(issue=><p key={issue.ruleId}>{issue.explanation}</p>)}</div>}
  </>;

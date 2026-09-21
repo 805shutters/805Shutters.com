@@ -1,3 +1,13 @@
+import { catalog } from "@/lib/quote/catalog";
+import { customerShutterDetails } from "@/lib/crm/customer-shutter-details";
+import { lotusObservedOffering } from "@/lib/quote/lotus-observed-offerings";
+import { parseRomanAncillary, romanAncillaryFabrics, ROMAN_ANCILLARY_RECORD, ROMAN_YARDAGE, ROMAN_PILLOWS } from "@/lib/quote/norman-roman-ancillary";
+import { parseValanceOnly, VALANCE_ONLY_KEY } from "@/lib/quote/norman-valance-only";
+import { parseRollerValance, ROLLER_VALANCE_KEY } from "@/lib/quote/norman-roller-valance-only";
+import { parseReplacementRequest, replacementColors, SMARTDRAPE_REPLACEMENT_RECORD } from "@/lib/quote/norman-smartdrape-replacement";
+import { findProductColorOption } from "@/lib/quote/product-color-options";
+import { parseOnyxBaselineRecord, onyxBaselineProfiles, onyxBaselineLabels, onyxBaselineSelectionErrors, ONYX_BASELINE_KEY } from "@/lib/quote/onyx-baseline-options";
+import { onyxWovenProfile } from "@/lib/quote/onyx-woven-options";
 import { parseRollerLightGuard, ROLLER_LIGHT_GUARD_KEY, ROLLER_LIGHT_GUARD_GROUP_KEY } from "@/lib/quote/norman-roller-light-guard";
 import { parseRollerPole, ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY } from "@/lib/quote/norman-roller-poles";
 import { parseRollerChain, ROLLER_CHAIN_KEY } from "@/lib/quote/norman-roller-chain";
@@ -6,7 +16,7 @@ import { parseRollerHardware, ROLLER_HARDWARE_KEY } from "@/lib/quote/norman-rol
 import { parseSmartfoldCharging, SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
 import { parseSmartfoldClearance, SMARTFOLD_CLEARANCE_KEY } from "@/lib/quote/norman-smartfold-clearance";
 import {SUNDANCE_VERTICAL_COMPONENT_KEY,sundanceVerticalComponentDescription} from "@/lib/quote/sundance/vertical-components";
-import {SUNDANCE_EUROPANEL_LAYOUT_KEY,sundanceEuropanelLayoutDescriptions} from "@/lib/quote/sundance/europanel-layout";
+import {SUNDANCE_EUROPANEL_LAYOUT_KEY,readSundanceEuropanelLayout} from "@/lib/quote/sundance/europanel-layout";
 import {SUNDANCE_PRIVACY_PIECES_KEY,sundancePrivacyPieceDescription} from "@/lib/quote/sundance/privacy-pieces";
 import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "@/lib/quote/sundance/walden-twin-records";
 import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "@/lib/quote/sundance/assembly-records";
@@ -45,6 +55,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  ROMAN_ANCILLARY_RECORD, ONYX_BASELINE_KEY,
   ROLLER_LIGHT_GUARD_KEY, ROLLER_LIGHT_GUARD_GROUP_KEY, "roller_light_guard_source_v1", ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY, "roller_pole_source_v1", ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED, ROLLER_CHAIN_KEY, "roller_chain_source_v1",
   "norman_valance_only_v1",
   "norman_valance_only_source_v1",
@@ -125,6 +136,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  details.push(...structuredCommercialDetails(design, options));
   const rollerGuard=parseRollerLightGuard(options[ROLLER_LIGHT_GUARD_KEY]);
   if(rollerGuard&&rollerGuard.kind!=="None"){details.push({label:"Light Guard",value:`${rollerGuard.kind} — ${rollerGuard.color}`});details.push({label:"Light Guard Channel Lengths",value:`Left ${rollerGuard.leftLength} inches; Right ${rollerGuard.rightLength} inches`});}
   const rollerPole=parseRollerPole(options[ROLLER_POLE_KEY]);
@@ -183,7 +195,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 
     if (key === SUNDANCE_VERTICAL_COMPONENT_KEY) {
-      const description=sundanceVerticalComponentDescription(value);if(description)details.push({label:"Vertical component",value:description});return;
+      const description=sundanceVerticalComponentDescription(value);if(description)details.push({label:"Vertical component",value:description.split(";")[0]});return;
     }
     if (key === SUNDANCE_PRIVACY_PIECES_KEY) {
       const description=sundancePrivacyPieceDescription(value);
@@ -191,7 +203,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
       return;
     }
     if (key === SUNDANCE_EUROPANEL_LAYOUT_KEY || key === SUNDANCE_ASSEMBLY_KEY || key === SUNDANCE_WALDEN_TWIN_KEY) {
-      for (const description of key === SUNDANCE_EUROPANEL_LAYOUT_KEY ? sundanceEuropanelLayoutDescriptions(value) : key === SUNDANCE_ASSEMBLY_KEY ? sundanceAssemblyDescriptions(value) : sundanceWaldenTwinDescriptions(value)) {
+      for (const description of key === SUNDANCE_EUROPANEL_LAYOUT_KEY ? (readSundanceEuropanelLayout(value)?.panels.map((panel, index) => `Panel ${index + 1}: ${panel.width ?? "unconfirmed"} × ${panel.height ?? "unconfirmed"} inches`) ?? []) : key === SUNDANCE_ASSEMBLY_KEY ? sundanceAssemblyDescriptions(value) : sundanceWaldenTwinDescriptions(value)) {
         const separator = description.indexOf(":");
         details.push({label:description.slice(0,separator),value:description.slice(separator+1).trim()});
       }
@@ -222,6 +234,9 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
       details.push({ label: "Measurements", value: value === "inside_opening" ? "Inside opening; manufacturer deducts ½ inch from width" : "Exact finished size; no manufacturer deduction" });
       return;
     }
+    // Unknown structured records are not a customer description. Preserve simple
+    // historical choices, but never recursively publish source or assembly JSON.
+    if (typeof value === "object" && (!Array.isArray(value) || value.some(item => item !== null && typeof item === "object"))) return;
     details.push({ label: humanizeKey(key), value: formatOptionValue(value) });
   });
 
@@ -232,6 +247,108 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
     details.push({ label, value: value.join(":").trim() });
   }
   return details;
+}
+
+/** Project saved purchase choices, never their source/routing/manufacturing records. */
+function structuredCommercialDetails(design: SalesQuoteDesign, options: Record<string, unknown>): QuoteDesignDetail[] {
+  const details: QuoteDesignDetail[] = customerShutterDetails(options);
+  const add = (label: string, value: string | null | undefined) => {
+    if (value) details.push({label, value});
+  };
+  const productId = stringValue(options.catalog_product_id) ?? stringValue(options.quote_lab_product_id);
+  const offering = lotusObservedOffering(String(options.lotus_observed_offering_id ?? ""));
+  if (offering && (!productId || offering.productId === productId)) {
+    const parts = offering.label.split(" — ");
+    add("Item", [...new Set(parts)].join(" — "));
+    add("SKU", offering.sku);
+  }
+
+  const ancillary = parseRomanAncillary(options[ROMAN_ANCILLARY_RECORD]);
+  if (ancillary) {
+    const kindProduct = ancillary.kind === "yardage" ? ROMAN_YARDAGE : ROMAN_PILLOWS;
+    if (!productId || productId === kindProduct) {
+      const color = romanAncillaryFabrics(kindProduct).find(row => row.colorCode === ancillary.colorCode);
+      if (color) add("Ancillary Fabric", `${color.collection} — ${color.colorCode} - ${color.colorName}`);
+      if (ancillary.kind === "yardage") {
+        if (ancillary.yards !== null && ancillary.yards > 0) add("Fabric Cut", `${ancillary.yards} yards per cut`);
+      } else {
+        if (ancillary.size) add("Pillow Cover", `${ancillary.size.replace("x", " × ")} inches; insert not included`);
+        if (ancillary.edge) add("Pillow Edge", ancillary.edge === "knife" ? "Knife edge" : "Piping");
+      }
+    }
+  }
+  const valance = parseValanceOnly(options[VALANCE_ONLY_KEY]);
+  if (valance) {
+    add("Valance Style", valance.style);
+    const color = findProductColorOption(valance.sourceProductId, valance.sourceColorId);
+    if (color) add("Valance Finish", `${color.colorCode} - ${color.publicColorName || color.colorName}`);
+    if (valance.innerLengthInches !== null && valance.innerLengthInches > 0) add("Valance Length", `${valance.innerLengthInches} inches inner length`);
+    add("Valance Returns", valance.returns);
+    if (valance.joinery === "Keystone" && valance.keystoneCount > 0) add("Valance Keystones", `${valance.keystoneCount} per valance`);
+  }
+  const rollerValance = parseRollerValance(options[ROLLER_VALANCE_KEY]);
+  if (rollerValance) {
+    add("Valance Style", rollerValance.style);
+    if (rollerValance.width !== null && rollerValance.width > 0) add("Valance Width", `${rollerValance.width} inches`);
+    add("Valance Fabric", rollerValance.fabricCode);
+    add("Fascia Color", rollerValance.fasciaColor);
+    add("End Cap Color", rollerValance.endCapColor);
+    if (rollerValance.joinery === "Keystone" && rollerValance.keystoneCount > 0) add("Valance Keystones", `${rollerValance.keystoneCount} per valance${rollerValance.keystoneShape ? `; ${rollerValance.keystoneShape}` : ""}`);
+  }
+  const replacement = parseReplacementRequest(options[SMARTDRAPE_REPLACEMENT_RECORD]);
+  if (replacement) {
+    if (replacement.style) add("Vane Pack", `Style ${replacement.style}; 6 vanes per pack`);
+    if (replacement.vaneLengthInches !== null && replacement.vaneLengthInches > 0) add("Vane Length", `${replacement.vaneLengthInches} inches`);
+    const codes = replacement.colorMode === "Alternating" ? [replacement.firstColor, replacement.secondColor] : [replacement.firstColor];
+    const colors = codes.map(code => replacementColors.find(row => row.customerColorCode === code)).filter(row => row !== undefined);
+    if (colors.length === codes.length) add("Vane Colors", `${replacement.colorMode}: ${colors.map(row => `${row.customerColorCode} - ${row.colorName}`).join(" / ")}`);
+  }
+
+  const baseline = parseOnyxBaselineRecord(options[ONYX_BASELINE_KEY]);
+  const profile = baseline && onyxBaselineProfiles.find(row => row.id === baseline.profileId);
+  if (baseline && profile && (!productId || productId === profile.productId)) {
+    const invalid = new Set(onyxBaselineSelectionErrors(profile, baseline));
+    for (const [key, value] of Object.entries(baseline.selections)) {
+      // The source menu stores the purchased Standard/Custom cord choice, not a measured length.
+      if (invalid.has(key) || !onyxBaselineLabels[key]) continue;
+      add(key === "cordLength" ? "Cord Choice" : onyxBaselineLabels[key], typeof value === "boolean" ? value ? "Yes" : "No" : value);
+    }
+  }
+  const woven = onyxWovenProfile(String(options.catalog_program_id ?? options.quote_lab_program_id ?? ""));
+  if (woven) {
+    add("Liner", woven.liners.find(row => row.id === options.onyx_woven_liner_id)?.label);
+    add("Edge Binding", woven.bindings.find(row => row.id === options.onyx_woven_binding_id)?.label);
+  }
+
+  const selections = Array.isArray(options.motorization_selections) ? options.motorization_selections : [];
+  const emitted = new Set<string>();
+  const motorItem = (groupId: string, optionId: string, units: number, scope: string) => {
+    const item = catalog.motorization[groupId]?.options.find(row => row.id === optionId);
+    if (!item || !Number.isInteger(units) || units <= 0) return;
+    const key = `${groupId}/${optionId}/${scope}`;
+    if (emitted.has(key)) return;
+    emitted.add(key);
+    add("Motorization Accessory", `${item.name} × ${units} ${scope}`);
+  };
+  for (const raw of selections) {
+    const selection = objectRecord(raw);
+    if (!selection || !["base_motor", "controller", "hub", "sensor", "power_supply", "accessory"].includes(String(selection.role)) || typeof selection.groupId !== "string" || typeof selection.optionId !== "string" || typeof selection.units !== "number" || ![undefined, "once_per_line"].includes(selection.billingScope as undefined | string)) continue;
+    motorItem(selection.groupId, selection.optionId, selection.units, selection.billingScope === "once_per_line" ? "for this line" : "per quoted unit");
+  }
+  const panel = objectRecord(options.norman_order_record_v1);
+  if (panel?.version === 1 && panel.chargePanel === true && panel.ownerLineId === design.line_item_id && ["automate_home", "norman_smart"].includes(String(panel.family))) {
+    motorItem(panel.family === "automate_home" ? "automate_home" : "smart_motorization", "power_distribution_panel", 1, "for this line");
+  }
+  const assembly = objectRecord(options.norman_assembly_v1);
+  const hub = objectRecord(assembly?.sharedHub);
+  if (hub?.version === 1 && hub.family === "automate_home" && hub.valid === true && hub.chargeHub === true && hub.ownerLineId === design.line_item_id && hub.fulfillmentQuantity === 1) {
+    motorItem("automate_home", "hub", 1, "for this line");
+  }
+  return details;
+}
+
+function objectRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
 function isInternalOptionKey(key: string): boolean {
@@ -267,18 +384,14 @@ function stringValue(value: unknown): string | null {
 }
 
 function formatOptionValue(value: unknown): string {
-  if (Array.isArray(value)) return value.map(formatOptionValue).join(", ");
-  if (typeof value === "object" && value !== null) {
-    return Object.entries(value as Record<string, unknown>)
-      .map(([key, val]) => `${humanizeKey(key)}: ${formatOptionValue(val)}`)
-      .join(", ");
-  }
+  if (Array.isArray(value)) return value.filter(item => item !== null && item !== undefined).map(formatOptionValue).join(", ");
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
 }
 
 function humanizeKey(key: string): string {
   const labels: Record<string, string> = {
+    onyx_order_type: "Shutter Type",
     smartfold_light_guard_recess: "Light Guard Recess Arrangement",
     smartfold_full_recess_depth_inches: "Available Full-Assembly Recess Depth (inches)",
     day_night_top_layer: "Top Shade Selection",

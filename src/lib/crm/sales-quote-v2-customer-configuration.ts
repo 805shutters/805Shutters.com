@@ -1,4 +1,6 @@
 import type { SelectionContext, SelectionValue } from "@/lib/quote-v2/core";
+import { catalog } from "@/lib/quote/catalog";
+import { customerShutterDetails } from "./customer-shutter-details";
 
 export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
   "quote_v2_customer_configuration" as const;
@@ -77,7 +79,7 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["measurement_basis", "Measurement basis"],
   ["size_type", "Size type"],
   ["order_type", "Order type"],
-  ["onyx_order_type", "Order type"],
+  ["onyx_order_type", "Shutter type"],
   ["lift_system", "Operating system"],
   ["honeycomb_operating_system", "Operating system"],
   ["operating_system", "Operating system"],
@@ -487,6 +489,17 @@ export function customerConfigurationFromSelection(
     }
     selections[key] = safe;
   }
+  // Some shutter choices live only in the typed factory record. Copy their
+  // customer meaning into existing public fields, never the record/geometry.
+  const shutterFields: Record<string, V2CustomerConfigurationKey> = {
+    "Shutter type": "shutter_type", "Specialty shape": "specialty_shape", "Frame": "frame_type",
+    "Panel configuration": "panel_configuration", "Motor": "motor_type", "Divider rail": "divider_rail",
+    "Track system": "track_system", "French-door cutout": "french_door_cutout",
+  };
+  for (const detail of customerShutterDetails(source)) {
+    const key = shutterFields[detail.label];
+    if (key && selections[key] == null) selections[key] = detail.value;
+  }
   return { manufacturerId, selections };
 }
 
@@ -535,10 +548,9 @@ function displayValue(key: string, value: SelectionValue): string {
       .map((entry) => {
         const component = plainRecord(entry);
         if (!component) return "";
-        const identity = [component.groupId, component.optionId]
-          .filter((item) => typeof item === "string" && item)
-          .map((item) => title(String(item)))
-          .join(" — ");
+        const identity = catalog.motorization[String(component.groupId)]?.options
+          .find(option => option.id === component.optionId)?.name;
+        if (!identity) return "";
         const units = Number(component.units);
         return `${identity}${Number.isInteger(units) && units > 1 ? ` × ${units}` : ""}`;
       })
@@ -562,6 +574,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
       if (key === "temporary_shade") return selected === true ? ["Complementary temporary paper shade: Free"] : [];
+      if (key === "order_type" && /^onyx$/i.test(configuration.manufacturerId)) return [`Shutter type: ${displayValue(key, selected)}`];
       if ((key === "control_side" || key === "chain_location") && (selected === null || selected === "")) return [];
       return [`${LABELS.get(key) ?? fallbackLabel}: ${displayValue(key, selected)}`];
     }),

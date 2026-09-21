@@ -11,7 +11,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
-import { customerQuoteOptions, customerQuoteProductName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
+import { customerQuoteOptions, customerQuoteProductName, customerQuoteStyleName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
@@ -645,7 +645,7 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
       ];
   const chargeLabels = customerChargeLabels(designCustomerCharges(design));
   const customerOptions = chargeLabels.length ? [...options.filter(option => !/^(installation|shipping):/i.test(option)), ...chargeLabels] : options;
-  return { productName, styleName: customerQuoteText(styleName, true), options: customerQuoteOptions(customerOptions), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
+  return { productName, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(customerOptions), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {

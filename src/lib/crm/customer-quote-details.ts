@@ -1,4 +1,4 @@
-import { customerQuoteOptions, customerQuoteText } from "./customer-quote-branding";
+import { customerQuoteOptions, customerQuoteStyleName } from "./customer-quote-branding";
 import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 
 export type QuoteProductDetail = {
@@ -89,7 +89,7 @@ function stripRepeatedLightControl(value: string, lightControl: string | undefin
  */
 export function quoteProductDetails(styleName: string, options: string[], presentation: { illustrated?: boolean } = {}): QuoteProductDetail[] {
   const hasTemporaryShadeCaption = presentation.illustrated && temporaryShadeSelected(options);
-  styleName = customerQuoteText(styleName, true);
+  styleName = customerQuoteStyleName(styleName);
   const parsed = customerQuoteOptions(options.filter((option) => !isInternalDetailLabel(splitDetail(option).label)))
     .map(splitDetail)
     .filter(({ label, value }) => label && value && !EMPTY_VALUES.has(normalized(value)));
@@ -97,6 +97,8 @@ export function quoteProductDetails(styleName: string, options: string[], presen
   const colorCode = parsed.find(({ label }) => normalized(label) === "fabric color code")?.value;
   const colorName = parsed.find(({ label }) => normalized(label) === "fabric color name")?.value;
   const colorType = parsed.find(({ label }) => normalized(label) === "fabric color type")?.value;
+  const selectedFabric = parsed.find(({ label }) => normalized(label) === "fabric")?.value;
+  const hasNoValance = parsed.some(({ label, value }) => normalized(label) === "valance" && normalized(value) === "no valance");
 
   const grouped = new Map<string, QuoteProductDetail>();
   const visibleValues: string[] = [];
@@ -107,6 +109,9 @@ export function quoteProductDetails(styleName: string, options: string[], presen
     const labelKey = normalized(detail.label);
     if (isInternalDetailLabel(detail.label)) continue;
     if (["fabric color code", "fabric color name", "fabric color type"].includes(labelKey)) continue;
+    if (hasNoValance && labelKey === "valance returns") continue;
+    if (selectedFabric && /^(?:roman )?fabric (?:color|collection|category)$/.test(labelKey)
+      && selectedFabric.split(/[|·]/).some(part => normalized(part) === normalized(detail.value))) continue;
 
     const value = labelKey === "fabric" ? stripRepeatedLightControl(detail.value, lightControl) : detail.value;
     const existing = grouped.get(labelKey);

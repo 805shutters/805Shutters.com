@@ -1,4 +1,4 @@
-/** Quote controls collect grid identity, billable dimensions and priced options.
+/** Quote controls collect grid identity, billable dimensions, priced options and customer finish/style choices.
  * Saved order evidence is retained, but is not requested by the quote builder.
  */
 const ORDER_EVIDENCE_FIELDS = new Set([
@@ -11,15 +11,13 @@ const ORDER_EVIDENCE_FIELDS = new Set([
   "honeycomb_wand_length", "honeycomb_wand_color", "honeycomb_pole_length", "honeycomb_mounting_plate", "honeycomb_magnet_color",
   "smartfold_chain_length", "smartfold_wand_length", "smartfold_wand_color",
   "perfectsheer_chain_length", "perfectsheer_chain_unobstructed", "perfectsheer_wand_length",
-  "smartdrape_charging_wand_length", "smartdrape_charging_wand_color",
   "citylights_wand_drop", "citylights_bracket_installation", "citylights_matching_group",
   "smartprivacy_wand_drop", "smartprivacy_bracket_installation", "smartprivacy_return_inches", "smartprivacy_matching_group",
   "wood_wand_drop", "wood_bracket_installation", "wood_matching_group", "wood_return_inches", "wood_keystone_layout",
   "wood_cutout_left_width", "wood_cutout_left_top", "wood_cutout_left_bottom",
   "wood_cutout_right_width", "wood_cutout_right_top", "wood_cutout_right_bottom",
   "wood_keystone_location_1", "wood_keystone_location_2", "wood_keystone_location_3",
-  "shelf_depth", "shelf_supported_weight_lbs",
-  "roman_banding_layout", "valance_returns", "wood_valance_returns",
+  "shelf_supported_weight_lbs",
   "installed_on_door", "door_application", "smartfold_side_by_side_id", "side_by_side_match_line_id",
   "honeycomb_mount_fit", "honeycomb_recess_depth_inches",
   "honeycomb_charging_port_recess_inches", "honeycomb_charging_opening_height_inches",
@@ -31,6 +29,7 @@ const ORDER_EVIDENCE_FIELDS = new Set([
   "citylights_mount_fit", "smartprivacy_mount_fit", "ultimate_mount_fit", "wood_mount_fit",
   "smartdrape_ceiling_attachment", "pocket_depth_inches", "pocket_height_inches",
   "existing_remote_work_order_number",
+  "honeycomb_remote_channel", "perfectsheer_remote_channel", "smartdrape_remote_channel",
   "offset_tilt_distance_inches", "onyx_tilt_section_count", "onyx_t_post_count",
   "flat_mounting_area_inches", "hardware_clearance_inches",
   "handle_center_from_bottom_inches", "lock_center_from_bottom_inches",

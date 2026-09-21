@@ -6099,7 +6099,7 @@ export function DesignCard({
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.productId && isLotusObservedProduct(manufacturerOptionsRoute.productId) ? (
-          <LotusObservedDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+          <LotusObservedDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
         ) : manufacturerOptionsRoute.status === "manual_quote" ? (
           <>
             <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
@@ -6114,9 +6114,9 @@ export function DesignCard({
           ) : manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
             <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} widthInches={widthIn} heightInches={heightIn} quantity={quantity} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
-            <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+            <NormanContractDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
-            <SanClementeDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+            <SanClementeDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : isShutters ? (
             <ShutterDesignOptions
               design={currentDesign}

@@ -9,8 +9,8 @@ describe('pricing-only quote input policy', () => {
     ['SmartFold and PerfectSheer magnets', ['magnet_left_clearance_inches', 'magnet_right_clearance_inches', 'magnet_bottom_clearance_inches']],
     ['CityLights, wood and faux wood', ['mount_depth_inches', 'citylights_mount_fit', 'smartprivacy_mount_fit', 'ultimate_mount_fit', 'wood_mount_fit']],
     ['SmartDrape', ['smartdrape_ceiling_attachment', 'pocket_depth_inches', 'pocket_height_inches']],
-    ['Unpriced construction details', ['shelf_depth', 'shelf_supported_weight_lbs', 'wood_cutout_left_width', 'wood_return_inches', 'roman_banding_layout', 'wood_keystone_location_1']],
-    ['Motorized products', ['existing_remote_work_order_number']],
+    ['Unpriced construction details', ['shelf_supported_weight_lbs', 'wood_cutout_left_width', 'wood_return_inches', 'wood_keystone_location_1']],
+    ['Motorized products', ['existing_remote_work_order_number', 'honeycomb_remote_channel', 'perfectsheer_remote_channel', 'smartdrape_remote_channel']],
     ['Onyx shutter installation evidence', ['available_depth_inches', 'opening_diagonal_difference_inches', 'flat_mounting_area_inches', 'hardware_clearance_inches', 'onyx_panel_1_width_inches', 'onyx_panel_24_height_inches', 'onyx_t_post_5_position_inches', 'onyx_tilt_section_3_inches']],
   ])('omits %s order measurements from quote controls', (_family, fields) => {
     for (const field of fields) {
@@ -24,6 +24,10 @@ describe('pricing-only quote input policy', () => {
     'mount_type', 'roman_shim_layers', 'wood_shim_layers', 'honeycomb_side_mount_kit',
     'honeycomb_light_guard', 'installation_method', 'smartfold_installation', 'motor_type', 'lift_system',
     'wood_cutout_left_type', 'wood_keystone_count', 'smartfold_common_gap_after', 'roman_remote_quantity',
+    'honeycomb_remote_quantity', 'perfectsheer_remote_quantity', 'smartdrape_remote_quantity',
+    'honeycomb_motor_network', 'perfectsheer_motor_network', 'smartdrape_motor_network', 'shared_power_panel_id',
+    'smartdrape_charging_wand_length', 'smartdrape_charging_wand_color', 'wood_valance_returns',
+    'roman_banding_layout', 'valance_returns', 'shelf_depth', 'color',
     'frame_type', 'louver_size', 'split_tilt', 'panel_config', 'roller_valance_width', 'unrecognized_priced_option',
   ])('preserves grid or priced option %s', field => {
     expect(isQuotePricingInput(field)).toBe(true);
@@ -38,8 +42,8 @@ describe('pricing-only quote input policy', () => {
       Object.freeze({ field: 'json:fabric_color_code', label: 'Fabric', value: saved.fabric_color_code }),
     ]);
     const visible = quotePricingInputs(options);
-    expect(visible).toEqual([options[2]]);
-    expect(visible[0]).toBe(options[2]);
+    expect(visible).toEqual([options[1], options[2]]);
+    expect(visible[1]).toBe(options[2]);
     expect(saved.mount_depth_inches).toBe(4);
     expect(options).toHaveLength(3);
   });
