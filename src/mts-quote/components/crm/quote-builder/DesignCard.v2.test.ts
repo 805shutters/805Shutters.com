@@ -1606,3 +1606,22 @@ describe("exact Onyx configuration entry", () => {
     expect(getDefiningSteps(legacy, false).map(step => step.field)).toContain("json:wood_route");
   });
 });
+
+
+describe("exact Norman configuration entry", () => {
+  it("opens every imported program from the catalog picker without legacy material subtype metadata", () => {
+    for (const [id, name] of [["woodlore", "Woodlore"], ["woodlore_plus", "Woodlore Plus"], ["woodlore_aquashield", "Woodlore Aquashield"], ["brightwood", "Brightwood"], ["normandy_painted", "Normandy Painted"], ["normandy_stained", "Normandy Stained"]]) {
+      const product = catalogProduct("norman_shutters", "Norman", [{id, name, priceAxis:"sqft"}], {productType:"Shutters"});
+      const patch = buildCatalogSelectionPatch({}, product, id);
+      const saved = JSON.parse(JSON.stringify({...buildDraftShutterDesign("A", true), ...patch})) as SalesQuoteDesign;
+      expect(isStandardShutterComplete(saved, true)).toBe(true);
+      const fields = getStandardShutterGridOptions(saved, true);
+      expect(fields.some(option => option.field === "louver_size")).toBe(true);
+      expect(fields.some(option => option.field === "mount_type")).toBe(true);
+      expect(fields.some(option => option.field === "json:color")).toBe(true);
+      expect(isStandardShutterComplete({...saved, material:null}, true)).toBe(false);
+      expect(isStandardShutterComplete({...saved, options_json:{...saved.options_json, catalog_program_id:"unknown"}}, true)).toBe(false);
+      expect(isStandardShutterComplete(saved, false)).toBe(false);
+    }
+  });
+});

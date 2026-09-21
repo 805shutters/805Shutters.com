@@ -3625,6 +3625,10 @@ export function isStandardShutterComplete(design: SalesQuoteDesign | undefined, 
   const opts = design.options_json as Record<string, string>;
 
   if (design.supplier === "Norman") {
+    if (authoritativeV2 && opts?.catalog_product_id === "norman_shutters") {
+      const program = normanShutterProgram(opts.catalog_program_id);
+      return Boolean(program && normanShutterProgram(design.material)?.id === program.id);
+    }
     if (!opts?.material_type) return false;
     if (opts.material_type === "Composite") return Boolean(normanShutterProgram(opts.composite_subtype));
     return !!design.material;
