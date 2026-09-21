@@ -23,6 +23,9 @@ export const QUOTE_V2_PRICING_POLICY_REVISION =
 
 export const QUOTE_V2_CATALOG_VERSION =
   `805-v2-norman-2026-07-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
+/** Owner-confirmed Onyx shutter retail identity. Not the Norman MSRP fall-through. */
+export const QUOTE_V2_ONYX_SHUTTERS_VERSION =
+  "805-v2-onyx-shutters-poly-composite-2026-07-27-r1" as const;
 export const QUOTE_V2_ROLLER_PREVIEW_VERSION =
   `805-v2-norman-roller-2026-08-01-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
 export const QUOTE_V2_POLAR_ALL_SEASONS_VERSION =
@@ -46,6 +49,7 @@ export function quoteV2CatalogVersionFor(
   if (isRomanAncillary(productId)) return ROMAN_ANCILLARY_VERSION;
   if (isRollerValance(productId)) return ROLLER_VALANCE_VERSION;
   if (isNormanValanceOnly(productId)) return VALANCE_ONLY_VERSION;
+  if (productId === "onyx_shutters") return QUOTE_V2_ONYX_SHUTTERS_VERSION;
   if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;
   if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r9`;
   if (productId === "roman" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-hardware-2026-09-19-r2`;

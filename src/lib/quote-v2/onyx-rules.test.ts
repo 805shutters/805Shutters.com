@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SelectionContext } from "./core";
 import {
+  ONYX_BINDER_PROGRAM_MATERIAL,
   ONYX_BINDER_SOURCE,
   ONYX_SHUTTER_RULE_STATUS,
   ONYX_US_MADE_VINYL_PRICE,
@@ -105,6 +106,44 @@ describe("Onyx source identity and safe status", () => {
       withConfiguration(selection(), { material: "Vinyl" }),
     );
     expect(matching(issues, "onyx.us_made_vinyl.exact_material_required")).toHaveLength(1);
+  });
+
+  it("recognizes Poly Composite as an exact binder program identity", () => {
+    expect(ONYX_BINDER_PROGRAM_MATERIAL.poly_composite).toBe("Poly Composite");
+    const poly = validateOnyxShutterRestrictions(
+      withConfiguration(
+        {
+          ...selection(),
+          programId: "poly_composite",
+          widthInches: 92,
+          heightInches: 71,
+        },
+        {
+          material: "Poly Composite",
+          measurement_basis: "window_size",
+          mount_type: "inside",
+          frame_type: "Vinyl Z Frame Small",
+          available_depth_inches: null,
+          opening_diagonal_difference_inches: null,
+          frame_extension_inches: null,
+          frame_sides: 4,
+          panel_configuration: "LLRR",
+          louver_size_inches: 3.5,
+          color_name: "White",
+          tilt_type: "hidden",
+          tilt_source_code: "H3 - Hidden Tiltrod In Stile",
+        },
+      ),
+    );
+    expect(matching(poly, "onyx.program.not_in_binder")).toHaveLength(0);
+    expect(matching(poly, "onyx.non_vinyl.rules_not_normalized")).toHaveLength(0);
+    expect(matching(poly, "onyx.source.current_effective_revision_missing")).toHaveLength(0);
+    expect(matching(poly, "onyx.panel.maximum_area_source_incomplete")).toHaveLength(0);
+    expect(poly.filter((issue) => issue.severity === "hard_block")).toEqual([]);
+    expect(evaluateOnyxShutterRestrictions({
+      ...selection(),
+      programId: "poly_composite",
+    }).productStatus).toBe("documented_limited");
   });
 
   it("does not apply Vinyl limits to Bassia or Hybrid by guess", () => {

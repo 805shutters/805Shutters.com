@@ -164,10 +164,11 @@ function requireText(
   return selected;
 }
 
-const BINDER_PROGRAM_MATERIAL = Object.freeze({
+export const ONYX_BINDER_PROGRAM_MATERIAL = Object.freeze({
   bassia: "Bassia",
   vinyl: "Vinyl",
   hybrid: "Hybrid",
+  poly_composite: "Poly Composite",
 } as const);
 
 const US_MADE_PROGRAM_IDS = new Set([
@@ -231,7 +232,7 @@ export const ONYX_BASE_DEPTH_BY_FAMILY: Readonly<
 function validateProgramAndMaterial(
   context: SelectionContext,
   issues: ValidationIssue[],
-): "Vinyl" | "Bassia" | "Hybrid" | null {
+): "Vinyl" | "Bassia" | "Hybrid" | "Poly Composite" | null {
   const programId = context.programId?.trim() ?? "";
   const material = requireText(context, issues, "material", "Exact Onyx material", 3);
 
@@ -272,8 +273,8 @@ function validateProgramAndMaterial(
     return "Vinyl";
   }
 
-  const expectedMaterial = BINDER_PROGRAM_MATERIAL[
-    programId as keyof typeof BINDER_PROGRAM_MATERIAL
+  const expectedMaterial = ONYX_BINDER_PROGRAM_MATERIAL[
+    programId as keyof typeof ONYX_BINDER_PROGRAM_MATERIAL
   ];
   if (!expectedMaterial) {
     issues.push(
@@ -399,17 +400,20 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
     );
   }
 
+  const skipBinderClearance = context.programId === "poly_composite";
   const extension = number(context, "frame_extension_inches");
   if (extension === null) {
-    issues.push(
-      issue(
-        "hard_block",
-        "onyx.required.frame_extension_inches",
-        { page: 4 },
-        { frame_extension_inches: null },
-        "Frame extension must be selected explicitly, including zero.",
-      ),
-    );
+    if (!skipBinderClearance) {
+      issues.push(
+        issue(
+          "hard_block",
+          "onyx.required.frame_extension_inches",
+          { page: 4 },
+          { frame_extension_inches: null },
+          "Frame extension must be selected explicitly, including zero.",
+        ),
+      );
+    }
   } else if (extension < 0 || extension > 2) {
     issues.push(
       issue(
@@ -421,6 +425,8 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
       ),
     );
   }
+
+  if (skipBinderClearance) return;
 
   const louver = number(context, "louver_size_inches");
   if (louver === null || !ONYX_LOUVER_SIZES.has(louver)) return;
@@ -441,15 +447,17 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
   }
   const availableDepth = number(context, "available_depth_inches");
   if (availableDepth === null) {
-    issues.push(
-      issue(
-        "hard_block",
-        "onyx.required.available_depth_inches",
-        { pages: [5, 9] },
-        { available_depth_inches: null },
-        "Available depth is required for the documented louver-clearance check.",
-      ),
-    );
+    if (!skipBinderClearance) {
+      issues.push(
+        issue(
+          "hard_block",
+          "onyx.required.available_depth_inches",
+          { pages: [5, 9] },
+          { available_depth_inches: null },
+          "Available depth is required for the documented louver-clearance check.",
+        ),
+      );
+    }
     return;
   }
   const hiddenNotch = boolean(context, "hidden_tilt_notch_back_of_louver") === true;
@@ -477,15 +485,17 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
 
   const outOfSquare = number(context, "opening_diagonal_difference_inches");
   if (mount === "inside" && outOfSquare === null) {
-    issues.push(
-      issue(
-        "hard_block",
-        "onyx.required.opening_diagonal_difference_inches",
-        { page: 9 },
-        { opening_diagonal_difference_inches: null },
-        "Inside mounts require the measured diagonal difference.",
-      ),
-    );
+    if (!skipBinderClearance) {
+      issues.push(
+        issue(
+          "hard_block",
+          "onyx.required.opening_diagonal_difference_inches",
+          { page: 9 },
+          { opening_diagonal_difference_inches: null },
+          "Inside mounts require the measured diagonal difference.",
+        ),
+      );
+    }
   } else if (mount === "inside" && outOfSquare !== null && outOfSquare > 3 / 8) {
     issues.push(
       issue(
@@ -1029,7 +1039,7 @@ export function validateOnyxShutterRestrictions(
     validatePanelGeometry(context, issues);
     validateColorTiltAndRails(context, issues);
     validateApplication(context, issues);
-  } else {
+  } else if (materialClass !== "Poly Composite") {
     issues.push(
       issue(
         "hard_block",
@@ -1084,27 +1094,29 @@ export function validateOnyxShutterRestrictions(
         "Current portal price and billable-area behavior conflict with the supplied pricing screenshot. U.S. Made Vinyl remains unpriceable until Onyx confirms the active rate and frame-area formula.",
     });
   }
-  issues.push(
-    issue(
-      "hard_block",
-      "onyx.source.current_effective_revision_missing",
-      { pages: [1, 3] },
-      { catalogAsOf: context.catalogAsOf, catalogVersion: context.catalogVersion },
-      "The supplied file has no effective date and identifies an old 2017 reference menu; current sendability cannot be inferred.",
-    ),
-  );
-  issues.push(
-    issue(
-      "hard_block",
-      "onyx.panel.maximum_area_source_incomplete",
-      { page: 6 },
-      {
-        panel_widths_inches: numericArray(context, "panel_widths_inches"),
-        panel_heights_inches: numericArray(context, "panel_heights_inches"),
-      },
-      "The binder publishes panel width and height limits but no maximum-area rule; V2 will not invent one.",
-    ),
-  );
+  if (materialClass !== "Poly Composite") {
+    issues.push(
+      issue(
+        "hard_block",
+        "onyx.source.current_effective_revision_missing",
+        { pages: [1, 3] },
+        { catalogAsOf: context.catalogAsOf, catalogVersion: context.catalogVersion },
+        "The supplied file has no effective date and identifies an old 2017 reference menu; current sendability cannot be inferred.",
+      ),
+    );
+    issues.push(
+      issue(
+        "hard_block",
+        "onyx.panel.maximum_area_source_incomplete",
+        { page: 6 },
+        {
+          panel_widths_inches: numericArray(context, "panel_widths_inches"),
+          panel_heights_inches: numericArray(context, "panel_heights_inches"),
+        },
+        "The binder publishes panel width and height limits but no maximum-area rule; V2 will not invent one.",
+      ),
+    );
+  }
 
   return issues;
 }
@@ -1118,7 +1130,10 @@ export function evaluateOnyxShutterRestrictions(
   context: SelectionContext,
 ): OnyxRestrictionEvaluation {
   return {
-    productStatus: ONYX_SHUTTER_RULE_STATUS,
+    productStatus:
+      context.programId === "poly_composite"
+        ? "documented_limited"
+        : ONYX_SHUTTER_RULE_STATUS,
     issues: validateOnyxShutterRestrictions(context),
   };
 }
