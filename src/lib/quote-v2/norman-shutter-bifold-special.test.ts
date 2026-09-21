@@ -1,3 +1,5 @@
+import {getStandardShutterGridOptions} from '@/mts-quote/components/crm/quote-builder/DesignCard';
+import type {SalesQuoteDesign} from '@mts/types/quote';
 import {describe,it,expect} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -49,6 +51,7 @@ describe('source-specific floating and frame-hinged construction',()=>{
   expect(parseNormanBifold90(emptyNormanBifold90())).not.toBeNull();const r=record('floating_90').bifold90!;expect(parseNormanBifold90({...r,floating:{...r.floating,optionalStopperPositionsInches:[NaN]}})).toBeNull();
   const f=record('frame_hinged').bifold90!;expect(parseNormanBifold90({...f,frameHinged:{...f.frameHinged,buildoutInches:2}})).toBeNull();
  });
+ it('only offers Rabbet in the saved frame-hinged line controls',()=>{const r=record('frame_hinged');const design={supplier:'Norman',material:'Woodlore',panel_config:'LL',options_json:{catalog_program_id:'woodlore',[NORMAN_SHUTTER_PANEL_RECORD]:r}} as unknown as SalesQuoteDesign;const join=getStandardShutterGridOptions(design,true).find(v=>v.key==='stile_join');expect(join&&'options'in join?join.options:null).toEqual(['Rabbet']);});
  it('offers source-specific controls without manufacturing-geometry substitution',()=>{
   const render=(kind:'floating_90'|'frame_hinged',p='woodlore')=>renderToStaticMarkup(createElement(NormanBifold90Options,{value:record(kind).bifold90!,programId:p,onChange:()=>{},onLayout:()=>{}}));
   const floating=render('floating_90');expect(floating).toContain('Norman Floating exact layout');expect(floating).toContain('Floating side boards');expect(floating).not.toContain('Window width (inches)');
