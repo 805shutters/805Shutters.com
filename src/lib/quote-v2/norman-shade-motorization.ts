@@ -1,4 +1,4 @@
-import {currentPerfectsheerHub,perfectsheerHub} from "./norman-perfectsheer-hub";
+import {currentSharedAutomateHub,sharedAutomateHub} from "./norman-shared-automate-hub";
 import { smartfoldCharging } from "./norman-smartfold-charging";
 import { romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
@@ -1121,13 +1121,11 @@ function resolveRoman(
     if (supplied.quantity > 0) canonicalSelections.push({...controller,units:supplied.quantity,billingScope:"once_per_line"});
   } else if (controller) canonicalSelections.push(controller);
   if (config.hubRequired === true && family !== "autowand") {
-    canonicalSelections.push(
-      canonicalSelection(
-        family === "norman_smart" ? "smart_motorization" : "automate_home",
-        "hub",
-        "hub",
-      ),
-    );
+    if(family === "automate_home" && currentSharedAutomateHub(context)) {
+      const hub=sharedAutomateHub(context);
+      if(!hub || !hub.valid)issues.push({severity:"hard_block",ruleId:"roman.motorization.hub_allocation",source:sourceProvenance("norman-motorization-guide-2026-09-16",{page:76}),selectedValues:{...context.configuration},explanation:"Connect this Roman shade to an identified Automate hub with at most 30 motors before pricing."});
+      else if(hub.chargeHub)canonicalSelections.push({...canonicalSelection("automate_home","hub","hub"),billingScope:"once_per_line"});
+    } else canonicalSelections.push(canonicalSelection(family === "norman_smart" ? "smart_motorization" : "automate_home","hub","hub"));
   }
 
   if (config.dcPowerSupply.includes("distribution panel")) {
@@ -1260,8 +1258,8 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
     if(suppliedControl.quantity > 0)components.push({...controller,units:suppliedControl.quantity,billingScope:"once_per_line"});
   } else if(controller) components.push(controller);
   if(config.hubRequired === true && motorFamily !== "autowand") {
-    if(currentPerfectsheerHub(context) && motorFamily === "automate_home") {
-      const hub=perfectsheerHub(context);
+    if(currentSharedAutomateHub(context) && motorFamily === "automate_home") {
+      const hub=sharedAutomateHub(context);
       if(!hub || !hub.valid)add("hub_allocation",76,"Connect this shade to an identified Automate hub with at most 30 motors before pricing.");
       else if(hub.chargeHub)components.push({...canonicalSelection(group,"hub","hub"),billingScope:"once_per_line"});
     } else components.push(canonicalSelection(group,"hub","hub"));

@@ -1,4 +1,4 @@
-import {derivePerfectsheerHubs} from "./norman-perfectsheer-hub";
+import {deriveSharedAutomateHubs} from "./norman-shared-automate-hub";
 import { rollerLightGuard, deriveRollerLightGuardGroups } from "./norman-roller-light-guard";
 import { rollerPoles, deriveRollerPoleOrder } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
@@ -129,7 +129,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const components=perfectsheerComponents(selection);
     if(components) selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:components};
   }
-  issues.push(...derivePerfectsheerHubs(lines));
+  issues.push(...deriveSharedAutomateHubs(lines));
   issues.push(...deriveSmartfoldSideBySide(lines));
   for (const {selection} of lines) {
     const valance=smartfoldValance(selection);

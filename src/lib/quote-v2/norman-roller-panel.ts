@@ -1,3 +1,4 @@
+import {sharedAutomateRollerContract} from "./norman-shared-automate-hub";
 import type {SelectionContext,SelectionRecord,ValidationIssue} from "./core";
 import {canonicalMotorizationSelectionsFromConfiguration,rollerBaseMotorUnitsForConfiguration,type RollerMotorizationContractResult,type CanonicalMotorizationSelection} from "./roller-motor-contract";
 import {sourceProvenance} from "./source-manifest";
@@ -9,7 +10,7 @@ export function rollerPhysicalMotorCount(s:SelectionContext):number|null {
 }
 /** Allocated panel is once per owner line in the existing published catalog engine. */
 export function rollerMotorizationForSelection(s:SelectionContext):RollerMotorizationContractResult|null {
- const base=canonicalMotorizationSelectionsFromConfiguration(s.configuration);if(!currentRollerPanel(s))return base;
+ const base=sharedAutomateRollerContract(s,canonicalMotorizationSelectionsFromConfiguration(s.configuration));if(!currentRollerPanel(s))return base;
  const c=s.configuration,panelRequested=/distribution panel/.test(norm(c.dc_power_supply));
  const explicitPanel=base?.selections.some(v=>/^(dc_)?power_distribution_panel$/.test(v.optionId));
  if(!panelRequested&&!explicitPanel)return base;

@@ -1,4 +1,5 @@
 import {normanBifold90Layouts} from '@/lib/quote/norman-shutter-bifold90';
+import { NormanSharedAutomateHubOptions } from "@/components/crm/NormanSharedAutomateHubOptions";
 import { NormanRollerLightGuardOptions } from "@/components/crm/NormanRollerLightGuardOptions";
 import { NormanRollerPoleOptions } from "@/components/crm/NormanRollerPoleOptions";
 import {SMARTFOLD_WAND_LENGTHS,SMARTFOLD_WAND_COLORS} from "@/lib/quote-v2/norman-smartfold-autowand";
@@ -6089,6 +6090,7 @@ export function DesignCard({
 
         {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && ["roller","roman"].includes(manufacturerOptionsRoute.productId??"") && <NormanSharedAutomateHubOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerChainOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerPoleOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerLightGuardOptions design={currentDesign} onUpdateFields={updateFields} /></>}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldClearanceOptions design={currentDesign} onUpdateFields={updateFields} />}
