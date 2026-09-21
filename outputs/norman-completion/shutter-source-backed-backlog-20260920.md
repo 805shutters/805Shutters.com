@@ -138,3 +138,7 @@ WLP124–125, BW123 and ND133 specify solid versus insert construction. The save
 AquaShield uses its independent table: Camber Deco is always solid; only the listed Vintage/Deep Bullnose/Deep Plain frame routes receive the other solid/insert assignments. Unlisted combinations remain explicitly unresolved, including new Mansard shapes and curved Z-frame cases not specified in the table. No construction is transferred from non-Aqua to Aqua by analogy. Exact geometry, hardware and pricing holds remain.
 
 35 focused tests pass, enumerating named shape groups across the four hardwood programs, Aqua exclusions, Mission eyebrow choice, malformed/old records and current server persistence/holds. Changed-file typecheck is clean with the same unrelated dependency limitations. Full release and production proof remain pending. This closes only the listed manufacturing assignments; incomplete shape/frame table coverage and special tilt/hinge hardware remain in the finite ledger.
+
+## Live-found inactive hinge finish refinement
+
+0353D exposed the generic hinge-color control even when the exact specialty record explicitly specified no hinges. Current typed no-hinge specialties now omit that control and skip irrelevant hinge-finish compatibility checks. Existing hinge metadata is retained unchanged for history; hinged, undeclared and historical-date configurations retain the prior checks.54 focused UI/server tests pass. This does not certify special hinge installation geometry or change any price hold.

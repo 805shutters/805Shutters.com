@@ -1,3 +1,4 @@
+import {emptyNormanSpecialtyRecord} from '@/lib/quote/norman-shutter-specialty';
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
@@ -1635,4 +1636,13 @@ describe("SmartFold control transitions", () => {
     expect(after).toMatchObject({motor_position:null, power_configuration:null, motorization_selections:[], hub_required:null, dc_power_supply:null, shared_power_panel_id:null, smartfold_charging_v1:null, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic"});
     expect(before.smartfold_charging_v1.extraChargingKits).toBe(2);
   });
+});
+
+it("omits hinge finishes only for current specialty records that explicitly have no hinges",()=>{
+ const specialty={...emptyNormanSpecialtyRecord(),shapeCode:'YS15',hinges:false};
+ const design={supplier:'Norman',material:'Woodlore Plus',hinge_color:'Pure White',options_json:{catalog_program_id:'woodlore_plus',norman_shutter_panels_v1:{version:1,application:'specialty',motor:'none',existingDoorGlassOrSidelight:false,panels:[{heightInches:24,widthInches:24,divider:'none'}],specialty}}} as unknown as SalesQuoteDesign;
+ expect(getStandardShutterGridOptions(design,true).some(o=>o.key==='hinge_color')).toBe(false);
+ expect(getStandardShutterGridOptions(design,false).some(o=>o.key==='hinge_color')).toBe(true);
+ specialty.hinges=true;expect(getStandardShutterGridOptions(design,true).some(o=>o.key==='hinge_color')).toBe(true);
+ expect(design.hinge_color).toBe('Pure White');
 });

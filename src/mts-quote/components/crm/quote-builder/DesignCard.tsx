@@ -4000,7 +4000,9 @@ export function getStandardShutterGridOptions(
 
   const normanOptions =
     (design?.options_json as Record<string, unknown> | undefined) || {};
-  const normanApplication = authoritativeV2 ? parseNormanPanelRecord(normanOptions[NORMAN_SHUTTER_PANEL_RECORD])?.application : undefined;
+  const normanPanelRecord = authoritativeV2 ? parseNormanPanelRecord(normanOptions[NORMAN_SHUTTER_PANEL_RECORD]) : null;
+  const normanApplication = normanPanelRecord?.application;
+  const noSpecialtyHinges = normanApplication === "specialty" && normanPanelRecord?.specialty?.hinges === false;
   const normanBypass = normanApplication === "bypass_closed" || normanApplication === "bypass_open";
   const normanTrack = normanApplication === "bifold_180" || normanBypass;
   const normanGridOptions: GridOption[] = [
@@ -4091,7 +4093,7 @@ export function getStandardShutterGridOptions(
       type: "yes-no",
     },
   ];
-  return normanGridOptions.filter(option => (normanApplication !== "specialty" || !["size_type", "frame_type", "frame_sides", "stile_width", "stile_join", "stile_profile", "panel_closure", "widest_panel_width_inches", "panel_config"].includes(option.key)) && (!normanTrack || !["size_type", "frame_type", "frame_sides", "stile_profile", "panel_closure"].includes(option.key)) && (!normanBypass || !["panel_config", "stile_width", "stile_join"].includes(option.key)));
+  return normanGridOptions.filter(option => (!noSpecialtyHinges || option.key !== "hinge_color") && (normanApplication !== "specialty" || !["size_type", "frame_type", "frame_sides", "stile_width", "stile_join", "stile_profile", "panel_closure", "widest_panel_width_inches", "panel_config"].includes(option.key)) && (!normanTrack || !["size_type", "frame_type", "frame_sides", "stile_profile", "panel_closure"].includes(option.key)) && (!normanBypass || !["panel_config", "stile_width", "stile_join"].includes(option.key)));
 }
 
 // --- Small grid components ---

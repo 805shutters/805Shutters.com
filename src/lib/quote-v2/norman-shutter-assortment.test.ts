@@ -1,3 +1,4 @@
+import {emptyNormanSpecialtyRecord} from '../quote/norman-shutter-specialty';
 import { describe, expect, it } from "vitest";
 import { NORMAN_SHUTTER_PROGRAMS, normanShutterColors, normanShutterLouvers, normanShutterFrames, normanShutterFrame } from "@/lib/quote/norman-shutter-assortment";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
@@ -87,4 +88,15 @@ describe("wood common-valance editor feedback",()=>{
     expect(woodSavedCommonForDisplay({...c,wood_keystone_count:3},saved,36,60,1)).toEqual({});
     expect(woodSavedCommonForDisplay({...c,[WOOD_COMMON_KEY]:{}},undefined,36,60,1)).toEqual({});
   });
+});
+
+
+it("does not validate inactive historic hinge color when a current specialty explicitly has no hinges",()=>{
+ const s=shutter('woodlore_aquashield','001 - Pure White');s.catalogAsOf='2026-09-20';
+ const specialty={...emptyNormanSpecialtyRecord(),shapeCode:'YS15',hinges:false};
+ s.configuration={...s.configuration,hinge_color:'Pure White',norman_shutter_panels_v1:{version:1,application:'specialty',motor:'none',existingDoorGlassOrSidelight:false,panels:[{heightInches:24,divider:'none'}],specialty}};
+ expect(validateNormanShutterAssortment(s).some(i=>i.ruleId.endsWith('.hinge'))).toBe(false);
+ specialty.hinges=true;expect(validateNormanShutterAssortment(s).some(i=>i.ruleId.endsWith('.hinge'))).toBe(true);
+ specialty.hinges=false;expect(validateNormanShutterAssortment({...s,catalogAsOf:'2026-09-19'}).some(i=>i.ruleId.endsWith('.hinge'))).toBe(true);
+ expect(s.configuration.hinge_color).toBe('Pure White');
 });
