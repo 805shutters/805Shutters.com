@@ -721,7 +721,9 @@ export function selectionContextFromExactInterface(
     alias(
       configuration,
       "mount_type",
-      canonicalOnyxMount(sourceOptions.shutter_mount_type ?? design.mount_type),
+      /semi[- ]?inside/i.test(String(sourceOptions.shutter_mount_type ?? design.mount_type ?? ""))
+        ? "semi-inside"
+        : canonicalOnyxMount(sourceOptions.shutter_mount_type ?? design.mount_type),
     );
     alias(
       configuration,

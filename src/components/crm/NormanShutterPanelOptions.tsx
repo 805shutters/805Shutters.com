@@ -1,4 +1,5 @@
 "use client";
+import {NormanShutterBypassOptions} from "./NormanShutterBypassOptions";
 import {NormanShutterDividerOptions} from "./NormanShutterDividerOptions";
 import {normanShutterUsesSillSupport} from '@/lib/quote/norman-shutter-bottom-support';
 import {NormanShutterBottomSupportOptions} from './NormanShutterBottomSupportOptions';
@@ -22,10 +23,11 @@ export function NormanShutterPanelOptions({design,onUpdateFields}:{design:SalesQ
  const [draft,setDraft]=useState(()=>createNormanPanelDraft(identity,incoming));
  useEffect(()=>{setDraft(previous=>syncNormanPanelDraft(previous,identity,JSON.parse(serialized) as NormanShutterPanelRecord));},[identity,serialized]);
  const record=draft.draft;
+ const bypassApplication=['bypass_closed','bypass_open'].includes(record.application);
  const update=(patch:Partial<NormanShutterPanelRecord>)=>setDraft(previous=>editNormanPanelDraft(previous,patch));
  const updatePanel=(index:number,patch:Partial<NormanShutterPanelRecord['panels'][number]>)=>setDraft(previous=>editNormanPanelDraft(previous,{panels:previous.draft.panels.map((panel,i)=>i===index?{...panel,...patch}:panel)}));
  const unsaved=hasUnsavedNormanPanelDraft(draft);
- const save=()=>{onUpdateFields({...(record.application==='bifold_180'&&record.bifold180?.layout?{panel_config:record.bifold180.layout}:{}),options_json:{...options,...(record.panels.some(p=>(p.dividerDetails?.splitTiltCentersInches.length??0)>0)?{split_tilt:"Yes"}:{}),[NORMAN_SHUTTER_PANEL_RECORD]:record}});setDraft(previous=>submitNormanPanelDraft(previous));};
+ const save=()=>{onUpdateFields({...(bypassApplication&&record.bypass?.mount?{mount_type:record.bypass.mount}:{}),...(record.application==='bifold_180'&&record.bifold180?.layout?{panel_config:record.bifold180.layout}:{}),options_json:{...options,...(record.panels.some(p=>(p.dividerDetails?.splitTiltCentersInches.length??0)>0)?{split_tilt:"Yes"}:{}),[NORMAN_SHUTTER_PANEL_RECORD]:record}});setDraft(previous=>submitNormanPanelDraft(previous));};
  const cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  return <section data-testid="norman-shutter-panel-options" className="space-y-3 rounded-lg border border-slate-200 p-3">
   <div className="font-semibold">Finished panel construction</div>
@@ -39,10 +41,11 @@ export function NormanShutterPanelOptions({design,onUpdateFields}:{design:SalesQ
    <NormanBifold180ConstructionOptions value={record.bifold180?.construction} aqua={aqua} onChange={construction=>update({bifold180:{version:1,layout:record.bifold180?.layout??'',flatMountingSurface:record.bifold180?.flatMountingSurface??false,construction}})}/>
    <p className="text-sm text-amber-900">Outside Mount only. Save this schedule to update the panel layout. Header, casing, baseboard, stiles and track hardware still require manufacturer verification.</p>
   </div>}
-  {record.application!=='bifold_180'&&count!==null&&record.panels.length!==count&&<button type="button" className={cls} onClick={()=>update({panels:Array.from({length:count},()=>({heightInches:null,divider:''}))})}>Reset panel measurements for this {count}-panel layout</button>}
-  {record.application!=='bifold_180'&&count===null&&<p className="text-sm text-amber-900">This layout needs a manufacturer-reviewed panel schedule.</p>}
+  {bypassApplication&&<NormanShutterBypassOptions value={record.bypass} onChange={bypass=>update({bypass})} onTwoPanels={()=>update({panels:Array.from({length:2},(_,i)=>record.panels[i]??{heightInches:null,widthInches:null,divider:''})})}/>}
+  {!bypassApplication&&record.application!=='bifold_180'&&count!==null&&record.panels.length!==count&&<button type="button" className={cls} onClick={()=>update({panels:Array.from({length:count},()=>({heightInches:null,divider:''}))})}>Reset panel measurements for this {count}-panel layout</button>}
+  {!bypassApplication&&record.application!=='bifold_180'&&count===null&&<p className="text-sm text-amber-900">This layout needs a manufacturer-reviewed panel schedule.</p>}
   {record.panels.map((panel,index)=><div key={index} className="grid grid-cols-2 gap-3">
-   {record.application==='bifold_180'&&<label className="text-sm">Panel {index+1} finished width (inches)<input aria-label={`Norman panel ${index+1} finished width`} className={cls} type="number" step="0.0625" min="6" value={panel.widthInches??''} onChange={e=>updatePanel(index,{widthInches:e.target.value===''?null:Number(e.target.value)})}/></label>}
+   {(record.application==='bifold_180'||bypassApplication)&&<label className="text-sm">Panel {index+1} finished width (inches)<input aria-label={`Norman panel ${index+1} finished width`} className={cls} type="number" step="0.0625" min="6" value={panel.widthInches??''} onChange={e=>updatePanel(index,{widthInches:e.target.value===''?null:Number(e.target.value)})}/></label>}
    <label className="text-sm">Panel {index+1} finished height (inches)<input aria-label={`Norman panel ${index+1} finished height`} className={cls} type="number" step="0.0625" min="10" value={panel.heightInches??''} onChange={e=>updatePanel(index,{heightInches:e.target.value===''?null:Number(e.target.value)})}/></label>
    <label className="text-sm">Panel {index+1} divider rail<select aria-label={`Norman panel ${index+1} divider rail`} className={cls} value={panel.divider} onChange={e=>updatePanel(index,{divider:e.target.value as 'none'|'present'|''})}><option value="">Select</option><option value="none">No divider rail</option><option value="present">Divider rail present</option></select></label>
    {panel.divider==='present'&&<NormanShutterDividerOptions value={panel.dividerDetails} panelNumber={index+1} programId={program?.id??''} louver={design?.louver_size} onChange={dividerDetails=>updatePanel(index,{dividerDetails})}/>}

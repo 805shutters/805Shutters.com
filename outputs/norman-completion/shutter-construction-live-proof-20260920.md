@@ -1,0 +1,7 @@
+# Norman shutter construction live proof
+
+Internal native quote **805-0353**, customer `Norman Shutter Construction Internal Verification 2026-09-20`. No customer contact information; internal notes prohibit sending, selling or ordering. Draft only.
+
+On deployed ce375e05, selected Norman Shutters / Woodlore through the exact price-program picker. Saved 48×60-inch Office opening, Bi-fold 180 LL, no motor, two finished panels each 24×60 inches without divider rails, flat mounting surface confirmed, no casing, measured reference 48×60, 3-inch header, plain fascia, zero header extension/baseboard/buildout, required bottom pivot L bracket and 1.75-inch light-block extension. Displayed source frame reference 51.5×64.5. Closed builder, located 805-0353 and reopened: all of these fields persisted. Pricing remained incomplete and Send Quote/Payment Link disabled.
+
+**Defect found:** top program selection omitted old material_type/composite_subtype metadata, causing the separate louver/color/mount/stile grid to stay hidden. Fixed in 795fbc91 with saved catalog-selection round-trip tests across all six programs. No destructive same-program reselect workaround was used. Live option and saved negative-width proof await that deployment; the intermediate panel-width edit was restored to 24 inches before close/reopen. Do not claim the pricing engine verified an invalid width while required choices were inaccessible.

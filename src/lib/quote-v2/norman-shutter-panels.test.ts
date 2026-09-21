@@ -50,7 +50,7 @@ describe('Norman exact finished-panel heights and divider requirements',()=>{
  it('prohibits AquaShield Open Bypass and retains specialized geometry holds',()=>{
   const r={...record(),application:'bypass_open'} as const;
   expect(ids(context('woodlore_aquashield',r))).toContain('aquashield_open_bypass');
-  expect(ids(context('woodlore_plus',r))).toEqual(['application_geometry']);
+  expect(ids(context('woodlore_plus',r))).toEqual(['application_geometry','norman.shutter.bypass.record_required']);
   const issue=validateNormanShutterPanels(context('woodlore_aquashield',r)).find(i=>i.ruleId.endsWith('aquashield_open_bypass'))!;
   expect(issue.source.pages).toEqual([93]);expect(issue.source.sourceId).toBe('norman-woodlore-plus-binder-2026-09');
  });
