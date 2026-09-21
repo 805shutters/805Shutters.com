@@ -1,3 +1,4 @@
+import {sundancePrivacyPieceEvidence} from './privacy-pieces';
 import type {SelectionContext,ValidationIssue} from '@/lib/quote-v2/core';
 import {sourceProvenance} from '@/lib/quote-v2/source-manifest';
 import {lookupSundanceSourceGrid} from './catalog';
@@ -70,6 +71,7 @@ export function validateSundanceShadeConfiguration(s:Pick<SelectionContext,'prod
  if(!['Single','Two on one','Dual independent','Coupled motorized'].includes(assembly))add('assembly','Choose single or explicitly identify a multi-shade assembly.');
  else if(assembly!=='Single')add('components','Multiple shades require individual fabric, width, height, control and price records. A bracket/coupler charge is not the complete assembly price.');
  if(kind==='roller'){
+  for(const message of sundancePrivacyPieceEvidence(c).issues)add('privacy_pieces',message,source.optionPage);
   if(!['None','Aluminum side channels','Solar bar'].includes(String(c.sundance_shade_privacy)))add('privacy','Choose none or a documented privacy accessory.');
   if(c.sundance_shade_fabric_insert!=null&&!['No','Yes'].includes(String(c.sundance_shade_fabric_insert)))add('insert_choice','Fabric insert must be Yes or No.');
   if(c.sundance_shade_hold_down!=null&&!['No','Yes'].includes(String(c.sundance_shade_hold_down)))add('hold_down','Hold-down brackets must be Yes or No.');
@@ -125,8 +127,9 @@ export function sundanceShadeOptionEvidence(p:string,program:string,c:Record<str
   if(c.sundance_shade_tube==='2½-inch'&&width>=120.125&&width<=144)add('Oversize 2½-inch tube',173,'net');
   else if(c.sundance_shade_tube==='3¼-inch'&&width>=145&&width<=196)add('Oversize 3¼-inch tube',290,'net');
   else if(c.sundance_shade_tube&&c.sundance_shade_tube!=='Standard')unresolved.push('The chosen oversized-tube charge is not defined for this width band, including the 144–145-inch gap.');
-  if(c.sundance_shade_privacy==='Aluminum side channels')unresolved.push('Side channels:14 net/foot; exact accessory lengths/quantities and rounding require confirmation.');
-  if(c.sundance_shade_privacy==='Solar bar')unresolved.push('Solar bar:3 net/foot; exact accessory lengths/quantities and rounding require confirmation.');
+  const privacy=sundancePrivacyPieceEvidence(c);
+  if(privacy.sourceNet!=null)add(`${c.sundance_shade_privacy}: ${privacy.feet} measured feet`,privacy.sourceNet,'net');
+  unresolved.push(...privacy.issues);
  }
  for(const a of sundanceShadeAccessories(p)){const q=Number(c[sundanceShadeAccessoryKey(a.key)]??0);if(Number.isSafeInteger(q)&&q>0&&a.power.includes(control?.power??''))add(`${a.label} × ${q}`,q*a.net,'net',a.page);}
  unresolved.push(...sundanceShadeAccessoryIssues(p,c).map(r=>r.explanation));

@@ -1,3 +1,4 @@
+import {SUNDANCE_PRIVACY_PIECES_KEY,sundancePrivacyPieceDescription} from "./sundance/privacy-pieces";
 import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "./sundance/walden-twin-records";
 import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "./sundance/assembly-records";
 import { SUNDANCE_DRAPERY_TRACK_ID, sundanceDraperyTrackFields } from "./sundance/drapery-track";
@@ -1089,6 +1090,7 @@ export function getMotorizationGroupsForProduct(productId: string): string[] {
 }
 
 export function detailDisplayValue(productId: string, fieldId: string, value: unknown): string | null {
+  if(productId.startsWith("sundance_") && fieldId === SUNDANCE_PRIVACY_PIECES_KEY) return sundancePrivacyPieceDescription(value);
   if(productId.startsWith("sundance_walden_") && fieldId === SUNDANCE_WALDEN_TWIN_KEY) return sundanceWaldenTwinDescriptions(value).join(" | ") || null;
   if(productId.startsWith("sundance_") && fieldId === SUNDANCE_ASSEMBLY_KEY) return sundanceAssemblyDescriptions(value).join(" | ") || null;
   const field = getDetailFieldsForProduct(productId).find((f) => f.id === fieldId);

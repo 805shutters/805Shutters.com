@@ -39,6 +39,7 @@ export function sundanceComponentConfiguration(configuration: Record<string, unk
   const next: Record<string, unknown> = {...configuration};
   delete next[SUNDANCE_ASSEMBLY_KEY];
   delete next.sundance_walden_twin_v1;
+  delete next.sundance_privacy_pieces_v1;
   delete next.sundance_order_power_v1;
   delete next.sundance_simphony_panel_id;
   for (const key of Object.keys(next)) {

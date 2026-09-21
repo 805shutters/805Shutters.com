@@ -1,10 +1,11 @@
 'use client';
+import {SundancePrivacyPieces} from './SundancePrivacyPieces';
 import type {SalesQuoteDesign} from '@mts/types/quote';
 import type {SelectionRecord} from '@/lib/quote-v2/core';
 import {sundanceShadeKind,sundanceShadeControls,sundanceShadeTopOptions,sundanceRollerChains,sundanceRollerFinishes,validateSundanceShadeConfiguration,sundanceShadeOptionEvidence,sundanceShadeConfigurationPatch,sundanceShadeAccessories,sundanceShadeAccessoryKey} from '@/lib/quote/sundance/shade-configuration';
 export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthInches=0,heightInches=0,onUpdateFields}:{productId:string;options:Record<string,unknown>;widthInches?:number;heightInches?:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
  const kind=sundanceShadeKind(p),program=String(c.catalog_program_id??''),control=sundanceShadeControls(p).find(r=>r.name===c.sundance_shade_control),classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
- const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...c,[key]:value||null}});
+ const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...c,[key]:value||null,...(key==='sundance_shade_privacy'?{sundance_privacy_pieces_v1:null}: {})}});
  const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance shade ${label}`} className={classes} value={String(c[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
  const issues=validateSundanceShadeConfiguration({productId:p,programId:program,widthInches,heightInches,configuration:c as SelectionRecord}),evidence=sundanceShadeOptionEvidence(p,program,c,widthInches);
  return <>
@@ -27,6 +28,7 @@ export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthIn
  {select('sundance_shade_privacy','Privacy accessory',['None','Aluminum side channels','Solar bar'])}
  {c.sundance_shade_privacy==='Aluminum side channels'&&select('sundance_shade_privacy_color','Privacy accessory color',['White','Silver','Black'])}
  {c.sundance_shade_privacy==='Solar bar'&&select('sundance_shade_privacy_color','Privacy accessory color',['White','Ivory','Gray','Bronze','Black'])}
+ <SundancePrivacyPieces options={c} onChange={options=>onUpdateFields({options_json:options})}/>
  {c.sundance_shade_assembly==='Dual independent'&&select('sundance_shade_dual_bracket','Dual bracket',['Vertical','Small 45-degree','Large 45-degree','5-inch fascia dual'])}
  {control?.power!=='manual'&&select('sundance_shade_tube','Tube',['Standard','2½-inch','3¼-inch'])}
  </>}
