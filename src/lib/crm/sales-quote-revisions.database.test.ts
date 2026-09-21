@@ -7,8 +7,9 @@ const actor = id(50), account = '72ccf12a-11c0-4261-8ad0-31af8ad0bbfb';
 beforeAll(async () => {
  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
  create schema auth; create function auth.role() returns text language sql as $$select coalesce(current_setting('test.auth_role',true),'service_role')$$;
+ create function auth.uid() returns uuid language sql as $$select null::uuid$$;
  create table crm_profiles(id uuid primary key,email text,active boolean default true);
- create table sales_quotes(id uuid primary key default gen_random_uuid(),quote_number text,account_id uuid,status text default 'draft',customer_name text,customer_email text,customer_phone text,customer_address text,appointment_date date,installer_notes text,product_cost numeric default 0,total_amount numeric default 0,profit_amount numeric default 0,manufacturer_cost numeric default 0,created_by uuid,sales_owner text,sales_owner_auth_user_id uuid,sales_owner_set_at timestamptz,quote_group_id uuid,quote_letter text default 'A',quote_v2_backend boolean default false,quote_v2_revision bigint default 1,quote_v2_status text default 'legacy',quote_v2_catalog_version text,quote_v2_accepted_selection jsonb,quote_v2_last_priced_at timestamptz,signed_at timestamptz,customer_signature text,deposit_paid numeric default 0,balance_paid numeric default 0,share_token text default gen_random_uuid()::text,sent_at timestamptz,ordered_at timestamptz,created_job_id uuid);
+ create table sales_quotes(id uuid primary key default gen_random_uuid(),quote_number text,account_id uuid,status text default 'draft',customer_name text,customer_email text,customer_phone text,customer_address text,appointment_date date,installer_notes text,product_cost numeric default 0,total_amount numeric default 0,profit_amount numeric default 0,manufacturer_cost numeric default 0,created_by uuid,sales_owner text,sales_owner_auth_user_id uuid,sales_owner_set_at timestamptz,quote_group_id uuid,quote_letter text default 'A',quote_v2_backend boolean default false,quote_v2_revision bigint default 1,quote_v2_status text default 'legacy',quote_v2_catalog_version text,quote_v2_accepted_selection jsonb,quote_v2_delivery_id uuid,customer_printed_name text,quote_v2_last_priced_at timestamptz,signed_at timestamptz,customer_signature text,deposit_paid numeric default 0,balance_paid numeric default 0,share_token text default gen_random_uuid()::text,sent_at timestamptz,ordered_at timestamptz,created_job_id uuid);
  create table sales_quote_line_items(id uuid primary key default gen_random_uuid(),quote_id uuid references sales_quotes,room_name text,product_type text,width_whole int,width_fraction text,height_whole int,height_fraction text,quantity int default 1,sort_order int,selected_design_id uuid,archived_at timestamptz,order_status text default 'outstanding',ordered_at timestamptz);
  create table sales_quote_designs(id uuid primary key default gen_random_uuid(),line_item_id uuid references sales_quote_line_items on delete cascade,variant text,product_type text,unit_price numeric default 0,options_json jsonb default '{}',quote_v2_selection jsonb default '{}',quote_v2_price_status text,quote_v2_selection_fingerprint text,quote_v2_priced_catalog_version text,quote_v2_priced_at timestamptz,current_v2_snapshot_id uuid,created_at timestamptz default now(),unique(line_item_id,variant),unique(id,line_item_id));
  create table sales_quote_v2_price_snapshots(id uuid primary key default gen_random_uuid(),quote_id uuid,line_item_id uuid,design_id uuid,quote_revision bigint,selection_fingerprint text,catalog_version text,retail_total numeric,internal_landed_cost_total numeric not null,retail_snapshot jsonb,internal_cost_snapshot jsonb,validation_snapshot jsonb,provenance_snapshot jsonb,created_by uuid,created_at timestamptz default now(),unique(id,design_id));
@@ -18,10 +19,15 @@ beforeAll(async () => {
  create table sales_quote_v2_customer_send_preparations(id uuid);
  create table sales_quote_v2_draft_requests(idempotency_key text primary key,request_hash text,actor_id uuid,quote_id uuid unique,result jsonb);
  create table sales_quote_v2_events(id uuid primary key default gen_random_uuid(),quote_id uuid,event_type text,previous_revision bigint,new_revision bigint,actor_id uuid,idempotency_key text,event_payload jsonb,unique(quote_id,new_revision));
- create sequence quote_numbers;
- create function next_quote_number(text) returns text language sql as $$select $1||'-'||nextval('quote_numbers')::text$$;
  create function reject_v2_audit_mutation() returns trigger language plpgsql as $$begin raise exception 'Immutable history';end$$;`);
- for (const file of ['20260911173000_staff_line_price_overrides.sql','20260912002500_line_price_contract_totals.sql','20260914231500_customer_installation_shipping_snapshots.sql','20260921120000_manual_customer_installation_policy.sql','20260921204000_edit_finalized_quote_revision.sql','20260921230000_preserve_accepted_revision_scope.sql']) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
+ // Load the actual browser allocator: service-role requests have no auth.uid().
+ const legacy=readFileSync('supabase/migrations/20260624093000_port_sales_quote_builder_to_805.sql','utf8');
+ await db.exec(legacy.slice(legacy.indexOf('create or replace function public.is_805_crm_user()'),legacy.indexOf('create table if not exists public.sales_quotes')));
+ await db.exec(legacy.slice(legacy.indexOf('create or replace function public.next_quote_number('),legacy.indexOf('drop trigger if exists sales_quotes_updated_at')));
+ // Real immutable-delivery triggers must allow copying while protecting originals.
+ const delivery=readFileSync('supabase/migrations/20260910190000_native_quote_customer_delivery.sql','utf8');
+ await db.exec(delivery.slice(delivery.indexOf('create function public.protect_native_quote_delivery()'),delivery.indexOf('create trigger freeze_native_crm_quote')));
+ for (const file of ['20260911173000_staff_line_price_overrides.sql','20260912002500_line_price_contract_totals.sql','20260914231500_customer_installation_shipping_snapshots.sql','20260921120000_manual_customer_installation_policy.sql','20260921204000_edit_finalized_quote_revision.sql','20260921230000_preserve_accepted_revision_scope.sql','20260921233000_fix_revision_service_number_allocation.sql']) await db.exec(readFileSync(`supabase/migrations/${file}`, 'utf8'));
  // Mirror the already-deployed active-line read contract for the real manual RPC.
  await db.exec('create view sales_quote_active_line_items as select * from sales_quote_line_items where archived_at is null');
  const manualDefinition=(await db.query<{definition:string}>("select pg_get_functiondef('set_sales_quote_line_price(uuid,uuid,text,numeric,uuid,bigint,uuid,boolean)'::regprocedure) as definition")).rows[0].definition;
@@ -241,4 +247,20 @@ it('marks an accepted companion-dependent price incomplete when its companion wa
  const dependent=(await db.query<any>("select d.* from sales_quote_line_items li join sales_quote_designs d on d.id=li.selected_design_id where li.quote_id=$1 and li.room_name='Accepted second'",[r.quoteId])).rows[0];
  expect(dependent.quote_v2_price_status).toBe('blocked');expect(dependent.options_json.authoritative_price_error).toMatch(/connected product was not accepted/i);
  expect(r.quote.quote_v2_status).toBe('blocked');
+});
+
+it('allocates a revision number under the native lock with no auth.uid while real freeze triggers protect the delivered original',async()=>{
+ expect((await db.query<any>('select auth.uid() as uid')).rows[0].uid).toBeNull();
+ await expect(db.query("select next_quote_number('805')")).rejects.toThrow(/805 CRM authentication is required/);
+ const s=await source(28);
+ await db.query("update sales_quotes set quote_number='805-0999',quote_v2_delivery_id=$1 where id=$2",[id(928),s.q]);
+ const original=await row('sales_quotes',s.q),originalLine=await row('sales_quote_line_items',s.l);
+ await expect(db.query('update sales_quotes set total_amount=125 where id=$1',[s.q])).rejects.toThrow(/frozen this quote version/);
+ await expect(db.query('delete from sales_quote_line_items where id=$1',[s.l])).rejects.toThrow(/frozen this configuration/);
+ const r=await revise(s.q,s.l,178,'manual-price',125);
+ expect(r.quote.quote_number).toBe('805-1000');expect(r.quote.quote_v2_delivery_id).toBeNull();
+ expect(r.total).toBe(303); // 125 x2 less existing10% merchandise discount, +39 x2 fixed charges.
+ expect(await row('sales_quotes',s.q)).toEqual(original);expect(await row('sales_quote_line_items',s.l)).toEqual(originalLine);
+ const second=await revise(s.q,s.l,179,'delete');expect(second.quote.quote_number).toBe('805-1001');
+ await expect(db.query("select next_quote_number('805')")).rejects.toThrow(/805 CRM authentication is required/);
 });

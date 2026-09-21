@@ -36,3 +36,13 @@ Three motorized NA400 Roller lines automatically recovered: 101 × 88 at $1,462;
 ## Remaining source exceptions
 
 Account-specific and absent source prices remain explicit (including provisional Norman shutter dealer-cost schedules and the catalog holds listed in manufacturer ledgers). No dealer factor or selling-price policy was silently changed. Customer prices are not fabricated to remove a warning.
+
+## Final production verification
+
+Application release `0484c395` deployed to `https://www.805shutters.com` with 8,276 tests passing (28 skipped), successful typecheck and production build. The real sent-quote check exposed the legacy browser-only quote-number allocator; follow-up migration `20260921233000_fix_revision_service_number_allocation.sql` corrects only the authenticated revision function's allocator. Its 21 database tests include the actual authentication helper and frozen-quote triggers; migration applied and live retested successfully.
+
+- 805-0387: added a Roman line with no size, fabric or program. Explicit $0 merchandise override saved as $39 including the unchanged $25 installation/$14 shipping. The line then deleted successfully; saved active-line count is zero and total is zero, with historical records archived.
+- Sent 805-0386: $125 merchandise edit created separate draft 805-0388 at $164. The new draft reopened at $164 and contract view showed $125 in the editor, avoiding a second installation/shipping addition. Deleting from contract view saved zero active lines and zero total.
+- Sent 805-0386: deleting its line created separate empty draft 805-0389. The original remains Sent, one active line, $39. The original quote, line and design hashes were unchanged after the price revision.
+- Jon 805-0367: after deployment, five active lines displayed $2,047; $1,590; $1,229 × 2; $1,229; and $3,789. Builder and saved contract preview both show $11,113. No mounting-depth input or internal manual-price policy metadata appears in the checked quote/output.
+- Signed/accepted subset and quantity behavior is covered by database and rendered UI regressions; no real customer's signed contract was changed during verification. No customer quote was sent and no order or payment was placed.
