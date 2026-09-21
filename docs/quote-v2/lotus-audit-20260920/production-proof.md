@@ -150,3 +150,11 @@ Verified on deployed `ff47e7df551005a57c80542522134d5a0dd8733e` at www.805shutte
 - FTXLG LivingRoom sibling retained119.94 after mixed held-line saves/reopen. Quote saved; Send Quote/Payment Link remained disabled; total unavailable. No external send/sale/order actions.
 
 UI displays the overall price hold, not the detailed stored donor validation record. Native server-save regression tests verify exact donor/model validation evidence in the protected validation snapshot, with no authoritative price snapshot on these held paths. This live proof is selection/persistence/boundary evidence, not dealer-price or factory-fit certification.
+
+## Two-independent-blind production persistence and availability proof
+
+Verified production `5054aec65e01d3b5cc77d5ea86a73d019a0960a2` after a full client reload in internal native805-0337A. Line17 **INTERNAL two independent FLX blinds**: FLX Bright White Inside Mount,94×84 opening, count2, actual left47/right47. Both widths and the exact program persisted after Quote saved and close/reopen. The intermediate missing-right-width configuration remained price-held; focused server tests establish the exact missing-component rejection. The CRM continues to show the FLX dealer-guide/portal price-conflict hold.
+
+Copied line18 **INTERNAL FPX availability hold**: FPX Bright White Inside Mount,94×84, count2, left47/right47. Quote saved and close/reopen preserved all selections and the exact current-availability/SKU confirmation warning. FPX is held, not classified discontinued. No approved customer price appears. Send Quote remains disabled. Original FTXLG Living Room line2 remains119.94, including25 installation and14 selling-policy shipping. No external send, sale or order action.
+
+The proof exposed a wording-only defect: a count2 opening still displayed the old three-blind instruction. Commitfc2b35ca changes that sentence to require every measured split width without altering prices or saved records; deployment is pending.
