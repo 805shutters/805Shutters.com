@@ -142,3 +142,9 @@ AquaShield uses its independent table: Camber Deco is always solid; only the lis
 ## Live-found inactive hinge finish refinement
 
 0353D exposed the generic hinge-color control even when the exact specialty record explicitly specified no hinges. Current typed no-hinge specialties now omit that control and skip irrelevant hinge-finish compatibility checks. Existing hinge metadata is retained unchanged for history; hinged, undeclared and historical-date configurations retain the prior checks.54 focused UI/server tests pass. This does not certify special hinge installation geometry or change any price hold.
+
+## Exact specialty offering ledger
+
+`shutter-specialty-offering-ledger-20260920.csv` records all230 program/shape dispositions:229 documented routes across WLP/Aqua/Brightwood/Normandy Painted/Stained and the explicit AquaYS56 exclusion. It retains exact IDs, source binder/pages, saved CRM destination, pricing/geometry exceptions, and individual live-proof status. Only0353D WLP/YS15 has individual production evidence so far. This is not a claim that all229routes are fully priced or independently live tested. No discontinuation is inferred from an unavailable combination. Woodlore is separately an unverified-program exception because its pinned binder has no specialty section; it is not silently assigned another program's identities.
+
+The hinge source issue is broader than equality alone if the shortest *unhinged* outer leg is used: note8 permits short outer stiles through RTL/T-post hinging, while note9 describes the shortest vertical stile installation minimum. Remaining hinge work must distinguish actual hinged/unhinged legs and exact T-post membership, retain the8⅛equality conflict, and enforce the explicit DirectMount3-inch hinge9¾minimum without incorrectly rejecting every RTLshort-leg route.
