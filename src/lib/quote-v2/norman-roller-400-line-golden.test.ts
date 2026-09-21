@@ -364,7 +364,8 @@ function centsToDollars(value: number): number {
   return Math.round(value) / 100;
 }
 
-function cents(value: number): number {
+function cents(value: number | null): number {
+  if (value === null) throw new Error("This golden fixture requires complete wholesale evidence.");
   return dollarsToCents(value);
 }
 

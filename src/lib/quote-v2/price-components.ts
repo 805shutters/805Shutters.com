@@ -54,7 +54,8 @@ export type PriceComponentSelectionBinding = Readonly<{
  * `catalogAmount` is the untouched price-book amount. `wholesaleAmount` is the
  * eligible dealer-net amount after the selected dealer schedule. `customerAmount`
  * is the amount produced by the configured retail policy. Customer projections
- * must explicitly omit `wholesaleAmount`.
+ * must explicitly omit `wholesaleAmount`. Missing dealer evidence is null, never
+ * a zero-cost assertion, and does not invalidate independently sourced retail.
  */
 export type AuthoritativePriceComponent = Readonly<{
   id: string;
@@ -65,7 +66,7 @@ export type AuthoritativePriceComponent = Readonly<{
   selectionBindings: readonly PriceComponentSelectionBinding[];
   source: SourceProvenance;
   catalogAmount: number;
-  wholesaleAmount: number;
+  wholesaleAmount: number | null;
   customerAmount: number;
   units: number;
   billingScope: PriceComponentBillingScope;
@@ -81,7 +82,7 @@ export type PriceComponentBaseline = Readonly<{
   /** Ordered grid-width cells for a documented multi-panel assembly. */
   componentMatchedWidths?: readonly number[];
   catalogAmount: number;
-  wholesaleAmount: number;
+  wholesaleAmount?: number | null;
   customerAmount: number;
   source: SourceProvenance | null;
 }>;
@@ -135,10 +136,10 @@ export type BuildAuthoritativePriceComponentsInput = Readonly<{
 
 export type AuthoritativePriceComponentTotals = Readonly<{
   catalogPerWindow: number;
-  wholesalePerWindow: number;
+  wholesalePerWindow: number | null;
   customerPerWindow: number;
   catalogOncePerLine: number;
-  wholesaleOncePerLine: number;
+  wholesaleOncePerLine: number | null;
   customerOncePerLine: number;
 }>;
 
@@ -395,14 +396,14 @@ function componentFromOption(
   if (
     !isMoney(sourceLine.amount) ||
     !isMoney(retailLine.amount) ||
-    !isMoney(retailLine.wholesaleAmount)
+    (retailLine.wholesaleAmount != null && !isMoney(retailLine.wholesaleAmount))
   ) {
     issues.push(
       hardBlock(
         input,
         "price_components.amount_missing",
         { componentId: option.id, priceLineId },
-        `Catalog, wholesale, and customer amounts are required for '${option.label}'.`,
+        `Catalog and customer amounts must be valid; any supplied wholesale amount must also be valid for '${option.label}'.`,
       ),
     );
     return null;
@@ -439,7 +440,7 @@ function componentFromOption(
     selectionBindings: option.selectionBindings,
     source: option.source,
     catalogAmount: roundMoney(sourceLine.amount),
-    wholesaleAmount: roundMoney(retailLine.wholesaleAmount),
+    wholesaleAmount: retailLine.wholesaleAmount == null ? null : roundMoney(retailLine.wholesaleAmount),
     customerAmount: roundMoney(retailLine.amount),
     units: Number.isInteger(units) && units > 0 ? units : 1,
     billingScope: option.billingScope,
@@ -451,21 +452,21 @@ function componentFromOption(
 function componentTotals(
   components: readonly AuthoritativePriceComponent[],
 ): AuthoritativePriceComponentTotals {
-  const sum = (
-    scope: PriceComponentBillingScope,
-    key: "catalogAmount" | "wholesaleAmount" | "customerAmount",
-  ) =>
-    roundMoney(
-      components
-        .filter((component) => component.billingScope === scope)
-        .reduce((total, component) => total + component[key], 0),
-    );
+  const scoped = (scope: PriceComponentBillingScope) => components.filter(component => component.billingScope === scope);
+  const sum = (scope: PriceComponentBillingScope, key: "catalogAmount" | "customerAmount") =>
+    roundMoney(scoped(scope).reduce((total, component) => total + component[key], 0));
+  const wholesaleSum = (scope: PriceComponentBillingScope): number | null => {
+    const rows = scoped(scope);
+    // Empty scope means no charge. Missing cost on an actual row means unknown.
+    if (rows.some(component => component.wholesaleAmount === null)) return null;
+    return roundMoney(rows.reduce((total, component) => total + component.wholesaleAmount!, 0));
+  };
   return {
     catalogPerWindow: sum("per_window", "catalogAmount"),
-    wholesalePerWindow: sum("per_window", "wholesaleAmount"),
+    wholesalePerWindow: wholesaleSum("per_window"),
     customerPerWindow: sum("per_window", "customerAmount"),
     catalogOncePerLine: sum("once_per_line", "catalogAmount"),
-    wholesaleOncePerLine: sum("once_per_line", "wholesaleAmount"),
+    wholesaleOncePerLine: wholesaleSum("once_per_line"),
     customerOncePerLine: sum("once_per_line", "customerAmount"),
   };
 }
@@ -688,7 +689,7 @@ export function buildAuthoritativePriceComponents(
     !baseline ||
     baseline.programId !== baselineProgramId ||
     !isMoney(baseline.catalogAmount) ||
-    !isMoney(baseline.wholesaleAmount) ||
+    (baseline.wholesaleAmount != null && !isMoney(baseline.wholesaleAmount)) ||
     !isMoney(baseline.customerAmount)
   ) {
     issues.push(
@@ -772,14 +773,14 @@ export function buildAuthoritativePriceComponents(
   if (
     !isMoney(input.sourceResult.base) ||
     !isMoney(input.retailResult.base) ||
-    !isMoney(input.retailResult.wholesaleBase)
+    (input.retailResult.wholesaleBase != null && !isMoney(input.retailResult.wholesaleBase))
   ) {
     issues.push(
       hardBlock(
         input,
         "price_components.base_amount_missing",
         { selectedProgramId },
-        "The selected grid must retain catalog, wholesale, and customer base amounts.",
+        "The selected grid must retain valid catalog and customer base amounts; supplied wholesale evidence must also be valid.",
       ),
     );
   }
@@ -791,15 +792,15 @@ export function buildAuthoritativePriceComponents(
   const fabricCatalogAmount = roundMoney(
     input.sourceResult.base - baseline.catalogAmount,
   );
-  const fabricWholesaleAmount = roundMoney(
-    (input.retailResult.wholesaleBase as number) - baseline.wholesaleAmount,
-  );
+  const fabricWholesaleAmount = input.retailResult.wholesaleBase != null && baseline.wholesaleAmount != null
+    ? roundMoney(input.retailResult.wholesaleBase - baseline.wholesaleAmount)
+    : selectedProgram.id === baseline.programId ? 0 : null;
   const fabricCustomerAmount = roundMoney(
     input.retailResult.base - baseline.customerAmount,
   );
   if (
     fabricCatalogAmount < 0 ||
-    fabricWholesaleAmount < 0 ||
+    (fabricWholesaleAmount != null && fabricWholesaleAmount < 0) ||
     fabricCustomerAmount < 0
   ) {
     return {
@@ -822,7 +823,7 @@ export function buildAuthoritativePriceComponents(
   }
   const fabricHasAnyAmount =
     fabricCatalogAmount !== 0 ||
-    fabricWholesaleAmount !== 0 ||
+    (fabricWholesaleAmount != null && fabricWholesaleAmount !== 0) ||
     fabricCustomerAmount !== 0;
 
   const honeycomb = honeycombDualFabrics(input.selection);
@@ -850,7 +851,7 @@ export function buildAuthoritativePriceComponents(
       ],
       source: baseline.source,
       catalogAmount: roundMoney(baseline.catalogAmount),
-      wholesaleAmount: roundMoney(baseline.wholesaleAmount),
+      wholesaleAmount: baseline.wholesaleAmount == null ? null : roundMoney(baseline.wholesaleAmount),
       customerAmount: roundMoney(baseline.customerAmount),
       units: input.retailResult.configurationUnits,
       billingScope: "per_window",
@@ -1101,8 +1102,10 @@ export function buildAuthoritativePriceComponents(
     );
   }
   if (
-    expectedWholesalePerWindow == null ||
-    !sameMoney(totals.wholesalePerWindow, expectedWholesalePerWindow)
+    expectedWholesalePerWindow != null && (
+      !isMoney(expectedWholesalePerWindow) ||
+      (totals.wholesalePerWindow != null && !sameMoney(totals.wholesalePerWindow, expectedWholesalePerWindow))
+    )
   ) {
     issues.push(
       hardBlock(
@@ -1132,8 +1135,10 @@ export function buildAuthoritativePriceComponents(
   if (
     !sameMoney(totals.catalogOncePerLine, input.sourceResult.onceTotal) ||
     !sameMoney(totals.customerOncePerLine, input.retailResult.onceTotal) ||
-    expectedWholesaleOncePerLine == null ||
-    !sameMoney(totals.wholesaleOncePerLine, expectedWholesaleOncePerLine)
+    (expectedWholesaleOncePerLine != null && (
+      !isMoney(expectedWholesaleOncePerLine) ||
+      (totals.wholesaleOncePerLine != null && !sameMoney(totals.wholesaleOncePerLine, expectedWholesaleOncePerLine))
+    ))
   ) {
     issues.push(
       hardBlock(

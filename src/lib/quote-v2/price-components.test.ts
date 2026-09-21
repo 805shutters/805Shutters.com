@@ -843,3 +843,61 @@ describe("authoritative V2 price components", () => {
     );
   });
 });
+
+describe("independent retail evidence with incomplete dealer cost", () => {
+  it("keeps a known base cost and separately priced H3 retail when its dealer charge is unknown", () => {
+    const input = autoWandInput();
+    const sourceLine = {id:"h3_test",label:"H3",kind:"flat" as const,amount:20};
+    const result = buildAuthoritativePriceComponents({
+      ...input,
+      sourceResult:{...input.sourceResult,surchargeLines:[...input.sourceResult.surchargeLines,sourceLine],unitPrice:input.sourceResult.unitPrice+20,total:input.sourceResult.total+20,wholesaleUnitPrice:null,wholesaleTotal:null,costStatus:"incomplete"},
+      retailResult:{...input.retailResult,surchargeLines:[...input.retailResult.surchargeLines,sourceLine],unitPrice:input.retailResult.unitPrice+20,total:input.retailResult.total+20,wholesaleUnitPrice:null,wholesaleTotal:null,costStatus:"incomplete"},
+      accessories:[...input.accessories,{id:"accessory:h3",label:"H3",category:"accessory",status:"priced",basis:"flat",selectionBindings:[{field:"hinge",value:"H3"}],source:PRICE_BOOK_PAGE_18,priceLineId:"h3_test",units:2,billingScope:"per_window"}],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw Error(JSON.stringify(result.issues));
+    expect(result.components.find(row=>row.category==="base_grid")?.wholesaleAmount).toBe(89.4);
+    expect(result.components.find(row=>row.id==="accessory:h3")).toMatchObject({catalogAmount:20,customerAmount:20,wholesaleAmount:null});
+    expect(result.totals).toMatchObject({catalogPerWindow:514,customerPerWindow:390.5,wholesalePerWindow:null,wholesaleOncePerLine:0});
+    expect(JSON.parse(JSON.stringify(result)).components.find((row:{id:string})=>row.id==="accessory:h3").wholesaleAmount).toBeNull();
+  });
+
+  it("admits sourced retail when baseline and selected-grid dealer costs are both absent", () => {
+    const input=autoWandInput();
+    const result=buildAuthoritativePriceComponents({...input,baseline:{...input.baseline!,wholesaleAmount:undefined},
+      retailResult:{...input.retailResult,wholesaleBase:null,wholesaleUnitPrice:null,wholesaleTotal:null,costStatus:"incomplete"}});
+    expect(result.ok).toBe(true);
+    if(!result.ok)throw Error(JSON.stringify(result.issues));
+    expect(result.components.find(row=>row.category==="base_grid")?.wholesaleAmount).toBeNull();
+    expect(result.components.find(row=>row.category==="fabric_upgrade")?.wholesaleAmount).toBeNull();
+    expect(result.totals).toMatchObject({customerPerWindow:370.5,catalogPerWindow:494,wholesalePerWindow:null});
+  });
+
+  it("keeps unknown once-per-line dealer cost separate from known per-window cost", () => {
+    const input=autoWandInput();
+    const option={id:"one_time",label:"One-time accessory",kind:"flat" as const,amount:10};
+    const result=buildAuthoritativePriceComponents({...input,
+      sourceResult:{...input.sourceResult,surchargeLines:[...input.sourceResult.surchargeLines,option],onceTotal:10,total:input.sourceResult.total+10,wholesaleTotal:null,costStatus:"incomplete"},
+      retailResult:{...input.retailResult,surchargeLines:[...input.retailResult.surchargeLines,option],onceTotal:10,total:input.retailResult.total+10,wholesaleTotal:null,costStatus:"incomplete"},
+      accessories:[...input.accessories,{id:"order:one",label:"One-time accessory",category:"order_charge",status:"priced",basis:"flat",selectionBindings:[{field:"accessory",value:"one_time"}],source:PRICE_BOOK_PAGE_18,priceLineId:"one_time",billingScope:"once_per_line"}],
+    });
+    expect(result.ok).toBe(true);
+    if(!result.ok)throw Error(JSON.stringify(result.issues));
+    expect(result.totals).toMatchObject({wholesalePerWindow:148.2,wholesaleOncePerLine:null,customerOncePerLine:10,catalogOncePerLine:10});
+  });
+
+  it.each(["retail", "catalog", "wholesale"])("still rejects an actual %s amount mismatch", side=>{
+    const input=autoWandInput();
+    const result=buildAuthoritativePriceComponents({...input,
+      ...(side==="catalog"?{sourceResult:{...input.sourceResult,unitPrice:input.sourceResult.unitPrice+1}}:{}),
+      retailResult:{...input.retailResult,...(side==="retail"?{unitPrice:input.retailResult.unitPrice+1}:{}),...(side==="wholesale"?{wholesaleUnitPrice:input.retailResult.wholesaleUnitPrice!+1}:{} )},
+    });
+    expect(result.ok).toBe(false);
+  });
+  it("does not treat malformed supplied wholesale cost as absent evidence",()=>{
+    const input=autoWandInput();
+    const result=buildAuthoritativePriceComponents({...input,retailResult:{...input.retailResult,surchargeLines:input.retailResult.surchargeLines.map(line=>({...line,wholesaleAmount:-1}))}});
+    expect(result.ok).toBe(false);
+    if(!result.ok)expect(result.issues.some(issue=>issue.ruleId==="price_components.amount_missing")).toBe(true);
+  });
+});
