@@ -1,10 +1,14 @@
 /** Divider locations use the guide's window/frame datum, never an inferred opening-to-panel offset. */
 export type NormanShutterDividerRecord={
  version:1;
- measurementBasis:''|'window'|'max_frame';
+ measurementBasis:''|'window'|'max_frame'|'panel';
  referenceHeightInches:number|null;
  rails:Array<{heightInches:number|null;location:''|'center'|'specified';centerInches:number|null;exactLocation:boolean|null}>;
+ /** Historical storage key. New custom entries explicitly identify the TOP of a closed louver. */
  splitTiltCentersInches:number[];
+ splitTiltMode?:'equal'|'custom'|'';
+ splitTiltReference?:'top_closed_louver';
+ splitTiltExactLocations?:Array<boolean|null>;
  clearLouverCounts:number[];
 };
 export const emptyNormanShutterDividerRecord=():NormanShutterDividerRecord=>({version:1,measurementBasis:'',referenceHeightInches:null,rails:[{heightInches:3,location:'',centerInches:null,exactLocation:null}],splitTiltCentersInches:[],clearLouverCounts:[]});
@@ -12,7 +16,10 @@ const finiteOrNull=(v:unknown)=>v===null||(typeof v==='number'&&Number.isFinite(
 export function parseNormanShutterDividerRecord(value:unknown):NormanShutterDividerRecord|null{
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  const r=value as Record<string,unknown>;
- if(r.version!==1||!['','window','max_frame'].includes(String(r.measurementBasis))||!finiteOrNull(r.referenceHeightInches)||!Array.isArray(r.rails)||!Array.isArray(r.splitTiltCentersInches)||!Array.isArray(r.clearLouverCounts))return null;
+ if(r.version!==1||!['','window','max_frame','panel'].includes(String(r.measurementBasis))||!finiteOrNull(r.referenceHeightInches)||!Array.isArray(r.rails)||!Array.isArray(r.splitTiltCentersInches)||!Array.isArray(r.clearLouverCounts))return null;
+ if(r.splitTiltMode!==undefined&&!['','equal','custom'].includes(String(r.splitTiltMode)))return null;
+ if(r.splitTiltReference!==undefined&&r.splitTiltReference!=='top_closed_louver')return null;
+ if(r.splitTiltExactLocations!==undefined&&(!Array.isArray(r.splitTiltExactLocations)||r.splitTiltExactLocations.some(v=>![null,true,false].includes(v))))return null;
  if(r.rails.some(p=>!p||typeof p!=='object'||Array.isArray(p)||!finiteOrNull(p.heightInches)||!finiteOrNull(p.centerInches)||!['','center','specified'].includes(p.location)||![null,true,false].includes(p.exactLocation)))return null;
  if([...r.splitTiltCentersInches,...r.clearLouverCounts].some(v=>typeof v!=='number'||!Number.isFinite(v)))return null;
  return r as NormanShutterDividerRecord;
