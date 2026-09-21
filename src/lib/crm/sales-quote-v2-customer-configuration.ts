@@ -9,6 +9,13 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
+  ["standalone_valance_inner_length", "Valance inner length in inches"],
+  ["standalone_valance_returns", "Valance returns"],
+  ["standalone_valance_return_length", "Return length in inches"],
+  ["standalone_valance_joinery", "Valance joinery"],
+  ["standalone_valance_layout", "Valance joinery layout"],
+  ["standalone_valance_keystone_positions", "Keystone centers from inner left end"],
+  ["standalone_valance_piece_lengths", "Valance piece lengths in inches"],
   ["replacement_pack_style", "Vane pack style"],
   ["replacement_vane_length", "Requested vane length in inches"],
   ["replacement_shade_type", "Original shade arrangement"],

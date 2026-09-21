@@ -1,0 +1,16 @@
+[
+  {
+    "family": "Ultimate Faux",
+    "source": "Ultimate FW Blinds Guide.json",
+    "page": 11,
+    "source_text_sha256": "3049b59979e58ab4518044f0381282bf128224d273dde4dca729536a3f015bd0",
+    "excerpt": "When ordering a valance only, the valance will be split equally when the inner\ndimension of an individual piece exceeds 96\u201d. In such situation, valance connector will\nbe provided as default with keystone being optional. When keystone is selected,\nvalance caneither be split equally or at specified locations.\n\u2022Max inner length for valance only = 384\u201d 3 \u00bc\u201d Designer Crown Valance\n"
+  },
+  {
+    "family": "SmartPrivacy",
+    "source": "SmartPrivacy FW Blinds Guide.json",
+    "page": 10,
+    "source_text_sha256": "d4b1ca3dc8069bd4056fb4b14c65b01cbec1b90d91e8ba14ce125117b7aab1a3",
+    "excerpt": "When ordering a valance only, the valance will be split equally when \nthe inner dimension of an individual piece exceeds 96\u201d (custom split \nnot available). Standard valance connector will be used by default \n(keystone not available). Max inner length for valance only = 384\u201d \n"
+  }
+]

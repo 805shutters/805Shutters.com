@@ -1,3 +1,5 @@
+import { NormanValanceOnlyOptions } from "@/components/crm/NormanValanceOnlyOptions";
+import { isNormanValanceOnly, valanceOnlyUnitLabel, VALANCE_ONLY_KEY } from "@/lib/quote/norman-valance-only";
 import { NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from '@/lib/quote/norman-shutter-panels';
 import { normanBifold180Layouts } from '@/lib/quote/norman-shutter-bifold180';
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, replacementUnitLabel } from "@/lib/quote/norman-smartdrape-replacement";
@@ -1615,7 +1617,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required" && product.id !== SMARTDRAPE_REPLACEMENT && !isRomanAncillary(product.id) && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
+  if (product.priceBasis === "manual_required" && product.id !== SMARTDRAPE_REPLACEMENT && !isNormanValanceOnly(product.id) && !isRomanAncillary(product.id) && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -5820,7 +5822,7 @@ export function DesignCard({
               />
               {manufacturerOptionsRoute.productId === "lotus_dealer_listed_parts" ? (
                 <span className="quote-line-card-size">By item / quantity</span>
-              ) : authoritativeV2 && manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? <span className="quote-line-card-size-value">{replacementUnitLabel(currentOptions[SMARTDRAPE_REPLACEMENT_RECORD])}</span> : authoritativeV2 && isRomanAncillary(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{romanAncillaryUnitLabel(manufacturerOptionsRoute.productId!, currentOptions[ROMAN_ANCILLARY_RECORD])}</span> : hasMeasurements ? (
+              ) : authoritativeV2 && isNormanValanceOnly(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{valanceOnlyUnitLabel(currentOptions[VALANCE_ONLY_KEY])}</span> : authoritativeV2 && manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? <span className="quote-line-card-size-value">{replacementUnitLabel(currentOptions[SMARTDRAPE_REPLACEMENT_RECORD])}</span> : authoritativeV2 && isRomanAncillary(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{romanAncillaryUnitLabel(manufacturerOptionsRoute.productId!, currentOptions[ROMAN_ANCILLARY_RECORD])}</span> : hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
                   className="quote-line-card-size"
@@ -6076,6 +6078,7 @@ export function DesignCard({
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
+          manufacturerOptionsRoute.productId && isNormanValanceOnly(manufacturerOptionsRoute.productId) ? (<NormanValanceOnlyOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions design={currentDesign} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (
             <NormanRomanAncillaryOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />

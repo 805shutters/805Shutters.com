@@ -1,3 +1,4 @@
+import { valanceOnlyProducts } from "../norman-valance-only";
 import { smartdrapeReplacementProduct } from "../norman-smartdrape-replacement";
 import { romanAncillaryProducts } from "../norman-roman-ancillary";
 import { onyxHeldProducts } from "../onyx-held-catalog";
@@ -53,7 +54,7 @@ export const catalog: Catalog = {
     // USA is the printed grid header, not a fabric price group. Preserve its
     // imported program identity and explicitly designate that grid as the base.
     pricingFamilies: [{id:"citylights_cordless",baselineProgramId:"citylights_aluminum_1in_slats_cordless_pgusa",memberProgramIds:["citylights_aluminum_1in_slats_cordless_pgusa"]}],
-  } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...romanAncillaryProducts, smartdrapeReplacementProduct, ...onyxHeldProducts, ...sanClementeProducts, ...normanContractProducts, ...polarCatalog.products, ...lotusCatalog.products, ...lotusObservedProducts, ...sundanceCatalog.products],
+  } : product).map(withFall2026RollerPrograms), ...shutterCatalog.products, ...romanAncillaryProducts, ...valanceOnlyProducts, smartdrapeReplacementProduct, ...onyxHeldProducts, ...sanClementeProducts, ...normanContractProducts, ...polarCatalog.products, ...lotusCatalog.products, ...lotusObservedProducts, ...sundanceCatalog.products],
   motorization: { ...baseCatalog.motorization, ...polarCatalog.motorization, ...lotusCatalog.motorization },
 };
 

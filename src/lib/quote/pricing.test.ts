@@ -222,6 +222,13 @@ describe("catalog integrity", () => {
     for (const product of catalog.products) {
       for (const prog of product.programs) {
         const { widths, heights, prices } = prog.grid;
+        // A held standalone width product has no source price schedule. An
+        // empty table is intentional; a fake zero row would imply a price.
+        if (prog.priceAxis === "width" && (prog.priceBasis ?? product.priceBasis) === "manual_required" && prices.length === 0) {
+          expect(widths, `${prog.id} held width headers`).toEqual([]);
+          expect(heights, `${prog.id} held height headers`).toEqual([]);
+          continue;
+        }
         if (prog.priceAxis === "sqft") {
           const effectiveBasis = prog.priceBasis ?? product.priceBasis;
           const dealerNet = effectiveBasis === "dealer_net";

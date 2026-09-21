@@ -1,3 +1,4 @@
+import { isNormanValanceOnly, ULTIMATE_VALANCE, SMARTPRIVACY_VALANCE } from "../quote/norman-valance-only";
 import { SMARTDRAPE_REPLACEMENT } from "@/lib/quote/norman-smartdrape-replacement";
 import { isRomanAncillary } from "@/lib/quote/norman-roman-ancillary";
 import { onyxHeldProducts } from "@/lib/quote/onyx-held-catalog";
@@ -31,6 +32,7 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Woven Wood Shades",
   "Parts & Accessories",
   "Vane Packs",
+  "Valances",
   "Fabric by Yard",
   "Decorative Pillow Covers",
 ] as const;
@@ -38,6 +40,7 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
 
 const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
+  Valances: ULTIMATE_VALANCE,
   "Vane Packs": SMARTDRAPE_REPLACEMENT,
   "Fabric by Yard": "norman_roman_fabric_by_yard",
   "Decorative Pillow Covers": "norman_roman_pillow_covers",
@@ -64,6 +67,8 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
+  [ULTIMATE_VALANCE]: "Valances",
+  [SMARTPRIVACY_VALANCE]: "Valances",
   [SMARTDRAPE_REPLACEMENT]: "Vane Packs",
   norman_roman_fabric_by_yard: "Fabric by Yard",
   norman_roman_pillow_covers: "Decorative Pillow Covers",
@@ -149,8 +154,8 @@ export function createQuoteLabDesign(
     label,
     productId: product.id,
     programId: product.programs[0]?.id,
-    widthInches: (isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 36,
-    heightInches: (isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 60,
+    widthInches: (isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 36,
+    heightInches: (isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 60,
     discountPercent: 0,
     surcharges: [],
     motorization: [],

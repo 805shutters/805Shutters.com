@@ -14,9 +14,9 @@ const honeycombCellRoutes = normanHoneycombV2Source.activeColors.flatMap(c => c.
 
 describe("Norman catalog coverage ledger", () => {
   it("accounts for every imported family, program and retained color identity", () => {
-    expect(products).toHaveLength(21);
-    expect(products.flatMap(p => p.programs)).toHaveLength(56);
-    for (const id of ["norman_roman_fabric_by_yard", "norman_roman_pillow_covers", "norman_smartdrape_replacement_vanes"]) {
+    expect(products).toHaveLength(23);
+    expect(products.flatMap(p => p.programs)).toHaveLength(58);
+    for (const id of ["norman_ultimate_faux_valance_only", "norman_smartprivacy_valance_only", "norman_roman_fabric_by_yard", "norman_roman_pillow_covers", "norman_smartdrape_replacement_vanes"]) {
       expect(getProduct(id)?.priceBasis).toBe("manual_required");
       expect(getProduct(id)?.programs[0].grid.prices).toEqual([]);
     }

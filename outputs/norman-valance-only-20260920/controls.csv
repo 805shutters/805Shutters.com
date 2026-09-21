@@ -1,0 +1,11 @@
+saved_field,type,choices_or_bounds,applicability,source_pages,saved_record,pricing_status
+sourceColorId,existing source identity,16 Ultimate / 6 SmartPrivacy,both,Current guide color tables and p11/p10 valance match,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+style,choice,Ultimate: Modern Curved / Designer Crown / Linear; SmartPrivacy: Modern Curved / Designer Crown,both,Ultimate11; SmartPrivacy10,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+innerLengthInches,number,positive through384; explicit inner length,both,Ultimate11; SmartPrivacy10,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+returns,choice,Ultimate None/Left/Right/Both; SmartPrivacy None/Both,both,Ultimate10; SmartPrivacy11,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+returnLengthInches,number,0.5 through5; absent when returnsNone,returns selected,Ultimate10; SmartPrivacy11,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+joinery,choice,Connector / Keystone (Ultimate only),both,Ultimate11; SmartPrivacy10,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+layout,choice,Equal / Custom (Ultimate Keystone only),both,Ultimate11; SmartPrivacy10,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+keystoneCount,integer,1 through3;0 for connectors,Ultimate Keystone,Ultimate11,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+keystoneLocations[],numeric array,custom center from left inner end;6.5 fromends;18apart; allsplitpieces<=96,Ultimate custom Keystone,Ultimate11,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
+quantity,integer,positive complete valances,both,natural-unit ordering; no price schedule inferred,norman_valance_only_v1 except quote quantity,manual_required; exact source pricing approval hold
