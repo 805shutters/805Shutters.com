@@ -6,4 +6,8 @@ Source: September retail PDF page21 (printed20) explicitly lists premium hem16, 
 
 Saved-backend tests verify exact incremental charges for quantity4 (premium+magnet176; fiberglass112; operating pole356; attachment160), exact source finishes/measurements, invalid clearance and finish rejection, cordless-only pole rejection, one complimentary order pole and serialization. No dealer factor, freight term or selling policy changes.
 
-Deployment and production price/save/reopen/customer-preview proof remain pending.
+Production proof completed September 20 on draft **805-0364 / G**. Louise F1709 White Jade, 36 × 72 inches, quantity four, Outside / Back-Wall Raceway / No Valance / PrecisionLift Cordless saved at **$3,380**: $673 base + $16 premium hem + $28 magnetic hold-down + $89 operating pole + $25 installation + $14 shipping per shade. Bronze premium finish, Nickel-Plated catches, 0.5625-inch left/right and 0.6875-inch bottom clearances, and the 60-inch operating pole survived closing, full browser reload and reopening. Customer contract preview retained these selections and the same total.
+
+Saving left magnetic clearance at 0.5 inches produced the exact server validation failure and blocked automatic pricing; restoring 0.5625 restored $3,380. The untouched manual drafts E / 805-0360 and F / 805-0362 remain $2,848 each. Historical motorized B / 805-0342 remains $5,023 with its original extra charging quantities. No customer delivery or transaction occurred.
+
+Accessory pricing deployed in b63930ec; the subsequent 2046fadd release (6,401 passing tests, 28 skipped, typecheck/build and Vercel/public verification passed) also includes inactive manual motor-position display cleanup. Live display verification of that cleanup is recorded separately.
