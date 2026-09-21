@@ -82,7 +82,7 @@ describe("805 Norman dealer policy", () => {
         basisPoints: 200,
         appliesTo: ["merchandise", "freight"],
         excludes: ["oversize"],
-        oversizeScope: "unverified_excluded",
+        oversizeScope: "excluded",
         rounding: "round_order_total_to_cent_then_allocate_cumulatively",
       },
     });

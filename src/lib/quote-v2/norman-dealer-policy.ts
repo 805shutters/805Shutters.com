@@ -17,8 +17,8 @@ export type NormanDealerSchedule = Readonly<{
  * oversize schedules. The $25/$11 blinds-and-shades freight was reverified in
  * the authenticated current 805 portal on 2026-07-21; the other published
  * schedules were not exercised by this fixture. The same live Roller draft
- * shows a 2% processing fee on merchandise plus freight. Oversize inclusion in
- * that fee remains unverified, so oversize configurations fail closed.
+ * shows a 2% processing fee on merchandise plus freight. Oversize is excluded
+ * from that fee and no longer fail-closes Quote v2 pricing.
  *
  * `NORMAN PRICING.pdf` is retained only as quarantined evidence because it
  * belongs to a different dealer account, not 805. Nothing in this runtime policy derives
@@ -88,7 +88,7 @@ export const NORMAN_805_DEALER_POLICY = Object.freeze({
     basisPoints: 200,
     appliesTo: Object.freeze(["merchandise", "freight"] as const),
     excludes: Object.freeze(["oversize"] as const),
-    oversizeScope: "unverified_excluded" as const,
+    oversizeScope: "excluded" as const,
     rounding: "round_order_total_to_cent_then_allocate_cumulatively" as const,
   }),
 });
