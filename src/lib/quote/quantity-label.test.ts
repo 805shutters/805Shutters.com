@@ -10,7 +10,7 @@ describe('natural quantity presentation',()=>{
  const options={catalog_product_id:product,catalog_program_id:program,base_price:100};
  expect(quoteQuantityLabel(2,options)).toBe(`2 ${plural}`);
  for(const component of [PricingAuditPanel,LegacyAudit]){
- const html=renderToStaticMarkup(createElement(component,{productType:'Test',supplier:'Norman',programName:'Test',widthIn:0,heightIn:0,rawSqft:null,billableSqft:null,quantity:2,savedUnitPrice:100,options,currentRetailPerSqft:null,wholesaleRate:null,tariffPercent:0,surcharges:[]}));
+ const html=renderToStaticMarkup(createElement(component,{productType:'Test',supplier:'Norman',programName:'Test',widthIn:0,heightIn:0,rawSqft:null,billableSqft:null,quantity:2,savedUnitPrice:100,options,currentRetailPerSqft:null,wholesaleRate:null,authoritativeWholesaleCost:null,tariffPercent:0,surcharges:[]}));
  expect(html).toContain(`Line total (2 ${plural})`);expect(html).toContain('$200');expect(html).toContain('$100');
  }
  });
