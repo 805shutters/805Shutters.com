@@ -1,3 +1,4 @@
+import { rollerPoles } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
 import { rollerAccessories } from "./norman-roller-accessories";
 import { hasRollerValanceUnits, validateRollerValance } from "./norman-roller-valance-only";
@@ -1332,6 +1333,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
   issues.push(...(rollerHardware(context)?.issues ?? []));
   issues.push(...(rollerAccessories(context)?.issues ?? []));
   issues.push(...(rollerChain(context)?.issues ?? []));
+  issues.push(...(rollerPoles(context)?.issues ?? []));
   issues.push(...validateRollerCommon(context));
 
   return issues;
