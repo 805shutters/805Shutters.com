@@ -39,7 +39,7 @@ it('initializes exact panel identities with blank dimensions and no inferred cha
  expect(sundanceEuropanelLayoutIssues(s)).toEqual([]);
  const html=renderToStaticMarkup(createElement(SundanceEuropanelLayout,{productId:s.productId,options:{...s.configuration,[KEY]:r},widthInches:96,heightInches:84,onChange:()=>{}}));expect(html).toContain('Sundance Europanel 4 width');expect(html).toContain('guide does not provide overlap');expect(html).toContain('Unconfirmed');
 });
-it('formats only the entered physical panel dimensions and channel, keeping internal notes and IDs private',()=>{
+it('formats sold panel dimensions while keeping factory channels, notes and IDs private',()=>{
  const{s,r}=layout();r.notes='Internal factory confirmation pending';const details=getQuoteDesignDetails({options_json:{[KEY]:s.configuration[KEY]}} as unknown as SalesQuoteDesign);
- expect(details).toHaveLength(4);expect(details[0]).toEqual({label:'Panel 1',value:'27 × 82 inches; track channel 1'});expect(JSON.stringify(details)).not.toContain('Internal factory');
+ expect(details).toHaveLength(4);expect(details[0]).toEqual({label:'Panel 1',value:'27 × 82 inches'});expect(JSON.stringify(details)).not.toContain('Internal factory');
 });

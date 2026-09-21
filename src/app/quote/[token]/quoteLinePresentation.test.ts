@@ -41,9 +41,9 @@ describe("quoteProductDetails", () => {
   });
 
   it("keeps distinct selections that happen to share the same value", () => {
-    expect(quoteProductDetails("", ["Hard Surface Install: Yes", "Requires Takedown: Yes"])).toEqual([
-      { label: "Hard Surface Install", value: "Yes" },
-      { label: "Requires Takedown", value: "Yes" },
+    expect(quoteProductDetails("", ["Magnetic Hold-Down: Yes", "Solar Panel: Yes"])).toEqual([
+      { label: "Magnetic Hold-Down", value: "Yes" },
+      { label: "Solar Panel", value: "Yes" },
     ]);
   });
 

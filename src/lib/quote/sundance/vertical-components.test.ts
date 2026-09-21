@@ -35,7 +35,7 @@ it('retains exact source approximate stacking rows without invented interpolatio
 });
 it('shows separate component inputs and hides internal identities from customer details',()=>{
  const c=config('2','Vanes only',60,14),html=renderToStaticMarkup(createElement(SundanceVerticalComponents,{options:c,widthInches:42,onChange:()=>{}}));expect(html).toContain('Sundance vertical component size basis');expect(html).toContain('252.00');expect(html).toContain('retail/net basis requires confirmation');expect(html).toContain('approximately 8-inch stack');
- const details=getQuoteDesignDetails({options_json:{[KEY]:c[KEY]}} as unknown as SalesQuoteDesign);expect(details).toEqual([{label:'Vertical component',value:'Vanes only: 14 × 60 inches; Net component size'}]);
+ const details=getQuoteDesignDetails({options_json:{[KEY]:c[KEY]}} as unknown as SalesQuoteDesign);expect(details).toEqual([{label:'Vertical component',value:'Vanes only: 14 × 60 inches'}]);
  expect(evidence(JSON.parse(JSON.stringify(c)))).toEqual(evidence(c));
 });
 it('shows the Chateau wood wand schedule only within its documented height range',()=>{
