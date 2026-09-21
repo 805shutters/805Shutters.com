@@ -36,6 +36,6 @@ export function normanSpecialtyGeometryProblems(r:NormanSpecialtyRecord,mount:un
   if(g.centeredPeak===false&&(!positive(w)||!positive(g.peakWidthAInches)||g.peakWidthAInches>=w))add('peak_width','For a noncentered peak, record WA from the left edge, greater than zero and below order width.');
   if(g.centeredPeak===true&&g.peakWidthAInches!==null&&positive(w)&&g.peakWidthAInches!==w/2)add('peak_center','A centered peak has WA equal to half the order width; remove a contradictory custom WA.');
  }
- if((mount==='Inside Mount'||g.outline==='imperfect'||g.existingMolding===true||['YS16','YS20'].includes(r.shapeCode))&&!g.templateReference.trim())add('template','A template submission reference is required for inside mount, imperfect arches, existing molding or oval shapes. Factory acceptance remains unverified; templates older than one year must be resent.');
+ if((/^(inside(?: mount)?|im|i)$/i.test(String(mount??'').trim())||g.outline==='imperfect'||g.existingMolding===true||['YS16','YS20'].includes(r.shapeCode))&&!g.templateReference.trim())add('template','A template submission reference is required for inside mount, imperfect arches, existing molding or oval shapes. Factory acceptance remains unverified; templates older than one year must be resent.');
  return issues;
 }

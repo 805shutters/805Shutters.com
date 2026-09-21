@@ -1,3 +1,5 @@
+import {selectionContextFromExactInterface} from './exact-interface-adapter';
+import type {SalesQuoteLineItem} from '@mts/types/quote';
 import {describe,it,expect} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -38,6 +40,15 @@ describe('Norman specialty order outline, T-posts and template requirements',()=
   expect(parseNormanPanelRecord(JSON.parse(JSON.stringify(panel)))).toEqual(panel);
   const s:SelectionContext={manufacturerId:'Norman',productId:'norman_shutters',programId:'woodlore_plus',catalogAsOf:'2026-09-20',catalogVersion:'current',widthInches:48,heightInches:60,quantity:1,options:{},configuration:{mount_type:'Outside Mount',frame_type:detail.frameType,[NORMAN_SHUTTER_PANEL_RECORD]:panel}};
   expect(validateNormanShutterPanels(s).some(i=>i.ruleId==='norman.shutter.specialty.geometry')).toBe(true);detail.geometry!.middleHeightInches=48;expect(validateNormanShutterPanels(s).some(i=>i.ruleId==='norman.shutter.specialty.order_geometry.perfect_middle')).toBe(true);expect(validateNormanShutterPanels({...s,catalogAsOf:'2026-09-19'}).some(i=>i.ruleId.includes('order_geometry'))).toBe(false);
+ });
+ it('requires inside-mount templates after the actual saved CRM adapter canonicalizes the mount',()=>{
+  const r=rec('YS15');r.geometry!.outline='not_arch';
+  const panel:NormanShutterPanelRecord={version:1,application:'specialty',motor:'none',existingDoorGlassOrSidelight:false,specialty:r,panels:[{widthInches:24,heightInches:24,divider:'none'}]};
+  const line={id:'internal',quote_id:'internal',room_name:'Audit',product_type:'Shutters',width_whole:24,width_fraction:'0',height_whole:24,height_fraction:'0',quantity:1,sort_order:0,created_at:'2026-09-20T00:00:00Z'} satisfies SalesQuoteLineItem;
+  const s=selectionContextFromExactInterface(line,{supplier:'Norman',material:'Woodlore Plus',mount_type:'Inside Mount',options_json:{[NORMAN_SHUTTER_PANEL_RECORD]:panel}},{productId:'norman_shutters',programId:'woodlore_plus',catalogAsOf:'2026-09-20'});
+  expect(s.configuration.mount_type).toBe('inside');expect(validateNormanShutterPanels(s).some(i=>i.ruleId==='norman.shutter.specialty.order_geometry.template')).toBe(true);
+  for(const mount of ['Inside Mount','inside','IM','i'])expect(ids(r,mount)).toContain('template');
+  expect(ids(r,'Outside Mount')).not.toContain('template');
  });
  it('shows only source-required T-post input positions and the distinct outline measurement basis',()=>{
   const g=rec('YS65').geometry!;g.verticalTPostCount=3;
