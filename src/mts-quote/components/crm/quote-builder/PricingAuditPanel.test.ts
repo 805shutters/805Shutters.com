@@ -467,3 +467,43 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("Gross profit dollars");
   });
 });
+
+
+describe("PricingAuditPanel saved authority failures", () => {
+  const renderHeld = (options: Record<string, unknown>) => renderToStaticMarkup(createElement(PricingAuditPanel, {
+    productType: "PerfectSheer Shades", supplier: "Norman", programName: "PerfectSheer",
+    widthIn: 36, heightIn: 60, rawSqft: 15, billableSqft: 15, quantity: 2, savedUnitPrice: 0,
+    options, currentRetailPerSqft: null, wholesaleRate: null, tariffPercent: 0, authoritativeWholesaleCost: null,
+    surcharges: [{id: "legacy-hub", name: "Inferred Automate Hub", type: "fixed", value: 483,
+      quantity: 1, category: "Motorization", automatic: true}],
+    savedConfigurationNotes: ["Shared Automate hub hub 1: 4 of 30 motors across 2 quote lines; one hub charged on another line."],
+  }));
+
+  it.each(["blocked", "unpriceable", "stale"])("hides inferred retail when saved status is %s without a breakdown", status => {
+    const html = renderHeld({authoritative_price_status: status});
+    expect(html).toContain("Customer retail is blocked");
+    expect(html).not.toContain("Inferred Automate Hub");
+    expect(html).not.toContain("$483");
+    expect(html).toContain("one hub charged on another line");
+  });
+
+  it("uses the saved failure over an obsolete successful breakdown and manual flag", () => {
+    const html = renderHeld({authoritative_price_status: "blocked", manual_price_override: true,
+      authoritative_price_error: "Network 2 requires a remote or previous work order.",
+      authoritative_price_breakdown: {ok: true, base: 483, unitPrice: 483, total: 966}});
+    expect(html).toContain("Network 2 requires a remote or previous work order.");
+    expect(html).toContain("Customer retail unavailable");
+    expect(html).not.toContain("$483");
+    expect(html).not.toContain("Manual customer price");
+  });
+
+  it("preserves legacy inferred retail and authoritative manual pricing", () => {
+    expect(renderHeld({base_price: 100})).toContain("Inferred Automate Hub");
+    const html = renderHeld({authoritative_price_status: "authoritative", manual_price_override: true,
+      authoritative_price_breakdown: {ok: true, base: 200, unitPrice: 200, total: 400, surchargeLines: []}});
+    expect(html).toContain("Manual customer price");
+    expect(html).toContain("$200");
+    expect(html).not.toContain("Customer retail is blocked");
+    expect(html).not.toContain("Inferred Automate Hub");
+  });
+});

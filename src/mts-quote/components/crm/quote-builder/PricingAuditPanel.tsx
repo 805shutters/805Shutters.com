@@ -1,6 +1,7 @@
 import { quoteQuantityLabel, quoteQuantityUnit } from "@/lib/quote/quantity-label";
 import type { ReactNode } from "react";
 import { cn } from "@mts/lib/utils";
+import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
 import type { WholesaleCostResult } from "@/lib/quote/wholesale-ledger";
 
 export type PricingAuditSurcharge = {
@@ -374,8 +375,12 @@ export function PricingAuditPanel({
     typeof options.authoritative_price_breakdown === "object"
       ? (options.authoritative_price_breakdown as Record<string, unknown>)
       : null;
-  const authoritativeRetailBlocked = authoritativeRetailResult?.ok === false;
-  const hasAuthoritativeRetail = authoritativeRetailResult?.ok === true;
+  // A failed/stale saved V2 status supersedes old breakdowns and inferred legacy charges.
+  const savedAuthorityUnavailable = ["blocked", "unpriceable", "stale"].includes(
+    String(options.authoritative_price_status ?? ""),
+  );
+  const authoritativeRetailBlocked = savedAuthorityUnavailable || authoritativeRetailResult?.ok === false;
+  const hasAuthoritativeRetail = !authoritativeRetailBlocked && authoritativeRetailResult?.ok === true;
   const authoritativeRetailComponents = hasAuthoritativeRetail
     ? parseRetailComponents(authoritativeRetailResult.components)
     : null;
@@ -663,10 +668,10 @@ export function PricingAuditPanel({
           <DetailRow
             label="Pricing mode"
             value={
-              isManual
-                ? "Manual customer price"
-                : authoritativeRetailBlocked
-                  ? "Customer retail unavailable"
+              authoritativeRetailBlocked
+                ? "Customer retail unavailable"
+                : isManual
+                  ? "Manual customer price"
                 : String(
                     options.pricing_method ||
                       (productType === "Shutters" ? "Square foot" : "Saved catalog price")
@@ -712,7 +717,9 @@ export function PricingAuditPanel({
           {authoritativeRetailBlocked ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-950">
               <strong>Customer retail is blocked.</strong>{" "}
-              {typeof authoritativeRetailResult?.error === "string"
+              {savedAuthorityUnavailable
+                ? authoritativeDesignPriceIssue({ options_json: options, unit_price: savedUnitPrice })
+                : typeof authoritativeRetailResult?.error === "string"
                 ? authoritativeRetailResult.error
                 : "The source does not define a customer retail price for this configuration."}
             </div>
