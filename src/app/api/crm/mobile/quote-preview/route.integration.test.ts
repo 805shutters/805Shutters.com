@@ -186,18 +186,22 @@ describe("mobile quote preview current-catalog integration", () => {
       blockedReason: "The selected Norman frame is not compatible with the selected mount type.",
     });
 
-    const completeRestricted = prepareSalesQuoteV2PricingBatch({
+    const incompleteConstruction = prepareSalesQuoteV2PricingBatch({
       lines: parsed.lines,
       selectedDesigns: [{ ...withFrameSides, mount_type: "Outside Mount", options_json: {...withFrameSides.options_json, norman_shutter_panels_v1: {version:1,application:"regular",motor:"none",existingDoorGlassOrSidelight:false,panels:[{heightInches:44,divider:"none",bottomSupport:{version:1,support:"existing_sill",gapInches:0.0625,frequentlyOpen:false}},{heightInches:44,divider:"none",bottomSupport:{version:1,support:"existing_sill",gapInches:0.0625,frequentlyOpen:false}}]}} }],
       serverDate: quoteV2ServerCatalogDate(),
     }).prepared[0];
-    expect(completeRestricted.rpcResult).toMatchObject({
-      validationSnapshot: { productStatus: "restriction_source_incomplete", issues: [] },
+    expect(incompleteConstruction.rpcResult).toMatchObject({
+      // The captured projection has no actual whole-panel louver counts. Do not
+      // fabricate them to make an account-held shutter look construction-complete.
+      validationSnapshot: { productStatus: "restriction_source_incomplete", issues: expect.arrayContaining([
+        expect.objectContaining({ruleId:"norman.shutter.single_louver.count"}),
+      ]) },
     });
-    expect(mobileQuotePreviewLineResponse(completeRestricted)).toMatchObject({
+    expect(mobileQuotePreviewLineResponse(incompleteConstruction)).toMatchObject({
       status: "blocked",
-      requiresManualPricing: true,
-      blockedReason: "This complete configuration requires manual pricing in the quote editor.",
+      requiresManualPricing: false,
+      blockedReason: "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
     });
   });
 });
