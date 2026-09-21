@@ -7,14 +7,14 @@
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 64px 24px 88px;
-  background: radial-gradient(ellipse at center, #222724 0%, #111412 30%, #090a0a 70%);
+  padding: 48px 24px;
+  background: radial-gradient(ellipse at center, #101813 0%, #090c0a 65%);
   color: #efefed;
   font-family: Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   color-scheme: dark;
 }
-.content { width: 100%; text-align: center; }
-.logoFrame { position: relative; display: grid; place-items: center; width: 192px; height: 192px; margin: 0 auto 30px; }
+.content { width: 100%; max-width: 440px; text-align: center; }
+.logoFrame { position: relative; display: grid; place-items: center; width: 192px; height: 192px; margin: 0 auto 32px; }
 .brand { display: block; width: 118px; height: auto; object-fit: contain; filter: brightness(0) invert(1); }
 /* Center the visible artwork, compensating for the official PNG's transparent
    padding: canvas 1144×1080, artwork bounds (146,145)–(972,661). */
@@ -22,14 +22,39 @@
 .indicator {
   position: absolute;
   inset: 0;
-  border: 1px solid #535d573b;
-  border-top-color: #b8c5bd;
-  border-right-color: #88958d60;
+  border: 2px solid #343e37;
+  border-top-color: #72dcaf;
+  border-right-color: #72dcaf;
   border-radius: 50%;
-  animation: orbit 7s linear infinite;
+  animation: orbit 2.4s linear infinite;
 }
 .content .title { width: 100%; max-width: none; margin: 0; color: #efefed; font: 500 22px/1.25 Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; letter-spacing: -.5px; text-transform: none; }
-.content .description { margin: 10px 0 0; color: #aeb4b1; font-size: 13px; line-height: 1.5; }
-.screen .footer { position: absolute; bottom: max(24px, env(safe-area-inset-bottom)); left: 20px; right: 20px; margin: 0; color: #a2aaa5; font-size: 10px; line-height: 1.5; letter-spacing: 2.3px; text-align: center; text-transform: uppercase; }
+.content .description { margin: 10px 0 0; color: #aeb4b1; font-size: 14px; line-height: 1.5; }
 @keyframes orbit { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .indicator { animation: none; } }
+
+.stopped { animation: none; border-color: #536057; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; }
+.screen .actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 20px;
+  border: 1px solid #384139;
+  border-radius: 999px;
+  background: #151a16;
+  color: #efefed;
+  font: 500 13px/1.4 Givonic, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.screen .actions button:hover { background: #202c24; border-color: #72dcaf; }
+.screen .actions button:focus-visible { outline: 2px solid #72dcaf; outline-offset: 4px; }
+.back svg { color: #72dcaf; flex-shrink: 0; }
+.screen .actions .retry { background: #72dcaf; border-color: #72dcaf; color: #10281d; }
+.screen .actions .retry:hover { background: #8ee6bf; }
+.content .description { overflow-wrap: anywhere; }
+@media (max-height: 500px) { .logoFrame { width: 132px; height: 132px; margin-bottom: 20px; } .brand { width: 88px; } .screen:global(.crm-app-shell) { padding: 24px; } }

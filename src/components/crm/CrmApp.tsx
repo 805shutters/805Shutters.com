@@ -3178,14 +3178,11 @@ export function CrmApp({
   }
 
   if (needsFullDashboard && !data) {
-    return <div className="crm-app-shell crm-platinum-shell">
-      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void ensureFullDashboard().catch(() => undefined)} onSignOut={() => void signOut()} busy={busy} />
-      <div className="crm-platinum-main"><section className="crm-login-panel" role="status">
-        <h1>{fullDashboardError ? "Jobs could not be loaded." : "Loading workspace…"}</h1>
-        {fullDashboardError && <><p>{fullDashboardError}</p><button onClick={() => void ensureFullDashboard().catch(() => undefined)}>Retry</button></>}
-        <button onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); setBuilderQuoteId(null); setDrill(null); openTab("tracking"); }}>Back to active jobs</button>
-      </section></div>
-    </div>;
+    return <CrmLoadingScreen
+      error={fullDashboardError}
+      onRetry={() => void ensureFullDashboard().catch(() => undefined)}
+      onBack={() => { setTrackingDetailId(null); setTrackingQuickAction(null); setBuilderQuoteId(null); setDrill(null); openTab("tracking"); }}
+    />;
   }
 
   const financialUnavailable=(data?.sourceHealth||[]).some(s=>s.state!=="complete"&&["job expenses","installation invoices","order emails","Ken payments","Ken allocations","commission payments","commission allocations","settings"].includes(s.source));
