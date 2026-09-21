@@ -1,3 +1,4 @@
+import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "@/lib/quote-v2/quote-pricing-policy";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   SalesQuoteDesign,
@@ -289,13 +290,35 @@ function protectedInternalSnapshot(
   result: QuoteV2PriceResult,
   costResult: unknown,
   costSummary: unknown,
+  retailOnlyQuoting = false,
 ): JsonRecord | null {
-  if (!result.ok || !result.internalCost) return null;
+  if (!result.ok || (!result.internalCost && !retailOnlyQuoting)) return null;
+  const summary = plainRecord(costSummary);
+  const cost = plainRecord(costResult);
+  const unresolved = retailOnlyQuoting && (
+    !result.internalCost ||
+    cost?.ok !== true ||
+    result.internalCost.freightStatus === "unresolved" ||
+    (result.costStatus === "incomplete" && summary?.status === "incomplete")
+  );
+  const canonicalCost = unresolved ? {
+    ...result.internalCost,
+    quotePricingPolicy: "grid_options_quote_v1",
+    status: "unresolved",
+    costStatus: "incomplete",
+    productCostUnit: result.internalCost?.productCostUnit ?? null,
+    productCostTotal: result.internalCost?.productCostTotal ?? null,
+    freightAllocated: null,
+    oversizeAllocated: null,
+    processingFeeAllocated: null,
+    landedCostTotal: null,
+    freightStatus: "unresolved",
+  } : result.internalCost;
   return {
     // Keep the canonical landed-cost fields at the snapshot root so the
     // transactional RPC can validate and total them without trusting a second
     // client-visible representation.
-    ...result.internalCost,
+    ...canonicalCost,
     components: result.components.map((component) => ({
       id: component.id,
       category: component.category,
@@ -314,8 +337,21 @@ function protectedInternalSnapshot(
       catalogOncePerLine: result.componentTotals.catalogOncePerLine,
       wholesaleOncePerLine: result.componentTotals.wholesaleOncePerLine,
     },
-    costResult,
-    costSummary,
+    costResult: unresolved ? {
+      ...cost,
+      status: "unresolved",
+      costStatus: "incomplete",
+      landedCostTotal: null,
+      freightAllocated: null,
+      oversizeAllocated: null,
+      processingFeeAllocated: null,
+      freightStatus: "unresolved",
+    } : costResult,
+    costSummary: unresolved ? {
+      ...summary,
+      status: "incomplete",
+      dealerCostTotal: null,
+    } : costSummary,
   };
 }
 
@@ -369,6 +405,17 @@ function customerSafeFailure(result: QuoteV2PriceResult): JsonRecord {
     validationStatus: "blocked",
     catalogVersion: result.catalogVersion,
   };
+}
+
+/** Service-only diagnostic; never included in customer price or snapshots. */
+function staffPricingFailure(result: QuoteV2PriceResult, missingSelection: boolean): string {
+  const reasons = result.validationIssues
+    .filter((issue) => issue.severity === "hard_block")
+    .map((issue) => issue.explanation.trim())
+    .filter(Boolean);
+  if (missingSelection) reasons.push("This line does not have a persisted selected design.");
+  if (!result.ok && result.error.trim()) reasons.push(result.error.trim());
+  return [...new Set(reasons)].join(" ") || CUSTOMER_PRICING_FAILURE;
 }
 
 function rpcRow(value: unknown): JsonRecord {
@@ -473,17 +520,21 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
       );
     }
     const result = priced.result;
+    const retailOnlyQuoting =
+      input.serverDate >= GRID_OPTION_QUOTING_EFFECTIVE_FROM &&
+      priced.selection.catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM;
     const internalSnapshot = protectedInternalSnapshot(
       result,
       priced.costResult,
       repriced.costSummary,
+      retailOnlyQuoting,
     );
     const forcedBlocked = missingPersistedSelection.has(line.id);
     const authoritative =
       !forcedBlocked &&
       result.ok &&
       result.validationStatus === "valid" &&
-      (result.internalCost?.freightStatus !== "unresolved" ||
+      (retailOnlyQuoting || result.internalCost?.freightStatus !== "unresolved" ||
         SOURCE_COST_PLUS_PRODUCTS.has(priced.selection.productId)) &&
       internalSnapshot !== null &&
       priced.snapshot !== null;
@@ -512,7 +563,11 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
         selectionFingerprint: result.selectionFingerprint,
         catalogVersion: result.catalogVersion,
         priceStatus,
-        authoritativeSnapshot: authoritative ? priced.snapshot : null,
+        staffPricingError: authoritative ? null : staffPricingFailure(result, forcedBlocked),
+        authoritativeSnapshot: authoritative ? (retailOnlyQuoting ? {
+          ...priced.snapshot,
+          quotePricingPolicy: "grid_options_quote_v1",
+        } : priced.snapshot) : null,
         internalCostSnapshot: authoritative ? internalSnapshot : null,
         validationSnapshot: validationSnapshot(
           result,

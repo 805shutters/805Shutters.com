@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import * as exactBackend from "@/lib/quote-lab/exact-backend";
+import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
+import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
   parseSalesQuoteV2PriceSaveBody,
+  prepareSalesQuoteV2PricingBatch,
   quoteV2ServerCatalogDate,
   saveSalesQuoteV2AuthoritativePrice,
 } from "./sales-quote-v2-price-save";
@@ -274,6 +278,7 @@ describe("authoritative sales quote V2 pricing save", () => {
       "selectDesign",
       "selection",
       "selectionFingerprint",
+      "staffPricingError",
       "validationSnapshot",
     ]);
     expect(savedResult).toMatchObject({
@@ -641,4 +646,141 @@ it("preserves exact part target and mechanism reference with held native validat
   await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,expectedRevision:7,idempotencyKey:"price-save:part-model",actorId:ACTOR_ID,serverDate:"2026-09-20"});
   const saved=(rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0];
   expect(saved).toMatchObject({priceStatus:"blocked",authoritativeSnapshot:null,selection:{configuration:{lotus_part_target_model:"AMX",lotus_part_installed_reference:"synthetic mechanism reference"}},validationSnapshot:{issues:expect.arrayContaining([expect.objectContaining({ruleId:"lotus.parts.documented_model",derivedValues:expect.objectContaining({intended_model:"AMX"})}),expect.objectContaining({ruleId:"lotus.observed.manual_price_required"})])}});
+});
+
+describe("current retail-only server persistence",()=>{
+ function pricingFixture(kind:"missing"|"freight"|"cost_result",date: `${number}-${number}-${number}`="2026-09-21") {
+  const rows=validRows({designOptions:{quote_v2_backend:true}});
+  rows.sales_quote_line_items[0].selected_design_id=DESIGN_ID;
+  const baseline=exactBackend.repriceExactQuoteBuilderForServerDate({
+   lines:rows.sales_quote_line_items as unknown as SalesQuoteLineItem[],
+   designs:rows.sales_quote_designs as unknown as SalesQuoteDesign[],
+   selectedVariantByLine:{[LINE_ID]:"A"},applyCustomerCharges:true,
+  },"2026-08-01");
+  if(!("backend" in baseline)||baseline.backend!=="v2"||!baseline.designs[0].result.ok)throw Error("Expected priced fixture");
+  const original=baseline.designs[0];
+  if(!original.result.ok)throw Error("Expected valid retail");
+  const result={...original.result,catalogAsOf:date,costStatus:"incomplete" as const,
+   internalCost:kind==="missing"?undefined:{...original.result.internalCost!,...(kind==="freight"?{freightStatus:"unresolved" as const}:{})},
+   ...(kind==="missing"?{wholesaleBase:null,wholesaleUnitPrice:null,wholesaleTotal:null,
+     components:original.result.components.map(component=>({...component,wholesaleAmount:null})),
+     componentTotals:{...original.result.componentTotals,wholesalePerWindow:null,wholesaleOncePerLine:null}}:{}),
+  };
+  const fixture={...baseline,costSummary:{...baseline.costSummary,status:"incomplete" as const,warnings:["Dealer freight/option cost unresolved"]},
+   designs:[{...original,selection:{...original.selection,catalogAsOf:date},result,
+    costResult:kind==="freight"?original.costResult:{ok:false as const,code:"CUSTOMER_RETAIL_UNDEFINED" as const,error:"Dealer cost unresolved",warnings:[]},
+    snapshot:createImmutablePriceSnapshot(result)}]};
+  return {rows,fixture};
+ }
+ it.each(["missing","freight","cost_result"] as const)("saves current valid retail with %s dealer evidence unresolved",async kind=>{
+  const {rows,fixture}=pricingFixture(kind);
+  const spy=vi.spyOn(exactBackend,"repriceExactQuoteBuilderForServerDate").mockReturnValue(fixture);
+  try {
+   const {client,rpcCalls}=fakeSupabase(rows);
+   const response=await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,expectedRevision:7,idempotencyKey:`retail-cost-${kind}`,serverDate:"2026-09-21"});
+   expect(response.priceStatus).toBe("authoritative");expect(response.price.ok).toBe(true);
+   const saved=(rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
+   expect(saved.staffPricingError).toBeNull();
+   expect(saved.authoritativeSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",priceStatus:"authoritative"});
+   expect(saved.internalCostSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",status:"unresolved",costStatus:"incomplete",freightStatus:"unresolved",landedCostTotal:null,freightAllocated:null,oversizeAllocated:null,processingFeeAllocated:null});
+   expect(saved.validationSnapshot).toMatchObject({costStatus:"incomplete",costWarnings:["Dealer freight/option cost unresolved"]});
+   expect(saved.internalCostSnapshot.productCostUnit).toBe(kind==="missing"?null:fixture.designs[0].result.internalCost?.productCostUnit);
+   expect(saved.internalCostSnapshot.costSummary.dealerCostTotal).toBeNull();
+   expect(saved.internalCostSnapshot.costResult.landedCostTotal).toBeNull();
+   expect(JSON.stringify(response)).not.toMatch(/productCostUnit|wholesaleAmount|internalCostSnapshot|dealerCostTotal/);
+  }finally{spy.mockRestore();}
+ });
+ it.each(["No retail grid cell covers width 121 and height 60.", "H3 retail pricing requires the actual panel count."])("retains specific staff pricing failure: %s",async reason=>{
+  const {rows,fixture}=pricingFixture("missing");
+  const original=fixture.designs[0].result;
+  const source=original.components[0].source;
+  const failed={...original,ok:false as const,code:"CONFIGURATION_INCOMPLETE" as const,error:reason,
+   validationStatus:"blocked" as const,validationIssues:[{severity:"hard_block" as const,ruleId:"price.exact_selection_missing",source,selectedValues:{},explanation:reason}]};
+  const spy=vi.spyOn(exactBackend,"repriceExactQuoteBuilderForServerDate").mockReturnValue({...fixture,designs:[{...fixture.designs[0],result:failed,snapshot:null}]});
+  try{
+   const {client,rpcCalls}=fakeSupabase(rows);
+   const response=await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,expectedRevision:7,idempotencyKey:"retail-staff-error",serverDate:"2026-09-21"});
+   const saved=(rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0];
+   expect(saved).toMatchObject({priceStatus:"blocked",staffPricingError:reason,authoritativeSnapshot:null});
+   expect(JSON.stringify(response)).not.toContain("staffPricingError");
+   expect(JSON.stringify(response)).not.toContain(reason);
+  }finally{spy.mockRestore();}
+ });
+ it("retains earlier save requirements without rewriting history",async()=>{
+  const {rows,fixture}=pricingFixture("missing","2026-09-20");
+  const spy=vi.spyOn(exactBackend,"repriceExactQuoteBuilderForServerDate").mockReturnValue(fixture);
+  try{
+   const {client,rpcCalls}=fakeSupabase(rows);
+   const response=await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,expectedRevision:7,idempotencyKey:"retail-old-cost",serverDate:"2026-09-20"});
+   expect(response.priceStatus).toBe("unpriceable");
+   expect((rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0]).toMatchObject({authoritativeSnapshot:null,internalCostSnapshot:null});
+  }finally{spy.mockRestore();}
+ });
+ it("does not admit valid retail with missing persisted selection",()=>{
+  const {rows,fixture}=pricingFixture("missing");
+  const spy=vi.spyOn(exactBackend,"repriceExactQuoteBuilderForServerDate").mockReturnValue(fixture);
+  try{
+   const prepared=prepareSalesQuoteV2PricingBatch({lines:rows.sales_quote_line_items as unknown as SalesQuoteLineItem[],selectedDesigns:rows.sales_quote_designs as unknown as SalesQuoteDesign[],serverDate:"2026-09-21",missingPersistedSelection:new Set([LINE_ID])});
+   expect(prepared.prepared[0].priceStatus).toBe("blocked");
+   expect(prepared.prepared[0].rpcResult).toMatchObject({authoritativeSnapshot:null,internalCostSnapshot:null});
+  }finally{spy.mockRestore();}
+ });
+});
+
+
+describe("actual current retail quote saves", () => {
+  it.each(["roman", "onyx"] as const)("persists %s retail independently of unresolved costs", async (kind) => {
+    const rows = validRows();
+    Object.assign(rows.sales_quote_line_items[0], {
+      product_type: kind === "roman" ? "Roman Shades" : "Shutters",
+      width_whole: kind === "roman" ? 91 : 92,
+      height_whole: kind === "roman" ? 48 : 71,
+      selected_design_id: DESIGN_ID,
+    });
+    const roman = {
+      supplier:"Norman", mount_type:"Inside Mount", shade_type:"Single", lift_system:"Cordless", valance:"No Valance", fabric:"F0183 - Milk | Lakeside",
+      options_json:{quote_v2_backend:true,catalog_product_id:"roman",fabric_program_id:"roman_cordless_usa_price_group_2_pg2",fabric_color_collection:"Lakeside",fabric_color_code:"F0183",fabric_color_name:"Milk",fold_style:"Flat Fold with Batten Back",lining:"Translucent",seaming:"Vertical Seams",fabric_orientation:"Standard / Non-Railroaded",roman_mount_fit:"Flush Inside",poles:"None",side_by_side:"No",roman_shim_layers:"0"},
+    };
+    const onyx = {
+      supplier:"Onyx",material:"Poly Composite",panel_config:"LLRR",louver_size:'3 1/2"',tilt_type:"H3 - Hidden Tiltrod In Stile",hinge_color:"Match",
+      options_json:{quote_v2_backend:true,catalog_product_id:"onyx_shutters",catalog_program_id:"poly_composite",quote_lab_product_id:"onyx_shutters",quote_lab_program_id:"poly_composite",size_type:"W - Window Size",frame_type:"VZ Small",onyx_mount:"IM",frame_sides:"4",color:"101_White",astragal:"Yes",onyx_order_type:"Regular"},
+    };
+    Object.assign(rows.sales_quote_designs[0], {
+      product_type: rows.sales_quote_line_items[0].product_type,
+      ...(kind === "roman" ? roman : onyx),
+    });
+    const {client,rpcCalls}=fakeSupabase(rows);
+    const response = await saveSalesQuoteV2AuthoritativePrice(client, {
+      quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,
+      expectedRevision:7,idempotencyKey:`real-retail-${kind}`,serverDate:"2026-09-21",
+    });
+    expect(response.priceStatus, JSON.stringify(response.price)).toBe("authoritative");
+    expect(response.price).toMatchObject({ok:true,total:kind === "roman" ? 2047 : 1590});
+    const saved=(rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
+    expect(saved).toMatchObject({staffPricingError:null,
+      authoritativeSnapshot:{quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",retail:{total:kind === "roman" ? 2047 : 1590}},
+      internalCostSnapshot:{status:"unresolved",costStatus:"incomplete",freightStatus:"unresolved",landedCostTotal:null},
+    });
+    if(kind === "onyx") {
+      expect(saved.internalCostSnapshot.components).toEqual(expect.arrayContaining([
+        expect.objectContaining({id:"accessory:poly_composite_h3_per_panel",catalogAmount:40,wholesaleAmount:null}),
+      ]));
+      expect(saved.internalCostSnapshot.components).toEqual(expect.arrayContaining([
+        expect.objectContaining({id:"base_grid:poly_composite",wholesaleAmount:600}),
+      ]));
+      rows.sales_quote_designs[0].panel_config = null;
+      const missing = fakeSupabase(rows);
+      const failure = await saveSalesQuoteV2AuthoritativePrice(missing.client, {
+        quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,actorId:ACTOR_ID,
+        expectedRevision:7,idempotencyKey:"real-h3-missing-count",serverDate:"2026-09-21",
+      });
+      const diagnostic=(missing.rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
+      expect(diagnostic.priceStatus).not.toBe("authoritative");
+      expect(diagnostic.staffPricingError).toMatch(/H3.*panel/i);
+      expect(JSON.stringify(failure)).not.toContain(diagnostic.staffPricingError);
+    } else {
+      expect(saved.internalCostSnapshot.productCostTotal).toBeGreaterThan(0);
+    }
+    expect(JSON.stringify(response)).not.toMatch(/internalCostSnapshot|wholesaleAmount|landedCostTotal/);
+  });
 });
