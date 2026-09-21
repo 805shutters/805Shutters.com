@@ -17,12 +17,12 @@ export function normanRegularPanelCount(value: unknown): number | null {
 }
 export function normanStileWidths(programId: string, widestPanel: unknown, application?: string) {
   if (programId === "woodlore_aquashield") return ['2"'];
-  if (application === "bifold_180") return ['2"', '2 1/4"'];
+  if (["bifold_180","bifold_other"].includes(application ?? "")) return ['2"', '2 1/4"'];
   const width = Number(widestPanel);
   return [...(width >= 6 && width <= 12 ? ['1 5/8"'] : []), '2"', '2 1/4"'];
 }
 export function normanStileJoins(panelConfig: unknown, widestPanel: unknown, application?: string) {
-  if (application === "bifold_180") return ["Butt", "Rabbet"];
+  if (["bifold_180","bifold_other"].includes(application ?? "")) return ["Butt", "Rabbet"];
   const count = normanRegularPanelCount(panelConfig);
   if (count !== null && count >= 2) return ["Rabbet", "Astragal"];
   if (count === 1) {

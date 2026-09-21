@@ -15,7 +15,7 @@ export function validateNormanShutterAssortment(s: SelectionContext): Validation
   const panelRecord = s.catalogAsOf >= '2026-09-20' ? parseNormanPanelRecord(c[NORMAN_SHUTTER_PANEL_RECORD]) : null;
   const application = panelRecord?.application;
   const noSpecialtyHinges = application === 'specialty' && panelRecord?.specialty?.hinges === false;
-  const bifold180 = application === 'bifold_180';
+  const bifold180 = application === 'bifold_180' || application === 'bifold_other';
   const bypass = application === 'bypass_closed' || application === 'bypass_open';
   const specialty = application === 'specialty';
   const dedicatedTrack = bifold180 || bypass || specialty;

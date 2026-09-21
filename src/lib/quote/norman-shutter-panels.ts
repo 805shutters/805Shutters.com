@@ -1,3 +1,4 @@
+import {parseNormanBifold90,type NormanBifold90Record} from './norman-shutter-bifold90';
 import {parseNormanDoubleHungRecord,type NormanDoubleHungRecord} from './norman-shutter-double-hung';
 import {parseNormanSpecialtyRecord,type NormanSpecialtyRecord} from './norman-shutter-specialty';
 import {parseNormanBypassRecord,type NormanBypassRecord} from './norman-shutter-bypass';
@@ -19,6 +20,7 @@ export type NormanShutterPanelRecord = {
   existingDoorGlassOrSidelight: boolean;
   panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;horizontalLouverSectionHeightInches?:number|null;wholePanelLouverCount?:number|null;singleLouverNoMouseHole?:boolean|null;bottomSupport?:NormanShutterBottomSupport;dividerDetails?:NormanShutterDividerRecord}>;
   bifold180?: NormanBifold180Record;
+  bifold90?: NormanBifold90Record;
   bypass?: NormanBypassRecord;
   specialty?: NormanSpecialtyRecord;
   doubleHung?: NormanDoubleHungRecord;
@@ -44,6 +46,7 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   if(r.doubleHung!==undefined&&!parseNormanDoubleHungRecord(r.doubleHung))return null;
   if(r.specialty!==undefined&&!parseNormanSpecialtyRecord(r.specialty))return null;
   if(r.bypass!==undefined&&!parseNormanBypassRecord(r.bypass))return null;
+  if(r.bifold90!==undefined&&!parseNormanBifold90(r.bifold90))return null;
   if(r.bifold180!==undefined&&!parseNormanBifold180Record(r.bifold180))return null;
   if(r.panels.some(p=>p.widthInches!==undefined&&p.widthInches!==null&&(typeof p.widthInches!=='number'||!Number.isFinite(p.widthInches))))return null;
   if(r.panels.some(p=>p.horizontalLouverSectionHeightInches!==undefined&&p.horizontalLouverSectionHeightInches!==null&&(typeof p.horizontalLouverSectionHeightInches!=='number'||!Number.isFinite(p.horizontalLouverSectionHeightInches))))return null;
