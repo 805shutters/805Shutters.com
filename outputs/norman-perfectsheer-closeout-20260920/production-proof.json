@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-20",
+  "release": "4c24cfaa",
+  "quote": "A805-0379",
+  "customer": "Norman PerfectSheer Network Verification 2026-09-20",
+  "status": "draft_pricing_held",
+  "nativeChecks": [
+    {
+      "check": "full_reload_reopen",
+      "observed": "Both36x60LilyF1179ARCqty2 lines persistHub1 and separate network assignments; saved sharedHub motorcount4/30, exactlyoneowner."
+    },
+    {
+      "check": "separate_network_negative",
+      "observed": "Network1 has1remote; network2 has0. Reopened audit onnetwork2 displays exact same-network remote/priorWO requirement despite broader pricinghold."
+    },
+    {
+      "check": "same_network_restore",
+      "observed": "Network2 restoredto1 withremote0; saved audit aggregate1remote and no missing-network error."
+    },
+    {
+      "check": "capacity30",
+      "observed": "Qty2+28; QUOTE SAVED; hub30/30 onbothlines, exactlyoneowner."
+    },
+    {
+      "check": "capacity31",
+      "observed": "Qty2+29; QUOTE SAVED; both showinvalidallocation and exactmaximum30motors instruction."
+    },
+    {
+      "check": "restored4",
+      "observed": "Qty2+2; QUOTE SAVED; hub4/30, exactlyoneowner; no capacity error."
+    },
+    {
+      "check": "customer_preview",
+      "observed": "Contract displays Pricing incomplete and prevents review/send; nocharge orstaffaudit leaked."
+    }
+  ],
+  "remaining": [
+    "Freshreload restoredstate once displayfix9da3ae33deployed",
+    "Cross-product native membership proof; actualbackend71test suite covers mixedRoller/Roman/PS and one483component"
+  ],
+  "pricingEvidence": "HeldPerfectSheer retail is notverified. Oldstaffpanel inferred483/140 onbothlines; correction9da3ae33 tested and queued. Savedhuballocationnotes andbackendregressions are distinct fromcustomerpriceproof."
+}
