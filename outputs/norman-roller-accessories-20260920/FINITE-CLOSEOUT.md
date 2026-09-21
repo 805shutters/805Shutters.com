@@ -6,7 +6,7 @@ This classifies the audited, captured source scope. It does not certify missing 
 
 Implemented source branches: exact fabric identities/price groups/roll widths; shared/common valance records; confirmed physical tube and group hardware; Valance Only and Separate Valance destinations and source choices; shared motor-panel membership/capacity; measured hold-downs; chain defaults/custom dimensions and safety conditions; one complimentary order pole and counted extras; Basic/Premium Wood Light Guard finishes, mounting, channels and one-set quantities. Source references and tests are recorded in this folder's RESULTS.md and the earlier roller-valance-only and onyx-audit ledgers.
 
-Magnet, chain, pole and Light Guard increments are now deployed. Positive source prices and exact negative rules have been verified in production; all four accessory branches completed full reload and reopen. Only the subsequent copy-remap release proof remains in progress. Valance-containing verification quotes keep customer output blocked because their standalone prices remain unresolved.
+Magnet, chain, pole and Light Guard increments are now deployed. Positive source prices and exact negative rules have been verified in production; all four accessory branches completed full reload and reopen. The copy-remap release also passed fresh-copy/full-reload proof in D805-0377, and source A805-0361 was independently reopened unchanged. Valance-containing verification quotes keep customer output blocked because their standalone prices remain unresolved.
 
 Exact remaining evidence:
 
@@ -16,6 +16,7 @@ Exact remaining evidence:
 | Valance Only / Separate Valance | Current standalone rate, availability, freight and any shared charge allocation | Exact selectable destinations, held customer price |
 | Common valance | Authoritative retail width and shared allocation across mixed/member controls | Shared records and hardware; price hold retained |
 | Factory bracket selection | Dimension thresholds (p70/p73) and custom-width rounding (p74) | Does not infer factory bracket from largest confirmed tube alone |
+| Inside coupled raceway shims | Factory shim quantity for the pre-screwed inside coupled raceway brackets (guide p41/p74); the guide does not specify a count | Shim-bearing inside coupled branch held, unshimmed documented branch retained |
 | Premium Wood Light Guard >96 inches | Wood-specific splice schedule; p45 diagram occupies Basic row | Explicit hold rather than borrowing Basic rule |
 | Other wood Light Guard finishes | Effective date of 30→35mm running change (p45) | 30mm recorded, pending-change status explicit |
 | Dealer account prices | Current account factors/fees and confirmation of purchasing account | Existing selling policy and dealer-cost separation preserved |
@@ -46,3 +47,5 @@ While making B/805-0372 from A/805-0361, Copy Current created new shade IDs but 
 Regression checks exercise the real copy operation generator, retry determinism, both shade associations, typed-version boundaries, unknown links and immutable source configuration/historical money. 14 focused tests and typecheck passed. Existing already-copied drafts are not silently migrated; a fresh copy will provide live verification after deployment.
 
 The ten-alternative failure is also repaired: the shared label helper previously exhausted A–J and emitted "Option 11", rejected by the server/SQL A–Z constraint. It now uses A–Z. At26, the server returns an actionable409 before creating a partial quote; Add/Copy errors remain inline instead of disappearing with a toast. Tests exercise K creation through the authoritative draft parser, Z, full exhaustion/no write, existing gap filling and previous copy regressions (23passed plus typecheck). No source quotes are rewritten.
+
+Final bounded review found no remaining independently implementable rule among the captured Roller accessory/common/standalone-valance gaps. The listed source/account/factory holds remain exact exceptions. A–Z parent production proof is tracked separately; K is server-tested in this branch. Onyx further enumeration remains login-dependent.

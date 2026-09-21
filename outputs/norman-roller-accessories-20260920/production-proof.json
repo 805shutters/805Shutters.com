@@ -122,11 +122,41 @@
   "copyFinding": {
     "sourceQuote": "805-0361",
     "copiedQuote": "805-0372",
-    "finding": "New shade IDs were created but valance association IDs retained source IDs. Original quote preserved. Repair d3521b34 remaps new copies; live proof pending deployment."
+    "finding": "Original defect reproduced in B. New D805-0377 after repair now maps both new IDs and survives full reload/reopen; source A remains intact. B not silently migrated."
   },
   "customerOutputVerification": {
     "quote": "805-0375",
     "contract": "Pricing incomplete. Complete pricing for every selected window before reviewing or sending the contract.",
     "result": "Expected block: standalone valance prices remain held. No customer output sent."
+  },
+  "copyRemapProof": {
+    "deployment": "3cc28cc183010a25834fa5b666dfd9b40bd1af9c",
+    "sourceQuote": "805-0361",
+    "sourceVariant": "A",
+    "sourceAssociations": [
+      "e9fbeabe-e4e0-4654-ad94-88110dd0a060",
+      "000ba57d-f6dc-4ad3-82df-2481286df9bf"
+    ],
+    "sourceAssociationsCheckedBeforeCopy": true,
+    "copiedQuote": "805-0377",
+    "copiedVariant": "D",
+    "newAssociations": [
+      "e52b8016-fc95-40dc-8f37-8fd53f925222",
+      "bc2fb2db-ab85-4b1c-8d90-49408aea4ff8"
+    ],
+    "bothNewAssociationsChecked": true,
+    "shadeLineTotals": [
+      518,
+      490
+    ],
+    "fullReloadReopen": {
+      "passed": true,
+      "bothCopiedAssociationsChecked": true,
+      "originalReopenedAndAssociationsUnchanged": true,
+      "originalAndCopyShadeTotals": [
+        518,
+        490
+      ]
+    }
   }
 }
