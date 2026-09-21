@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import {prepareSalesQuoteV2PricingBatch} from "@/lib/crm/sales-quote-v2-price-save";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import {
   costExactQuoteBuilderDesign,
@@ -342,7 +343,16 @@ it("persists typed vinyl donor derivations without approving conflicted prices",
   expect("backend" in result && result.backend).toBe("v2");
   if (!("backend" in result) || result.backend!=="v2") return;
   expect(result.designs[0]?.result.validationIssues).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:"lotus.vinyl.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["MLX4860WH"])}})]));
-  expect(result.designs[0]?.snapshot).toBeNull(); // Held validation evidence must not become an approved price snapshot.
+  const prepared=prepareSalesQuoteV2PricingBatch({lines:[mlxLine],selectedDesigns:[mlxDesign],serverDate:"2026-09-21"}).prepared[0];
+  expect(prepared.priceStatus).toBe("blocked");
+  expect(prepared.customerPrice).toMatchObject({ok:false});
+  expect(prepared.customerPrice).not.toHaveProperty("unitPrice");
+  expect(prepared.customerPrice).not.toHaveProperty("total");
+  expect(result.designs[0]?.snapshot).toBeNull(); // Conflicting dealer prices cannot become authoritative under quote-only mode.
+  expect(result.designs[0]?.result.validationStatus).toBe("blocked");
+  expect(result.designs[0]?.result.validationIssues).toEqual(expect.arrayContaining([
+    expect.objectContaining({ruleId:"lotus.price.source_authority_conflict",severity:"hard_block"}),
+  ]));
   expect(result.sendability.sendable).toBe(false);
   expect(result.sendability.lines[0].blockingIssues).toEqual(expect.arrayContaining([expect.objectContaining({explanation:expect.stringContaining("Lotus MLX dealer-guide and portal prices conflict")})]));
   const rejected=repriceExactQuoteBuilder({lines:[{...mlxLine,width_whole:16,width_fraction:"3/4",height_whole:36}],designs:[mlxDesign],selectedVariantByLine:{[mlxLine.id]:"A"}});

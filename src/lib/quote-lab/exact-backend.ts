@@ -13,7 +13,7 @@ import { deriveNormanOrderRecords, romanComponentWidths } from "@/lib/quote-v2/n
 import { resolveNormanShadeMotorization } from "@/lib/quote-v2/norman-shade-motorization";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { sourceProvenance } from "@/lib/quote-v2/source-manifest";
-import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
+import { lotusCustomerDeliveryBlock, wholesaleAuthorityFindings } from "@/lib/quote/lotus-authority";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
 import {
@@ -1353,9 +1353,29 @@ function repriceExactQuoteBuilderV2(
       selection,
       authoritativePriceInput,
     );
-    const protectedResult: QuoteV2PriceResult = dealerNetCost
+    let protectedResult: QuoteV2PriceResult = dealerNetCost
       ? { ...result, internalCost: dealerNetCost.internalCost }
       : result;
+    // A retained dealer-grid calculation is an internal comparison, not an
+    // authoritative customer price when the controlling rate or unit conflicts.
+    // Keep installation/availability-only delivery checks on their existing path.
+    const lotusPriceConflict = catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM &&
+      selection.productId.startsWith("lotus_") && (
+        wholesaleAuthorityFindings(selection.productId, selection.programId ?? "")
+          .some(finding => finding.code === "SOURCE_PRICE_CONFLICT") ||
+        selection.programId === "lotus_fcx_2in_soft_white_custom" ||
+        selection.programId === "lotus_cvv_vertical_vanes_custom"
+      );
+    if (protectedResult.ok && lotusPriceConflict) {
+      protectedResult = {...protectedResult, validationStatus: "blocked", validationIssues: [
+        ...protectedResult.validationIssues,
+        {severity: "hard_block", ruleId: "lotus.price.source_authority_conflict",
+          source: sourceProvenance("lotus-west-a26-v1"),
+          selectedValues: {productId: selection.productId, programId: selection.programId},
+          explanation: lotusCustomerDeliveryBlock(selection.productId, selection.programId ?? "") ??
+            "The controlling Lotus price or billing unit requires source confirmation."},
+      ]};
+    }
     return {
       lineItemId: design.line_item_id,
       designId: design.id,
@@ -1366,7 +1386,7 @@ function repriceExactQuoteBuilderV2(
       result: protectedResult,
       dealerNetCost,
       costResult: v2CostResult(protectedResult, dealerNetCost),
-      snapshot: protectedResult.ok
+      snapshot: protectedResult.ok && protectedResult.validationStatus === "valid"
         ? createImmutablePriceSnapshot(protectedResult)
         : null,
     };

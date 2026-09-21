@@ -159,7 +159,7 @@ describe("mobile quote preview current-catalog integration", () => {
         },
       },
       validationSnapshot: {
-        productStatus: "restriction_source_incomplete",
+        productStatus: "documented_limited",
         issues: [{ ruleId: "norman.shutter.assortment.color" }, {ruleId: "norman.shutter.panels.record_required"}, {
           ruleId: "norman.shutter.frame_pricing.missing_frame_sides",
           selectedValues: { frame_sides: null },
@@ -194,7 +194,7 @@ describe("mobile quote preview current-catalog integration", () => {
     expect(incompleteConstruction.rpcResult).toMatchObject({
       // The captured projection has no actual whole-panel louver counts. Do not
       // fabricate them to make an account-held shutter look construction-complete.
-      validationSnapshot: { productStatus: "restriction_source_incomplete", issues: expect.arrayContaining([
+      validationSnapshot: { productStatus: "documented_limited", issues: expect.arrayContaining([
         expect.objectContaining({ruleId:"norman.shutter.single_louver.count"}),
       ]) },
     });

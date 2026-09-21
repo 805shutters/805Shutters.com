@@ -649,8 +649,8 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     expect(result).toMatchObject({
       ok: true,
-      productStatus: "restriction_source_incomplete",
-      validationStatus: "blocked",
+      productStatus: "documented_limited",
+      validationStatus: "valid",
       base: 105.06,
       unitPrice: 105.06,
       total: 105.06,
@@ -666,7 +666,8 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(JSON.stringify(quote.customerQuote)).not.toMatch(
       /wholesale|internalCost|landedCost|productCost|dealerCost|margin/i,
     );
-    expect(quote.sendability.sendable).toBe(false);
+    expect(quote.sendability.sendable).toBe(true);
+    expect(quote.costSummary.status).toBe("incomplete"); // Freight still unresolved; no margin-complete claim.
   });
 
   it("pins Onyx U.S. Made Vinyl dealer cost and approved customer retail independently", () => {
@@ -712,7 +713,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     expect(result).toMatchObject({
       ok: false,
-      productStatus: "restriction_source_incomplete",
+      productStatus: "documented_limited",
       validationStatus: "blocked",
       pricedSelectionFingerprint: null,
     });
