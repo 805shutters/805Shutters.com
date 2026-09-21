@@ -3,7 +3,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {getStandardShutterGridOptions} from '@/mts-quote/components/crm/quote-builder/DesignCard';
 import {NormanBifold180ConstructionOptions} from '@/components/crm/NormanBifold180ConstructionOptions';
-import {emptyNormanBifold180Construction,parseNormanBifold180Construction,normanBifold180Geometry,normanBifold180BaseboardAdvice} from '../quote/norman-shutter-bifold180-construction';
+import {emptyNormanBifold180Construction,parseNormanBifold180Construction,normanBifold180Geometry,normanBifold180BaseboardAdvice,normanBifold180FramingReference} from '../quote/norman-shutter-bifold180-construction';
 import {NORMAN_SHUTTER_PANEL_RECORD,type NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
 import {validateNormanShutterPanels} from './norman-shutter-panels';
 import {validateNormanShutterAssortment} from './norman-shutter-assortment';
@@ -14,6 +14,11 @@ const record=():NormanShutterPanelRecord=>({version:1,application:'bifold_180',m
 const context=(r=record(),programId='woodlore'):SelectionContext=>({manufacturerId:'Norman',productId:'norman_shutters',programId,catalogVersion:'current',catalogAsOf:'2026-09-20',widthInches:48,heightInches:60,quantity:1,options:{},configuration:{panel_config:'LL',mount_type:'Outside Mount',stile_width:'2"',stile_join:'Butt',louver_size:'3 1/2"',color:'001',frame_type:'old-regular-frame',[NORMAN_SHUTTER_PANEL_RECORD]:r}});
 const ids=(s:SelectionContext)=>validateNormanShutterPanels(s).map(i=>i.ruleId.replace('norman.shutter.bifold180.',''));
 describe('Bi-fold180 source construction',()=>{
+ it('distinguishes framing sections from unknown hardware quantities and pricing dimensions',()=>{
+  expect(normanBifold180FramingReference(3)).toMatchObject({standardTrackCount:1,topFasciaSectionInches:3.375,lightBlockSectionInches:1.5625,hardwareQuantities:null,pricingMeasurementBasis:null});
+  expect(normanBifold180FramingReference(3.5)?.lightBlockSectionInches).toBe(2.0625);
+  expect(normanBifold180FramingReference(null)).toBeNull();
+ });
  it('uses explicit window versus casing measurement bases without inventing casing height deductions',()=>{
   expect(normanBifold180Geometry(construction())).toEqual({widthInches:51.5,heightInches:64.5});
   expect(normanBifold180Geometry({...construction(),casing:'existing'})).toEqual({widthInches:49.25,heightInches:60});

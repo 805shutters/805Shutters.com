@@ -32,3 +32,16 @@ export function normanBifold180BaseboardAdvice(r: NormanBifold180Construction): 
   if(t<=0.625)return 'For baseboard thickness up to ⅝ inch, the guide allows a 3½-inch header.';
   return `For this baseboard, the guide suggests a 3-inch header with ${t-0.125}-inch buildout (baseboard thickness minus ⅛ inch). Confirm site clearance.`;
 }
+
+/** Binder framing table: section sizes, not cut lengths or a bill of quantities. */
+export function normanBifold180FramingReference(headerInches: 3 | 3.5 | null) {
+  return headerInches === null ? null : {
+    standardTrackCount: 1,
+    trackPreinstalled: true,
+    headerSectionInches: headerInches,
+    topFasciaSectionInches: 3.375,
+    lightBlockSectionInches: headerInches === 3 ? 1.5625 : 2.0625,
+    hardwareQuantities: null,
+    pricingMeasurementBasis: null,
+  };
+}

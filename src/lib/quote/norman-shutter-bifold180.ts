@@ -9,7 +9,7 @@ export function normanBifold180Layouts(programId: string): readonly string[] {
 export function normanBifold180Pages(programId: string) {
   return programId === 'woodlore' ? [56,57,58,59,60]
     : programId.startsWith('woodlore_') ? [73,74,75,76,77]
-    : programId === 'brightwood' ? [65,66,67,68,69] : [67,68,69,70,71];
+    : programId === 'brightwood' ? [65,66,67,68,69,70] : [67,68,69,70,71,72];
 }
 export function normanBifold180PanelMaxWidth(programId: string, layout: string, index: number) {
   if (programId === 'woodlore' || programId === 'woodlore_plus') return 24;
