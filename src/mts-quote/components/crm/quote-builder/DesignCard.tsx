@@ -8,6 +8,7 @@ import { NormanRollerValanceOptions } from "@/components/crm/NormanRollerValance
 import { isRollerValance, rollerValanceUnitLabel, ROLLER_VALANCE_KEY } from "@/lib/quote/norman-roller-valance-only";
 import { NormanValanceOnlyOptions } from "@/components/crm/NormanValanceOnlyOptions";
 import { isNormanValanceOnly, valanceOnlyUnitLabel, VALANCE_ONLY_KEY } from "@/lib/quote/norman-valance-only";
+import {normanDoubleHungLayouts} from '@/lib/quote/norman-shutter-double-hung';
 import {normanRegularActualWidest,normanNarrowSingleJoin} from '@/lib/quote/norman-shutter-regular-widths';
 import {NORMAN_FIXED_SINGLE_LOUVER_TILT,normanSingleLouverFixedEligible} from '@/lib/quote/norman-shutter-single-louver';
 import { NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from '@/lib/quote/norman-shutter-panels';
@@ -4087,10 +4088,10 @@ export function getStandardShutterGridOptions(
         : "Panel Configuration",
       field: "panel_config",
       type: "select",
-      options: normanApplication === "bifold_180" ? [...normanBifold180Layouts(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""))] : SHUTTER_PANEL_CONFIGS,
+      options: normanApplication === "double_hung" ? normanDoubleHungLayouts(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? "")) : normanApplication === "bifold_180" ? [...normanBifold180Layouts(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""))] : SHUTTER_PANEL_CONFIGS,
     },
     ...(authoritativeV2 ? [
-      ...(!normanTrack && normanApplication !== "regular" ? [{key: "widest_panel_width_inches", label: "Widest Finished Panel Width", field: "json:widest_panel_width_inches", type: "number", min: 6, max: normanRegularPanelMaxWidth(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), design?.louver_size, design?.panel_config), step: "0.0625", unit: '"'} satisfies GridOption] : []),
+      ...(!normanTrack && normanApplication !== "regular" && normanApplication !== "double_hung" ? [{key: "widest_panel_width_inches", label: "Widest Finished Panel Width", field: "json:widest_panel_width_inches", type: "number", min: 6, max: normanRegularPanelMaxWidth(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), design?.louver_size, design?.panel_config), step: "0.0625", unit: '"'} satisfies GridOption] : []),
       {key: "stile_width", label: "Stile Width", field: "json:stile_width", type: "buttons", options: normanStileWidths(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), normanOptions.widest_panel_width_inches, normanApplication)},
       {key: "stile_join", label: "Stile Join", field: "json:stile_join", type: "buttons", options: regularNarrowJoin !== undefined ? (regularNarrowJoin ? [regularNarrowJoin] : []) : normanStileJoins(design?.panel_config, normanOptions.widest_panel_width_inches, normanApplication)},
       {key: "stile_profile", label: "Stile Profile", field: "json:stile_profile", type: "buttons", options: NORMAN_STILE_PROFILES},

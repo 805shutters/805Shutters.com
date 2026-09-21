@@ -1,4 +1,4 @@
-import {normanShutterUsesSillSupport} from '../quote/norman-shutter-bottom-support';
+import {normanShutterUsesSillSupport,normanShutterPanelUsesSillSupport} from '../quote/norman-shutter-bottom-support';
 import {normanShutterProgram} from '../quote/norman-shutter-assortment';
 import type {NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
 import type {SelectionContext,ValidationIssue} from './core';
@@ -15,6 +15,7 @@ export function validateNormanShutterBottomSupport(s:SelectionContext,record:Nor
  const issues:ValidationIssue[]=[];
  const add=(id:string,index:number,explanation:string,severity:'hard_block'|'warning'='hard_block')=>issues.push({severity,ruleId:`norman.shutter.support.${id}`,source:sourceProvenance(program.sourceId,{pages}),selectedValues:{panelNumber:index+1,support:record.panels[index].bottomSupport??null},explanation:`Panel ${index+1}: ${explanation}`});
  record.panels.forEach((panel,index)=>{
+  if(!normanShutterPanelUsesSillSupport(record,index,program.id))return;
   const r=panel.bottomSupport;
   if(!r||!r.support||r.gapInches===null||r.frequentlyOpen===null){add('record_required',index,'record the actual bottom support, measured gap and whether the panel is frequently left open.');return;}
   if(r.support==='none')add('missing_support',index,'the guide excludes shutters without a supporting bottom frame or existing sill.');
