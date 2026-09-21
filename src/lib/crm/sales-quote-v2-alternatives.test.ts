@@ -168,6 +168,22 @@ describe("V2 quote alternatives", () => {
     expect(fixture.writes[1].value).toMatchObject({ sales_owner: "jessica" });
     expect(calls.mutate).not.toHaveBeenCalled();
   });
+  it("creates K through the authoritative draft parser after ten existing alternatives", async () => {
+    const fixture = database([
+      ok(source), ok(null), ok(null),
+      ok("ABCDEFGHIJ".split("").map(quote_letter => ({ quote_letter }))),
+      ok({ id: quoteId, quote_letter: "K" }),
+    ]);
+    const result = await createSalesQuoteAlternative(fixture.db, actorId, sourceId, input());
+    expect(result.quote.quote_letter).toBe("K");
+    expect(calls.create).toHaveBeenCalledWith(fixture.db, actorId,
+      expect.objectContaining({quotePatch: expect.objectContaining({quoteLetter: "K"})}));
+  });
+  it("returns the supported 26-alternative limit before creating a partial quote", async () => {
+    const fixture = database([ok(source),ok(null),ok(null),ok("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(quote_letter=>({quote_letter})))]);
+    await expect(createSalesQuoteAlternative(fixture.db,actorId,sourceId,input())).rejects.toMatchObject({status:409,message:expect.stringContaining("26 alternatives")});
+    expect(calls.create).not.toHaveBeenCalled();
+  });
   it("does not create a blank option when copying cannot read the source", async () => {
     const fixture = database([
       ok(source),

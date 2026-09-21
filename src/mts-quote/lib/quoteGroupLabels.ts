@@ -1,4 +1,4 @@
-const QUOTE_LETTERS = "ABCDEFGHIJ".split("");
+const QUOTE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 export type QuoteGroupTabQuote = {
   id: string;
@@ -27,7 +27,9 @@ function normalizedQuoteLetter(letter: string | null | undefined): string {
 
 export function nextQuoteLetter(existing: (string | null | undefined)[]): string {
   const used = new Set(existing.map(normalizedQuoteLetter));
-  return QUOTE_LETTERS.find((letter) => !used.has(letter)) ?? `Option ${used.size + 1}`;
+  const next = QUOTE_LETTERS.find((letter) => !used.has(letter));
+  if (!next) throw new Error("This quote group already has all 26 alternatives (A–Z). Start a separate quote for another option.");
+  return next;
 }
 
 export function buildVisibleQuoteTabs<T extends QuoteGroupTabQuote>(

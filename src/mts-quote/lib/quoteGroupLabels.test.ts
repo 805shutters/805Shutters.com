@@ -22,6 +22,12 @@ describe("quote group labels", () => {
     expect(nextQuoteLetter(["a", null, "", "B"])).toBe("C");
   });
 
+  it("continues after J through the server-supported Z and gives an actionable exhaustion error", () => {
+    expect(nextQuoteLetter("ABCDEFGHIJ".split(""))).toBe("K");
+    expect(nextQuoteLetter("ABCDEFGHIJKLMNOPQRSTUVWXY".split(""))).toBe("Z");
+    expect(() => nextQuoteLetter("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""))).toThrow(/26 alternatives.*separate quote/);
+  });
+
   it("shows the active A quote even before the quote has a saved group", () => {
     const visibleTabs = buildVisibleQuoteTabs({ id: "quote-a", quote_letter: "A" }, []);
 

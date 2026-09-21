@@ -376,6 +376,13 @@ export function QuoteGroupTabs() {
         <Copy className="h-4 w-4 mr-1" />
         Copy Current
       </Button>
+      {(copyToGroup.error || addBlankQuote.error) && (
+        <p role="alert" className="w-full text-sm text-red-700">
+          {(copyToGroup.error || addBlankQuote.error) instanceof Error
+            ? (copyToGroup.error || addBlankQuote.error)?.message
+            : "Quote alternative could not be created. Try again or start a separate quote."}
+        </p>
+      )}
     </div>
   );
 }

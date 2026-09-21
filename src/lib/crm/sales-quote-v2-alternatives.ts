@@ -212,6 +212,12 @@ export async function createSalesQuoteAlternative(
         .select("quote_letter")
         .eq("quote_group_id", groupId),
     );
+    let quoteLetter: string;
+    try {
+      quoteLetter = nextQuoteLetter((siblings || []).map((row) => row.quote_letter));
+    } catch (error) {
+      throw new CrmAuthError(409, error instanceof Error ? error.message : "No quote alternative letter is available.");
+    }
     const created = await createSalesQuoteV2Draft(
       db,
       actorId,
@@ -225,9 +231,7 @@ export async function createSalesQuoteAlternative(
         installerNotes:
           input.mode === "copy" ? (source.installer_notes ?? null) : null,
         quoteGroupId: groupId,
-        quoteLetter: nextQuoteLetter(
-          (siblings || []).map((row) => row.quote_letter),
-        ),
+        quoteLetter,
       }),
     );
     quoteId = created.quoteId;
