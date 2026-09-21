@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-20",
+  "release": "4c24cfaa67a4b43820728372ca4883b249088a9e",
+  "quote": "805-0383",
+  "alternative": "M",
+  "configuration": {
+    "product": "SmartFold Shades",
+    "fabric": "F1709 White Jade Louise",
+    "width": 36,
+    "height": 60,
+    "quantity": 4,
+    "control": "PrecisionLift Cordless",
+    "fold": 6,
+    "mount": "Inside Mount",
+    "method": "Back / Wall Mount with Raceway",
+    "valance": "No Valance",
+    "light_guard": "Basic",
+    "color": "3058 White",
+    "recess": "Fully Recessed",
+    "depth_inches": 3.52
+  },
+  "expected_total": 2760,
+  "calculation": "4 x (606 base + 45 Basic Light Guard + 25 installation + 14 shipping)",
+  "verified": [
+    "3.519 current-catalog server rejection explicitly requires3.52 inches",
+    "restoring3.52 saves2760 total",
+    "full browser reload and reopen retains every listed configuration field and2760 total",
+    "customer preview retains3058White/FullyRecessed/3.52in and2760; no inactive outside clearances"
+  ],
+  "pending": [],
+  "limitations": [
+    "Existing selling policy only; dealer account cost applicability remains unconfirmed",
+    "Does not certify all inside-mount combinations"
+  ]
+}
