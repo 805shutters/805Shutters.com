@@ -1,3 +1,4 @@
+import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from '@/lib/quote-v2/quote-pricing-policy';
 import { currentRollerPanel, rollerMotorizationForSelection } from "@/lib/quote-v2/norman-roller-panel";
 import { findRomanFrontColor } from '@/lib/quote-v2/catalog';
 import {deriveSundanceOrderAlignment,SUNDANCE_ORDER_ALIGNMENT_KEY} from "@/lib/quote/sundance/order-alignment";
@@ -799,6 +800,10 @@ function v2CostResult(
       warnings: result.warnings,
     };
   }
+  if (result.validationIssues.some(issue => issue.ruleId === "norman.processing_fee.oversize_scope_unverified")) {
+    return {ok: false as const, code: "CUSTOMER_RETAIL_UNDEFINED" as const,
+      error: "Dealer processing-fee treatment is unverified; landed cost and margin remain incomplete.", warnings: result.warnings};
+  }
   if (!result.internalCost) {
     return {
       ok: false as const,
@@ -1330,6 +1335,7 @@ function repriceExactQuoteBuilderV2(
     };
     const result = priceQuoteV2Selection({
       selection,
+      validationPurpose: catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM ? 'quote' : 'order',
       priceInput: authoritativePriceInput,
       includeInternalCost: true,
       applyCustomerCharges: typeof input.applyCustomerCharges === "boolean"
@@ -1552,7 +1558,7 @@ function repriceExactQuoteBuilderV2(
         "unverified_excluded";
     const oversizeProcessingIssue = oversizeProcessingScopeUnverified
       ? {
-          severity: "hard_block" as const,
+          severity: catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM ? "warning" as const : "hard_block" as const,
           ruleId: "norman.processing_fee.oversize_scope_unverified",
           source: NORMAN_805_DEALER_POLICY.publishedFreightSource,
           selectedValues: {
@@ -1561,7 +1567,9 @@ function repriceExactQuoteBuilderV2(
               NORMAN_805_DEALER_POLICY.processingFee.oversizeScope,
           },
           explanation:
-            "Norman processing-fee treatment for an oversize charge is not source-verified. This line requires manual cost verification before it can be sent.",
+            catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM
+              ? "Norman processing-fee treatment for an oversize charge is unverified. Dealer cost remains incomplete; the selling grid and option prices are unaffected."
+              : "Norman processing-fee treatment for an oversize charge is not source-verified. This line requires manual cost verification before it can be sent.",
         }
       : null;
     if (oversizeProcessingIssue) {
@@ -1594,7 +1602,7 @@ function repriceExactQuoteBuilderV2(
       ...result,
       ...(oversizeProcessingIssue
         ? {
-            validationStatus: "blocked" as const,
+            validationStatus: oversizeProcessingIssue.severity === "hard_block" ? "blocked" as const : result.validationStatus,
             validationIssues: [
               ...result.validationIssues,
               oversizeProcessingIssue,

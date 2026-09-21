@@ -1,3 +1,5 @@
+import { smartfoldHasDocumentedQuotePricingBranch } from './norman-smartfold-eligibility';
+import { onyxPolyH3, withOnyxPolyH3Surcharges, ONYX_POLY_H3_SOURCE, ONYX_POLY_H3_SURCHARGE_ID } from './onyx-poly-h3';
 import { rollerLightGuard } from "./norman-roller-light-guard";
 import { rollerPoles } from "./norman-roller-poles";
 import { rollerAccessories } from "./norman-roller-accessories";
@@ -21,7 +23,7 @@ import { synchronyBracketCount } from "@/lib/quote/norman-synchrony";
 import { smartfoldHardware, smartfoldAccessorySelections } from "./norman-smartfold-hardware";
 import { CITYLIGHTS_FINISH_BY_CODE, WOOD_DESIGNER_CODES, WOOD_PREMIUM_CODES } from "@/lib/quote/norman-current-assortment";
 import { romanComponentWidths } from "./norman-assemblies";
-import { calculateCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
+import { calculateCustomerCharges, customerPhysicalUnits, type CustomerCharges } from "@/lib/quote/customer-charges";
 import {
   catalog,
   findProductSurcharge,
@@ -57,6 +59,7 @@ import {
 import { resolveNormanShutterWindowSizePricing } from "./norman-shutter-pricing-size";
 import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
 import { productRuleStatusForSelection, validateSelection } from "./rules";
+import { GRID_OPTION_QUOTING_EFFECTIVE_FROM, quotePricingValidationIssues } from './quote-pricing-policy';
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { rollerMotorChargeForPowerConfiguration } from "./roller-motor";
 import {
@@ -125,6 +128,8 @@ export type QuoteV2PriceRequest = {
   selection: SelectionContext;
   priceInput: PriceInput;
   includeInternalCost?: boolean;
+  /** Quote pricing is independent of fabrication/installation readiness. */
+  validationPurpose?: 'quote' | 'order';
   /** Enabled by explicit draft pricing, never by loading a saved quote. */
   applyCustomerCharges?: boolean;
   /** Quote-wide rules already evaluated against exactly one selected design per line. */
@@ -589,14 +594,14 @@ export function authoritativeAutomaticSurchargeSelections(
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
   const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerGuard||!["basic_light_guard","premium_wood_light_guard"].includes(entry.id))&&(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(rollerGuard?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
+  return withOnyxPolyH3Surcharges(selection, [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerGuard||!["basic_light_guard","premium_wood_light_guard"].includes(entry.id))&&(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(rollerGuard?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
     return !common || common.chargeSharedOptions === true || !(/^smartfold_.*valance$/.test(entry.id) || entry.id === "basic_light_guard" || entry.id === "keystone");
   }).map(
     (entry) => ({ ...entry, units: entry.units ?? 1 }),
-  );
+  ));
 }
 
 function surchargeContractIssues(
@@ -942,6 +947,14 @@ function catalogCostRetail(
     source.wholesaleTotal == null ||
     source.surchargeLines.some((line) => line.wholesaleAmount == null)
   ) {
+    // A sourced selling grid and option schedule define the quote independently
+    // of dealer cost. Never substitute zero cost or infer an unverified margin.
+    if (product && selection.catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM &&
+        !SOURCE_COST_PLUS_PRODUCTS.has(selection.productId) &&
+        (getProgram(product, source.programId)?.priceBasis ?? product.priceBasis) !== "dealer_net") {
+      return {...source, warnings: [...source.warnings,
+        "Dealer cost is incomplete; the quote uses the published selling grid and priced options."]};
+    }
     return {
       ok: false,
       code: "CUSTOMER_RETAIL_UNDEFINED",
@@ -1284,6 +1297,7 @@ function surchargePriceComponentSource(
   surchargeId: string,
   fallback: ReturnType<typeof priceComponentSource>,
 ) {
+  if (surchargeId === ONYX_POLY_H3_SURCHARGE_ID) return ONYX_POLY_H3_SOURCE;
   const surcharge = findProductSurcharge(product, surchargeId);
   const ownerPolicy =
     product.customerOrderChargePolicy?.surchargeId === surchargeId
@@ -1363,17 +1377,11 @@ function baselinePriceComponent(
     const baselineSource = priceDesign({...priceInput, programId: baselineProgramId, honeycombFabricComponents: components}, selection.catalogAsOf);
     if (!baselineSource.ok) return null;
     const retail = catalogCostRetail(baselineSource, selection);
-    if (!retail.ok || retail.wholesaleBase == null) return null;
+    if (!retail.ok) return null;
     return {programId: baselineProgramId, matchedWidth: baselineSource.matchedWidth, matchedHeight: baselineSource.matchedHeight, catalogAmount: baselineSource.base, wholesaleAmount: retail.wholesaleBase, customerAmount: retail.base, source: sourceProvenance("norman-retail-guide-2026-09", {pages: [10,11,12]})};
   }
 
   if (baselineProgramId === selectedProgram.id) {
-    if (
-      sourceResult.wholesaleBase == null ||
-      retailResult.wholesaleBase == null
-    ) {
-      return null;
-    }
     return {
       programId: baselineProgramId,
       matchedWidth: sourceResult.matchedWidth,
@@ -1403,10 +1411,7 @@ function baselinePriceComponent(
     baselineSourceResult,
     selection,
   );
-  if (
-    !baselineRetailResult.ok ||
-    baselineRetailResult.wholesaleBase == null
-  ) {
+  if (!baselineRetailResult.ok) {
     return null;
   }
   return {
@@ -1777,16 +1782,25 @@ export function authoritativePriceInputForSelection(
 
 /**
  * The single server-authoritative entry point for V2 validation and pricing.
- * No catalog price lookup occurs until all hard restriction evidence passes.
+ * Quote pricing checks grid and option inputs independently of order readiness.
  */
 export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2PriceResult {
   const { selection, priceInput } = request;
-  const issues = [
+  const validationIssues = [
     ...validateSelection(selection),
+    ...(onyxPolyH3(selection)?.issues ?? []),
     ...priceInputContractIssues(selection, priceInput),
     ...(request.additionalValidationIssues ?? []),
   ];
-  const productStatus = productRuleStatusForSelection(selection);
+  const quoteMode = request.validationPurpose === 'quote';
+  const smartfoldPriceBranch = quoteMode && smartfoldHasDocumentedQuotePricingBranch(selection);
+  const issues = quoteMode
+    ? quotePricingValidationIssues(validationIssues).map(issue => smartfoldPriceBranch && issue.ruleId === 'norman.smartfold.branch_verification'
+      ? {...issue, explanation: issue.explanation.replace('Automatic pricing remains held for this configuration:', 'Before ordering:')}
+      : issue) : validationIssues;
+  const orderStatus = productRuleStatusForSelection(selection);
+  const productStatus = quoteMode && (orderStatus === 'restriction_source_incomplete' || smartfoldPriceBranch)
+    ? 'documented_limited' : orderStatus;
   const pricingForbidden =
     productStatus === "manual_quote_required" || productStatus === "unavailable";
   if (hasHardBlock(issues) || pricingForbidden) {
@@ -1890,7 +1904,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     : undefined;
   const customerCharges = request.applyCustomerCharges ? calculateCustomerCharges({
     product: `${product.id} ${product.productType ?? ""}`, program: result.programId,
-    physicalUnitsPerWindow: result.configurationUnits, quantity: result.quantity,
+    physicalUnitsPerWindow: customerPhysicalUnits({productId: selection.productId, configuration: selection.configuration, pricedConfigurationUnits: result.configurationUnits}), quantity: result.quantity,
   }) : null;
   return {
     ...result,
