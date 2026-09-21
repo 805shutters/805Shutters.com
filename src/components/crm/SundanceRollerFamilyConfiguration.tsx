@@ -1,4 +1,5 @@
 'use client';
+import {sundanceRollerTopDimensions,sundanceDualBracketDimensions} from '@/lib/quote/sundance/installation-reference';
 import {SundanceEuropanelLayout} from './SundanceEuropanelLayout';
 import {SundancePrivacyPieces} from './SundancePrivacyPieces';
 import type {SalesQuoteDesign} from '@mts/types/quote';
@@ -8,6 +9,7 @@ export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthIn
  const kind=sundanceShadeKind(p),program=String(c.catalog_program_id??''),control=sundanceShadeControls(p).find(r=>r.name===c.sundance_shade_control),classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...c,[key]:value||null,...(key==='sundance_shade_privacy'?{sundance_privacy_pieces_v1:null}: {})}});
  const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance shade ${label}`} className={classes} value={String(c[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
+ const topDimensions=sundanceRollerTopDimensions[String(c.sundance_shade_top)],bracketDimensions=sundanceDualBracketDimensions[String(c.sundance_shade_dual_bracket)];
  const issues=validateSundanceShadeConfiguration({productId:p,programId:program,widthInches,heightInches,configuration:c as SelectionRecord}),evidence=sundanceShadeOptionEvidence(p,program,c,widthInches);
  return <>
  <label className="block text-sm">Operating system<select aria-label="Sundance shade operating system" className={classes} value={String(c.sundance_shade_control??'')} onChange={e=>onUpdateFields({options_json:sundanceShadeConfigurationPatch(c,e.target.value)})}><option value="">Select system</option>{sundanceShadeControls(p).map(r=><option key={r.name}>{r.name}</option>)}</select></label>
@@ -22,6 +24,7 @@ export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthIn
  {kind==='roller'&&<>
  {select('sundance_shade_roll','Roll',['Standard','Reverse'])}
  {select('sundance_shade_top','Top treatment',['Open roll',...sundanceShadeTopOptions(p,program).map(r=>r.name)])}
+ {topDimensions&&<p className="text-sm">Published top-treatment envelope: {topDimensions.height} inches high × {topDimensions.depth} deep. This physical size does not establish minimum mounting depth or installation clearance.</p>}
  {c.sundance_shade_top!=='Open roll'&&select('sundance_shade_finish','Top finish',c.sundance_shade_top==='Contractor’s Box 5"'?['White','Silver']:sundanceRollerFinishes)}
  {['Small Round Cassette','Large Round Cassette'].includes(String(c.sundance_shade_top))&&select('sundance_shade_fabric_insert','Cassette fabric insert',['No','Yes'])}
  {select('sundance_shade_bottomrail','Bottomrail',['Standard Hem Pocket','Exposed','Wrap-around','Enhanced Fabric-Wrapped'])}
@@ -32,6 +35,7 @@ export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthIn
  {c.sundance_shade_privacy==='Solar bar'&&select('sundance_shade_privacy_color','Privacy accessory color',['White','Ivory','Gray','Bronze','Black'])}
  <SundancePrivacyPieces options={c} onChange={options=>onUpdateFields({options_json:options})}/>
  {c.sundance_shade_assembly==='Dual independent'&&select('sundance_shade_dual_bracket','Dual bracket',['Vertical','Small 45-degree','Large 45-degree','5-inch fascia dual'])}
+ {c.sundance_shade_assembly==='Dual independent'&&bracketDimensions&&<p className="text-sm">Published dual bracket envelope: {bracketDimensions.height} inches high × {bracketDimensions.depth} deep. Confirm opening clearance and both independent fabric rolls.</p>}
  {control?.power!=='manual'&&select('sundance_shade_tube','Tube',['Standard','2½-inch','3¼-inch'])}
  </>}
  {kind==='roman'&&<p className="text-sm">⅝ × 2-inch fabric-wrapped board; included 6-inch valance and returns; knife pleats at 6¼-inch seams; heat-sealed bottom bar. Lining unavailable. Inside factory deduction:⅜ inch. Two-on-one gap:½–⅝ inch. Cordless blackout max84×84; light-filtering max96×96. Current dealer orderability requires confirmation.</p>}

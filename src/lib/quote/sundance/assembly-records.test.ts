@@ -2,7 +2,7 @@ import {expect,it} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createSundanceAssembly,readSundanceAssembly,sundanceAssemblySpec,sundanceAssemblyDescriptions,SUNDANCE_ASSEMBLY_KEY,type SundanceAssembly} from './assembly-records';
-import {validateSundanceAssembly,sundanceComponentSourceGrid} from './assembly-validation';
+import {validateSundanceAssembly,sundanceComponentSourceGrid,sundanceAssemblyBaseEvidence} from './assembly-validation';
 import {sundanceCellularSelectionPatch} from './configuration';
 import {sundanceCellularSystemPatch} from './cellular-configuration';
 import {sundanceHorizontalProductIds} from './horizontal-assortment';
@@ -79,4 +79,14 @@ it('publishes human component dimensions and identity without raw IDs, source/ac
  const details=getQuoteDesignDetails(design).map(d=>`${d.label}: ${d.value}`);expect(details).toEqual(expected);
  const publicText=detailDisplayValue('sundance_cellular',SUNDANCE_ASSEMBLY_KEY,assembly)!;
  expect(publicText).toContain('PS310-001');for(const hidden of ['dealer_cost','999','888','sundance_cellular_p7_t1','version','left','right'])expect(publicText).not.toContain(hidden);
+});
+
+it('sums independently cited base cells only after every component validates',()=>{
+ const {assembly}=fixture();
+ // I PDF7 independently transcribed:30×60=431 and42×60=558.
+ expect(sundanceAssemblyBaseEvidence(context(assembly))).toEqual({retailSubtotal:989,componentCount:2,customerPriceEligible:false});
+ assembly.components[1].widthInches=200;
+ expect(sundanceAssemblyBaseEvidence(context(assembly)).retailSubtotal).toBeNull();
+ assembly.components[1].widthInches=42;assembly.components[1].configuration={...assembly.components[1].configuration,fabric_color_id:'wrong'};
+ expect(sundanceAssemblyBaseEvidence(context(assembly)).retailSubtotal).toBeNull();
 });

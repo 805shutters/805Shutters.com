@@ -57,3 +57,12 @@ export function validateSundanceAssembly(s:AssemblyContext):ValidationIssue[] {
   // control compatibility and order pricing are not implied by a sum of base cells.
   return issues;
 }
+
+/** Sum only individually validated cited base cells. Retail/net options and common hardware retain their own evidence. */
+export function sundanceAssemblyBaseEvidence(s:AssemblyContext){
+ const assembly=readSundanceAssembly(s.configuration[SUNDANCE_ASSEMBLY_KEY]);
+ const issues=validateSundanceAssembly(s);
+ if(!assembly||!sundanceAssemblyMatches(assembly,s.productId,s.configuration)||issues.length)return{retailSubtotal:null,componentCount:assembly?.components.length??0,customerPriceEligible:false as const};
+ const cells=assembly.components.map(sundanceComponentSourceGrid);
+ return{retailSubtotal:cells.every(Boolean)?cells.reduce((sum,cell)=>sum+cell!.sourceRetail,0):null,componentCount:cells.length,customerPriceEligible:false as const};
+}

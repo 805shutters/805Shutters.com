@@ -1,5 +1,6 @@
 'use client';
 import {sundanceChateauWandReference} from '@/lib/quote/sundance/horizontal-configuration';
+import {sundanceHorizontalRailReference} from '@/lib/quote/sundance/installation-reference';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import { sundanceSolidTapeCodes,sundanceDecorativeTapeCodes,validateSundanceHorizontalConfiguration,sundanceHorizontalOptionEvidence } from '@/lib/quote/sundance/horizontal-configuration';
@@ -12,6 +13,7 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  const evidence=sundanceHorizontalOptionEvidence(p,options,widthInches),wand=sundanceChateauWandReference(heightInches);
  const tapeCodes=options.sundance_blind_ladder==='Solid 1-inch tape'?sundanceSolidTapeCodes:options.sundance_blind_ladder==='Decorative 1-inch tape'?sundanceDecorativeTapeCodes:[];
  return <>
+ {sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)&&<p className="text-sm">{sundanceHorizontalRailReference(p,options.sundance_blind_grade,widthInches)!.text}</p>}
  {select('mount_type','Mount',['Inside','Outside'])}
  {select('sundance_blind_wand','Wand side',basic?['Left']:['Left','Right'])}
  {select('sundance_blind_assembly','Assembly',['Single','Two on one','Three on one'])}
