@@ -39,7 +39,7 @@ These are code/source-review tasks, not requests for account evidence. A categor
 - **W3 — Roller privacy pieces.** Persist individually measured side-channel and solar-bar lengths/counts and calculate separate source evidence at$14net/ft and$3net/ft. Published fractional-foot billing/rounding is absent; preserve exact footage and hold final charge rather than invent rounding.
 - **W4 — Family-specific remaining schedules.** Portfolio blackout percentage now uses the exact shade/valance base evidence; expose horizontal wand/stacking and vertical vane-count/stacking source tables; finish documented component-specific vertical track/vane fulfillment; reconcile Zebra alignment groups and shape template references. Any missing source geometry remains an exact exception.
 - **W5 — Europanel records.** Preserve explicit per-panel measurements/layout records if entered, with panel count/track count rules already implemented. Source diagrams do not state a numeric overlap or panel-width formula, so automatic derived widths require external confirmation.
-- **W6 — Exhaustive closure and live proof.** Complete a source-section-to-rule/UI/evidence crosswalk and all-offering tests. Remaining distinct live family configurations: Sundance roller, Sundance Europanel, Sundance flat Roman and Louvolite flat Roman; Vision identity; Walden twin and shared panel inputs. Existing generic component live proof covers cellular only. Final customer-priced output and portal net comparisons remain gated by E1–E4.
+- **W6 — Exhaustive closure and live proof.** Complete a source-section-to-rule/UI/evidence crosswalk and all-offering tests. Sundance roller/Europanel exact-identity and both flat-Roman source-only held paths now have saved/reopened proof. Remaining live paths: Vision identity; Walden twin and shared panel inputs. Existing generic component live proof covers cellular only. Final customer-priced output and portal net comparisons remain gated by E1–E4.
 
 ## Closed implementation/proof increments
 
@@ -66,3 +66,5 @@ Live vertical/horizontal/Zebra control and accessory persistence on release0fcac
 Walden control and depth-boundary persistence on72db3c04: [sundance-live-walden-controls-2026-09-20.md](sundance-live-walden-controls-2026-09-20.md). Six-family rule/schedule accounting: [sundance-roller-family-rules-2026-09-20.md](sundance-roller-family-rules-2026-09-20.md).
 
 Other proof evidence: [Walden controls](sundance-live-walden-controls-2026-09-20.md), [Louvolite roller/Europanel](sundance-live-roller-europanel-controls-2026-09-20.md), [component model scope](sundance-assembly-records-2026-09-20.md), [twin role scope](sundance-walden-twin-model-2026-09-20.md).
+
+Four remaining shade-family paths were saved and reopened, with both flat-Roman empty exact-color/current-orderability exceptions explicitly held: [four-family live proof](sundance-live-four-shade-families-2026-09-20.md).
