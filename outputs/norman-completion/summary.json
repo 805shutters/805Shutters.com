@@ -1,4 +1,7 @@
 {
+  "grid_cells": 4963,
+  "priced_grid_cells": 4957,
+  "unavailable_grid_cells": 6,
   "families": 21,
   "programs": 56,
   "grid_rows": 371,
