@@ -92,3 +92,9 @@ it('lists exact Roller fabric identity for a separate valance without accepting 
  const html=renderToStaticMarkup(createElement(NormanRollerValanceOptions,{design:undefined,productId:SEPARATE,lineOptions:[make('fabric',{fabric_product_id:'roller'}),make('catalog',{catalog_product_id:'roller'}),make('conflict',{fabric_product_id:'roman',catalog_product_id:'roller'})],onUpdateFields:()=>{}}));
  expect(html).toContain('Shade fabric');expect(html).toContain('Shade catalog');expect(html).not.toContain('Shade conflict');expect(html).not.toContain('Add the associated Norman Roller shades');
 });
+
+it('shows exact saved keystone violations alongside the unchanged standalone pricing hold',()=>{
+ const design={options_json:{[KEY]:{...record(),joinery:'Keystone',keystoneCount:1,keystoneShape:'Square',layout:'Custom',locations:[17.99]}}} as unknown as SalesQuoteDesign;
+ const html=renderToStaticMarkup(createElement(NormanRollerValanceOptions,{design,productId:ONLY,lineOptions:[],onUpdateFields:()=>{}}));
+ expect(html).toContain('Saved valance specification issues');expect(html).toContain('at least 18 inches');expect(html).toContain('Standalone/separate valance price');
+});

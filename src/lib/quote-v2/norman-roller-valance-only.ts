@@ -82,3 +82,9 @@ export function deriveRollerSeparateValances(lines:readonly {lineId:string;selec
  for(const [lineId,ids] of owners)if(ids.length>1)for(const id of ids)issues.push(issue(byId.get(id)!.selection,'duplicate_membership',`Shade ${lineId} belongs to more than one separate valance. Select it in only one assembly.`));
  return issues;
 }
+
+/** Client summary of saved local specifications only. Full membership/price validation remains server-owned. */
+export function savedRollerValanceSpecificationIssues(productId:string,options:Record<string,unknown>):ValidationIssue[]{
+ const record=parseRollerValance(options[KEY]);if(!record)return [];
+ return validateRollerValance({manufacturerId:'Norman',productId,programId:`${productId}_source`,catalogAsOf:'2026-09-20',catalogVersion:'805-v2-norman-roller-valance-2026-09-20-r2',widthInches:0,heightInches:0,quantity:1,options:{},configuration:{[KEY]:record}}).filter(issue=>!['roller.valance_only.price_approval','roller.valance_only.associated_shades'].includes(issue.ruleId));
+}

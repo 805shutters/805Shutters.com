@@ -1,4 +1,5 @@
 'use client';
+import {savedRollerValanceSpecificationIssues} from '@/lib/quote-v2/norman-roller-valance-only';
 import {useEffect,useState} from 'react';
 import type {SalesQuoteDesign} from '@mts/types/quote';
 import {normanRollerFabricColors} from '@/lib/quote/norman-roller-fabrics';
@@ -7,11 +8,13 @@ export function NormanRollerValanceOptions({design,productId,lineOptions,onUpdat
  const options=(design?.options_json??{}) as Record<string,unknown>,key=`${design?.id??''}:${productId}`,incoming=parseRollerValance(options[KEY])??emptyRollerValance(),serialized=JSON.stringify(incoming);
  const [state,setState]=useState(()=>newRollerValanceDraft(key,incoming));
  useEffect(()=>setState(old=>syncRollerValanceDraft(old,key,JSON.parse(serialized) as RollerValanceRecord)),[key,serialized]);
+ const savedIssues=savedRollerValanceSpecificationIssues(productId,options);
  const r=state.record,patch=(p:Partial<RollerValanceRecord>)=>setState(old=>({...old,record:{...old.record,...p}})),cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const select=(label:string,value:string,values:readonly string[],change:(v:string)=>void)=><label className="block text-sm">{label}<select aria-label={label} className={cls} value={value} onChange={e=>change(e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
  const number=(label:string,value:number|null,change:(v:number|null)=>void)=><label className="block text-sm">{label}<input aria-label={label} className={cls} type="number" step="any" value={value??''} onChange={e=>change(e.target.value===''?null:Number(e.target.value))}/></label>;
  const separate=productId===ROLLER_SEPARATE_VALANCE,fabric=/Fabric/.test(r.style),wrapped=/with Fabric/.test(r.style),lines=lineOptions.filter(l=>(l.design.options_json?.fabric_product_id??l.design.options_json?.catalog_product_id??l.design.options_json?.quote_lab_product_id)==='roller'&&l.design.supplier==='Norman');
  return <section data-testid="norman-roller-valance-options" className="space-y-3 rounded-lg border border-slate-200 p-3"><h3 className="font-semibold">Roller {separate?'Separate Valance':'Valance Only'}</h3><p role="status" className="text-sm text-amber-900">{ROLLER_VALANCE_HOLD}</p>
+ {savedIssues.length>0&&<div role="alert"><p className="font-semibold">Saved valance specification issues</p><ul>{savedIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul></div>}
  {select('Roller valance style',r.style,ROLLER_VALANCE_STYLES,v=>patch({style:v,fabricCode:'',fasciaColor:'',endCapColor:''}))}
  {number('Roller valance end-to-end width in inches',r.width,v=>patch({width:v}))}
  {select('Roller valance mount',r.mount,['Inside','Outside'],v=>patch({mount:v as RollerValanceRecord['mount']}))}
