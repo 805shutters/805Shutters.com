@@ -1,3 +1,4 @@
+import {currentPerfectsheerHub,perfectsheerHub} from "./norman-perfectsheer-hub";
 import { smartfoldCharging } from "./norman-smartfold-charging";
 import { romanMotorAccessories } from "./norman-roman-motor-accessories";
 import { honeycombMotorAccessories } from "./norman-honeycomb-motor-accessories";
@@ -1258,7 +1259,13 @@ function resolvePerfectSheer(context: SelectionContext, config: MotorConfig): No
   if(controller && suppliedControl?.quantityExplicit) {
     if(suppliedControl.quantity > 0)components.push({...controller,units:suppliedControl.quantity,billingScope:"once_per_line"});
   } else if(controller) components.push(controller);
-  if(config.hubRequired === true && motorFamily !== "autowand") components.push(canonicalSelection(group,"hub","hub"));
+  if(config.hubRequired === true && motorFamily !== "autowand") {
+    if(currentPerfectsheerHub(context) && motorFamily === "automate_home") {
+      const hub=perfectsheerHub(context);
+      if(!hub || !hub.valid)add("hub_allocation",76,"Connect this shade to an identified Automate hub with at most 30 motors before pricing.");
+      else if(hub.chargeHub)components.push({...canonicalSelection(group,"hub","hub"),billingScope:"once_per_line"});
+    } else components.push(canonicalSelection(group,"hub","hub"));
+  }
   const includedAccessories: string[] = [];
   if(dc) {
     const choices = motorFamily === "automate_home" ? ["external battery pack","dc distribution panel"] : ["direct building low voltage","dc distribution panel"];

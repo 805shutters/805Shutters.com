@@ -10160,7 +10160,7 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "Sheer Shades" && field === "motor_type") {
-      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null,perfectsheer_wand_length:null,perfectsheer_installed_on_door:null,perfectsheer_extra_charging_kits:null,perfectsheer_extension_cables:null,perfectsheer_extension_color:null,perfectsheer_extra_harnesses:null,perfectsheer_repeaters:null,perfectsheer_solar_panel:null,perfectsheer_remote_quantity:null,perfectsheer_remote_channel:null,perfectsheer_color_ring_sets:null,existing_remote_work_order_number:null}});
+      onUpdateFields({motor_type:typeof value === "string"?value:null,remote_type:null,options_json:{...currentJson,hub_required:null,dc_power_supply:null,shared_power_panel_id:null,motorization_selections:null,perfectsheer_wand_length:null,perfectsheer_installed_on_door:null,perfectsheer_extra_charging_kits:null,perfectsheer_extension_cables:null,perfectsheer_extension_color:null,perfectsheer_extra_harnesses:null,perfectsheer_repeaters:null,perfectsheer_solar_panel:null,perfectsheer_shared_hub_id:null,perfectsheer_remote_quantity:null,perfectsheer_remote_channel:null,perfectsheer_color_ring_sets:null,existing_remote_work_order_number:null}});
       return;
     }
     if (productType === "Sheer Shades" && field === "json:perfectsheer_installed_on_door") {
@@ -11903,6 +11903,7 @@ function ShadesAndBlindsOptions({
 
           if (!/autowand/i.test(String(design?.motor_type))) {
             options.push({key:"hub_required",label:"Hub Required",field:"json:hub_required",type:"yes-no",noFirst:true});
+            if(psAutomate && [true,"Yes","yes"].includes(optionsJson.hub_required as boolean|string)) options.push({key:"perfectsheer_shared_hub_id",label:"Shared Automate Hub ID (maximum 30 motors)",field:"json:perfectsheer_shared_hub_id",type:"text",placeholder:"Hub 1"});
             options.push({key:"remote_type",label:"Remote Type",field:"remote_type",type:"select",options:/automate/i.test(String(design?.motor_type)) ? ["15-Channel Remote","5-Channel Wall Switch"] : ["SmartDial Remote","Basic Remote"]});
             if(design?.remote_type) {
               options.push({...psCount("perfectsheer_remote_quantity","Remote Controls for This Line",Number.MAX_SAFE_INTEGER),placeholder:String(_lineItem.quantity||1)}, {key:"perfectsheer_remote_channel",label:"Shade Remote Channel",field:"json:perfectsheer_remote_channel",type:"number",min:1,max:/15.channel/i.test(design.remote_type)?15:5,step:"1",placeholder:"1"});

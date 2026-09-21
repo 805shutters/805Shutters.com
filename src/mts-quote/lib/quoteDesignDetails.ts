@@ -468,6 +468,7 @@ function humanizeKey(key: string): string {
     perfectsheer_solar_panel: "Solar Panel per Shade",
     smartdrape_motor_network: "Motor Network Number",
     perfectsheer_motor_network: "Motor Network Number",
+    perfectsheer_shared_hub_id: "Shared Automate Hub",
     perfectsheer_installation: "Mounting Method",
     perfectsheer_valance_height: "Valance Height",
     perfectsheer_valance_fabric: "Valance Fabric Override",

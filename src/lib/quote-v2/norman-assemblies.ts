@@ -1,3 +1,4 @@
+import {derivePerfectsheerHubs} from "./norman-perfectsheer-hub";
 import { rollerLightGuard, deriveRollerLightGuardGroups } from "./norman-roller-light-guard";
 import { rollerPoles, deriveRollerPoleOrder } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
@@ -128,6 +129,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const components=perfectsheerComponents(selection);
     if(components) selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:components};
   }
+  issues.push(...derivePerfectsheerHubs(lines));
   issues.push(...deriveSmartfoldSideBySide(lines));
   for (const {selection} of lines) {
     const valance=smartfoldValance(selection);
@@ -298,7 +300,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     }
     // A controller on a different physical network cannot operate these shades.
     // Scope the corrected rule to the new catalog so saved r8 evidence is unchanged.
-    const perfectsheerControls = members.filter(m => m.line.selection.productId === "perfectsheer" && m.line.selection.catalogVersion.endsWith("-norman-perfectsheer-networks-2026-09-20-r9"));
+    const perfectsheerControls = members.filter(m => m.line.selection.productId === "perfectsheer" && ["-norman-perfectsheer-networks-2026-09-20-r9","-norman-perfectsheer-hubs-2026-09-20-r10"].some(v=>m.line.selection.catalogVersion.endsWith(v)));
     if (perfectsheerControls.length && suppliedRemotes === 0 && !members.some(m=>String(m.accessories.record.controller?.existingRemoteWorkOrder ?? "").trim())) {
       for (const {line} of perfectsheerControls) issues.push({severity:"hard_block",ruleId:"perfectsheer.motorization.order_remote_required",source:source(first.family === "automate_home"?76:43),selectedValues:{lineId:line.lineId,network:first.network,family:first.family},explanation:"Supply at least one compatible remote on this motor network or identify the previous remote work order for this network. A control assigned to a different network does not satisfy this requirement."});
     }

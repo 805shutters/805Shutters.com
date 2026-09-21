@@ -61,7 +61,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`;
   if (productId === "honeycomb" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`;
   if (productId === "smartdrape" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartdrape-mounting-2026-09-19-r3`;
-  if (productId === "perfectsheer" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-networks-2026-09-20-r9`;
+  if (productId === "perfectsheer" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-hubs-2026-09-20-r10`;
   if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-controls-2026-09-19-r7`;
   if (productId === "smartfold" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-inside-fascia-2026-09-20-r15`;
   if (productId === "smartfold" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r6`;
@@ -124,6 +124,7 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-manual-2026-09-20-r11`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-accessories-2026-09-20-r12`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-standard-valances-2026-09-20-r13`) return true;
+  if (productId === "perfectsheer" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-networks-2026-09-20-r9`) return true;
   if (productId === "perfectsheer" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-magnet-2026-09-20-r8`) return true;
   if (productId === "perfectsheer" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-controls-2026-09-19-r7`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-outside-2026-09-20-r8`) return true;
