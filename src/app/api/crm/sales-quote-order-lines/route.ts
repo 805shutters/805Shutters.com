@@ -33,6 +33,7 @@ async function loadStates(
   const { data: lineData, error: lineError } = await supabase
     .from("sales_quote_line_items")
     .select("id,quote_id,room_name,product_type,sort_order")
+    .is("archived_at", null)
     .in("quote_id", quoteIds)
     .order("sort_order", { ascending: true });
   if (lineError) throw new CrmAuthError(502, "Product lines could not be loaded.");
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
     const { data: lineData, error: lineError } = await supabase
       .from("sales_quote_line_items")
       .select("id,quote_id,room_name,product_type,sort_order")
+    .is("archived_at", null)
       .eq("quote_id", quoteId)
       .eq("id", lineItemId)
       .maybeSingle();

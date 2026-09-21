@@ -166,7 +166,7 @@ export async function createSalesQuoteAlternative(
       const lines = checked(
         await db
           .from("sales_quote_line_items")
-          .select("*")
+          .select("*").is("archived_at", null)
           .eq("quote_id", sourceId)
           .order("sort_order"),
       ) as SalesQuoteLineItem[];

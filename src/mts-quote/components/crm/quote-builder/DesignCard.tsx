@@ -78,7 +78,6 @@ import {
 } from "@/lib/quote/customer-charges";
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { LotusDesignOptions, lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
-import { LineItemPriceInput } from "./LineItemPriceInput";
 import { QuoteLinePriceReadout } from "./QuoteLinePriceReadout";
 import { QuoteConfigurationIssues } from "./QuoteConfigurationIssues";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
@@ -4937,7 +4936,7 @@ export function DesignCard({
   const authoritativePriceError = authoritativeV2 && !displayedPrice.fromHistoricalLock && !isPriceLocked
     ? authoritativeDesignPriceIssue(currentDesign)
     : null;
-  const legacyPricingBlockReason = !authoritativeV2
+  const legacyPricingBlockReason = !authoritativeV2 && !isPriceLocked && currentOptions.manual_price_override !== true
     ? (typeof currentOptions.pricing_block_reason === "string"
         ? currentOptions.pricing_block_reason.trim()
         : "") ||
@@ -5969,16 +5968,14 @@ export function DesignCard({
               </div>
             )}
             <div className="quote-line-price-readout">
-              {authoritativeV2 ? <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
-                unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal} issue={authoritativePriceError}
+              <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
+                unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal}
+                issue={authoritativeV2 ? authoritativePriceError :
+                  !isPriceLocked && currentOptions.manual_price_override !== true && legacyPricingBlockReason
+                    ? pricingBlockReasonMessage(legacyPricingBlockReason) : null}
                 roomName={lineItem.room_name}
-                manualPrice={authoritativePriceError ? null : currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
-                onSave={(price) => onSaveLinePrice(activeVariant, price)} /> : <><LineItemPriceInput key={`${lineItem.id}-${activeVariant}`}
-                value={displayedUnitPrice} roomName={lineItem.room_name}
+                manualPrice={currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
                 onSave={(price) => onSaveLinePrice(activeVariant, price)} />
-              <div className="text-[11px] text-muted-foreground">
-                {`${formatMoney(displayedLineTotal)} line total · excl. tax`}
-              </div></>}
               {!mobilePresentation && !authoritativeV2 && isPriceLocked && (
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
                   className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">

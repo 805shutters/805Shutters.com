@@ -210,6 +210,7 @@ export function QuoteDashboard({
       return loadSavedQuoteCompleteness(result.data || [], (ids, from, to) => (supabase as any)
         .from("sales_quote_line_items")
         .select("id,quote_id,selected_design_id,sales_quote_designs!line_item_id(id,line_item_id,variant,unit_price,options_json)")
+        .is("archived_at", null)
         .in("quote_id", ids)
         .order("id", { ascending: true })
         .range(from, to));
@@ -241,6 +242,7 @@ export function QuoteDashboard({
         (supabase as any)
           .from("sales_quote_line_items")
           .select("*")
+          .is("archived_at", null)
           .in("quote_id", salesQuoteIds)
           .order("sort_order", { ascending: true }),
         Promise.all(
@@ -684,6 +686,7 @@ export function QuoteDashboard({
       const { data: lineItems } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
+        .is("archived_at", null)
         .eq("quote_id", quoteId);
 
       if (lineItems && lineItems.length > 0) {

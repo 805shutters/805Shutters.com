@@ -98,6 +98,7 @@ export interface SalesQuote {
 }
 
 export interface SalesQuoteLineItem {
+  archived_at?: string | null;
   id: string;
   quote_id: string;
   room_name: string;

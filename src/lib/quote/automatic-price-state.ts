@@ -75,8 +75,9 @@ export function automaticPricingTrigger(
 ): AutomaticPricingTrigger {
   if (previousSignature === undefined) {
     const basePrice = Number(options.base_price);
-    // A failed calculation is not a saved price. If measurements were saved
-    // before the card unmounted, resume that edit instead of freezing at $0.
+    // A failed calculation is not a saved price. A fabric, control, or size edit
+    // may have saved while the card was unmounted. Retry once when opening it;
+    // the remembered signature prevents a loop if the price is still missing.
     if (Number(unitPrice) === 0 && basePrice === 0 && options.pricing_calculation_status === "invalid") {
       const current = JSON.parse(currentSignature) as AutomaticPricingSignatureInput;
       const dimensions = [
@@ -89,6 +90,7 @@ export function automaticPricingTrigger(
           dimensions.some(([value, saved]) => String(value) !== String(saved))) {
         return "input_changed";
       }
+      return "new_unpriced";
     }
     const hasPersistedPrice =
       Number(unitPrice) !== 0 ||

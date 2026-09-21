@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@mts/component
 import { cn } from "@mts/lib/utils";
 import { FRACTIONS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
+import { MobileMeasurementKeypad } from "@/components/crm/MobileMeasurementKeypad";
 
 interface MeasurementGridModalProps {
   open: boolean;
@@ -97,6 +98,14 @@ export function MeasurementGridModal({
     setDirectError("");
     onDirectMeasurements?.(measurements.width, measurements.height);
   };
+
+  if (showDirectEntry && onDirectMeasurements) {
+    return open ? <QuoteMeasurementCalculator
+      saving={saving} saveError={saveError} measurementAxis={measurementAxis}
+      pendingWidth={pendingWidth} pendingHeight={pendingHeight}
+      onClose={onClose} onSave={onDirectMeasurements}
+    /> : null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
@@ -209,6 +218,44 @@ export function MeasurementGridModal({
       </DialogContent>
     </Dialog>
   );
+}
+
+function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendingWidth, pendingHeight, onClose, onSave }: {
+  saving: boolean;
+  saveError?: string;
+  measurementAxis: "width" | "height" | null;
+  pendingWidth: { whole: number; fraction: string } | null;
+  pendingHeight: { whole: number; fraction: string } | null;
+  onClose: () => void;
+  onSave: NonNullable<MeasurementGridModalProps["onDirectMeasurements"]>;
+}) {
+  const [width, setWidth] = useState(pendingWidth ?? { whole: 0, fraction: "0" });
+  const [height, setHeight] = useState(pendingHeight ?? { whole: 0, fraction: "0" });
+  const [error, setError] = useState("");
+  function save() {
+    if (saving) return;
+    const values = parseDirectMeasurements(measurementToDecimalString(width), measurementToDecimalString(height), measurementAxis);
+    if (!values) {
+      setError(measurementAxis === "width" ? "Enter a headrail width from 1 to 250 15/16 inches." : measurementAxis === "height" ? "Enter a vane length from 1 to 120 15/16 inches." : "Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
+      return;
+    }
+    setError("");
+    onSave(values.width, values.height);
+  }
+  return <Dialog open onOpenChange={open => !open && !saving && onClose()}>
+    <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6">
+      <DialogHeader><DialogTitle>{measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size"}</DialogTitle></DialogHeader>
+      <fieldset disabled={saving} className="min-w-0">
+        <MobileMeasurementKeypad widthWhole={width.whole} widthFraction={width.fraction}
+          heightWhole={height.whole} heightFraction={height.fraction} measurementAxis={measurementAxis}
+          onWholeChange={(side, whole) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, whole }))}
+          onFractionChange={(side, fraction) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, fraction }))}
+          onDone={save} doneLabel="Save size" />
+      </fieldset>
+      {saving && <p role="status" className="text-sm">Saving measurements…</p>}
+      {(error || saveError) && <p role="alert" className="text-sm text-destructive">{error || saveError} Your measurements are kept here until saved.</p>}
+    </DialogContent>
+  </Dialog>;
 }
 
 export function parseDirectMeasurement(

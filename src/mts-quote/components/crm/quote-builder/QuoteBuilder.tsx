@@ -95,6 +95,7 @@ import { getQuoteV2DeliveryCapability } from "@mts/lib/quoteV2DeliveryCapability
 import {
   mutateQuoteV2Structure,
   priceQuoteV2,
+  saveQuoteLinePrice,
   quoteV2DesignPatch,
   quoteV2LinePatch,
   quoteV2QuotePatch,
@@ -674,6 +675,7 @@ export function QuoteBuilder({
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
       .select("id, quantity, selected_design_id")
+      .is("archived_at", null)
       .eq("quote_id", activeQuoteId);
     if (lineItemsError) throw lineItemsError;
 
@@ -787,6 +789,7 @@ export function QuoteBuilder({
         .from("sales_quote_line_items")
         .select("*")
         .eq("quote_id", activeQuoteId!)
+        .is("archived_at", null)
         .order("sort_order");
       if (error) throw error;
       return (data || []) as SalesQuoteLineItem[];
@@ -1447,17 +1450,20 @@ export function QuoteBuilder({
         }
       }
       const cachedQuote = queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
-      const { data: session, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session.session) throw new Error("Sign in again to save the price.");
-      const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/line-price/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.session.access_token}` },
-        body: JSON.stringify({ lineItemId, variant, unitPrice,
-          expectedRevision: serverOwnedV2 ? Number(cachedQuote?.quote_v2_revision) : null,
-          requestId: crypto.randomUUID() }),
+      if (!activeQuoteId) throw new Error("No active quote is open.");
+      const saved = await saveQuoteLinePrice(supabase, activeQuoteId, {
+        lineItemId, variant, unitPrice,
+        expectedRevision: serverOwnedV2 ? Number(cachedQuote?.quote_v2_revision) : null,
+        requestId: crypto.randomUUID(),
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.message || body.error || "Price could not be saved.");
+      queryClient.setQueryData<SalesQuote>(quoteQueryKey, current => current ? {
+        ...current,
+        total_amount: saved.total,
+        ...(serverOwnedV2 ? {
+          quote_v2_revision: saved.revision,
+          quote_v2_status: saved.quoteStatus as SalesQuote["quote_v2_status"],
+        } : {}),
+      } : current);
       await refreshServerOwnedV2Rows();
     };
     const queued = v2MutationQueueRef.current.then(execute, execute);

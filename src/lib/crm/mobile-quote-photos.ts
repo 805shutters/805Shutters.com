@@ -58,7 +58,7 @@ async function requireQuote(supabase: SupabaseClient, quoteId: string, actorId: 
 }
 
 async function requireLine(supabase: SupabaseClient, quoteId: string, lineItemId: string) {
-  const result = await supabase.from("sales_quote_line_items").select("id").eq("id", lineItemId).eq("quote_id", quoteId).maybeSingle();
+  const result = await supabase.from("sales_quote_line_items").select("id").is("archived_at", null).eq("id", lineItemId).eq("quote_id", quoteId).maybeSingle();
   if (result.error) throw databaseFailure("The photo window could not be verified.");
   if (!result.data) throw new CrmAuthError(404, "The line item does not belong to this quote.");
 }

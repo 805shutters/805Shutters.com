@@ -87,3 +87,17 @@ it('applies the exact production predecessor/manual/unknown-cost sequence and pr
  const manual=(await db.query<any>("select set_sales_quote_line_price($1,$2,'A',100,$3,1,$4) as result",[id(41),id(141),id(50),id(941)])).rows[0].result;
  expect(manual).toMatchObject({unitPrice:139,total:387});
 });
+
+it('excludes archived priced lines from repricing, manual totals and saved customer output', async () => {
+ await db.exec('alter table sales_quote_line_items add column archived_at timestamptz');
+ await db.exec(migration('20260921193754_filter_archived_quote_lines'));
+ await seed(42);
+ await db.query("insert into sales_quote_line_items(id,quote_id,quantity,selected_design_id,archived_at) values($1,$2,9,$3,now())",[id(900),id(42),id(901)]);
+ await db.query("insert into sales_quote_designs(id,line_item_id,variant,unit_price,quote_v2_price_status) values($1,$2,'A',9999,'blocked')",[id(901),id(900)]);
+ expect(await saveRetailOnly(42)).toMatchObject({quote_total:'387.00',quote_status:'priced',new_revision:2});
+ expect((await prepare(42,payload(42),2,'active-only-output')).customer_payload).toEqual(payload(42));
+ const manual=(await db.query<any>("select set_sales_quote_line_price($1,$2,'A',100,$3,2,$4) as result",[id(42),id(142),id(50),id(942)])).rows[0].result;
+ expect(manual).toMatchObject({unitPrice:139,total:387});
+ expect((await db.query<any>('select unit_price,quote_v2_price_status from sales_quote_designs where id=$1',[id(901)])).rows[0]).toMatchObject({unit_price:'9999',quote_v2_price_status:'blocked'});
+ await expect(db.query("select set_sales_quote_line_price($1,$2,'A',100,$3,3,$4)",[id(42),id(900),id(50),id(943)])).rejects.toThrow(/not found on this quote/);
+});

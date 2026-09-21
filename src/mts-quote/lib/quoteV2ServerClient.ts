@@ -108,6 +108,10 @@ const PROTECTED_OPTION_KEYS = new Set([
   "discountsourceprice",
   "discountamount",
   "manualpriceoverride",
+  "manualmerchandiseunitprice",
+  "manualcustomerchargepolicy",
+  "customercharges",
+  "customerchargepolicyversion",
   "processingfee",
   "processingfeeallocated",
   "freight",
@@ -398,6 +402,30 @@ export function createQuoteV2Alternative(
   input: Readonly<{ mode: "blank" | "copy"; expectedRevision: number; idempotencyKey: string }>,
 ): Promise<{ quote: SalesQuote }> {
   return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/alternatives`, input);
+}
+
+export type QuoteLinePriceResponse = Readonly<{
+  designId: string;
+  unitPrice: number;
+  merchandiseUnitPrice: number;
+  total: number;
+  revision: number;
+  quoteStatus: string;
+}>;
+
+/** The entered amount is merchandise only; the server adds installation and shipping once. */
+export function saveQuoteLinePrice(
+  database: QuoteBuilderDatabase,
+  quoteId: string,
+  input: Readonly<{
+    lineItemId: string;
+    variant: string;
+    unitPrice: number;
+    expectedRevision: number | null;
+    requestId: string;
+  }>,
+): Promise<QuoteLinePriceResponse> {
+  return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/line-price/`, input);
 }
 
 export function mutateQuoteV2Structure(

@@ -612,7 +612,7 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
   await assertLegacyLotusDeliveryAllowed(supabase, quote);
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")
-    .select("*")
+    .select("*").is("archived_at", null)
     .eq("quote_id", quote.id)
     .order("sort_order", { ascending: true });
   if (lineError) throw new CrmAuthError(502, "Quote line items could not be loaded.");

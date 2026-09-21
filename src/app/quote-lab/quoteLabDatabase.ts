@@ -18,6 +18,7 @@ import type {
 type TableName = "sales_quotes" | "sales_quote_line_items" | "sales_quote_designs";
 type Filter =
   | { kind: "eq"; column: string; value: unknown }
+  | { kind: "is"; column: string; value: null | boolean }
   | { kind: "in"; column: string; values: unknown[] }
   | { kind: "not-in"; column: string; values: unknown[] };
 
@@ -317,6 +318,11 @@ class QuoteLabQuery {
     return this;
   }
 
+  is(column: string, value: null | boolean) {
+    this.filters.push({ kind: "is", column, value });
+    return this;
+  }
+
   in(column: string, values: unknown[]) {
     this.filters.push({ kind: "in", column, values });
     return this;
@@ -430,6 +436,7 @@ class ExactQuoteLabDatabase {
   private matches(row: any, filters: Filter[]) {
     return filters.every((filter) => {
       if (filter.kind === "eq") return row[filter.column] === filter.value;
+      if (filter.kind === "is") return (row[filter.column] ?? null) === filter.value;
       if (filter.kind === "in") return filter.values.includes(row[filter.column]);
       return !filter.values.includes(row[filter.column]);
     });

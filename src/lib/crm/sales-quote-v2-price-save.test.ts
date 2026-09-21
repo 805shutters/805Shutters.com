@@ -36,12 +36,16 @@ function fakeSupabase(
         (rows[table] ?? []).filter((row) =>
           filters.every((filter) =>
             filter.kind === "eq"
-              ? row[filter.column] === filter.value
+              ? (row[filter.column] ?? null) === filter.value
               : filter.values.includes(row[filter.column]),
           ),
         );
       const query = {
         select() {
+          return query;
+        },
+        is(column: string, value: null) {
+          filters.push({ kind: "eq", column, value });
           return query;
         },
         eq(column: string, value: unknown) {
@@ -783,4 +787,19 @@ describe("actual current retail quote saves", () => {
     }
     expect(JSON.stringify(response)).not.toMatch(/internalCostSnapshot|wholesaleAmount|landedCostTotal/);
   });
+});
+
+it('excludes an archived selected line from automatic pricing and rejects targeting it', async () => {
+  const rows = twoLineRows();
+  rows.sales_quote_line_items[1].archived_at = '2026-09-21T18:50:05Z';
+  const { client, rpcCalls } = fakeSupabase(rows);
+  await saveSalesQuoteV2AuthoritativePrice(client, {
+    quoteId: QUOTE_ID, lineItemId: LINE_ID, designId: DESIGN_ID,
+    expectedRevision: 7, idempotencyKey: 'active-lines-only', actorId: ACTOR_ID, serverDate: '2026-09-21',
+  });
+  expect((rpcCalls[0].args.p_results as Array<{ lineItemId: string }>).map(row => row.lineItemId)).toEqual([LINE_ID]);
+  await expect(saveSalesQuoteV2AuthoritativePrice(client, {
+    quoteId: QUOTE_ID, lineItemId: SECOND_LINE_ID, designId: SECOND_DESIGN_ID,
+    expectedRevision: 7, idempotencyKey: 'deleted-target', actorId: ACTOR_ID, serverDate: '2026-09-21',
+  })).rejects.toMatchObject({ status: 404 });
 });

@@ -602,7 +602,7 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
   requireQuoteIdentity(quote);
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")
-    .select("*")
+    .select("*").is("archived_at", null)
     .eq("quote_id", quote.id)
     .order("sort_order", { ascending: true });
   if (lineError) fail("V2 line items could not be loaded for authoritative validation.");

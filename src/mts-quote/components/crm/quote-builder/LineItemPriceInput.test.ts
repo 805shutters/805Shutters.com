@@ -34,3 +34,11 @@ it('rejects negative prices and accidental extra decimal places',async()=>{
  await enter('-1');await blur();expect(save).not.toHaveBeenCalled();
  await enter('12.345');await blur();expect(save).not.toHaveBeenCalled();
 });
+it('keeps an invalid draft visible across a background price refresh so it can be corrected',async()=>{
+ await enter('12.345');await blur();
+ await act(()=>root.render(React.createElement(LineItemPriceInput,{value:200,roomName:'Kitchen',onSave:save})));
+ expect(host.querySelector('input')!.value).toBe('12.345');
+ expect(host.querySelector('[role=alert]')).not.toBeNull();
+ await enter('12.34');await blur();
+ expect(save).toHaveBeenCalledExactlyOnceWith(12.34);
+});

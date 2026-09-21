@@ -201,7 +201,7 @@ async function loadQuoteLines(
 ): Promise<PersistedV2Line[]> {
   const { data, error } = await supabase
     .from("sales_quote_line_items")
-    .select("*")
+    .select("*").is("archived_at", null)
     .eq("quote_id", quoteId)
     .order("sort_order", { ascending: true });
   if (error) throw databaseError("The V2 quote lines could not be loaded.");

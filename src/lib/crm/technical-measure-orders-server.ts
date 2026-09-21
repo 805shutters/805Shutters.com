@@ -63,7 +63,7 @@ export async function enrichMeasureOrders(
         collectCrmPages<Record<string, any>>((from, to) =>
           supabase
             .from("sales_quote_line_items")
-            .select("id,quote_id")
+            .select("id,quote_id").is("archived_at", null)
             .in("quote_id", sourceIds)
             .order("id")
             .range(from, to),

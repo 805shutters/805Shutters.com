@@ -287,13 +287,17 @@ function persistedV2Supabase(
         (rows[table] ?? []).filter((row) =>
           filters.every((filter) =>
             filter.kind === "eq"
-              ? row[filter.column] === filter.value
+              ? (row[filter.column] ?? null) === filter.value
               : filter.values.includes(row[filter.column]),
           ),
         );
       const query = {
         select(columns: string) {
           selects.push({ table, columns });
+          return query;
+        },
+        is(column: string, value: null) {
+          filters.push({ kind: "eq", column, value });
           return query;
         },
         eq(column: string, value: unknown) {

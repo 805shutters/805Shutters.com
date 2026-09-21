@@ -6,6 +6,8 @@ export const GRID_OPTION_QUOTING_EFFECTIVE_FROM = '2026-09-21';
 // These rules do not supply a grid identity, billable dimension or option charge.
 // Keep unknown rules blocking: a new price-dependent rule must never silently disappear.
 const ORDER_ONLY_RULES = new Set([
+  // Selected motor/tube capacity is manufacturing evidence; retail still needs a real grid cell.
+  'roller.matrix.maxAreaSqft',
   'roman.hardware.mount_fit', 'roman.hardware.mount_depth',
   'roman.continuous_loop.headrail_required',
   'roman.hardware.chain_clearance', 'roman.hardware.chain_obstruction_choice',

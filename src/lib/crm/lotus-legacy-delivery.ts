@@ -24,7 +24,7 @@ export async function assertLegacyLotusDeliveryAllowed(supabase: SupabaseClient,
   // Accepted contracts retain their saved terms. This guard does not reprice history.
   if (quote.signed_at || quote.customer_signature) return;
   const { data: lines, error: lineError } = await supabase.from("sales_quote_line_items")
-    .select("id").eq("quote_id", quote.id);
+    .select("id").is("archived_at", null).eq("quote_id", quote.id);
   if (lineError) throw new CrmAuthError(502, "Lotus delivery selections could not be verified.");
   const ids = (lines ?? []).map(line => line.id);
   if (!ids.length) return;

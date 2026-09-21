@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { parseSalesQuoteV2StructureBody } from "@/lib/crm/sales-quote-v2-structure";
 import {
   createQuoteV2Draft,
   createQuoteV2Alternative,
@@ -10,6 +11,7 @@ import {
   quoteV2LinePatch,
   quoteV2PricingOutcome,
   quoteV2QuotePatch,
+  saveQuoteLinePrice,
 } from "./quoteV2ServerClient";
 
 function databaseWithToken(token = "crm-token") {
@@ -24,6 +26,51 @@ function databaseWithToken(token = "crm-token") {
 }
 
 describe("Quote V2 authenticated client boundary", () => {
+  it("allows editing a saved automatic or manual price without resubmitting server-owned customer charges", () => {
+    const patch = quoteV2DesignPatch({ options_json: {
+      fabric_color_code: "F0183", control_type: "Cordless",
+      manual_price_override: true, manual_merchandise_unit_price: 900,
+      manual_customer_charge_policy: "blind-shade-install-ship-v1",
+      customer_charges: { perWindowTotal: 39, quantity: 3 },
+      customerCharges: { perWindowTotal: 39 },
+      customer_charge_policy_version: "blind-shade-install-ship-v1",
+      accessory: { customer_charges: { total: 39 }, finish: "White" },
+    } });
+    expect(patch).toEqual({ optionsJson: {
+      fabric_color_code: "F0183", control_type: "Cordless", accessory: { finish: "White" },
+    } });
+    const request = {
+      expectedRevision: 4, idempotencyKey: "structure:manual-price-next-edit",
+      operations: [{ type: "design.upsert", lineItemId: "22222222-2222-4222-8222-222222222222",
+        designId: "44444444-4444-4444-8444-444444444444", variant: "A", selectDesign: true, patch }],
+    };
+    expect(() => parseSalesQuoteV2StructureBody(request)).not.toThrow();
+    expect(() => parseSalesQuoteV2StructureBody({ ...request, operations: [{ ...request.operations[0],
+      patch: { optionsJson: { customer_charges: { perWindowTotal: 39 } } },
+    }] })).toThrow(/protected.*customer_charges/);
+  });
+
+  it("saves the entered merchandise price with revision and idempotency identity while retaining returned inclusive totals", async () => {
+    const result = { designId: "design", unitPrice: 939, merchandiseUnitPrice: 900,
+      total: 2817, revision: 12, quoteStatus: "priced" };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify(result), { status: 200 }));
+    try {
+      const input = { lineItemId: "line", variant: "A", unitPrice: 900, expectedRevision: 11, requestId: "stable-request" };
+      expect(await saveQuoteLinePrice(databaseWithToken(), "quote", input)).toEqual(result);
+      expect(fetchMock).toHaveBeenCalledWith("/api/crm/sales-quotes/quote/line-price/", expect.objectContaining({
+        method: "POST", headers: expect.objectContaining({ Authorization: "Bearer crm-token" }), body: JSON.stringify(input),
+      }));
+    } finally { fetchMock.mockRestore(); }
+  });
+
+  it("preserves the manual-save server explanation for a stale revision", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ message: "This quote changed. Reload it and try again." }), { status: 409 }));
+    try {
+      await expect(saveQuoteLinePrice(databaseWithToken(), "quote", {
+        lineItemId: "line", variant: "A", unitPrice: 900, expectedRevision: 11, requestId: "stable-request",
+      })).rejects.toThrow("This quote changed. Reload it and try again.");
+    } finally { fetchMock.mockRestore(); }
+  });
   it("removes price, cost, provenance, and nested snapshot values", () => {
     expect(
       customerSafeQuoteV2Options({

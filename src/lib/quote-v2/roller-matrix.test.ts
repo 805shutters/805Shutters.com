@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { findRollerColor } from "./catalog";
 import type { SelectionContext, SelectionRecord } from "./core";
 import {
   normalizeRollerRegionScope,
@@ -38,6 +39,26 @@ function context(
 }
 
 describe("Norman Roller V2 exact restriction matrix", () => {
+  it("quotes every split regional fabric from its shared retail identity without selecting a region", () => {
+    const colors = new Map(normanRollerV2Source.offerings
+      .filter(offering => offering.regionScope !== "all_regions")
+      .map(offering => [`${offering.collection}:${offering.colorCode}`, offering]));
+    expect(colors.size).toBe(23);
+    for (const offering of colors.values()) {
+      const fabric = findRollerColor(offering.collection, offering.colorCode);
+      expect(fabric).toBeDefined();
+      const selected = context({fabric_collection:offering.collection,fabric_color_code:offering.colorCode}, {
+        catalogAsOf:"2026-09-21", programId:fabric!.programId,
+      });
+      const issues = validateRollerMatrix(selected);
+      expect(issues).toEqual(expect.arrayContaining([expect.objectContaining({
+        ruleId:"roller.matrix.region_scope_required",severity:"warning",
+      })]));
+      expect(issues.filter(issue => issue.severity === "hard_block"), offering.collection).toHaveLength(0);
+      expect(resolveRollerOffering(selected)).toMatchObject({ok:false,code:"REGION_SCOPE_REQUIRED"});
+      expect(selected.configuration.roller_region_scope).toBeUndefined();
+    }
+  });
   it("resolves all 23 regional split identities only from an explicit Roller jurisdiction", () => {
     const splitOfferings = normanRollerV2Source.offerings.filter(
       (offering) => offering.regionScope !== "all_regions",

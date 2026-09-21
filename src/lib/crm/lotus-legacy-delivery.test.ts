@@ -27,11 +27,11 @@ describe("Lotus source authority at the legacy customer delivery boundary", () =
   });
   it("rejects before customer mirror writes and fails closed when selection reads fail", async () => {
     const from = vi.fn((table: string) => table === "sales_quote_line_items"
-      ? { select: () => ({ eq: async () => ({ data: [{ id: "line" }], error: null }) }) }
+      ? { select: () => ({ is() { return this; }, eq: async () => ({ data: [{ id: "line" }], error: null }) }) }
       : { select: () => ({ in: async () => ({ data: [mlx], error: null }) }) });
     await expect(assertLegacyLotusDeliveryAllowed({ from } as never, { id: "quote" })).rejects.toThrow("Lotus MLX");
     expect(from.mock.calls.map(call => call[0])).toEqual(["sales_quote_line_items", "sales_quote_designs"]);
-    const broken = { from: () => ({ select: () => ({ eq: async () => ({ data: null, error: {} }) }) }) };
+    const broken = { from: () => ({ select: () => ({ is() { return this; }, eq: async () => ({ data: null, error: {} }) }) }) };
     await expect(assertLegacyLotusDeliveryAllowed(broken as never, { id: "quote" })).rejects.toThrow("could not be verified");
   });
 });

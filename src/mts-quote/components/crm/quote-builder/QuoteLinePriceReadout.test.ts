@@ -16,7 +16,7 @@ describe("quote line calculation and custom entry", () => {
     expect(html).not.toContain("$0.00");
     expect(html).not.toContain('value="0.00"');
     expect(html).not.toContain("Enter your price");
-    expect(html).toContain("Set custom merchandise price");
+    expect(html).toContain("Edit price");
   });
   it("shows calculated amounts and accepts a genuine authoritative zero", () => {
     const paid = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, unitPrice: 623.45, lineTotal: 2493.8, issue: null }));
@@ -31,7 +31,7 @@ describe("quote line calculation and custom entry", () => {
     const root = createRoot(host); const save = vi.fn().mockResolvedValue(undefined);
     try {
       await act(() => root.render(React.createElement(QuoteLinePriceReadout, { ...props, issue: "Grid unavailable", onSave: save })));
-      const details = host.querySelector("details")!; details.open = true;
+      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Edit price for Bedroom 1"]')!.click());
       const input = host.querySelector("input")!;
       expect(input.value).toBe("");
       expect(input.getAttribute("aria-label")).toBe("Custom merchandise price each for Bedroom 1");
@@ -45,5 +45,36 @@ describe("quote line calculation and custom entry", () => {
       await act(async () => host.querySelector("button")!.click());
       expect(save).toHaveBeenCalledExactlyOnceWith(900);
     } finally { await act(() => root.unmount()); host.remove(); }
+  });
+  it("shows an existing manual amount immediately and saves the edited merchandise amount", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); const save = vi.fn().mockResolvedValue(undefined);
+    try {
+      await act(() => root.render(React.createElement(QuoteLinePriceReadout, {
+        ...props, unitPrice: 939, lineTotal: 2817, manualPrice: 900, issue: null, onSave: save,
+      })));
+      const input = host.querySelector("input")!;
+      expect(input.value).toBe("900.00");
+      expect(host.textContent).toContain("$939.00 each");
+      expect(host.textContent).toContain("$2,817.00 line total");
+      expect(host.querySelector("details")).toBeNull();
+      await act(() => {
+        input.focus();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "925.50");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Save price for Bedroom 1"]')!.click());
+      expect(save).toHaveBeenCalledExactlyOnceWith(925.5);
+      expect(host.textContent).toContain("Price saved");
+    } finally { await act(() => root.unmount()); host.remove(); }
+  });
+  it("keeps an existing manual amount editable when grid pricing reports an issue", () => {
+    const html = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, {
+      ...props, manualPrice: 450, issue: "Selected fabric grid unavailable",
+    }));
+    expect(html).toContain("Selected fabric grid unavailable");
+    expect(html).toContain('value="450.00"');
+    expect(html).toContain("Save price for Bedroom 1");
+    expect(html).not.toContain("$0.00 each");
   });
 });

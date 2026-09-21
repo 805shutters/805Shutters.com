@@ -410,6 +410,7 @@ export async function resolveSalesQuoteV2Route(
     .select(
       "id,quote_id,selected_design_id,quantity,room_name,width_whole,width_fraction,height_whole,height_fraction,sort_order",
     )
+    .is("archived_at", null)
     .eq("quote_id", candidate.salesQuoteId);
   if (linesError) throw new CrmAuthError(502, "The linked V2 quote lines could not be loaded.");
 

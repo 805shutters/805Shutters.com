@@ -367,6 +367,7 @@ describe("loadHistoricalSalesQuoteMirrorPricing", () => {
         expect(table).toBe("crm_quotes");
         const query = {
           select: () => query,
+          is: () => query,
           eq: async () => ({ data: [], error: null }),
         };
         return query;
@@ -403,6 +404,7 @@ describe("loadHistoricalSalesQuoteMirrorPricing", () => {
       from: (table: string) => {
         const query = {
           select: () => query,
+          is: () => query,
           eq: async (column: string, value: unknown) => {
             filters.push([table, column, value]);
             return { data: rows[table], error: null };

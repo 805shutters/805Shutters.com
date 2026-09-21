@@ -35,6 +35,7 @@ export function QuotePortfolioDialog({ quote, open, onOpenChange }: QuotePortfol
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
+        .is("archived_at", null)
         .eq("quote_id", quoteId)
         .order("sort_order");
       if (error) throw error;

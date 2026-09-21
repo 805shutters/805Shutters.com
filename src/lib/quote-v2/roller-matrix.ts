@@ -1,6 +1,7 @@
 import { normanRollerFall2026Source } from "./generated/norman-roller-fall-2026.generated";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
-import { normalizeIdentity } from "./catalog";
+import { findRollerColor, normalizeIdentity } from "./catalog";
+import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "./quote-pricing-policy";
 import { sourceProvenance } from "./source-manifest";
 import {
   normanRollerV2Source,
@@ -466,6 +467,40 @@ function selectedValues(context: SelectionContext): SelectionRecord {
 
 export function validateRollerMatrix(context: SelectionContext): readonly ValidationIssue[] {
   const resolved = resolveRollerMatrixProfile(context);
+  if (!resolved.ok && resolved.code === "REGION_SCOPE_REQUIRED" &&
+      context.catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM) {
+    // Retail is keyed by collection/color, not the regional manufacturing code.
+    // Validate both candidates without persisting either as the selected region.
+    const fabric = findRollerColor(
+      stringConfig(context, "fabric_collection"),
+      stringConfig(context, "fabric_color_code"),
+    );
+    const candidates = ROLLER_REGION_SCOPES.map(regionScope => ({
+      regionScope,
+      context: { ...context, configuration: { ...context.configuration, roller_region_scope: regionScope } },
+    }));
+    if (fabric?.programId === context.programId &&
+        candidates.every(candidate => resolveRollerOffering(candidate.context).ok)) {
+      return [{
+        severity: "warning",
+        ruleId: "roller.matrix.region_scope_required",
+        source: sourceProvenance(rollerSourceId(context), {
+          sheet: "Fabric Code List",
+          ...(resolved.sourceRange ? { range: resolved.sourceRange } : {}),
+        }),
+        selectedValues: selectedValues(context),
+        explanation: "Before ordering: select the explicit CA/MA or other-region fabric code. Both regional offerings use the selected collection/color retail price group; neither region has been assumed for this quote.",
+        derivedValues: { regional_candidate_ids: resolved.candidates ?? [], price_program_id: fabric.programId },
+      }, ...candidates.flatMap(candidate => validateRollerMatrix(candidate.context).map(issue => ({
+        ...issue,
+        selectedValues: {
+          ...issue.selectedValues,
+          roller_region_scope: null,
+          evaluated_candidate_region: candidate.regionScope,
+        },
+      })))];
+    }
+  }
   if (!resolved.ok) {
     return [
       {

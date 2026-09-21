@@ -597,7 +597,7 @@ async function loadLines(
 ): Promise<LegacyLineRow[]> {
   const { data, error } = await supabase
     .from("sales_quote_line_items")
-    .select("*")
+    .select("*").is("archived_at", null)
     .eq("quote_id", quoteId)
     .order("sort_order", { ascending: true });
   if (error) throw databaseFailure("The legacy quote lines could not be loaded.");

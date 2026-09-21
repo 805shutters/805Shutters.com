@@ -219,6 +219,7 @@ export function QuoteContract({
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
+        .is("archived_at", null)
         .eq("quote_id", activeQuoteId!)
         .order("sort_order");
       if (error) throw error;
@@ -268,6 +269,7 @@ export function QuoteContract({
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
+        .is("archived_at", null)
         .in("quote_id", siblingQuoteIds)
         .order("sort_order");
       if (error) throw error;

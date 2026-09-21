@@ -869,7 +869,8 @@ describe("V2 exact-interface contract", () => {
     const source = readFileSync(fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)), "utf8");
     expect(source).toContain("{showLabCatalogControls && !authoritativeV2 && (");
     expect(source).not.toContain("{isolated && (");
-    expect(source).toContain("<LineItemPriceInput");
+    expect(source).not.toContain("<LineItemPriceInput");
+    expect(source).toContain("pricingBlockReasonMessage(legacyPricingBlockReason) : null");
     expect(source).toContain("onSaveLinePrice(activeVariant, price)");
     expect(source).not.toContain('aria-label="Authoritative price"');
     expect(source).toContain("if (authoritativeV2) return;");

@@ -211,6 +211,7 @@ export function QuoteGroupTabs() {
       const { data: lineItems } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
+        .is("archived_at", null)
         .eq("quote_id", activeQuote.id)
         .order("sort_order");
 

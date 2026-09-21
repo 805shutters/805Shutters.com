@@ -190,6 +190,7 @@ function fakeSupabase(options: FixtureOptions = {}) {
     const result = () => ({ data: sourceRows(table, filters), error: null });
     const query: Record<string, unknown> = {
       select: () => query,
+      is: () => query,
       eq: (column: string, value: unknown) => {
         filters.push([column, value]);
         reads.push({ table, column, value });

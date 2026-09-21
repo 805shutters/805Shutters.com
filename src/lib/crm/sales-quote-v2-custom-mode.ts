@@ -95,7 +95,7 @@ export async function applySalesQuoteV2CustomMode(
   }
   const originalSnapshot = record(snapshot.retail_snapshot);
   const {data: line, error: lineError} = await supabase.from("sales_quote_line_items")
-    .select("quantity").eq("id",input.lineItemId).eq("quote_id",quoteId).maybeSingle();
+    .select("quantity").is("archived_at", null).eq("id",input.lineItemId).eq("quote_id",quoteId).maybeSingle();
   if (lineError || !line || !Number.isSafeInteger(line.quantity) || line.quantity<1) throw new CrmAuthError(409,"The saved line quantity is unavailable.");
   const originalRetail = {...record(originalSnapshot.retail),quantity:line.quantity};
   const quantity = Math.max(1, Math.floor(Number(originalRetail.quantity) || 1));

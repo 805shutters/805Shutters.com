@@ -62,6 +62,9 @@ export function MobileMeasurementKeypad({
   onWholeChange,
   onFractionChange,
   onOpenGrid,
+  onDone,
+  measurementAxis,
+  doneLabel = "Done",
 }: {
   widthWhole: number;
   widthFraction: string;
@@ -69,13 +72,16 @@ export function MobileMeasurementKeypad({
   heightFraction: string;
   onWholeChange: (side: MobileMeasurementSide, whole: number) => void;
   onFractionChange: (side: MobileMeasurementSide, fraction: string) => void;
-  onOpenGrid: (side: MobileMeasurementSide, trigger: HTMLButtonElement) => void;
+  onOpenGrid?: (side: MobileMeasurementSide, trigger: HTMLButtonElement) => void;
+  onDone?: () => void;
+  measurementAxis?: MobileMeasurementSide | null;
+  doneLabel?: string;
 }) {
-  const [activeSide, setActiveSide] = useState<MobileMeasurementSide>("width");
+  const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? "width");
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(true);
   const [replaceNext, setReplaceNext] = useState(true);
-  const [manualValue, setManualValue] = useState(String(widthWhole));
+  const [manualValue, setManualValue] = useState(String(measurementAxis === "height" ? heightWhole : widthWhole));
 
   const whole = activeSide === "width" ? widthWhole : heightWhole;
   const fraction = activeSide === "width" ? widthFraction : heightFraction;
@@ -101,6 +107,8 @@ export function MobileMeasurementKeypad({
   function changeManual(value: string) {
     if (value === "") {
       setManualValue("");
+      setReplaceNext(false);
+      if (whole !== 0) onWholeChange(activeSide, 0);
       return;
     }
     const normalized = normalizeManualMeasurementWhole(value);
@@ -114,7 +122,7 @@ export function MobileMeasurementKeypad({
 
   return <section className={styles.measurement} aria-label="Window measurements">
     <div className={styles.segments} role="group" aria-label="Choose dimension">
-      {(["width", "height"] as const).map((side) => {
+      {(["width", "height"] as const).filter(side => !measurementAxis || side === measurementAxis).map((side) => {
         const selected = side === activeSide;
         const sideWhole = side === "width" ? widthWhole : heightWhole;
         const sideFraction = side === "width" ? widthFraction : heightFraction;
@@ -125,7 +133,7 @@ export function MobileMeasurementKeypad({
       })}
     </div>
     {open && <div className={styles.editor}>
-      <div className={styles.entryRow}>
+      <div className={styles.entryRow} style={!onOpenGrid ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined}>
         <label><span>{activeSide} whole inches</span><input
           type="text"
           inputMode="numeric"
@@ -135,10 +143,10 @@ export function MobileMeasurementKeypad({
           onChange={(event) => changeManual(event.target.value)}
           onBlur={() => setManualValue(String(whole))}
         /></label>
-        <button type="button" className={styles.gridButton} aria-label={`Open ${activeSide} measurement grid`} onClick={(event) => {
+        {onOpenGrid && <button type="button" className={styles.gridButton} aria-label={`Open ${activeSide} measurement grid`} onClick={(event) => {
           setReplaceNext(true);
           onOpenGrid(activeSide, event.currentTarget);
-        }}><Grid3X3 /><span>Grid<br /><small>0–150</small></span></button>
+        }}><Grid3X3 /><span>Grid<br /><small>0–150</small></span></button>}
       </div>
       <div className={styles.keypad} aria-label={`${activeSide} number keypad`}>
         {KEYPAD_ROWS.flat().map((key) => <button type="button" key={key} aria-label={key === "backspace" ? "Backspace" : key === "clear" ? "Clear whole inches" : undefined} onClick={() => press(key === "backspace" ? { type: "backspace" } : key === "clear" ? { type: "clear" } : { type: "digit", digit: key })}>
@@ -152,7 +160,7 @@ export function MobileMeasurementKeypad({
       {expanded && <div className={styles.allFractions} role="group" aria-label={`${activeSide} all sixteenth fractions`}>
         {MOBILE_QUOTE_FRACTIONS.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
       </div>}
-      <button type="button" className={styles.nextButton} onClick={() => activeSide === "width" ? selectSide("height") : setOpen(false)}>{activeSide === "width" ? "Next: height" : "Done"}</button>
+      <button type="button" className={styles.nextButton} onClick={() => activeSide === "width" && !measurementAxis ? selectSide("height") : onDone ? onDone() : setOpen(false)}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
     </div>}
   </section>;
 }

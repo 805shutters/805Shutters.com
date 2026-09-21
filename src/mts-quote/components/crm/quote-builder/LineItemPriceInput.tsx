@@ -23,7 +23,7 @@ export function LineItemPriceInput({ value, roomName, onSave, label = "Price eac
   const pending = useRef(false);
   const changed = useRef(false);
   useEffect(() => {
-    if (!editing.current && !pending.current) {
+    if (!editing.current && !pending.current && !changed.current) {
       setDraft(formattedValue);
       setSaved(false);
     }
