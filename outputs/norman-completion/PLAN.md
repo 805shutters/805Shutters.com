@@ -1,10 +1,10 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September20,19:26
-- Completed live:7be5403e;6,307 tests passed,28 skipped; typecheck/build/public deployment passed. Includes standard manual SmartFold pricing, Walden twin records, exact shutter specialty identities/frame restrictions, and both Roller valance destinations. The concurrent Job Status filter change3c5478fd is preserved.
-- Production proof: magnetic-clearance quote0358 passed saved-server negative boundaries, restoration, close/full reload/reopen for SmartFold and PerfectSheer; incomplete customer output remains correctly held. Earlier valance0355, shutter0353/0356/0357, StockVertical0354 and Sundance0335 proofs remain retained.
-- In progress: manual SmartFold live proof; release b63930ec validating SmartFold priced accessories/control resets, exact439Roller fabric-width mapping, specialty outline/divider/manufacturing records and Sundance shared18-motor power panels.
-- Parallel agents: Roller standalone/separate valance live proof and exact largest-hardware rules; shutter specialty live proof and finite guide closures; Sundance remaining family live proof and source-backed order accessories.
-- Remaining: complete source assortment/rule reconciliation, account pricing evidence and production proof for new controls. No manufacturer or whole Norman family is certified complete.
+## Current checkpoint — September20,19:54
+- Completed live:2046fadd;6,401 tests passed,28 skipped; typecheck/build/public deployment passed. Includes SmartFold hems/magnets/poles, control-reset and inactive-display fixes, exact439Roller widths/physical tube/valance associations, shutter specialty template/outline/manufacturing rules, and Sundance panels/privacy/Portfolio blackout pricing. Concurrent Job Status filters remain preserved.
+- Production proof: SmartFold E0360/F0362 manual choices and72-inch boundary saved/reopened at$2,848; G0364 exact accessory combination$3,380, insufficient magnet clearance rejected/restored; H0365 motor-to-manual automatically clears charging/power/remote and reopens/customer-preview$2,580. Original motorized B0342 remains$5,023. Shutter missing-template and inactive-hinge fixes verified by agent.
+- Source coverage completed: all266Vertical fabric/cell routes ×6stacks ×3mounts =4,788 actual-backend configurations, plus splice/deduction boundary and persistence checks. Vertical Day & Night independent widths and cut-out charge evidence remain distinct exceptions.
+- In progress: standard default-width outside SmartFold valances (315fabric/style/control cases), Roller source accessories and valance-specific errors, shutter one-louver/arch controls and exact panel restrictions, Sundance shared order controllers/chargers.
+- Remaining: complete finite source rules, account pricing evidence and production proof for new controls. No manufacturer or whole Norman family is certified complete.
 - External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805. Dealer factors and selling policy remain unchanged.
 
 Historical progress entries below are retained as an execution log; this checkpoint and RESULTS.md determine current status.
