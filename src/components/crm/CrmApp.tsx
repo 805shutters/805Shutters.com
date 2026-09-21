@@ -892,7 +892,7 @@ export function CrmApp({
   const [activityLoading, setActivityLoading] = useState(false);
   const [dashboardRefreshError, setDashboardRefreshError] = useState<string | null>(null);
   const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
+  const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab === "bookkeeping" ? "tracking" : initialTab));
   const [trackingDetailId, setTrackingDetailId] = useState<string | null>(null);
   const [trackingQuickAction, setTrackingQuickAction] = useState<{ itemId: string; requestId: string; paymentType?: "deposit" | "balance"; kind: "contract" | "sold_date" | "payment" | "install" } | null>(null);
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
@@ -1026,11 +1026,6 @@ export function CrmApp({
       setActiveTab("jobs");
       setActiveJobStatus(null);
       setJobSearch(customerName);
-      return;
-    }
-
-    if (page.target === "bookkeeping") {
-      setActiveTab("bookkeeping");
       return;
     }
 
@@ -1331,7 +1326,7 @@ export function CrmApp({
       return;
     }
 
-    setActiveTab(tab);
+    setActiveTab(tab === "bookkeeping" && !isKenMode ? "tracking" : tab);
     setDrill(null);
     setFocusCustomer(null);
     if (tab === "payments") {
@@ -3441,7 +3436,7 @@ export function CrmApp({
 
       {activeTab === "command" && !financialViewBlocked ? <OperationsDashboard data={dashboardRefreshError ? null : data} busy={busy}
         onOpen={item => { openTab("tracking"); setTrackingDetailId(item.id); }} onStatus={() => openTab("tracking")}
-        onSales={() => openSummaryDrill("closedSales")} onBookkeeping={() => openTab("bookkeeping")} /> : null}
+        onSales={() => openSummaryDrill("closedSales")} onPayments={() => openTab("square")} /> : null}
       {activeTab === "tools" && !financialViewBlocked ? (
         <>
           <CommandDashboard
@@ -3636,42 +3631,6 @@ export function CrmApp({
               onStatusChange={updateJobStatus}
               onSaveRow={saveCustomerRowField}
               onSaveJob={saveCustomerJobField}
-              busy={busy}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      {activeTab === "bookkeeping" && !financialViewBlocked ? (
-        <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
-          <div className="crm-bookkeeping-main">
-            <BookkeepingSpreadsheet
-              rows={rows}
-              totals={data?.bookkeepingTotals}
-              payoff={data?.kenPayoff}
-              commissionSummary={data?.commissionSummary}
-              partnerPaymentLedger={data?.partnerPaymentLedger}
-              busy={busy}
-              canMarkPartnerPaid={isMikePaymentAdminEmail(user?.email)}
-              onOpenPayments={openPaymentLedger}
-              onSave={saveBookkeepingCell}
-              onMarkBalancePaid={markBookkeepingBalancePaid}
-              onMarkPartnerPaid={markPartnerPaymentPaid}
-              onDelete={deleteBookkeepingRow}
-              onOpenPayoff={() => openTab("payoff")}
-            />
-            <OrderCogsInbox
-              emails={orderCogsEmails}
-              rows={rows}
-              jobs={jobs}
-              files={customerFiles}
-              onDrill={setDrill}
-            />
-            <InstallationInvoiceInbox
-              invoices={installationInvoiceEmails}
-              rows={rows}
-              onPull={pullInstallationInvoices}
-              onSaveInvoice={saveInstallationInvoiceLedgerItem}
               busy={busy}
             />
           </div>
@@ -4089,7 +4048,7 @@ type PaymentPlanUiAction =
     }
   | { op: "mark_paid"; seq: number; payment_type?: string }
   | { op: "cancel"; reason?: string };
-type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "contract" | "calendar";
+type CustomerSearchPageTarget = "customers" | "jobs" | "quotes" | "contract" | "calendar";
 type CustomerSearchPage = {
   target: CustomerSearchPageTarget;
   label: string;
@@ -5054,7 +5013,6 @@ function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], even
   const pages: CustomerSearchPage[] = [{ target: "customers", label: "Customer File" }];
   const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
   if (jobId || entry.job) pages.push({ target: "jobs", label: "Jobs" });
-  if (entry.row) pages.push({ target: "bookkeeping", label: "Bookkeeping" });
 
   const quote = primaryQuoteForEntry(entry, quotes);
   if (quote) {
