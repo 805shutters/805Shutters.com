@@ -6,7 +6,7 @@ This classifies the audited, captured source scope. It does not certify missing 
 
 Implemented source branches: exact fabric identities/price groups/roll widths; shared/common valance records; confirmed physical tube and group hardware; Valance Only and Separate Valance destinations and source choices; shared motor-panel membership/capacity; measured hold-downs; chain defaults/custom dimensions and safety conditions; one complimentary order pole and counted extras; Basic/Premium Wood Light Guard finishes, mounting, channels and one-set quantities. Source references and tests are recorded in this folder's RESULTS.md and the earlier roller-valance-only and onyx-audit ledgers.
 
-Current ordinary work still required: deployment of the queued pole/Light Guard increments; production positive/negative, save/reopen and customer-output proof. Implementation, unit/backend tests and a successful build are not substitutes for this remaining UI verification.
+Magnet, chain, pole and Light Guard increments are now deployed. Positive source prices and exact negative rules have been verified in production; all four accessory branches completed full reload and reopen. Only the subsequent copy-remap release proof remains in progress. Valance-containing verification quotes keep customer output blocked because their standalone prices remain unresolved.
 
 Exact remaining evidence:
 

@@ -74,11 +74,59 @@
     },
     "restoredAndFullReloadReopened": true
   },
-  "lightGuardProof": "pending deployment",
+  "lightGuardProof": {
+    "variant": "C",
+    "quoteNumber": "805-0375",
+    "deployment": "9dc5911b",
+    "line": "Dining Room second Roller CCL36x60",
+    "basic": {
+      "color": "3058 White",
+      "left": 60,
+      "right": 60,
+      "lineTotal": 535,
+      "baseline": 490,
+      "surcharge": 45
+    },
+    "wood": {
+      "color": "049 Stone Gray",
+      "left": 60,
+      "right": 60,
+      "lineTotal": 607,
+      "surcharge": 117
+    },
+    "woodSpliceNegative": {
+      "left": 96.001,
+      "saved": true,
+      "pricingBlocked": true,
+      "exactIssue": "The published splice diagram is in the Basic Light Guard row. Confirm Premium Wood channel splicing above 96 inches with Norman; the Basic splice rule is not assumed for wood."
+    },
+    "restoredLength": 60,
+    "fullReloadReopen": {
+      "passed": true,
+      "kind": "Premium Wood",
+      "color": "049 Stone Gray",
+      "left": 60,
+      "right": 60,
+      "mount": "Inside Mount",
+      "lineTotal": 607,
+      "noUnsavedSelection": true
+    },
+    "outsideMountNegative": {
+      "saved": true,
+      "pricingBlocked": true,
+      "exactIssue": "Basic and Premium Wood Light Guard are available only for Inside Mount.",
+      "restored": "Inside Mount"
+    }
+  },
   "communications": "No send, sold or order actions",
   "copyFinding": {
     "sourceQuote": "805-0361",
     "copiedQuote": "805-0372",
     "finding": "New shade IDs were created but valance association IDs retained source IDs. Original quote preserved. Repair d3521b34 remaps new copies; live proof pending deployment."
+  },
+  "customerOutputVerification": {
+    "quote": "805-0375",
+    "contract": "Pricing incomplete. Complete pricing for every selected window before reviewing or sending the contract.",
+    "result": "Expected block: standalone valance prices remain held. No customer output sent."
   }
 }
