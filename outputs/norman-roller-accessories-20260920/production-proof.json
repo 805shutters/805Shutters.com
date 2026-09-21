@@ -6,13 +6,79 @@
   "variant": "A",
   "line": "Dining Room first Roller shade",
   "magnet": {
-    "positive": {"type":"Magnetic","color":"Nickel-Plated","left":0.5625,"right":0.5625,"bottom":0.6875,"lineTotal":518,"previousLineTotal":490,"accessoriesSubtotal":95,"previousAccessoriesSubtotal":67},
-    "negative": {"left":0.5624,"saved":true,"pricingBlocked":true,"auditIssue":"Wall space beyond left shade edge must be measured and at least 0.5625 inches. Measure from the finished shade side edges and below the shade bottom or sill; use the smaller bottom measurement at both catches."},
-    "restoredAndFullReloadReopened": {"left":0.5625,"right":0.5625,"bottom":0.6875,"color":"Nickel-Plated","lineTotal":518}
+    "positive": {
+      "type": "Magnetic",
+      "color": "Nickel-Plated",
+      "left": 0.5625,
+      "right": 0.5625,
+      "bottom": 0.6875,
+      "lineTotal": 518,
+      "previousLineTotal": 490,
+      "accessoriesSubtotal": 95,
+      "previousAccessoriesSubtotal": 67
+    },
+    "negative": {
+      "left": 0.5624,
+      "saved": true,
+      "pricingBlocked": true,
+      "auditIssue": "Wall space beyond left shade edge must be measured and at least 0.5625 inches. Measure from the finished shade side edges and below the shade bottom or sill; use the smaller bottom measurement at both catches."
+    },
+    "restoredAndFullReloadReopened": {
+      "left": 0.5625,
+      "right": 0.5625,
+      "bottom": 0.6875,
+      "color": "Nickel-Plated",
+      "lineTotal": 518
+    }
   },
   "standaloneValancesRemainHeld": true,
-  "chainProof": "pending",
-  "poleProof": "pending deployment",
+  "chainProof": {
+    "quote": "805-0372",
+    "variant": "B",
+    "deployment": "14240264",
+    "line": "Dining Room second Roller",
+    "width": 36,
+    "height": 60,
+    "lift": "Continuous Cord Loop",
+    "tube": "2-inch (52mm)",
+    "physicalTube": 2,
+    "material": "Stainless Steel",
+    "lengthMode": "Default",
+    "sourceDerivedDefaultInches": 46,
+    "deviceClearance": 2,
+    "safetyDeviceConfirmed": true,
+    "lineTotal": 490,
+    "noChargeMaterialChange": true,
+    "negative": {
+      "deviceClearance": 1.999,
+      "saved": true,
+      "pricingBlocked": true,
+      "exactIssue": "Leave at least 2 inches below the tension device for access and removal; record the measured clearance."
+    },
+    "restoredAndFullReloadReopened": true
+  },
+  "poleProof": {
+    "quote": "805-0372",
+    "variant": "B",
+    "deployment": "14240264",
+    "line": "Dining Room first Roller",
+    "extra": "58-inch Fiberglass Pole",
+    "quantityPerAssembly": 1,
+    "previousLineTotal": 518,
+    "lineTotal": 546,
+    "negative": {
+      "quantityPerAssembly": 2,
+      "saved": true,
+      "pricingBlocked": true,
+      "exactIssue": "Select at most one additional pole or one attachment per physical shade in the assembly."
+    },
+    "restoredAndFullReloadReopened": true
+  },
   "lightGuardProof": "pending deployment",
-  "communications": "No send, sold or order actions"
+  "communications": "No send, sold or order actions",
+  "copyFinding": {
+    "sourceQuote": "805-0361",
+    "copiedQuote": "805-0372",
+    "finding": "New shade IDs were created but valance association IDs retained source IDs. Original quote preserved. Repair d3521b34 remaps new copies; live proof pending deployment."
+  }
 }
