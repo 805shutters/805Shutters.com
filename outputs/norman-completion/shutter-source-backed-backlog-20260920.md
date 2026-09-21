@@ -190,3 +190,9 @@ All172 shutter tests pass across17 files, including every program's allowed layo
 ## Normandy Astragal scope conflict
 
 ND6 expressly describes Astragal as for solid-color shutters only. ND13 diagrams Beaded/Chamfer Astragal without a finish qualifier, and ND14 lists Rabbet or Astragal for multiple panels without excluding stained colors. The CRM currently permits Astragal for Normandy Stained using the general construction menu. This needs an explicit manufacturer clarification for stained finishes; no painted-only limitation or stained approval is inferred by selecting whichever page is convenient. The source conflict is distinct from rate evidence and remains protected by the shutter pricing hold.
+
+## Consolidated disposition after Double Hung production proof
+
+The chronological “pending” notes above are superseded only by the exact completed evidence in `shutter-construction-live-proof-20260920.md`:0353A–I now include saved server negatives/restoration/reopen for representative Bi-fold180, closed bypass, split/counts, three WLP specialties, single-louver, regular-width/narrow-join and Double Hung records. Latest Double Hung proof is9dc5911b; full release checks are parent-owned. No whole-program pricing approval follows.
+
+`shutters-lotus-final-exceptions-20260920.md` is the current finite disposition: eight remaining shutter engineering branches, six exact external shutter evidence categories (including Normandy Stained Astragal), and the distinct Lotus implementation/price/order-identity exceptions. The two earlier narrow/mixed and basic Double Hung identity items are no longer listed as untouched work. Final manufacturing, account prices and the specifically named remaining branches stay open.
