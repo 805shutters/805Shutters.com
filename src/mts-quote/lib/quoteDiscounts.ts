@@ -1,3 +1,4 @@
+import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 export const QUOTE_DISCOUNT_PERCENTS = [5, 10, 15, 20] as const;
@@ -59,7 +60,10 @@ export function applyQuoteDesignDiscount(
   const options = design.options_json || {};
   const sourcePrice = getQuoteDesignDiscountSourcePrice(design);
 
-  const { discountAmount, unitPrice } = calculateDiscountedPrice(sourcePrice, discountPercent);
+  const fixedCharges = storedCustomerCharges(options)?.perWindowTotal ?? 0;
+  const discounted = calculateDiscountedPrice(Math.max(0, sourcePrice - fixedCharges), discountPercent);
+  const discountAmount = discounted.discountAmount;
+  const unitPrice = roundCurrency(discounted.unitPrice + fixedCharges);
 
   return {
     line_item_id: design.line_item_id,

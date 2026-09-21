@@ -19,6 +19,13 @@ beforeAll(async()=>{
  await db.exec(readFileSync('supabase/migrations/20260912002500_line_price_contract_totals.sql','utf8'));
  await db.exec('create table sales_quote_v2_customer_send_preparations(id uuid);');
  await db.exec(readFileSync('supabase/migrations/20260914231500_customer_installation_shipping_snapshots.sql','utf8'));
+ await db.exec(`alter table sales_quotes add quote_v2_last_priced_at timestamptz;
+ alter table sales_quote_line_items add room_name text,add width_whole int,add width_fraction text,add height_whole int,add height_fraction text;
+ create table sales_quote_v2_events(id uuid primary key default gen_random_uuid(),quote_id uuid,event_type text,previous_revision bigint,new_revision bigint,actor_id uuid,idempotency_key text,event_payload jsonb);
+ create function is_805_crm_user() returns boolean language sql as $$select true$$;`);
+ await db.exec(readFileSync('supabase/migrations/20260725213000_add_quote_v2_custom_mode.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20260921120000_manual_customer_installation_policy.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20260921121000_custom_mode_customer_installation_policy.sql','utf8'));
  await db.query(`insert into sales_quotes(id,quote_v2_backend) values($1,false),($2,true)`,[id(1),id(2)]);
  await db.query(`insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Shutters',2),($3,$4,'Unsupported catalog',3)`,[id(11),id(1),id(12),id(2)]);
 },30000);
@@ -77,7 +84,7 @@ it('preserves contract product and cost evidence when changing an already priced
 it('retains contract discount, tax, and extras when setting an exact line price',async()=>{
  await db.query('insert into sales_quotes(id,installer_notes) values($1,$2)',[id(4),JSON.stringify({__adminControls:{showExtras:true,extraFees:[{amount:100}],showDiscount:true,discountPercent:10,showTax:true,taxPercent:8}})]);
  await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity) values($1,$2,'Roller Shades',2)",[id(14),id(4)]);
- expect(await save(4,14,500)).toMatchObject({unitPrice:500,total:1069.2});
+ expect(await save(4,14,500)).toMatchObject({unitPrice:539,total:1153.44});
 });
 
 const charges = (quantity=1,units=1) => ({version:'blind-shade-install-ship-v1',eligibleUnitsPerWindow:units,quantity,
@@ -110,16 +117,18 @@ it('freezes normalized customer adjustments without private editor fields',async
  totalOverride:null,balanceDueOverride:null,balanceAdjustmentNote:null});
  expect((await db.query<any>("select quote_customer_adjustments('ordinary notes') as adjustments")).rows[0].adjustments.depositPercent).toBe(50);
 });
-it('manual override clears only its fees and keeps other selected units undiscounted',async()=>{
+it('manual merchandise override retains fixed fees and keeps other selected units undiscounted',async()=>{
  await db.query('insert into sales_quotes(id,quote_v2_backend,installer_notes) values($1,true,$2)',[id(5),JSON.stringify({__adminControls:{showDiscount:true,discountPercent:10}})]);
  await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,selected_design_id) values($1,$2,'Roller Shades',3,$3),($4,$2,'Roller Shades',1,$5)",[id(15),id(5),id(30),id(16),id(31)]);
  const stored={authoritative_price_breakdown:{customerCharges:charges(3)},authoritative_once_total:0};
  const overridden={customer_charges:charges(),authoritative_price_breakdown:{customerCharges:charges()},authoritative_v2_snapshot:{retail:{customerCharges:charges()}}};
  await db.query("insert into sales_quote_designs(id,line_item_id,variant,unit_price,options_json,quote_v2_price_status,current_v2_snapshot_id) values($1,$2,'A',139,$3,'authoritative',null),($4,$5,'A',139,$6,'authoritative',$7),($8,$2,'B',999,$9,'authoritative',null)",[id(30),id(15),stored,id(31),id(16),overridden,id(32),id(33),{customer_charges:charges(99)}]);
  await db.query('insert into sales_quote_v2_price_snapshots(id,design_id,catalog_version,retail_snapshot) values($1,$2,$3,$4)',[id(32),id(31),'test',{retail:{customerCharges:charges(),unitPrice:139,quantity:1,total:139}}]);
- expect(await save(5,16,0,1)).toMatchObject({total:387,unitPrice:0});
+ expect(await save(5,16,0,1)).toMatchObject({total:426,unitPrice:39});
  const {rows}=await db.query<any>('select d.options_json,s.retail_snapshot from sales_quote_designs d join sales_quote_v2_price_snapshots s on s.id=d.current_v2_snapshot_id where d.id=$1',[id(31)]);
- expect(JSON.stringify(rows[0])).not.toMatch(/customerCharges|customer_charges/);
+ expect(rows[0].options_json.customer_charges).toEqual(charges());
+ expect(rows[0].retail_snapshot.retail).toMatchObject({unitPrice:39,base:0,customerCharges:charges()});
+ expect(rows[0].options_json.manual_merchandise_unit_price).toBe(0);
  expect(rows[0].options_json.manual_price_override).toBe(true);
  const original=await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(32)]);
  expect(original.rows[0].retail_snapshot.retail.customerCharges).toEqual(charges());
@@ -129,4 +138,53 @@ it('rejects native adjustments that the public contract would clamp differently'
  for(const controls of [{showExtras:true,extraFees:[{amount:-1}]},{discountPercent:101},{taxPercent:-1},{depositPercent:101}]) {
   await expect(db.query('select quote_customer_adjustments($1)',[JSON.stringify({__adminControls:controls})])).rejects.toThrow(/Native quote/);
  }
+});
+
+it('charges split physical units once across save, replay and quantity reapply',async()=>{
+ await db.query('insert into sales_quotes(id,quote_v2_backend) values($1,true)',[id(6)]);
+ await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,selected_design_id) values($1,$2,'Faux Wood Blinds',2,$3)",[id(17),id(6),id(40)]);
+ await db.query("insert into sales_quote_designs(id,line_item_id,variant,options_json) values($1,$2,'A',$3)",[id(40),id(17),{catalog_product_id:'lotus_faux_wood_blinds',lotus_blind_count:3}]);
+ const first=await save(6,17,100,1,600);expect(first).toMatchObject({unitPrice:217,merchandiseUnitPrice:100,total:434});
+ expect(await save(6,17,100,1,600)).toEqual(first);
+ const before=await db.query<any>('select current_v2_snapshot_id from sales_quote_designs where id=$1',[id(40)]);
+ expect(await save(6,17,100,2)).toMatchObject({unitPrice:217,total:434});
+ // Reapply is performed inside catalog save; persisted source choice survives that catalog write.
+ await db.query('update sales_quote_line_items set quantity=4 where id=$1',[id(17)]);
+ const reapply=await db.query<any>('select set_sales_quote_line_price($1,$2,$3,100,$4,3,$5,true) as r',[id(6),id(17),'A',id(50),id(601)]);
+ expect(reapply.rows[0].r).toMatchObject({unitPrice:217,total:868});
+ const stored=await db.query<any>('select options_json from sales_quote_designs where id=$1',[id(40)]);
+ expect(stored.rows[0].options_json.customer_charges).toEqual(charges(4,3));
+ const batch=await db.query<any>('select * from save_quote_v2_pricing_batch($1,4,$2,$3,$4)',[id(6),'charged-batch',id(50),[]]);
+ expect(batch.rows[0]).toMatchObject({quote_total:'868.00',new_revision:6});
+ const old=await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[before.rows[0].current_v2_snapshot_id]);
+ expect(old.rows[0].retail_snapshot.retail.customerCharges).toEqual(charges(2,3));
+});
+it('keeps historical all-in override reapply unchanged and rejects locked quote writes',async()=>{
+ await db.query('update sales_quote_line_price_overrides set customer_charge_policy=null where design_id=$1',[id(40)]);
+ await db.query("update sales_quote_designs set options_json=options_json-array['manual_customer_charge_policy','manual_merchandise_unit_price'] where id=$1",[id(40)]);
+ const old=await db.query<any>('select set_sales_quote_line_price($1,$2,$3,100,$4,6,$5,true) as r',[id(6),id(17),'A',id(50),id(602)]);
+ expect(old.rows[0].r).toMatchObject({unitPrice:100,total:400});
+ await db.query("update sales_quotes set status='sent' where id=$1",[id(6)]);
+ await expect(save(6,17,200,7)).rejects.toThrow(/unlocked draft/);
+ expect((await db.query<any>('select unit_price from sales_quote_designs where id=$1',[id(40)])).rows[0].unit_price).toBe('100.00');
+});
+it('validates physical counts and excludes component-only parts in the database',async()=>{
+ const make=async(product:string,config:object,retail:object={})=>(await db.query<any>('select quote_manual_customer_charges($1,$2,$3) as c',[{options_json:{catalog_product_id:product,...config}},{product_type:'Shades',quantity:2},retail])).rows[0].c;
+ expect(await make('honeycomb',{lift_system:'Cordless Day & Night'},{configurationUnits:2})).toEqual(charges(2));
+ expect(await make('honeycomb',{lift_system:'SmartFit Dual Shade'})).toEqual(charges(2,2));
+ expect(await make('lotus_parts',{lotus_blind_count:3})).toBeNull();
+ await expect(make('roller',{roller_coupling_count:1.5})).rejects.toThrow(/physical/);
+});
+it('Custom Mode persists and validates fixed charges while preserving original snapshots',async()=>{
+ await db.query('insert into sales_quotes(id,quote_v2_backend,installer_notes) values($1,true,$2)',[id(7),JSON.stringify({__adminControls:{showDiscount:true,discountPercent:10}})]);
+ await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,selected_design_id) values($1,$2,'Roller Shades',2,$3)",[id(18),id(7),id(41)]);
+ await db.query("insert into sales_quote_designs(id,line_item_id,variant,unit_price,current_v2_snapshot_id,options_json) values($1,$2,'A',139,$3,$4)",[id(41),id(18),id(42),{catalog_product_id:'roller'}]);
+ const original={retail:{productId:'roller',programId:'test',quantity:2,unitPrice:139,total:278,customerCharges:charges(2)}};
+ await db.query('insert into sales_quote_v2_price_snapshots(id,design_id,catalog_version,retail_snapshot) values($1,$2,$3,$4)',[id(42),id(41),'catalog',original]);
+ const apply=async(retail:object,key:string)=>db.query<any>('select apply_quote_v2_custom_override($1,$2,$3,1,$4,$5,$6,$7,$8,$9,$10,$11,$12) as r',[id(7),id(18),id(41),key,id(50),{},{},{retail},{},{customFingerprint:'fixture'}, {},{sellPrice:100,landedCost:50}]);
+ await expect(apply({unitPrice:100,total:200,quantity:2},'bad')).rejects.toThrow(/fixed customer charges/);
+ const retail={productId:'roller',unitPrice:139,total:278,quantity:2,customerCharges:charges(2)};
+ expect((await apply(retail,'good')).rows[0].r).toMatchObject({unitPrice:139,total:278});
+ expect((await db.query<any>('select total_amount from sales_quotes where id=$1',[id(7)])).rows[0].total_amount).toBe('258.00');
+ expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(42)])).rows[0].retail_snapshot).toEqual(original);
 });

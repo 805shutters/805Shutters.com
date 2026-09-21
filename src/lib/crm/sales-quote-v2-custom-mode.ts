@@ -66,7 +66,7 @@ export async function applySalesQuoteV2CustomMode(
 ) {
   const { data: design, error } = await supabase
     .from("sales_quote_designs")
-    .select("id,current_v2_snapshot_id")
+    .select("id,current_v2_snapshot_id,options_json,quote_v2_selection,lift_system,shade_type")
     .eq("id", input.designId)
     .eq("line_item_id", input.lineItemId)
     .maybeSingle();
@@ -94,7 +94,10 @@ export async function applySalesQuoteV2CustomMode(
     throw new CrmAuthError(409, "The immutable standard V2 snapshot is unavailable.");
   }
   const originalSnapshot = record(snapshot.retail_snapshot);
-  const originalRetail = record(originalSnapshot.retail);
+  const {data: line, error: lineError} = await supabase.from("sales_quote_line_items")
+    .select("quantity").eq("id",input.lineItemId).eq("quote_id",quoteId).maybeSingle();
+  if (lineError || !line || !Number.isSafeInteger(line.quantity) || line.quantity<1) throw new CrmAuthError(409,"The saved line quantity is unavailable.");
+  const originalRetail = {...record(originalSnapshot.retail),quantity:line.quantity};
   const quantity = Math.max(1, Math.floor(Number(originalRetail.quantity) || 1));
   const originalInternal = record(snapshot.internal_cost_snapshot);
   const authoritativeUnitCost = Number(originalInternal.productCostUnit);
@@ -127,7 +130,7 @@ export async function applySalesQuoteV2CustomMode(
     priceStatus: "authoritative",
     selectionFingerprint: customFingerprint,
     catalogVersion: "custom-override-v1",
-    retail: customModeCustomerRetail(originalRetail, financials.sellPrice),
+    retail: customModeCustomerRetail(originalRetail, financials.sellPrice, {lift_system:design.lift_system,shade_type:design.shade_type,...record(record(design.quote_v2_selection).configuration), ...record(design.options_json)}),
   };
   const provenance = {
     mode: "custom_override",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateCustomerCharges, parseCustomerCharges, storedCustomerCharges } from "./customer-charges";
+import { calculateCustomerCharges, customerPhysicalUnits, parseCustomerCharges, storedCustomerCharges } from "./customer-charges";
 import { calculateQuoteTotalBreakdown, calculateQuoteFixedCharges, calculateQuoteDesignSubtotal, DEFAULT_QUOTE_ADMIN_CONTROLS } from "@mts/lib/quoteTotals";
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import { priceQuoteV2Selection, createImmutablePriceSnapshot, toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
@@ -32,12 +32,13 @@ describe("customer installation and shipping", () => {
     expect(product).toBeDefined();
     expect(calculateCustomerCharges({ product: `${id} ${product!.productType}`, physicalUnitsPerWindow: 1, quantity: 2 })?.total).toBe(78);
   });
-  it("preserves historical and manual prices and rejects corrupt fee snapshots",()=>{
+  it("preserves historical all-in overrides and recognizes new merchandise overrides and rejects corrupt fee snapshots",()=>{
     const charges=calculateCustomerCharges({product:"shade",physicalUnitsPerWindow:1,quantity:1})!;
     expect(storedCustomerCharges({})).toBeNull();
     expect(storedCustomerCharges({manual_price_override:true,customer_charges:charges})).toBeNull();
+    expect(storedCustomerCharges({manual_price_override:true,manual_customer_charge_policy:charges.version,customer_charges:charges})).toEqual(charges);
     expect(parseCustomerCharges({...charges,total:0})).toBeNull();
-    expect(customModeCustomerRetail({customerCharges:charges,quantity:1},100)).not.toHaveProperty("customerCharges");
+    expect(customModeCustomerRetail({productId:"roller",customerCharges:charges,quantity:1},100)).toMatchObject({unitPrice:139,base:100,total:139,customerCharges:charges});
   });
   it("keeps costs unchanged and persists customer fees through immutable projection",()=>{
     const selection={manufacturerId:"lotus",productId:"lotus_mini_blinds",programId:"lotus_amx_1in_aluminum_custom",catalogVersion:QUOTE_V2_CATALOG_VERSION,catalogAsOf:"2026-07-20" as const,widthInches:30,heightInches:48,quantity:3,configuration:{},options:{discount_percent:10}};
@@ -54,4 +55,21 @@ describe("customer installation and shipping", () => {
     expect(projectV2CustomerRetailPrice(saved.retail).customerCharges?.total).toBe(117);
     expect(toCustomerQuotePriceResult(charged)).not.toHaveProperty("internalCost");
   });
+});
+
+it.each([
+ ["honeycomb",{lift_system:"Cordless Day & Night"},2,1],
+ ["honeycomb",{lift_system:"SmartFit Dual Shade"},2,2],
+ ["lotus_faux_wood_blinds",{lotus_blind_count:3},1,3],
+ ["roller",{roller_coupling_count:4},1,4],
+ ["roller",{roller_application:"Dual Shades"},1,2],
+ ["roman",{shade_type:"Two shades common valance"},1,2],
+])("counts physical units %s %j",(productId,configuration,pricedConfigurationUnits,expected)=>{
+ expect(customerPhysicalUnits({productId,configuration,pricedConfigurationUnits})).toBe(expected);
+});
+it("manual zero merchandise retains installation/shipping for every physical unit without accumulating on repeat",()=>{
+ const original={productId:"lotus_faux_wood_blinds",quantity:2};
+ const first=customModeCustomerRetail(original,0,{lotus_blind_count:3});
+ expect(first).toMatchObject({unitPrice:117,total:234,customerCharges:{installationTotal:150,shippingTotal:84}});
+ expect(customModeCustomerRetail(first,0,{lotus_blind_count:3})).toEqual(first);
 });

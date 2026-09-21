@@ -1,3 +1,4 @@
+import { calculateCustomerCharges } from "@/lib/quote/customer-charges";
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { applyQuoteDesignDiscount, removeQuoteDesignDiscount } from "./quoteDiscounts";
@@ -26,4 +27,13 @@ describe("discounts on exact selling prices", () => {
   expect(discounted.map(d=>d.unit_price)).toEqual([1300.5,1022.4,753.3,603]);
   expect(calculateQuoteDesignSubtotal(rows.map(row=>({id:row.line_item_id,quantity:1})),discounted)).toBe(3679.2);
  });
+});
+
+it("discounts merchandise only while fixed installation and shipping remain unchanged",()=>{
+ const charges=calculateCustomerCharges({product:"Roller Shades",physicalUnitsPerWindow:2,quantity:3})!;
+ const original=design(278,{manual_price_override:true,manual_customer_charge_policy:charges.version,manual_merchandise_unit_price:200,customer_charges:charges});
+ const discounted=applyQuoteDesignDiscount(original,10);
+ expect(discounted.unit_price).toBe(258);
+ expect(discounted.options_json.discount_amount).toBe(20);
+ expect(discounted.options_json.customer_charges).toEqual(charges);
 });

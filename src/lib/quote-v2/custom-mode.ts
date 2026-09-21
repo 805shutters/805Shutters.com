@@ -1,3 +1,5 @@
+import { getProduct } from "@/lib/quote/catalog";
+import { calculateCustomerCharges, customerPhysicalUnits, parseCustomerCharges } from "@/lib/quote/customer-charges";
 export type CustomModeInput = {
   manufacturerCost: number;
   freightCost: number;
@@ -32,19 +34,29 @@ export function calculateCustomMode(input: CustomModeInput) {
 export function customModeCustomerRetail(
   originalRetail: Record<string, unknown>,
   sellPrice: number,
+  configuration: unknown = {},
 ) {
   const quantity = Math.max(1, Math.floor(Number(originalRetail.quantity) || 1));
-  const { customerCharges: _charges, ...merchandise } = originalRetail;
+  const { customerCharges: priorCharges, ...merchandise } = originalRetail;
+  const storedCharges = parseCustomerCharges(priorCharges);
+  const productId = String(originalRetail.productId ?? "");
+  const charges = calculateCustomerCharges({
+    product: `${productId} ${getProduct(productId)?.productType ?? originalRetail.productType ?? ""}`,
+    program: String(originalRetail.programId ?? ""), quantity,
+    physicalUnitsPerWindow: customerPhysicalUnits({productId, configuration,
+      pricedConfigurationUnits: storedCharges?.eligibleUnitsPerWindow ?? originalRetail.configurationUnits}),
+  });
   return {
     ...merchandise,
-    unitPrice: cents(sellPrice),
+    unitPrice: cents(sellPrice + (charges?.perWindowTotal ?? 0)),
     base: cents(sellPrice),
     surchargeLines: [],
     discountPercent: 0,
     discountAmount: 0,
     onceTotal: 0,
     quantity,
-    total: cents(sellPrice * quantity),
+    total: cents(sellPrice * quantity + (charges?.total ?? 0)),
+    ...(charges ? {customerCharges: charges} : {}),
   };
 }
 

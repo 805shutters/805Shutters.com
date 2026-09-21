@@ -17,8 +17,34 @@ const record = (value: unknown): Record<string, unknown> =>
 
 export function customerChargeEligible(product: string, program = ""): boolean {
   const identity = `${product} ${program}`.toLowerCase().replace(/[_-]+/g, " ");
-  if (/shutter|headrail|head rail|vane|remote|accessory|awning|drapery|fabric by|valance only/.test(identity)) return false;
+  if (/shutter|headrail|head rail|vane|remote|accessor|parts|pillow|awning|drapery|fabric by|valance only/.test(identity)) return false;
   return /blind|shade|roller|roman|honeycomb|cellular|sheer|smartdrape|smart drape|synchrony|faux|wood|vertical|mini|vinyl|polar (elite|titan|mega|all seasons|allseasons|interior|exterior)/.test(identity);
+}
+
+/** Count installed products, not fabric price grids or shared hardware. */
+export function customerPhysicalUnits(input: {
+  productId: string; configuration?: unknown; pricedConfigurationUnits?: unknown;
+}): number {
+  const c = record(input.configuration);
+  const text = [c.lift_system, c.honeycomb_operating_system, c.shade_type, c.roller_application]
+    .filter(v => typeof v === "string").join(" ").toLowerCase().replace(/[_&-]+/g, " ");
+  if (input.productId === "honeycomb") {
+    return /smartfit.*dual/.test(text) ? 2 : 1;
+  }
+  const keys = input.productId.startsWith("lotus_") ? ["lotus_blind_count"]
+    : ["smartprivacy_faux", "faux_wood"].includes(input.productId) ? ["faux_blind_count"]
+    : input.productId === "roller" ? ["roller_coupling_count", "coupled_shade_count", "lightguard_360_shade_count"] : [];
+  for (const key of keys) {
+    if (c[key] == null || c[key] === "") continue;
+    const count = Number(c[key]);
+    if (!Number.isSafeInteger(count) || count < 1 || count > 4) throw new Error("Invalid physical blind/shade count.");
+    return count;
+  }
+  if (input.productId === "roman" && /common valance/.test(text)) return 2;
+  if (input.productId === "roller" && /dual/.test(text)) return 2;
+  const count = input.pricedConfigurationUnits == null ? 1 : Number(input.pricedConfigurationUnits);
+  if (!Number.isSafeInteger(count) || count < 1 || count > 4) throw new Error("Invalid physical blind/shade count.");
+  return count;
 }
 
 export function calculateCustomerCharges(input: {
@@ -49,7 +75,8 @@ export function parseCustomerCharges(value: unknown): CustomerCharges | null {
 
 export function storedCustomerCharges(options: unknown): CustomerCharges | null {
   const data = record(options);
-  if (data.manual_price_override === true) return null;
+  // Earlier overrides were all-inclusive and may retain stale pre-override fees.
+  if (data.manual_price_override === true && data.manual_customer_charge_policy !== CUSTOMER_CHARGE_POLICY_VERSION) return null;
   return parseCustomerCharges(record(data.authoritative_price_breakdown).customerCharges)
     ?? parseCustomerCharges(data.customer_charges);
 }
