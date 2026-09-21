@@ -1,0 +1,7 @@
+# Selected-order Sundance Zebra / Vision alignment
+
+G-Zebra-Shades-V2.pdf PDF5–8 requires aligned shades to use the same fabric and size, be ordered together, and allows3/8-inch alignment tolerance. The selected-order server now rebuilds group evidence from exact product/color identities and actual independent component dimensions. A group contains at least two actual shades, including explicit line quantities. Changed sizes, mixed colors/families, malformed or stale assemblies, unknown fabric identities and invalid quantities invalidate every affected group member. Parent assembly dimensions cannot substitute for component measurements.
+
+Client-provided derived records and unselected alternative records are cleared. Valid evidence records preserve exact members, dimensions, quantity, source and tolerance, but always retain orderedTogetherConfirmed=false and customerPriceEligible=false. Saving two lines in one quote does not prove that a factory order has been submitted together. Existing local factory/order review and account-price holds remain. Internal member IDs and derived source metadata are hidden from customer descriptions.
+
+Validation: seven new focused unit/server tests passed, plus four existing selected-order shared-accessory/power integration tests. TypeScript passed. Tests cover mismatch→restoration, quantity, exact color/family, component dimensions, stale records and forged/unselected records. Production group persistence remains to be checked after deployment.

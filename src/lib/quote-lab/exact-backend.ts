@@ -1,5 +1,6 @@
 import { currentRollerPanel, rollerMotorizationForSelection } from "@/lib/quote-v2/norman-roller-panel";
 import { findRomanFrontColor } from '@/lib/quote-v2/catalog';
+import {deriveSundanceOrderAlignment,SUNDANCE_ORDER_ALIGNMENT_KEY} from "@/lib/quote/sundance/order-alignment";
 import {deriveSundanceOrderAccessories,SUNDANCE_ORDER_ACCESSORIES_KEY} from "@/lib/quote/sundance/order-accessories";
 import {deriveSundanceOrderPower,SUNDANCE_ORDER_POWER_KEY} from "@/lib/quote/sundance/order-power";
 import { woodValancePriceWidth } from "@/lib/quote-v2/norman-wood";
@@ -1230,6 +1231,7 @@ function repriceExactQuoteBuilderV2(
     const configuration = {...prepared.selection.configuration};
     delete configuration[SUNDANCE_ORDER_POWER_KEY];
     delete configuration[SUNDANCE_ORDER_ACCESSORIES_KEY];
+    delete configuration[SUNDANCE_ORDER_ALIGNMENT_KEY];
     prepared.selection.configuration = configuration;
   }
   const selectedPrepared = explicitSelections.map((entry) => {
@@ -1244,7 +1246,7 @@ function repriceExactQuoteBuilderV2(
     return { ...entry, prepared };
   });
   const selectedOrderLines = selectedPrepared.map(entry => ({ lineId: entry.line.id, roomName: entry.line.room_name, selection: entry.prepared.selection }));
-  const assemblyIssues = [...deriveNormanOrderRecords(selectedOrderLines), ...deriveSundanceOrderPower(selectedOrderLines), ...deriveSundanceOrderAccessories(selectedOrderLines)];
+  const assemblyIssues = [...deriveNormanOrderRecords(selectedOrderLines), ...deriveSundanceOrderPower(selectedOrderLines), ...deriveSundanceOrderAccessories(selectedOrderLines), ...deriveSundanceOrderAlignment(selectedOrderLines)];
   // Rebuild exact motor components on the server from the validated scalar
   // selections. Persist the result in the price snapshot; never trust a browser
   // supplied assembly or shared-panel charge allocation.
