@@ -1,4 +1,6 @@
 "use client";
+import { SundanceRollerFamilyConfiguration } from "./SundanceRollerFamilyConfiguration";
+import { sundanceRollerFamilyIds } from "@/lib/quote/sundance/shade-configuration";
 import { SundanceZebraConfiguration } from "./SundanceZebraConfiguration";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { sundanceShadeColors, sundanceShadeColorPatch, sundanceShadeCollectionPatch, sundanceShadeFabricSource } from "@/lib/quote/sundance/shade-fabrics";
@@ -24,6 +26,7 @@ export function SundanceShadeOptions({productId, options, onUpdateFields, widthI
     {colors.length === 0 && <p className="text-sm text-amber-900">The source collection has a pricing destination, but no unambiguous current dealer color is reconciled here. Confirm availability and exact material before quoting.</p>}
     {productId.includes("flat_roman") && <p className="text-sm text-amber-900">A dedicated current dealer ordering type for this flat Roman family was not found. Confirm current orderability before quoting.</p>}
     {["sundance_zebra","sundance_louvolite_zebra"].includes(productId)&&<SundanceZebraConfiguration productId={productId} options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
+    {sundanceRollerFamilyIds.includes(productId)&&<SundanceRollerFamilyConfiguration productId={productId} options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
     <p className="text-sm text-amber-900">Source collection routes do not verify control, mounting, fabric-width, accessory or account-price compatibility. Confirm the complete configuration and charges with the dealer.</p>
   </>;
 }
