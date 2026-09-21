@@ -455,7 +455,7 @@ export function prepareV2CustomerSendPayload(
     repriced = repriceExactQuoteBuilderForServerDate(
       {
         lines: input.lineItems,
-        designs: selectedDesigns,
+        designs: structuredClone(selectedDesigns),
         selectedVariantByLine,
         applyCustomerCharges: [...storedByDesignId.entries()].filter(([, stored]) =>
           Boolean(parseCustomerCharges(record(stored.snapshot.retail)?.customerCharges))
@@ -480,11 +480,15 @@ export function prepareV2CustomerSendPayload(
       "Lotus FLX remains draft-only until the supplied manufacturer grid has authoritative effective-date and fitment confirmation.",
     );
   }
-  const hasStandardSnapshot = [...storedByDesignId.values()].some(
-    (stored) => stored.catalogVersion !== "custom-override-v1",
+  // Custom Mode has its own immutable snapshot/provenance validation below.
+  // Its original catalog configuration can be unpriceable without blocking
+  // independently validated standard lines in the same quote.
+  const blockedStandardLine = repriced.sendability.lines.find((line) =>
+    storedByDesignId.get(line.selectedDesignId ?? "")?.catalogVersion !== "custom-override-v1" &&
+    (!line.sendable || line.stale),
   );
-  if (!repriced.sendability.sendable && hasStandardSnapshot) {
-    const reason = repriced.sendability.reasons[0]?.message;
+  if (blockedStandardLine) {
+    const reason = blockedStandardLine.reasons[0]?.message;
     fail(reason ? `Authoritative V2 validation blocked sending: ${reason}` : "Authoritative V2 validation blocked sending.");
   }
 
@@ -503,7 +507,22 @@ export function prepareV2CustomerSendPayload(
       if (provenance?.mode !== "custom_override" || provenance.internalOnly !== true) {
         return fail(`Custom Mode snapshot ${selectedDesignId} is missing internal provenance.`);
       }
-      const customerPrice = projectV2CustomerRetailPrice(stored.snapshot.retail);
+      const retail = record(stored.snapshot.retail);
+      const selection = record(design.quote_v2_selection);
+      // Manual line-price snapshots contain monetary fields; their saved
+      // selection supplies descriptive identity without inventing a grid price.
+      const customerPrice = projectV2CustomerRetailPrice({
+        ...retail,
+        ok: true,
+        productId: text(retail?.productId) || text(selection?.productId),
+        programId: text(retail?.programId) || text(selection?.programId) || "custom",
+        programName: text(retail?.programName) || "Custom pricing",
+        matchedWidth: retail?.matchedWidth ?? decimalMeasurement(line.width_whole, line.width_fraction),
+        matchedHeight: retail?.matchedHeight ?? decimalMeasurement(line.height_whole, line.height_fraction),
+      });
+      if (customerPrice.quantity !== Number(line.quantity) || !sameMoney(customerPrice.total, stored.snapshotRow.retail_total)) {
+        return fail(`Custom Mode design ${selectedDesignId} does not match its immutable quantity or total.`);
+      }
       if (!sameMoney(design.unit_price, customerPrice.unitPrice)) {
         return fail(`Custom Mode design ${selectedDesignId} does not match its immutable retail snapshot.`);
       }
@@ -517,7 +536,7 @@ export function prepareV2CustomerSendPayload(
         widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
         heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
         quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
-        configuration: customerConfigurationFromSelection(priced.selection),
+        configuration: customerConfigurationFromSelection(design.quote_v2_selection as unknown as SelectionContext),
         price: customerPrice,
       };
     }
@@ -551,8 +570,18 @@ export function prepareV2CustomerSendPayload(
 
     const customerPrice = projectV2CustomerRetailPrice(stored.snapshot.retail);
     const currentCustomerPrice = projectV2CustomerRetailPrice(priced.result);
+    // Earlier snapshots recorded entered dimensions in matchedWidth/Height.
+    // Accept that representation only when it equals this line's dimensions;
+    // the fingerprint, catalog identity and every retail amount still match.
+    const comparableCustomerPrice = { ...customerPrice };
+    if (customerPrice.matchedWidth === decimalMeasurement(line.width_whole, line.width_fraction)) {
+      comparableCustomerPrice.matchedWidth = currentCustomerPrice.matchedWidth;
+    }
+    if (customerPrice.matchedHeight === decimalMeasurement(line.height_whole, line.height_fraction)) {
+      comparableCustomerPrice.matchedHeight = currentCustomerPrice.matchedHeight;
+    }
     if (
-      JSON.stringify(customerPrice) !== JSON.stringify(currentCustomerPrice) ||
+      JSON.stringify(comparableCustomerPrice) !== JSON.stringify(currentCustomerPrice) ||
       !sameMoney(
         persistedMoney(design.unit_price, `Selected design ${selectedDesignId} unit price`),
         customerPrice.unitPrice,
@@ -577,7 +606,7 @@ export function prepareV2CustomerSendPayload(
       widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
       heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
       quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
-      configuration: customerConfigurationFromSelection(priced.selection),
+      configuration: customerConfigurationFromSelection(design.quote_v2_selection as unknown as SelectionContext),
       price: customerPrice,
     };
   });

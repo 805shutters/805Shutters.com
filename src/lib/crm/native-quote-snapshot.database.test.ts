@@ -1,3 +1,4 @@
+import { computeQuoteMoney, parseAdjustments } from './quote-money';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
@@ -44,6 +45,25 @@ beforeAll(async()=>{
  await db.exec('alter table crm_quotes alter column materials_cost set not null');
  await db.exec('alter table sales_quote_v2_price_snapshots alter column internal_landed_cost_total set not null');
  await db.exec(migration('20260921214000_allow_explicit_unknown_quote_cost'));
+ await db.exec(`
+ alter table sales_quotes add archived_at timestamptz,add signed_at timestamptz,add sent_at timestamptz,add sent_via text,add customer_signature text,add customer_printed_name text;
+ alter table sales_quote_line_items add archived_at timestamptz;
+ create view sales_quote_active_line_items as select * from sales_quote_line_items where archived_at is null;
+ alter table crm_quotes add signed_at timestamptz,add sold_at timestamptz,add approved_at timestamptz,add sent_via text,add customer_signature text,add customer_printed_name text,add manufacturer_name text,add manufacturer_order_ref text,add manufacturer_order_url text,add manufacturer_document_url text;
+ alter table crm_jobs add lead_id uuid;
+ alter table crm_quote_line_items alter column id set default gen_random_uuid();
+ alter table crm_quote_designs alter column id set default gen_random_uuid();
+ create function reject_v2_audit_mutation() returns trigger language plpgsql as $$ begin raise exception 'immutable'; end $$;
+ `);
+ await db.exec(migration('20260728120000_partition_partial_quote_acceptance'));
+ await db.exec(migration('20260910190000_native_quote_customer_delivery'));
+ await db.exec(migration('20260910190100_native_quote_acceptance'));
+ await db.exec(migration('20260910190200_native_quote_delivery_audit'));
+ await db.exec(migration('20260921230321_native_delivery_current_quote_compatibility'));
+ await db.exec(migration('20260921231350_native_delivery_manual_cost_compatibility'));
+ await db.exec(migration('20260921231455_native_delivery_source_lifecycle'));
+ await db.exec(migration('20260921231523_native_manual_snapshot_customer_projection'));
+ await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -202,4 +222,84 @@ it('persists staff-only pricing failure across reopen and clears it when a later
  expect((await read()).options_json).not.toHaveProperty('authoritative_price_error');
  const output=await prepare(27,payload(27),3,'grid-resolved-customer');
  expect(JSON.stringify(output.customer_payload)).not.toMatch(/staffPricingError|authoritative_price_error|No retail grid/);
+});
+
+async function reserve(n:number,p=payload(n),revision=1) {
+ return (await db.query<any>('select reserve_native_quote_group_delivery($1,$2,$3,$4,$5,$6) as delivery',[
+  id(n),id(50),revision,`delivery-test-${n}`,
+  {email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null},
+  [{quoteId:id(n),revision,payload:p}],
+ ])).rows[0].delivery;
+}
+async function accept(delivery:any,selected:string[],total:number) {
+ return (await db.query<any>('select * from accept_native_quote_delivery($1,$2,$3,$4,now(),$5,$6)',[
+  delivery.crm_quote_id,delivery.share_token,selected,total,'LOCAL TEST SIGNATURE','Synthetic test',
+ ])).rows[0];
+}
+it('reserves, deduplicates dispatch, and accepts current discounted retail with unresolved cost',async()=>{
+ await seed(30);
+ await saveRetailOnly(30);
+ const delivery=await reserve(30,payload(30),2);
+ expect(delivery.customer_payload.total).toBe(387);
+ expect(delivery.internal_line_costs[id(130)]).toMatchObject({quantity:3,costStatus:'unresolved',productTotal:null,total:null});
+ expect((await reserve(30,payload(30),2)).id).toBe(delivery.id);
+ expect((await db.query<any>('select count(*)::int as n from sales_quote_v2_delivery_attempts where delivery_id=$1',[delivery.id])).rows[0].n).toBe(1);
+ await expect(accept(delivery,[id(130)+'#1',id(130)+'#2',id(130)+'#3'],417)).rejects.toThrow(/exact selected contract total/);
+ await accept(delivery,[id(130)+'#1',id(130)+'#2',id(130)+'#3'],387);
+ const mirror=(await db.query<any>('select * from crm_quotes where id=$1',[delivery.crm_quote_id])).rows[0];
+ expect(mirror).toMatchObject({status:'sold',quote_total:'387.00',materials_cost:null,discount:'30.00',deposit_required:'135.45',balance_due:'251.55'});
+ expect((await db.query<any>('select total_amount,manufacturer_cost from sales_quotes where id=$1',[id(30)])).rows[0]).toMatchObject({total_amount:'387.00',manufacturer_cost:null});
+ expect((await accept(delivery,[id(130)+'#1',id(130)+'#2',id(130)+'#3'],387)).already_signed).toBe(true);
+});
+it('partitions unresolved costs and fixed customer charges without changing saved snapshots',async()=>{
+ const original=await seed(31);
+ await saveRetailOnly(31);
+ const delivery=await reserve(31,payload(31),2);
+ const result=await accept(delivery,[id(131)+'#2'],129);
+ expect(result.future_quote_id).toBeTruthy();
+ const current=(await db.query<any>('select quote_total,materials_cost,deposit_required from crm_quotes where id=$1',[delivery.crm_quote_id])).rows[0];
+ expect(current).toMatchObject({quote_total:'129.00',materials_cost:null,deposit_required:'45.15'});
+ const future=(await db.query<any>('select * from sales_quote_v2_deliveries where crm_quote_id=$1',[result.future_quote_id])).rows[0];
+ expect(future.customer_payload.total).toBe(258);
+ expect(Object.values(future.internal_line_costs)[0]).toMatchObject({quantity:2,costStatus:'unresolved',total:null});
+ const line=(await db.query<any>('select id from crm_quote_line_items where quote_id=$1',[result.future_quote_id])).rows[0];
+ await accept(future,[line.id+'#1'],129);
+ expect((await db.query<any>('select total_amount from sales_quotes where id=$1',[id(31)])).rows[0].total_amount).toBe('129.00');
+ expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(331)])).rows[0].retail_snapshot).toEqual(original);
+});
+it('freezes known cost and reserves only active lines',async()=>{
+ await seed(32);
+ await db.query('insert into sales_quote_line_items(id,quote_id,quantity,archived_at) values($1,$2,1,now())',[id(932),id(32)]);
+ // Production preparation already uses the active view; reproduce that migration's read patch.
+ const fn=(await db.query<any>("select pg_get_functiondef('prepare_native_quote_customer_snapshot(uuid,bigint,text,text,uuid,text,jsonb)'::regprocedure) as sql")).rows[0].sql;
+ await db.exec(fn.replace(/(from|join)(\s+)public\.sales_quote_line_items\b/gi,'$1$2public.sales_quote_active_line_items'));
+ const delivery=await reserve(32);
+ expect(Object.keys(delivery.internal_line_costs)).toEqual([id(132)]);
+ expect(delivery.internal_line_costs[id(132)]).toMatchObject({quantity:3,costStatus:'known',productTotal:90,total:90});
+ await expect(db.query('update sales_quote_line_items set quantity=4 where id=$1',[id(132)])).rejects.toThrow(/frozen/);
+ await accept(delivery,[id(132)+'#1',id(132)+'#2',id(132)+'#3'],387);
+ expect((await db.query<any>('select manufacturer_cost from sales_quotes where id=$1',[id(32)])).rows[0].manufacturer_cost).toBe('90.0000000000000000');
+});
+
+it('keeps SQL acceptance money aligned with customer totals, fees, taxes and overrides',async()=>{
+ for(const adjustments of [{},{discountPercent:10,depositPercent:35},{discountFlat:5000,depositPercent:50},{fees:[{name:'Fee',amount:12.34}],taxPercent:8.25,discountPercent:12.5,depositPercent:40},{totalOverride:3955.12,depositPercent:50},{balanceDueOverride:300,depositPercent:50}]) {
+  const expected=computeQuoteMoney(417,parseAdjustments({adjustments}),117);
+  const actual=(await db.query<any>('select native_quote_money(417,117,$1,null) as money',[adjustments])).rows[0].money;
+  expect(actual).toMatchObject({total:expected.total,discount:expected.discountAmount,tax:expected.taxAmount,depositDue:expected.depositRequired,balanceDue:expected.balanceDue,materialsCost:null});
+ }
+});
+
+it('reserves and accepts manual pricing with no original grid or supplier cost',async()=>{
+ await seed(33);
+ const f='a'.repeat(64);
+ const retail={...price};
+ const snapshot={priceStatus:'authoritative',selectionFingerprint:f,catalogVersion:'custom-override-v1',retail};
+ await db.query("update sales_quotes set quote_v2_catalog_version='custom-override-v1' where id=$1",[id(33)]);
+ await db.query("update sales_quote_designs set quote_v2_priced_catalog_version='custom-override-v1',quote_v2_selection_fingerprint=$2 where id=$1",[id(233),f]);
+ await db.query("update sales_quote_v2_price_snapshots set catalog_version='custom-override-v1',selection_fingerprint=$2,retail_snapshot=$3,internal_cost_snapshot=$4,internal_landed_cost_total=0,provenance_snapshot=$5 where id=$1",[id(333),f,snapshot,{status:'unresolved',landedCostTotal:null},{mode:'custom_override',internalOnly:true,manualLinePrice:true,costResolution:'unresolved',originalSnapshotId:null}]);
+ const delivery=await reserve(33,payload(33));
+ expect(delivery.internal_line_costs[id(133)]).toMatchObject({costStatus:'unresolved',productTotal:null,total:null});
+ await accept(delivery,[id(133)+'#1'],129);
+ expect((await db.query<any>('select materials_cost from crm_quotes where id=$1',[delivery.crm_quote_id])).rows[0].materials_cost).toBeNull();
+ expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(333)])).rows[0].retail_snapshot).toEqual(snapshot);
 });

@@ -609,3 +609,23 @@ describe("V2 production send boundary", () => {
     ).rejects.toThrow("quote changed while send preparation was running");
   });
 });
+
+describe("saved snapshot delivery compatibility", () => {
+ it("accepts legacy entered-dimension metadata while retaining its frozen customer price", () => {
+  const f=authoritativeRollerFixture();
+  Object.assign(f.storedSnapshot.retail_snapshot.retail,{matchedWidth:Number(f.line.width_whole),matchedHeight:Number(f.line.height_whole)});
+  const p=prepareV2CustomerSendPayload({quote:authoritativeQuote(f.total),lineItems:[f.line],designs:[f.design],snapshots:[f.storedSnapshot],serverDate:'2026-08-01'});
+  expect(p.total).toBe(f.total);
+  expect(p.lines[0].price.matchedWidth).toBe(Number(f.line.width_whole));
+ });
+ it("allows a proven custom snapshot alongside standard catalog pricing", () => {
+  const f=authoritativeRollerFixture();
+  const line={...f.line,id:'custom-line',selected_design_id:'custom-design',sort_order:1};
+  const design={...f.design,id:'custom-design',line_item_id:line.id,current_v2_snapshot_id:'custom-snapshot',quote_v2_priced_catalog_version:'custom-override-v1',options_json:{...f.design.options_json,fabric:'missing-custom-fabric'}};
+  const snapshot={...f.storedSnapshot,id:'custom-snapshot',line_item_id:line.id,design_id:design.id,catalog_version:'custom-override-v1',retail_snapshot:{...f.storedSnapshot.retail_snapshot,catalogVersion:'custom-override-v1',retail:{...f.storedSnapshot.retail_snapshot.retail,ok:undefined,productId:undefined,programId:undefined,programName:undefined,matchedWidth:undefined,matchedHeight:undefined}},provenance_snapshot:{mode:'custom_override',internalOnly:true}};
+  const input={quote:authoritativeQuote(f.total*2,{quote_v2_catalog_version:[QUOTE_V2_ROLLER_PREVIEW_VERSION,'custom-override-v1'].sort().join(',')}),lineItems:[f.line,line],designs:[f.design,design],snapshots:[f.storedSnapshot,snapshot],serverDate:'2026-08-01'};
+  expect(prepareV2CustomerSendPayload(input).total).toBe(f.total*2);
+  snapshot.provenance_snapshot.internalOnly=false;
+  expect(()=>prepareV2CustomerSendPayload(input)).toThrow(/provenance/);
+ });
+});
