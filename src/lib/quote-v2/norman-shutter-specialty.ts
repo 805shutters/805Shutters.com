@@ -1,3 +1,4 @@
+import {normanSpecialtyFrameConstruction} from '../quote/norman-shutter-specialty-frame';
 import {normanSpecialtyGeometryProblems} from './norman-shutter-specialty-geometry';
 import {NORMAN_SPECIALTY_HORIZONTAL_LEG_SHAPES,NORMAN_CONTINUOUS_ARCH_SHAPES,NORMAN_FRAME_IN_RAIL_SHAPES,normanSpecialtyFrames,normanSpecialtyIsSunburst,normanSpecialtyShapes,normanSpecialtySourcePages,normanSpecialtySupportedProgram} from '../quote/norman-shutter-specialty';
 import {normanShutterFrame,normanShutterProgram} from '../quote/norman-shutter-assortment';
@@ -13,6 +14,10 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
  if(!r){add('record_required','Save the exact specialty shape and its frame/construction choices.');return issues;}
  if(!normanSpecialtyShapes(program.id).some(([code])=>code===r.shapeCode))add('shape','Choose an exact specialty identity documented for this program. AquaShield does not offer YS56 Solid Rail Arch.');
  if(!r.frameSides||r.frameIncludeInRail===null||r.hinges===null||r.magnets===null||r.hangStripBehind===null)add('construction_required','Record specialty frame sides, Frame Include In Rail, hinges, magnets and hang-strip placement explicitly.');
+ const expectedConstruction=normanSpecialtyFrameConstruction(program.id,r);
+ if(r.shapeCode==='YS05'&&r.frameConstruction?.eyebrowCurve==null)add('frame_construction_curve','Declare whether the Louvered Arch uses an eyebrow curve; the Mission frame manufacturing differs.');
+ if(expectedConstruction&&r.frameConstruction?.style!==expectedConstruction)add('frame_construction','Save the source-specified solid/insert frame construction for this shape, frame and program.');
+ if(!expectedConstruction&&r.frameConstruction?.style)add('frame_construction_source','This shape/frame combination has no verified construction assignment in the implemented source table; keep manufacturing style unresolved.');
  const frame=normanShutterFrame(program.id,r.frameType);
  if(!frame||!normanSpecialtyFrames(program.id,r.frameIncludeInRail).some(f=>f.code===frame.code))add('frame','Choose a documented specialty frame. Frame Include In Rail permits only its listed Z frames and excludes Tilt Out Z.');
  if(frame&&normanShutterFrame(program.id,s.configuration.frame_type)?.code!==frame.code)add('frame_identity','The saved frame selection and specialty frame record must agree. Save the specialty construction again.');

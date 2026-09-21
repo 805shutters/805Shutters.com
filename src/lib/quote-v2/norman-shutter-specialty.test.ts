@@ -11,7 +11,7 @@ import type {SalesQuoteLineItem} from '@mts/types/quote';
 const detail=():NormanSpecialtyRecord=>({...emptyNormanSpecialtyRecord(),shapeCode:'YS01',frameIncludeInRail:true,frameType:'3" Crown Z Frame',frameSides:'4',hinges:false,magnets:false,hangStripBehind:false,sunburstHubInches:12});
 const record=(specialty=detail()):NormanShutterPanelRecord=>({version:1,application:'specialty',motor:'none',existingDoorGlassOrSidelight:false,specialty,panels:[{widthInches:36,heightInches:18,divider:'none'}]});
 const ctx=(r=record(),programId='woodlore_plus'):SelectionContext=>({manufacturerId:'Norman',productId:'norman_shutters',programId,catalogAsOf:'2026-09-20',catalogVersion:'current',widthInches:36,heightInches:18,quantity:1,configuration:{frame_type:r.specialty?.frameType??null,[NORMAN_SHUTTER_PANEL_RECORD]:r},options:{}});
-const ids=(s=ctx())=>validateNormanShutterPanels(s).filter(i=>i.ruleId.startsWith('norman.shutter.specialty.')&&!i.ruleId.includes('.order_geometry.')).map(i=>i.ruleId.replace('norman.shutter.specialty.',''));
+const ids=(s=ctx())=>validateNormanShutterPanels(s).filter(i=>i.ruleId.startsWith('norman.shutter.specialty.')&&!i.ruleId.includes('.order_geometry.')&&!i.ruleId.includes('.frame_construction')).map(i=>i.ruleId.replace('norman.shutter.specialty.',''));
 describe('Norman exact specialty identity and frame constraints',()=>{
  it('retains 46 exact shape identities and distinct Aqua exclusions without guessing Woodlore assortment',()=>{
   expect(NORMAN_SPECIALTY_SHAPES).toHaveLength(46);expect(new Set(NORMAN_SPECIALTY_SHAPES.map(s=>s[0])).size).toBe(46);
