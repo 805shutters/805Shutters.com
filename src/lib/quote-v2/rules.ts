@@ -1,3 +1,4 @@
+import { rollerAccessories } from "./norman-roller-accessories";
 import { hasRollerValanceUnits, validateRollerValance } from "./norman-roller-valance-only";
 import { hasValanceOnlyUnits, validateValanceOnly } from "./norman-valance-only";
 import { validateSmartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
@@ -1327,6 +1328,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
 
   issues.push(...validateRollerMatrix(context));
   issues.push(...(rollerHardware(context)?.issues ?? []));
+  issues.push(...(rollerAccessories(context)?.issues ?? []));
   issues.push(...validateRollerCommon(context));
 
   return issues;

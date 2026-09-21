@@ -1,3 +1,5 @@
+import { rollerAccessories } from "./norman-roller-accessories";
+import { ROLLER_ACCESSORY_DERIVED } from "../quote/norman-roller-accessories";
 import { deriveRollerSeparateValances } from "./norman-roller-valance-only";
 import { smartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
 import { smartfoldOutsideClearance } from "./norman-smartfold-eligibility";
@@ -74,6 +76,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     const smartdrape = smartdrapeComponents(selection);
     if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
     const roller = rollerHardware(selection);
+    const rollerExtras=rollerAccessories(selection);
+    if(rollerExtras)selection.configuration={...selection.configuration,[ROLLER_ACCESSORY_DERIVED]:rollerExtras.record};
     if (roller) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: roller.record};
     const smartfold = smartfoldHardware(selection);
     const smartfoldClearance = smartfoldOutsideClearance(selection);
