@@ -19,7 +19,22 @@ Important evidence limits remain explicit: Sunscreen Silver was observed with Ro
 
 Validation: 59 focused tests and TypeScript no-emit passed; final full suite: 5,928 passed, 28 skipped. Source manifest and binary lock include the independently hashed new snapshot. Every one of84 source values goes through JSON save/reopen, the real server adapter, strict profile validation and pricing engine, retaining the pricing/delivery hold. Tests reject alternate fabric/control/dimensions/mount/side/quantity, malformed records, unknown fields and Sunscreen wrapping. Render checks cover all six exact profiles; a rapid multi-field/one-save/stale-prop regression protects atomic persistence.
 
-Production proof pending parent integration/deployment. In internal quote805-0333, use existing30×60 fixture in each named family, set Inside Mount, Right, quantity1 and the listed control/color. Select2–4 source options, Save, close/reopen and verify all choices while pricing remains held. Change width to31 and confirm the profile exception without losing its saved record; restore30. No send, sale or order action.
+## Production proof — verified on release 0fcacb9b
+
+Internal quote **805-0333**, customer `Onyx Catalog Verification 2026-09-20`, dedicated Chrome tab1585237061. All six exact baseline profiles rendered. Rapid edits were made locally, then each complete record was saved once:
+
+| Profile | Values saved and reopened |
+|---|---|
+| Signature Roller | Full Enclosed cassette; Grey cassette; Metal cord; Square bottom |
+| Signature Sunscreen | Square cassette; Round bottom; Silver bottom color; wrapping No |
+| Signature Zebra | Full Enclosed cassette; Zebra Bottom; Black bottom color; wrapping Yes |
+| Lux Fabric Blinds | Westminister; Onyx valance color; Standard return; Black cloth tape; Single |
+| Lux Honeycomb | Tile cut Yes; 2 ON 1 |
+| Lux Sheerview | Flat Valance; Metal chain; Single; Standard cord length |
+
+Changing the Roller width from30 to31 inches saved an explicit profile-mismatch warning and retained the observed record. Restoring30 recovered all four selected values. Closed the builder, fully reloaded the browser, reopened805-0333, and verified all23 selected values across six records, with no unsaved options. All12 quote lines still require pricing; Send Quote remained disabled and Contract displayed the explicit incomplete-pricing block. No manual price was substituted, and no quote was sent, sold or ordered.
+
+This verifies persistence and profile scoping, not missing dealer grids or conditional compatibility. The separate source tab1585237058 is currently at Onyx Distributor Login; the original populated source tab1585237016 remains preserved. Reauthentication to accountCHE01 is required for the remaining58-entry valance-fabric enumeration and current pricing evidence.
 
 ## Remaining Onyx classification
 

@@ -29,3 +29,9 @@ This proves this representative panel and hardware configuration under existing 
 ## Common-valance fallback audit correction
 
 Live B0349 showed a legacy Coupled Shade $117 audit component. The current authoritative server correctly held the entire common-valance price, but the UI fallback recomputed that incorrect legacy assumption. Roller Guide PDF p37 distinguishes shared common valances from coupled hardware; September Retail PDF p20 applies $117 specifically to coupled shades (one/two/three charges for two/three/four shades). Authoritative V2 audit no longer adds the coupled charge merely because the saved shade type is Common Valance. Legacy calculation behavior and saved price snapshots remain unchanged; the actual shared-valance pricing hold remains in force. Focused validation:57 tests passed and TypeScript no-emit passed.
+
+## Readable customer output — release 0fcacb9b
+
+Reopened805-0350 in fresh dedicated Chrome tab1585237061. Saved Panel1 memberships and total$13,121 persisted. After the customer preview settled, A showed$1,332 and C$6,461+$6,660=$13,121 while B remained intentionally held. Both C lines now display readable **Bracket Installation: Back / Wall Mount**, **Shim Layers per Bracket: 2**, **Raceway: Yes**, and **DC Power Supply: DC Distribution Panel**. Raw Roller Hardware V1 and Motorization Selections record labels are absent. No customer delivery action was performed.
+
+Reopened B0349 and expanded its staff-only audit on0fcacb9b: the Coupled Shade$117 fallback component is absent. The exact shared-valance allocation hold remains, both lines remain$0, and2windows still need pricing. The remaining fallback displays Square Fascia$133 and motor$814 as reference components; these do not establish the unresolved shared assembly price.
