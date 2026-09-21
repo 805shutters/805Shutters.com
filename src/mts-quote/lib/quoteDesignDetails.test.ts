@@ -51,7 +51,7 @@ describe("getQuoteDesignDetails", () => {
   });
 
   it("renders saved atomic charging and clearance as customer choices without implementation metadata", () => {
-    const design = {...miniBlindDesign(), product_type:"Sheer Shades", options_json:{
+    const design = {...miniBlindDesign(), product_type:"Sheer Shades", mount_type:"Outside Mount", options_json:{
       smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:""},
       smartfold_clearance_v1:{version:1,mountingAreaHeight:.75,mountingSpaceHeight:1.5},
     }};
@@ -63,6 +63,9 @@ describe("getQuoteDesignDetails", () => {
     expect(details).toContainEqual({label:"Available Shade Mounting-Space Height (inches)",value:"1.5"});
     expect(details.some(d=>/V1|Version:|Extension Cable Color/.test(d.label+" "+d.value))).toBe(false);
     expect(JSON.stringify(design)).toBe(original);
+    const inside=getQuoteDesignDetails({...design,mount_type:"Inside Mount"});
+    expect(inside.some(d=>/Mounting-Area|Mounting-Space/.test(d.label))).toBe(false);
+    expect(design.options_json.smartfold_clearance_v1.mountingAreaHeight).toBe(.75);
   });
 
   it("omits obsolete Roman banding from customer output after a style change without rewriting the saved record", () => {

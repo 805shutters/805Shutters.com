@@ -149,7 +149,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
       if (charging.extensionColor) details.push({label:"Extension Cable Color", value:charging.extensionColor});
     }
   }
-  const clearance = parseSmartfoldClearance(options[SMARTFOLD_CLEARANCE_KEY]);
+  const clearance = design.mount_type === "Outside Mount" ? parseSmartfoldClearance(options[SMARTFOLD_CLEARANCE_KEY]) : null;
   if (clearance?.mountingAreaHeight != null) details.push({label:"Screw Mounting-Area Height (inches)", value:String(clearance.mountingAreaHeight)});
   if (clearance?.mountingSpaceHeight != null) details.push({label:"Available Shade Mounting-Space Height (inches)", value:String(clearance.mountingSpaceHeight)});
   const pairedRomanChains = options.quote_v2_backend === true && design.supplier === "Norman" && design.product_type === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design.lift_system)) && /common valance|day.*night/i.test(String(design.shade_type));
