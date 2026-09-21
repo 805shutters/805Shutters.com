@@ -1,3 +1,4 @@
+import {normanSpecialtyNeedsCurvedTilt} from '../quote/norman-shutter-specialty-tilt';
 import {normanSpecialtyFrameConstruction} from '../quote/norman-shutter-specialty-frame';
 import {normanSpecialtyGeometryProblems} from './norman-shutter-specialty-geometry';
 import {NORMAN_SPECIALTY_HORIZONTAL_LEG_SHAPES,NORMAN_CONTINUOUS_ARCH_SHAPES,NORMAN_FRAME_IN_RAIL_SHAPES,normanSpecialtyFrames,normanSpecialtyIsSunburst,normanSpecialtyShapes,normanSpecialtySourcePages,normanSpecialtySupportedProgram} from '../quote/norman-shutter-specialty';
@@ -14,6 +15,11 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
  if(!r){add('record_required','Save the exact specialty shape and its frame/construction choices.');return issues;}
  if(!normanSpecialtyShapes(program.id).some(([code])=>code===r.shapeCode))add('shape','Choose an exact specialty identity documented for this program. AquaShield does not offer YS56 Solid Rail Arch.');
  if(!r.frameSides||r.frameIncludeInRail===null||r.hinges===null||r.magnets===null||r.hangStripBehind===null)add('construction_required','Record specialty frame sides, Frame Include In Rail, hinges, magnets and hang-strip placement explicitly.');
+ if(normanSpecialtyNeedsCurvedTilt(program.id,r.shapeCode,s.configuration.tilt_type)){
+  const pages=program.id==='woodlore_plus'?[126]:program.id==='brightwood'?[124]:[134];
+  if(r.curvedTilt?.control!=='rear_standard')add('curved_tilt','Invisible Tilt does not operate the YS05 curved horizontal-louver section. Save its separate Standard Tilt rod on the back of the panel.',pages);
+  if(r.curvedTilt?.topLouverFixed!==true)add('curved_top_louver','Confirm the fixed top louver shown in the YS05 curved-section control diagram.',pages);
+ }
  const expectedConstruction=normanSpecialtyFrameConstruction(program.id,r);
  if(r.shapeCode==='YS05'&&r.frameConstruction?.eyebrowCurve==null)add('frame_construction_curve','Declare whether the Louvered Arch uses an eyebrow curve; the Mission frame manufacturing differs.');
  if(expectedConstruction&&r.frameConstruction?.style!==expectedConstruction)add('frame_construction','Save the source-specified solid/insert frame construction for this shape, frame and program.');

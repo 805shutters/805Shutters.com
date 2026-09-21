@@ -1,3 +1,4 @@
+import {parseNormanSpecialtyCurvedTilt,type NormanSpecialtyCurvedTilt} from './norman-shutter-specialty-tilt';
 import {parseNormanSpecialtyFrameConstruction,type NormanSpecialtyFrameConstruction} from './norman-shutter-specialty-frame';
 import {parseNormanSpecialtyGeometry,type NormanSpecialtyGeometryRecord} from './norman-shutter-specialty-geometry';
 import {normanShutterFrames} from './norman-shutter-assortment';
@@ -16,7 +17,7 @@ export type NormanSpecialtyRecord = {
  version:1; shapeCode:string; archStyle:''|'standard'|'continuous';
  frameType:string; frameSides:''|'2'|'3'|'4'|'all'; frameIncludeInRail:boolean|null;
  hinges:boolean|null; magnets:boolean|null; hangStripBehind:boolean|null;
- sunburstHubInches:number|null; stileWidthInches:number|null; geometry?:NormanSpecialtyGeometryRecord; frameConstruction?:NormanSpecialtyFrameConstruction;
+ sunburstHubInches:number|null; stileWidthInches:number|null; geometry?:NormanSpecialtyGeometryRecord; frameConstruction?:NormanSpecialtyFrameConstruction; curvedTilt?:NormanSpecialtyCurvedTilt;
 };
 export const emptyNormanSpecialtyRecord=():NormanSpecialtyRecord=>({version:1,shapeCode:'',archStyle:'',frameType:'',frameSides:'',frameIncludeInRail:null,hinges:null,magnets:null,hangStripBehind:null,sunburstHubInches:null,stileWidthInches:null});
 export function parseNormanSpecialtyRecord(value:unknown):NormanSpecialtyRecord|null{
@@ -25,6 +26,7 @@ export function parseNormanSpecialtyRecord(value:unknown):NormanSpecialtyRecord|
  if(r.version!==1||typeof r.shapeCode!=='string'||typeof r.frameType!=='string'||!['','standard','continuous'].includes(String(r.archStyle))||!['','2','3','4','all'].includes(String(r.frameSides)))return null;
  if(['frameIncludeInRail','hinges','magnets','hangStripBehind'].some(k=>![null,true,false].includes(r[k] as never)))return null;
  if(['sunburstHubInches','stileWidthInches'].some(k=>r[k]!==null&&(typeof r[k]!=='number'||!Number.isFinite(r[k]))))return null;
+ if(r.curvedTilt!==undefined&&!parseNormanSpecialtyCurvedTilt(r.curvedTilt))return null;
  if(r.frameConstruction!==undefined&&!parseNormanSpecialtyFrameConstruction(r.frameConstruction))return null;
  if(r.geometry!==undefined&&!parseNormanSpecialtyGeometry(r.geometry))return null;
  return r as NormanSpecialtyRecord;
