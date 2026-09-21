@@ -5,6 +5,7 @@ import { rollerAccessories } from "./norman-roller-accessories";
 import { hasRollerValanceUnits, validateRollerValance } from "./norman-roller-valance-only";
 import { hasValanceOnlyUnits, validateValanceOnly } from "./norman-valance-only";
 import { validateSmartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
+import { validateLotusPartModel } from "./lotus-parts";
 import { validateLotusVinyl } from "./lotus-vinyl";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { validateSmartdrapeReplacement } from "./norman-smartdrape-replacement";
@@ -2448,6 +2449,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));
   issues.push(...validateLotusVinyl(context));
+  issues.push(...validateLotusPartModel(context));
   issues.push(...validateLotusRoller(context));
   issues.push(...validateLotusVertical(context));
   issues.push(...validateLotusObservedOffering(context));

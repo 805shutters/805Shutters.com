@@ -632,3 +632,13 @@ it("stores held MLX donor identities in protected validation evidence, never an 
   const saved=(rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0];
   expect(saved).toMatchObject({priceStatus:"blocked",authoritativeSnapshot:null,validationSnapshot:{validationStatus:"blocked",issues:expect.arrayContaining([expect.objectContaining({ruleId:"lotus.vinyl.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["MLX4860WH"])}})])}});
 });
+
+it("preserves exact part target and mechanism reference with held native validation", async () => {
+  const rows=validRows();
+  Object.assign(rows.sales_quote_line_items[0],{product_type:"Parts & Accessories",width_whole:0,height_whole:0,selected_design_id:DESIGN_ID});
+  Object.assign(rows.sales_quote_designs[0],{product_type:"Parts & Accessories",supplier:"Lotus",fabric:null,shade_type:null,lift_system:null,valance:null,mount_type:null,options_json:{quote_v2_backend:true,catalog_product_id:"lotus_dealer_listed_parts",catalog_program_id:"lotus_dealer_listed_parts_item",lotus_observed_version:"lotus-dealer-observed-2026-09-20-v1",lotus_observed_offering_id:"lotus_observed_d88af993870e8d8ad72f",lotus_part_configuration_version:"lotus-parts-model-v1",lotus_part_target_model:"AMX",lotus_part_installed_reference:"synthetic mechanism reference"}});
+  const {client,rpcCalls}=fakeSupabase(rows,[{quote_id:QUOTE_ID,new_revision:8,quote_status:"draft",quote_total:0,priced_design_count:0,blocked_design_count:1}]);
+  await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,expectedRevision:7,idempotencyKey:"price-save:part-model",actorId:ACTOR_ID,serverDate:"2026-09-20"});
+  const saved=(rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0];
+  expect(saved).toMatchObject({priceStatus:"blocked",authoritativeSnapshot:null,selection:{configuration:{lotus_part_target_model:"AMX",lotus_part_installed_reference:"synthetic mechanism reference"}},validationSnapshot:{issues:expect.arrayContaining([expect.objectContaining({ruleId:"lotus.parts.documented_model",derivedValues:expect.objectContaining({intended_model:"AMX"})}),expect.objectContaining({ruleId:"lotus.observed.manual_price_required"})])}});
+});
