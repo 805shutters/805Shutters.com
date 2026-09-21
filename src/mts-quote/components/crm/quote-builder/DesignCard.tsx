@@ -12908,8 +12908,7 @@ function ShadesAndBlindsOptions({
           role="alert"
         >
           <strong>Lotus pricing is draft-only.</strong>{" "}
-          {lotusCustomerDeliveryBlock(LOTUS_FAUX_WOOD_PRODUCT_ID, String(optionsJson.catalog_program_id ?? optionsJson.quote_lab_program_id ?? ""), design?.mount_type)} For a three-blind opening, enter all three measured
-          blind widths; the center is never inferred.
+          {lotusCustomerDeliveryBlock(LOTUS_FAUX_WOOD_PRODUCT_ID, String(optionsJson.catalog_program_id ?? optionsJson.quote_lab_program_id ?? ""), design?.mount_type)} For a split opening, enter every measured blind width; no component width is inferred.
         </div>
       ) : null}
       {!mobilePresentation && <ConfirmedOptionStrip
