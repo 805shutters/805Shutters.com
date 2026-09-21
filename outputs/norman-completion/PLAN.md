@@ -1,10 +1,12 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 15:40
-- Completed live: release134fef73 adds Roller panel selector correction, SmartDrape standalone replacement destination (held for source-price conflict), cellular cutout/poles and charging proof. Previous1d9 release passed6,061 tests, typecheck/build/public deployment.
-- Production proof completed: Honeycomb mounting0343 ($454), wireless charging0345 ($1,439) including blocked charging boundary, specialty net0347 ($543) including invalid ratio; all saved/reopened and customer previews verified. Vertical pair0344 ($2,647) verified with mismatched-height rejection. Roller hardware0346 ($1,332), common-valance0349 (explicit pricing hold), and SmartFold/PerfectSheer measured joins0348 passed persistence.
-- In progress: SmartFold bounded rechargeable outside-mount price proof0342; agent Roller shared-panel0350 and SmartDrape standalone pack proof. Contract group-query freshness fix and Zebra rules are undergoing combined deployment.
-- Remaining: exact family exceptions, source assortment reconciliation and dealer-price evidence, production proof for new controls, refreshed exhaustive ledger. No fully certified Norman family claim.
-- External intervention pending: Norman portal login and confirmation that R00743/RA00743 costs apply to805. Dealer factors remain unchanged.
+## Current checkpoint — September 20, 18:14
+- Completed live: release0fcacb9b; 6,121 tests passed,28 skipped, typecheck/build/public deployment passed. Customer hardware/charging details and natural-unit labels are readable. Six exact Onyx dealer option profiles are saved with existing pricing holds.
+- Production proofs complete: Honeycomb mounting0343 ($454), charging0345 ($1,439), specialty0347 ($543), vertical pair0344 ($2,647); Roller hardware0346 ($1,332), shared panel0350 ($13,121), common0349 (held); SmartFold0342 ($5,023), At Gaps0348 (held), replacement packs0339B/0351 (held). Boundary failures, save/reopen and customer previews are recorded in individual evidence files. SmartFold readable customer details rechecked after full reload on0fcacb9b.
+- In progress: combined72db3c04 release gates for SmartFold full-recess Light Guard, Bi-fold180 panel schedules and Sundance Walden rules. Parent will verify Light Guard boundary/persistence in a new alternative after deployment. Lotus continues sourced shutter construction; Sundance continues remaining source rules; Onyx finishes live option/hardware proof.
+- Remaining: exact family exceptions, complete source assortment/rule reconciliation, account pricing evidence, production proof for new controls, refreshed exported ledger. No fully certified Norman family claim.
+- External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805. Dealer factors and selling policy remain unchanged.
+
+Historical progress entries below are retained as an execution log; this checkpoint and RESULTS.md determine current status.
 
 - [x] Isolate current main; preserve unrelated canonical changes.
 - [x] Inventory 14 families, 47 programs, 1,288 color identities, 678 Honeycomb color/cell routes and 544 option records.

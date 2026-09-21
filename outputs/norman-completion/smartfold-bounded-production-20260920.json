@@ -57,8 +57,21 @@
   },
   "limitations": [
     "Only the bounded September outside-mount individual rechargeable path is enabled; common-valance alternativeA remains held.",
-    "Customer preview price and choices passed, but raw atomic labels leaked. Presentation fixf5d52906 is committed; live recheck pending.",
+    "Customer preview price, choices, readable charging counts and measured clearances passed after full reload on0fcacb9b.",
     "Dealer landed cost and account applicability unresolved; existing selling-price policy unchanged."
   ],
-  "externalActions": "No customer send/sign/sold/vendor order."
+  "externalActions": "No customer send/sign/sold/vendor order.",
+  "customerOutputRecheck": {
+    "deployment": "0fcacb9b13e9f82fd7ca347a0c90960a8f85c176",
+    "fullReload": true,
+    "total": 5023,
+    "labels": {
+      "Screw Mounting-Area Height (inches)": 0.75,
+      "Available Shade Mounting-Space Height (inches)": 1.5,
+      "Extra Charging Kits for This Line": 2,
+      "Extension Cables for This Line": 3
+    },
+    "rawAtomicLabelsAbsent": true,
+    "alternativeARemainsHeld": true
+  }
 }

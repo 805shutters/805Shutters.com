@@ -1,0 +1,5 @@
+# Norman ledger coverage
+
+Programs, fabrics/colors, honeycomb color/cell routes, grid rows, surcharges, motor accessories, configuration fields and individual exported choice values each have separate rows. All 371 grid rows match both their width header and full height/price row on the cited program pages; width-only schedules omit the placeholder height. This is a source-content check, not a dealer-account quote comparison. A mapped grid or an active picker identity is not proof that every configuration is priceable.
+
+The detail-field export does not contain every contextual control in the active CRM. Numeric boundaries and dynamic compatibility rules are not exhaustively inventoried yet. Blank source/effective-date cells are evidence gaps. No row is promoted to verified live on the basis of aggregate tests or a representative quote. Product-level exceptions state the remaining work.
