@@ -1,0 +1,22 @@
+.field { margin-top: 8px; min-width: 0; }
+.field .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.field .choice { display: flex; align-items: center; gap: 9px; flex: 0 1 auto; min-height: 46px; max-width: 100%; padding: 10px 15px; border: 1px solid #c9ced0; border-radius: 10px; background: #fff; color: #24332e; font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.field .choice[aria-pressed="true"] { background: #e8f6ed; border-color: #28734c; color: #154a30; box-shadow: inset 0 0 0 1px #28734c; }
+.field .choice:hover { border-color: #28734c; }
+.field .choice:focus-visible, .accessory .add:focus-visible, .accessory .stepper button:focus-visible, .field .search:focus-visible { outline: 3px solid #397fbd; outline-offset: 2px; }
+.mark { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 18px; width: 18px; height: 18px; border: 1px solid #a9b7b0; border-radius: 50%; font-size: 12px; }
+.field .choice[aria-pressed="true"] .mark { background: #28734c; color: #fff; border-color: #28734c; }
+.field .scrollChoices { max-height: 270px; overflow-y: auto; padding: 3px; display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,230px),1fr)); }
+.field .search { display: block; box-sizing: border-box; width: 100%; max-width: 420px; min-height: 44px; border: 1px solid #b9c4bf; border-radius: 9px; background: #fff; color: #24332e; padding: 10px 12px; font: inherit; margin-bottom: 8px; }
+.selected { font-size: 13px; margin: 6px 0 10px; color: #365747; }
+.accessory { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 14px; border: 1px solid #d8dfdb; border-radius: 10px; margin: 8px 0; background: #fff; color: #24332e; }
+.accessoryLabel { flex: 1 1 180px; font-size: 14px; font-weight: 600; }
+.accessory .add, .accessory .stepper button { min-height: 44px; min-width: 44px; padding: 8px 14px; border: 1px solid #b6c6bd; border-radius: 8px; color: #154a30; background: #edf6f0; font: inherit; font-weight: 600; cursor: pointer; }
+.stepper { display: flex; align-items: center; gap: 6px; }
+.stepper output { min-width: 32px; text-align: center; font-size: 16px; font-weight: 700; }
+.invalid { flex-basis: 100%; color: #9a3412; font-size: 13px; }
+.field .choice:disabled, .accessory .stepper button:disabled { opacity: .5; cursor: not-allowed; }
+@media(max-width:600px) { .field .choice { flex-grow: 1; } .field .scrollChoices { grid-template-columns: 1fr; max-height: 240px; } }
+
+.accessories { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 8px; }
+.accessories .accessory { margin: 0; }

@@ -1,4 +1,5 @@
 "use client";
+import { QuoteChoiceButtons } from "./QuoteChoiceButtons";
 import type {ReactNode} from 'react';
 import type {SalesQuoteDesign} from '@mts/types/quote';
 import {SUNDANCE_ASSEMBLY_KEY,createSundanceAssembly,readSundanceAssembly,sundanceAssemblySpec,sundanceAssemblyMatches,type SundanceAssemblyComponent} from '@/lib/quote/sundance/assembly-records';
@@ -20,7 +21,7 @@ export function SundanceAssemblyOptions({productId,options,widthInches,heightInc
     <h4 className="font-semibold">Individual shades in this assembly</h4>
     <p className="text-sm">Retain each shade’s measured dimensions, fabric and control separately. Each component remains a single shade. Source base cells are evidence only; assembly geometry, hardware and the dealer-confirmed complete price still require review.</p>
     {matching&&saved ? <>
-      {spec?.sharedMotor&&<label className="block text-sm">Shared motor location<select className={classes} aria-label="Sundance shared motor component" value={saved.sharedMotorComponentId??''} onChange={e=>save({...saved,sharedMotorComponentId:e.target.value||null})}><option value="">Select component</option>{saved.components.map((c,i)=><option key={c.id} value={c.id}>Component {i+1}</option>)}</select></label>}
+      {spec?.sharedMotor&&<div className="block text-sm">Shared motor location<QuoteChoiceButtons aria-label="Sundance shared motor component" value={saved.sharedMotorComponentId??''} onChange={value=>save({...saved,sharedMotorComponentId:value||null})}><option value="">Select component</option>{saved.components.map((c,i)=><option key={c.id} value={c.id}>Component {i+1}</option>)}</QuoteChoiceButtons></div>}
       {saved.components.map((component,index)=>{
         const update=(patch:Partial<SundanceAssemblyComponent>)=>save({...saved,components:saved.components.map(c=>c.id===component.id?{...c,...patch}:c)});
         const grid=sundanceComponentSourceGrid(component);
