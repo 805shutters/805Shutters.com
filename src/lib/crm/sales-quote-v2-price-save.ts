@@ -76,6 +76,9 @@ const SOURCE_COST_PLUS_PRODUCTS = new Set([
   // AMX retail uses the existing source-cell x3 policy. Typed configuration
   // validation remains mandatory; unresolved landed dealer cost stays visible.
   "lotus_mini_blinds",
+  // Owner-confirmed Poly Composite retail is authoritative. Onyx freight stays
+  // unresolved and visible instead of suppressing the priced snapshot.
+  "onyx_shutters",
 ]);
 
 function plainRecord(value: unknown): JsonRecord | null {

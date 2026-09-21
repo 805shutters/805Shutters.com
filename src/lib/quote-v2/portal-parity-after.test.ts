@@ -8,6 +8,7 @@ import { priceDealerNetDesign, priceDesign } from "@/lib/quote/pricing";
 import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
 import {
   QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ONYX_SHUTTERS_VERSION,
   QUOTE_V2_ROLLER_PREVIEW_VERSION,
 } from "./catalog";
 import type { SelectionContext, SelectionRecord } from "./core";
@@ -67,7 +68,9 @@ function selection(
     catalogVersion:
       productId === "roller"
         ? QUOTE_V2_ROLLER_PREVIEW_VERSION
-        : QUOTE_V2_CATALOG_VERSION,
+        : productId === "onyx_shutters"
+          ? QUOTE_V2_ONYX_SHUTTERS_VERSION
+          : QUOTE_V2_CATALOG_VERSION,
     catalogAsOf,
     widthInches,
     heightInches,

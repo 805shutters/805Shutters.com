@@ -3,6 +3,7 @@ import { priceDealerNetDesign, priceDesign } from "@/lib/quote/pricing";
 import type { SelectionContext, SelectionRecord } from "./core";
 import {
   QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ONYX_SHUTTERS_VERSION,
   QUOTE_V2_ROLLER_PREVIEW_VERSION,
 } from "./catalog";
 import {
@@ -35,7 +36,9 @@ function selection(
     catalogVersion:
       productId === "roller"
         ? QUOTE_V2_ROLLER_PREVIEW_VERSION
-        : QUOTE_V2_CATALOG_VERSION,
+        : productId === "onyx_shutters"
+          ? QUOTE_V2_ONYX_SHUTTERS_VERSION
+          : QUOTE_V2_CATALOG_VERSION,
     catalogAsOf,
     widthInches: 30,
     heightInches: 48,

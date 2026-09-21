@@ -331,6 +331,12 @@
       "sha256": "ffd0dc5d5a337a7a6a4a3ec55446119cb596445b04816afa095af4b0e9e94500"
     },
     {
+      "sourceId": "onyx-owner-confirmed-poly-composite-2026-07-27",
+      "fileName": "onyx-poly-composite-20260727.json",
+      "byteLength": 391,
+      "sha256": "aa89a65a082cd9e5b7f878b51a4271f0ad3d0f2450c9314852f43ba5a1069cdf"
+    },
+    {
       "sourceId": "onyx-us-made-vinyl-portal-2026-07-22",
       "fileName": "Onyx US Made Vinyl Portal 2026-07-22.png",
       "byteLength": 73462,

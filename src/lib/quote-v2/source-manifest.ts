@@ -727,6 +727,22 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     authorities: ["pricing"],
   },
   {
+    id: "onyx-owner-confirmed-poly-composite-2026-07-27",
+    manufacturer: "Onyx Shutters",
+    kind: "pricing_evidence",
+    format: "json",
+    fileName: "onyx-poly-composite-20260727.json",
+    title: "Owner-confirmed Onyx Poly Composite retail and wholesale rates",
+    revision: "Owner-confirmed 805 selling and wholesale rates 2026-07-27",
+    effectiveDate: null,
+    effectiveDateEvidence:
+      "Owner confirmation date is recorded; the manufacturer did not publish an effective date for this historical program",
+    receivedDate: "2026-07-27",
+    modifiedDate: "2026-07-27",
+    sha256: "aa89a65a082cd9e5b7f878b51a4271f0ad3d0f2450c9314852f43ba5a1069cdf",
+    authorities: ["pricing"],
+  },
+  {
     id: "onyx-us-made-vinyl-portal-2026-07-22",
     manufacturer: "Onyx Shutters",
     kind: "dealer_portal_snapshot",
