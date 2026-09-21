@@ -11,6 +11,13 @@ const designs = [
 ];
 function render(props = {}) { return renderToStaticMarkup(React.createElement(FloatingQuoteTotalBadge, { lineItems, designs, authoritativeV2: true, storedTotal: 726.78, ...props })); }
 describe("contract total completeness", () => {
+  it("distinguishes incomplete quote lines from physical quantities and excludes priced lines", () => {
+    const html = render({ lineItems: [{ id: "one", quantity: 8 }, { id: "two", quantity: 4 }] });
+    expect(html).toContain("1 quote line"); expect(html).toContain("4 windows need pricing");
+    expect(html).not.toContain("12 windows");
+    const missing = render({ lineItems: [{ id: "one", quantity: 3 }, { id: "two", quantity: 2 }], designs: [] });
+    expect(missing).toContain("2 quote lines"); expect(missing).toContain("5 windows need pricing");
+  });
   it("does not label an incomplete V2 subtotal as a contract total", () => {
     const html = render(); expect(html).toContain("Pricing incomplete"); expect(html).toContain("1 window needs pricing"); expect(html).not.toContain("$726.78"); expect(html).not.toContain("Contract Total");
   });

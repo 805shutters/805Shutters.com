@@ -79,6 +79,8 @@ import {
 import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { LotusDesignOptions, lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
 import { LineItemPriceInput } from "./LineItemPriceInput";
+import { QuoteLinePriceReadout } from "./QuoteLinePriceReadout";
+import { QuoteConfigurationIssues } from "./QuoteConfigurationIssues";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import {
   useState,
@@ -412,7 +414,7 @@ import {
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
-import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
+import { authoritativeDesignPriceIssue, manualMerchandisePriceForDisplay } from "@mts/lib/quotePricingDisplay";
 import { clearNormanMotorPowerConnection } from "@mts/lib/normanMotorPowerTransition";
 import { normanSavedPricingAudit } from "@mts/lib/normanSavedPricingAudit";
 import {
@@ -5967,12 +5969,16 @@ export function DesignCard({
               </div>
             )}
             <div className="quote-line-price-readout">
-              <LineItemPriceInput key={`${lineItem.id}-${activeVariant}`}
+              {authoritativeV2 ? <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
+                unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal} issue={authoritativePriceError}
+                roomName={lineItem.room_name}
+                manualPrice={authoritativePriceError ? null : currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
+                onSave={(price) => onSaveLinePrice(activeVariant, price)} /> : <><LineItemPriceInput key={`${lineItem.id}-${activeVariant}`}
                 value={displayedUnitPrice} roomName={lineItem.room_name}
                 onSave={(price) => onSaveLinePrice(activeVariant, price)} />
               <div className="text-[11px] text-muted-foreground">
-                {authoritativePriceError ? "Enter your price" : `${formatMoney(displayedLineTotal)} line total · excl. tax`}
-              </div>
+                {`${formatMoney(displayedLineTotal)} line total · excl. tax`}
+              </div></>}
               {!mobilePresentation && !authoritativeV2 && isPriceLocked && (
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
                   className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">
@@ -6224,7 +6230,7 @@ export function DesignCard({
           >
             <div className="flex items-center gap-2 font-bold">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Authoritative pricing blocked</span>
+              <span>Price unavailable</span>
             </div>
             <p className="mt-1">{authoritativePriceError}</p>
           </div>
@@ -12952,7 +12958,7 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
-      {honeycombMountingIssues.length > 0 && <div role="alert"><ul>{honeycombMountingIssues.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul></div>}
+      <QuoteConfigurationIssues issues={honeycombMountingIssues} gridOptionQuoting={authoritativeV2} />
       {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /common valance/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">Two motors: the left shade has its motor on the left; the right shade has its motor on the right. Each shade retains its own width.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /day.*night/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">The rear roller motor is on the opposite side from the front Roman motor. The standard arrangement is front right and rear left.</p>}
@@ -12963,16 +12969,16 @@ function ShadesAndBlindsOptions({
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">Chain length runs from the top of the headrail to the bottom of the tension device. The default is shade height minus 3 inches. Leave at least 2 inches clear below the tension device.{design?.shade_type === "Common Valance" ? " The left shade has its chain on the left; the right shade has its chain on the right." : ""}</p>}
       {authoritativeV2 && productType === "Roman Shades" && optionsJson.hold_downs === "Magnetic" && <p className="text-sm text-slate-700">Allow 1 7/16 inches beside the shade and 5/16 inch below it for the magnet catch. Magnetic hold-downs are not recommended on metal doors.</p>}
-      {romanHardwareIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{romanHardwareIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {woodIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{woodIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {smartprivacyIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartprivacyIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {ultimateFauxIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{ultimateFauxIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {smartdrapeIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartdrapeIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {perfectsheerIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{perfectsheerIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
-      {smartfoldIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-sm text-amber-900">{smartfoldIssues.map(issue=><li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
+      <QuoteConfigurationIssues issues={romanHardwareIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={woodIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={smartprivacyIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={ultimateFauxIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={smartdrapeIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={perfectsheerIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues issues={smartfoldIssues} gridOptionQuoting={authoritativeV2} />
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">
         <p>Inside mount only. Order a separate shelf for Faux Wood, San Clemente, Synchrony and SmartDrape. Default paired measurements include a 1/32-inch shelf width deduction; custom finished measurements have no deduction.</p>
-        {palladianIssues.length > 0 && <ul role="alert" className="list-disc pl-5 text-amber-900">{palladianIssues.map(issue => <li key={issue.ruleId}>{issue.explanation}</li>)}</ul>}
+        <QuoteConfigurationIssues issues={palladianIssues} gridOptionQuoting={authoritativeV2} />
       </div>}
       {productType === "Palladian Shelf" && optionsJson.accompanying_product_id && optionsJson.accompanying_product_id !== "none" ? (
         <label className="block text-sm">Accompanying quote line

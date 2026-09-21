@@ -3,6 +3,7 @@ import { isQuotePriceLocked } from "./quotePriceLock";
 
 type PricedDesign = {
   unit_price?: number | null;
+  quote_v2_price_status?: string | null;
   options_json?: Record<string, unknown> | null;
 };
 
@@ -17,7 +18,7 @@ export function isSavedQuotePricingIncomplete(quote: Partial<SalesQuote> | null 
 /** Staff explanation for persisted failures, including rows saved without an error string. */
 export function authoritativeDesignPriceIssue(design: PricedDesign | null | undefined): string | null {
   const options = design?.options_json;
-  const status = options?.authoritative_price_status;
+  const status = options?.authoritative_price_status ?? design?.quote_v2_price_status;
   if (status === "authoritative" && design?.unit_price != null &&
       Number.isFinite(Number(design.unit_price)) && Number(design.unit_price) >= 0) return null;
   const explanation = options?.authoritative_price_error;
@@ -26,4 +27,13 @@ export function authoritativeDesignPriceIssue(design: PricedDesign | null | unde
   if (status === "blocked") return "Pricing is blocked for this saved selection. Review its configuration and manufacturer pricing requirements before sending.";
   if (status === "unpriceable") return "No verified price is available for this saved selection. Review its product, options and dimensions.";
   return "This line does not have a verified price yet. Complete its selections and reprice before sending.";
+}
+
+/** New manual entries exclude fixed charges; old manual records retain their original basis. */
+export function manualMerchandisePriceForDisplay(design: PricedDesign | null | undefined, displayedUnitPrice: number): number {
+  const options = design?.options_json;
+  const merchandise = options?.manual_merchandise_unit_price;
+  return options?.manual_customer_charge_policy === "blind-shade-install-ship-v1" &&
+    typeof merchandise === "number" && Number.isFinite(merchandise) && merchandise >= 0
+    ? merchandise : displayedUnitPrice;
 }

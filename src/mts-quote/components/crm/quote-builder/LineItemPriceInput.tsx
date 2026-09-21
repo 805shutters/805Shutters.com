@@ -8,12 +8,14 @@ export function parseLineItemPrice(value: string): number | null {
 }
 
 /** Keep the draft intact while typing; persist only on Save, blur, or Enter. */
-export function LineItemPriceInput({ value, roomName, onSave }: {
-  value: number;
+export function LineItemPriceInput({ value, roomName, onSave, label = "Price each" }: {
+  value: number | null;
   roomName: string;
   onSave: (price: number) => Promise<void>;
+  label?: string;
 }) {
-  const [draft, setDraft] = useState(value.toFixed(2));
+  const formattedValue = value == null ? "" : value.toFixed(2);
+  const [draft, setDraft] = useState(formattedValue);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -22,10 +24,10 @@ export function LineItemPriceInput({ value, roomName, onSave }: {
   const changed = useRef(false);
   useEffect(() => {
     if (!editing.current && !pending.current) {
-      setDraft(value.toFixed(2));
+      setDraft(formattedValue);
       setSaved(false);
     }
-  }, [value]);
+  }, [formattedValue]);
   const save = async () => {
     editing.current = false;
     if (pending.current || (!changed.current && !error)) return;
@@ -53,9 +55,9 @@ export function LineItemPriceInput({ value, roomName, onSave }: {
   };
   return <div className="quote-line-price-editor">
     <label>
-      <span>Price each</span>
+      <span>{label}</span>
       <div className="quote-line-price-input-wrap"><span aria-hidden="true">$</span>
-        <input aria-label={`Price each for ${roomName}`} type="text" inputMode="decimal"
+        <input aria-label={`${label} for ${roomName}`} type="text" inputMode="decimal"
           value={draft} disabled={saving} aria-invalid={Boolean(error)}
           onFocus={() => { editing.current = true; }}
           onChange={event => { changed.current = true; setDraft(event.target.value); setError(""); setSaved(false); }}
@@ -64,7 +66,7 @@ export function LineItemPriceInput({ value, roomName, onSave }: {
             if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
             if (event.key === "Escape") {
               editing.current = false; changed.current = false;
-              setDraft(value.toFixed(2)); setError(""); setSaved(false);
+              setDraft(formattedValue); setError(""); setSaved(false);
               event.preventDefault();
             }
           }} />

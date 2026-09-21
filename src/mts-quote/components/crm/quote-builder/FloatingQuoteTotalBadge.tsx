@@ -65,7 +65,7 @@ export function FloatingQuoteTotalBadge({
         {incomplete ? "Total unavailable" : formatCurrency(total)}
       </div>
       {incomplete && <p className="mt-1 text-xs font-semibold text-amber-800">
-        {missingPrices ? incompleteQuantityLabel(lineItems, designs, incompleteIds) : "Add a window to price this quote"}
+        {missingPrices ? <>{missingPrices} quote {missingPrices === 1 ? "line" : "lines"}: {incompleteQuantityLabel(lineItems, designs, incompleteIds)}</> : "Add a window to price this quote"}
       </p>}
     </aside>
   );
