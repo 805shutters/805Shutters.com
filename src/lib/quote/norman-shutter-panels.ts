@@ -16,7 +16,7 @@ export type NormanShutterPanelRecord = {
   application: NormanShutterApplication | '';
   motor: 'none' | 'perfect_tilt_g4' | 'other' | '';
   existingDoorGlassOrSidelight: boolean;
-  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;horizontalLouverSectionHeightInches?:number|null;bottomSupport?:NormanShutterBottomSupport;dividerDetails?:NormanShutterDividerRecord}>;
+  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;horizontalLouverSectionHeightInches?:number|null;wholePanelLouverCount?:number|null;singleLouverNoMouseHole?:boolean|null;bottomSupport?:NormanShutterBottomSupport;dividerDetails?:NormanShutterDividerRecord}>;
   bifold180?: NormanBifold180Record;
   bypass?: NormanBypassRecord;
   specialty?: NormanSpecialtyRecord;
@@ -35,6 +35,8 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   const r=value as Record<string,unknown>;
   if(r.version!==1||!Array.isArray(r.panels)||typeof r.application!=='string'||!['',...NORMAN_SHUTTER_APPLICATIONS.map(a=>a[0])].includes(r.application)||!['','none','perfect_tilt_g4','other'].includes(String(r.motor))||typeof r.existingDoorGlassOrSidelight!=='boolean')return null;
   if(r.panels.some(p=>!p||typeof p!=='object'||Array.isArray(p)||!['','none','present'].includes(p.divider)||(p.heightInches!==null&&(typeof p.heightInches!=='number'||!Number.isFinite(p.heightInches)))))return null;
+  if(r.panels.some(p=>p.wholePanelLouverCount!==undefined&&p.wholePanelLouverCount!==null&&(typeof p.wholePanelLouverCount!=='number'||!Number.isFinite(p.wholePanelLouverCount))))return null;
+  if(r.panels.some(p=>p.singleLouverNoMouseHole!==undefined&&![null,true,false].includes(p.singleLouverNoMouseHole)))return null;
   if(r.specialty!==undefined&&!parseNormanSpecialtyRecord(r.specialty))return null;
   if(r.bypass!==undefined&&!parseNormanBypassRecord(r.bypass))return null;
   if(r.bifold180!==undefined&&!parseNormanBifold180Record(r.bifold180))return null;

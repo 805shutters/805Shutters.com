@@ -5,7 +5,7 @@ import { NORMAN_SHUTTER_PROGRAMS } from '../quote/norman-shutter-assortment';
 import { selectionContextFromExactInterface } from './exact-interface-adapter';
 import type { SelectionContext } from './core';
 import type { SalesQuoteLineItem } from '@mts/types/quote';
-const record=(height=60):NormanShutterPanelRecord=>({version:1,application:'regular',motor:'none',existingDoorGlassOrSidelight:false,panels:[{heightInches:height,divider:'none',bottomSupport:{version:1,support:'existing_sill',gapInches:0.0625,frequentlyOpen:false}}]});
+const record=(height=60):NormanShutterPanelRecord=>({version:1,application:'regular',motor:'none',existingDoorGlassOrSidelight:false,panels:[{heightInches:height,divider:'none',wholePanelLouverCount:6,bottomSupport:{version:1,support:'existing_sill',gapInches:0.0625,frequentlyOpen:false}}]});
 const context=(programId='woodlore',r:unknown=record()):SelectionContext=>({manufacturerId:'Norman',productId:'norman_shutters',programId,catalogAsOf:'2026-09-20',catalogVersion:'current',widthInches:36,heightInches:60,quantity:1,configuration:{panel_config:'L',[NORMAN_SHUTTER_PANEL_RECORD]:r as SelectionContext['configuration'][string]},options:{}});
 const ids=(s:SelectionContext)=>validateNormanShutterPanels(s).map(i=>i.ruleId.replace('norman.shutter.panels.',''));
 describe('Norman exact finished-panel heights and divider requirements',()=>{

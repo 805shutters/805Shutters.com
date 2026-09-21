@@ -1,3 +1,4 @@
+import {NORMAN_FIXED_SINGLE_LOUVER_TILT,normanSingleLouverFixedEligible} from '../quote/norman-shutter-single-louver';
 import { parseNormanPanelRecord, NORMAN_SHUTTER_PANEL_RECORD } from '../quote/norman-shutter-panels';
 import { normanShutterColor, normanShutterLouvers, normanShutterProgram, normanShutterHinges, normanShutterTilts, normanShutterFrame, normanShutterMounts, NORMAN_SHUTTER_FRAME_SOURCE } from "@/lib/quote/norman-shutter-assortment";
 import type { SelectionContext, ValidationIssue } from "./core";
@@ -24,7 +25,7 @@ export function validateNormanShutterAssortment(s: SelectionContext): Validation
   if (!normanShutterLouvers(p.id).includes(String(s.configuration.louver_size) as never)) add("louver", p.id === "woodlore_aquashield" ? "Woodlore Plus with AquaShield does not offer 1⅞-inch louvers. Choose 2½, 3, 3½ or 4½ inches." : "Choose a documented Norman louver size.");
   const hardwarePages = p.id === "woodlore" ? [39] : p.id.startsWith("woodlore_") ? [46] : [40];
   if (!noSpecialtyHinges && s.configuration.hinge_color && !normanShutterHinges(p.id, normanShutterFrame(p.id, s.configuration.frame_type)?.label ?? s.configuration.frame_type).includes(String(s.configuration.hinge_color))) add("hinge", p.id === "woodlore_aquashield" ? "AquaShield requires stainless-steel hinges." : "This hinge finish is unavailable for the selected Norman frame or direct-mount hinge.", hardwarePages);
-  if (s.configuration.tilt_type && !normanShutterTilts(p.id).includes(String(s.configuration.tilt_type))) add("tilt", p.id === "woodlore_aquashield" ? "AquaShield does not offer standard or offset tilt rods. Choose Invisible Tilt." : "Choose a documented Norman tilt system.", p.id.startsWith("woodlore_") ? [40, 41] : p.pages);
+  if (s.configuration.tilt_type && !(s.configuration.tilt_type===NORMAN_FIXED_SINGLE_LOUVER_TILT&&normanSingleLouverFixedEligible(panelRecord,c.split_tilt)) && !normanShutterTilts(p.id).includes(String(s.configuration.tilt_type))) add("tilt", p.id === "woodlore_aquashield" ? "AquaShield does not offer standard or offset tilt rods. Choose Invisible Tilt." : "Choose a documented Norman tilt system.", p.id.startsWith("woodlore_") ? [40, 41] : p.pages);
   if (!dedicatedTrack && s.configuration.frame_type && !normanShutterFrame(p.id, s.configuration.frame_type)) issues.push({
     severity: "hard_block", ruleId: "norman.shutter.assortment.frame",
     source: sourceProvenance(NORMAN_SHUTTER_FRAME_SOURCE),

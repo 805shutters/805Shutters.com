@@ -4,6 +4,7 @@ import { NormanRollerValanceOptions } from "@/components/crm/NormanRollerValance
 import { isRollerValance, rollerValanceUnitLabel, ROLLER_VALANCE_KEY } from "@/lib/quote/norman-roller-valance-only";
 import { NormanValanceOnlyOptions } from "@/components/crm/NormanValanceOnlyOptions";
 import { isNormanValanceOnly, valanceOnlyUnitLabel, VALANCE_ONLY_KEY } from "@/lib/quote/norman-valance-only";
+import {NORMAN_FIXED_SINGLE_LOUVER_TILT,normanSingleLouverFixedEligible} from '@/lib/quote/norman-shutter-single-louver';
 import { NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from '@/lib/quote/norman-shutter-panels';
 import { normanBifold180Layouts } from '@/lib/quote/norman-shutter-bifold180';
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, replacementUnitLabel } from "@/lib/quote/norman-smartdrape-replacement";
@@ -4055,7 +4056,7 @@ export function getStandardShutterGridOptions(
       label: "Tilt Type",
       field: "tilt_type",
       type: "buttons",
-      options: authoritativeV2 ? normanShutterTilts(String(normanOptions.catalog_program_id ?? design?.material ?? "")) : SHUTTER_TILT_TYPES,
+      options: authoritativeV2 ? (normanSingleLouverFixedEligible(normanPanelRecord,normanOptions.split_tilt) ? [NORMAN_FIXED_SINGLE_LOUVER_TILT] : normanShutterTilts(String(normanOptions.catalog_program_id ?? design?.material ?? ""))) : SHUTTER_TILT_TYPES,
     },
     {
       key: "color",
