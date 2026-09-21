@@ -47,9 +47,12 @@
 .explanation ul { padding-left:18px; }
 .warning { border:1px solid #7d7a72; border-radius:8px; padding:12px; font-size:13px; color:#e5e4e2; }
 .toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px; margin-bottom:20px; }
-.toolbar nav { display:flex; flex-wrap:wrap; gap:6px; }
+.toolbar nav { display:flex; flex-wrap:wrap; gap:6px; flex-basis:100%; }
 .toolbar button { background:#1d1d1b; border:1px solid #343330; padding:10px 13px; border-radius:7px; font-size:12px; }
-.toolbar button[aria-pressed=true] { background:#e5e4e2; color:#0b0b0b; }
+.toolbar button[aria-pressed=true] { background:#75dfab; border-color:#75dfab; color:#102d21; font-weight:600; }
+.toolbar nav button:hover:not(:disabled):not([aria-pressed=true]) { background:#263b30; border-color:#75dfab; }
+.toolbar nav button:focus-visible { outline:2px solid #75dfab; outline-offset:3px; }
+.toolbar nav button:disabled { opacity:.5; cursor:wait; }
 .toolbar label { color:#b8b6ae; width:280px; max-width:100%; display:flex; align-items:center; gap:9px; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:0 12px; min-width:0; }
 .toolbar input { width:100%; min-width:0; max-width:100%; color:#fbfbfa; background:transparent; border:0; padding:12px 0; font-size:13px; }
 .jobList { display:grid; gap:18px; }
