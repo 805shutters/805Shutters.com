@@ -8,9 +8,11 @@ The audit currently accounts for **25 families and 60 programs**, up from the or
 
 There are **1,448 retained color identities**, including 1,422 currently selectable identities, and **678 Honeycomb color/cell routes**. The current exported option inventory has 627 records and 853 choices. Contextual numeric/text controls are additional; these inventory counts do not certify every combination. Discontinued identities remain available to historical quotes.
 
-## Current release checkpoint — September20,20:35
+## Current release checkpoint — September20,21:14
 
-Release **76fe135b** is verified live at https://805-flvkro2pg-805-shutters.vercel.app and the public site. Typecheck/build passed; **7,587 tests passed,28 skipped**. This includes AutoWand, fully recessed inside fascias, Roller Light Guard/chains/poles, typed quote-copy associations, alternatives A–Z, Double Hung/panel widths, Sundance independent component/base references and shared accessories. Concurrent Job Status work is preserved.
+Release **4c24cfaa** is verified live at https://805-hamixdgfu-805-shutters.vercel.app and the public site. Typecheck/build passed; **7,952 tests passed,28 skipped**. This includes individual fully recessed SmartFold Light Guard, shared Automate hubs across Roller/Roman/PerfectSheer, saved network/hub audit records, FrenchDoorA–F measurement records and the Bi-fold90 mount-alias correction. Production verification of these increments remains underway; reference geometry does not certify manufacturing or account prices. Concurrent Job Status work is preserved.
+
+SmartDrape **805-0381** pocket6×3.375 at36×70/customwand48 persisted after full reload; order-height25.9375 produces23.9375 finished and rejects the24-inch minimum, while26 clears that restriction. Full family price remains held. Lotus0337 two independent blinds and FPX current-availability hold passed saved/reopened proof. Bi-fold90 **805-0382/J** persisted all standard90 measured records and rejects24.0625-inch Woodlore panel width; final mount-alias recheck pending.
 
 SmartFold **805-0376/K** proves four36×60 LouiseF1709 AutoWand shades at$3,244 plus2 extra kits/3 Black extensions charged once at$219 = **$3,463**. Five extensions block pricing; restored3. **805-0378/L** proves Inside/BackWallRaceway/WhiteSquareFascia/FullyRecessed4.087-inch depth at **$3,112**;4.086 rejects. Both survived save/close/full reload/reopen and customer preview. The inside preview exposed stale copied outside-clearance labels; formatter repair5c367bcb is deployed in5ea24a14 and passed fresh full-reload customer proof, preserving4.087 depth and$3,112. Evidence:`smartfold-autowand-fascia-production-20260920.json`.
 
