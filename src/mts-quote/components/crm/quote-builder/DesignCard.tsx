@@ -17,6 +17,7 @@ import { ultimateSavedCommonForDisplay } from "@/lib/quote-v2/norman-ultimate-as
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
 import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
 import { normanBlindDraftCatalog } from "@/lib/quote-v2/norman-blind-draft-preview";
+import { SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
 import { NormanSmartfoldChargingOptions } from "@/components/crm/NormanSmartfoldChargingOptions";
 import { NormanShutterPanelOptions } from "@/components/crm/NormanShutterPanelOptions";
 import { isOnyxHeldProduct } from "@/lib/quote/onyx-held-catalog";
@@ -2029,6 +2030,10 @@ function clearMotorizationOptions(
     dc_power_supply: null,
     shared_power_panel_id: null,
   };
+}
+
+export function clearSmartfoldMotorizationOptions(options: Record<string, unknown>): Record<string, unknown> {
+  return { ...clearMotorizationOptions(options), [SMARTFOLD_CHARGING_KEY]: null };
 }
 
 export function buildLegacyRollerTopTreatmentUpdate(
@@ -10171,7 +10176,7 @@ function ShadesAndBlindsOptions({
     }
 
     if (productType === "SmartFold Shades" && authoritativeV2 && field === "motor_type") {
-      onUpdateFields({ motor_type: typeof value === "string" ? value : null, remote_type: null, options_json: clearMotorizationOptions(currentJson) });
+      onUpdateFields({ motor_type: typeof value === "string" ? value : null, remote_type: null, options_json: clearSmartfoldMotorizationOptions(currentJson) });
       return;
     }
 
@@ -10187,7 +10192,7 @@ function ShadesAndBlindsOptions({
     if (productType === "SmartFold Shades" && field === "lift_system") {
       const motor=value === "Motorized";
       const cordless=/cordless/i.test(String(value));
-      onUpdateFields({lift_system:typeof value === "string" ? value : null,motor_type:motor?design?.motor_type??null:null,remote_type:motor?design?.remote_type??null:null,options_json:{...(motor?currentJson:clearMotorizationOptions(currentJson)),...(!cordless?{smartfold_pole:"None",additional_fiberglass_pole:false,cordless_operating_pole:false,pole_attachment_only:false}:{}),...(value !== "Continuous Cord Loop"?{smartfold_chain_length:null,smartfold_chain_unobstructed:null}:{})}});
+      onUpdateFields({lift_system:typeof value === "string" ? value : null,motor_type:motor?design?.motor_type??null:null,remote_type:motor?design?.remote_type??null:null,options_json:{...(motor?currentJson:clearSmartfoldMotorizationOptions(currentJson)),...(!cordless?{smartfold_pole:"None",additional_fiberglass_pole:false,cordless_operating_pole:false,pole_attachment_only:false}:{}),...(value !== "Continuous Cord Loop"?{smartfold_chain_length:null,smartfold_chain_unobstructed:null}:{})}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "json:smartfold_hold_down") {

@@ -80,6 +80,16 @@ describe("SmartFold September charging allocation and canonical extra prices",()
     const html=renderToStaticMarkup(createElement(NormanSmartfoldChargingOptions,{design,quantity:3,onUpdateFields:()=>{}}));
     expect(html).toContain("Save charging accessories");expect(html).toContain('value="2"');expect(html).toContain('value="3"');expect(html).toContain("No unsaved charging accessories");
   });
+  it("discards unsaved motor-accessory edits when the control or power selection changes",()=>{
+    const motorKey=JSON.stringify(["d","Motorized","Norman Smart Rechargeable Battery (AC Charger)"]);
+    const draft={...newChargingDraft(motorKey,emptySmartfoldCharging()),record};
+    const manualKey=JSON.stringify(["d","PrecisionLift Cordless",""]);
+    const next=syncChargingDraft(draft,manualKey,emptySmartfoldCharging());
+    expect(next.record).toEqual(emptySmartfoldCharging());
+    expect(chargingDraftDirty(next)).toBe(false);
+    expect(smartfoldCharging(shade({lift_system:"PrecisionLift Cordless",motor_type:null,[KEY]:next.record}))?.issues).toEqual([]);
+    expect(smartfoldCharging(shade({lift_system:"PrecisionLift Cordless",motor_type:null,[KEY]:record}))?.issues.map(i=>i.ruleId)).toEqual(expect.arrayContaining(["smartfold.charging.kit_power","smartfold.charging.cable_power"]));
+  });
   it("recognizes same-date saved r6 without applying new charging rules",()=>{
     const s=shade({[KEY]:record});s.catalogVersion=quoteV2CatalogVersionFor("smartfold","2026-09-19");
     expect(isRecognizedQuoteV2Catalog("smartfold",s.catalogAsOf,s.catalogVersion)).toBe(true);

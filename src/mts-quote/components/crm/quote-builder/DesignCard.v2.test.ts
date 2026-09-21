@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   BACK_FABRIC_CODE_DETAIL,
   BACK_FABRIC_COLOR_ID_DETAIL,
+  clearSmartfoldMotorizationOptions,
   buildAuthoritativeShutterRouteUpdate,
   buildCatalogSelectionPatch,
   buildCleanCatalogSelectionOptions,
@@ -1623,5 +1624,15 @@ describe("exact Norman configuration entry", () => {
       expect(isStandardShutterComplete({...saved, options_json:{...saved.options_json, catalog_program_id:"unknown"}}, true)).toBe(false);
       expect(isStandardShutterComplete(saved, false)).toBe(false);
     }
+  });
+});
+
+
+describe("SmartFold control transitions", () => {
+  it("clears incompatible order charging extras and motor allocation without losing fabric hardware", () => {
+    const before = { power_configuration: "Rechargeable", motorization_selections: [{ optionId: "charging_kit" }], hub_required: true, dc_power_supply: "18-channel", shared_power_panel_id: "panel-1", smartfold_charging_v1: {version:1, extraChargingKits:2, extensionCables:3, extensionColor:"Black"}, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic" };
+    const after = clearSmartfoldMotorizationOptions(before);
+    expect(after).toMatchObject({power_configuration:null, motorization_selections:[], hub_required:null, dc_power_supply:null, shared_power_panel_id:null, smartfold_charging_v1:null, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic"});
+    expect(before.smartfold_charging_v1.extraChargingKits).toBe(2);
   });
 });

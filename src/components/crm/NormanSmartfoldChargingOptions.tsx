@@ -5,7 +5,7 @@ import { SMARTFOLD_CHARGING_KEY, emptySmartfoldCharging, parseSmartfoldCharging,
 export function NormanSmartfoldChargingOptions({design,quantity,onUpdateFields}:{design:SalesQuoteDesign|undefined;quantity:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}) {
   const options=(design?.options_json??{}) as Record<string,unknown>;
   const incoming=parseSmartfoldCharging(options[SMARTFOLD_CHARGING_KEY])??emptySmartfoldCharging();
-  const key=design?.id??"",serialized=JSON.stringify(incoming);
+  const key=JSON.stringify([design?.id??"",design?.lift_system??options.lift_system??"",design?.motor_type??options.motor_type??""]),serialized=JSON.stringify(incoming);
   const [state,setState]=useState(()=>newChargingDraft(key,incoming));
   useEffect(()=>{setState(s=>syncChargingDraft(s,key,JSON.parse(serialized) as SmartfoldCharging));},[key,serialized]);
   const edit=(patch:Partial<SmartfoldCharging>)=>setState(s=>({...s,record:{...s.record,...patch}}));
