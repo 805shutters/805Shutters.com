@@ -1,4 +1,5 @@
 import {parseNormanBifold90,type NormanBifold90Record} from './norman-shutter-bifold90';
+import {parseNormanFrenchDoorRecord,type NormanFrenchDoorRecord} from './norman-shutter-french-door';
 import {parseNormanDoubleHungRecord,type NormanDoubleHungRecord} from './norman-shutter-double-hung';
 import {parseNormanSpecialtyRecord,type NormanSpecialtyRecord} from './norman-shutter-specialty';
 import {parseNormanBypassRecord,type NormanBypassRecord} from './norman-shutter-bypass';
@@ -24,6 +25,7 @@ export type NormanShutterPanelRecord = {
   bypass?: NormanBypassRecord;
   specialty?: NormanSpecialtyRecord;
   doubleHung?: NormanDoubleHungRecord;
+  frenchDoor?: NormanFrenchDoorRecord;
   regularHangStripPlacement?: '' | 'beside' | 'behind';
 };
 export function normanPanelMaxHeight(programId:string){return ['brightwood','normandy_painted','normandy_stained'].includes(programId)?132:120;}
@@ -43,6 +45,7 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   if(r.panels.some(p=>p.wholePanelLouverCount!==undefined&&p.wholePanelLouverCount!==null&&(typeof p.wholePanelLouverCount!=='number'||!Number.isFinite(p.wholePanelLouverCount))))return null;
   if(r.panels.some(p=>p.singleLouverNoMouseHole!==undefined&&![null,true,false].includes(p.singleLouverNoMouseHole)))return null;
   if(r.regularHangStripPlacement!==undefined&&(typeof r.regularHangStripPlacement!=='string'||!['','beside','behind'].includes(r.regularHangStripPlacement)))return null;
+  if(r.frenchDoor!==undefined&&!parseNormanFrenchDoorRecord(r.frenchDoor))return null;
   if(r.doubleHung!==undefined&&!parseNormanDoubleHungRecord(r.doubleHung))return null;
   if(r.specialty!==undefined&&!parseNormanSpecialtyRecord(r.specialty))return null;
   if(r.bypass!==undefined&&!parseNormanBypassRecord(r.bypass))return null;

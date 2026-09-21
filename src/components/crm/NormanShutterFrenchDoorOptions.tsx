@@ -1,0 +1,19 @@
+"use client";
+import {normanFrenchDoorTypes,normanFrenchDoorBattenType,normanFrenchDoorBatten,normanFrenchDoorFrames,type NormanFrenchDoorRecord} from '@/lib/quote/norman-shutter-french-door';
+export function NormanShutterFrenchDoorOptions({value,programId,louver,onChange,onSinglePanel}:{value:NormanFrenchDoorRecord|undefined;programId:string;louver:unknown;onChange:(value:NormanFrenchDoorRecord)=>void;onSinglePanel:()=>void}){
+ const r=value??{version:1,panelDirection:'',cutoutType:'',topShape:'',lFrameCode:'',measurementFormReference:''};
+ const update=(patch:Partial<NormanFrenchDoorRecord>)=>onChange({...r,...patch}),types=normanFrenchDoorTypes(programId),batten=normanFrenchDoorBattenType(r.cutoutType),dimensions=normanFrenchDoorBatten(louver);
+ const cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
+ if(!types.length)return <p className="text-sm text-amber-900">The pinned Woodlore guide does not establish French-door cutout types. A program-specific manufacturer schedule is required.</p>;
+ return <div className="space-y-3" data-testid="norman-french-door-options">
+  <label className="block text-sm">Manufacturer French-door cutout type<select aria-label="Norman French-door cutout type" className={cls} value={r.cutoutType} onChange={e=>update({cutoutType:e.target.value as NormanFrenchDoorRecord['cutoutType'],lFrameCode:'',topShape:''})}><option value="">Select source type</option>{types.map(t=><option key={t} value={t}>Type {t}</option>)}</select></label>
+  <label className="block text-sm">Single panel direction<select aria-label="Norman French-door panel direction" className={cls} value={r.panelDirection} onChange={e=>update({panelDirection:e.target.value as NormanFrenchDoorRecord['panelDirection']})}><option value="">Select</option><option value="L">L</option><option value="R">R</option></select></label>
+  <p className="text-sm">Use the exact type shown on the manufacturer measurement form. All six types require one panel.</p>
+  <button type="button" className={cls} onClick={onSinglePanel}>Use one French-door panel</button>
+  <label className="block text-sm">Top shape<select aria-label="Norman French-door top shape" className={cls} value={r.topShape} onChange={e=>update({topShape:e.target.value as NormanFrenchDoorRecord['topShape']})}><option value="">Select</option><option value="rectangular">Rectangular</option>{!batten&&<><option value="arch">Arch</option><option value="quarter_arch">Quarter arch</option></>}</select></label>
+  {!batten&&<label className="block text-sm">French-door L frame<select aria-label="Norman French-door L frame" className={cls} value={r.lFrameCode} onChange={e=>update({lFrameCode:e.target.value})}><option value="">Select L frame</option>{normanFrenchDoorFrames(programId).map(f=><option key={f.code} value={f.code}>{f.label}</option>)}</select><span className="block text-xs">A–D require Outside Mount. Quarter-inch light-block L frames are unavailable. Saving updates the main frame identity.</span></label>}
+  {batten&&<p className="text-sm text-slate-600">Type {r.cutoutType} uses a batten behind the panel{dimensions?`: ${dimensions.widthInches} inch wide × ${dimensions.thicknessInches} inch thick`:'. Select a louver size for its source dimensions'}. No arch top or panel lock. The batten assembly's final geometry and price require manufacturer confirmation; a regular-frame price is not approval.</p>}
+  <label className="block text-sm">Measurement form / drawing reference<input aria-label="Norman French-door measurement form reference" className={cls} value={r.measurementFormReference} onChange={e=>update({measurementFormReference:e.target.value})}/></label>
+  <p className="text-sm text-amber-900">Cutout dimensions, fixed-louver treatment, template acceptance and final manufacturing remain on hold. A form reference alone is not factory approval.</p>
+ </div>;
+}
