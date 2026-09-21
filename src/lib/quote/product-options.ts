@@ -1,3 +1,4 @@
+import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "./sundance/assembly-records";
 import { SUNDANCE_DRAPERY_TRACK_ID, sundanceDraperyTrackFields } from "./sundance/drapery-track";
 import { PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
 import { PERFECTSHEER_WAND_LENGTHS } from "@/lib/quote-v2/norman-perfectsheer-motor-accessories";
@@ -1087,6 +1088,7 @@ export function getMotorizationGroupsForProduct(productId: string): string[] {
 }
 
 export function detailDisplayValue(productId: string, fieldId: string, value: unknown): string | null {
+  if(productId.startsWith("sundance_") && fieldId === SUNDANCE_ASSEMBLY_KEY) return sundanceAssemblyDescriptions(value).join(" | ") || null;
   const field = getDetailFieldsForProduct(productId).find((f) => f.id === fieldId);
   if (!field) return null;
   if (field.type === "checkbox") {

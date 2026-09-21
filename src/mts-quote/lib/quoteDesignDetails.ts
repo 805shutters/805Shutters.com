@@ -1,6 +1,7 @@
 import { parseRollerHardware, ROLLER_HARDWARE_KEY } from "@/lib/quote/norman-roller-hardware";
 import { parseSmartfoldCharging, SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
 import { parseSmartfoldClearance, SMARTFOLD_CLEARANCE_KEY } from "@/lib/quote/norman-smartfold-clearance";
+import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "@/lib/quote/sundance/assembly-records";
 import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
@@ -151,6 +152,14 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
     if (key === "motor_position" && (pairedRoman || (design.supplier === "Norman" && design.product_type === "Roman Shades" && !/motor/i.test(String(design.lift_system))))) return;
     if (pairedRomanChains && key === "chain_location") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
+
+    if (key === SUNDANCE_ASSEMBLY_KEY) {
+      for (const description of sundanceAssemblyDescriptions(value)) {
+        const separator = description.indexOf(":");
+        details.push({label:description.slice(0,separator),value:description.slice(separator+1).trim()});
+      }
+      return;
+    }
 
     if (key === "surcharges" && Array.isArray(value)) {
       const surchargeText = value

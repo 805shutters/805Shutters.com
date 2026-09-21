@@ -16,6 +16,7 @@ import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
 import { validateSundanceStockVerticalConfiguration } from "@/lib/quote/sundance/stock-vertical-configuration";
+import {validateSundanceAssembly} from '@/lib/quote/sundance/assembly-validation';
 import { sundanceRollerFamilyIds,validateSundanceShadeConfiguration } from "@/lib/quote/sundance/shade-configuration";
 import { validateSundanceWaldenConfiguration } from "@/lib/quote/sundance/walden-configuration";
 import { validateSundanceHorizontalConfiguration } from "@/lib/quote/sundance/horizontal-configuration";
@@ -2437,6 +2438,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateLotusVertical(context));
   issues.push(...validateLotusObservedOffering(context));
   issues.push(...(romanFabricLimits(context)?.issues ?? []));
+  if(context.productId.startsWith("sundance_")) issues.push(...validateSundanceAssembly(context));
   issues.push(...validateNormanFamilyRules(context));
   if (sundanceRollerFamilyIds.includes(context.productId)) issues.push(...validateSundanceShadeConfiguration(context));
   if (["sundance_walden_premier","sundance_walden_select"].includes(context.productId)) issues.push(...validateSundanceWaldenConfiguration(context));

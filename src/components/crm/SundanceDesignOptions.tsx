@@ -1,4 +1,5 @@
 "use client";
+import { SundanceAssemblyOptions } from "./SundanceAssemblyOptions";
 import { SundanceCellularConfiguration } from "./SundanceCellularConfiguration";
 import { sundanceCellularColors, sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
 import { sundanceDraperyTrackFields } from "@/lib/quote/sundance/drapery-track";
@@ -14,9 +15,10 @@ import { SundanceShadeOptions } from "./SundanceShadeOptions";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 /** Source-backed identity capture while the manufacturer's full pricing rules remain gated. */
-export function SundanceDesignOptions({ design, productId, onUpdateFields, widthInches, heightInches }: {
+export function SundanceDesignOptions({ design, productId, onUpdateFields, widthInches, heightInches, isAssemblyComponent = false }: {
   design: Pick<SalesQuoteDesign, "options_json"> | undefined;
   productId: string;
+  isAssemblyComponent?: boolean;
   widthInches?: number; heightInches?: number;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
@@ -48,5 +50,6 @@ export function SundanceDesignOptions({ design, productId, onUpdateFields, width
         <option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </label>)}
+    {!isAssemblyComponent && <SundanceAssemblyOptions productId={productId} options={options} widthInches={widthInches} heightInches={heightInches} onUpdateFields={onUpdateFields} renderComponent={(component, update) => <SundanceDesignOptions productId={component.productId} design={{options_json:component.configuration}} widthInches={component.widthInches ?? undefined} heightInches={component.heightInches ?? undefined} onUpdateFields={update} isAssemblyComponent />} />}
   </section>;
 }

@@ -44,3 +44,9 @@ The exhaustive captured menu ledger remains [sundance-dealer-ledger-2026-09-20.c
 Live vertical/horizontal/Zebra control and accessory persistence on release0fcacb9b is recorded in [sundance-live-vertical-horizontal-zebra-controls-2026-09-20.md](sundance-live-vertical-horizontal-zebra-controls-2026-09-20.md).
 
 Walden control and depth-boundary persistence on72db3c04: [sundance-live-walden-controls-2026-09-20.md](sundance-live-walden-controls-2026-09-20.md). Six-family rule/schedule accounting: [sundance-roller-family-rules-2026-09-20.md](sundance-roller-family-rules-2026-09-20.md).
+
+## Component-model increment
+
+Versioned, independently editable and validated common-headrail/dual/coupled shade records are implemented; see [sundance-assembly-records-2026-09-20.md](sundance-assembly-records-2026-09-20.md). This closes the loss of individual component identity/dimensions/control in saved JSON. Complete assembly geometry, mixed controls and charge allocation remain implementation work. Walden twin roles, Europanel panel geometry and order-wide shared accessories remain separate explicit branches.
+
+Stock Vertical Essence cut-down/pickup rules are implemented by the parent in b81e0534 and deployed in4b2bd345; independent production proof is in progress. Six-family controls/schedules are deployed in4b2bd345; source behaviors await live proof. Walden controls already have live72db3c04 save/reopen proof linked above.
