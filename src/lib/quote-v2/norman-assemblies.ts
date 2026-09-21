@@ -296,6 +296,12 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     if (romanControls.length && suppliedRemotes === 0 && !members.some(m=>String(m.accessories.record.controller?.existingRemoteWorkOrder ?? "").trim())) {
       for (const {line} of romanControls) issues.push({severity:"hard_block",ruleId:"roman.motorization.order_remote_required",source:source(first.family === "automate_home"?76:24),selectedValues:{lineId:line.lineId},explanation:"Supply at least one compatible remote for this motor network or identify the previous remote work order."});
     }
+    // A controller on a different physical network cannot operate these shades.
+    // Scope the corrected rule to the new catalog so saved r8 evidence is unchanged.
+    const perfectsheerControls = members.filter(m => m.line.selection.productId === "perfectsheer" && m.line.selection.catalogVersion.endsWith("-norman-perfectsheer-networks-2026-09-20-r9"));
+    if (perfectsheerControls.length && suppliedRemotes === 0 && !members.some(m=>String(m.accessories.record.controller?.existingRemoteWorkOrder ?? "").trim())) {
+      for (const {line} of perfectsheerControls) issues.push({severity:"hard_block",ruleId:"perfectsheer.motorization.order_remote_required",source:source(first.family === "automate_home"?76:43),selectedValues:{lineId:line.lineId,network:first.network,family:first.family},explanation:"Supply at least one compatible remote on this motor network or identify the previous remote work order for this network. A control assigned to a different network does not satisfy this requirement."});
+    }
     for(const {line} of members) {
       const networkSourcePage=line.selection.productId === "roman" ? first.family === "automate_home" ? 76 : 24 : line.selection.productId === "honeycomb" ? first.family === "automate_home" ? 68 : 15 : line.selection.productId === "smartdrape" ? 49 : first.family === "automate_home" ? 76 : 43;
       if(repeaters>capacity)issues.push({severity:"hard_block",ruleId:line.selection.productId === "roman" ? "norman.roman.network_repeater_capacity" : "norman.perfectsheer.network_repeater_capacity",source:source(networkSourcePage),selectedValues:{lineId:line.lineId,network:first.network,repeaters,capacity},explanation:`This motor network has ${repeaters} repeaters; its maximum is ${capacity}. Assign separate network numbers only for physically separate systems.`});
