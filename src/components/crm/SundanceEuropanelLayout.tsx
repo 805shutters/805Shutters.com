@@ -1,0 +1,17 @@
+'use client';
+import type{SelectionRecord}from'@/lib/quote-v2/core';
+import{SUNDANCE_EUROPANEL_LAYOUT_KEY as KEY,readSundanceEuropanelLayout,createSundanceEuropanelLayout,sundanceEuropanelLayoutIssues,type SundanceEuropanelLayout as Layout}from'@/lib/quote/sundance/europanel-layout';
+export function SundanceEuropanelLayout({productId,options,widthInches,heightInches,onChange}:{productId:string;options:Record<string,unknown>;widthInches:number;heightInches:number;onChange:(c:Record<string,unknown>)=>void}){
+ const r=readSundanceEuropanelLayout(options[KEY]),count=Number(options.sundance_shade_panel_count),classes='w-full rounded border p-2';
+ const save=(layout:Layout)=>onChange({...options,[KEY]:layout});
+ const patch=(index:number,key:'width'|'height'|'channel',value:string)=>r&&save({...r,panels:r.panels.map((p,i)=>i===index?{...p,[key]:value===''?null:Number(value)}:p)});
+ return <details className="space-y-2 rounded border p-3"><summary>Measured Europanel layout</summary><p className="text-sm">Record each fabric panel separately when a measured layout is available. Opening dimensions do not determine panel widths. The guide does not provide overlap or deductions; factory confirmation remains required. Channel numbers record the entered layout and do not establish stacking compatibility.</p>
+ {!r?<button type="button" disabled={![2,3,4,5].includes(count)} onClick={()=>{const next=createSundanceEuropanelLayout(productId,options,widthInches,heightInches,Array.from({length:count},()=>crypto.randomUUID()));if(next)save(next);}}>Create measured panel layout</button>:<>
+ {r.panels.map((p,i)=><fieldset key={p.id} className="space-y-2 rounded border p-2"><legend>Panel {i+1}</legend>{(['width','height'] as const).map(key=><label key={key}>Measured {key} (inches)<input className={classes} type="number" min="0" step="0.0625" aria-label={`Sundance Europanel ${i+1} ${key}`} value={p[key]??''} onChange={e=>patch(i,key,e.target.value)}/></label>)}<label>Track channel (if confirmed)<select className={classes} aria-label={`Sundance Europanel ${i+1} channel`} value={p.channel??''} onChange={e=>patch(i,'channel',e.target.value)}><option value="">Unconfirmed</option>{Array.from({length:[4,5].includes(Number(options.sundance_shade_channels))?Number(options.sundance_shade_channels):0},(_,i)=><option key={i+1}>{i+1}</option>)}</select></label><button type="button" onClick={()=>save({...r,panels:r.panels.filter((_,n)=>n!==i)})}>Remove measured panel {i+1}</button></fieldset>)}
+ <button type="button" disabled={r.panels.length>=5} onClick={()=>save({...r,panels:[...r.panels,{id:crypto.randomUUID(),width:null,height:null,channel:null}]})}>Add measured panel</button>
+ <label>Factory layout notes<textarea className={classes} aria-label="Sundance Europanel layout notes" value={r.notes} onChange={e=>save({...r,notes:e.target.value})}/></label>
+ {(r.productId!==productId||r.fabricId!==options.fabric_color_id||r.openingWidth!==widthInches||r.openingHeight!==heightInches)&&<button type="button" onClick={()=>save({...r,productId,fabricId:String(options.fabric_color_id??''),openingWidth:widthInches,openingHeight:heightInches})}>Reconfirm existing panel measurements for current selection</button>}
+ </>}
+ {sundanceEuropanelLayoutIssues({productId,configuration:options as SelectionRecord,widthInches,heightInches}).map((message,i)=><p role="alert" key={i}>{message}</p>)}
+ </details>;
+}

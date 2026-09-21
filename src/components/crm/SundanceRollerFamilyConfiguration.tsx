@@ -1,4 +1,5 @@
 'use client';
+import {SundanceEuropanelLayout} from './SundanceEuropanelLayout';
 import {SundancePrivacyPieces} from './SundancePrivacyPieces';
 import type {SalesQuoteDesign} from '@mts/types/quote';
 import type {SelectionRecord} from '@/lib/quote-v2/core';
@@ -16,6 +17,7 @@ export function SundanceRollerFamilyConfiguration({productId:p,options:c,widthIn
  {control?.power==='manual'&&control.name!=='Cordless'&&<>{select('sundance_shade_chain','Chain',sundanceRollerChains)}{select('sundance_shade_control_side','Control side',['Left','Right'])}</>}
  {select('sundance_shade_railroad','Railroad fabric',['No','Yes'])}
  </>}
+ {kind==='europanel'&&<SundanceEuropanelLayout productId={p} options={c} widthInches={widthInches} heightInches={heightInches} onChange={options=>onUpdateFields({options_json:options})}/>}
  {select('sundance_shade_assembly','Assembly',kind==='roller'?['Single','Two on one','Dual independent','Coupled motorized']:kind==='roman'?['Single','Two on one']:['Single'])}
  {kind==='roller'&&<>
  {select('sundance_shade_roll','Roll',['Standard','Reverse'])}

@@ -1,3 +1,4 @@
+import {validateSundanceEuropanelLayout} from './europanel-layout';
 import {sundancePrivacyPieceEvidence} from './privacy-pieces';
 import type {SelectionContext,ValidationIssue} from '@/lib/quote-v2/core';
 import {sourceProvenance} from '@/lib/quote-v2/source-manifest';
@@ -57,6 +58,7 @@ export function validateSundanceShadeConfiguration(s:Pick<SelectionContext,'prod
  if(kind==='roman'&&control?.name==='Cordless'&&/blackout|darkening/i.test(collection?.privacyType??'')&&(s.widthInches>84||s.heightInches>84))add('cordless_blackout','Flat Roman cordless blackout is limited to 84 × 84 inches.',source.optionPage);
  if(control?.oversize&&!['2½-inch','3¼-inch'].includes(String(c.sundance_shade_tube)))add('oversize_tube','This motor explicitly requires an oversized tube; motor size limits do not establish the tube surcharge for every smaller shade.');
  if(kind==='europanel'){
+  issues.push(...validateSundanceEuropanelLayout(s));
   if(c.mount_type!=='Outside')add('mount','Europanels are available as outside mount only. The order-form inside checkbox does not override the specification.',5);
   if(!['Left','Right'].includes(String(c.sundance_shade_wand)))add('wand','Choose left or right wand control.');
   if(!['Left','Right'].includes(String(c.sundance_shade_stack)))add('stack','Choose one-way left or right panel stack.');
