@@ -23,3 +23,11 @@ Copying from Bi-fold exposed a stale regular-panel stile validation message on t
 ## Divider-independent split proof on 850ed5f1
 
 Copied A into separate0353C. Kept both panels No divider rail. Saved Split Tilt Yes; panel1 Custom with frame-bottom datum/reference64.5, requested location32.25 to top of closed louver, exact-locationYes and explicit reference confirmation; panel2 Equal by louver count, without inventing a numeric center. Saved negative panel1 location64.5625 plus unchecked reference confirmation returned both explicit position/reference server failures. Restoring32.25 and confirmation removed both while retaining actual louver/final-rail and application holds. Closed/reopened0353C: modes, datum/reference, exact election,32.25 and checked reference confirmation persisted; no phantom divider rails appeared. Draft remains unsendable. Actual section-count entry is in the next release and is not claimed verified by this proof.
+
+## Actual section-count and bypass-routing proof on 4c38a3e4
+
+Reloaded the production CRM and used existing 0353C. Saved synthetic panel 1 section counts 1/8 (bottom/top) and panel 2 Equal counts 8/9. The saved server audit rejected the one-louver outer section and the misplaced extra odd louver. Restored panel 1 to 8/8 and panel 2 to 9/8, saved, and verified both count errors disappeared. Application geometry and final rail/layout verification holds remained. These are test inputs, not a factory-approved louver layout; the internal job notes explicitly state that limitation.
+
+Closed the builder, reopened 805-0353 and selected C. Verified 8/8 and 9/8 persisted with the original panel 1 custom 32.25-inch location, 64.5-inch frame datum, and panel 2 Equal mode without a fabricated reference height. Job notes persisted; Quote saved, no unsaved panel changes, and Send Quote disabled.
+
+Selected saved 0353B and reopened its pricing audit. The stale regular-panel stile error is gone. Closed Bypass, two 24×60 panels, Semi-Inside Mount, both side frames, interlocking guide Yes, and 47.875×61.125 source reference all persisted. Only the specialized-construction verification message remained in Saved configuration. Known base cost $262 remains explicitly incomplete; these proofs do not approve track pricing or landed cost.
