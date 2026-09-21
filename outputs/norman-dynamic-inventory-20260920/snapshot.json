@@ -1,0 +1,14 @@
+{
+  "revision": "ce375e05bc8532833ab1a1be7b784b27820c43ac",
+  "export_sha256": "d84af42467cf9f9e1b64dc4a0a8b75aa76514fe48328ba905bd3fb28ad4aba2b",
+  "export_product_count": 21,
+  "review_product_count": 21,
+  "scanned_files": 97,
+  "counts": {
+    "controls": 616,
+    "typed_fields": 641,
+    "validation_occurrences": 967,
+    "configuration_reads": 1198
+  },
+  "method": "Static occurrences, not exhaustive valid combinations. Exact runtime guards and module source references retained. A repeated field at separate callsites is intentionally a separate occurrence."
+}

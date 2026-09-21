@@ -1,0 +1,314 @@
+[
+  {
+    "product_id": "citylights_aluminum",
+    "module_patterns": [
+      "norman-citylights",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Slat/finish/privacy compatibility; measured mounting depth/fit; wand drop; bracket method; shims/hold-downs; matching group and per-blind widths",
+    "saved_record": "options_json.citylights_*; mount_depth_inches; citylights_matching_v1; server hardware/assembly snapshots",
+    "source_pages": "CityLights Guide pp4,7\u201310,15\u201319; matching p17",
+    "pricing_status": "Documented normal branches priced; half-inch availability held",
+    "production_proof": "805-0323; RESULTS.md live table; total863.50",
+    "remaining_classification": "External: half-inch current availability, account factors/fees. Verification: exhaustive cross-product combinations. No missing dynamic control confirmed in this review."
+  },
+  {
+    "product_id": "faux_wood",
+    "module_patterns": [
+      "norman-ultimate-",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "1/3 independent blind widths; wand, recess, shim and bracket controls; valance custom width/returns; keystone count/custom positions; measured left/right corner or middle cut-outs; common/matching groups",
+    "saved_record": "options_json.ultimate_*; faux_blind_*; ultimate_common_valance_v1; ultimate_matching_v1; server component hardware",
+    "source_pages": "Ultimate Faux Guide pp6\u201315; common pp7,11,12,14; matching p13; cut-outs p15",
+    "pricing_status": "Normal source-backed branches priced; common/custom width and multiple-keystone price basis held",
+    "production_proof": "805-0321,0322; RESULTS.md total363.65/727.30",
+    "remaining_classification": "Implementation: standalone valance destination absent (Guide p11 explicitly permits valance-only orders with max384-inch inner length). External: standalone account price; common/custom charge basis; >1 keystone charges; final inside grid cell."
+  },
+  {
+    "product_id": "honeycomb",
+    "module_patterns": [
+      "norman-honeycomb-",
+      "honeycomb-",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Fabric/cell/lift/application matrix; separate rear fabric/cell; specialty NET dimensions and confirmations; measured mount fit/depth; guard/holder and bracket hardware; poles/magnets; remote/network/panel and counted accessories; charging clearance",
+    "saved_record": "options_json honeycomb_* and specialty/net fields; norman_assembly_v1; server hardware/mounting records; motorization_selections",
+    "source_pages": "Honeycomb Guide pp6\u201310,36\u201338,45,47\u201349 and generated matrix page references; Motorization pp10\u201318,66\u201369,80\u201382",
+    "pricing_status": "Normal supported standard and bounded specialty branches price; unresolved dual/specialty geometry remains held",
+    "production_proof": "805-0319;0343 mounting454;0345 charging1439;0347 specialty543; RESULTS/source-specific production JSON",
+    "remaining_classification": "Implementation review needed: remaining framed dual/Day & Night surcharge assembly versus guide exact rear/section dimensions. External: ambiguous charging minimum-height wording and dealer-account factors. Source-backed controls are implemented, export incomplete."
+  },
+  {
+    "product_id": "vertical_honeycomb",
+    "module_patterns": [
+      "norman-honeycomb-vertical",
+      "norman-vertical-pair",
+      "honeycomb-",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Patio-door cell/fabric/application; left/right measured panels and split location; cut-out rail; predrilled/bracket installation/shims; Butt Together pair ID and side",
+    "saved_record": "options_json.vertical_*; vertical_honeycomb_pair_v1; norman_assembly_v1",
+    "source_pages": "Honeycomb Guide pp7,36\u201338,47,49",
+    "pricing_status": "Documented standard and validated pair priced; unsupported combinations blocked",
+    "production_proof": "805-0319 vertical950;0344 Butt Together2647 with mismatched-height negative; RESULTS.md",
+    "remaining_classification": "Verification: full combination coverage; no new missing source-backed field found. Dealer factors/fees still external."
+  },
+  {
+    "product_id": "roller",
+    "module_patterns": [
+      "norman-roller-",
+      "roller-",
+      "NormanRoller",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Single/dual/coupled/common application; all measured component widths/gaps/net/order bases; fabric matrix/tube/top treatment/power grouping; installation/shims/raceway; common membership/custom finished width/returns; shared18-motor panel",
+    "saved_record": "roller_hardware_v1; roller_common_choice_v1; derived roller_common_valance_v1; motorization_selections and norman_assembly_v1; component fields",
+    "source_pages": "Roller Guide pp19,33\u201341,53\u201358,74; min/max matrices retain row source; Motorization p75",
+    "pricing_status": "Normal documented branches priced; shared-common price basis remains held",
+    "production_proof": "805-0346 hardware1332;0350 panel13121/19-motor negative;0349 common held; outputs/onyx-audit-20260920 roller proof docs",
+    "remaining_classification": "Implementation: common-valance maximum tube upgrade is currently a mismatch blocker, not automatic group sizing. External: common charge allocation/width, material roll-width authority, custom bracket formula rounding. Do not blanket enable."
+  },
+  {
+    "product_id": "roman",
+    "module_patterns": [
+      "norman-roman-",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Current front/rear fabric identity; independent day/night lining and pattern; railroad/seam width rules; banding color; common left/right widths/motors; mounting/returns, custom chain; magnet/shim/pole total; shared panel and mixed adapter accessory allocations",
+    "saved_record": "options_json.roman_*; roman/common dimensions; norman_assembly_v1; motorization_selections; finished-size/matching hardware records",
+    "source_pages": "Roman Guide pp2,21,34,46,50 plus exact sourcePage per fabric limits; Motorization pp21,23; Retail pp26\u201327 absolute",
+    "pricing_status": "Documented shade branches priced; account-specific costs not certified",
+    "production_proof": "805-0327\u20130331;0332;0336;0338; RESULTS.md A\u2013H proof",
+    "remaining_classification": "No concrete missing shade input confirmed. Remaining dealer comparisons/exhaustive combinations are proof work. Ancillaries inventoried as separate destinations."
+  },
+  {
+    "product_id": "perfectsheer",
+    "module_patterns": [
+      "norman-perfectsheer-",
+      "norman-perfectsheer.ts",
+      "norman-valance-gaps",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Tube diameter and valance height/finish/fabric; mount/install/guards/magnets; custom chains; custom/shared valance IDs/positions/gaps/return size/splice positions/At Gaps offset; matching; power/remotes/solar/charging extra counts",
+    "saved_record": "options_json.perfectsheer_*; perfectsheer_common_valance_v1; matching and norman_assembly_v1; motorization_selections",
+    "source_pages": "PS-SD Guide pp32\u201345, common/splice pp36\u201339, guards44\u201345; Motorization pp39,41,74,91",
+    "pricing_status": "Family remains held; saved configurations validated; no universal price claim",
+    "production_proof": "805-0316 and0348 At Gaps persistence/negative checks; RESULTS.md",
+    "remaining_classification": "External: wood-bracket assignment; same-page keystone max3 vs5; common Light Guard charge scope; Automate kit identity. Implementation/proof: bounded eligible branch gating should be assessed separately; broad family hold is not evidence all rules absent."
+  },
+  {
+    "product_id": "smartfold",
+    "module_patterns": [
+      "norman-smartfold-",
+      "norman-valance-gaps",
+      "NormanSmartfold",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Fold/style/finishes and motor/accessories; separate chain length; custom/common valance width/returns/gaps/splice positions/At Gaps offset; side-by-side groups; atomic charging counts; outside two clearances; inside Basic Light Guard recess/full assembly depth",
+    "saved_record": "options_json.smartfold_*; smartfold_charging_v1; smartfold_clearance_v1; norman_assembly_v1; common/matching and mounting records",
+    "source_pages": "SmartFold Guide pp2,5\u20138,14\u201316,19,21,23\u201324,26\u201334,37\u201338; Motorization pp57,94",
+    "pricing_status": "Only September outside/no-valance/current fabric/Norman Smart rechargeable standard branch documented_limited. Other branches remain held",
+    "production_proof": "805-0342 total5023 incl once-only215;0348 At Gaps;0352 inside depth3.5 rejected vs3.52 minimum; smartfold-inside-light-guard-production-20260920.json (parent full reopen in progress at handoff)",
+    "remaining_classification": "Implemented latest inside clearance at snapshot. Source-conflict: custom bracket rounding and remaining roll diameter mapping. Implementation/proof: separately audit source-complete cordless outside and accessory branches before eligibility expansion. October remains date held."
+  },
+  {
+    "product_id": "smartdrape",
+    "module_patterns": [
+      "norman-smartdrape-",
+      "norman-smartdrape.ts",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Stack/control/motor compatibility; pair ID/positions/center keystone; headrail and alternate vane colors; wand drop; installation and pocket depth/height; track joints/brackets/shims; attached vane packs/style; remote/network/charging quantities",
+    "saved_record": "options_json.smartdrape_* plus track/install fields; norman_assembly_v1; smartdrape pair/track/hardware records",
+    "source_pages": "PS-SD Guide pp6\u20137,17\u201324; Motorization pp50\u201351",
+    "pricing_status": "Documented branches validate; exact source gaps and unverified extras held",
+    "production_proof": "805-0318 track190, motor/accessory and100/150 pair persistence; RESULTS.md",
+    "remaining_classification": "External numeric gaps: center-opening bracket94.25\u201394.5; motor pocket8.875\u20139; exact30gap; blankF2128\u20132130aliases. Cross-family motor-accessory allocation requires implementation review separate from these gaps."
+  },
+  {
+    "product_id": "smartprivacy_faux",
+    "module_patterns": [
+      "norman-smartprivacy",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Measured1/3 independent blinds; six finish identities; wand and mount fit/depth; return sides/custom return length/custom single valance; shim layers; side support/method/hold-downs",
+    "saved_record": "options_json.smartprivacy_*; faux_blind_*; server independent-blind hardware record",
+    "source_pages": "SmartPrivacy Guide pp5\u201311; standalone availability p4",
+    "pricing_status": "Normal branches priced; beyond-final-grid/standalone held",
+    "production_proof": "805-0320 total283.86; RESULTS.md",
+    "remaining_classification": "Implementation: standalone valance destination absent, Guide p10 explicitly permits max384-inch valance-only inner length; >96 splits equally, no custom splits/keystones. External: current standalone cost and final inside-width grid price. Common valances/cutouts unavailable; must not expose inherited options."
+  },
+  {
+    "product_id": "synchrony_vertical",
+    "module_patterns": [
+      "norman-synchrony",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Source color ordering codes; hardware color; stack/draw/control compatibility; wand drop; shim count; mount depth; side-by-side position",
+    "saved_record": "options_json.vertical_* and mount_depth_inches; norman_assembly_v1 hardware",
+    "source_pages": "Vertical Blinds Guide pp4\u201312 and source rows; see module-source-index exact branch citations",
+    "pricing_status": "Normal source retail priced; cost factor applicability unresolved",
+    "production_proof": "805-0313 total386; RESULTS.md",
+    "remaining_classification": "No new missing source-backed control confirmed. External: account .30 observed vs CRM .33; freight/processing. No factor substituted."
+  },
+  {
+    "product_id": "palladian_shelf",
+    "module_patterns": [
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Ordered vs custom shelf width; depth increments; supported weight; current coded finish; accompanying product/line selection; grouped quantity and deductions",
+    "saved_record": "options_json.shelf_*; accompanying_product_id/line ID; server linked shelf assembly",
+    "source_pages": "Palladian Guide pp5\u20138; Retail p37",
+    "pricing_status": "With-product schedule supported; standalone authoritative freight held",
+    "production_proof": "805-0312 linked;0314 standalone qty2 depth2.125 weight20; RESULTS.md",
+    "remaining_classification": "External: standalone freight and account factor. Control/linked server calculations implemented; exported fields miss numeric dimensions and order link."
+  },
+  {
+    "product_id": "wood_blinds",
+    "module_patterns": [
+      "norman-wood",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "Measured mount/depth/fit; source-date wand; valance/custom returns/width; keystone1\u20133 positions; side support/shims/hold-downs; measured left/right cut-outs; common and matching groups",
+    "saved_record": "options_json.wood_*; wood_common_valance_v1; wood_matching_v1; hardware record",
+    "source_pages": "Ultimate Wood Guide pp6\u201320, matching18/common17/cutout19\u201320; dealer valance portal evidence2026-09-19",
+    "pricing_status": "Supported standard/validated valances priced; short-wand running-change and ambiguous depths/grid held",
+    "production_proof": "805-0325 pair1653/custom835.50;0341 total609.90 restored17.75 wand; RESULTS.md",
+    "remaining_classification": "Standalone valance listing not confirmed from this guide extraction; do not promote it as a new source-backed offering. Potential stale cutout_common family guard if legacy application label common remains set despite complete typed group; source19 permits outer only and assemblies already validate this. External:1.375vs1.625minimumdepth, short wand running change, final grid."
+  },
+  {
+    "product_id": "norman_shutters",
+    "module_patterns": [
+      "norman-shutter-",
+      "NormanShutter",
+      "NormanBifold",
+      "norman-family-rules.ts",
+      "norman-assemblies.ts",
+      "rules.ts"
+    ],
+    "dynamic_scope": "All six program-specific finish/frame/louver/hinge/tilt choices; frame sides/mount/measurement geometry; atomic panel height/divider/application/motor record; BiFold180 stack/layout/panel widths/mount surface; typed casing/header/fascia/baseboard/buildout/pivot/light-block",
+    "saved_record": "options_json shutter construction; norman_shutter_panels_v1 with bifold180; nested construction geometry records; authoritative derived snapshots",
+    "source_pages": "Six program binders; regular frame and panel pages per modules; BiFold180 j1 pp2\u20135; Aqua Open Bypass p93; module-source-index preserves per-program pages",
+    "pricing_status": "All six price held: account rates/surcharges not approved; unsupported shape/track branches also held",
+    "production_proof": "805-0326 all six atomic save/full reload; BiFold180 latest code atce375e05 needs own final live proof pointer",
+    "remaining_classification": "Implementation/source audit: full specialty shapes, remaining track types and divider location geometry not implemented exhaustively. Do not call all unknown evidence: binder geometry can support further scoped implementations. Account rates remain external."
+  },
+  {
+    "product_id": "norman_roman_fabric_by_yard",
+    "module_patterns": [
+      "norman-roman-ancillary",
+      "NormanRomanAncillary"
+    ],
+    "dynamic_scope": "Exact source fabric, explicit decimal yards per cut, natural-unit quantity1; no fake opening size",
+    "saved_record": "norman_roman_ancillary_v1 {version,kind:yardage,colorCode,yards}; derived retail reference/unit",
+    "source_pages": "Roman Guide pp34,46,50; Retail September absolute26\u201327",
+    "pricing_status": "All price approval/availability/freight held; group2 September rate missing; fractional increments saved and held",
+    "production_proof": "805-0340 ScarlettF1599 explicit2.5yards persists; RESULTS.md/ancillary production proof",
+    "remaining_classification": "External: fractional increments, currentavailability/freight/priceapproval, group2yardrate. Max10yards validated. No additional input gap confirmed."
+  },
+  {
+    "product_id": "norman_roman_pillow_covers",
+    "module_patterns": [
+      "norman-roman-ancillary",
+      "NormanRomanAncillary"
+    ],
+    "dynamic_scope": "11 source sizes; knife/piping15%; eligible fabric filtering; quote quantity counts covers; no insert or shade dimensions",
+    "saved_record": "norman_roman_ancillary_v1 {version,kind:pillow_cover,colorCode,size,edge}; derived retail reference",
+    "source_pages": "Roman Guide pp34,46,50; September Retail absolute26\u201327",
+    "pricing_status": "All price approval/availability/freight held; retailreference is not approved sellingprice",
+    "production_proof": "805-0340 AlmaF1621 20x20piping qty3 reference123.05 each; RESULTS.md",
+    "remaining_classification": "External: source warns confirmation before order; currentavailability/accountcost/freight. Typed units implemented."
+  },
+  {
+    "product_id": "norman_smartdrape_replacement_vanes",
+    "module_patterns": [
+      "norman-smartdrape-replacement",
+      "NormanSmartdrapeReplacement"
+    ],
+    "dynamic_scope": "Original work order; styleA/B; original single/side-by-side and stack; one/alternate color codes; original vane count; exact vane length; quantity packs of6",
+    "saved_record": "smartdrape_replacement_request_v1 typed record and derived pack reference; exact key in typed-records/source module",
+    "source_pages": "PS-SD Guide p24; conflicting September retail replacement schedule",
+    "pricing_status": "Entire destination held; no source rate invented",
+    "production_proof": "805-0339B naturalpack persistence/customer output blocked; parent Lotus evidence",
+    "remaining_classification": "External: contradictory retail/guideprice,currentwork-orderavailability/freight. All required source inputs selectable and server validated."
+  },
+  {
+    "product_id": "san_clemente_honeycomb",
+    "module_patterns": [
+      "norman-san-clemente",
+      "SanClemente"
+    ],
+    "dynamic_scope": "Exact9/16fabric/program,Cordless/TDBU; mount fit/depth;36/60pole and attachment count0\u20132,total<=2",
+    "saved_record": "options_json.san_clemente_*; mount_depth_inches; installation_method; source identity",
+    "source_pages": "San Clemente November2025 Guide pp4\u20138",
+    "pricing_status": "All current prices manual_required; distinct catalog destination, no Portrait/Ultimate price reuse",
+    "production_proof": "805-0312 all selections saved/reopened; RESULTS.md",
+    "remaining_classification": "External: current base/accessory price schedules and account applicability. No missing input confirmed."
+  },
+  {
+    "product_id": "san_clemente_faux_wood",
+    "module_patterns": [
+      "norman-san-clemente",
+      "SanClemente"
+    ],
+    "dynamic_scope": "Exact2inch embossed colors; fixedCordless/left/standardvalance; mountfit/depth; top/back/sideonly/side+top method",
+    "saved_record": "options_json.san_clemente_*; mount_depth_inches; installation_method; source identity",
+    "source_pages": "San Clemente November2025 Guide pp9\u201313",
+    "pricing_status": "All current prices manual_required; distinct catalog destination, no Portrait/Ultimate price reuse",
+    "production_proof": "805-0312 all selections saved/reopened; RESULTS.md",
+    "remaining_classification": "External: current base/accessory price schedules and account applicability. Review semi-inside numeric depth source: current validator only checks flush-side explicit depth; exact source needs source review before claiming missing guard."
+  },
+  {
+    "product_id": "norman_contract_faux_wood",
+    "module_patterns": [
+      "norman-contract",
+      "NormanContract"
+    ],
+    "dynamic_scope": "Exactfinish/slat/fixedcordless; mountfit/depth;wandside/drop;valance/customwidth/returns;hold-down/spacer",
+    "saved_record": "options_json.contract_*; mount_depth_inches; server contract order record",
+    "source_pages": "ContractFaux EditionM May2024 pp5,8\u201310,15",
+    "pricing_status": "All current prices manual_required; project quotation required",
+    "production_proof": "805-0312 all selections saved/reopened; RESULTS.md",
+    "remaining_classification": "External: current project base/options/freight; No additional missing source-backed control confirmed."
+  },
+  {
+    "product_id": "norman_contract_vertical",
+    "module_patterns": [
+      "norman-contract",
+      "NormanContract"
+    ],
+    "dynamic_scope": "Project vertical order total>=50; mountfit/depth; wand side/drop; headrailfinish;shimlayers",
+    "saved_record": "options_json.contract_*; mount_depth_inches; server contract order record",
+    "source_pages": "ContractVertical EditionB Nov2024 pp4,6,8\u201310; ContractRequestp1",
+    "pricing_status": "All current prices manual_required; project quotation required",
+    "production_proof": "805-0312 all selections saved/reopened; RESULTS.md",
+    "remaining_classification": "External: current project base/options/freight; FullyInside table.75vsdrawing3.75depth conflict."
+  }
+]
