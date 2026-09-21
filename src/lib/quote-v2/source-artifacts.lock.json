@@ -7,6 +7,18 @@
   },
   "artifacts": [
     {
+      "sourceId": "onyx-owner-confirmed-poly-composite-2026-07-27",
+      "fileName": "src/lib/quote/onyx-poly-composite-owner-policy.json",
+      "byteLength": 479,
+      "sha256": "1cacced828f1ed1aa7ffd20b54cb06e9adee90ae4999445851ce60b0f2c882d3"
+    },
+    {
+      "sourceId": "805-owner-poly-composite-h3-existing-policy",
+      "fileName": "src/lib/quote/onyx-poly-h3-owner-policy.json",
+      "byteLength": 522,
+      "sha256": "271e4dd51b9b649fbe1784c20344927a2983a3a850ad1316beb685e16d3dc6c4"
+    },
+    {
       "sourceId": "lotus-digital-catalog-v1-1-25",
       "fileName": "Lotus Digital Catalog V1.1.25.pdf",
       "byteLength": 3250849,
