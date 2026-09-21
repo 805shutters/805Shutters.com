@@ -3,7 +3,7 @@ export const ROLLER_VALANCE_ONLY='norman_roller_valance_only';
 export const ROLLER_SEPARATE_VALANCE='norman_roller_separate_valance';
 export const ROLLER_VALANCE_KEY='norman_roller_valance_choice_v1';
 export const ROLLER_VALANCE_DERIVED='norman_roller_valance_source_v1';
-export const ROLLER_VALANCE_VERSION='805-v2-norman-roller-valance-2026-09-20-r1';
+export const ROLLER_VALANCE_VERSION='805-v2-norman-roller-valance-2026-09-20-r2';
 export const ROLLER_VALANCE_SOURCE='norman-roller-guide-2026-09-16';
 export const ROLLER_VALANCE_HOLD='Roller valance specifications are documented. Standalone/separate valance price, availability, freight and shared charge allocation require Norman confirmation before customer pricing.';
 export const isRollerValance=(id:string)=>id===ROLLER_VALANCE_ONLY||id===ROLLER_SEPARATE_VALANCE;

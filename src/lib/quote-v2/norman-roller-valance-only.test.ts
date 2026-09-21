@@ -48,7 +48,7 @@ describe('Roller Valance Only and Separate Valance source destinations',()=>{
  });
  it('derives associations only from selected shades, allows mixed lifts, stores recommended widths without hard blocking',()=>{
   const v=group({width:100,controlClearanceConfirmed:true}),a=shade('a'),b=shade('b',{lift_system:'Continuous Cord Loop'});
-  expect(deriveRollerSeparateValances([v,a,b]).map(i=>i.ruleId.split('.').at(-1))).toEqual(['hardware_matching']);
+  expect(deriveRollerSeparateValances([v,a,b]).map(i=>i.ruleId.split('.').at(-1))).toEqual(['tube_identity','tube_identity','hardware_matching']);
   expect(v.selection.configuration[DERIVED]).toMatchObject({associatedLineIds:['a','b'],associatedLiftSystems:['PrecisionLift Cordless','Continuous Cord Loop'],recommendedMinimumWidth:60.25,recommendedMaximumWidth:72,recommendedWidthStatus:'outside_recommended_range'});
   expect(validateRollerValance(v.selection).map(i=>i.ruleId.split('.').at(-1))).toEqual(['price_approval']);
   expect(deriveRollerSeparateValances([group(),a]).some(i=>i.ruleId.endsWith('members'))).toBe(true);
