@@ -1,4 +1,5 @@
 import { NormanRollerPoleOptions } from "@/components/crm/NormanRollerPoleOptions";
+import {SMARTFOLD_WAND_LENGTHS,SMARTFOLD_WAND_COLORS} from "@/lib/quote-v2/norman-smartfold-autowand";
 import { NormanRollerChainOptions } from "@/components/crm/NormanRollerChainOptions";
 import { NormanRollerAccessoriesOptions } from "@/components/crm/NormanRollerAccessoriesOptions";
 import { MAGNET_CLEARANCE_FIELDS, magneticHoldDownActive } from "@/lib/quote-v2/norman-magnet-clearance";
@@ -2038,7 +2039,7 @@ function clearMotorizationOptions(
 }
 
 export function clearSmartfoldMotorizationOptions(options: Record<string, unknown>): Record<string, unknown> {
-  return { ...clearMotorizationOptions(options), [SMARTFOLD_CHARGING_KEY]: null, motor_position: null };
+  return { ...clearMotorizationOptions(options), [SMARTFOLD_CHARGING_KEY]: null, motor_position: null, smartfold_wand_length:null, smartfold_wand_color:null };
 }
 
 export function buildLegacyRollerTopTreatmentUpdate(
@@ -10526,6 +10527,7 @@ function ShadesAndBlindsOptions({
         const wrapped=curved && optionsJson.smartfold_fascia_style === "Fabric-Wrapped";
         const styleChoice=(key:string,label:string,options:readonly string[]):GridOption=>({key,label,field:`json:${key}`,type:"select",options});
         const styleOptions:GridOption[]=fabricCode ? [
+          ...(design?.lift_system === "Motorized" && design?.motor_type === "AutoWand" ? [styleChoice("smartfold_wand_length","AutoWand Length",SMARTFOLD_WAND_LENGTHS),styleChoice("smartfold_wand_color","AutoWand Color",SMARTFOLD_WAND_COLORS)]:[]),
           ...(SMARTFOLD_FABRICS.find(f=>f.code===fabricCode)?.collection === "Impressions" ? [styleChoice("smartfold_fabric_pattern","Fabric Pattern",["Standard","Reverse"])] : []),
           styleChoice("smartfold_hardware_color","Hardware Color",["Default",...SMARTFOLD_HARDWARE_COLORS]),
           styleChoice("smartfold_hem_style","Hem-Bar Style",["Fabric-Wrapped","Plain"]),

@@ -1,3 +1,4 @@
+import {customerConfigurationFromSelection,v2CustomerConfigurationOptions} from "@/lib/crm/sales-quote-v2-customer-configuration";
 import {describe,it,expect} from "vitest";
 import type {SalesQuoteDesign,SalesQuoteLineItem} from "@mts/types/quote";
 import {getProductColorOptions} from "@/lib/quote/product-color-options";
@@ -28,6 +29,20 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
   const r=run(q),d=r.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.snapshot).not.toBeNull();expect(r.sendability.sendable).toBe(true);
   if(d.result.ok){expect(d.result.base).toBe(606);expect(d.result.surchargeLines).toEqual([]);}
   expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+ });
+ it.each(SMARTFOLD_FABRICS.flatMap(f=>[8,16,24,36,48,60,72].flatMap(length=>["White","Cottage White","Black"].map(color=>({code:f.code,length,color})))))("prices AutoWand $code / $length inches / $color and preserves its physical configuration",({code,length,color})=>{
+  const q=quote(code);q.designs[0].motor_type="AutoWand";q.designs[0].remote_type=null;q.designs[0].options_json={...q.designs[0].options_json,smartfold_wand_length:String(length),smartfold_wand_color:color};
+  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r.designs[0].result)).toBe(true);expect(r.designs[0].snapshot).not.toBeNull();
+  if(r.designs[0].result.ok){expect(r.designs[0].result.base).toBe(606);expect(r.designs[0].result.surchargeLines.reduce((sum,line)=>sum+line.amount,0)).toBe(166);}
+  expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({autoWand:{wandLength:length,wandColor:color,usbChargerIncluded:false,chargingKitCableLength:78.75}});
+  const customer=v2CustomerConfigurationOptions(customerConfigurationFromSelection(r.designs[0].selection)).join(" ");expect(customer).toContain(`AutoWand Length (inches): ${length}`);expect(customer).toContain(`AutoWand Color: ${color}`);
+  expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+ });
+ it("requires exact AutoWand selections and prices line accessories once",()=>{
+  const q=quote();q.designs[0].motor_type="AutoWand";q.designs[0].remote_type=null;q.designs[0].options_json={...q.designs[0].options_json,smartfold_wand_length:"36",smartfold_wand_color:"White"};const base=run(q);
+  q.designs[0].options_json.smartfold_charging_v1={version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"};let r=run(q);expect(r.sendability.sendable).toBe(true);expect(r.total-base.total).toBe(219);
+  expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:118,color:"Black"}}});
+  for(const [key,value,rule] of [["smartfold_wand_length","12","length"],["smartfold_wand_color","Bronze","color"],["smartfold_wand_length",null,"length"]]){const bad=JSON.parse(JSON.stringify(q));bad.designs[0].options_json[key!]=value;r=run(bad);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].snapshot).toBeNull();expect(r.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain(`norman.smartfold.autowand_${rule}`);}
  });
  it("retains manual size and fold boundaries and rejects stale motor settings",()=>{
   const q=quote();q.designs[0].lift_system="PrecisionLift Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;q.lines[0].height_whole=72;
@@ -80,7 +95,7 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
   for (const [area,space,rule] of [[.749,1.5,"norman.smartfold.outside_mounting_area"],[.75,1.499,"norman.smartfold.outside_mounting_space"]] as const) {
    const insufficient=quote();insufficient.designs[0].options_json={...insufficient.designs[0].options_json,[KEY]:{version:1,mountingAreaHeight:area,mountingSpaceHeight:space}};r=run(insufficient);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain(rule);expect(r.designs[0].snapshot).toBeNull();
   }
-  const wrongPower=quote();wrongPower.designs[0].motor_type="AutoWand";r=run(wrongPower);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.productStatus).toBe("restriction_source_incomplete");
+  const wrongPower=quote();wrongPower.designs[0].motor_type="AutoWand";r=run(wrongPower);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.autowand_length");
   const narrow=quote();narrow.lines[0].width_whole=23;r=run(narrow);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.validationIssues.some(i=>i.ruleId.startsWith("smartfold.motorization.dimension"))).toBe(true);
   const tall=quote();tall.lines[0].height_whole=73;r=run(tall);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_valance");
   const other=quote();other.designs[0].mount_type="Inside Mount";other.designs[0].options_json={...other.designs[0].options_json,smartfold_installation:"Top Mount with Raceway"};r=run(other);expect(r.sendability.sendable).toBe(false);expect(r.designs[0].result.productStatus).toBe("restriction_source_incomplete");

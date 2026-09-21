@@ -1,3 +1,4 @@
+import {SMARTFOLD_WAND_LENGTHS,SMARTFOLD_WAND_COLORS} from "@/lib/quote-v2/norman-smartfold-autowand";
 import {SUNDANCE_PRIVACY_PIECES_KEY,sundancePrivacyPieceDescription} from "./sundance/privacy-pieces";
 import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "./sundance/walden-twin-records";
 import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "./sundance/assembly-records";
@@ -921,6 +922,8 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_hold_down", "Hold-downs", SMARTFOLD_HOLD_DOWNS),
     contractChoice("smartfold_magnet_color", "Magnet catch color", SMARTFOLD_MAGNET_COLORS),
     contractChoice("smartfold_pole", "Additional pole per shade", SMARTFOLD_POLES),
+    contractChoice("smartfold_wand_length","AutoWand length",SMARTFOLD_WAND_LENGTHS),
+    contractChoice("smartfold_wand_color","AutoWand color",SMARTFOLD_WAND_COLORS),
     contractChoice("smartfold_light_guard_recess", "Light Guard recess arrangement", ["Fully Recessed", "Partial Projection"]),
     contractChoice("smartfold_light_guard_color", "Light Guard color", SMARTFOLD_LIGHT_GUARD_COLORS),
     contractChoice("smartfold_valance_returns", "Valance returns", SMARTFOLD_RETURNS),

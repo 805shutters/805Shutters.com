@@ -1631,9 +1631,9 @@ describe("exact Norman configuration entry", () => {
 
 describe("SmartFold control transitions", () => {
   it("clears incompatible order charging extras and motor allocation without losing fabric hardware", () => {
-    const before = { motor_position: "Right", power_configuration: "Rechargeable", motorization_selections: [{ optionId: "charging_kit" }], hub_required: true, dc_power_supply: "18-channel", shared_power_panel_id: "panel-1", smartfold_charging_v1: {version:1, extraChargingKits:2, extensionCables:3, extensionColor:"Black"}, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic" };
+    const before = { smartfold_wand_length:"36", smartfold_wand_color:"Black", motor_position: "Right", power_configuration: "Rechargeable", motorization_selections: [{ optionId: "charging_kit" }], hub_required: true, dc_power_supply: "18-channel", shared_power_panel_id: "panel-1", smartfold_charging_v1: {version:1, extraChargingKits:2, extensionCables:3, extensionColor:"Black"}, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic" };
     const after = clearSmartfoldMotorizationOptions(before);
-    expect(after).toMatchObject({motor_position:null, power_configuration:null, motorization_selections:[], hub_required:null, dc_power_supply:null, shared_power_panel_id:null, smartfold_charging_v1:null, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic"});
+    expect(after).toMatchObject({smartfold_wand_length:null, smartfold_wand_color:null, motor_position:null, power_configuration:null, motorization_selections:[], hub_required:null, dc_power_supply:null, shared_power_panel_id:null, smartfold_charging_v1:null, smartfold_hem_color:"White", smartfold_hold_down:"Magnetic"});
     expect(before.smartfold_charging_v1.extraChargingKits).toBe(2);
   });
 });

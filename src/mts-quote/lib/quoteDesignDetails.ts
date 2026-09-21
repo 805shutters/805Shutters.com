@@ -169,6 +169,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
     if (design.supplier === "Norman" && design.product_type === "Roman Shades" &&
       ["roman_banding_layout", "banding_color"].includes(key) &&
       !["Edge Banded", "Ribbon Banded"].includes(String(options.fold_style))) return;
+    if (["smartfold_wand_length", "smartfold_wand_color"].includes(key) && (design.lift_system !== "Motorized" || design.motor_type !== "AutoWand")) return;
     if (key === "motor_position" && (pairedRoman || (design.supplier === "Norman" && ["Roman Shades", "SmartFold Shades"].includes(design.product_type || "") && !/motor|autowand/i.test(String(design.lift_system))))) return;
     if (pairedRomanChains && key === "chain_location") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
@@ -386,6 +387,8 @@ function humanizeKey(key: string): string {
     smartfold_valance_fabric_code: "Valance Fabric Code",
     smartfold_wood_valance_color: "Wood Valance Finish",
     smartfold_chain_color: "Chain Color",
+    smartfold_wand_length: "AutoWand Length (inches)",
+    smartfold_wand_color: "AutoWand Color",
     perfectsheer_light_guard: "Light Guard",
     perfectsheer_light_guard_color: "Light Guard Finish",
     perfectsheer_magnetic_hold_down: "Magnetic Hold-Down",

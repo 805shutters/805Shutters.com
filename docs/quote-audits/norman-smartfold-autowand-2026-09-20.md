@@ -1,0 +1,7 @@
+# SmartFold AutoWand source closure — September 20, 2026
+
+Current catalog r14 adds exact AutoWand length (8/16/24/36/48/60/72 inches) and color (White/Cottage White/Black) from September 16 Motorization Guide page 94. The individual outside-mount branch now prices AutoWand with the September $166 motor-and-wand surcharge, subject to all fabric, dimension, fold, valance and measured mounting-clearance rules. Common valances, inside mounting, custom construction and October changes retain their separate holds. Replaying r13 preserves its prior AutoWand hold.
+
+The saved server record retains the chosen wand and source, 78.75-inch included charging-kit cable, 5V charger exclusion, and manufacturer-matched USB/USB-C connector policy. The guide states a running connector change, so no unsupported user-selectable connector is invented. Customer configuration includes the exact wand length/color. Moving to another control clears incompatible wand and charging settings.
+
+All 15 fabrics × 7 lengths × 3 colors pass actual server pricing, snapshot, serialization/reopen and customer-configuration checks. Missing/unsupported length/color blocks pricing. Two extra kits and three 118-inch extension cables add $219 once per line (2 × $45 + 3 × $43), with two included charging kits for four motors. Existing motor dimension, remote/hub compatibility and accessory count limits remain enforced. Focused suites passed; production browser proof remains pending this release.
