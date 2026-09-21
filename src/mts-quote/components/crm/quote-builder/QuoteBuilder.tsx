@@ -2,6 +2,7 @@ import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valanc
 import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
+import { createDraftPricingRecovery, draftPricingRecoveryRequest } from "@mts/lib/quoteDraftPricingRecovery";
 import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -605,6 +606,7 @@ export function QuoteBuilder({
   const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
   const designsQueryKey = [...quoteQueryKey, "designs"] as const;
   const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const draftPricingRecoveryRef = useRef(createDraftPricingRecovery());
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
   // The class is removed on unmount (e.g. when the X switches back to the
@@ -719,6 +721,7 @@ export function QuoteBuilder({
   const {
     data: quote,
     isPending: isQuoteLoading,
+    isFetching: isQuoteFetching,
     isError: isQuoteLoadError,
   } = useQuery({
     queryKey: quoteQueryKey,
@@ -775,6 +778,7 @@ export function QuoteBuilder({
   const {
     data: lineItems = [],
     isPending: areLineItemsLoading,
+    isFetching: areLineItemsFetching,
     isError: isLineItemsLoadError,
   } = useQuery({
     queryKey: lineItemsQueryKey,
@@ -798,6 +802,7 @@ export function QuoteBuilder({
   const {
     data: designs = [],
     isPending: areDesignsLoading,
+    isFetching: areDesignsFetching,
     isError: isDesignsLoadError,
   } = useQuery({
     queryKey: designsQueryKey,
@@ -919,6 +924,39 @@ export function QuoteBuilder({
     );
     return queued;
   };
+
+  // Recover a persisted automatic-price failure on open without changing a selection.
+  useEffect(() => {
+    if (isolated || !serverOwnedV2 || isQuoteLoading || areLineItemsLoading || areDesignsLoading ||
+        isQuoteFetching || areLineItemsFetching || areDesignsFetching ||
+        isQuoteLoadError || isLineItemsLoadError || isDesignsLoadError || useHistoricalPriceLock ||
+        !draftPricingRecoveryRequest(quote, lineItems, designs)) return;
+    let active = true;
+    const execute = async () => {
+      if (!active || queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 0) return;
+      // Earlier queued edits may have changed the revision or already repaired the price.
+      const request = draftPricingRecoveryRequest(
+        queryClient.getQueryData<SalesQuote>(quoteQueryKey),
+        queryClient.getQueryData<SalesQuoteLineItem[]>(lineItemsQueryKey) ?? [],
+        queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ?? [],
+      );
+      if (!request || request.quoteId !== activeQuoteId) return;
+      await draftPricingRecoveryRef.current.run(request, {
+        isCurrent: () => active,
+        price: ({ quoteId, ...input }) => priceQuoteV2(supabase, quoteId, input),
+        saved: updateServerOwnedV2QuoteCache,
+        refresh: refreshServerOwnedV2Rows,
+      });
+    };
+    const queued = v2MutationQueueRef.current.then(execute, execute);
+    v2MutationQueueRef.current = queued.catch(() => undefined);
+    void queued.catch(error => {
+      if (active) toast.error(error instanceof Error ? error.message : "Draft pricing could not be refreshed.");
+    });
+    return () => { active = false; };
+  }, [activeQuoteId, isolated, serverOwnedV2, quote, lineItems, designs,
+    isQuoteLoading, areLineItemsLoading, areDesignsLoading, isQuoteFetching, areLineItemsFetching, areDesignsFetching,
+    isQuoteLoadError, isLineItemsLoadError, isDesignsLoadError, useHistoricalPriceLock]);
 
   // Update customer info
   const updateQuote = useMutation({
