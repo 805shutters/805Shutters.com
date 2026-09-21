@@ -10164,7 +10164,7 @@ function ShadesAndBlindsOptions({
     }
     if (productType === "SmartFold Shades" && field === "mount_type") {
       const outside=value === "Outside Mount";
-      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,...(value !== "Inside Mount"?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null}:{})}});
+      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,...(value !== "Inside Mount"?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null,smartfold_light_guard_recess:null,smartfold_full_recess_depth_inches:null}:{})}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "lift_system") {
@@ -10182,7 +10182,7 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "SmartFold Shades" && field === "json:basic_light_guard") {
-      onUpdateFields({options_json:{...currentJson,basic_light_guard:value,light_guard:"none",...(value !== "Yes"?{smartfold_light_guard_color:null}:{})}});
+      onUpdateFields({options_json:{...currentJson,basic_light_guard:value,light_guard:"none",...(value !== "Yes"?{smartfold_light_guard_color:null,smartfold_light_guard_recess:null,smartfold_full_recess_depth_inches:null}:{})}});
       return;
     }
     if (productType === "Vertical Blinds" && authoritativeV2 && field === "mount_type") {
@@ -10546,6 +10546,10 @@ function ShadesAndBlindsOptions({
             ? { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "buttons", options: ["No"] }
             : { key: "light_guard", label: "Basic Light Guard", field: "json:basic_light_guard", type: "yes-no", noFirst: true },
           ...(optionsJson.basic_light_guard === "Yes" ? [{ key:"light_guard_color",label:"Light Guard Color",field:"json:smartfold_light_guard_color",type:"select",options:SMARTFOLD_LIGHT_GUARD_COLORS } as GridOption] : []),
+          ...(design?.mount_type === "Inside Mount" && optionsJson.basic_light_guard === "Yes" ? [
+            {key:"light_guard_recess",label:"Light Guard Recess Arrangement",field:"json:smartfold_light_guard_recess",type:"select",options:["Fully Recessed","Partial Projection"]} as GridOption,
+            ...(optionsJson.smartfold_light_guard_recess === "Fully Recessed" ? [{key:"full_recess_depth",label:"Available Full-Assembly Recess Depth",field:"json:smartfold_full_recess_depth_inches",type:"number",min:0,step:"0.0625",unit:"in"} as GridOption]:[]),
+          ]:[]),
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
           { key:"hold_down",label:"Hold-Downs",field:"json:smartfold_hold_down",type:"select",options:SMARTFOLD_HOLD_DOWNS },
           ...(optionsJson.smartfold_hold_down === "Magnetic" ? [{key:"magnet_color",label:"Magnet Catch Color",field:"json:smartfold_magnet_color",type:"select",options:SMARTFOLD_MAGNET_COLORS} as GridOption] : []),

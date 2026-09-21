@@ -230,6 +230,8 @@ function formatOptionValue(value: unknown): string {
 
 function humanizeKey(key: string): string {
   const labels: Record<string, string> = {
+    smartfold_light_guard_recess: "Light Guard Recess Arrangement",
+    smartfold_full_recess_depth_inches: "Available Full-Assembly Recess Depth (inches)",
     day_night_top_layer: "Top Shade Selection",
     slope_angle_degrees: "Window Slope (degrees)",
     vertical_hardware_color: "Hardware Color",

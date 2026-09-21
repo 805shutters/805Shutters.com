@@ -1,3 +1,4 @@
+import { validateSmartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { validateSmartdrapeReplacement } from "./norman-smartdrape-replacement";
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
@@ -2441,6 +2442,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   if (context.productId === "sundance_sheerview") issues.push(...validateSundanceSheerviewConfiguration(context));
   if (["smartfold", "perfectsheer"].includes(context.productId)) issues.push(...validateNormanShadeMotorization(context));
   issues.push(...validateSmartfoldEligibility(context));
+  issues.push(...validateSmartfoldInsideLightGuardClearance(context));
   const withdrawal = normanColorWithdrawal(
     context.productId,
     configValue(context, "fabric_color_code"),
