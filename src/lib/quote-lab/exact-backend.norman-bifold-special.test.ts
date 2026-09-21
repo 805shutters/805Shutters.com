@@ -1,0 +1,22 @@
+import {it,expect} from 'vitest';
+import type {SalesQuoteDesign,SalesQuoteLineItem} from '@mts/types/quote';
+import {repriceExactQuoteBuilderForServerDate} from './exact-backend';
+import {prepareSalesQuoteV2PricingBatch} from '@/lib/crm/sales-quote-v2-price-save';
+import {emptyNormanBifold90} from '@/lib/quote/norman-shutter-bifold90';
+import {emptyNormanFloating90} from '@/lib/quote/norman-shutter-bifold-special';
+import {NORMAN_SHUTTER_PANEL_RECORD,type NormanShutterPanelRecord} from '@/lib/quote/norman-shutter-panels';
+it('rebuilds normalized floating configuration at the saved backend while retaining factory pricing hold',()=>{
+ const r:NormanShutterPanelRecord={version:1,application:'bifold_other',motor:'none',existingDoorGlassOrSidelight:false,bifold90:{...emptyNormanBifold90(),kind:'floating_90',layout:'FF/FF',mount:'Inside Mount',headerInches:3,fascia:'plain',headerExtensionInches:0,flatMountingSurface:true,floating:{...emptyNormanFloating90(),sideBoards:false,optionalStopperPositionsInches:[36]}},panels:Array.from({length:4},()=>({heightInches:60,widthInches:18,divider:'none'}))};
+ const line={id:'floating',quote_id:'internal',room_name:'Office',product_type:'Shutters',width_whole:72,width_fraction:'0',height_whole:60,height_fraction:'0',quantity:1,sort_order:0} as SalesQuoteLineItem;
+ const design={id:'floating-A',line_item_id:line.id,variant:'A',product_type:'Shutters',supplier:'Norman',material:'Woodlore',mount_type:'Inside Mount',panel_config:'FF/FF',unit_price:0,options_json:{quote_v2_backend:true,quote_lab_product_id:'norman_shutters',quote_lab_program_id:'woodlore',catalog_product_id:'norman_shutters',catalog_program_id:'woodlore',color:'001',louver_size:'3 1/2"',stile_width:'2"',stile_join:'Butt',[NORMAN_SHUTTER_PANEL_RECORD]:r}} as unknown as SalesQuoteDesign;
+ const q={lines:[line],designs:[design],selectedVariantByLine:{floating:'A'}};
+ const result=repriceExactQuoteBuilderForServerDate(q,'2026-09-20');if(!('backend'in result)||result.backend!=='v2')throw new Error('Expected V2');
+ expect(result.designs[0].selection.configuration[NORMAN_SHUTTER_PANEL_RECORD]).toEqual(r);
+ expect(result.designs[0].result.validationIssues?.filter(i=>i.ruleId.startsWith('norman.shutter.bifold90.'))).toEqual([]);
+ expect(result.designs[0].result.validationIssues?.some(i=>i.ruleId==='norman.shutter.panels.application_geometry')).toBe(true);
+ expect(prepareSalesQuoteV2PricingBatch({lines:q.lines,selectedDesigns:q.designs,serverDate:'2026-09-20'}).prepared[0].priceStatus).toBe('blocked');
+ expect(repriceExactQuoteBuilderForServerDate(JSON.parse(JSON.stringify(q)),'2026-09-20')).toEqual(result);
+ r.bifold90!.floating!.sideBoards=null;
+ const invalid=repriceExactQuoteBuilderForServerDate(q,'2026-09-20');if(!('backend'in invalid)||invalid.backend!=='v2')throw new Error('Expected V2');
+ expect(invalid.designs[0].result.validationIssues?.some(i=>i.ruleId==='norman.shutter.bifold90.floating_side_boards')).toBe(true);
+});

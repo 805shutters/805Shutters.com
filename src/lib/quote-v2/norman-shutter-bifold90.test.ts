@@ -34,7 +34,7 @@ describe('independent Bi-fold90 source records',()=>{
  });
  it('rejects subtype extrapolation and exact construction violations',()=>{
   const r=record(),s=context('woodlore_aquashield',r),b=r.bifold90!;
-  b.kind='multifold_90';b.layout='LLLL';expect(ids(s)).toContain('layout');b.kind='frame_hinged';expect(ids(s)).toContain('subtype_geometry');b.kind='floating_90';expect(ids(s)).toContain('subtype_geometry');b.kind='standard_90';b.layout='LL';
+  b.kind='multifold_90';b.layout='LLLL';expect(ids(s)).toContain('layout');b.kind='frame_hinged';expect(ids(s)).toContain('special_layout');b.kind='floating_90';expect(ids(s)).toContain('floating_side_boards');b.kind='standard_90';b.layout='LL';
   b.headerInches=3.5;expect(ids(s)).toContain('header');b.headerInches=3;b.fascia='deco';expect(ids(s)).toContain('fascia');b.fascia='plain';
   b.headerExtensionInches=2;expect(ids(s)).not.toContain('extension');b.headerExtensionInches=2.0625;expect(ids(s)).toContain('extension');b.headerExtensionInches=0;
   b.casing='existing';expect(ids(s)).toContain('casing_basis');b.casing='none';b.flatMountingSurface=false;expect(ids(s)).toContain('flat_surface');

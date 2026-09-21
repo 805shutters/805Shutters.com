@@ -1,3 +1,5 @@
+import {normanBifoldMountKey} from '../quote/norman-shutter-bifold-special';
+import {validateNormanSpecialBifold} from './norman-shutter-bifold-special';
 import {normanBifold90Layouts,normanBifold90Pages,normanBifold90Wood} from '../quote/norman-shutter-bifold90';
 import {normanShutterProgram} from '../quote/norman-shutter-assortment';
 import type {NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
@@ -7,12 +9,12 @@ export function validateNormanBifold90(s:SelectionContext,record:NormanShutterPa
  if(record.application!=='bifold_other')return [];const p=normanShutterProgram(s.programId);if(!p)return [];const r=record.bifold90,c=s.configuration,issues:ValidationIssue[]=[];
  const add=(id:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`norman.shutter.bifold90.${id}`,source:sourceProvenance(p.sourceId,{pages:normanBifold90Pages(p.id)}),selectedValues:{programId:p.id,record},explanation});
  if(!r){add('schedule_required','Choose the exact 90-degree track subtype and record its panel and mounting schedule.');return issues;}
+ if(['floating_90','frame_hinged'].includes(r.kind))return validateNormanSpecialBifold(s,record);
  if(!['standard_90','multifold_90'].includes(r.kind)){add('subtype_geometry','Floating and frame-hinged tracks need their own carrier, frame and panel geometry; standard 90-degree formulas do not apply.');return issues;}
  const layouts=normanBifold90Layouts(p.id,r.kind);
  if(!layouts.includes(r.layout))add('layout','Choose a documented standard 90-degree layout; four-panel multi-fold stacks are available only in Brightwood and Normandy.');
  if(c.panel_config!==r.layout)add('layout_mismatch','The saved 90-degree layout must match the selected panel layout.');
- const mountKey=(value:unknown)=>String(value??'').toLowerCase().replace(/[-_]/g,' ').replace(/ mount$/,'').trim();
- if(!r.mount||mountKey(c.mount_type)!==mountKey(r.mount))add('mount','Select the exact Inside, Semi-Inside or Outside mount and save it with the track record.');
+ if(!r.mount||normanBifoldMountKey(c.mount_type)!==normanBifoldMountKey(r.mount))add('mount','Select the exact Inside, Semi-Inside or Outside mount and save it with the track record.');
  if(!r.casing||r.referenceWidthInches===null||r.referenceHeightInches===null||r.referenceWidthInches<=0||r.referenceHeightInches<=0)add('measurement_basis','Record measured window dimensions without casing, or outside casing width and directly measured max-frame height for outside mount.');
  if(r.casing==='existing'&&r.mount!=='Outside Mount')add('casing_basis','The existing-casing width formula is documented only for outside mount. Inside and semi-inside require measured window opening dimensions.');
  if(!r.flatMountingSurface)add('flat_surface','Confirm a flat support surface for the header, light blocks and pivot brackets.');

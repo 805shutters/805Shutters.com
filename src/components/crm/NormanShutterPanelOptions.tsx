@@ -1,5 +1,6 @@
 "use client";
 import {NormanBifold90Options} from "./NormanBifold90Options";
+import {normanBifoldPanelCount} from "@/lib/quote/norman-shutter-bifold-special";
 import {emptyNormanBifold90} from "@/lib/quote/norman-shutter-bifold90";
 import {NormanShutterFrenchDoorOptions} from "./NormanShutterFrenchDoorOptions";
 import {NormanShutterDoubleHungOptions} from './NormanShutterDoubleHungOptions';
@@ -51,7 +52,7 @@ export function NormanShutterPanelOptions({design,onUpdateFields}:{design:SalesQ
    <NormanBifold180ConstructionOptions value={record.bifold180?.construction} aqua={aqua} onChange={construction=>update({bifold180:{version:1,layout:record.bifold180?.layout??'',flatMountingSurface:record.bifold180?.flatMountingSurface??false,construction}})}/>
    <p className="text-sm text-amber-900">Outside Mount only. Save this schedule to update the panel layout. Header, casing, baseboard, stiles and track hardware still require manufacturer verification.</p>
   </div>}
-  {record.application==='bifold_other'&&<NormanBifold90Options value={record.bifold90} programId={program?.id??''} onChange={bifold90=>update({bifold90})} onLayout={layout=>update({bifold90:{...(record.bifold90??emptyNormanBifold90()),layout},panels:Array.from({length:layout.length},(_,i)=>record.panels[i]??{heightInches:null,widthInches:null,divider:''})})}/>}
+  {record.application==='bifold_other'&&<NormanBifold90Options value={record.bifold90} programId={program?.id??''} onChange={bifold90=>update({bifold90})} onLayout={layout=>update({bifold90:{...(record.bifold90??emptyNormanBifold90()),layout},panels:Array.from({length:normanBifoldPanelCount(layout)},(_,i)=>record.panels[i]??{heightInches:null,widthInches:null,divider:''})})}/>}
   {doubleHungApplication&&<NormanShutterDoubleHungOptions value={record.doubleHung} programId={program?.id??''} onChange={doubleHung=>update({doubleHung})} onLayout={rowLayout=>update({doubleHung:{version:1,divisionMode:record.doubleHung?.divisionMode??'',customDivisionPointInches:record.doubleHung?.customDivisionPointInches??null,customReference:record.doubleHung?.customReference??'',horizontalTPost:record.doubleHung?.horizontalTPost??null,tPostSectionLengthsInches:record.doubleHung?.tPostSectionLengthsInches??[],rowLayout},panels:record.doubleHung?.rowLayout===rowLayout?record.panels:Array.from({length:rowLayout.length*2},()=>({heightInches:null,widthInches:null,divider:''}))})}/>}
   {record.application==='specialty'&&<NormanShutterSpecialtyOptions value={record.specialty} tiltType={design?.tilt_type} programId={program?.id??''} panelCount={record.panels.length} onChange={specialty=>update({specialty})} onPanelCount={n=>update({panels:Array.from({length:n},(_,i)=>record.panels[i]??{heightInches:null,widthInches:null,divider:''})})}/>}
   {bypassApplication&&<NormanShutterBypassOptions value={record.bypass} onChange={bypass=>update({bypass})} onTwoPanels={()=>update({panels:Array.from({length:2},(_,i)=>record.panels[i]??{heightInches:null,widthInches:null,divider:''})})}/>}
