@@ -46,14 +46,15 @@
 .explanation p { margin:0 0 8px; }
 .explanation ul { padding-left:18px; }
 .warning { border:1px solid #7d7a72; border-radius:8px; padding:12px; font-size:13px; color:#e5e4e2; }
-.toolbar { display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px; margin-bottom:20px; }
-.toolbar nav { display:flex; flex-wrap:wrap; gap:6px; flex-basis:100%; }
-.toolbar button { background:#1d1d1b; border:1px solid #343330; padding:10px 13px; border-radius:7px; font-size:12px; }
+.toolbar { display:flex; align-items:center; gap:12px; max-width:100%; overflow-x:auto; padding:4px; margin:-4px -4px 16px; scrollbar-width:thin; }
+.toolbar nav { display:flex; flex:none; gap:6px; white-space:nowrap; }
+.toolbar button { min-height:44px; background:#1d1d1b; border:1px solid #343330; padding:10px 13px; border-radius:7px; font-size:12px; }
 .toolbar button[aria-pressed=true] { background:#75dfab; border-color:#75dfab; color:#102d21; font-weight:600; }
 .toolbar nav button:hover:not(:disabled):not([aria-pressed=true]) { background:#263b30; border-color:#75dfab; }
 .toolbar nav button:focus-visible { outline:2px solid #75dfab; outline-offset:3px; }
 .toolbar nav button:disabled { opacity:.5; cursor:wait; }
 .toolbar label { color:#b8b6ae; width:280px; max-width:100%; display:flex; align-items:center; gap:9px; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:0 12px; min-width:0; }
+.toolbar > label { flex:1 0 240px; margin-left:auto; min-height:44px; }
 .toolbar input { width:100%; min-width:0; max-width:100%; color:#fbfbfa; background:transparent; border:0; padding:12px 0; font-size:13px; }
 .jobList { display:grid; gap:18px; }
 .jobCard { min-width:0; border:1px solid #3b3d3b; border-radius:14px; overflow:hidden; background:#202120; }
@@ -204,8 +205,8 @@
 .workspace .deleteFile:disabled { opacity: .4; cursor: wait; }
 
 /* The condensed view changes presentation only; every job remains one non-wrapping row. */
-.viewOptions { display:flex; align-items:center; gap:6px; }
-.toolbar .densityToggle { width:auto; flex:none; padding:8px 12px; white-space:nowrap; }
+.viewOptions { display:flex; flex:none; align-items:center; gap:6px; }
+.toolbar .densityToggle { width:auto; min-height:44px; flex:none; padding:8px 10px; font-size:13px; white-space:nowrap; }
 .toolbar .densityToggle input { width:16px; height:16px; padding:0; accent-color:#75dfab; }
 .condensedWorkspace { display:flex; flex-direction:column; max-height:calc(100dvh - 56px); }
 .condensedWorkspace > * { flex-shrink:0; }
