@@ -125,7 +125,7 @@ The quote retained12 pricing holds, an unavailable total, and disabled Send Quot
 
 A separate current menu audit covered Premier and Select under all five controls (Continuous Cord, Cordless, TDBU, Wand Motor and Remote Motor). The six liners differ by collection: Premier includes Chocolate blackout/privacy; Select instead lists Privacy Black, Privacy Gary and Privacy SoftWhite. Premier has four bindings; Select has twelve. These exact identities and the displayed120-inch custom valance maximum are pinned in `onyx-woven-options-20260920.json`. Unknown color/size/assembly compatibility and accessory charges remain held.
 
-The new Woven UI/server increment adds exact collection-specific liner/binding and single/2-on-1/3-on-1 selections, clears accessories when collection changes, and enforces the custom valance width boundary. Multiple-shade assemblies remain draft-only pending dimensions/model/price evidence. This increment awaits deployment and live proof. No source label surcharge was converted into an805selling price.
+The new Woven UI/server increment adds exact collection-specific liner/binding and single/2-on-1/3-on-1 selections, clears accessories when collection changes, and enforces the custom valance width boundary. Multiple-shade assemblies remain draft-only pending dimensions/model/price evidence. This increment is deployed and its live proof is recorded below. No source label surcharge was converted into an805selling price.
 
 Portal navigation finding: edit forms depend on the active order-program session. Enter each preserved draft header before opening its line URLs. Rapid pattern postbacks can temporarily show the new pattern label with old dependent menus; mismatched captures were discarded and controls re-read after the correct collection menus appeared. No comparison draft was updated or submitted.
 
@@ -133,7 +133,7 @@ Portal navigation finding: edit forms depend on the active order-program session
 
 The six preserved Regular 30 × 60 dealer draft lines were re-opened in the correct imported/US-made order contexts. Bassia, Sycamore, Vinyl, VLO and Ash list eight constructions: four sides, three sides, directional bottom/top/right/left sill plates, three sides with floor clearance, and two sides. US-made Vinyl lists only four sides and the four directional sill-plate constructions. This is menu evidence, not proof of every frame/application/size combination or its charge.
 
-The source snapshot `src/lib/quote/onyx-frame-sides-20260920.json` is independently hashed and pinned. CRM choices now follow these material-specific menus. Exact special construction codes survive the adapter; they are never collapsed into ordinary three-sided pricing. Server validation rejects unsupported material choices and retains an explicit allowance/charge hold for special constructions. Ash continues to carry its entire missing-grid hold. Historical snapshots before the observation date remain unchanged. This increment is implemented and tested; production save/reopen proof follows parent deployment.
+The source snapshot `src/lib/quote/onyx-frame-sides-20260920.json` is independently hashed and pinned. CRM choices now follow these material-specific menus. Exact special construction codes survive the adapter; they are never collapsed into ordinary three-sided pricing. Server validation rejects unsupported material choices and retains an explicit allowance/charge hold for special constructions. Ash continues to carry its entire missing-grid hold. Historical snapshots before the observation date remain unchanged. This increment is deployed and its production save/reopen proof is recorded below.
 
 ### Woven accessory production proof — release 04d74891
 
@@ -144,3 +144,7 @@ The >120-inch rule is tested server-side. The production UI displayed a generic 
 ### Frame-side production proof — release fed42ad5
 
 Quote805-0333 was refreshed to the production release. US-made displayed exactly five choices (four sides and bottom/top/right/left sill plates); VLO displayed all eight imported choices; Ash displayed all eight with exact source codes. US-made Bottom Sill Plate, VLO Floor Clearance and Ash two sides were selected, waited for QUOTE SAVED, closed and reopened through Quotes. All three values persisted. Send Quote and Send Payment Link remained disabled. No special construction was coerced into plain three-sided pricing, and no customer output or vendor order was sent. The dedicated CRM draft and US-made dealer comparison tab remain preserved.
+
+## Exact baseline Signature/Lux option profiles
+
+The six previously observed baseline profiles now have an atomic saved options form and independent server validation. See `observed-option-profiles.md` for exact colors, controls,30×60 IM/right/quantity-one scope,26fields/84values, tests, and remaining evidence limitations. This new increment is implemented/tested; production proof awaits integration/deployment. It preserves all pricing holds and does not extrapolate the observed menus to unverified profiles.

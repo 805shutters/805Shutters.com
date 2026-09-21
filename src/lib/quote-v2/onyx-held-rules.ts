@@ -1,4 +1,5 @@
 import { onyxWovenProfile, onyxWovenOptions, ONYX_WOVEN_SOURCE } from '@/lib/quote/onyx-woven-options';
+import { onyxBaselineProfile, parseOnyxBaselineRecord, onyxBaselineSelectionErrors, ONYX_BASELINE_KEY, ONYX_BASELINE_SOURCE } from '@/lib/quote/onyx-baseline-options';
 import { onyxPortalFrameSides, ONYX_FRAME_SIDE_SOURCE, onyxImportedHingeColors, onyxCanonicalHinge } from '@/lib/quote/onyx-current-assortment';
 import { isOnyxHeldProduct, onyxHeldColors, onyxHeldProducts, onyxHeldControlChoices, onyxAshAssortment, ONYX_SHADE_SOURCE, ONYX_HELD_REASON } from '@/lib/quote/onyx-held-catalog';
 import type { SelectionContext, ValidationIssue } from './core';
@@ -10,6 +11,12 @@ export function validateOnyxHeldSelection(s:SelectionContext):ValidationIssue[]{
   const add=(rule:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`onyx.current.${rule}`,source:sourceProvenance(rule==='frame_sides'?ONYX_FRAME_SIDE_SOURCE:rule.startsWith('woven_')?ONYX_WOVEN_SOURCE:rule==='hinge'?'onyx-hinge-assortment-2026-09-20':s.productId==='onyx_ash_shutters'?'onyx-portal-assortment-2026-09-20':ONYX_SHADE_SOURCE),selectedValues:{productId:s.productId,programId:s.programId,...c},explanation});
   // Assortment observations never authorize arbitrary prices or customer delivery.
   add('price_grid_required',ONYX_HELD_REASON);
+  if(c[ONYX_BASELINE_KEY]!==null&&c[ONYX_BASELINE_KEY]!==undefined){
+    const profile=onyxBaselineProfile({productId:s.productId,programId:s.programId,colorCode:c.fabric_color_code,control:c.lift_system,mount:c.mount_type,controlSide:c.control_side,width:s.widthInches,height:s.heightInches,quantity:s.quantity});
+    const record=parseOnyxBaselineRecord(c[ONYX_BASELINE_KEY]);
+    const error=!profile||!record||record.profileId!==profile.id?'The saved Onyx option profile requires its exact observed fabric/control, 30 × 60 inside-mount, right-control, quantity-one configuration. Clear or reselect the observed profile.':onyxBaselineSelectionErrors(profile,record).length?'Choose only option identities recorded for this exact Onyx source profile.':null;
+    if(error)issues.push({severity:'hard_block',ruleId:'onyx.current.baseline_options',source:sourceProvenance(ONYX_BASELINE_SOURCE),selectedValues:{productId:s.productId,programId:s.programId,...c},explanation:error});
+  }
   if(s.catalogAsOf<'2026-09-20')add('observation_date','This assortment was first observed September 20, 2026; an earlier effective schedule is not established.');
   if(!['onyx','onyx shutters'].includes(s.manufacturerId.toLowerCase()))add('manufacturer','This assortment belongs to Onyx.');
   const product=onyxHeldProducts.find(p=>p.id===s.productId)!;

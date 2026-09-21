@@ -6070,7 +6070,7 @@ export function DesignCard({
           manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (
             <NormanRomanAncillaryOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
-            <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+            <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} widthInches={widthIn} heightInches={heightIn} quantity={quantity} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
             <NormanContractDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (

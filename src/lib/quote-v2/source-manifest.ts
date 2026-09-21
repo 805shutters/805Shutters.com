@@ -639,6 +639,26 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
   "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
   "accountScope": "CHE01; visible menus and stated120-inch custom valance maximum; grids and complete compatibility held"
 },
+{
+  "id": "onyx-baseline-options-2026-09-20",
+  "manufacturer": "Onyx",
+  "kind": "dealer_portal_snapshot",
+  "format": "json",
+  "fileName": "onyx-baseline-options-20260920.json",
+  "title": "Onyx Signature and Lux baseline option profiles",
+  "revision": "Six exact saved baseline profiles observed September20,2026",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Observation only; effective schedule unavailable",
+  "receivedDate": "2026-09-20",
+  "modifiedDate": "2026-09-20",
+  "sha256": "65099d75a69ca3750550278bde00a48d14541a7e28f372ea59d0995288720139",
+  "authorities": [
+    "assortment",
+    "options"
+  ],
+  "sourceUrl": "https://admin.onyxshutters.com/OrderDetailBlind.aspx",
+  "accountScope": "CHE01; exact pattern/color/control and30x60 IM quantity1 right-control baseline menus only. No complete compatibility or pricing authority."
+},
   {
     id: "onyx-portal-assortment-2026-09-20",
     manufacturer: "Onyx Shutters",

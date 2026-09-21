@@ -3,14 +3,17 @@ import { onyxHeldProducts, onyxHeldColors, onyxHeldControlChoices, onyxAshAssort
 import { onyxImportedHingeColors, onyxPortalFrameSides } from "@/lib/quote/onyx-current-assortment";
 import { onyxWovenProfile, onyxWovenOptions, clearOnyxWovenDetails } from "@/lib/quote/onyx-woven-options";
 import type { SalesQuoteDesign } from '@mts/types/quote';
+import { OnyxBaselineOptions } from './OnyxBaselineOptions';
+import { onyxBaselineProfile, ONYX_BASELINE_KEY } from '@/lib/quote/onyx-baseline-options';
 
-export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:SalesQuoteDesign|undefined;productId:string;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
+export function OnyxHeldDesignOptions({design,productId,widthInches,heightInches,quantity,onUpdateFields}:{design:SalesQuoteDesign|undefined;productId:string;widthInches?:number|null;heightInches?:number|null;quantity?:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
   const product=onyxHeldProducts.find(p=>p.id===productId)!;
   const options=(design?.options_json??{}) as Record<string,unknown>;
   const selectedProgram=String(options.catalog_program_id??options.quote_lab_program_id??'');
+  const baseline=onyxBaselineProfile({productId,programId:selectedProgram,colorCode:options.fabric_color_code,control:design?.lift_system,mount:design?.mount_type,controlSide:options.control_side,width:widthInches,height:heightInches,quantity});
   const woven=productId==='onyx_woven'?onyxWovenProfile(selectedProgram):undefined;
   const colors=onyxHeldColors.filter(c=>c.productId===productId&&c.programId===selectedProgram);
-  const update=(patch:Record<string,unknown>,fields:Partial<SalesQuoteDesign>={})=>onUpdateFields({...fields,options_json:{...options,...patch}});
+  const update=(patch:Record<string,unknown>,fields:Partial<SalesQuoteDesign>={})=>onUpdateFields({...fields,options_json:{...options,...(('catalog_program_id' in patch||'fabric_color_id' in patch||'control_side' in patch||'lift_system' in fields||'mount_type' in fields)?{[ONYX_BASELINE_KEY]:null}:{}),...patch}});
   const cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
   const select=(label:string,value:unknown,choices:readonly string[],change:(v:string)=>void)=><label className="block text-sm">{label}<select aria-label={label} className={cls} value={String(value??'')} onChange={e=>change(e.target.value)}><option value="">Select</option>{choices.map(v=><option key={v} value={v}>{v}</option>)}</select></label>;
   return <section data-testid="onyx-held-design-options" className="space-y-3 rounded-lg border border-slate-200 p-3">
@@ -30,6 +33,7 @@ export function OnyxHeldDesignOptions({design,productId,onUpdateFields}:{design:
       {select('Onyx control',design?.lift_system,onyxHeldControlChoices(productId),lift_system=>update({},{lift_system}))}
       {select('Onyx control side',options.control_side,['Left','Right'],v=>update({control_side:v}))}
     </>}
+    <OnyxBaselineOptions design={design} profile={baseline} onUpdateFields={onUpdateFields} />
     {woven && <fieldset className="space-y-3 border-t border-slate-200 pt-3">
       <legend className="text-sm font-medium">Woven accessories</legend>
       {([
