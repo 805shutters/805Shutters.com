@@ -252,3 +252,25 @@ describe("Honeycomb motor accessory server prices",()=>{
   }
  });
 });
+
+
+describe("Vertical Honeycomb full standard configuration crosswalk (Guide pp7,36–38,49)",()=>{
+ it("prices and preserves every current fabric/cell with each published stack and mounting method",()=>{
+  const stacks=[["Left Stack",1],["Right Stack",1],["Traveling Center Stack",0],["Center Opening",2],["Split Evenly",2],["Custom Split",2]] as const;
+  const mounts=[["Inside Mount","Installation Brackets",2,35.8125,59.375],["Inside Mount","Pre-Drilled Headrail",0,35.8125,59.375],["Outside Mount","Wall Mount Brackets",2,36,59.5]] as const;
+  let count=0;
+  for(const color of normanHoneycombV2Source.verticalColors)for(const size of color.availableCells)for(const [stack,floor] of stacks)for(const [mount,attachment,layers,finishedWidth,finishedHeight] of mounts){
+   const q=verticalQuote(color.family,`${size} Cell`);q.designs[0].mount_type=mount;
+   q.designs[0].options_json={...q.designs[0].options_json,fabric_color_code:color.customerColorCode,split_splice:stack,vertical_mounting:attachment,vertical_shim_layers:layers,...(stack==="Custom Split"?{vertical_left_width_inches:18,vertical_right_width_inches:18}:{})};
+   const d=price(q);expect(d.result.ok,`${color.customerColorCode}/${size}/${stack}/${attachment}: ${JSON.stringify(d.result)}`).toBe(true);
+   expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:attachment,mountingBracketCount:attachment==="Pre-Drilled Headrail"?0:2,floorBracketCount:floor,shimQuantity:layers*(2+floor),finishedWidth,finishedHeight,stacking:stack,headrailSpliced:false});
+   const saved=JSON.parse(JSON.stringify(q));saved.designs[0].options_json={...saved.designs[0].options_json,...d.selection.configuration};
+   const reopened=price(saved);expect(reopened.result).toEqual(d.result);expect(reopened.selection.configuration.norman_assembly_v1).toEqual(d.selection.configuration.norman_assembly_v1);count++;
+  }
+  expect(count).toBe(4788);
+ },60000);
+ it.each([["Inside Mount",102.3125,false],["Inside Mount",102.25,true],["Outside Mount",102.1875,false],["Outside Mount",102.125,true]] as const)("uses exact splice inequality at100x%s/%s",(mount,height,spliced)=>{
+  const q=verticalQuote();q.designs[0].mount_type=mount;q.lines[0].width_whole=100;q.lines[0].height_whole=Math.floor(height);q.lines[0].height_fraction=height%1===.25?"1/4":height%1===.125?"1/8":`${Math.round(height%1*16)}/16`;
+  const d=price(q);expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.selection.configuration.norman_assembly_v1).toMatchObject({headrailSpliced:spliced,headrailSectionWidths:spliced?[50,50]:[100],headrailConnectorCount:spliced?1:0,includedKeystoneCount:spliced?1:0});
+ });
+});
