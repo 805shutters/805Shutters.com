@@ -6062,7 +6062,6 @@ export function DesignCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <TemporaryShadeOption selected={currentOptions.temporary_shade === true} onChange={selected => updateField("options_json", { ...currentOptions, temporary_shade: selected })} />
         {/* Variant tabs */}
         {variants.length > 1 && (
           <Tabs value={activeVariant} onValueChange={handleVariantChange}>
@@ -6322,6 +6321,9 @@ export function DesignCard({
             autoFocus
           />
         )}
+        <div className="flex justify-end">
+          <TemporaryShadeOption selected={currentOptions.temporary_shade === true} onChange={selected => updateField("options_json", { ...currentOptions, temporary_shade: selected })} />
+        </div>
       </CardContent>
     </Card>
     </MobileDesignCardContext.Provider>
