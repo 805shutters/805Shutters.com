@@ -1,9 +1,10 @@
 "use client";
+import { SundanceHorizontalConfiguration } from "./SundanceHorizontalConfiguration";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { sundanceHorizontalColors, sundanceHorizontalColorPatch, sundanceHorizontalSource, sundanceHorizontalValances } from "@/lib/quote/sundance/horizontal-assortment";
 
-export function SundanceHorizontalOptions({productId, options, onUpdateFields}: {
-  productId: string; options: Record<string, unknown>; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+export function SundanceHorizontalOptions({productId, options, onUpdateFields, widthInches=0,heightInches=0}: {
+  productId: string; widthInches?:number;heightInches?:number; options: Record<string, unknown>; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const rows = sundanceHorizontalColors.filter(row => row.productId === productId && row.available);
   const selected = sundanceHorizontalSource.rows.find(row => row.id === options.fabric_color_id && row.productId === productId);
@@ -22,5 +23,6 @@ export function SundanceHorizontalOptions({productId, options, onUpdateFields}: 
     {selected?.trapezoidBottomrail && <p className="text-sm">Trapezoid bottomrail.</p>}
     {valances.length > 0 && <label className="block text-sm">Valance<select aria-label="Sundance blind valance" className={classes} value={String(options.sundance_blind_valance ?? "")} onChange={e => onUpdateFields({options_json:{...options,sundance_blind_valance:e.target.value || null}})}><option value="">Select valance</option>{valances.map(value => <option key={value}>{value}</option>)}</select></label>}
     {productId === "sundance_premium_ii_2_5" && <p className="text-sm text-amber-900">The specification caps height at 84 inches, although the price grid includes a 92-inch row. Confirm any greater height with the dealer.</p>}
+    <SundanceHorizontalConfiguration productId={productId} options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />
   </>;
 }
