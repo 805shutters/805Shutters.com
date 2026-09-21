@@ -1,3 +1,4 @@
+import { rollerLightGuard, deriveRollerLightGuardGroups } from "./norman-roller-light-guard";
 import { rollerPoles, deriveRollerPoleOrder } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
 import { rollerAccessories } from "./norman-roller-accessories";
@@ -116,6 +117,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   issues.push(...deriveVerticalHoneycombPairs(lines));
   deriveRollerPoleOrder(lines);
   issues.push(...deriveRollerCommonValances(lines));
+  issues.push(...deriveRollerLightGuardGroups(lines));
+  for(const {selection} of lines){const lightGuard=rollerLightGuard(selection);if(lightGuard)selection.configuration={...selection.configuration,roller_light_guard_source_v1:lightGuard.record};}
   issues.push(...deriveRollerSeparateValances(lines));
   issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));

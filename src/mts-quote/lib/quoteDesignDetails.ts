@@ -1,3 +1,4 @@
+import { parseRollerLightGuard, ROLLER_LIGHT_GUARD_KEY, ROLLER_LIGHT_GUARD_GROUP_KEY } from "@/lib/quote/norman-roller-light-guard";
 import { parseRollerPole, ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY } from "@/lib/quote/norman-roller-poles";
 import { parseRollerChain, ROLLER_CHAIN_KEY } from "@/lib/quote/norman-roller-chain";
 import { parseRollerAccessories, ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED } from "@/lib/quote/norman-roller-accessories";
@@ -43,7 +44,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
-  ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY, "roller_pole_source_v1", ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED, ROLLER_CHAIN_KEY, "roller_chain_source_v1",
+  ROLLER_LIGHT_GUARD_KEY, ROLLER_LIGHT_GUARD_GROUP_KEY, "roller_light_guard_source_v1", ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY, "roller_pole_source_v1", ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED, ROLLER_CHAIN_KEY, "roller_chain_source_v1",
   "norman_valance_only_v1",
   "norman_valance_only_source_v1",
   "norman_roller_valance_choice_v1",
@@ -120,6 +121,8 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const rollerGuard=parseRollerLightGuard(options[ROLLER_LIGHT_GUARD_KEY]);
+  if(rollerGuard&&rollerGuard.kind!=="None"){details.push({label:"Light Guard",value:`${rollerGuard.kind} — ${rollerGuard.color}`});details.push({label:"Light Guard Channel Lengths",value:`Left ${rollerGuard.leftLength} inches; Right ${rollerGuard.rightLength} inches`});}
   const rollerPole=parseRollerPole(options[ROLLER_POLE_KEY]);
   if(rollerPole&&rollerPole.kind!=="None")details.push({label:"Additional Pole or Attachment",value:`${rollerPole.kind}; ${rollerPole.quantityPerAssembly} per assembly`});
   const rollerPoleOrder=options[ROLLER_POLE_ORDER_KEY] as Record<string,unknown>|undefined;

@@ -8,7 +8,7 @@ export function defaultRollerChainLength(height:number,smartRelease:boolean):num
  return height<=18?height-2:height<=30?16:height<=42?24:height<=54?36:height<=66?48:height<=90?60:84;
 }
 export function rollerChain(s:SelectionContext):{issues:ValidationIssue[];record:SelectionRecord}|null{
- if(s.productId!=='roller'||s.catalogAsOf<'2026-09-20'||!/-chain-2026-09-20-r9$|-poles-2026-09-20-r10$/.test(s.catalogVersion))return null;
+ if(s.productId!=='roller'||s.catalogAsOf<'2026-09-20'||!/-chain-2026-09-20-r9$|-poles-2026-09-20-r10$|-light-guard-2026-09-20-r11$/.test(s.catalogVersion))return null;
  const c=s.configuration,lift=norm(c.lift_system),active=/cord.*loop|smart ?release/.test(lift),raw=c[ROLLER_CHAIN_KEY],r=raw==null?emptyRollerChain():parseRollerChain(raw),issues:ValidationIssue[]=[];
  const add=(id:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`roller.chain.${id}`,source:sourceProvenance('norman-roller-guide-2026-09-16',{page:44}),selectedValues:{...c},explanation});
  if(!active){if(raw!=null)add('application','Clear the Roller chain record when selecting a non-chain operating system.');return {issues,record:{version:1,type:'roller_chain',status:'not_applicable'}};}

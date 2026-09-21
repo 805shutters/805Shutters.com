@@ -4,7 +4,7 @@ import type {SelectionContext,SelectionRecord,ValidationIssue} from './core';
 import type {SurchargeSelection} from '../quote/pricing';
 import {sourceProvenance} from './source-manifest';
 const norm=(v:unknown)=>String(v??'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-export const currentRollerPoles=(s:SelectionContext)=>s.productId==='roller'&&s.catalogAsOf>='2026-09-20'&&s.catalogVersion.endsWith('-poles-2026-09-20-r10');
+export const currentRollerPoles=(s:SelectionContext)=>s.productId==='roller'&&s.catalogAsOf>='2026-09-20'&&/-poles-2026-09-20-r10$|-light-guard-2026-09-20-r11$/.test(s.catalogVersion);
 const eligible=(s:SelectionContext)=>/cordless/.test(norm(s.configuration.lift_system))&&!/light ?guard ?360/.test(norm(s.configuration.roller_application??s.configuration.shade_type)+' '+norm(s.configuration.valance));
 const physicalCount=(s:SelectionContext)=>/coupled/.test(norm(s.configuration.roller_application??s.configuration.shade_type))?rollerComponentOrderWidthsForPricing(s)?.length??null:/dual/.test(norm(s.configuration.roller_application??s.configuration.shade_type))?2:1;
 export function rollerPoles(s:SelectionContext):{issues:ValidationIssue[];selections:SurchargeSelection[];record:SelectionRecord}|null{

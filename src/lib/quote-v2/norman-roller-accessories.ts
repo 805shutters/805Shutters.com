@@ -4,7 +4,7 @@ import {rollerComponentOrderWidthsForPricing} from './roller-matrix';
 import type {SelectionContext,SelectionRecord,ValidationIssue} from './core';
 import type {SurchargeSelection} from '../quote/pricing';
 import {sourceProvenance} from './source-manifest';
-export const currentRollerAccessories=(s:SelectionContext)=>s.productId==='roller'&&s.catalogAsOf>='2026-09-20'&&/-accessories-2026-09-20-r8$|-chain-2026-09-20-r9$|-poles-2026-09-20-r10$/.test(s.catalogVersion);
+export const currentRollerAccessories=(s:SelectionContext)=>s.productId==='roller'&&s.catalogAsOf>='2026-09-20'&&/-accessories-2026-09-20-r8$|-chain-2026-09-20-r9$|-poles-2026-09-20-r10$|-light-guard-2026-09-20-r11$/.test(s.catalogVersion);
 const norm=(v:unknown)=>String(v??'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 export function rollerAccessories(s:SelectionContext):{issues:ValidationIssue[];selections:SurchargeSelection[];record:SelectionRecord}|null{
  if(!currentRollerAccessories(s))return null;

@@ -1,3 +1,4 @@
+import { rollerLightGuard } from "./norman-roller-light-guard";
 import { rollerPoles } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
 import { rollerAccessories } from "./norman-roller-accessories";
@@ -1334,6 +1335,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
   issues.push(...(rollerAccessories(context)?.issues ?? []));
   issues.push(...(rollerChain(context)?.issues ?? []));
   issues.push(...(rollerPoles(context)?.issues ?? []));
+  issues.push(...(rollerLightGuard(context)?.issues ?? []));
   issues.push(...validateRollerCommon(context));
 
   return issues;

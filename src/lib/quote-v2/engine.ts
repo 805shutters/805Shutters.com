@@ -1,3 +1,4 @@
+import { rollerLightGuard } from "./norman-roller-light-guard";
 import { rollerPoles } from "./norman-roller-poles";
 import { rollerAccessories } from "./norman-roller-accessories";
 import { rollerMotorizationForSelection } from "./norman-roller-panel";
@@ -570,6 +571,7 @@ export function authoritativeAutomaticSurchargeSelections(
   const roller=rollerHardware(selection);
   const rollerExtras=rollerAccessories(selection);
   const rollerPoleExtras=rollerPoles(selection);
+  const rollerGuard=rollerLightGuard(selection);
   const roman=romanHardware(selection);
   const romanHardwareIds=new Set(["magnetic_hold_down","pole_attachment_only","cordless_operating_pole","shim"]);
   const wood=woodComponents(selection);
@@ -587,7 +589,7 @@ export function authoritativeAutomaticSurchargeSelections(
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
   const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
+  return [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerGuard||!["basic_light_guard","premium_wood_light_guard"].includes(entry.id))&&(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(rollerGuard?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
