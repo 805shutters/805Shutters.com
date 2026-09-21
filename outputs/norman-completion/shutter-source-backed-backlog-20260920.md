@@ -38,3 +38,11 @@ The WLP pages listed above were reread from the actual PDF during this increment
 ## Validation and pending proof
 
 Focused tests cover every documented program/layout at6-inch and maximum widths and ±1/16-inch failures, mixed-stack asymmetry, panel count/identity, mount/surface confirmation, Aqua louver rejection, malformed records, unchanged historical parsing, actual server-adapter round trip and UI rendering. Existing specialized geometry holds remain asserted. Parent full release typecheck/tests/build and live save/reopen proof are required before this increment is described as verified live.
+
+## Follow-up: Bi-fold 180 construction inputs
+
+The next increment implements casing/no-casing reference dimensions, header3/3½, fascia, optional0–2-inch header extension, measured baseboard thickness and header buildout, bottom pivot L-bracket choice and its required1¾-inch light-block extension. Aqua fascia is plain-only (WLP77). Casing width adds1¼; **existing-casing height is explicitly a directly measured MFF height**, because the casing diagram supplies no numeric height adjustment. No-casing window dimensions add3½width/4½height. These displayed source dimensions do not replace the pricing-size calculation or authorize a price.
+
+The guide's thick-baseboard3-inch-header/buildout recommendation is presented as advice (thickness minus⅛), preserving its wording as a suggestion rather than inventing an absolute compatibility rule. Header/casing fields use the existing save queue and nested versioned construction record. Changing casing basis explicitly clears the two reference measurements so values are not reinterpreted silently.
+
+Bi-fold180 now exposes its proper2/2¼-inch Butt/Rabbet choices (Aqua2-inch only). The UI omits regular-frame basis/type/sides, widest-panel summary and closure controls for this exact application; server regular-assortment validation delegates those fields to the dedicated track schedule. Other applications and historical records keep the existing regular behavior. A new schedule does not remove specialized geometry or account-pricing holds. Still remaining: full hardware quantity/length schedule, detailed site clearance acceptance, exact source pricing-size routing and all bypass/specialty branches listed above.

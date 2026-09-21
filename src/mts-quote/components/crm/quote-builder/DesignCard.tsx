@@ -1,3 +1,5 @@
+import { NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from '@/lib/quote/norman-shutter-panels';
+import { normanBifold180Layouts } from '@/lib/quote/norman-shutter-bifold180';
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, replacementUnitLabel } from "@/lib/quote/norman-smartdrape-replacement";
 import { NormanSmartdrapeReplacementOptions } from "@/components/crm/NormanSmartdrapeReplacementOptions";
 import { honeycombChargingClearance } from "@/lib/quote-v2/norman-honeycomb-charging-clearance";
@@ -3984,7 +3986,8 @@ export function getStandardShutterGridOptions(
 
   const normanOptions =
     (design?.options_json as Record<string, unknown> | undefined) || {};
-  return [
+  const normanApplication = authoritativeV2 ? parseNormanPanelRecord(normanOptions[NORMAN_SHUTTER_PANEL_RECORD])?.application : undefined;
+  const normanGridOptions: GridOption[] = [
     ...(authoritativeV2
       ? [
           {
@@ -3999,7 +4002,7 @@ export function getStandardShutterGridOptions(
             label: "Mount Type",
             field: "mount_type",
             type: "buttons",
-            options: normanShutterMounts(String(normanOptions.catalog_program_id ?? design?.material ?? ""), normanOptions.frame_type),
+            options: normanApplication === "bifold_180" ? ["Outside Mount"] : normanShutterMounts(String(normanOptions.catalog_program_id ?? design?.material ?? ""), normanOptions.frame_type),
           },
         ] satisfies GridOption[]
       : []),
@@ -4056,14 +4059,14 @@ export function getStandardShutterGridOptions(
         : "Panel Configuration",
       field: "panel_config",
       type: "select",
-      options: SHUTTER_PANEL_CONFIGS,
+      options: normanApplication === "bifold_180" ? [...normanBifold180Layouts(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""))] : SHUTTER_PANEL_CONFIGS,
     },
     ...(authoritativeV2 ? [
-      {key: "widest_panel_width_inches", label: "Widest Finished Panel Width", field: "json:widest_panel_width_inches", type: "number", min: 6, max: normanRegularPanelMaxWidth(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), design?.louver_size, design?.panel_config), step: "0.0625", unit: '"'},
-      {key: "stile_width", label: "Stile Width", field: "json:stile_width", type: "buttons", options: normanStileWidths(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), normanOptions.widest_panel_width_inches)},
-      {key: "stile_join", label: "Stile Join", field: "json:stile_join", type: "buttons", options: normanStileJoins(design?.panel_config, normanOptions.widest_panel_width_inches)},
+      ...(normanApplication !== "bifold_180" ? [{key: "widest_panel_width_inches", label: "Widest Finished Panel Width", field: "json:widest_panel_width_inches", type: "number", min: 6, max: normanRegularPanelMaxWidth(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), design?.louver_size, design?.panel_config), step: "0.0625", unit: '"'} satisfies GridOption] : []),
+      {key: "stile_width", label: "Stile Width", field: "json:stile_width", type: "buttons", options: normanStileWidths(String(normanOptions.catalog_program_id ?? normanShutterProgram(design?.material)?.id ?? ""), normanOptions.widest_panel_width_inches, normanApplication)},
+      {key: "stile_join", label: "Stile Join", field: "json:stile_join", type: "buttons", options: normanStileJoins(design?.panel_config, normanOptions.widest_panel_width_inches, normanApplication)},
       {key: "stile_profile", label: "Stile Profile", field: "json:stile_profile", type: "buttons", options: NORMAN_STILE_PROFILES},
-      ...(normanRegularPanelCount(design?.panel_config) !== 1 ? [{key: "panel_closure", label: "Panel Closure", field: "json:panel_closure", type: "buttons", options: NORMAN_PANEL_CLOSURES} satisfies GridOption] : []),
+      ...(normanApplication !== "bifold_180" && normanRegularPanelCount(design?.panel_config) !== 1 ? [{key: "panel_closure", label: "Panel Closure", field: "json:panel_closure", type: "buttons", options: NORMAN_PANEL_CLOSURES} satisfies GridOption] : []),
     ] satisfies GridOption[] : []),
     {
       key: "split_tilt",
@@ -4072,6 +4075,7 @@ export function getStandardShutterGridOptions(
       type: "yes-no",
     },
   ];
+  return normanGridOptions.filter(option => normanApplication !== "bifold_180" || !["size_type", "frame_type", "frame_sides", "stile_profile", "panel_closure"].includes(option.key));
 }
 
 // --- Small grid components ---

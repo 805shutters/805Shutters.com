@@ -9,8 +9,9 @@ import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { selectionContextFromExactInterface } from './exact-interface-adapter';
 import type { SelectionContext } from './core';
 import type { SalesQuoteDesign, SalesQuoteLineItem } from '@mts/types/quote';
-const schedule=(layout='LL'):NormanShutterPanelRecord=>({version:1,application:'bifold_180',motor:'none',existingDoorGlassOrSidelight:false,bifold180:{version:1,layout,flatMountingSurface:true},panels:[...layout].map(()=>({heightInches:60,widthInches:18,divider:'none'}))});
-const context=(programId='woodlore',record=schedule()):SelectionContext=>({manufacturerId:'Norman',productId:'norman_shutters',programId,catalogAsOf:'2026-09-20',catalogVersion:'current',widthInches:120,heightInches:100,quantity:1,configuration:{panel_config:record.bifold180?.layout??'LL',mount_type:'Outside Mount',louver_size:'3 1/2"',[NORMAN_SHUTTER_PANEL_RECORD]:record},options:{}});
+const construction={version:1 as const,casing:'none' as const,referenceWidthInches:60,referenceHeightInches:60,headerInches:3 as const,fascia:'plain' as const,headerExtensionInches:0,baseboardThicknessInches:0,headerBuildoutInches:0,bottomPivotLBracket:false,lightBlockExtensionInches:null};
+const schedule=(layout='LL'):NormanShutterPanelRecord=>({version:1,application:'bifold_180',motor:'none',existingDoorGlassOrSidelight:false,bifold180:{version:1,layout,flatMountingSurface:true,construction:{...construction}},panels:[...layout].map(()=>({heightInches:60,widthInches:18,divider:'none'}))});
+const context=(programId='woodlore',record=schedule()):SelectionContext=>({manufacturerId:'Norman',productId:'norman_shutters',programId,catalogAsOf:'2026-09-20',catalogVersion:'current',widthInches:120,heightInches:100,quantity:1,configuration:{panel_config:record.bifold180?.layout??'LL',mount_type:'Outside Mount',stile_width:'2"',stile_join:'Butt',louver_size:'3 1/2"',[NORMAN_SHUTTER_PANEL_RECORD]:record},options:{}});
 const ids=(s:SelectionContext)=>validateNormanShutterPanels(s).map(i=>i.ruleId);
 const trackIds=(s:SelectionContext)=>ids(s).filter(id=>id.startsWith('norman.shutter.bifold180.'));
 describe('Bi-fold 180 documented panel schedules',()=>{
@@ -57,7 +58,7 @@ describe('Bi-fold 180 documented panel schedules',()=>{
  it('persists the exact source schedule through the server adapter and renders every measured panel',()=>{
   const r=schedule('LLLRR');r.panels[4].widthInches=25.9375;
   const line={id:'internal',quote_id:'internal',room_name:'Audit',product_type:'Shutters',width_whole:120,width_fraction:'0',height_whole:60,height_fraction:'0',quantity:1,sort_order:0,created_at:'2026-09-20T00:00:00Z'} satisfies SalesQuoteLineItem;
-  const design=JSON.parse(JSON.stringify({id:'internal-design',supplier:'Norman',material:'Brightwood',panel_config:'LLLRR',mount_type:'Outside Mount',louver_size:'3 1/2"',options_json:{catalog_program_id:'brightwood',[NORMAN_SHUTTER_PANEL_RECORD]:r}})) as SalesQuoteDesign;
+  const design=JSON.parse(JSON.stringify({id:'internal-design',supplier:'Norman',material:'Brightwood',panel_config:'LLLRR',mount_type:'Outside Mount',stile_width:'2"',stile_join:'Butt',louver_size:'3 1/2"',options_json:{stile_width:'2"',stile_join:'Butt',catalog_program_id:'brightwood',[NORMAN_SHUTTER_PANEL_RECORD]:r}})) as SalesQuoteDesign;
   const s=selectionContextFromExactInterface(line,design,{productId:'norman_shutters',programId:'brightwood',catalogAsOf:'2026-09-20'});
   expect(s.configuration[NORMAN_SHUTTER_PANEL_RECORD]).toEqual(r);expect(trackIds(s)).toEqual([]);
   const html=renderToStaticMarkup(createElement(NormanShutterPanelOptions,{design,onUpdateFields:()=>{}}));
