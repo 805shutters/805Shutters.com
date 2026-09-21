@@ -12,7 +12,7 @@ export function normanSpecialBifoldLayouts(p:string,kind:string):string[]{
 export const normanBifoldMountKey=(value:unknown)=>String(value??'').toLowerCase().replace(/[-_]/g,' ').replace(/ mount$/,'').trim();
 export const validNormanFloatingLayout=(p:string,layout:string)=>layout.length>0&&normanBifoldPanelCount(layout)<=64&&layout.split('/').every(group=>group==='FF'||wood(p)&&group==='FFFF');
 export const normanBifoldPanelCount=(layout:string)=>layout.replace(/\//g,'').length;
-export function normanSpecialBifoldPages(p:string){return p==='woodlore'?[65,66,67,68,69,70,71,72,73,74]:p.startsWith('woodlore_')?[82,83,84,85,86,87,88,89,90]:p==='brightwood'?[75,76,77,78,79,80,81,82,83,84,85,86]:[77,78,79,80,81,82,83,84,85,86,87,88];}
+export function normanSpecialBifoldPages(p:string){return p==='woodlore'?[32,65,66,67,68,69,70,71,72,73,74]:p.startsWith('woodlore_')?[38,82,83,84,85,86,87,88,89,90]:p==='brightwood'?[32,75,76,77,78,79,80,81,82,83,84,85,86]:[32,77,78,79,80,81,82,83,84,85,86,87,88];}
 export function parseNormanFloating90(value:unknown):NormanFloating90|null{
  if(!value||typeof value!=='object'||Array.isArray(value))return null;const r=value as Record<string,unknown>;
  return r.version===1&&[true,false,null].includes(r.sideBoards as boolean|null)&&Array.isArray(r.optionalStopperPositionsInches)&&r.optionalStopperPositionsInches.every(v=>typeof v==='number'&&Number.isFinite(v))?r as NormanFloating90:null;

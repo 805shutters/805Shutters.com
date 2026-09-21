@@ -8,10 +8,10 @@ Current source binders in `outputs/catalog-audit-2026-09-17/current-sources` (ca
 
 | Source | PDF pages reviewed | SHA-256 |
 |---|---|---|
-| One PDF-Woodlore.pdf | 65–74 | e6b946da8bb729df36e130347149aefe0e8c8cb688580bee2614c35949c25469 |
-| One PDF-Woodlore Plus.pdf | 82–90 | 92e547a134faa6b4757b7ad16cd8357eca30ae7b828b37e7f1423eca0bf0c45e |
-| One PDF-Brightwood.pdf | 75–86 | 7e9aa8956fda910d1d72ce2a542a109154aa9cd916cbab92e4f2acb50b2ec7e7 |
-| One PDF-Normandy.pdf | 77–88 | da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f |
+| One PDF-Woodlore.pdf | 32, 65–74 | e6b946da8bb729df36e130347149aefe0e8c8cb688580bee2614c35949c25469 |
+| One PDF-Woodlore Plus.pdf | 38, 82–90 | 92e547a134faa6b4757b7ad16cd8357eca30ae7b828b37e7f1423eca0bf0c45e |
+| One PDF-Brightwood.pdf | 32, 75–86 | 7e9aa8956fda910d1d72ce2a542a109154aa9cd916cbab92e4f2acb50b2ec7e7 |
+| One PDF-Normandy.pdf | 32, 77–88 | da7cd86212dcce45b87ca623af3f1549d1ddaccc0854dd90847056d5bd93803f |
 
 Frame cross-sections were inspected visually in all four binders, as were floating and unequal-panel drawings. Text extraction alone omits the frame buildout labels and drawing relationships.
 
