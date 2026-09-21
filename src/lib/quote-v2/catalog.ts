@@ -63,7 +63,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "smartdrape" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartdrape-mounting-2026-09-19-r3`;
   if (productId === "perfectsheer" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-hubs-2026-09-20-r10`;
   if (productId === "perfectsheer" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-perfectsheer-controls-2026-09-19-r7`;
-  if (productId === "smartfold" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-inside-fascia-2026-09-20-r15`;
+  if (productId === "smartfold" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-inside-light-guard-2026-09-20-r16`;
   if (productId === "smartfold" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-hardware-2026-09-19-r6`;
   if (productId === "synchrony_vertical" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-synchrony-2026-09-19-r1`;
   if (productId === "palladian_shelf" && asOf >= "2026-09-19") return `${QUOTE_V2_CATALOG_VERSION}-norman-palladian-2026-09-19-r2`;
@@ -118,6 +118,7 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "roller" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-common-2026-09-20-r4`) return true;
   if (productId === "roller" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-hardware-2026-09-20-r3`) return true;
   if (productId === "roller" && asOf >= "2026-09-01" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-pg4-2026-09-r2`) return true;
+  if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-inside-fascia-2026-09-20-r15`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-autowand-2026-09-20-r14`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-mounting-2026-09-20-r9`) return true;
   if (productId === "smartfold" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-mounting-2026-09-20-r10`) return true;

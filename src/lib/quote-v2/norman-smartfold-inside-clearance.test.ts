@@ -23,6 +23,7 @@ describe("SmartFold Basic Light Guard full-recess envelopes",()=>{
  });
  it("preserves previous catalog behavior and ignores non-Light-Guard or outside routes",()=>{
   const old=shade("F1709",60,true,"Motorized",1);old.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-outside-2026-09-20-r8`;expect(isRecognizedQuoteV2Catalog(old.productId,old.catalogAsOf,old.catalogVersion)).toBe(true);expect(validate(old)).toEqual([]);
+  const prior=shade("F1709",60,true,"PrecisionLift Cordless",3.84);prior.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-inside-fascia-2026-09-20-r15`;prior.configuration={...prior.configuration,valance:"No Valance"};expect(isRecognizedQuoteV2Catalog(prior.productId,prior.catalogAsOf,prior.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(prior)).toBe(false);
   const outside=shade("F1709",60,true,"Motorized",1);outside.configuration={...outside.configuration,mount_type:"Outside Mount"};expect(resolve(outside)).toBe(null);
  });
 });

@@ -2,7 +2,7 @@ import type {SelectionContext,ValidationIssue} from "./core";
 import {sourceProvenance} from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 export function smartfoldInsideFascia(s:SelectionContext){
- if(s.productId!=="smartfold"||s.catalogAsOf<"2026-09-20"||!s.catalogVersion.endsWith("-norman-smartfold-inside-fascia-2026-09-20-r15")||!["inside mount","inside","im","ib"].includes(norm(s.configuration.mount_type))||!["curved fascia","square fascia"].includes(norm(s.configuration.valance)))return null;
+ if(s.productId!=="smartfold"||s.catalogAsOf<"2026-09-20"||!["-norman-smartfold-inside-fascia-2026-09-20-r15","-norman-smartfold-inside-light-guard-2026-09-20-r16"].some(v=>s.catalogVersion.endsWith(v))||!["inside mount","inside","im","ib"].includes(norm(s.configuration.mount_type))||!["curved fascia","square fascia"].includes(norm(s.configuration.valance)))return null;
  const c=s.configuration,top=norm(c.smartfold_installation)==="top mount with raceway",back=norm(c.smartfold_installation)==="back wall mount with raceway",lift=norm(c.lift_system),loop=lift==="continuous cord loop",other=["precisionlift cordless","motorized"].includes(lift);
  const requiredDepth=(loop||other)&&(top||back)?back?4.087:loop?4.2:4.19:null;
  const depth=typeof c.smartfold_fascia_recess_depth_inches==="number"&&Number.isFinite(c.smartfold_fascia_recess_depth_inches)?c.smartfold_fascia_recess_depth_inches:null;

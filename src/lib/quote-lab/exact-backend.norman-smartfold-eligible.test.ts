@@ -16,7 +16,7 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
  it("retains the measured Light Guard envelope and exact rejection through server save/reopen",()=>{
   const q=quote();q.designs[0].mount_type="Inside Mount";q.designs[0].options_json={...q.designs[0].options_json,basic_light_guard:"Yes",smartfold_light_guard_color:"3058 White",smartfold_light_guard_recess:"Fully Recessed",smartfold_full_recess_depth_inches:3.52};
   const valid=run(q);expect(valid.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({insideLightGuardClearance:{requiredFullAssemblyDepth:3.52,availableFullAssemblyDepth:3.52,recessArrangement:"Fully Recessed"}});
-  expect(valid.designs[0].result.validationIssues.some(i=>i.ruleId==="norman.smartfold.inside_light_guard_depth")).toBe(false);expect(valid.sendability.sendable).toBe(false);
+  expect(valid.designs[0].result.validationIssues.some(i=>i.ruleId==="norman.smartfold.inside_light_guard_depth")).toBe(false);expect(valid.sendability.sendable).toBe(true);
   const reopened=run(JSON.parse(JSON.stringify(q)));expect(reopened.designs[0].selection).toEqual(valid.designs[0].selection);
   q.designs[0].options_json.smartfold_full_recess_depth_inches=3.5;const rejected=run(q);expect(rejected.designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.inside_light_guard_depth");expect(rejected.designs[0].snapshot).toBeNull();
  });

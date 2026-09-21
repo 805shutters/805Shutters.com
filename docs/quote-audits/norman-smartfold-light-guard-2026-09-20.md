@@ -1,0 +1,9 @@
+# SmartFold individual Basic Light Guard — September 20, 2026
+
+September SmartFold Guide pages22/33 publish the Inside Mount restriction, seven finishes, included top block, and complete assembly depths. Page33 was visually inspected: top cord-loop3.87 inches, top cordless/motor3.84, wall cord-loop3.51, wall cordless/motor3.52; Louise over72 uses4.53 but independently requires a6/8-inch fabric valance (p15). September retail PDF p21 (printed20) supplies the $45 Basic Light Guard surcharge per individual shade.
+
+Catalog r16 admits individual, no-valance, fully recessed Basic Light Guard only, using the existing exact controls, fabric routing, finished-width deduction and other dimensional restrictions. It requires a numeric measured depth at least the source envelope and a current finish. Source-supported controls are cord loop, PrecisionLift Cordless, rechargeable Norman Smart and AutoWand. Common/side-by-side assemblies, partial projection and valance-plus-Light-Guard remain held. Louise over72 remains held through the independent valance requirement; no inference is made from the standalone Light Guard drawing. Prior catalog versions remain recognized with their previous pricing holds.
+
+209 actual backend cases cover all15 fabrics, four controls, both mounting methods, representative60/84-inch heights where no-valance is allowed, exact $45 surcharge, quantity4, atomic snapshot, JSON reopen, customer details and depth-minus0.001 rejection. The focused set comprises1,318 passing tests after correcting the previous expected current-catalog hold; historical r15 remains held. TypeScript and diff checks passed. Missing Light Guard recess arrangement/depth in customer output was fixed; labels are omitted when that assembly is inactive.
+
+Production deployment and save/full-reload/reopen proof remain pending. Dealer factors, selling policy and historical snapshots are unchanged.
