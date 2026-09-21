@@ -1,0 +1,8 @@
+{
+  "policyId": "805-owner-poly-composite-h3-existing-policy",
+  "scope": "805 customer selling policy for exact Poly Composite H3 - Hidden Tiltrod In Stile",
+  "retailPerPanel": 10,
+  "supplierCost": null,
+  "evidence": "Existing src/mts-quote/lib/shutterOptionSurcharges.ts getInvisibleTiltPanelRate and addPerPanelInvisibleTiltSurcharge at origin/main18a473e4; preserved owner policy, not a new manufacturer rate.",
+  "existingImplementationSha256": "1cd179392e5a74616630fb7ba47e0daa2d788a0913d62c93e3c226fcf350e267"
+}

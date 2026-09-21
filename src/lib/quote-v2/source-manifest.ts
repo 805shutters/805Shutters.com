@@ -52,6 +52,42 @@ export interface SourceManifestEntry {
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
 {
+  "id": "onyx-owner-confirmed-poly-composite-2026-07-27",
+  "manufacturer": "Onyx",
+  "kind": "pricing_evidence",
+  "format": "json",
+  "fileName": "src/lib/quote/onyx-poly-composite-owner-policy.json",
+  "title": "805 customer selling policy for onyx_shutters/poly_composite",
+  "revision": "Existing 805 owner policy recorded for engine provenance 2026-09-21",
+  "effectiveDate": "2026-07-27",
+  "effectiveDateEvidence": "Base selling rate confirmation date retained from existing catalog.",
+  "receivedDate": "2026-09-21",
+  "modifiedDate": null,
+  "sha256": "1cacced828f1ed1aa7ffd20b54cb06e9adee90ae4999445851ce60b0f2c882d3",
+  "authorities": [
+    "pricing"
+  ],
+  "accountScope": "805 customer retail only; does not establish supplier H3 cost"
+},
+{
+  "id": "805-owner-poly-composite-h3-existing-policy",
+  "manufacturer": "Onyx",
+  "kind": "pricing_evidence",
+  "format": "json",
+  "fileName": "src/lib/quote/onyx-poly-h3-owner-policy.json",
+  "title": "805 customer selling policy for exact Poly Composite H3 - Hidden Tiltrod In Stile",
+  "revision": "Existing 805 owner policy recorded for engine provenance 2026-09-21",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Existing deployed policy; original confirmation date not established by this capture.",
+  "receivedDate": "2026-09-21",
+  "modifiedDate": null,
+  "sha256": "271e4dd51b9b649fbe1784c20344927a2983a3a850ad1316beb685e16d3dc6c4",
+  "authorities": [
+    "pricing"
+  ],
+  "accountScope": "805 customer retail only; does not establish supplier H3 cost"
+},
+{
   "id": "lotus-digital-catalog-v1-1-25",
   "manufacturer": "Lotus",
   "kind": "product_guide",

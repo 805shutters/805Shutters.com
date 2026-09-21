@@ -788,6 +788,19 @@
           "sourceType": "Onyx dealer-cost evidence"
         },
         {
+          "id": "poly_composite_h3_per_panel",
+          "name": "Onyx Poly Composite H3 Invisible Tilt ($10/panel)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 10,
+          "wholesaleUnverified": true,
+          "programIds": ["poly_composite"],
+          "sourceId": "805-owner-poly-composite-h3-existing-policy",
+          "appliesTo": "shutter",
+          "notes": "Existing 805 owner selling policy implemented in shutterOptionSurcharges.ts: exact Poly Composite H3 is $10 per panel. No supplier cost is established by this selling price.",
+          "sourceType": "805 existing owner selling policy"
+        },
+        {
           "id": "hidden_tilt_rod",
           "name": "H3 Hidden Gear",
           "kind": "flat",

@@ -108,6 +108,10 @@ export type CatalogSurcharge = {
   value: number | null;
   /** Internal supplier cost when the source does not define customer retail. */
   dealerNetValue?: number | null;
+  /** Selling-only evidence; never infer supplier cost from the retail amount. */
+  wholesaleUnverified?: boolean;
+  /** Exact programs authorized to use this option price. */
+  programIds?: string[];
   /** Immutable source-manifest identity for this option's price evidence. */
   sourceId?: string;
   /** Optional dealer-cost multiplier override. `1` means no dealer discount. */

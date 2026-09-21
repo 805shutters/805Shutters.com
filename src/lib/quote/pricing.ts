@@ -936,6 +936,9 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
     if (!sc) {
       return fail("SURCHARGE_UNKNOWN", `Surcharge '${sel.id}' is not valid for ${product.name}.`, warnings);
     }
+    if (sc.programIds && !sc.programIds.includes(prog.id)) {
+      return fail("SURCHARGE_UNKNOWN", `Surcharge '${sc.id}' is not priced for ${prog.name}.`, warnings);
+    }
     let amountCents: number;
     let wholesaleAmountCents: number | null = null;
     let detail: string | undefined;
@@ -1019,6 +1022,7 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
       if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
       if (units > 1) detail = `${sc.value} x ${units} ${sc.per}s`;
     }
+    if (sc.wholesaleUnverified) wholesaleAmountCents = null;
     surchargeLines.push({
       id: sc.id,
       label: sc.name,
@@ -1115,13 +1119,16 @@ export function priceDesign(input: PriceInput, sourceAsOf?: string): PriceResult
   const discountCents = Math.round((unitCents * discountPercent) / 100);
   const discountedUnitCents = unitCents - discountCents;
   const totalCents = discountedUnitCents * quantity + onceCents;
-  const wholesaleUnitCents = wholesaleBaseCents == null ? null : wholesaleBaseCents + wholesalePerWindowCents;
+  const unverifiedOptionCost = (input.surcharges ?? []).some(sel => findProductSurcharge(product, sel.id)?.wholesaleUnverified);
+  const knownWholesaleUnitCents = wholesaleBaseCents == null ? null : wholesaleBaseCents + wholesalePerWindowCents;
+  const knownWholesaleTotalCents = knownWholesaleUnitCents == null ? null : knownWholesaleUnitCents * quantity + wholesaleOnceCents;
+  const wholesaleUnitCents = unverifiedOptionCost ? null : knownWholesaleUnitCents;
   const wholesaleTotalCents =
     wholesaleUnitCents == null ? null : wholesaleUnitCents * quantity + wholesaleOnceCents;
   if (
-    wholesaleUnitCents != null &&
-    (discountedUnitCents < wholesaleUnitCents ||
-      (wholesaleTotalCents != null && totalCents < wholesaleTotalCents))
+    knownWholesaleUnitCents != null &&
+    (discountedUnitCents < knownWholesaleUnitCents ||
+      (knownWholesaleTotalCents != null && totalCents < knownWholesaleTotalCents))
   ) {
     return fail(
       "CUSTOMER_PRICE_BELOW_COST",

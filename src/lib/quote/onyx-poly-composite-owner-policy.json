@@ -1,0 +1,8 @@
+{
+  "policyId": "onyx-owner-confirmed-poly-composite-2026-07-27",
+  "scope": "805 customer selling policy for onyx_shutters/poly_composite",
+  "retailPerSqft": 31,
+  "minimumBillableSqft": 8,
+  "recordedConfirmationDate": "2026-07-27",
+  "evidence": "Existing src/lib/quote/catalog/shutters-mts.catalog.json poly_composite program at origin/main 18a473e4; retained source ID and owner-confirmation note. Existing costPerSqft 12 is not revised or re-authorized by this record."
+}
