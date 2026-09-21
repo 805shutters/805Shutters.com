@@ -20,6 +20,7 @@ export type NormanShutterPanelRecord = {
   bifold180?: NormanBifold180Record;
   bypass?: NormanBypassRecord;
   specialty?: NormanSpecialtyRecord;
+  regularHangStripPlacement?: '' | 'beside' | 'behind';
 };
 export function normanPanelMaxHeight(programId:string){return ['brightwood','normandy_painted','normandy_stained'].includes(programId)?132:120;}
 export function normanDividerThreshold(programId:string,record:NormanShutterPanelRecord){
@@ -37,6 +38,7 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   if(r.panels.some(p=>!p||typeof p!=='object'||Array.isArray(p)||!['','none','present'].includes(p.divider)||(p.heightInches!==null&&(typeof p.heightInches!=='number'||!Number.isFinite(p.heightInches)))))return null;
   if(r.panels.some(p=>p.wholePanelLouverCount!==undefined&&p.wholePanelLouverCount!==null&&(typeof p.wholePanelLouverCount!=='number'||!Number.isFinite(p.wholePanelLouverCount))))return null;
   if(r.panels.some(p=>p.singleLouverNoMouseHole!==undefined&&![null,true,false].includes(p.singleLouverNoMouseHole)))return null;
+  if(r.regularHangStripPlacement!==undefined&&(typeof r.regularHangStripPlacement!=='string'||!['','beside','behind'].includes(r.regularHangStripPlacement)))return null;
   if(r.specialty!==undefined&&!parseNormanSpecialtyRecord(r.specialty))return null;
   if(r.bypass!==undefined&&!parseNormanBypassRecord(r.bypass))return null;
   if(r.bifold180!==undefined&&!parseNormanBifold180Record(r.bifold180))return null;

@@ -1,3 +1,4 @@
+import {validateNormanRegularWidths} from './norman-shutter-regular-widths';
 import {validateNormanSingleLouver} from './norman-shutter-single-louver';
 import {validateNormanShutterSpecialty} from './norman-shutter-specialty';
 import {validateNormanShutterBypass} from './norman-shutter-bypass';
@@ -34,6 +35,6 @@ export function validateNormanShutterPanels(s:SelectionContext):ValidationIssue[
     if(record.application!=='specialty'&&panel.heightInches!==null&&panel.heightInches>threshold&&panel.divider!=='present')add('divider_required',`Panel ${index+1} exceeds the ${threshold}-inch no-divider limit for this program/application.`,[specs,dividerPage]);
     if(panel.divider==='present')add('divider_geometry',`Panel ${index+1} divider presence is saved. Exact positions, measurement basis and louver spacing still require verification.`,[dividerPage]);
   });
-  issues.push(...validateNormanSingleLouver(s,record),...validateNormanShutterSpecialty(s,record),...validateNormanShutterBypass(s,record),...validateNormanShutterBifold180(s,record),...validateNormanShutterBottomSupport(s,record),...validateNormanShutterDividers(s,record));
+  issues.push(...validateNormanRegularWidths(s,record),...validateNormanSingleLouver(s,record),...validateNormanShutterSpecialty(s,record),...validateNormanShutterBypass(s,record),...validateNormanShutterBifold180(s,record),...validateNormanShutterBottomSupport(s,record),...validateNormanShutterDividers(s,record));
   return issues;
 }
