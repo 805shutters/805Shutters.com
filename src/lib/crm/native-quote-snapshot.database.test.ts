@@ -41,6 +41,9 @@ beforeAll(async()=>{
  await db.exec(migration('20260914231500_customer_installation_shipping_snapshots'));
  await db.exec(migration('20260914232000_customer_quote_adjustment_rounding'));
  await db.exec(migration('20260914232500_preserve_unchanged_manual_quote_snapshots'));
+ await db.exec('alter table crm_quotes alter column materials_cost set not null');
+ await db.exec('alter table sales_quote_v2_price_snapshots alter column internal_landed_cost_total set not null');
+ await db.exec(migration('20260921214000_allow_explicit_unknown_quote_cost'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -129,4 +132,74 @@ it('real batch preserves untouched manual snapshots and costs while pricing anot
  const repriced=(await db.query<any>('select * from save_quote_v2_pricing_batch($1,3,$2,$3,$4)',[id(4),'quantity-edit',id(50),edited])).rows[0];
  expect(repriced.manual_prices[id(204)]).toMatchObject({unitPrice:100,quantity:4,total:400});
  expect(repriced.quote_total).toBe('747.00');
+});
+
+const unresolvedCost = {quotePricingPolicy:'grid_options_quote_v1',status:'unresolved',costStatus:'incomplete',freightStatus:'unresolved',productCostUnit:null,productCostTotal:null,freightAllocated:null,oversizeAllocated:null,processingFeeAllocated:null,landedCostTotal:null};
+function retailOnlyBatch(n:number, cost:object=unresolvedCost, asOf='2026-09-21') {
+ return [{lineItemId:id(n+100),designId:id(n+200),selection,selectionFingerprint:fingerprint,catalogVersion:'catalog-test',priceStatus:'authoritative',selectDesign:true,
+ authoritativeSnapshot:{quotePricingPolicy:'grid_options_quote_v1',priceStatus:'authoritative',selectionFingerprint:fingerprint,catalogVersion:'catalog-test',catalogAsOf:asOf,retail:{...price,ok:true,validationStatus:'valid',catalogVersion:'catalog-test'}},
+ internalCostSnapshot:cost,validationSnapshot:[],provenanceSnapshot:{source:'test'}}];
+}
+async function saveRetailOnly(n:number,batch=retailOnlyBatch(n),key='retail-only') {
+ return (await db.query<any>('select * from save_quote_v2_pricing_batch($1,1,$2,$3,$4)',[id(n),key,id(50),batch])).rows[0];
+}
+it('persists known retail with null unknown cost, reopens and prepares customer mirror without fabricating wholesale',async()=>{
+ const original=await seed(20);
+ const batch=retailOnlyBatch(20);
+ const saved=await saveRetailOnly(20,batch);
+ expect(saved).toMatchObject({quote_total:'387.00',quote_status:'priced',new_revision:2});
+ expect(await saveRetailOnly(20,batch)).toEqual(saved);
+ const stored=(await db.query<any>('select s.*,q.product_cost,q.manufacturer_cost,q.profit_amount,d.unit_price from sales_quotes q join sales_quote_line_items l on l.quote_id=q.id join sales_quote_designs d on d.id=l.selected_design_id join sales_quote_v2_price_snapshots s on s.id=d.current_v2_snapshot_id where q.id=$1',[id(20)])).rows[0];
+ expect(stored).toMatchObject({retail_total:'417.00',unit_price:'139.00',internal_landed_cost_total:null,product_cost:null,manufacturer_cost:null,profit_amount:null,internal_cost_snapshot:unresolvedCost});
+ expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(320)])).rows[0].retail_snapshot).toEqual(original);
+ const prepared=await prepare(20,payload(20),2,'retail-only-customer');
+ expect(prepared.customer_payload).toEqual(payload(20));
+ expect((await db.query<any>('select materials_cost from crm_quotes where id=$1',[prepared.crm_quote_id])).rows[0].materials_cost).toBeNull();
+ expect((await db.query<any>('select wholesale_unit_price from crm_quote_designs where id=$1',[id(220)])).rows[0].wholesale_unit_price).toBeNull();
+});
+it('retains known dealer merchandise while unresolved freight keeps aggregate landed cost and profit null',async()=>{
+ await seed(21);
+ await saveRetailOnly(21,retailOnlyBatch(21,{...unresolvedCost,productCostUnit:30,productCostTotal:90}));
+ const prepared=await prepare(21,payload(21),2,'known-merchandise');
+ expect((await db.query<any>('select materials_cost from crm_quotes where id=$1',[prepared.crm_quote_id])).rows[0].materials_cost).toBeNull();
+ expect((await db.query<any>('select wholesale_unit_price from crm_quote_designs where id=$1',[id(221)])).rows[0].wholesale_unit_price).toBe('30.00');
+});
+it('rejects old-date, missing policy, forged complete, negative and string cost snapshots atomically',async()=>{
+ await seed(22);
+ for(const batch of [retailOnlyBatch(22,unresolvedCost,'2026-09-20'),retailOnlyBatch(22,{...unresolvedCost,quotePricingPolicy:null}),retailOnlyBatch(22,{...unresolvedCost,status:'complete'}),retailOnlyBatch(22,{...unresolvedCost,productCostUnit:-1}),retailOnlyBatch(22,{...unresolvedCost,productCostTotal:'100'})]) {
+  await expect(saveRetailOnly(22,batch)).rejects.toThrow(/protected-cost snapshot/);
+ }
+ expect((await db.query<any>('select quote_v2_revision from sales_quotes where id=$1',[id(22)])).rows[0].quote_v2_revision).toBe(1);
+});
+it('prevents unmarked null landed costs at the table boundary and preserves complete snapshot arithmetic validation',async()=>{
+ await expect(db.query('insert into sales_quote_v2_price_snapshots(internal_landed_cost_total,retail_snapshot,internal_cost_snapshot) values(null,$1,$2)',[{},{}])).rejects.toThrow(/explicit_unknown_cost_check/);
+ await seed(23);
+ const bad={productCostUnit:30,productCostTotal:90,freightAllocated:0,oversizeAllocated:0,processingFeeAllocated:0,landedCostTotal:91};
+ await expect(saveRetailOnly(23,retailOnlyBatch(23,bad))).rejects.toThrow(/Landed cost must equal/);
+});
+
+it('does not report partial known cost as full quote cost in a mixed known/unknown batch',async()=>{
+ await seed(24); await seed(25);
+ await db.query('update sales_quote_line_items set quote_id=$1 where id=$2',[id(24),id(125)]);
+ const known=retailOnlyBatch(25,{productCostUnit:30,productCostTotal:90,freightAllocated:0,oversizeAllocated:0,processingFeeAllocated:0,landedCostTotal:90});
+ await saveRetailOnly(24,[...retailOnlyBatch(24),...known]);
+ expect((await db.query<any>('select product_cost,manufacturer_cost,profit_amount,total_amount from sales_quotes where id=$1',[id(24)])).rows[0]).toMatchObject({product_cost:null,manufacturer_cost:null,profit_amount:null,total_amount:'774.00'});
+});
+it('still rejects repricing sent and signed-status quotes',async()=>{
+ await seed(26);
+ await db.query("update sales_quotes set status='sent',quote_v2_status='sent' where id=$1",[id(26)]);
+ await expect(saveRetailOnly(26)).rejects.toThrow(/non-draft/);
+ await expect(db.query('insert into crm_quotes(materials_cost,meta) values(null,$1)',[{}])).rejects.toThrow(/explicit_unknown_cost_check/);
+});
+it('persists staff-only pricing failure across reopen and clears it when a later calculation succeeds',async()=>{
+ await seed(27);
+ const batch=retailOnlyBatch(27);
+ const failed={...batch[0],priceStatus:'unpriceable',authoritativeSnapshot:null,internalCostSnapshot:null,staffPricingError:'No retail grid cell exists for this 91 × 48 configuration.'};
+ await saveRetailOnly(27,[failed] as any,'grid-missing');
+ const read=async()=> (await db.query<any>('select options_json,current_v2_snapshot_id from sales_quote_designs where id=$1',[id(227)])).rows[0];
+ expect(await read()).toMatchObject({current_v2_snapshot_id:null,options_json:{authoritative_price_error:failed.staffPricingError}});
+ await db.query('select * from save_quote_v2_pricing_batch($1,2,$2,$3,$4)',[id(27),'grid-resolved',id(50),batch]);
+ expect((await read()).options_json).not.toHaveProperty('authoritative_price_error');
+ const output=await prepare(27,payload(27),3,'grid-resolved-customer');
+ expect(JSON.stringify(output.customer_payload)).not.toMatch(/staffPricingError|authoritative_price_error|No retail grid/);
 });
