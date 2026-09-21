@@ -1,3 +1,4 @@
+import { isRollerValance, ROLLER_VALANCE_ONLY, ROLLER_SEPARATE_VALANCE } from "../quote/norman-roller-valance-only";
 import { isNormanValanceOnly, ULTIMATE_VALANCE, SMARTPRIVACY_VALANCE } from "../quote/norman-valance-only";
 import { SMARTDRAPE_REPLACEMENT } from "@/lib/quote/norman-smartdrape-replacement";
 import { isRomanAncillary } from "@/lib/quote/norman-roman-ancillary";
@@ -67,6 +68,8 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
+  [ROLLER_VALANCE_ONLY]: "Valances",
+  [ROLLER_SEPARATE_VALANCE]: "Valances",
   [ULTIMATE_VALANCE]: "Valances",
   [SMARTPRIVACY_VALANCE]: "Valances",
   [SMARTDRAPE_REPLACEMENT]: "Vane Packs",
@@ -154,8 +157,8 @@ export function createQuoteLabDesign(
     label,
     productId: product.id,
     programId: product.programs[0]?.id,
-    widthInches: (isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 36,
-    heightInches: (isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 60,
+    widthInches: (isRollerValance(product.id) || isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 36,
+    heightInches: (isRollerValance(product.id) || isNormanValanceOnly(product.id) || isRomanAncillary(product.id) || product.id === SMARTDRAPE_REPLACEMENT) ? 0 : 60,
     discountPercent: 0,
     surcharges: [],
     motorization: [],

@@ -1,3 +1,4 @@
+import { isRollerValance, rollerValanceProducts, ROLLER_VALANCE_VERSION } from "../quote/norman-roller-valance-only";
 import { isNormanValanceOnly, valanceOnlyProducts, VALANCE_ONLY_VERSION } from "../quote/norman-valance-only";
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_VERSION } from "@/lib/quote/norman-smartdrape-replacement";
 import { romanPriceGroup, romanFabricStyles } from '@/lib/quote/norman-roman-current-price-groups';
@@ -43,6 +44,7 @@ export function quoteV2CatalogVersionFor(
 ): string {
   if (productId === SMARTDRAPE_REPLACEMENT) return SMARTDRAPE_REPLACEMENT_VERSION;
   if (isRomanAncillary(productId)) return ROMAN_ANCILLARY_VERSION;
+  if (isRollerValance(productId)) return ROLLER_VALANCE_VERSION;
   if (isNormanValanceOnly(productId)) return VALANCE_ONLY_VERSION;
   if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;
   if (productId === "roman" && asOf >= "2026-09-20") return `${QUOTE_V2_CATALOG_VERSION}-norman-roman-mounting-2026-09-20-r9`;
@@ -159,6 +161,7 @@ export type CatalogColorOffering = {
 export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStatus>> = {
   [SMARTDRAPE_REPLACEMENT]: "manual_quote_required",
   ...Object.fromEntries(romanAncillaryProducts.map(p=>[p.id,"manual_quote_required" as const])),
+  ...Object.fromEntries(rollerValanceProducts.map(p=>[p.id,"manual_quote_required" as const])),
   ...Object.fromEntries(valanceOnlyProducts.map(p=>[p.id,"manual_quote_required" as const])),
   ...Object.fromEntries(onyxHeldProducts.map(p=>[p.id,"manual_quote_required" as const])),
   norman_contract_faux_wood: "manual_quote_required",

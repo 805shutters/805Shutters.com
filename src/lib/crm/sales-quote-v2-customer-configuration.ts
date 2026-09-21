@@ -9,6 +9,12 @@ export const QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL =
  * internal confirmations, and source snapshots are deliberately absent.
  */
 export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
+  ["roller_valance_width", "Valance end-to-end width in inches"],
+  ["roller_valance_return_length", "Valance return length in inches"],
+  ["roller_valance_fascia_color", "Fascia color"],
+  ["roller_valance_end_cap_color", "Fascia end-cap color"],
+  ["roller_valance_joinery", "Valance joinery"],
+  ["roller_valance_keystone_centers", "Keystone centers from left end"],
   ["standalone_valance_inner_length", "Valance inner length in inches"],
   ["standalone_valance_returns", "Valance returns"],
   ["standalone_valance_return_length", "Return length in inches"],

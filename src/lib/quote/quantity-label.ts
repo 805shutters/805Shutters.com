@@ -1,3 +1,4 @@
+import { isRollerValance } from "./norman-roller-valance-only";
 import { isNormanValanceOnly } from "./norman-valance-only";
 import { ROMAN_PILLOWS, ROMAN_YARDAGE } from './norman-roman-ancillary';
 import { SMARTDRAPE_REPLACEMENT } from './norman-smartdrape-replacement';
@@ -8,7 +9,7 @@ type Options = Record<string, unknown> | null | undefined;
 /** Quantity counts cuts/packs, not the yardage/vane count inside each one. */
 export function quoteQuantityUnit(options: Options): string {
   const id = options?.catalog_product_id ?? options?.quote_lab_product_id;
-  if (typeof id === 'string' && isNormanValanceOnly(id)) return 'valance';
+  if (typeof id === 'string' && (isNormanValanceOnly(id) || isRollerValance(id))) return 'valance';
   if (id === SMARTDRAPE_REPLACEMENT) return 'pack';
   if (id === ROMAN_YARDAGE) return 'fabric cut';
   if (id === ROMAN_PILLOWS) return 'pillow cover';

@@ -1,3 +1,4 @@
+import { hasRollerValanceUnits } from "./norman-roller-valance-only";
 import { hasValanceOnlyUnits } from "./norman-valance-only";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { hasRomanAncillaryUnits } from "./norman-roman-ancillary";
@@ -18,6 +19,7 @@ const INTERNAL_OPTION_KEYS = new Set([
   "vertical_honeycomb_pair_v1",
   "smartdrape_replacement_source_v1",
   "norman_valance_only_source_v1",
+  "norman_roller_valance_source_v1",
   "authoritative_price_status",
   "authoritative_price_error",
   "authoritative_price_breakdown",
@@ -770,7 +772,7 @@ export function selectionContextFromExactInterface(
     firstString(sourceOptions, "draw_direction", "control_side", "control_type"),
   );
 
-  const naturalUnits = hasValanceOnlyUnits(input.productId, configuration) || input.productId === SMARTDRAPE_REPLACEMENT || hasRomanAncillaryUnits(input.productId, configuration);
+  const naturalUnits = hasRollerValanceUnits(input.productId, configuration) || hasValanceOnlyUnits(input.productId, configuration) || input.productId === SMARTDRAPE_REPLACEMENT || hasRomanAncillaryUnits(input.productId, configuration);
   const measuredWidthInches = naturalUnits ? 0 : authoritativeV2Measurement(
     line.width_whole,
     line.width_fraction,

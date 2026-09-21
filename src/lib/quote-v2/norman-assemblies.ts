@@ -1,3 +1,4 @@
+import { deriveRollerSeparateValances } from "./norman-roller-valance-only";
 import { smartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
 import { smartfoldOutsideClearance } from "./norman-smartfold-eligibility";
 import { currentRollerPanel, rollerPhysicalMotorCount } from "./norman-roller-panel";
@@ -104,6 +105,7 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
   }
   issues.push(...deriveVerticalHoneycombPairs(lines));
   issues.push(...deriveRollerCommonValances(lines));
+  issues.push(...deriveRollerSeparateValances(lines));
   issues.push(...deriveSmartdrapePairs(lines));
   issues.push(...deriveSmartfoldCommonValances(lines));
   issues.push(...derivePerfectsheerCommonValances(lines));

@@ -1,3 +1,4 @@
+import { hasRollerValanceUnits, validateRollerValance } from "./norman-roller-valance-only";
 import { hasValanceOnlyUnits, validateValanceOnly } from "./norman-valance-only";
 import { validateSmartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
@@ -229,7 +230,7 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  const dimensionlessPart = hasValanceOnlyUnits(context.productId, context.configuration) || context.productId === SMARTDRAPE_REPLACEMENT || context.productId === "lotus_dealer_listed_parts" || hasRomanAncillaryUnits(context.productId, context.configuration);
+  const dimensionlessPart = hasRollerValanceUnits(context.productId, context.configuration) || hasValanceOnlyUnits(context.productId, context.configuration) || context.productId === SMARTDRAPE_REPLACEMENT || context.productId === "lotus_dealer_listed_parts" || hasRomanAncillaryUnits(context.productId, context.configuration);
   if (!dimensionlessPart && (!Number.isFinite(context.widthInches) || context.widthInches <= 0)) {
     issues.push(
       issue(
@@ -2432,6 +2433,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   const issues = validateCommon(context);
   issues.push(...validateRomanAncillary(context));
   issues.push(...validateValanceOnly(context));
+  issues.push(...validateRollerValance(context));
   issues.push(...validateSmartdrapeReplacement(context));
   issues.push(...validateOnyxHeldSelection(context));
   issues.push(...validateLotusAmx(context));

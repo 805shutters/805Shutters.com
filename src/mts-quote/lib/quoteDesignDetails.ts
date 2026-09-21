@@ -40,6 +40,8 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 const INTERNAL_OPTION_KEYS = new Set([
   "norman_valance_only_v1",
   "norman_valance_only_source_v1",
+  "norman_roller_valance_choice_v1",
+  "norman_roller_valance_source_v1",
   ROLLER_HARDWARE_KEY,
   "motorization_selections",
   SMARTFOLD_CHARGING_KEY,
