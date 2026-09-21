@@ -8,6 +8,7 @@ export const NORMAN_SPECIALTY_SHAPES = [
  ['YS51','Quarter Sunburst Panel with Continuous Frame'],['YS52','Sunburst on Top with T Post'],['YS53','Half Round with Horizontal Louvers'],['YS56','Solid Rail Arch'],['YS57','Left Quarter Arch'],['YS58','Right Quarter Arch'],['YS59','Triangle with Horizontal Louvers'],['YS60','Triangle Sunburst'],['YS62','Peak'],['YS63','Arch Top Picture Window with Sunburst'],['YS64','Standard Unit with Horizontal Arch Center'],['YS65','Arch Top Picture Window with Horizontal Louvers'],['YS66','Horizontal Louvers Center Arch with Quarter Round Side Panels'],['YS67','Sunburst Louvers Center Arch with Quarter Round Side Panels'],['YS68','Left Quarter Sunburst Panel with Continuous Frame'],['YS69','Right Quarter Sunburst Panel with Continuous Frame'],
  ['YS70','Mansard'],['YS71','Mansard Left'],['YS72','Mansard Right'],['YS73','Upside Down Mansard'],['YS74','Upside Down Mansard Left'],['YS75','Upside Down Mansard Right'],
 ] as const;
+export const NORMAN_SPECIALTY_HORIZONTAL_LEG_SHAPES=['YS10','YS51','YS68','YS69'];
 export const NORMAN_FRAME_IN_RAIL_SHAPES = ['YS01','YS02','YS03','YS04','YS06','YS09','YS15','YS20','YS17','YS18','YS19','YS60'];
 export const NORMAN_CONTINUOUS_ARCH_SHAPES = ['YS05','YS65','YS66'];
 export type NormanSpecialtyRecord = {

@@ -16,7 +16,7 @@ export type NormanShutterPanelRecord = {
   application: NormanShutterApplication | '';
   motor: 'none' | 'perfect_tilt_g4' | 'other' | '';
   existingDoorGlassOrSidelight: boolean;
-  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;bottomSupport?:NormanShutterBottomSupport;dividerDetails?:NormanShutterDividerRecord}>;
+  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;horizontalLouverSectionHeightInches?:number|null;bottomSupport?:NormanShutterBottomSupport;dividerDetails?:NormanShutterDividerRecord}>;
   bifold180?: NormanBifold180Record;
   bypass?: NormanBypassRecord;
   specialty?: NormanSpecialtyRecord;
@@ -39,6 +39,7 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   if(r.bypass!==undefined&&!parseNormanBypassRecord(r.bypass))return null;
   if(r.bifold180!==undefined&&!parseNormanBifold180Record(r.bifold180))return null;
   if(r.panels.some(p=>p.widthInches!==undefined&&p.widthInches!==null&&(typeof p.widthInches!=='number'||!Number.isFinite(p.widthInches))))return null;
+  if(r.panels.some(p=>p.horizontalLouverSectionHeightInches!==undefined&&p.horizontalLouverSectionHeightInches!==null&&(typeof p.horizontalLouverSectionHeightInches!=='number'||!Number.isFinite(p.horizontalLouverSectionHeightInches))))return null;
   if(r.panels.some(p=>p.bottomSupport!==undefined&&!parseNormanShutterBottomSupport(p.bottomSupport)))return null;
   if(r.panels.some(p=>p.dividerDetails!==undefined&&!parseNormanShutterDividerRecord(p.dividerDetails)))return null;
   return r as NormanShutterPanelRecord;

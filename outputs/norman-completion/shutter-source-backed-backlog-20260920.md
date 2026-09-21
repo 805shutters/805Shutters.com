@@ -124,3 +124,9 @@ Validation: 27 focused tests passed, including all explicit shape branches and e
 4. Document actual submitted-template identity and factory-returned acceptance/approved outline without using a user-entered reference as approval.
 
 The eight-branch ledger above otherwise remains open: Bi-fold180 hardware/clearance/pricing-size routing, other Bi-fold, complete bypass groups/hardware/stiles, final divider/motor layout, Double Hung/wide Woodlore, regular narrow/mixed panels, and the remaining specialty construction/geometry tasks. External rate/account evidence, approximate-chart factory verification and the conflicting8⅛-inch hinge boundary remain distinct exceptions. No whole-family completion claim follows from these bounded implementations.
+
+## Specialty horizontal-section divider increment
+
+WLP44, BW38 and ND38 expressly require a divider when the lower horizontal-louver section exceeds78 inches (AquaShield72), for YS10/51/68/69. Added an individual panel field for that actual lower-section height/leg reference; it is not inferred from opening, order outline or full panel height. Missing section height blocks this rule's verification; the exact endpoint does not require a divider, while1/16inch beyond does. A recorded divider still requires its existing rail position/louver schedule and final geometry verification.
+
+All20 program/shape combinations are tested at the applicable exact threshold and1/16above; tests also prove a taller full panel does not substitute for the lower section, older records remain parseable, malformed fields fail, and historical-date behavior remains unchanged.30 focused tests pass. This closes the basic lower-section divider-presence task from the finite specialty list; final section rail/louver geometry remains open. Production save/reopen proof is pending deployment.

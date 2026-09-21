@@ -1,5 +1,5 @@
 import {normanSpecialtyGeometryProblems} from './norman-shutter-specialty-geometry';
-import {NORMAN_CONTINUOUS_ARCH_SHAPES,NORMAN_FRAME_IN_RAIL_SHAPES,normanSpecialtyFrames,normanSpecialtyIsSunburst,normanSpecialtyShapes,normanSpecialtySourcePages,normanSpecialtySupportedProgram} from '../quote/norman-shutter-specialty';
+import {NORMAN_SPECIALTY_HORIZONTAL_LEG_SHAPES,NORMAN_CONTINUOUS_ARCH_SHAPES,NORMAN_FRAME_IN_RAIL_SHAPES,normanSpecialtyFrames,normanSpecialtyIsSunburst,normanSpecialtyShapes,normanSpecialtySourcePages,normanSpecialtySupportedProgram} from '../quote/norman-shutter-specialty';
 import {normanShutterFrame,normanShutterProgram} from '../quote/norman-shutter-assortment';
 import type {NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
 import type {SelectionContext,ValidationIssue} from './core';
@@ -8,7 +8,7 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
  if(record.application!=='specialty')return [];
  const program=normanShutterProgram(s.programId);if(!program)return [];
  const r=record.specialty,issues:ValidationIssue[]=[];
- const add=(id:string,explanation:string)=>issues.push({severity:'hard_block',ruleId:`norman.shutter.specialty.${id}`,source:sourceProvenance(program.sourceId,{pages:normanSpecialtySupportedProgram(program.id)?normanSpecialtySourcePages(program.id):program.pages}),selectedValues:{specialty:r??null},explanation});
+ const add=(id:string,explanation:string,pages=normanSpecialtySupportedProgram(program.id)?normanSpecialtySourcePages(program.id):program.pages)=>issues.push({severity:'hard_block',ruleId:`norman.shutter.specialty.${id}`,source:sourceProvenance(program.sourceId,{pages}),selectedValues:{specialty:r??null},explanation});
  if(!normanSpecialtySupportedProgram(program.id)){add('program_source','This program has no verified specialty assortment in its pinned binder; verify the exact specialty program before ordering.');return issues;}
  if(!r){add('record_required','Save the exact specialty shape and its frame/construction choices.');return issues;}
  if(!normanSpecialtyShapes(program.id).some(([code])=>code===r.shapeCode))add('shape','Choose an exact specialty identity documented for this program. AquaShield does not offer YS56 Solid Rail Arch.');
@@ -31,6 +31,11 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
  if(['YS01','YS02','YS03','YS04','YS06','YS15','YS20','YS17','YS18','YS19','YS60','YS11','YS12','YS14','YS13','YS16'].includes(r.shapeCode)&&!['4','all'].includes(r.frameSides))add('frame_sides','This specialty requires four frame sides or an all-around frame.');
  if(NORMAN_FRAME_IN_RAIL_SHAPES.includes(r.shapeCode)&&r.shapeCode!=='YS09'&&record.panels.some(p=>p.divider==='present'))add('sunburst_divider','Panels containing only sunburst louvers cannot have a divider rail.');
  record.panels.forEach((panel,index)=>{
+  if(NORMAN_SPECIALTY_HORIZONTAL_LEG_SHAPES.includes(r.shapeCode)){
+   const section=panel.horizontalLouverSectionHeightInches,threshold=program.id==='woodlore_aquashield'?72:78,pages=program.id.startsWith('woodlore_')?[44,128]:program.id==='brightwood'?[38,126]:[38,136];
+   if(section==null||section<=0||panel.heightInches===null||section>panel.heightInches)add('horizontal_section',`Record panel ${index+1} lower horizontal-louver section's actual leg-height reference, greater than zero and no greater than its full finished panel height. Overall order height does not determine its divider requirement.`,pages);
+   else if(section>threshold&&panel.divider!=='present')add('horizontal_divider',`Panel ${index+1} lower horizontal-louver section exceeds ${threshold} inches and requires a divider rail.`,pages);
+  }
   if(panel.widthInches==null||panel.widthInches<=0||panel.heightInches===null||panel.heightInches<=0)add('net_dimensions',`Record specialty panel ${index+1} actual net width and height; opening dimensions do not establish these values.`);
   if(['YS15','YS20'].includes(r.shapeCode)&&[panel.widthInches,panel.heightInches].some(n=>n==null||n<15.5||n>84))add('round_net_range',`Circle/Oval Sunburst panel ${index+1} net width and height must each be 15½–84 inches.`);
  });
