@@ -5,20 +5,23 @@ import type {SelectionContext,SelectionRecord,ValidationIssue} from "./core";
 import {sourceProvenance} from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const active=(v:unknown)=>v!=null&&!["","no","false","off","none","0"].includes(norm(v));
-export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11"].some(version=>s.catalogVersion.endsWith(version));
+export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11","-norman-smartfold-accessories-2026-09-20-r12"].some(version=>s.catalogVersion.endsWith(version));
 export function smartfoldBranchExceptions(s:SelectionContext):string[]{
  const c=s.configuration,reasons:string[]=[];
  if(s.catalogAsOf>="2026-10-01")reasons.push("the October motor revision requires its separately effective source verification");
  if(!["outside","outside mount","om","ob"].includes(norm(c.mount_type)))reasons.push("inside/semi-inside mounting needs its exact roll-diameter/depth verification");
  if(!["none","no valance"].includes(norm(c.valance)))reasons.push("valance-specific mounting, splicing and pricing verification remains separate");
- const manual=s.catalogVersion.endsWith("-norman-smartfold-manual-2026-09-20-r11")&&["continuous cord loop","precisionlift cordless"].includes(norm(c.lift_system));
+ const pricedAccessories=s.catalogVersion.endsWith("-norman-smartfold-accessories-2026-09-20-r12");
+ const manual=(pricedAccessories||s.catalogVersion.endsWith("-norman-smartfold-manual-2026-09-20-r11"))&&["continuous cord loop","precisionlift cordless"].includes(norm(c.lift_system));
  if(!manual&&(norm(c.lift_system)!=="motorized"||norm(c.motor_type)!=="norman smart rechargeable battery ac charger"))reasons.push("this verified branch uses standard cord loop, PrecisionLift Cordless or Norman Smart rechargeable battery with AC charger");
  if(manual&&(active(c.motor_type)||active(c.remote_type)||active(c.shared_power_panel_id)||active(c.hub_required)))reasons.push("clear motor power, remote and shared-panel selections before pricing a manual shade");
  if(!SMARTFOLD_FABRICS.some(f=>f.code===String(c.fabric_color_code??"").toUpperCase()))reasons.push("the ordering fabric must resolve to the current 15-color SmartFold assortment");
  if(!["","single","single shade","standard"].includes(norm(c.shade_type))||active(c.installed_on_door)||active(c.door_application)||/door|specialty|day night/.test(norm(c.application)))reasons.push("only individual standard shades are verified; door applications were removed in July");
  if(norm(c.smartfold_common_valance_id)||active(c.side_by_side)||c.side_by_side_match_line_id)reasons.push("common-valance/side-by-side assemblies need separate branch verification");
  if(active(c.basic_light_guard)||active(c.light_guard))reasons.push("Light Guard requires its inside-mount verification");
- if(active(c.premium_hem_bar)||!["","none"].includes(norm(c.smartfold_hold_down))||!["","none"].includes(norm(c.smartfold_pole)))reasons.push("optional premium hem, hold-down and pole pricing remains outside this verified branch");
+ if(!pricedAccessories&&(active(c.premium_hem_bar)||!["","none"].includes(norm(c.smartfold_hold_down))||!["","none"].includes(norm(c.smartfold_pole))))reasons.push("optional premium hem, hold-down and pole pricing remains outside this historical verified branch");
+ if(pricedAccessories&&active(c.premium_hem_bar)&&!["yes","true"].includes(norm(c.premium_hem_bar)))reasons.push("reconfirm premium hem as Yes or No before pricing");
+ if(pricedAccessories&&!["","none","magnetic"].includes(norm(c.smartfold_hold_down)))reasons.push("traditional hold-down price inclusion requires separate verification");
  if(c.smartfold_valance_width!=null&&c.smartfold_valance_width!==""||!["","none"].includes(norm(c.smartfold_valance_returns))||active(c.keystone)||Number(c.smartfold_keystone_count)>0)reasons.push("clear stale custom-valance/return/keystone options or use their separate verified branch");
  return reasons;
 }

@@ -38,6 +38,17 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
   q.lines[0].width_whole=7;q.lines[0].width_fraction="15/16";expect(run(q).sendability.sendable).toBe(false);
   q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.designs[0].options_json={...q.designs[0].options_json,fold_size:8,full_fold_required:true};expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.full_fold_height");
  });
+ it.each([["30-inch Fiberglass Pole",28],["58-inch Fiberglass Pole",28],["36-inch Cordless Operating Pole",89],["60-inch Cordless Operating Pole",89],["Pole Attachment Only",40]] as const)("prices %s once per cordless shade and preserves one complimentary pole per order",(pole,price)=>{
+  const q=quote();q.designs[0].lift_system="PrecisionLift Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;const baseline=run(q);
+  q.designs[0].options_json={...q.designs[0].options_json,smartfold_pole:pole};const r=run(q);expect(r.sendability.sendable,JSON.stringify(r)).toBe(true);expect(r.total-baseline.total).toBe(price*4);expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+  expect(r.designs[0].selection.configuration.norman_order_record_v1).toMatchObject({orderQuantity:1,retailCharge:0});
+  q.designs[0].lift_system="Continuous Cord Loop";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.pole_control");
+ });
+ it("prices premium hem and magnetic catches per shade only with source finish and clearance",()=>{
+  const q=quote(),baseline=run(q);q.designs[0].options_json={...q.designs[0].options_json,premium_hem_bar:"Yes",smartfold_hem_color:"Bronze",smartfold_hold_down:"Magnetic",smartfold_magnet_color:"Nickel-Plated",magnet_left_clearance_inches:.5625,magnet_right_clearance_inches:.5625,magnet_bottom_clearance_inches:.6875};
+  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r)).toBe(true);expect(r.total-baseline.total).toBe((16+28)*4);expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+  q.designs[0].options_json.magnet_left_clearance_inches=.5;expect(run(q).sendability.sendable).toBe(false);q.designs[0].options_json.magnet_left_clearance_inches=.5625;q.designs[0].options_json.smartfold_hem_color="White";expect(run(q).sendability.sendable).toBe(false);
+ });
  it("prices the exact B0342 charging extras once, retains allocation/clearance and reopens unchanged",()=>{
   const q=quote(),base=run(q);q.designs[0].options_json={...q.designs[0].options_json,smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"}};
   const r=run(q);expect(r.total-base.total).toBe(215);expect(r.sendability.sendable).toBe(true);expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({outsideClearance:{mountingAreaHeight:.75,mountingSpaceHeight:1.5},includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:78.74,color:"Black",adapterWatts:36}}});
