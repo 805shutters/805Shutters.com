@@ -218,7 +218,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
 function isInternalOptionKey(key: string): boolean {
   return (
-    key === "sundance_order_power_v1" ||
+    key === "sundance_shared_accessories_v1" || key === "sundance_order_accessories_v1" || key === "sundance_order_power_v1" ||
     INTERNAL_OPTION_KEYS.has(key) ||
     INTERNAL_OPTION_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
     INTERNAL_OPTION_KEY_SUFFIXES.some((suffix) => key.endsWith(suffix))

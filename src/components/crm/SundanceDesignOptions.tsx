@@ -1,4 +1,5 @@
 "use client";
+import { SundanceSharedAccessories } from "./SundanceSharedAccessories";
 import { SundanceAssemblyOptions } from "./SundanceAssemblyOptions";
 import { SundanceCellularConfiguration } from "./SundanceCellularConfiguration";
 import { sundanceCellularColors, sundanceCellularColorMatchesContext } from "@/lib/quote/sundance/cellular-assortment";
@@ -50,6 +51,7 @@ export function SundanceDesignOptions({ design, productId, onUpdateFields, width
         <option value="">Select</option>{field.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </label>)}
+    {!isAssemblyComponent && <SundanceSharedAccessories productId={productId} options={options} onChange={next=>onUpdateFields({options_json:next})} />}
     {!isAssemblyComponent && <SundanceAssemblyOptions productId={productId} options={options} widthInches={widthInches} heightInches={heightInches} onUpdateFields={onUpdateFields} renderComponent={(component, update) => <SundanceDesignOptions productId={component.productId} design={{options_json:component.configuration}} widthInches={component.widthInches ?? undefined} heightInches={component.heightInches ?? undefined} onUpdateFields={update} isAssemblyComponent />} />}
   </section>;
 }
