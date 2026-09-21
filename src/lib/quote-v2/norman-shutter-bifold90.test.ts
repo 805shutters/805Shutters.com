@@ -49,3 +49,11 @@ describe('independent Bi-fold90 source records',()=>{
   expect(options.some(v=>['frame_type','frame_sides','size_type','panel_closure','widest_panel_width_inches'].includes(v.key))).toBe(false);
  });
 });
+
+it('accepts normalized saved mount aliases without conflating semi-inside',()=>{
+ for(const [mount,aliases] of [['Inside Mount',['inside','inside_mount','Inside Mount']],['Outside Mount',['outside','outside_mount','Outside Mount']],['Semi-Inside Mount',['semi-inside','semi_inside','Semi-Inside Mount']]] as const){
+  const r=record('standard_90','LL',mount),s=context('woodlore',r);
+  for(const alias of aliases)expect(ids({...s,configuration:{...s.configuration,mount_type:alias}})).not.toContain('mount');
+  expect(ids({...s,configuration:{...s.configuration,mount_type:mount==='Inside Mount'?'semi-inside':'inside'}})).toContain('mount');
+ }
+});
