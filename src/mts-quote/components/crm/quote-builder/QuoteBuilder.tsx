@@ -35,6 +35,7 @@ import {
   resolveSelectedQuoteDesign,
 } from "@/lib/quote-v2/selected-design";
 import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
+import { buildLineNumberRanges, type LineNumberRange } from "@mts/lib/quoteLineNumbers";
 import { isPolarQuoteOnlyProductId } from "@/lib/quote/quote-only-policy";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
@@ -342,40 +343,6 @@ function sortLineItemIdsByQuoteOrder(ids: string[], lineItems: Pick<SalesQuoteLi
   return Array.from(new Set(ids))
     .filter((id) => order.has(id))
     .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
-}
-
-function normalizeLineItemQuantity(value: unknown): number {
-  const parsed = Math.floor(Number(value));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-}
-
-type LineNumberRange = {
-  start: number;
-  end: number;
-  label: string;
-  numbers: number[];
-};
-
-function buildLineNumberRanges(lineItems: Pick<SalesQuoteLineItem, "id" | "quantity">[]) {
-  let nextNumber = 1;
-  const ranges = new Map<string, LineNumberRange>();
-
-  lineItems.forEach((item) => {
-    const quantity = normalizeLineItemQuantity(item.quantity);
-    const start = nextNumber;
-    const end = nextNumber + quantity - 1;
-    const numbers = Array.from({ length: quantity }, (_, index) => start + index);
-
-    ranges.set(item.id, {
-      start,
-      end,
-      label: start === end ? `#${start}` : `#${start}-${end}`,
-      numbers,
-    });
-    nextNumber = end + 1;
-  });
-
-  return ranges;
 }
 
 function appendLineNumbers(
