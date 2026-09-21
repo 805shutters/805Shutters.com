@@ -23,6 +23,21 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
  it.each(SMARTFOLD_FABRICS.map(f=>f.code))("prices and snapshots current fabric %s with verified outside clearance",code=>{
   const r=run(quote(code)),d=r.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.result.productStatus).toBe("documented_limited");expect(d.snapshot).not.toBeNull();if(d.result.ok)expect(d.result.total).toBeGreaterThan(0);expect(r.sendability.sendable,JSON.stringify(r.sendability)).toBe(true);
  });
+ it.each(SMARTFOLD_FABRICS.flatMap(f=>["Continuous Cord Loop","PrecisionLift Cordless"].map(lift=>[f.code,lift])))("prices manual fabric %s / %s through current saved server records",(code,lift)=>{
+  const q=quote(code);q.designs[0].lift_system=lift;q.designs[0].motor_type=null;q.designs[0].remote_type=null;
+  const r=run(q),d=r.designs[0];expect(d.result.ok,JSON.stringify(d.result)).toBe(true);expect(d.snapshot).not.toBeNull();expect(r.sendability.sendable).toBe(true);
+  if(d.result.ok){expect(d.result.base).toBe(606);expect(d.result.surchargeLines).toEqual([]);}
+  expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+ });
+ it("retains manual size and fold boundaries and rejects stale motor settings",()=>{
+  const q=quote();q.designs[0].lift_system="PrecisionLift Cordless";q.designs[0].motor_type=null;q.designs[0].remote_type=null;q.lines[0].height_whole=72;
+  expect(run(q).sendability.sendable).toBe(true);q.lines[0].height_fraction="1/16";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_cordless_height");
+  q.lines[0].height_whole=60;q.lines[0].height_fraction="0";q.lines[0].width_whole=19;expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.cordless_narrow");
+  q.lines[0].width_whole=36;q.designs[0].motor_type="AutoWand";expect(run(q).sendability.sendable).toBe(false);
+  q.designs[0].motor_type=null;q.designs[0].lift_system="Continuous Cord Loop";q.lines[0].width_whole=8;q.lines[0].height_whole=12;expect(run(q).sendability.sendable).toBe(true);
+  q.lines[0].width_whole=7;q.lines[0].width_fraction="15/16";expect(run(q).sendability.sendable).toBe(false);
+  q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.designs[0].options_json={...q.designs[0].options_json,fold_size:8,full_fold_required:true};expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.full_fold_height");
+ });
  it("prices the exact B0342 charging extras once, retains allocation/clearance and reopens unchanged",()=>{
   const q=quote(),base=run(q);q.designs[0].options_json={...q.designs[0].options_json,smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"}};
   const r=run(q);expect(r.total-base.total).toBe(215);expect(r.sendability.sendable).toBe(true);expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({outsideClearance:{mountingAreaHeight:.75,mountingSpaceHeight:1.5},includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:78.74,color:"Black",adapterWatts:36}}});
