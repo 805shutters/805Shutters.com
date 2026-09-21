@@ -1,3 +1,4 @@
+import {validateNormanShutterSpecialty} from './norman-shutter-specialty';
 import {validateNormanShutterBypass} from './norman-shutter-bypass';
 import {validateNormanShutterDividers} from './norman-shutter-dividers';
 import {validateNormanShutterBottomSupport} from './norman-shutter-bottom-support';
@@ -27,11 +28,11 @@ export function validateNormanShutterPanels(s:SelectionContext):ValidationIssue[
   if(record.panels.length===0||record.panels.length>64||(record.application==='regular'&&(expected===null||expected!==record.panels.length)))add('panel_count','Record one finished panel height and divider choice for every panel in the exact layout.');
   const max=normanPanelMaxHeight(p),threshold=normanDividerThreshold(p,record);
   record.panels.forEach((panel,index)=>{
-    if(panel.heightInches===null||panel.heightInches<10||panel.heightInches>max)add('height',`Panel ${index+1} finished height must be from 10 to ${max} inches; do not use opening height.`,[specs]);
+    if(record.application!=='specialty'&&(panel.heightInches===null||panel.heightInches<10||panel.heightInches>max))add('height',`Panel ${index+1} finished height must be from 10 to ${max} inches; do not use opening height.`,[specs]);
     if(!panel.divider)add('divider_choice',`Record whether panel ${index+1} has a divider rail.`,[dividerPage]);
-    if(panel.heightInches!==null&&panel.heightInches>threshold&&panel.divider!=='present')add('divider_required',`Panel ${index+1} exceeds the ${threshold}-inch no-divider limit for this program/application.`,[specs,dividerPage]);
+    if(record.application!=='specialty'&&panel.heightInches!==null&&panel.heightInches>threshold&&panel.divider!=='present')add('divider_required',`Panel ${index+1} exceeds the ${threshold}-inch no-divider limit for this program/application.`,[specs,dividerPage]);
     if(panel.divider==='present')add('divider_geometry',`Panel ${index+1} divider presence is saved. Exact positions, measurement basis and louver spacing still require verification.`,[dividerPage]);
   });
-  issues.push(...validateNormanShutterBypass(s,record),...validateNormanShutterBifold180(s,record),...validateNormanShutterBottomSupport(s,record),...validateNormanShutterDividers(s,record));
+  issues.push(...validateNormanShutterSpecialty(s,record),...validateNormanShutterBypass(s,record),...validateNormanShutterBifold180(s,record),...validateNormanShutterBottomSupport(s,record),...validateNormanShutterDividers(s,record));
   return issues;
 }

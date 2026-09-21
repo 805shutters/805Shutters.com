@@ -4084,7 +4084,7 @@ export function getStandardShutterGridOptions(
       type: "yes-no",
     },
   ];
-  return normanGridOptions.filter(option => (!normanTrack || !["size_type", "frame_type", "frame_sides", "stile_profile", "panel_closure"].includes(option.key)) && (!normanBypass || !["panel_config", "stile_width", "stile_join"].includes(option.key)));
+  return normanGridOptions.filter(option => (normanApplication !== "specialty" || !["size_type", "frame_type", "frame_sides", "stile_width", "stile_join", "stile_profile", "panel_closure", "widest_panel_width_inches", "panel_config"].includes(option.key)) && (!normanTrack || !["size_type", "frame_type", "frame_sides", "stile_profile", "panel_closure"].includes(option.key)) && (!normanBypass || !["panel_config", "stile_width", "stile_join"].includes(option.key)));
 }
 
 // --- Small grid components ---
