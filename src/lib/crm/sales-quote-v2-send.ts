@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { calculateQuoteTotalBreakdown, parseQuoteAdminControls } from "@mts/lib/quoteTotals";
 import { parseCustomerCharges, type CustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -604,9 +605,10 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     .from("sales_quote_line_items")
     .select("*")
     .eq("quote_id", quote.id)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true });
   if (lineError) fail("V2 line items could not be loaded for authoritative validation.");
-  const lines = ([...(lineItems || [])] as unknown as V2PersistedLine[]).sort(
+  const lines = activeQuoteLines(([...(lineItems || [])] as unknown as V2PersistedLine[])).sort(
     (left, right) =>
       Number(left.sort_order) - Number(right.sort_order) ||
       left.id.localeCompare(right.id),

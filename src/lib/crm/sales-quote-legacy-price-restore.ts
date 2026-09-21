@@ -212,6 +212,7 @@ async function loadStructure(supabase: SupabaseClient, quoteId: string) {
     .from("sales_quote_line_items")
     .select("*")
     .eq("quote_id", quoteId)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true });
   if (lineError) throw new CrmAuthError(502, "Quote lines could not be loaded.");
   const lineIds = (lines || []).map((line) => line.id);

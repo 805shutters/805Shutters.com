@@ -65,6 +65,7 @@ export async function enrichMeasureOrders(
             .from("sales_quote_line_items")
             .select("id,quote_id")
             .in("quote_id", sourceIds)
+            .is("archived_at", null)
             .order("id")
             .range(from, to),
         ),

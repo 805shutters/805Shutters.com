@@ -21,6 +21,7 @@ import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import { loadAllSalesQuotes, searchQuotes } from "@mts/lib/quoteSearch";
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { loadSavedQuoteCompleteness } from "@mts/lib/savedQuoteCompleteness";
 import { createQuoteV2Alternative, createQuoteV2Draft, quoteV2RequestKey } from "@mts/lib/quoteV2ServerClient";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
@@ -211,6 +212,7 @@ export function QuoteDashboard({
         .from("sales_quote_line_items")
         .select("id,quote_id,selected_design_id,sales_quote_designs!line_item_id(id,line_item_id,variant,unit_price,options_json)")
         .in("quote_id", ids)
+        .is("archived_at", null)
         .order("id", { ascending: true })
         .range(from, to));
     },
@@ -242,6 +244,7 @@ export function QuoteDashboard({
           .from("sales_quote_line_items")
           .select("*")
           .in("quote_id", salesQuoteIds)
+          .is("archived_at", null)
           .order("sort_order", { ascending: true }),
         Promise.all(
           quoteIdBatches.map(async (quoteIds) => {
@@ -684,10 +687,12 @@ export function QuoteDashboard({
       const { data: lineItems } = await (supabase as any)
         .from("sales_quote_line_items")
         .select("*")
-        .eq("quote_id", quoteId);
+        .eq("quote_id", quoteId)
+        .is("archived_at", null);
 
-      if (lineItems && lineItems.length > 0) {
-        const newItems = lineItems.map((item: any) => ({
+      const activeLineItems = activeQuoteLines(lineItems || []);
+      if (activeLineItems.length > 0) {
+        const newItems = activeLineItems.map((item: any) => ({
           quote_id: newQuote.id,
           room_name: item.room_name,
           product_type: item.product_type,

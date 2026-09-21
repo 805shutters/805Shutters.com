@@ -34,6 +34,7 @@ import {
   projectPersistedDesignSelections,
   resolveSelectedQuoteDesign,
 } from "@/lib/quote-v2/selected-design";
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { isPolarQuoteOnlyProductId } from "@/lib/quote/quote-only-policy";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
@@ -673,11 +674,13 @@ export function QuoteBuilder({
 
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
-      .select("id, quantity, selected_design_id")
-      .eq("quote_id", activeQuoteId);
+      .select("id, quantity, selected_design_id, archived_at")
+      .eq("quote_id", activeQuoteId)
+      .is("archived_at", null);
     if (lineItemsError) throw lineItemsError;
 
-    const latestLineItemIds = (latestLineItems ?? []).map((item: SalesQuoteLineItem) => item.id);
+    const activeLineItems = activeQuoteLines((latestLineItems ?? []) as SalesQuoteLineItem[]);
+    const latestLineItemIds = activeLineItems.map((item) => item.id);
     let latestDesigns: Pick<
       SalesQuoteDesign,
       "id" | "line_item_id" | "variant" | "unit_price" | "options_json"
@@ -694,20 +697,20 @@ export function QuoteBuilder({
 
     const projectedDesigns = projectPersistedDesignSelections(
       latestDesigns as SalesQuoteDesign[],
-      latestLineItems ?? [],
+      activeLineItems,
     );
     const totalMode =
       authoritativeV2 ||
       hasCompletePersistedDesignSelections(
-        latestLineItems ?? [],
+        activeLineItems,
         latestDesigns as SalesQuoteDesign[],
       )
         ? "authoritative_v2"
         : "legacy";
-    const subtotal = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
+    const subtotal = calculateQuoteDesignSubtotal(activeLineItems, projectedDesigns, {
       mode: totalMode,
     });
-    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(latestLineItems ?? [], projectedDesigns, { mode: totalMode })).total;
+    const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(quote), calculateQuoteFixedCharges(activeLineItems, projectedDesigns, { mode: totalMode })).total;
     if (!shouldPersistQuoteDesignSubtotal(projectedDesigns, { ...options, mode: totalMode })) return;
 
     const { error: quoteError } = await (supabase as any)
@@ -787,9 +790,10 @@ export function QuoteBuilder({
         .from("sales_quote_line_items")
         .select("*")
         .eq("quote_id", activeQuoteId!)
+        .is("archived_at", null)
         .order("sort_order");
       if (error) throw error;
-      return (data || []) as SalesQuoteLineItem[];
+      return activeQuoteLines((data || []) as SalesQuoteLineItem[]);
     },
     enabled: !!activeQuoteId && !!quote,
   });

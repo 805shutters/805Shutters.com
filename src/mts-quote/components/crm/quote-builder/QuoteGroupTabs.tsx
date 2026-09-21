@@ -16,6 +16,7 @@ import { Button } from "@mts/components/ui/button";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import type { SalesQuote } from "@mts/types/quote";
 
 export function QuoteGroupTabs() {
@@ -212,10 +213,12 @@ export function QuoteGroupTabs() {
         .from("sales_quote_line_items")
         .select("*")
         .eq("quote_id", activeQuote.id)
+        .is("archived_at", null)
         .order("sort_order");
 
-      if (lineItems && lineItems.length > 0) {
-        const newItems = lineItems.map((item: any) => ({
+      const activeLineItems = activeQuoteLines(lineItems || []);
+      if (activeLineItems.length > 0) {
+        const newItems = activeLineItems.map((item: any) => ({
           quote_id: newQuote.id,
           room_name: item.room_name,
           product_type: item.product_type,

@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
@@ -410,10 +411,11 @@ export async function resolveSalesQuoteV2Route(
     .select(
       "id,quote_id,selected_design_id,quantity,room_name,width_whole,width_fraction,height_whole,height_fraction,sort_order",
     )
-    .eq("quote_id", candidate.salesQuoteId);
+    .eq("quote_id", candidate.salesQuoteId)
+    .is("archived_at", null);
   if (linesError) throw new CrmAuthError(502, "The linked V2 quote lines could not be loaded.");
 
-  const lineRows = (lines ?? []) as unknown as StoredSalesLineRouteRow[];
+  const lineRows = activeQuoteLines((lines ?? []) as unknown as Array<StoredSalesLineRouteRow & { archived_at?: string | null }>);
   let designs: StoredSalesDesignRouteRow[] = [];
   if (lineRows.length) {
     const { data: designRows, error: designsError } = await supabase

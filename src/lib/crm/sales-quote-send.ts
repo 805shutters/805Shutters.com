@@ -1,3 +1,4 @@
+import { activeQuoteLines } from "@/lib/quote-v2/active-lines";
 import { assertLegacyLotusDeliveryAllowed } from "./lotus-legacy-delivery";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -614,10 +615,11 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     .from("sales_quote_line_items")
     .select("*")
     .eq("quote_id", quote.id)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true });
   if (lineError) throw new CrmAuthError(502, "Quote line items could not be loaded.");
 
-  const lineRows = (lineItems || []) as AnyRow[];
+  const lineRows = activeQuoteLines((lineItems || []) as Array<AnyRow & { archived_at?: string | null }>);
   const lineIds = lineRows.map((item) => item.id).filter(Boolean);
   const { data: designs, error: designError } = lineIds.length
     ? await supabase.from("sales_quote_designs").select("*").in("line_item_id", lineIds)
