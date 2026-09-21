@@ -38,3 +38,9 @@ Exact remaining evidence and enumeration after accountCHE01 reauthentication:
 | Sunscreen bottom color | Resolve conflicting White annotation versus observed Silver with Round bottom | Only exact current captured profile used |
 
 The dealer Forms page exposed only order sheets, check-by-fax and a2020manual; no current shade-grid download was available in that authenticated menu. Login is now pending, and further enumeration cannot be claimed completed. Original populated dealer tabs and unsubmitted drafts123322/123323/123324 are preserved. Source records and per-color status are in outputs/onyx-audit-20260920/{RESULTS.md,shade-mapping-ledger.csv,observed-option-profiles.md}. No sample dealer rate was substituted for a full customer price schedule.
+
+## Production-discovered copy association repair
+
+While making B/805-0372 from A/805-0361, Copy Current created new shade IDs but retained original IDs inside Separate Valance associatedLineIds. This is an implementation defect, not a source-evidence gap. A/805-0361 remains unchanged. The narrow server-copy repair remaps only explicit user-selected line links (Roller valance v1 associations, Palladian accompanying_line_id, and side_by_side_match_line_id) using the exact deterministic new IDs. Unknown/dangling links remain available to validation; grouping labels, notes and unrelated objects are not rewritten. Price snapshots are still stripped by the existing boundary, and trusted quote-wide repricing reconstructs derived records.
+
+Regression checks exercise the real copy operation generator, retry determinism, both shade associations, typed-version boundaries, unknown links and immutable source configuration/historical money. 14 focused tests and typecheck passed. Existing already-copied drafts are not silently migrated; a fresh copy will provide live verification after deployment.

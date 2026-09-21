@@ -1,3 +1,4 @@
+import { remapCopiedQuoteAssociations } from './quote-alternative-associations';
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
@@ -58,6 +59,7 @@ export function quoteAlternativeCopyOperations(
   designs: SalesQuoteDesign[],
   key: string,
 ): QuoteV2StructureOperation[] {
+  const copiedLineIds = new Map(lines.map(line => [line.id, copyId(key, line.id)]));
   return lines.flatMap((line) => {
     const lineItemId = copyId(key, line.id);
     const lineDesigns = designs.filter(
@@ -81,7 +83,11 @@ export function quoteAlternativeCopyOperations(
         designId: copyId(key, design.id),
         variant: design.variant,
         selectDesign: design.id === line.selected_design_id,
-        patch: quoteV2DesignPatch(design),
+        patch: (() => {
+          const patch = quoteV2DesignPatch(design);
+          if (patch.optionsJson !== undefined) patch.optionsJson = remapCopiedQuoteAssociations(patch.optionsJson, copiedLineIds);
+          return patch;
+        })(),
       })),
     ];
   });
