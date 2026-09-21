@@ -39,15 +39,15 @@ These are code/source-review tasks, not requests for account evidence. A categor
 - **W3 — Roller privacy pieces.** Implemented independently measured side-channel/solar-bar records and separate source evidence at$14net/ft and$3net/ft; production persistence proof remains. Published fractional-foot billing/rounding is absent; preserve exact footage and hold final charge rather than invent rounding.
 - **W4 — Family-specific remaining schedules.** Portfolio blackout percentage now uses the exact shade/valance base evidence; expose horizontal wand/stacking and vertical vane-count/stacking source tables; finish documented component-specific vertical track/vane fulfillment; reconcile Zebra alignment groups and shape template references. Any missing source geometry remains an exact exception.
 - **W5 — Europanel records.** Preserve explicit per-panel measurements/layout records if entered, with panel count/track count rules already implemented. Source diagrams do not state a numeric overlap or panel-width formula, so automatic derived widths require external confirmation.
-- **W6 — Exhaustive closure and live proof.** Complete a source-section-to-rule/UI/evidence crosswalk and all-offering tests. Sundance roller/Europanel exact-identity and both flat-Roman source-only held paths now have saved/reopened proof. Remaining live paths: Vision identity; Walden twin and shared panel inputs. Existing generic component live proof covers cellular only. Final customer-priced output and portal net comparisons remain gated by E1–E4.
+- **W6 — Exhaustive closure and live proof.** Complete a source-section-to-rule/UI/evidence crosswalk and all-offering tests. Sundance roller/Europanel exact-identity and both flat-Roman source-only held paths now have saved/reopened proof. Remaining live paths: Vision identity and new privacy-piece input. Walden twin and shared panel inputs now have production persistence proof. Existing generic component live proof covers cellular only. Final customer-priced output and portal net comparisons remain gated by E1–E4.
 
 ## Closed implementation/proof increments
 
 - All imported base-grid axes/cells audited and corrected; supplemental source grids retained with provenance. Exact identities and option grids are covered by the linked source ledgers/tests.
 - Cellular, SheerView, Portfolio, Zebra/Vision, horizontal, Walden, six shade-family, custom vertical and Zip source-backed configuration validators and published option schedules are implemented.
 - Versioned component records implemented in7d648343; live cellular18×60 and18×54 save/reopen/negative-boundary proof on4c38a3e4: [component proof](sundance-live-components-2026-09-20.md).
-- Walden versioned twin role records implemented in9cff47ea; live proof awaits deployment.
-- Selected-order Simphony power records implemented in582a1273; [scope and source evidence](sundance-shared-power-model-2026-09-20.md). Live saved panel-input proof pending.
+- Walden versioned twin role records implemented in9cff47ea; live role/depth/liner persistence verified onb63930ec.
+- Selected-order Simphony power records implemented in582a1273; [scope and source evidence](sundance-shared-power-model-2026-09-20.md). Live saved panel-input proof verified onb63930ec; server execution/charge claim remains explicitly unproven while held.
 - Stock Vertical Essence b81e0534 deployed4b2bd345; independent parent0354 donor45×66→42×60, both cuts and Arcadia pickup save/reopen/Contract-hold proof completed. Source185retail plus10net remain separate.
 
 ## External evidence request, independently of code work
@@ -68,3 +68,5 @@ Walden control and depth-boundary persistence on72db3c04: [sundance-live-walden-
 Other proof evidence: [Walden controls](sundance-live-walden-controls-2026-09-20.md), [Louvolite roller/Europanel](sundance-live-roller-europanel-controls-2026-09-20.md), [component model scope](sundance-assembly-records-2026-09-20.md), [twin role scope](sundance-walden-twin-model-2026-09-20.md).
 
 Four remaining shade-family paths were saved and reopened, with both flat-Roman empty exact-color/current-orderability exceptions explicitly held: [four-family live proof](sundance-live-four-shade-families-2026-09-20.md).
+
+Twin and shared-panel inputs, negative incompatibilities and save/reopen verified: [production proof](sundance-live-twin-shared-panel-2026-09-20.md).
