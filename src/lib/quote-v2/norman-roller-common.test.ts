@@ -35,7 +35,7 @@ describe("Roller common valance exact selected assembly",()=>{
  });
  it("holds unsupported material splice width, custom bracket rounding and shared retail basis explicitly",()=>{
   const lines=rows();for(let i=0;i<2;i++)lines[i].selection.configuration={...lines[i].selection.configuration,valance:"6 Fabric Valance*",[KEY]:{...emptyRollerCommon(),groupId:"Room A",position:i+1,customWidth:80}};
-  const ids=deriveRollerCommonValances(lines).map(i=>i.ruleId);expect(ids).toContain("roller.common.material_width");expect(ids).toContain("roller.common.bracket_rounding");expect(validateRollerCommon(lines[0].selection).map(i=>i.ruleId)).toEqual(["roller.common.price_basis"]);
+  const ids=deriveRollerCommonValances(lines).map(i=>i.ruleId);expect(ids).not.toContain("roller.common.material_width");expect(ids).toContain("roller.common.bracket_rounding");expect(validateRollerCommon(lines[0].selection).map(i=>i.ruleId)).toEqual(["roller.common.price_basis"]);
  });
  it("rejects malformed or missing membership and stale records on another application",()=>{
   for(const c of [{[KEY]:null},{[KEY]:{...emptyRollerCommon(),groupId:"A",gapAfter:13}},{[KEY]:{...emptyRollerCommon(),groupId:"A",position:1.5}}] as SelectionRecord[])expect(validateRollerCommon(shade(1,36,c)).map(i=>i.ruleId)).toContain("roller.common.membership");

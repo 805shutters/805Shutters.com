@@ -1,0 +1,440 @@
+colorCode,collection,colorName,fabricWidthInches,sourcePage
+F0908,Sheer,Linen Weave,118.0,6
+F1538,Dazzle,Soft White,110.0,6
+F1539,Dazzle,Eggshell,110.0,6
+F1540,Dazzle,Pewter Green,110.0,6
+F1541,Dazzle,Charcoal,110.0,6
+F1542,Dazzle,Ink,110.0,6
+F1599,Scarlett,Cottage Linen,118.0,6
+F1600,Scarlett,Seashell,118.0,6
+F1601,Scarlett,Crema,118.0,6
+F1602,Scarlett,Stone,118.0,6
+F1642,Lakeshore,Natural Gray,118.0,6
+F0890,Kendra,LF Foliage,118.0,7
+F0883,Francis,Brownie,118.0,7
+F0876,Francis,Pearl,118.0,7
+F0877,Francis,Barley,118.0,7
+F0878,Francis,Sandstone,118.0,7
+F0879,Francis,Toast,118.0,7
+F0882,Francis,Espresso,118.0,7
+F0884,Francis,Oatmeal,118.0,7
+F0885,Francis,Doe,118.0,7
+F0886,Francis,Shale,118.0,7
+F0888,Francis,Black,118.0,7
+F0889,Francis,Denim,118.0,7
+F0891,Breeze,Linen Flax,118.0,7
+F0893,Breeze,Linen Natural,118.0,7
+F0894,Breeze,Linen Khaki,118.0,7
+F0895,Breeze,Linen Dune,118.0,7
+F0896,Breeze,Linen Graphite,118.0,7
+F0927,Breeze,Linen Almond Milk,118.0,7
+F1778,Breeze,Linen Stone,118.0,7
+F1847,Breeze,Linen Cloud,118.0,7
+F1851,Breeze,Linen Warm Ivory,118.0,7
+F0747,Hayes,Maple,118.0,7
+F0748,Hayes,Hickory,118.0,7
+F0749,Hayes,Birch,118.0,7
+F0751,Hayes,Mahogany,118.0,7
+F0740,Valerie,Dolphin,106.0,7
+F0741,Valerie,Pomegranate,106.0,7
+F0739,Valerie,Cove,118.0,7
+F0743,Valerie,Silhouette,118.0,7
+F0738,Valerie,Moonscape,118.0,7
+F0742,Valerie,Sapphire,118.0,7
+F0752,Emery,Daylight,118.0,8
+F0753,Emery,Creamy,118.0,8
+F0754,Emery,Khaki,118.0,8
+F1560,Emery,Chiffon,118.0,8
+F1120,Brook,Pewter,118.0,8
+F1121,Brook,Egret,118.0,8
+F1122,Brook,Smoke,118.0,8
+F1123,Brook,Beige,118.0,8
+F1157,Brook,Latte,118.0,8
+F1445,Chelsea,Snow,110.0,8
+F1446,Chelsea,Cream,110.0,8
+F1448,Chelsea,Stone,110.0,8
+F1449,Chelsea,Caviar,110.0,8
+F1447,Chelsea,Natural,110.0,8
+F1450,Sierra,Snow,110.0,8
+F1451,Sierra,Cream,110.0,8
+F1452,Sierra,Natural,110.0,8
+F1453,Sierra,Stone,110.0,8
+F1454,Sierra,Caviar,110.0,8
+F1966,Sierra,Canvas,110.0,8
+F1967,Sierra,Graphite,110.0,8
+F1436,Shimmer,Goldmine,110.0,8
+F1437,Shimmer,Starry Night,110.0,8
+F1439,Shimmer,Pewter,110.0,8
+F1440,Shimmer,Midnight,110.0,8
+F1484,Amelia,Mist Gray,118.0,8
+F1485,Amelia,Heather Gray,118.0,8
+F1486,Amelia,Heather Charcoal,118.0,8
+F1487,Amelia,Heather Smoke,118.0,8
+F1551,Lola LF,Porcelain,118.0,8
+F1552,Lola LF,Almond,118.0,8
+F1553,Lola LF,Light Khaki,118.0,8
+F1554,Lola LF,Wheat,118.0,8
+F1555,Lola LF,Platinum,118.0,8
+F1556,Lola LF,Cement,118.0,8
+F1557,Lola LF,Pewter,118.0,8
+F1558,Lola LF,Iron,118.0,8
+F1559,Lola LF,Indigo,118.0,8
+F0870,Clarissa,Wheat,118.0,9
+F0871,Clarissa,Platinum,118.0,9
+F0872,Clarissa,Tobacco Brown,118.0,9
+F0873,Clarissa,Sable Brown,118.0,9
+F0874,Clarissa,Burlap,118.0,9
+F0928,Clarissa,Porcelain,118.0,9
+F1532,Clarissa,Powder,118.0,9
+F1533,Clarissa,Steel,118.0,9
+F1534,Clarissa,Silver Satin,118.0,9
+F1535,Clarissa,Golden Straw,118.0,9
+F1536,Clarissa,Coffee Bean,118.0,9
+F1550,Clarissa,Coal,118.0,9
+F1641,Verona LF,Pearl Cotton,118.0,9
+F1734,Callie,Pure White,118.0,9
+F1736,Callie,Natural Tan,118.0,9
+F1737,Callie,Silver Ash,118.0,9
+F1738,Callie,Pebble Gray,118.0,9
+F1739,Callie,Black Iron,118.0,9
+F1735,Callie,Vanilla Cream,118.0,9
+F2028,Callie,Cloudy Gray,118.0,9
+F2030,Callie,Gray,118.0,9
+F2032,Callie,Rich Truffle,118.0,9
+F1746,Remy,White Dove,118.0,9
+F1747,Remy,Seashell Gray,118.0,9
+F1748,Remy,Dune,118.0,9
+F1749,Remy,Hickory Bark,118.0,9
+F1750,Remy,Creamy Mocha,118.0,9
+F1751,Remy,Natural Slate,118.0,9
+F2203,Ohara,Light Gray,110.0,9
+F2204,Ohara,Taupe,110.0,9
+F2205,Ohara,Coconut Shell,110.0,9
+F2206,Ohara,Denim Blue,110.0,9
+F2207,Ohara,Rosemary Green,110.0,9
+F2249,Waikiki,Mauve Gray,118.0,9
+F2250,Waikiki,Indigo Blue,118.0,9
+F2251,Waikiki,Driftwood,118.0,9
+F2093,Olivia,Polar White,118.0,9
+F2095,Olivia,Sea Salt,118.0,9
+F2099,Olivia,Raw Sugar,118.0,9
+F2097,Olivia,Antique Sage,118.0,9
+F2098,Olivia,Fossil,118.0,9
+F2189,Rockville,Whisper White,118.0,10
+F2190,Rockville,Pale Wheat,118.0,10
+F2191,Rockville,Stone,118.0,10
+F2192,Rockville,Khaki Sage,118.0,10
+F2228,Brill,Titanium,118.0,10
+F2229,Brill,Birch,118.0,10
+F2230,Brill,Walnut,118.0,10
+F2231,Brill,Steel,118.0,10
+F2197,Etch,White,110.0,10
+F2198,Etch,Gray,110.0,10
+F2199,Etch,Taupe,110.0,10
+F2200,Etch,Graphite,110.0,10
+F2255,Leah,White,110.0,10
+F2256,Leah,Cornfield,110.0,10
+F2257,Leah,Oatmeal,110.0,10
+F2258,Leah,Fawn,110.0,10
+F2259,Leah,Gray,110.0,10
+F2239,Cara,White,110.0,10
+F2240,Cara,Nectar,110.0,10
+F2241,Cara,Gray,110.0,10
+F2242,Cara,Charcoal,110.0,10
+F2243,Cara,Black,110.0,10
+F2170,Charlotte,Milky White,94.0,10
+F2172,Charlotte,Swiss Coffee,94.0,10
+F2171,Charlotte,Creamy Oak,94.0,10
+F2179,Charlotte,Midnight,94.0,10
+F2176,Charlotte,Silverstone,94.0,10
+F2174,Charlotte,Linen Taupe,94.0,10
+F2175,Charlotte,Taupe Gray,94.0,10
+F2177,Charlotte,Shark,94.0,10
+F2178,Charlotte,Welded Iron,94.0,10
+F2182,Charlotte,Oxford Blue,94.0,10
+F2173,Charlotte,Toasted Nut,94.0,10
+F2180,Charlotte,Breezeway,94.0,10
+F2221,Springtide,Sandy Taupe,96.0,10
+F2225,Springtide,Teal Haze,96.0,10
+F2226,Springtide,Dusty Navy,96.0,10
+F2222,Springtide,Sage,96.0,10
+F2227,Springtide,Midnight,96.0,10
+F2223,Springtide,Blush,96.0,10
+F2224,Springtide,Mulberry,96.0,10
+F0853,Garden,RD Foliage,118.0,11
+F1514,Garden,Winter White,118.0,11
+F1515,Garden,Ecru,118.0,11
+F1516,Garden,Cinnamon,118.0,11
+F1517,Garden,Forest,118.0,11
+F1518,Garden,Midnight,118.0,11
+F1108,Elements (White Backing),White,118.0,11
+F1109,Elements (White Backing),Stone Gray,118.0,11
+F1110,Elements (White Backing),Broken White,118.0,11
+F1111,Elements (White Backing),Cloudy Gray,118.0,11
+F1112,Elements (White Backing),Gray,118.0,11
+F1113,Elements (White Backing),Anthracite Gray,118.0,11
+F2109,Elements,Stone Gray,118.0,11
+F2110,Elements,Broken White,118.0,11
+F2111,Elements,Cloudy Gray,118.0,11
+F2112,Elements,Gray,118.0,11
+F2113,Elements,Anthracite Gray,118.0,11
+F2114,Elements,Weathered White,118.0,11
+F2115,Elements,Soft Sandstone,118.0,11
+F2116,Elements,Gentle Ash,118.0,11
+F2117,Elements,Soothing Gray,118.0,11
+F2118,Elements,Graphite,118.0,11
+F2119,Elements,Desert Beige,118.0,11
+F2120,Elements,Warm Mocha,118.0,11
+F2121,Elements,Rich Truffle,118.0,11
+F2043,Elements,Alabaster,118.0,11
+F2044,Elements,Canvas,118.0,11
+F2045,Elements,New Khaki,118.0,11
+F0827,Jamaica,Latte,118.0,11
+F0828,Jamaica,Crystal,118.0,11
+F0829,Jamaica,Biscuit,118.0,11
+F0831,Bermuda,Mushroom,118.0,11
+F0832,Bermuda,Cocoa,118.0,11
+F0834,Bermuda,Charcoal,118.0,11
+F0822,Fiji,Pure White,118.0,11
+F0823,Fiji,Cream/Ash,118.0,11
+F0824,Fiji,Flax/Brown,118.0,11
+F0826,Fiji,Charcoal/Brown,118.0,11
+F0825,Fiji,Chocolate/Cream,118.0,11
+F1455,Lola BO,Porcelain,118.0,12
+F1456,Lola BO,Almond,118.0,12
+F1457,Lola BO,Light Khaki,118.0,12
+F1458,Lola BO,Wheat,118.0,12
+F1459,Lola BO,Platinum,118.0,12
+F1460,Lola BO,Cement,118.0,12
+F1461,Lola BO,Pewter,118.0,12
+F1462,Lola BO,Iron,118.0,12
+F1463,Lola BO,Indigo,118.0,12
+F1510,Summerland,Pearl,118.0,12
+F1511,Summerland,Maize,118.0,12
+F1512,Summerland,Sterling,118.0,12
+F1479,Cory,White,118.0,12
+F1480,Cory,Ivory,118.0,12
+F1481,Cory,Sand,118.0,12
+F1740,Callie RD,Pure White,118.0,12
+F1742,Callie RD,Natural Tan,118.0,12
+F1743,Callie RD,Silver Ash,118.0,12
+F1744,Callie RD,Pebble Gray,118.0,12
+F1745,Callie RD,Black Iron,118.0,12
+F1741,Callie RD,Vanilla Cream,118.0,12
+F2033,Callie RD,Cloudy Gray,118.0,12
+F2035,Callie RD,Gray,118.0,12
+F2037,Callie RD,Rich Truffle,118.0,12
+F1752,Remy RD,White Dove,118.0,12
+F1753,Remy RD,Seashell Gray,118.0,12
+F1754,Remy RD,Dune,118.0,12
+F1755,Remy RD,Hickory Bark,118.0,12
+F1756,Remy RD,Creamy Mocha,118.0,12
+F1757,Remy RD,Natural Slate,118.0,12
+F1763,Francis RD,Sandstone,118.0,12
+F1764,Francis RD,Oatmeal,118.0,12
+F1765,Francis RD,Doe,118.0,12
+F1766,Francis RD,Black,118.0,12
+F1767,Francis RD,Denim,118.0,12
+F1762,Francis RD,Pearl,118.0,12
+F1768,Breeze RD,Linen Flax,118.0,12
+F1769,Breeze RD,Linen Natural,118.0,12
+F1770,Breeze RD,Linen Khaki,118.0,12
+F1771,Breeze RD,Linen Dune,118.0,12
+F1772,Breeze RD,Linen Graphite,118.0,12
+F1773,Breeze RD,Linen Almond Milk,118.0,12
+F1779,Breeze RD,Linen Stone,118.0,12
+F1848,Breeze RD,Linen Cloud,118.0,12
+F1852,Breeze RD,Linen Warm Ivory,118.0,12
+F1774,Amelia RD,Mist Gray,118.0,12
+F1775,Amelia RD,Heather Gray,118.0,12
+F1776,Amelia RD,Heather Charcoal,118.0,12
+F1777,Amelia RD,Heather Smoke,118.0,12
+F2208,OharaRD,Light Gray,110.0,13
+F2209,OharaRD,Taupe,110.0,13
+F2210,OharaRD,Coconut Shell,110.0,13
+F2211,OharaRD,Denim Blue,110.0,13
+F2212,OharaRD,Rosemary Green,110.0,13
+F2252,Waikiki RD,Mauve Gray,118.0,13
+F2253,Waikiki RD,Indigo Blue,118.0,13
+F2254,Waikiki RD,Driftwood,118.0,13
+F2102,Olivia RD,Polar White,118.0,13
+F2104,Olivia RD,Sea Salt,118.0,13
+F2108,Olivia RD,Raw Sugar,118.0,13
+F2106,Olivia RD,Antique Sage,118.0,13
+F2107,Olivia RD,Fossil,118.0,13
+F2193,Rockville RD,Whisper White,118.0,13
+F2194,Rockville RD,Pale Wheat,118.0,13
+F2195,Rockville RD,Stone,118.0,13
+F2196,Rockville RD,Khaki Sage,118.0,13
+F2232,Brill RD,Titanium,118.0,13
+F2233,Brill RD,Birch,118.0,13
+F2234,Brill RD,Walnut,118.0,13
+F2235,Brill RD,Steel,118.0,13
+F2201,Etch RD,White,110.0,13
+F2202,Etch RD,Gray,110.0,13
+F2260,Leah RD,White,110.0,13
+F2261,Leah RD,Cornfield,110.0,13
+F2262,Leah RD,Oatmeal,110.0,13
+F2263,Leah RD,Fawn,110.0,13
+F2264,Leah RD,Gray,110.0,13
+F2244,Cara RD,White,110.0,13
+F2245,Cara RD,Nectar,110.0,13
+F2246,Cara RD,Gray,110.0,13
+F2247,Cara RD,Charcoal,110.0,13
+F2248,Cara RD,Black,110.0,13
+F2236,Simplicity RD,White,110.0,13
+F2237,Simplicity RD,Ecru,110.0,13
+F2238,Simplicity RD,Gray,110.0,13
+F0860,Aruba,Sparkle Ivory,96.0,14
+F0861,Aruba,Sparkle Khaki,96.0,14
+F0862,Aruba,Sparkle Espresso,96.0,14
+F0867,Caroline,White Sand,96.0,14
+F0863,Samoa,Daylight,96.0,14
+F0864,Samoa,Sand,96.0,14
+F0865,Samoa,Cumin,96.0,14
+F0866,Samoa,Old Teak,96.0,14
+F0668,Bali,Black Walnut,78.0,14
+F1668,Bali,Sand,78.0,14
+F1669,Bali,Flax,78.0,14
+F1926,Bali,Latte,94.5,14
+F1927,Bali,Stone Gray,94.5,14
+F2023,Bali,Desert Beige,94.5,14
+F2024,Bali,Warm Mocha,94.5,14
+F2025,Bali,Soft Sandstone,94.5,14
+F2026,Bali,Gentle Ash,94.5,14
+F2027,Bali,Gray,94.5,14
+F0656,Phuket,Snow White,96.0,14
+F0657,Phuket,Honey,96.0,14
+F0659,Phuket,Black Olive,96.0,14
+F0660,Phuket,Grey Fog,96.0,14
+F0661,Phuket,Dust,96.0,14
+F0868,Phuket,Dough,96.0,14
+F1670,Phuket,Mocha,96.0,14
+F0662,Bora Bora,Seashell White,96.0,14
+F0663,Bora Bora,Straw,96.0,14
+F0869,Bora Bora,Cinnamon,96.0,14
+F0854,Sumatra,Fog,96.0,14
+F0856,Java,Raffia,78.0,15
+F0857,Java,Haystack,78.0,15
+F0858,Java,Natural,78.0,15
+F0859,Java,Sage,78.0,15
+F1562,Java,Toasted Brown,78.0,15
+F1290,Riviera,Frost,94.5,15
+F1291,Riviera,Sugar Cane,94.5,15
+F1292,Riviera,Honey,94.5,15
+F1293,Riviera,Metal,94.5,15
+F1713,Riviera,Silver Fox,94.5,15
+F1543,Maui* (Natural),Vanilla Stripe,94.5,15
+F1544,Maui* (Natural),Natural Stripe,94.5,15
+F1545,Maui* (Natural),Slate Stripe,94.5,15
+F1548,Maui* (Natural),Ink/Natural,94.5,15
+F1549,Maui* (Natural),Coffee/Natural,94.5,15
+F1577,Lake Tahoe,Stone,96.0,15
+F1605,Catalina,Sea Salt,96.0,15
+F1712,Catalina,Oatmeal,96.0,15
+F1714,Cove,Jet Black,110.0,15
+F1270,Lakeview 3%,Light Taupe,118.0,16
+F1271,Lakeview 3%,Sand Drift,118.0,16
+F1266,Lakeview 7%,Flax,118.0,16
+F1267,Lakeview 7%,Yellow Stone,118.0,16
+F1268,Lakeview 10%,Frost Gray,118.0,16
+F1269,Lakeview 10%,Java,118.0,16
+F1274,Meadows 1%,Travertine,118.0,16
+F1275,Meadows 1%,Mushroom,118.0,16
+F1276,Meadows 1%,Sun Buff,118.0,16
+F1272,Meadows 3%,Rustic Brown,118.0,16
+F1273,Meadows 3%,Earth Brown,118.0,16
+F1280,Jubilee 3%,Egg Shell,118.0,16
+F1277,Jubilee 3%,Sweet Cream,118.0,16
+F1278,Jubilee 3%,Steel Blue/Beige,118.0,16
+F1279,Jubilee 3%,Chestnut,118.0,16
+F1281,Jubilee 3%,Coal,118.0,16
+F1519,Moon 5%,Chalk,118.0,16
+F1520,Moon 5%,Pearl Linen,118.0,16
+F1521,Moon 5%,Pearl,118.0,16
+F1522,Moon 5%,Pearl Pewter,118.0,16
+F1523,Moon 5%,Charcoal Chestnut,118.0,16
+F1524,Moon 5%,Charcoal Gray,118.0,16
+F1525,Moon 5%,Raven Black,118.0,16
+F1158,Serene 1%,Snow White,118.0,16
+F1150,Serene 1%,Silver,118.0,16
+F1149,Serene 1%,Umber,118.0,16
+F1151,Serene 1%,Steel,118.0,16
+F1232,Serene 3%,Snow White,118.0,16
+F1233,Serene 3%,Silver,118.0,16
+F1234,Serene 3%,Umber,118.0,16
+F1235,Serene 3%,Steel,118.0,16
+F1240,Serene 7%,Snow White,118.0,16
+F1241,Serene 7%,Silver,118.0,16
+F1242,Serene 7%,Umber,118.0,16
+F1243,Serene 7%,Steel,118.0,16
+F1244,Flow 1%,Polar White,118.0,17
+F1245,Flow 1%,Wheat,118.0,17
+F1246,Flow 1%,Quarry Stone,118.0,17
+F1247,Flow 1%,Ink,118.0,17
+F1159,Flow 5%,Polar White,118.0,17
+F1152,Flow 5%,Wheat,118.0,17
+F1154,Flow 5%,Quarry Stone,118.0,17
+F1153,Flow 5%,Ink,118.0,17
+F1248,Flow 7%,Polar White,118.0,17
+F1249,Flow 7%,Wheat,118.0,17
+F1250,Flow 7%,Quarry Stone,118.0,17
+F1251,Flow 7%,Ink,118.0,17
+F1252,Windsong 1%,Soft White,118.0,17
+F1253,Windsong 1%,Canvas,118.0,17
+F1254,Windsong 1%,Graphite,118.0,17
+F1255,Windsong 1%,Raven Black,118.0,17
+F1260,Windsong 5%,Soft White,118.0,17
+F1261,Windsong 5%,Canvas,118.0,17
+F1262,Windsong 5%,Nickel,118.0,17
+F1263,Windsong 5%,Graphite,118.0,17
+F1264,Windsong 5%,Eclipse,118.0,17
+F1265,Windsong 5%,Raven Black,118.0,17
+F1780,Breeze Screen 1%,Linen Flax,118.0,17
+F1782,Breeze Screen 1%,Linen Khaki,118.0,17
+F1785,Breeze Screen 1%,Linen Almond Milk,118.0,17
+F1786,Breeze Screen 1%,Linen Stone,118.0,17
+F1784,Breeze Screen 1%,Linen Graphite,118.0,17
+F1846,Breeze Screen 1%,Linen Cloud,118.0,17
+F1850,Breeze Screen 1%,Linen Warm Ivory,118.0,17
+F1783,Breeze Screen 1%,Linen Dune,118.0,17
+F1787,Breeze Screen 3%,Linen Flax,118.0,17
+F1789,Breeze Screen 3%,Linen Khaki,118.0,17
+F1792,Breeze Screen 3%,Linen Almond Milk,118.0,17
+F1793,Breeze Screen 3%,Linen Stone,118.0,17
+F1791,Breeze Screen 3%,Linen Graphite,118.0,17
+F1845,Breeze Screen 3%,Linen Cloud,118.0,17
+F1849,Breeze Screen 3%,Linen Warm Ivory,118.0,17
+F1790,Breeze Screen 3%,Linen Dune,118.0,17
+F1727,Galaxy 3%,Black,118.0,17
+F1728,Galaxy 3%,Soft White,118.0,17
+F1731,Galaxy 3%,Ash,118.0,17
+F0355,NA300 (1%),Pearl,118.0,18
+F0356,NA300 (1%),Pearl/Linen,118.0,18
+F0357,NA300 (1%),Pearl/Pewter,118.0,18
+F0358,NA300 (1%),Charcoal/Chestnut,118.0,18
+F0359,NA300 (1%),Charcoal/Gray,118.0,18
+F1872,NA300 (1%),Charcoal,118.0,18
+F0379,NA400 (1%),Charcoal/Chestnut,118.0,18
+F0378,NA400 (1%),Charcoal,118.0,18
+F1875,NA400 (1%),Chalk,118.0,18
+F1876,NA400 (1%),Chalk/Beige,118.0,18
+F0360,NA300 (3%),Pearl,118.0,18
+F0361,NA300 (3%),Pearl/Linen,118.0,18
+F0362,NA300 (3%),Pearl/Pewter,118.0,18
+F0363,NA300 (3%),Charcoal/Chestnut,118.0,18
+F0364,NA300 (3%),Charcoal/Gray,118.0,18
+F1873,NA300 (3%),Charcoal,118.0,18
+F0381,NA400 (3%),Chalk,118.0,18
+F0382,NA400 (3%),Chalk/Beige,118.0,18
+F0384,NA400 (3%),Charcoal,118.0,18
+F0407,NA820 (3%),Oyster/Pewter,118.0,18
+F0365,NA300 (5%),Pearl,118.0,18
+F0366,NA300 (5%),Pearl/Linen,118.0,18
+F0367,NA300 (5%),Pearl/Pewter,118.0,18
+F0368,NA300 (5%),Charcoal/Chestnut,118.0,18
+F0369,NA300 (5%),Charcoal/Gray,118.0,18
+F1874,NA300 (5%),Charcoal,118.0,18
+F0388,NA400 (5%),Chalk/Beige,118.0,18
+F0390,NA400 (5%),Charcoal,118.0,18
+F0396,NA400 (10%),Charcoal,118.0,18

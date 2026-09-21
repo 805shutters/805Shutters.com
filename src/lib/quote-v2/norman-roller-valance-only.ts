@@ -1,3 +1,4 @@
+import { rollerValancePieceLimit } from "../quote/norman-roller-fabric-widths";
 import { normanRollerFabricColors } from '../quote/norman-roller-fabrics';
 import { ROLLER_VALANCE_KEY as KEY, ROLLER_VALANCE_DERIVED as DERIVED, ROLLER_VALANCE_SOURCE as SOURCE, ROLLER_SEPARATE_VALANCE as SEPARATE, ROLLER_VALANCE_HOLD, ROLLER_VALANCE_STYLES, ROLLER_FASCIA_COLORS, ROLLER_CAP_COLORS, isRollerValance, parseRollerValance } from '../quote/norman-roller-valance-only';
 import { rollerHardware } from './norman-roller-hardware';
@@ -25,8 +26,8 @@ export function validateRollerValance(s:SelectionContext):ValidationIssue[]{
  if(fabric&&r.fasciaColor)add('stale_fascia_color','Clear the plain fascia color for a fabric-wrapped treatment.',38);
  if(wrapped&&!ROLLER_CAP_COLORS.includes(r.endCapColor as never))add('end_cap','Specify a listed wrapped-fascia end-cap color.',38);
  if(!wrapped&&r.endCapColor)add('stale_end_cap','Clear the wrapped-fascia end-cap choice for this treatment.',38);
- // No estimated 118-inch fallback: the exact source roll-width mapping is a separate evidence-backed derivation.
- if(fabric)add('material_width','Exact valance fabric roll width must be mapped to the guide before its splice limits are confirmed.',39);
+ const material=rollerValancePieceLimit(r.style,r.fabricCode),pieceMaximum=material.maximum??95;
+ if(fabric&&material.maximum===null)add('material_width','No exact source fabric width exists for this valance fabric. Confirm it before deriving splice limits.',39);
  if(r.joinery==='Connector'&&(r.keystoneCount!==0||r.locations.length||r.layout!=='Equally Centered'||r.keystoneShape))add('connector','Connectors split equally. Clear all keystone-only choices.',39);
  let points:number[]=[];
  if(r.joinery==='Keystone'){
@@ -38,15 +39,15 @@ export function validateRollerValance(s:SelectionContext):ValidationIssue[]{
   points=Array.from({length:n},(_,i)=>r.layout==='Custom'?r.locations[i]??NaN:(r.width??NaN)*(i+1)/(n+1));
   if(points.some((p,i)=>!Number.isFinite(p)||p<18||p>(r.width??0)-18||i>0&&p-points[i-1]<18))add('spacing','Keystone centers require at least 18 inches from each end and from one another.',40);
  }
- const split=r.width!==null&&r.width>95?(r.joinery==='Keystone'?points:Array.from({length:Math.min(1000,Math.ceil(r.width/95))-1},(_,i)=>r.width!*(i+1)/Math.ceil(r.width!/95))):[];
+ const split=r.width!==null&&r.width>pieceMaximum?(r.joinery==='Keystone'?points:Array.from({length:Math.min(1000,Math.ceil(r.width/pieceMaximum))-1},(_,i)=>r.width!*(i+1)/Math.ceil(r.width!/pieceMaximum))):[];
  const pieces=r.width===null?[]:[...split,r.width].map((v,i)=>v-(i?split[i-1]:0));
- if(pieces.some(p=>!Number.isFinite(p)||p<=0||p>95))add('piece_length','Every splice section must be positive and no longer than 95 inches; the fabric width may impose a smaller maximum.',39);
+ if(pieces.some(p=>!Number.isFinite(p)||p<=0||p>pieceMaximum))add('piece_length',`Every splice section must be positive and no longer than ${pieceMaximum} inches for the selected material.`,39);
  if(s.productId!==SEPARATE&&(r.associatedLineIds.length||r.controlClearanceConfirmed))add('association','Valance Only is independent. Use Separate Valance to associate shades.');
  if(s.productId===SEPARATE&&!s.configuration[DERIVED])add('associated_shades','Select the associated Roller shade lines in this quote so their compatibility can be validated.');
  const c:Record<string,SelectionValue>={...s.configuration,[KEY]:r};
  c.valance=r.style;c.mount_type=r.mount;c.fabric_color_code=color?.colorCode??null;c.fabric_color_name=color?.colorName??null;
  c.roller_valance_width=r.width;c.roller_valance_return_length=r.returnLength;c.roller_valance_fascia_color=r.fasciaColor;c.roller_valance_end_cap_color=r.endCapColor;c.roller_valance_joinery=r.joinery;c.roller_valance_keystone_centers=points.filter(Number.isFinite).join(', ');
- c[DERIVED]={...((c[DERIVED] as SelectionRecord)??{}),version:1,type:'roller_separate_or_only_valance',sourceId:SOURCE,sourcePages:[37,38,39,40],raceway:false,valanceBracketSize:'large',endToEndWidth:r.width,returnLength:r.returnLength,splitLocations:split.filter(Number.isFinite),pieceLengths:pieces.filter(Number.isFinite),materialWidthStatus:fabric?'exact_source_mapping_pending':'95_inch_maximum_piece',quantity:s.quantity,pricingStatus:'standalone_separate_price_unverified'};
+ c[DERIVED]={...((c[DERIVED] as SelectionRecord)??{}),version:1,type:'roller_separate_or_only_valance',sourceId:SOURCE,sourcePages:[37,38,39,40],raceway:false,valanceBracketSize:'large',endToEndWidth:r.width,returnLength:r.returnLength,splitLocations:split.filter(Number.isFinite),pieceLengths:pieces.filter(Number.isFinite),materialWidthStatus:fabric?material.maximum===null?'exact_source_mapping_pending':'exact_color_source_width':'95_inch_maximum_piece',fabricCode:r.fabricCode,fabricWidth:material.fabricWidth,fabricWidthSourcePage:material.sourcePage,maximumPieceWidth:material.maximum,quantity:s.quantity,pricingStatus:'standalone_separate_price_unverified'};
  s.configuration=c;return issues;
 }
 /** Membership is reconstructed exclusively from selected quote lines. */

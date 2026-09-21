@@ -84,7 +84,7 @@ export function quoteV2CatalogVersionFor(
   if (productId === "citylights_aluminum" && asOf >= "2026-08-01") {
     return `${QUOTE_V2_CATALOG_VERSION}-citylights-2026-08-r1`;
   }
-  if (productId === "roller" && asOf >= "2026-09-20") return `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-panel-2026-09-20-r5`;
+  if (productId === "roller" && asOf >= "2026-09-20") return `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-material-2026-09-20-r6`;
   if (productId === "roller" && asOf >= "2026-09-01") {
     return `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-pg4-2026-09-r2`;
   }
@@ -108,6 +108,7 @@ export function isRecognizedQuoteV2Catalog(
   if (productId === "honeycomb" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-mounting-2026-09-20-r1`) return true;
   if (productId === "honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-honeycomb-motor-accessories-2026-09-19-r3`) return true;
   if (productId === "vertical_honeycomb" && asOf >= "2026-09-19" && catalogVersion === `${QUOTE_V2_CATALOG_VERSION}-norman-vertical-honeycomb-2026-09-19-r1`) return true;
+  if (productId === "roller" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-panel-2026-09-20-r5`) return true;
   if (productId === "roller" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-common-2026-09-20-r4`) return true;
   if (productId === "roller" && asOf >= "2026-09-20" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-hardware-2026-09-20-r3`) return true;
   if (productId === "roller" && asOf >= "2026-09-01" && catalogVersion === `${QUOTE_V2_ROLLER_PREVIEW_VERSION}-pg4-2026-09-r2`) return true;

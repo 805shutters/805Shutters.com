@@ -1,0 +1,3077 @@
+// Source: Roller Shade Guide 2026-09-16, fabric tables pp6–18; definition p5.
+// Exact merged table cells; no collection fallback. Source SHA256 81114d0186dff48a54848d315059f52330ee506e589a49a5e3df11aed0c896fc
+export const normanRollerFabricWidths = [
+  {
+    "colorCode": "F0908",
+    "collection": "Sheer",
+    "colorName": "Linen Weave",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1538",
+    "collection": "Dazzle",
+    "colorName": "Soft White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1539",
+    "collection": "Dazzle",
+    "colorName": "Eggshell",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1540",
+    "collection": "Dazzle",
+    "colorName": "Pewter Green",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1541",
+    "collection": "Dazzle",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1542",
+    "collection": "Dazzle",
+    "colorName": "Ink",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1599",
+    "collection": "Scarlett",
+    "colorName": "Cottage Linen",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1600",
+    "collection": "Scarlett",
+    "colorName": "Seashell",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1601",
+    "collection": "Scarlett",
+    "colorName": "Crema",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1602",
+    "collection": "Scarlett",
+    "colorName": "Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F1642",
+    "collection": "Lakeshore",
+    "colorName": "Natural Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 6
+  },
+  {
+    "colorCode": "F0890",
+    "collection": "Kendra",
+    "colorName": "LF Foliage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0883",
+    "collection": "Francis",
+    "colorName": "Brownie",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0876",
+    "collection": "Francis",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0877",
+    "collection": "Francis",
+    "colorName": "Barley",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0878",
+    "collection": "Francis",
+    "colorName": "Sandstone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0879",
+    "collection": "Francis",
+    "colorName": "Toast",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0882",
+    "collection": "Francis",
+    "colorName": "Espresso",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0884",
+    "collection": "Francis",
+    "colorName": "Oatmeal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0885",
+    "collection": "Francis",
+    "colorName": "Doe",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0886",
+    "collection": "Francis",
+    "colorName": "Shale",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0888",
+    "collection": "Francis",
+    "colorName": "Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0889",
+    "collection": "Francis",
+    "colorName": "Denim",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0891",
+    "collection": "Breeze",
+    "colorName": "Linen Flax",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0893",
+    "collection": "Breeze",
+    "colorName": "Linen Natural",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0894",
+    "collection": "Breeze",
+    "colorName": "Linen Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0895",
+    "collection": "Breeze",
+    "colorName": "Linen Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0896",
+    "collection": "Breeze",
+    "colorName": "Linen Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0927",
+    "collection": "Breeze",
+    "colorName": "Linen Almond Milk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F1778",
+    "collection": "Breeze",
+    "colorName": "Linen Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F1847",
+    "collection": "Breeze",
+    "colorName": "Linen Cloud",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F1851",
+    "collection": "Breeze",
+    "colorName": "Linen Warm Ivory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0747",
+    "collection": "Hayes",
+    "colorName": "Maple",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0748",
+    "collection": "Hayes",
+    "colorName": "Hickory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0749",
+    "collection": "Hayes",
+    "colorName": "Birch",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0751",
+    "collection": "Hayes",
+    "colorName": "Mahogany",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0740",
+    "collection": "Valerie",
+    "colorName": "Dolphin",
+    "fabricWidthInches": 106.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0741",
+    "collection": "Valerie",
+    "colorName": "Pomegranate",
+    "fabricWidthInches": 106.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0739",
+    "collection": "Valerie",
+    "colorName": "Cove",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0743",
+    "collection": "Valerie",
+    "colorName": "Silhouette",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0738",
+    "collection": "Valerie",
+    "colorName": "Moonscape",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0742",
+    "collection": "Valerie",
+    "colorName": "Sapphire",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 7
+  },
+  {
+    "colorCode": "F0752",
+    "collection": "Emery",
+    "colorName": "Daylight",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F0753",
+    "collection": "Emery",
+    "colorName": "Creamy",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F0754",
+    "collection": "Emery",
+    "colorName": "Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1560",
+    "collection": "Emery",
+    "colorName": "Chiffon",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1120",
+    "collection": "Brook",
+    "colorName": "Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1121",
+    "collection": "Brook",
+    "colorName": "Egret",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1122",
+    "collection": "Brook",
+    "colorName": "Smoke",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1123",
+    "collection": "Brook",
+    "colorName": "Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1157",
+    "collection": "Brook",
+    "colorName": "Latte",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1445",
+    "collection": "Chelsea",
+    "colorName": "Snow",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1446",
+    "collection": "Chelsea",
+    "colorName": "Cream",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1448",
+    "collection": "Chelsea",
+    "colorName": "Stone",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1449",
+    "collection": "Chelsea",
+    "colorName": "Caviar",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1447",
+    "collection": "Chelsea",
+    "colorName": "Natural",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1450",
+    "collection": "Sierra",
+    "colorName": "Snow",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1451",
+    "collection": "Sierra",
+    "colorName": "Cream",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1452",
+    "collection": "Sierra",
+    "colorName": "Natural",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1453",
+    "collection": "Sierra",
+    "colorName": "Stone",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1454",
+    "collection": "Sierra",
+    "colorName": "Caviar",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1966",
+    "collection": "Sierra",
+    "colorName": "Canvas",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1967",
+    "collection": "Sierra",
+    "colorName": "Graphite",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1436",
+    "collection": "Shimmer",
+    "colorName": "Goldmine",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1437",
+    "collection": "Shimmer",
+    "colorName": "Starry Night",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1439",
+    "collection": "Shimmer",
+    "colorName": "Pewter",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1440",
+    "collection": "Shimmer",
+    "colorName": "Midnight",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1484",
+    "collection": "Amelia",
+    "colorName": "Mist Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1485",
+    "collection": "Amelia",
+    "colorName": "Heather Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1486",
+    "collection": "Amelia",
+    "colorName": "Heather Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1487",
+    "collection": "Amelia",
+    "colorName": "Heather Smoke",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1551",
+    "collection": "Lola LF",
+    "colorName": "Porcelain",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1552",
+    "collection": "Lola LF",
+    "colorName": "Almond",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1553",
+    "collection": "Lola LF",
+    "colorName": "Light Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1554",
+    "collection": "Lola LF",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1555",
+    "collection": "Lola LF",
+    "colorName": "Platinum",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1556",
+    "collection": "Lola LF",
+    "colorName": "Cement",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1557",
+    "collection": "Lola LF",
+    "colorName": "Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1558",
+    "collection": "Lola LF",
+    "colorName": "Iron",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F1559",
+    "collection": "Lola LF",
+    "colorName": "Indigo",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 8
+  },
+  {
+    "colorCode": "F0870",
+    "collection": "Clarissa",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F0871",
+    "collection": "Clarissa",
+    "colorName": "Platinum",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F0872",
+    "collection": "Clarissa",
+    "colorName": "Tobacco Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F0873",
+    "collection": "Clarissa",
+    "colorName": "Sable Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F0874",
+    "collection": "Clarissa",
+    "colorName": "Burlap",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F0928",
+    "collection": "Clarissa",
+    "colorName": "Porcelain",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1532",
+    "collection": "Clarissa",
+    "colorName": "Powder",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1533",
+    "collection": "Clarissa",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1534",
+    "collection": "Clarissa",
+    "colorName": "Silver Satin",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1535",
+    "collection": "Clarissa",
+    "colorName": "Golden Straw",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1536",
+    "collection": "Clarissa",
+    "colorName": "Coffee Bean",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1550",
+    "collection": "Clarissa",
+    "colorName": "Coal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1641",
+    "collection": "Verona LF",
+    "colorName": "Pearl Cotton",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1734",
+    "collection": "Callie",
+    "colorName": "Pure White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1736",
+    "collection": "Callie",
+    "colorName": "Natural Tan",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1737",
+    "collection": "Callie",
+    "colorName": "Silver Ash",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1738",
+    "collection": "Callie",
+    "colorName": "Pebble Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1739",
+    "collection": "Callie",
+    "colorName": "Black Iron",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1735",
+    "collection": "Callie",
+    "colorName": "Vanilla Cream",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2028",
+    "collection": "Callie",
+    "colorName": "Cloudy Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2030",
+    "collection": "Callie",
+    "colorName": "Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2032",
+    "collection": "Callie",
+    "colorName": "Rich Truffle",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1746",
+    "collection": "Remy",
+    "colorName": "White Dove",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1747",
+    "collection": "Remy",
+    "colorName": "Seashell Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1748",
+    "collection": "Remy",
+    "colorName": "Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1749",
+    "collection": "Remy",
+    "colorName": "Hickory Bark",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1750",
+    "collection": "Remy",
+    "colorName": "Creamy Mocha",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F1751",
+    "collection": "Remy",
+    "colorName": "Natural Slate",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2203",
+    "collection": "Ohara",
+    "colorName": "Light Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2204",
+    "collection": "Ohara",
+    "colorName": "Taupe",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2205",
+    "collection": "Ohara",
+    "colorName": "Coconut Shell",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2206",
+    "collection": "Ohara",
+    "colorName": "Denim Blue",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2207",
+    "collection": "Ohara",
+    "colorName": "Rosemary Green",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2249",
+    "collection": "Waikiki",
+    "colorName": "Mauve Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2250",
+    "collection": "Waikiki",
+    "colorName": "Indigo Blue",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2251",
+    "collection": "Waikiki",
+    "colorName": "Driftwood",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2093",
+    "collection": "Olivia",
+    "colorName": "Polar White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2095",
+    "collection": "Olivia",
+    "colorName": "Sea Salt",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2099",
+    "collection": "Olivia",
+    "colorName": "Raw Sugar",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2097",
+    "collection": "Olivia",
+    "colorName": "Antique Sage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2098",
+    "collection": "Olivia",
+    "colorName": "Fossil",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 9
+  },
+  {
+    "colorCode": "F2189",
+    "collection": "Rockville",
+    "colorName": "Whisper White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2190",
+    "collection": "Rockville",
+    "colorName": "Pale Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2191",
+    "collection": "Rockville",
+    "colorName": "Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2192",
+    "collection": "Rockville",
+    "colorName": "Khaki Sage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2228",
+    "collection": "Brill",
+    "colorName": "Titanium",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2229",
+    "collection": "Brill",
+    "colorName": "Birch",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2230",
+    "collection": "Brill",
+    "colorName": "Walnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2231",
+    "collection": "Brill",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2197",
+    "collection": "Etch",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2198",
+    "collection": "Etch",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2199",
+    "collection": "Etch",
+    "colorName": "Taupe",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2200",
+    "collection": "Etch",
+    "colorName": "Graphite",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2255",
+    "collection": "Leah",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2256",
+    "collection": "Leah",
+    "colorName": "Cornfield",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2257",
+    "collection": "Leah",
+    "colorName": "Oatmeal",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2258",
+    "collection": "Leah",
+    "colorName": "Fawn",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2259",
+    "collection": "Leah",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2239",
+    "collection": "Cara",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2240",
+    "collection": "Cara",
+    "colorName": "Nectar",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2241",
+    "collection": "Cara",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2242",
+    "collection": "Cara",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2243",
+    "collection": "Cara",
+    "colorName": "Black",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2170",
+    "collection": "Charlotte",
+    "colorName": "Milky White",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2172",
+    "collection": "Charlotte",
+    "colorName": "Swiss Coffee",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2171",
+    "collection": "Charlotte",
+    "colorName": "Creamy Oak",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2179",
+    "collection": "Charlotte",
+    "colorName": "Midnight",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2176",
+    "collection": "Charlotte",
+    "colorName": "Silverstone",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2174",
+    "collection": "Charlotte",
+    "colorName": "Linen Taupe",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2175",
+    "collection": "Charlotte",
+    "colorName": "Taupe Gray",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2177",
+    "collection": "Charlotte",
+    "colorName": "Shark",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2178",
+    "collection": "Charlotte",
+    "colorName": "Welded Iron",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2182",
+    "collection": "Charlotte",
+    "colorName": "Oxford Blue",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2173",
+    "collection": "Charlotte",
+    "colorName": "Toasted Nut",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2180",
+    "collection": "Charlotte",
+    "colorName": "Breezeway",
+    "fabricWidthInches": 94.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2221",
+    "collection": "Springtide",
+    "colorName": "Sandy Taupe",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2225",
+    "collection": "Springtide",
+    "colorName": "Teal Haze",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2226",
+    "collection": "Springtide",
+    "colorName": "Dusty Navy",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2222",
+    "collection": "Springtide",
+    "colorName": "Sage",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2227",
+    "collection": "Springtide",
+    "colorName": "Midnight",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2223",
+    "collection": "Springtide",
+    "colorName": "Blush",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F2224",
+    "collection": "Springtide",
+    "colorName": "Mulberry",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 10
+  },
+  {
+    "colorCode": "F0853",
+    "collection": "Garden",
+    "colorName": "RD Foliage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1514",
+    "collection": "Garden",
+    "colorName": "Winter White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1515",
+    "collection": "Garden",
+    "colorName": "Ecru",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1516",
+    "collection": "Garden",
+    "colorName": "Cinnamon",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1517",
+    "collection": "Garden",
+    "colorName": "Forest",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1518",
+    "collection": "Garden",
+    "colorName": "Midnight",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1108",
+    "collection": "Elements (White Backing)",
+    "colorName": "White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1109",
+    "collection": "Elements (White Backing)",
+    "colorName": "Stone Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1110",
+    "collection": "Elements (White Backing)",
+    "colorName": "Broken White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1111",
+    "collection": "Elements (White Backing)",
+    "colorName": "Cloudy Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1112",
+    "collection": "Elements (White Backing)",
+    "colorName": "Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1113",
+    "collection": "Elements (White Backing)",
+    "colorName": "Anthracite Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2109",
+    "collection": "Elements",
+    "colorName": "Stone Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2110",
+    "collection": "Elements",
+    "colorName": "Broken White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2111",
+    "collection": "Elements",
+    "colorName": "Cloudy Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2112",
+    "collection": "Elements",
+    "colorName": "Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2113",
+    "collection": "Elements",
+    "colorName": "Anthracite Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2114",
+    "collection": "Elements",
+    "colorName": "Weathered White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2115",
+    "collection": "Elements",
+    "colorName": "Soft Sandstone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2116",
+    "collection": "Elements",
+    "colorName": "Gentle Ash",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2117",
+    "collection": "Elements",
+    "colorName": "Soothing Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2118",
+    "collection": "Elements",
+    "colorName": "Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2119",
+    "collection": "Elements",
+    "colorName": "Desert Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2120",
+    "collection": "Elements",
+    "colorName": "Warm Mocha",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2121",
+    "collection": "Elements",
+    "colorName": "Rich Truffle",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2043",
+    "collection": "Elements",
+    "colorName": "Alabaster",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2044",
+    "collection": "Elements",
+    "colorName": "Canvas",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F2045",
+    "collection": "Elements",
+    "colorName": "New Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0827",
+    "collection": "Jamaica",
+    "colorName": "Latte",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0828",
+    "collection": "Jamaica",
+    "colorName": "Crystal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0829",
+    "collection": "Jamaica",
+    "colorName": "Biscuit",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0831",
+    "collection": "Bermuda",
+    "colorName": "Mushroom",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0832",
+    "collection": "Bermuda",
+    "colorName": "Cocoa",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0834",
+    "collection": "Bermuda",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0822",
+    "collection": "Fiji",
+    "colorName": "Pure White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0823",
+    "collection": "Fiji",
+    "colorName": "Cream/Ash",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0824",
+    "collection": "Fiji",
+    "colorName": "Flax/Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0826",
+    "collection": "Fiji",
+    "colorName": "Charcoal/Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F0825",
+    "collection": "Fiji",
+    "colorName": "Chocolate/Cream",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 11
+  },
+  {
+    "colorCode": "F1455",
+    "collection": "Lola BO",
+    "colorName": "Porcelain",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1456",
+    "collection": "Lola BO",
+    "colorName": "Almond",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1457",
+    "collection": "Lola BO",
+    "colorName": "Light Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1458",
+    "collection": "Lola BO",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1459",
+    "collection": "Lola BO",
+    "colorName": "Platinum",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1460",
+    "collection": "Lola BO",
+    "colorName": "Cement",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1461",
+    "collection": "Lola BO",
+    "colorName": "Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1462",
+    "collection": "Lola BO",
+    "colorName": "Iron",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1463",
+    "collection": "Lola BO",
+    "colorName": "Indigo",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1510",
+    "collection": "Summerland",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1511",
+    "collection": "Summerland",
+    "colorName": "Maize",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1512",
+    "collection": "Summerland",
+    "colorName": "Sterling",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1479",
+    "collection": "Cory",
+    "colorName": "White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1480",
+    "collection": "Cory",
+    "colorName": "Ivory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1481",
+    "collection": "Cory",
+    "colorName": "Sand",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1740",
+    "collection": "Callie RD",
+    "colorName": "Pure White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1742",
+    "collection": "Callie RD",
+    "colorName": "Natural Tan",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1743",
+    "collection": "Callie RD",
+    "colorName": "Silver Ash",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1744",
+    "collection": "Callie RD",
+    "colorName": "Pebble Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1745",
+    "collection": "Callie RD",
+    "colorName": "Black Iron",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1741",
+    "collection": "Callie RD",
+    "colorName": "Vanilla Cream",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F2033",
+    "collection": "Callie RD",
+    "colorName": "Cloudy Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F2035",
+    "collection": "Callie RD",
+    "colorName": "Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F2037",
+    "collection": "Callie RD",
+    "colorName": "Rich Truffle",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1752",
+    "collection": "Remy RD",
+    "colorName": "White Dove",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1753",
+    "collection": "Remy RD",
+    "colorName": "Seashell Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1754",
+    "collection": "Remy RD",
+    "colorName": "Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1755",
+    "collection": "Remy RD",
+    "colorName": "Hickory Bark",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1756",
+    "collection": "Remy RD",
+    "colorName": "Creamy Mocha",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1757",
+    "collection": "Remy RD",
+    "colorName": "Natural Slate",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1763",
+    "collection": "Francis RD",
+    "colorName": "Sandstone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1764",
+    "collection": "Francis RD",
+    "colorName": "Oatmeal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1765",
+    "collection": "Francis RD",
+    "colorName": "Doe",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1766",
+    "collection": "Francis RD",
+    "colorName": "Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1767",
+    "collection": "Francis RD",
+    "colorName": "Denim",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1762",
+    "collection": "Francis RD",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1768",
+    "collection": "Breeze RD",
+    "colorName": "Linen Flax",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1769",
+    "collection": "Breeze RD",
+    "colorName": "Linen Natural",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1770",
+    "collection": "Breeze RD",
+    "colorName": "Linen Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1771",
+    "collection": "Breeze RD",
+    "colorName": "Linen Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1772",
+    "collection": "Breeze RD",
+    "colorName": "Linen Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1773",
+    "collection": "Breeze RD",
+    "colorName": "Linen Almond Milk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1779",
+    "collection": "Breeze RD",
+    "colorName": "Linen Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1848",
+    "collection": "Breeze RD",
+    "colorName": "Linen Cloud",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1852",
+    "collection": "Breeze RD",
+    "colorName": "Linen Warm Ivory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1774",
+    "collection": "Amelia RD",
+    "colorName": "Mist Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1775",
+    "collection": "Amelia RD",
+    "colorName": "Heather Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1776",
+    "collection": "Amelia RD",
+    "colorName": "Heather Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F1777",
+    "collection": "Amelia RD",
+    "colorName": "Heather Smoke",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 12
+  },
+  {
+    "colorCode": "F2208",
+    "collection": "OharaRD",
+    "colorName": "Light Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2209",
+    "collection": "OharaRD",
+    "colorName": "Taupe",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2210",
+    "collection": "OharaRD",
+    "colorName": "Coconut Shell",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2211",
+    "collection": "OharaRD",
+    "colorName": "Denim Blue",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2212",
+    "collection": "OharaRD",
+    "colorName": "Rosemary Green",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2252",
+    "collection": "Waikiki RD",
+    "colorName": "Mauve Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2253",
+    "collection": "Waikiki RD",
+    "colorName": "Indigo Blue",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2254",
+    "collection": "Waikiki RD",
+    "colorName": "Driftwood",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2102",
+    "collection": "Olivia RD",
+    "colorName": "Polar White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2104",
+    "collection": "Olivia RD",
+    "colorName": "Sea Salt",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2108",
+    "collection": "Olivia RD",
+    "colorName": "Raw Sugar",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2106",
+    "collection": "Olivia RD",
+    "colorName": "Antique Sage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2107",
+    "collection": "Olivia RD",
+    "colorName": "Fossil",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2193",
+    "collection": "Rockville RD",
+    "colorName": "Whisper White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2194",
+    "collection": "Rockville RD",
+    "colorName": "Pale Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2195",
+    "collection": "Rockville RD",
+    "colorName": "Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2196",
+    "collection": "Rockville RD",
+    "colorName": "Khaki Sage",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2232",
+    "collection": "Brill RD",
+    "colorName": "Titanium",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2233",
+    "collection": "Brill RD",
+    "colorName": "Birch",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2234",
+    "collection": "Brill RD",
+    "colorName": "Walnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2235",
+    "collection": "Brill RD",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2201",
+    "collection": "Etch RD",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2202",
+    "collection": "Etch RD",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2260",
+    "collection": "Leah RD",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2261",
+    "collection": "Leah RD",
+    "colorName": "Cornfield",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2262",
+    "collection": "Leah RD",
+    "colorName": "Oatmeal",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2263",
+    "collection": "Leah RD",
+    "colorName": "Fawn",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2264",
+    "collection": "Leah RD",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2244",
+    "collection": "Cara RD",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2245",
+    "collection": "Cara RD",
+    "colorName": "Nectar",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2246",
+    "collection": "Cara RD",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2247",
+    "collection": "Cara RD",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2248",
+    "collection": "Cara RD",
+    "colorName": "Black",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2236",
+    "collection": "Simplicity RD",
+    "colorName": "White",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2237",
+    "collection": "Simplicity RD",
+    "colorName": "Ecru",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F2238",
+    "collection": "Simplicity RD",
+    "colorName": "Gray",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 13
+  },
+  {
+    "colorCode": "F0860",
+    "collection": "Aruba",
+    "colorName": "Sparkle Ivory",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0861",
+    "collection": "Aruba",
+    "colorName": "Sparkle Khaki",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0862",
+    "collection": "Aruba",
+    "colorName": "Sparkle Espresso",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0867",
+    "collection": "Caroline",
+    "colorName": "White Sand",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0863",
+    "collection": "Samoa",
+    "colorName": "Daylight",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0864",
+    "collection": "Samoa",
+    "colorName": "Sand",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0865",
+    "collection": "Samoa",
+    "colorName": "Cumin",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0866",
+    "collection": "Samoa",
+    "colorName": "Old Teak",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0668",
+    "collection": "Bali",
+    "colorName": "Black Walnut",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F1668",
+    "collection": "Bali",
+    "colorName": "Sand",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F1669",
+    "collection": "Bali",
+    "colorName": "Flax",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F1926",
+    "collection": "Bali",
+    "colorName": "Latte",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F1927",
+    "collection": "Bali",
+    "colorName": "Stone Gray",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F2023",
+    "collection": "Bali",
+    "colorName": "Desert Beige",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F2024",
+    "collection": "Bali",
+    "colorName": "Warm Mocha",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F2025",
+    "collection": "Bali",
+    "colorName": "Soft Sandstone",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F2026",
+    "collection": "Bali",
+    "colorName": "Gentle Ash",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F2027",
+    "collection": "Bali",
+    "colorName": "Gray",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0656",
+    "collection": "Phuket",
+    "colorName": "Snow White",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0657",
+    "collection": "Phuket",
+    "colorName": "Honey",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0659",
+    "collection": "Phuket",
+    "colorName": "Black Olive",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0660",
+    "collection": "Phuket",
+    "colorName": "Grey Fog",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0661",
+    "collection": "Phuket",
+    "colorName": "Dust",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0868",
+    "collection": "Phuket",
+    "colorName": "Dough",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F1670",
+    "collection": "Phuket",
+    "colorName": "Mocha",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0662",
+    "collection": "Bora Bora",
+    "colorName": "Seashell White",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0663",
+    "collection": "Bora Bora",
+    "colorName": "Straw",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0869",
+    "collection": "Bora Bora",
+    "colorName": "Cinnamon",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0854",
+    "collection": "Sumatra",
+    "colorName": "Fog",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 14
+  },
+  {
+    "colorCode": "F0856",
+    "collection": "Java",
+    "colorName": "Raffia",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F0857",
+    "collection": "Java",
+    "colorName": "Haystack",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F0858",
+    "collection": "Java",
+    "colorName": "Natural",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F0859",
+    "collection": "Java",
+    "colorName": "Sage",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1562",
+    "collection": "Java",
+    "colorName": "Toasted Brown",
+    "fabricWidthInches": 78.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1290",
+    "collection": "Riviera",
+    "colorName": "Frost",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1291",
+    "collection": "Riviera",
+    "colorName": "Sugar Cane",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1292",
+    "collection": "Riviera",
+    "colorName": "Honey",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1293",
+    "collection": "Riviera",
+    "colorName": "Metal",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1713",
+    "collection": "Riviera",
+    "colorName": "Silver Fox",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1543",
+    "collection": "Maui* (Natural)",
+    "colorName": "Vanilla Stripe",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1544",
+    "collection": "Maui* (Natural)",
+    "colorName": "Natural Stripe",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1545",
+    "collection": "Maui* (Natural)",
+    "colorName": "Slate Stripe",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1548",
+    "collection": "Maui* (Natural)",
+    "colorName": "Ink/Natural",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1549",
+    "collection": "Maui* (Natural)",
+    "colorName": "Coffee/Natural",
+    "fabricWidthInches": 94.5,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1577",
+    "collection": "Lake Tahoe",
+    "colorName": "Stone",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1605",
+    "collection": "Catalina",
+    "colorName": "Sea Salt",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1712",
+    "collection": "Catalina",
+    "colorName": "Oatmeal",
+    "fabricWidthInches": 96.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1714",
+    "collection": "Cove",
+    "colorName": "Jet Black",
+    "fabricWidthInches": 110.0,
+    "sourcePage": 15
+  },
+  {
+    "colorCode": "F1270",
+    "collection": "Lakeview 3%",
+    "colorName": "Light Taupe",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1271",
+    "collection": "Lakeview 3%",
+    "colorName": "Sand Drift",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1266",
+    "collection": "Lakeview 7%",
+    "colorName": "Flax",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1267",
+    "collection": "Lakeview 7%",
+    "colorName": "Yellow Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1268",
+    "collection": "Lakeview 10%",
+    "colorName": "Frost Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1269",
+    "collection": "Lakeview 10%",
+    "colorName": "Java",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1274",
+    "collection": "Meadows 1%",
+    "colorName": "Travertine",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1275",
+    "collection": "Meadows 1%",
+    "colorName": "Mushroom",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1276",
+    "collection": "Meadows 1%",
+    "colorName": "Sun Buff",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1272",
+    "collection": "Meadows 3%",
+    "colorName": "Rustic Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1273",
+    "collection": "Meadows 3%",
+    "colorName": "Earth Brown",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1280",
+    "collection": "Jubilee 3%",
+    "colorName": "Egg Shell",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1277",
+    "collection": "Jubilee 3%",
+    "colorName": "Sweet Cream",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1278",
+    "collection": "Jubilee 3%",
+    "colorName": "Steel Blue/Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1279",
+    "collection": "Jubilee 3%",
+    "colorName": "Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1281",
+    "collection": "Jubilee 3%",
+    "colorName": "Coal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1519",
+    "collection": "Moon 5%",
+    "colorName": "Chalk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1520",
+    "collection": "Moon 5%",
+    "colorName": "Pearl Linen",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1521",
+    "collection": "Moon 5%",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1522",
+    "collection": "Moon 5%",
+    "colorName": "Pearl Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1523",
+    "collection": "Moon 5%",
+    "colorName": "Charcoal Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1524",
+    "collection": "Moon 5%",
+    "colorName": "Charcoal Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1525",
+    "collection": "Moon 5%",
+    "colorName": "Raven Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1158",
+    "collection": "Serene 1%",
+    "colorName": "Snow White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1150",
+    "collection": "Serene 1%",
+    "colorName": "Silver",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1149",
+    "collection": "Serene 1%",
+    "colorName": "Umber",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1151",
+    "collection": "Serene 1%",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1232",
+    "collection": "Serene 3%",
+    "colorName": "Snow White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1233",
+    "collection": "Serene 3%",
+    "colorName": "Silver",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1234",
+    "collection": "Serene 3%",
+    "colorName": "Umber",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1235",
+    "collection": "Serene 3%",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1240",
+    "collection": "Serene 7%",
+    "colorName": "Snow White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1241",
+    "collection": "Serene 7%",
+    "colorName": "Silver",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1242",
+    "collection": "Serene 7%",
+    "colorName": "Umber",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1243",
+    "collection": "Serene 7%",
+    "colorName": "Steel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 16
+  },
+  {
+    "colorCode": "F1244",
+    "collection": "Flow 1%",
+    "colorName": "Polar White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1245",
+    "collection": "Flow 1%",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1246",
+    "collection": "Flow 1%",
+    "colorName": "Quarry Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1247",
+    "collection": "Flow 1%",
+    "colorName": "Ink",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1159",
+    "collection": "Flow 5%",
+    "colorName": "Polar White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1152",
+    "collection": "Flow 5%",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1154",
+    "collection": "Flow 5%",
+    "colorName": "Quarry Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1153",
+    "collection": "Flow 5%",
+    "colorName": "Ink",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1248",
+    "collection": "Flow 7%",
+    "colorName": "Polar White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1249",
+    "collection": "Flow 7%",
+    "colorName": "Wheat",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1250",
+    "collection": "Flow 7%",
+    "colorName": "Quarry Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1251",
+    "collection": "Flow 7%",
+    "colorName": "Ink",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1252",
+    "collection": "Windsong 1%",
+    "colorName": "Soft White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1253",
+    "collection": "Windsong 1%",
+    "colorName": "Canvas",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1254",
+    "collection": "Windsong 1%",
+    "colorName": "Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1255",
+    "collection": "Windsong 1%",
+    "colorName": "Raven Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1260",
+    "collection": "Windsong 5%",
+    "colorName": "Soft White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1261",
+    "collection": "Windsong 5%",
+    "colorName": "Canvas",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1262",
+    "collection": "Windsong 5%",
+    "colorName": "Nickel",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1263",
+    "collection": "Windsong 5%",
+    "colorName": "Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1264",
+    "collection": "Windsong 5%",
+    "colorName": "Eclipse",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1265",
+    "collection": "Windsong 5%",
+    "colorName": "Raven Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1780",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Flax",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1782",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1785",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Almond Milk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1786",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1784",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1846",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Cloud",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1850",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Warm Ivory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1783",
+    "collection": "Breeze Screen 1%",
+    "colorName": "Linen Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1787",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Flax",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1789",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Khaki",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1792",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Almond Milk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1793",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Stone",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1791",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Graphite",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1845",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Cloud",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1849",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Warm Ivory",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1790",
+    "collection": "Breeze Screen 3%",
+    "colorName": "Linen Dune",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1727",
+    "collection": "Galaxy 3%",
+    "colorName": "Black",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1728",
+    "collection": "Galaxy 3%",
+    "colorName": "Soft White",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F1731",
+    "collection": "Galaxy 3%",
+    "colorName": "Ash",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 17
+  },
+  {
+    "colorCode": "F0355",
+    "collection": "NA300 (1%)",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0356",
+    "collection": "NA300 (1%)",
+    "colorName": "Pearl/Linen",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0357",
+    "collection": "NA300 (1%)",
+    "colorName": "Pearl/Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0358",
+    "collection": "NA300 (1%)",
+    "colorName": "Charcoal/Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0359",
+    "collection": "NA300 (1%)",
+    "colorName": "Charcoal/Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F1872",
+    "collection": "NA300 (1%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0379",
+    "collection": "NA400 (1%)",
+    "colorName": "Charcoal/Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0378",
+    "collection": "NA400 (1%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F1875",
+    "collection": "NA400 (1%)",
+    "colorName": "Chalk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F1876",
+    "collection": "NA400 (1%)",
+    "colorName": "Chalk/Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0360",
+    "collection": "NA300 (3%)",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0361",
+    "collection": "NA300 (3%)",
+    "colorName": "Pearl/Linen",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0362",
+    "collection": "NA300 (3%)",
+    "colorName": "Pearl/Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0363",
+    "collection": "NA300 (3%)",
+    "colorName": "Charcoal/Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0364",
+    "collection": "NA300 (3%)",
+    "colorName": "Charcoal/Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F1873",
+    "collection": "NA300 (3%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0381",
+    "collection": "NA400 (3%)",
+    "colorName": "Chalk",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0382",
+    "collection": "NA400 (3%)",
+    "colorName": "Chalk/Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0384",
+    "collection": "NA400 (3%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0407",
+    "collection": "NA820 (3%)",
+    "colorName": "Oyster/Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0365",
+    "collection": "NA300 (5%)",
+    "colorName": "Pearl",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0366",
+    "collection": "NA300 (5%)",
+    "colorName": "Pearl/Linen",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0367",
+    "collection": "NA300 (5%)",
+    "colorName": "Pearl/Pewter",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0368",
+    "collection": "NA300 (5%)",
+    "colorName": "Charcoal/Chestnut",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0369",
+    "collection": "NA300 (5%)",
+    "colorName": "Charcoal/Gray",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F1874",
+    "collection": "NA300 (5%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0388",
+    "collection": "NA400 (5%)",
+    "colorName": "Chalk/Beige",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0390",
+    "collection": "NA400 (5%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  },
+  {
+    "colorCode": "F0396",
+    "collection": "NA400 (10%)",
+    "colorName": "Charcoal",
+    "fabricWidthInches": 118.0,
+    "sourcePage": 18
+  }
+] as const;

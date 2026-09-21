@@ -1,4 +1,5 @@
 "use client";
+import {normanRollerFabricColors} from "@/lib/quote/norman-roller-fabrics";
 import {useEffect,useState} from "react";
 import type {SalesQuoteDesign} from "@mts/types/quote";
 import {ROLLER_COMMON_CHOICE_KEY as KEY,ROLLER_RETURN_SIDES,emptyRollerCommon,parseRollerCommon,newRollerCommonDraft,syncRollerCommonDraft,rollerCommonDirty,type RollerCommonChoice} from "@/lib/quote/norman-roller-common";
@@ -16,7 +17,8 @@ export function NormanRollerCommonOptions({design,onUpdateFields}:{design:SalesQ
   {number("Shade position from left","position",1,6,1)}{number("Gap after shade (inches)","gapAfter",0,12,.0625)}
   <label className="block text-sm">Valance returns<select aria-label="Roller common valance returns" className={cls} value={draft.record.returns} onChange={e=>edit({returns:e.target.value as RollerCommonChoice["returns"]})}>{ROLLER_RETURN_SIDES.map(v=><option key={v}>{v}</option>)}</select></label>
   {number("Custom end-to-end valance width (optional)","customWidth",.0625,570,.0625)}
-  <p className="text-xs text-slate-600">Use the same assembly name on every shade. Positions start at 1; the last shade has zero following gap. Shared valance pricing requires dealer confirmation. Fabric-dependent splice limits and custom bracket rounding remain explicit holds.</p>
+  {/fabric/i.test(String(design?.valance))&&<label className="block text-sm">Common valance fabric override<select aria-label="Roller common valance fabric override" className={cls} value={draft.record.fabricCode??""} onChange={e=>edit({fabricCode:e.target.value})}><option value="">Use this shade's fabric (must match every member)</option>{normanRollerFabricColors.filter(c=>c.available).map(c=><option key={c.colorCode} value={c.colorCode}>{c.collection} · {c.colorCode} · {c.colorName}</option>)}</select></label>}
+  <p className="text-xs text-slate-600">Use the same assembly name on every shade. Positions start at 1; the last shade has zero following gap. Shared valance pricing requires dealer confirmation. Exact color-specific fabric widths determine splice limits. Custom bracket rounding remains held.</p>
   <button type="button" className={cls} disabled={!rollerCommonDirty(draft)} onClick={()=>{setDraft(s=>({...s,submitted:s.record}));onUpdateFields({options_json:{...options,[KEY]:draft.record}});}}>Save Roller common valance</button><p role="status">{rollerCommonDirty(draft)?"Unsaved Roller common valance":draft.submitted?"Roller common valance submitted":"No unsaved Roller common valance"}</p>
  </section>;
 }

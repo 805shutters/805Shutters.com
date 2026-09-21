@@ -25,12 +25,12 @@ describe('Roller Valance Only and Separate Valance source destinations',()=>{
   expect(getProduct('roller')!.programs.length).toBeGreaterThan(1);
   for(const style of ['3.5-inch Square Fascia','3.5-inch Curved Fascia Plain','3.5-inch Fabric Valance','Modern Wood Valance','Cassette'])expect(errors({...record(),style})).toContain('style');
   for(const color of ROLLER_FASCIA_COLORS)expect(errors({...record(),fasciaColor:color})).toEqual(['price_approval']);
-  for(const color of ROLLER_CAP_COLORS)expect(errors({...record(),style:'4.5-inch Curved Fascia with Fabric',fabricCode:'F1484',fasciaColor:'',endCapColor:color})).toEqual(['price_approval','material_width']);
+  for(const color of ROLLER_CAP_COLORS)expect(errors({...record(),style:'4.5-inch Curved Fascia with Fabric',fabricCode:'F1484',fasciaColor:'',endCapColor:color})).toEqual(['price_approval']);
   for(const style of ROLLER_VALANCE_STYLES)expect(errors({...record(),style})).not.toContain('style');
  });
  it('routes every currently available exact Roller fabric code and rejects unknown identities',()=>{
   const colors=normanRollerFabricColors.filter(c=>c.available);expect(colors.length).toBeGreaterThan(400);
-  for(const c of colors)expect(errors({...record(),style:'8-inch Fabric Valance',fabricCode:c.colorCode,fasciaColor:''})).toEqual(['price_approval','material_width']);
+  for(const c of colors)expect(errors({...record(),style:'8-inch Fabric Valance',fabricCode:c.colorCode,fasciaColor:''})).toEqual(['price_approval']);
   expect(errors({...record(),style:'6-inch Fabric Valance',fabricCode:'F0000',fasciaColor:''})).toContain('fabric');
   expect(errors({...record(),style:'6-inch Fabric Valance',fabricCode:'F1561',fasciaColor:''})).toContain('fabric');
  });
