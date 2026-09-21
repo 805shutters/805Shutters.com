@@ -78,7 +78,7 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
  });
  it("holds custom/spliced/returned valances while enforcing tall Louise clearance for standard fabric valances",()=>{
   const q=quote();q.designs[0].valance="6-inch Fabric";q.lines[0].width_whole=95;
-  const wide=run(q);expect(wide.designs[0].result.productStatus).toBe("documented_limited");expect(wide.designs[0].result.validationIssues.map(i=>i.ruleId)).toEqual(["norman.processing_fee.oversize_scope_unverified"]);q.lines[0].width_fraction="1/16";expect(run(q).designs[0].result.productStatus).toBe("restriction_source_incomplete");
+  const wide=run(q);expect(wide.designs[0].result.productStatus).toBe("documented_limited");expect(wide.designs[0].result.validationIssues.map(i=>i.ruleId)).not.toContain("norman.processing_fee.oversize_scope_unverified");q.lines[0].width_fraction="1/16";expect(run(q).designs[0].result.productStatus).toBe("restriction_source_incomplete");
   q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.lines[0].height_whole=73;
   expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.outside_mounting_area");
   q.designs[0].options_json[KEY]={version:1,mountingAreaHeight:1.15,mountingSpaceHeight:2};expect(run(q).sendability.sendable).toBe(true);

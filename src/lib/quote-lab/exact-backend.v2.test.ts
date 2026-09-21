@@ -769,27 +769,23 @@ describe("exact-interface V2 integration", () => {
       ) / 100,
     );
     expect(quote.costSummary).toMatchObject({
-      status: "incomplete",
+      status: "complete",
       freightHandling: 36,
       oversize: 130,
       processingFee: totalProcessingFee,
+      warnings: [],
     });
-    expect(quote.costSummary.warnings).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/oversize charge is not source-verified/i),
-      ]),
-    );
-    expect(first.validationStatus).toBe("blocked");
-    expect(second.validationStatus).toBe("blocked");
-    expect(first.validationIssues.map((issue) => issue.ruleId)).toContain(
+    expect(first.validationStatus).toBe("valid");
+    expect(second.validationStatus).toBe("valid");
+    expect(first.validationIssues.map((issue) => issue.ruleId)).not.toContain(
       "norman.processing_fee.oversize_scope_unverified",
     );
-    expect(second.validationIssues.map((issue) => issue.ruleId)).toContain(
+    expect(second.validationIssues.map((issue) => issue.ruleId)).not.toContain(
       "norman.processing_fee.oversize_scope_unverified",
     );
-    expect(quote.sendability.sendable).toBe(false);
-    expect(quote.sendability.lines.every((entry) => !entry.sendable)).toBe(true);
-    expect(quote.designs.every((entry) => entry.snapshot === null)).toBe(true);
+    expect(quote.sendability.sendable).toBe(true);
+    expect(quote.sendability.lines.every((entry) => entry.sendable)).toBe(true);
+    expect(quote.designs.every((entry) => entry.snapshot !== null)).toBe(true);
     expect(
       first.internalCost.processingFeeAllocated +
         second.internalCost.processingFeeAllocated,

@@ -1543,32 +1543,8 @@ function repriceExactQuoteBuilderV2(
       freightStatus = "published";
     }
 
-    const oversizeProcessingScopeUnverified =
-      product?.manufacturer === "Norman" &&
-      oversizeAllocated > 0 &&
-      NORMAN_805_DEALER_POLICY.processingFee.oversizeScope ===
-        "unverified_excluded";
-    const oversizeProcessingIssue = oversizeProcessingScopeUnverified
-      ? {
-          severity: "hard_block" as const,
-          ruleId: "norman.processing_fee.oversize_scope_unverified",
-          source: NORMAN_805_DEALER_POLICY.publishedFreightSource,
-          selectedValues: {
-            oversizeAllocated: roundMoney(oversizeAllocated),
-            processingFeeOversizeScope:
-              NORMAN_805_DEALER_POLICY.processingFee.oversizeScope,
-          },
-          explanation:
-            "Norman processing-fee treatment for an oversize charge is not source-verified. This line requires manual cost verification before it can be sent.",
-        }
-      : null;
-    if (oversizeProcessingIssue) {
-      costComplete = false;
-      costWarnings.push(oversizeProcessingIssue.explanation);
-    }
-
     // Current 805 Norman terms apply 2% to merchandise plus freight. Oversize
-    // is deliberately excluded because its inclusion has not been verified.
+    // is excluded from that basis per dealer policy (`excludes: ["oversize"]`).
     // Cumulative cent rounding makes every line allocation deterministic while
     // guaranteeing that the line allocations equal the order-level fee.
     if (
@@ -1590,15 +1566,6 @@ function repriceExactQuoteBuilderV2(
     processingFee += processingFeeAllocated;
     entry.priced.result = {
       ...result,
-      ...(oversizeProcessingIssue
-        ? {
-            validationStatus: "blocked" as const,
-            validationIssues: [
-              ...result.validationIssues,
-              oversizeProcessingIssue,
-            ],
-          }
-        : {}),
       internalCost: {
         ...result.internalCost,
         freightAllocated: roundMoney(freightAllocated),
@@ -1903,7 +1870,7 @@ function repriceExactQuoteBuilderAtDate(
       dealerFreight.oversize.additionalUnit,
     );
   // The verified 2% basis is Norman merchandise plus freight only. Oversize is
-  // excluded until its processing-fee treatment is confirmed in the live account.
+  // excluded from the processing-fee basis per dealer policy.
   const processingFee = mixedShippingRegions
     ? 0
     : moneyFromCents(

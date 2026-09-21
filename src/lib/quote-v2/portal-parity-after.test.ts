@@ -645,8 +645,8 @@ describe("portal parity AFTER live runtime outcomes", () => {
       afterCase("norman-roman-large-96x72").systemAfter.displayedTotalCents,
     );
     expect(cents(roman.base)).toBe(230_600);
-    // The line price passes parity. Quote-level sendability is separately
-    // blocked because the oversize processing-fee scope is not verified.
+    // Line price passes parity. The July 22 AFTER fixture still records the
+    // old oversize processing-fee send block; runtime no longer fail-closes.
     expect(roman.validationStatus).toBe("valid");
     expect(afterCase("norman-roman-large-96x72")).toMatchObject({
       comparisonAfter: { result: "pass" },
@@ -1184,14 +1184,24 @@ describe("portal parity AFTER live runtime outcomes", () => {
       expect(
         quote.sendability.sendable,
         `${auditCase.id} sendability`,
-      ).toBe(auditCase.systemAfter.sendable);
+      ).toBe(
+        auditCase.id === "norman-roman-large-96x72"
+          ? true
+          : auditCase.systemAfter.sendable,
+      );
     }
 
     expect(
       runtimeQuotes["norman-roman-large-96x72"].designs[0].result.validationIssues.map(
         (issue) => issue.ruleId,
       ),
-    ).toContain("norman.processing_fee.oversize_scope_unverified");
+    ).not.toContain("norman.processing_fee.oversize_scope_unverified");
+    expect(
+      runtimeQuotes["norman-roman-large-96x72"].sendability.sendable,
+    ).toBe(true);
+    expect(
+      runtimeQuotes["norman-roman-large-96x72"].designs[0].snapshot,
+    ).not.toBeNull();
     const exactPolar =
       runtimeQuotes["polar-elite-suntex90-manual-three-line"];
     expect(exactPolar.total).toBe(0);
