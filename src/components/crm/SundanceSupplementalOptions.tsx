@@ -1,4 +1,5 @@
 "use client";
+import { SundanceStockVerticalConfiguration } from "./SundanceStockVerticalConfiguration";
 import { SundanceWaldenConfiguration } from "./SundanceWaldenConfiguration";
 import { SundanceVerticalOptions } from "./SundanceVerticalOptions";
 import { sundanceWaldenColors, sundanceWaldenFabricPatch, sundanceWaldenSource } from "@/lib/quote/sundance/walden-assortment";
@@ -19,14 +20,7 @@ export function SundanceSupplementalOptions({productId, options, onUpdateFields,
       <option value="">Custom / not selected</option><option>Stock</option>
     </select></label>
     {options.sundance_vertical_type !== "Stock" && <SundanceVerticalOptions options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
-    {options.sundance_vertical_type === "Stock" && <>
-      {select("stock_vertical_color","Stock vertical color",["White","Off-White"])}
-      {select("stock_vertical_valance","Stock vertical valance",["None","Square corner valance"])}
-      {select("stock_vertical_width_cut_down","Width cut-down",["No","Yes"])}
-      {select("stock_vertical_height_cut_down","Height cut-down",["No","Yes"])}
-      <p className="text-sm">Wand control · One-way draw · Soft White extruded aluminum reversible headrail.</p>
-      <p className="text-sm text-amber-900">Stock blinds are pickup only, FOB Arcadia, California; no delivery. Square valance and each requested cut-down require a confirmed charge in the manual price.</p>
-    </>}
+    {options.sundance_vertical_type === "Stock" && <SundanceStockVerticalConfiguration options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
   </>;
   const colors = sundanceWaldenLinerColors(productId, options.catalog_sundance_liner_grid_id);
   const fabric = sundanceWaldenSource.rows.find(row => row.id === options.fabric_color_id && row.productId === productId);

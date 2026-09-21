@@ -35,6 +35,8 @@ export function sundanceStockVerticalPatch(options: Record<string, unknown>, ena
     catalog_sundance_portal_status: null, sundance_vertical_valance: null, catalog_sundance_vertical_valance_id: null,
     stock_vertical_color: null, stock_vertical_valance: null,
     stock_vertical_width_cut_down: null, stock_vertical_height_cut_down: null,
+    stock_vertical_before_width: null, stock_vertical_before_height: null,
+    stock_vertical_wand_side: null, stock_vertical_draw_side: null, stock_vertical_fulfillment: null,
     stock_vertical_control: enabled ? "Wand" : null,
     stock_vertical_draw: enabled ? "One-way" : null,
     stock_vertical_headrail: enabled ? "Soft White extruded aluminum reversible headrail" : null,

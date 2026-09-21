@@ -1,0 +1,11 @@
+# Sundance stock vertical cut-down and pickup configuration
+
+Source: K-Vertical-Essence-V2.pdf, PDF pages12–13 (K-12–13), effective August1,2024, SHA25697db633ff299d6fcdf53ba55cda9bcb5e61554749aab07aee6016336b3444e80. Page12 visually checked against its192 base cells and24 square-valance values. Existing program sundance_vertical_essence_p12_t1 and all source prices remain unchanged.
+
+Stock selection now retains White/Off-White, None/Square corner valance, left/right wand and one-way draw side, independent width/height cut-down requests, the actual larger blind dimensions before cutting, and pickup fulfillment. Wand/one-way/Soft White reversible aluminum headrail are enforced. The authoritative server rejects delivery, incompatible construction, missing/non-larger cut dimensions and dimensions beyond the source grid.
+
+The source says to price the larger blind and add$5 net for each requested axis cut. The larger blind is explicitly recorded; a pricing breakpoint is not treated as proof of available physical inventory. Example: finished42×60, larger45×66, both cuts: source retail base185, plus5+5 net cut charges per blind. These are shown separately and never combined into an approved customer price or multiplied by an inferred dealer factor. Square valance at42 inches is49 source retail; its charge-width basis when width-cutting remains a specific exception.
+
+The table starts at32×44 but does not establish manufacturing minimum cut sizes. Smaller requested sizes require source confirmation rather than being declared impossible. No stock availability, donor SKU, inside deduction or unknown cut limit is inferred. Stock is FOB Arcadia, California only with no delivery. All current Sundance customer-pricing/account holds remain.
+
+Validation:14 focused tests pass across stock, supplemental and custom-vertical suites; typecheck passes. Covers all192 stock base cells, all24 independent valance amounts and boundaries, separate cut charges, actual authoritative backend serialization and rejection, cleared fields on offering changes, and unaffected custom validation. Production proof must follow deployment; these tests do not establish current stock availability or dealer-cost authority.

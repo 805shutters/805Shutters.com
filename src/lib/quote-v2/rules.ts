@@ -14,6 +14,7 @@ import { validateLotusVertical } from "./lotus-vertical";
 import { isTypedLotusAmx, validateLotusAmx } from "./lotus-amx";
 import { validateLotusObservedOffering } from "./lotus-observed-offerings";
 import { romanFabricLimits } from "./norman-roman-fabric-limits";
+import { validateSundanceStockVerticalConfiguration } from "@/lib/quote/sundance/stock-vertical-configuration";
 import { validateSundanceWaldenConfiguration } from "@/lib/quote/sundance/walden-configuration";
 import { validateSundanceHorizontalConfiguration } from "@/lib/quote/sundance/horizontal-configuration";
 import { sundanceHorizontalProductIds } from "@/lib/quote/sundance/horizontal-assortment";
@@ -2436,7 +2437,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   issues.push(...validateNormanFamilyRules(context));
   if (["sundance_walden_premier","sundance_walden_select"].includes(context.productId)) issues.push(...validateSundanceWaldenConfiguration(context));
   if (sundanceHorizontalProductIds.includes(context.productId)) issues.push(...validateSundanceHorizontalConfiguration(context));
-  if (context.productId === "sundance_vertical_essence") issues.push(...validateSundanceVerticalConfiguration(context));
+  if (context.productId === "sundance_vertical_essence") issues.push(...validateSundanceVerticalConfiguration(context),...validateSundanceStockVerticalConfiguration(context));
   if (["sundance_zebra","sundance_louvolite_zebra"].includes(context.productId)) issues.push(...validateSundanceZebraConfiguration(context));
   if (context.productId === "sundance_cellular") issues.push(...validateSundanceCellularConfiguration(context));
   if (context.productId === "sundance_exterior_zip") issues.push(...validateSundanceExteriorZipConfiguration(context));
