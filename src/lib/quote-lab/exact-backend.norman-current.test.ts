@@ -151,6 +151,21 @@ describe("Current Norman production configurations",()=>{
   const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
   expect(v2CustomerConfigurationOptions(customerConfigurationFromSelection(d.selection))).toEqual(expect.arrayContaining(["Remote Controls for This Line: 1","Shade Remote Channel: 4","Charging Extension Wand Length: 39"]));
  });
+ it("persists pocket-derived SmartDrape height and wand while retail uses ordered height",()=>{
+  const q=currentQuote("smartdrape","Smart Drapes","F1124",{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.375});
+  q.lines[0].height_whole=70;q.designs[0].lift_system=null;q.designs[0].mount_type="Outside Mount";q.designs[0].shade_type="Light Filtering";
+  const priced=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if(!("backend" in priced)||priced.backend!=="v2")throw new Error("Expected V2");
+  const d=priced.designs[0];expect(d.result.ok).toBe(true);expect(d.selection.heightInches).toBe(70);
+  expect(d.selection.configuration.norman_assembly_v1).toMatchObject({mounting:{orderHeight:70,shadeHeight:68},wand:{drop:36,defaultDrop:36}});
+  const reopened=JSON.parse(JSON.stringify(q));reopened.designs[0].options_json={...reopened.designs[0].options_json,...d.selection.configuration};
+  expect(repriceExactQuoteBuilderForServerDate(reopened,"2026-09-19")).toEqual(priced);
+  q.designs[0].options_json={...q.designs[0].options_json,installation_method:"Wall Mount",pocket_depth_inches:null,pocket_height_inches:null};
+  const wall=repriceExactQuoteBuilderForServerDate(q,"2026-09-19");
+  if(!("backend" in wall)||wall.backend!=="v2")throw new Error("Expected V2");
+  expect(wall.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({wand:{drop:40}});
+  expect(wall.designs[0].result.ok&&wall.designs[0].result.total).toBe(d.result.ok&&d.result.total);
+ });
  it("server-prices and persists all 77 SmartDrape colors, including alternating colors and hardware overrides",()=>{
   for(const row of SMARTDRAPE_COORDINATION){
    const q=currentQuote("smartdrape","Smart Drapes",row.customerColorCode,{control_type:"Manual",stack_option:"Stack Left",control_side:"Right",installation_method:"Wall Mount",smartdrape_headrail_color:"4534 Brass",smartdrape_wand_color:"3058 White",wand_drop_inches:48,light_control:row.category.includes("Room")?"Room Darkening":"Light Filtering"});

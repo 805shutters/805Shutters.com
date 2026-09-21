@@ -25,13 +25,16 @@ export function smartdrapeComponents(s: SelectionContext) {
   const headrail=explicit(c.smartdrape_headrail_color)?SMARTDRAPE_HEADRAIL_COLORS.find(v=>norm(v)===norm(c.smartdrape_headrail_color))??null:alternating?null:first?.defaultHeadrail??null;
   const hardware=headrail?SMARTDRAPE_HARDWARE[headrail as keyof typeof SMARTDRAPE_HARDWARE]??null:null;
   const stack=norm(c.stack_option);
-  const defaultWandDrop=s.heightInches<36?24:s.heightInches<70?36:s.heightInches<90?40:s.heightInches<105?45:s.heightInches<110?55:s.heightInches<=120?65:78.75;
+  const mounting=smartdrapeHardware(s)?.record??null;
+  // Guide p17 defines Y1 after the pocket hang strip; p23 bases standard drop on Y1.
+  const shadeHeight=mounting?.shadeHeight??null;
+  const defaultWandDrop=shadeHeight==null?null:shadeHeight<36?24:shadeHeight<70?36:shadeHeight<90?40:shadeHeight<105?45:shadeHeight<110?55:shadeHeight<=120?65:78.75;
   const fabricRecord=(row:NonNullable<typeof first>)=>({customerFabricCode:row.customerFabricCode,customerColorCode:row.customerColorCode,colorName:row.colorName,category:row.category,pattern:row.pattern,factoryFabricCode:row.factoryFabricCode,factoryColorCode:row.factoryColorCode,factoryColorName:row.factoryColorName,factoryAliasStatus:row.factoryColorCode?"documented":"blank_in_source",fabricClip:row.fabricClip,sourceSheet:"Fabric Color List-SmartDrape",sourceRange:row.factoryRange});
   return {version:1,type:"smartdrape_components",sourceId:"norman-ps-sd-coordination-2026-08-11",sourceSheet:"SmartDrape",sourceRange:first?.coordinationRange??null,
-    mounting:smartdrapeHardware(s)?.record??null,track:smartdrapeTrack(s),extraVanesAndWands:smartdrapeVanePacks(s)?.record??null,
+    mounting,track:smartdrapeTrack(s),extraVanesAndWands:smartdrapeVanePacks(s)?.record??null,
     fabrics:[...(first?[fabricRecord(first)]:[]),...(second?[fabricRecord(second)]:[])],alternating,
     coordination:{headrail,hardware,chargingWandColor:motorized && [19.25,39].includes(Number(c.smartdrape_charging_wand_length))?explicit(c.smartdrape_charging_wand_color)?c.smartdrape_charging_wand_color:first?.chargingWand??null:null},
-    wand:motorized?null:{color:explicit(c.smartdrape_wand_color)?c.smartdrape_wand_color:alternating?null:headrail,quantity:stack==="traveling center stack"?2:1,side:stack==="stack left"?"Right":stack==="stack right"?"Left":stack==="traveling center stack"?"Both":c.control_side??null,drop:c.wand_drop_inches??defaultWandDrop,defaultDrop:defaultWandDrop,sourceId:"norman-perfectsheer-smartdrape-guide-2026-09",sourcePage:23},
+    wand:motorized?null:{color:explicit(c.smartdrape_wand_color)?c.smartdrape_wand_color:alternating?null:headrail,quantity:stack==="traveling center stack"?2:1,side:stack==="stack left"?"Right":stack==="stack right"?"Left":stack==="traveling center stack"?"Both":c.control_side??null,drop:c.wand_drop_inches??defaultWandDrop,defaultDrop:defaultWandDrop,shadeHeight,measurement:"Top of headrail to bottom of wand",sourceId:"norman-perfectsheer-smartdrape-guide-2026-09",sourcePage:23},
   };
 }
 export function validateSmartdrapeComponents(s:SelectionContext):ValidationIssue[] {

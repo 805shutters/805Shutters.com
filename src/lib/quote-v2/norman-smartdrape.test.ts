@@ -3,6 +3,7 @@ import {SMARTDRAPE_COORDINATION} from "./generated/norman-smartdrape-coordinatio
 import {smartdrapeComponents,validateSmartdrapeComponents,smartdrapeSecondColors,SMARTDRAPE_HEADRAIL_COLORS} from "./norman-smartdrape";
 import {getProductColorOptions} from "@/lib/quote/product-color-options";
 import {authoritativeAutomaticSurchargeSelections} from "./engine";
+import {validateNormanFamilyRules} from "./norman-family-rules";
 import {deriveNormanOrderRecords} from "./norman-assemblies";
 import type {SelectionContext} from "./core";
 const shade=(c:SelectionContext["configuration"]={},height=60):SelectionContext=>({manufacturerId:"Norman",productId:"smartdrape",programId:"smartdrape_smartdrape_light_filtering",catalogAsOf:"2026-09-19",catalogVersion:"test",widthInches:72,heightInches:height,quantity:1,options:{},configuration:{fabric_color_code:"F1124",shade_type:"Light Filtering",control_type:"Manual",mount_type:"Outside Mount",stack_option:"Stack Left",control_side:"Right",...c}});
@@ -39,6 +40,40 @@ describe("SmartDrape source fabric and component reconciliation",()=>{
   expect(validateSmartdrapeComponents(shade({smartdrape_second_color:"F1128"})).length).toBeGreaterThan(0);
  });
  it.each([[35.9375,24],[36,36],[69.9375,36],[70,40],[90,45],[105,55],[110,65],[120,65],[120.0625,78.75]])("derives wand drop at height %s",(height,drop)=>expect(smartdrapeComponents(shade({},height))?.wand?.drop).toBe(drop));
+ it.each([[36,34,24],[70,68,36],[90,88,40],[105,103,45],[110,108,55],[122,120,65],[122.0625,120.0625,78.75]])("uses finished pocket shade height for a %s-inch order",(orderHeight,shadeHeight,drop)=>{
+  const s=shade({installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.375},orderHeight);
+  expect(smartdrapeComponents(s)).toMatchObject({mounting:{orderHeight,shadeHeight,pocket:{hangStripHeight:2}},wand:{shadeHeight,drop,defaultDrop:drop,measurement:"Top of headrail to bottom of wand"}});
+ });
+ it("preserves custom wand drops and leaves invalid pocket-derived standards unknown",()=>{
+  const c={installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.375};
+  expect(smartdrapeComponents(shade({...c,wand_drop_inches:48},70))?.wand).toMatchObject({drop:48,defaultDrop:36});
+  expect(smartdrapeComponents(shade({...c,pocket_height_inches:null},70))?.wand).toMatchObject({drop:null,defaultDrop:null,shadeHeight:null});
+  expect(smartdrapeComponents(shade({...c,pocket_depth_inches:9},70))?.wand).toMatchObject({drop:40,shadeHeight:70});
+ });
+ it("rebuilds the finished-height default after save and mounting changes",()=>{
+  const rows=[{lineId:"sd-pocket",selection:shade({installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.375,norman_assembly_v1:{wand:{defaultDrop:40,drop:40}}},70)}];
+  deriveNormanOrderRecords(rows);
+  expect(rows[0].selection.configuration.norman_assembly_v1).toMatchObject({wand:{defaultDrop:36,drop:36},mounting:{shadeHeight:68}});
+  const reopened=JSON.parse(JSON.stringify(rows));deriveNormanOrderRecords(reopened);expect(reopened).toEqual(rows);
+  rows[0].selection.configuration={...rows[0].selection.configuration,installation_method:"Wall Mount",pocket_depth_inches:null,pocket_height_inches:null};
+  deriveNormanOrderRecords(rows);
+  expect(rows[0].selection.configuration.norman_assembly_v1).toMatchObject({wand:{defaultDrop:40,drop:40},mounting:{shadeHeight:70}});
+ });
+ it("enforces minimum finished shade height after the pocket strip without changing ordered dimensions",()=>{
+  const c={installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:3.375};
+  expect(validateNormanFamilyRules(shade(c,24)).map(i=>i.ruleId)).toContain("norman.smartdrape.dimensions");
+  expect(validateNormanFamilyRules(shade(c,25.9375)).map(i=>i.ruleId)).toContain("norman.smartdrape.dimensions");
+  expect(validateNormanFamilyRules(shade(c,26)).map(i=>i.ruleId)).not.toContain("norman.smartdrape.dimensions");
+ });
+ it("compares the 237-square-foot limit to finished fabric area and preserves historical sizing",()=>{
+  // Guide pp6,17: 280.125-inch fabric width × 121.0625 finished height < 237 ft².
+  // The same 124-inch order on a wall is 241.21875 ft² and remains invalid.
+  const s={...shade({installation_method:"Ceiling Pocket Mount",pocket_depth_inches:6,pocket_height_inches:4.125},124),widthInches:285.625};
+  expect(validateNormanFamilyRules(s).map(i=>i.ruleId)).not.toContain("norman.smartdrape.area");
+  expect(s.heightInches).toBe(124);
+  expect(validateNormanFamilyRules({...s,configuration:{...s.configuration,installation_method:"Wall Mount",pocket_depth_inches:null,pocket_height_inches:null}}).map(i=>i.ruleId)).toContain("norman.smartdrape.area");
+  expect(validateNormanFamilyRules({...s,catalogAsOf:"2026-09-18"}).map(i=>i.ruleId)).toContain("norman.smartdrape.area");
+ });
  it("retains both traveling wands and first-fabric charging-wand coordination",()=>{
   expect(smartdrapeComponents(shade({stack_option:"Traveling Center Stack",control_side:"Both"}))?.wand).toMatchObject({quantity:2,side:"Both"});
   expect(validateSmartdrapeComponents(shade({stack_option:"Stack Right",control_side:"Right"})).map(i=>i.ruleId)).toContain("norman.smartdrape.wand_side");
