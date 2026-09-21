@@ -28,6 +28,23 @@ export function normanSavedPricingAudit(design: SalesQuoteDesign | undefined): s
   const savedAssembly = selection.configuration.norman_assembly_v1;
   if (savedAssembly && typeof savedAssembly === 'object' && !Array.isArray(savedAssembly)) {
     const assembly = savedAssembly as SelectionRecord;
+    const rawHub = assembly.sharedHub;
+    if (rawHub && typeof rawHub === 'object' && !Array.isArray(rawHub)) {
+      const hub = rawHub as SelectionRecord;
+      if (hub.version === 1 && typeof hub.motorQuantity === 'number' && typeof hub.capacity === 'number') {
+        const lines = Array.isArray(hub.connectedLineIds) ? hub.connectedLineIds.length : 0;
+        rows.push(`Shared Automate hub ${hub.hubId}: ${hub.motorQuantity} of ${hub.capacity} motors across ${lines} quote lines; ${hub.valid === false ? 'invalid allocation — pricing blocked' : hub.chargeHub === true ? 'one hub charged on this line' : 'hub charged on another connected line'}.`);
+        if (hub.motorQuantity > hub.capacity) rows.push(`One Automate Wi-Fi hub supports at most ${hub.capacity} motors. Split the connected shades between separately identified hubs.`);
+      }
+    }
+    const rawNetwork = assembly.motorNetwork;
+    if (rawNetwork && typeof rawNetwork === 'object' && !Array.isArray(rawNetwork)) {
+      const network = rawNetwork as SelectionRecord;
+      if (network.version === 1 && typeof network.controllerQuantity === 'number') {
+        rows.push(`Saved ${network.family === 'automate_home' ? 'Automate' : 'Norman Smart'} network ${network.network}: ${network.controllerQuantity} remote controls${network.existingRemoteEvidence === true ? '; previous remote work order recorded' : ''}.`);
+        if (network.remoteRequired === true && network.controllerQuantity === 0 && network.existingRemoteEvidence !== true) rows.push('Supply at least one compatible remote on this motor network or identify the previous remote work order for this network. A control assigned to a different network does not satisfy this requirement.');
+      }
+    }
     const rawKits = assembly.includedChargingKits;
     if (rawKits && typeof rawKits === 'object' && !Array.isArray(rawKits)) {
       const kits = rawKits as SelectionRecord;

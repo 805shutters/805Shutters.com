@@ -207,7 +207,7 @@ describe("Norman shared accessories through the authoritative CRM backend",()=>{
    expect(d.result.validationStatus,JSON.stringify(d.result.validationIssues)).toBe("valid");
    expect(d.selection.configuration.norman_order_record_v1).toMatchObject({adapterWatts:65,adapterLineIds:["line-0","line-1"]});
    const saved = {...q.designs[0],quote_v2_selection:d.selection,options_json:{authoritative_price_status:"authoritative"}} as unknown as SalesQuoteDesign;
-   expect(normanSavedPricingAudit(saved)).toEqual(["Saved order adapter: 65W across 2 quote lines."]);
+   expect(normanSavedPricingAudit(saved)).toEqual(["Saved order adapter: 65W across 2 quote lines.", "Saved Norman Smart network 1: 2 remote controls."]);
    expect(normanSavedPricingAudit({...saved,options_json:{authoritative_price_status:"stale"}})).toEqual([]);
   }
  });
