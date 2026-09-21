@@ -204,3 +204,9 @@ Implemented bounded typed cutout record from WLP118–119 (diagrams visually che
 This is not final French-door geometry. No guess is made for cutout dimensions, fixed-louver treatment, hinge/batten quantities, measurement datum, factory template acceptance or price. Existing specialized geometry and all account-rate holds remain. Old untyped records remain readable; current revalidation requires the source identity. No historical snapshots are rewritten.
 
 Source tests cover every28 route, exact mount/frame exclusions, single direction/count/width, AquaShield E/F negatives, both E/F narrow-stile cases, all five louver/batten dimensions, panel-lock rejection, strict parsing/history and UI. Production proof awaits integration/deployment.
+
+## Exact specialty hinge measurement increment
+
+WLP127/BW125/ND135 item9 supplies one unambiguous bound: Direct Mount3-inch hinge requires the smallest vertical stile straight height (net panel leg) **greater than9¾ inches**. Added an opt-in version1 hinge-series/actual-smallest-net-leg/measurement-reference record to existing specialty construction, UI and server validation. The Direct Mount frame identity must agree.9¾ and below block;913/16 passes only this constraint. Order leg height is never substituted. Typed2⅜ series retains an explicit unresolved8⅛/RTL source hold. Untyped saved records remain readable and keep existing geometry/account holds. Switching shape or removing hinges clears incompatible local hinge geometry; no snapshots or prices are changed.
+
+Fourteen focused tests passed across five supported specialty programs, strict endpoint, wrong frame/no hinges, missing measurements, malformed records and preservation of the overall factory-geometry hold. Changed-file TypeScript check clean; local full check still has pre-existing missing DB/PDF packages. Deployment/live proof pending parent release.

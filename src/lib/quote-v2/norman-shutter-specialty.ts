@@ -1,3 +1,4 @@
+import {normanSpecialtyHingeProblems} from '../quote/norman-shutter-specialty-hinge';
 import {normanSpecialtyNeedsCurvedTilt} from '../quote/norman-shutter-specialty-tilt';
 import {normanSpecialtyFrameConstruction} from '../quote/norman-shutter-specialty-frame';
 import {normanSpecialtyGeometryProblems} from './norman-shutter-specialty-geometry';
@@ -24,6 +25,7 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
  if(r.shapeCode==='YS05'&&r.frameConstruction?.eyebrowCurve==null)add('frame_construction_curve','Declare whether the Louvered Arch uses an eyebrow curve; the Mission frame manufacturing differs.');
  if(expectedConstruction&&r.frameConstruction?.style!==expectedConstruction)add('frame_construction','Save the source-specified solid/insert frame construction for this shape, frame and program.');
  if(!expectedConstruction&&r.frameConstruction?.style)add('frame_construction_source','This shape/frame combination has no verified construction assignment in the implemented source table; keep manufacturing style unresolved.');
+ for(const problem of normanSpecialtyHingeProblems(r.hingeGeometry,r.hinges,normanShutterFrame(program.id,r.frameType)?.label??r.frameType))add(problem.id,problem.explanation,program.id.startsWith('woodlore_')?[127]:program.id==='brightwood'?[125]:[135]);
  const frame=normanShutterFrame(program.id,r.frameType);
  if(!frame||!normanSpecialtyFrames(program.id,r.frameIncludeInRail).some(f=>f.code===frame.code))add('frame','Choose a documented specialty frame. Frame Include In Rail permits only its listed Z frames and excludes Tilt Out Z.');
  if(frame&&normanShutterFrame(program.id,s.configuration.frame_type)?.code!==frame.code)add('frame_identity','The saved frame selection and specialty frame record must agree. Save the specialty construction again.');
