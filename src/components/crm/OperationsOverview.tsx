@@ -2,7 +2,7 @@
 
 import { parseWholeJobRecordId } from "@/lib/crm/whole-job-workflow";
 import { ProductShipmentEditor } from "./ProductShipmentEditor";
-import { isOpenJob, type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
+import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +16,7 @@ import { type SaveJobCost } from "./InlineJobCost";
 import { InlineJobContract } from "./InlineJobContract";
 import { ProductOrderEditor, orderCostParent, orderCostTotal, displayedOrderAmount } from "./ProductOrderEditor";
 import { allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
+import { jobStatusFilters, matchesJobStatusFilter, type JobStatusFilter } from "@/lib/crm/job-status-filters";
 import styles from "./OperationsOverview.module.css";
 
 function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
@@ -131,11 +132,11 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     setCondensed(value);
     setContractId(null);
   }
-  const [filter, setFilter] = useState("active");
+  const [filter, setFilter] = useState<JobStatusFilter>("active");
   const [search, setSearch] = useState("");
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
   const items = useMemo(() => data ? buildOperationsItems(data) : activeSnapshot?.items || [], [data, activeSnapshot]);
-  async function selectFilter(next: string) {
+  async function selectFilter(next: JobStatusFilter) {
     if (loadingAll) return;
     if (next !== "active" && !data && onLoadAll) {
       setLoadingAll(true); setError(""); setFeedbackId(null);
@@ -146,14 +147,11 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     setFilter(next);
   }
   const visible = items.filter(item => {
-    if (filter === "active" && !isOpenJob(item)) return false;
-    if (filter === "closed" && !item.closed) return false;
-    if (filter === "completed" && !(item.complete)) return false;
-    if ((filter === "ordered" || filter === "shipped") && (item.archived || !item.sold || stepComplete(item, filter))) return false;
+    if (!matchesJobStatusFilter(item, filter)) return false;
     return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
   });
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{[["active", "Active"], ["all", "All jobs"], ["ordered", "Orders needed"], ["shipped", "Shipping"], ["closed", "Closed"], ["completed", "Completed"]].map(([id, label]) => <button type="button" key={id} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll && <p role="status">Loading all jobs…</p>}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
     {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
