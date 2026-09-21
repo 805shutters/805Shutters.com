@@ -1,4 +1,4 @@
-import {normanShutterDividerSizes} from '../quote/norman-shutter-dividers';
+import {normanShutterDividerSizes,normanShutterLouverSectionCount} from '../quote/norman-shutter-dividers';
 import {normanShutterProgram} from '../quote/norman-shutter-assortment';
 import type {NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
 import type {SelectionContext,ValidationIssue} from './core';
@@ -14,6 +14,14 @@ export function validateNormanShutterDividers(s:SelectionContext,record:NormanSh
   const r=panel.dividerDetails;
   if(!r){add('record_required',index,'save the divider sizes, location basis and exact-location choices.');return;}
   const splitOnly=panel.divider!=='present';
+  // WL/BW/ND37 and WLP43 prohibit a one-louver section above or below a divider/split.
+  // These are actual louver counts, never derived from approximate panel-height charts.
+  const sectionCount=normanShutterLouverSectionCount(r);
+  if(r.sectionLouverCounts?.length!==sectionCount||r.sectionLouverCounts.some(n=>!Number.isInteger(n)||n<2))add('section_louvers',index,`record at least two actual louvers in each of the ${sectionCount} finished sections, ordered bottom to top including both outer sections. Divider and split tilt are unavailable with a one-louver section.`);
+  if(splitOnly&&r.splitTiltMode==='equal'&&r.sectionLouverCounts?.length===2){
+   const [bottom,top]=r.sectionLouverCounts;
+   if(bottom!==top&&bottom!==top+1)add('equal_louver_counts',index,'equal split requires equal louver counts, or exactly one extra louver in the bottom section when the total is odd.');
+  }
   if(splitSelected){
    if(!r.splitTiltMode)add('split_mode',index,'choose equal split or custom measured split locations explicitly.');
    if(r.splitTiltMode==='equal'&&r.splitTiltCentersInches.length>0)add('split_mode',index,'equal split cannot also contain custom locations.');

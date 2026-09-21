@@ -9,6 +9,8 @@ export type NormanShutterDividerRecord={
  splitTiltMode?:'equal'|'custom'|'';
  splitTiltReference?:'top_closed_louver';
  splitTiltExactLocations?:Array<boolean|null>;
+ /** Actual finished louver sections, bottom to top; includes the outermost sections. */
+ sectionLouverCounts?:number[];
  clearLouverCounts:number[];
 };
 export const emptyNormanShutterDividerRecord=():NormanShutterDividerRecord=>({version:1,measurementBasis:'',referenceHeightInches:null,rails:[{heightInches:3,location:'',centerInches:null,exactLocation:null}],splitTiltCentersInches:[],clearLouverCounts:[]});
@@ -17,6 +19,7 @@ export function parseNormanShutterDividerRecord(value:unknown):NormanShutterDivi
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  const r=value as Record<string,unknown>;
  if(r.version!==1||!['','window','max_frame','panel'].includes(String(r.measurementBasis))||!finiteOrNull(r.referenceHeightInches)||!Array.isArray(r.rails)||!Array.isArray(r.splitTiltCentersInches)||!Array.isArray(r.clearLouverCounts))return null;
+ if(r.sectionLouverCounts!==undefined&&(!Array.isArray(r.sectionLouverCounts)||r.sectionLouverCounts.some(v=>typeof v!=='number'||!Number.isFinite(v))))return null;
  if(r.splitTiltMode!==undefined&&!['','equal','custom'].includes(String(r.splitTiltMode)))return null;
  if(r.splitTiltReference!==undefined&&r.splitTiltReference!=='top_closed_louver')return null;
  if(r.splitTiltExactLocations!==undefined&&(!Array.isArray(r.splitTiltExactLocations)||r.splitTiltExactLocations.some(v=>![null,true,false].includes(v))))return null;
@@ -29,4 +32,8 @@ export function normanShutterDividerSizes(programId:string){
 }
 export function normanShutterDividerDeviation(louver:unknown):number|null{
  return ({'1 7/8"':0.75,'2 1/2"':1,'3"':1.25,'3 1/2"':1.5,'4 1/2"':2} as Record<string,number>)[String(louver)]??null;
+}
+
+export function normanShutterLouverSectionCount(r:NormanShutterDividerRecord){
+ return r.rails.length+(r.splitTiltMode==='equal'?1:r.splitTiltCentersInches.length)+1;
 }
