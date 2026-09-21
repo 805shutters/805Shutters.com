@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-20",
+  "deployment": "abaf1d631d8805b964622b6dadcff281485b7266",
+  "url": "https://www.805shutters.com/crm/",
+  "quote": "805-0361",
+  "variant": "A",
+  "line": "Dining Room first Roller shade",
+  "magnet": {
+    "positive": {"type":"Magnetic","color":"Nickel-Plated","left":0.5625,"right":0.5625,"bottom":0.6875,"lineTotal":518,"previousLineTotal":490,"accessoriesSubtotal":95,"previousAccessoriesSubtotal":67},
+    "negative": {"left":0.5624,"saved":true,"pricingBlocked":true,"auditIssue":"Wall space beyond left shade edge must be measured and at least 0.5625 inches. Measure from the finished shade side edges and below the shade bottom or sill; use the smaller bottom measurement at both catches."},
+    "restoredAndFullReloadReopened": {"left":0.5625,"right":0.5625,"bottom":0.6875,"color":"Nickel-Plated","lineTotal":518}
+  },
+  "standaloneValancesRemainHeld": true,
+  "chainProof": "pending",
+  "poleProof": "pending deployment",
+  "lightGuardProof": "pending deployment",
+  "communications": "No send, sold or order actions"
+}

@@ -1,17 +1,87 @@
 {
-  "date":"2026-09-20",
-  "deployment":"2046fadd",
-  "productionUrl":"https://www.805shutters.com/crm/",
-  "quote":"805-0361",
-  "variant":"A",
-  "customer":"Norman Roller Valance Verification 2026-09-20",
-  "browserTab":"1585237061",
-  "standalone":{"product":"Soluna Roller Valance Only","style":"4.5-inch Square Fascia","width":190,"mount":"Outside","returnLength":3,"fasciaColor":"Bianca","joinery":"Keystone","shape":"Square","customKeystoneCenters":[95]},
-  "separate":{"product":"Soluna Roller Separate Valance","style":"4.5-inch Curved Fascia Plain","width":72.25,"mount":"Outside","returnLength":3,"fasciaColor":"Anodized Silver","joinery":"Connector","associatedLineIds":["e9fbeabe-e4e0-4654-ad94-88110dd0a060","000ba57d-f6dc-4ad3-82df-2481286df9bf"]},
-  "shades":[{"lineId":"e9fbeabe-e4e0-4654-ad94-88110dd0a060","width":36,"height":60,"fabric":"Amelia F1484 Mist Gray","lift":"Cordless","mount":"Outside Mount","valance":"No Valance","appendixTube":"All Tubes","physicalTubeInches":2,"raceway":true,"installation":"Back / Wall Mount","displayedPrice":490},{"lineId":"000ba57d-f6dc-4ad3-82df-2481286df9bf","copiedFrom":"e9fbeabe-e4e0-4654-ad94-88110dd0a060","physicalTubeInches":2}],
-  "fullReloadReopen":{"widths":[190,72.25],"bothAssociationCheckboxesChecked":true,"physicalTubeValues":[2,2],"restoredKeystone95":true},
-  "customerOutput":{"contract":"Pricing incomplete; complete pricing before reviewing or sending","sendQuoteDisabled":true,"paymentDisabled":true},
-  "negativeAttempt":{"keystone":17.99,"result":"held, but base price hold masked exact spacing violation; restored95. Boundary-specific live proof pending e5d9c76e UI validation summary deployment. No boundary-specific success claim."},
-  "pricingStatus":"Both standalone/separate lines remain held for exact external price/availability/freight/allocation evidence. No price invented.",
-  "communications":"No send, sold, purchase or order actions."
+  "date": "2026-09-20",
+  "deployment": "2046fadd",
+  "productionUrl": "https://www.805shutters.com/crm/",
+  "quote": "805-0361",
+  "variant": "A",
+  "customer": "Norman Roller Valance Verification 2026-09-20",
+  "browserTab": "1585237061",
+  "standalone": {
+    "product": "Soluna Roller Valance Only",
+    "style": "4.5-inch Square Fascia",
+    "width": 190,
+    "mount": "Outside",
+    "returnLength": 3,
+    "fasciaColor": "Bianca",
+    "joinery": "Keystone",
+    "shape": "Square",
+    "customKeystoneCenters": [
+      95
+    ]
+  },
+  "separate": {
+    "product": "Soluna Roller Separate Valance",
+    "style": "4.5-inch Curved Fascia Plain",
+    "width": 72.25,
+    "mount": "Outside",
+    "returnLength": 3,
+    "fasciaColor": "Anodized Silver",
+    "joinery": "Connector",
+    "associatedLineIds": [
+      "e9fbeabe-e4e0-4654-ad94-88110dd0a060",
+      "000ba57d-f6dc-4ad3-82df-2481286df9bf"
+    ]
+  },
+  "shades": [
+    {
+      "lineId": "e9fbeabe-e4e0-4654-ad94-88110dd0a060",
+      "width": 36,
+      "height": 60,
+      "fabric": "Amelia F1484 Mist Gray",
+      "lift": "Cordless",
+      "mount": "Outside Mount",
+      "valance": "No Valance",
+      "appendixTube": "All Tubes",
+      "physicalTubeInches": 2,
+      "raceway": true,
+      "installation": "Back / Wall Mount",
+      "displayedPrice": 490
+    },
+    {
+      "lineId": "000ba57d-f6dc-4ad3-82df-2481286df9bf",
+      "copiedFrom": "e9fbeabe-e4e0-4654-ad94-88110dd0a060",
+      "physicalTubeInches": 2
+    }
+  ],
+  "fullReloadReopen": {
+    "widths": [
+      190,
+      72.25
+    ],
+    "bothAssociationCheckboxesChecked": true,
+    "physicalTubeValues": [
+      2,
+      2
+    ],
+    "restoredKeystone95": true
+  },
+  "customerOutput": {
+    "contract": "Pricing incomplete; complete pricing before reviewing or sending",
+    "sendQuoteDisabled": true,
+    "paymentDisabled": true
+  },
+  "negativeAttempt": {
+    "keystone": 17.99,
+    "result": "Exact spacing violation now verified in saved production selection; see exactSpecificationLiveProof."
+  },
+  "pricingStatus": "Both standalone/separate lines remain held for exact external price/availability/freight/allocation evidence. No price invented.",
+  "communications": "No send, sold, purchase or order actions.",
+  "exactSpecificationLiveProof": {
+    "deployment": "abaf1d631d8805b964622b6dadcff281485b7266",
+    "keystone": 17.99,
+    "saved": true,
+    "exactIssue": "Keystone centers require at least 18 inches from each end and from one another.",
+    "restored": 95,
+    "issueCleared": true
+  }
 }
