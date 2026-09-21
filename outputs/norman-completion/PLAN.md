@@ -1,9 +1,9 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September20,19:08
-- Completed live:4c38a3e4;6,238 tests passed,28 skipped; typecheck/build/public deployment passed. Adds measured SmartFold/PerfectSheer magnetic clearances, shutter section counts/bypass routing and Sundance component records. All earlier releases remain included.
-- Production proof: standalone Ultimate/SmartPrivacy valances0355 retained all choices after full reload and rejected invalid section/max widths. Shutter0353/0356/0357 cover native construction, bypass references and split datums with saved negative checks. StockVertical0354 and Sundance roller/Europanel0335 proofs passed with unresolved customer pricing held.
-- In progress: magnetic-clearance production proof; next release integrates standard manual SmartFold branches, Walden twin component records and exact Norman specialty identities/frame restrictions. Wood legacy common-cutout backend regression passed; no current code defect found.
-- Parallel agents: Roller standalone/separate valances and hardware/fabric-width mapping; shutter specialty rules/live proof; Sundance order-shared power/accessories.
+## Current checkpoint — September20,19:26
+- Completed live:7be5403e;6,307 tests passed,28 skipped; typecheck/build/public deployment passed. Includes standard manual SmartFold pricing, Walden twin records, exact shutter specialty identities/frame restrictions, and both Roller valance destinations. The concurrent Job Status filter change3c5478fd is preserved.
+- Production proof: magnetic-clearance quote0358 passed saved-server negative boundaries, restoration, close/full reload/reopen for SmartFold and PerfectSheer; incomplete customer output remains correctly held. Earlier valance0355, shutter0353/0356/0357, StockVertical0354 and Sundance0335 proofs remain retained.
+- In progress: manual SmartFold live proof; release b63930ec validating SmartFold priced accessories/control resets, exact439Roller fabric-width mapping, specialty outline/divider/manufacturing records and Sundance shared18-motor power panels.
+- Parallel agents: Roller standalone/separate valance live proof and exact largest-hardware rules; shutter specialty live proof and finite guide closures; Sundance remaining family live proof and source-backed order accessories.
 - Remaining: complete source assortment/rule reconciliation, account pricing evidence and production proof for new controls. No manufacturer or whole Norman family is certified complete.
 - External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805. Dealer factors and selling policy remain unchanged.
 
