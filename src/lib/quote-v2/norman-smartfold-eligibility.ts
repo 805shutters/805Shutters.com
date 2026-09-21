@@ -5,7 +5,7 @@ import type {SelectionContext,SelectionRecord,ValidationIssue} from "./core";
 import {sourceProvenance} from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const active=(v:unknown)=>v!=null&&!["","no","false","off","none","0"].includes(norm(v));
-export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9"].some(version=>s.catalogVersion.endsWith(version));
+export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10"].some(version=>s.catalogVersion.endsWith(version));
 export function smartfoldBranchExceptions(s:SelectionContext):string[]{
  const c=s.configuration,reasons:string[]=[];
  if(s.catalogAsOf>="2026-10-01")reasons.push("the October motor revision requires its separately effective source verification");

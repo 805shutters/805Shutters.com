@@ -1,3 +1,4 @@
+import { magneticClearanceRecord, validateMagneticClearance } from "./norman-magnet-clearance";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
 import type { SelectionContext, ValidationIssue } from "./core";
 import { sourceProvenance } from "./source-manifest";
@@ -48,6 +49,7 @@ export function smartfoldHardware(context: SelectionContext) {
       shimQuantity: validMount && validLayers ? supports * shimLayers! : null,
       quantityBasis: "per_shade",
       style: smartfoldStyle(context),
+      magneticClearance: magneticClearanceRecord(context),
       chain: /cord.*loop/.test(lift) ? {
         sourceId: "norman-smartfold-guide-2026-09-10", sourcePage:21,
         length: Number.isFinite(chainLength) && chainLength > 0 ? chainLength : null,
@@ -105,6 +107,7 @@ export function validateSmartfoldAccessories(context: SelectionContext): Validat
   if (normalize(c.smartfold_hold_down)==="magnetic" && !contains(SMARTFOLD_MAGNET_COLORS,c.smartfold_magnet_color)) add("magnet_color",20,"Select the magnetic catch color. Nickel-Plated is the manufacturer default.");
   if (c.smartfold_pole && !contains(SMARTFOLD_POLES,c.smartfold_pole)) add("pole",21,"Select one additional pole or one pole attachment per shade.");
   if (c.smartfold_pole && normalize(c.smartfold_pole)!=="none" && !normalize(c.lift_system ?? c.control_type).includes("cordless")) add("pole_control",21,"SmartFold operating poles and attachments are available for PrecisionLift Cordless shades only.");
+  issues.push(...validateMagneticClearance(context));
   const active=smartfoldAccessorySelections(context);
   for(const key of Object.keys(active) as (keyof typeof active)[]) {
     if (["yes","true","on"].includes(normalize(c[key])) && !active[key]) add("legacy_accessory",21,"Reconfirm the saved hold-down or pole choice before repricing this current configuration.");

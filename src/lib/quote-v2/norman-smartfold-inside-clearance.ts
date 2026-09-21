@@ -4,7 +4,7 @@ import { sourceProvenance } from "./source-manifest";
 const normalized=(value:unknown)=>String(value??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 /** Full assembly envelopes shown in the six drawings on September guide page33. */
 export function smartfoldInsideLightGuardClearance(s:SelectionContext):SelectionRecord|null {
- if(s.productId!=="smartfold"||!s.catalogVersion.endsWith("-norman-smartfold-mounting-2026-09-20-r9")||s.catalogAsOf<"2026-09-20")return null;
+ if(s.productId!=="smartfold"||!["-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10"].some(v=>s.catalogVersion.endsWith(v))||s.catalogAsOf<"2026-09-20")return null;
  const c=s.configuration;
  if(!["inside","inside mount","im","ib"].includes(normalized(c.mount_type))||![c.basic_light_guard,c.light_guard].some(v=>["yes","true","basic","basic light guard"].includes(normalized(v))))return null;
  const collection=SMARTFOLD_FABRICS.find(f=>f.code===String(c.fabric_color_code??"").toUpperCase())?.collection;

@@ -1,3 +1,4 @@
+import { MAGNET_CLEARANCE_FIELDS, magneticHoldDownActive } from "@/lib/quote-v2/norman-magnet-clearance";
 import { NormanValanceOnlyOptions } from "@/components/crm/NormanValanceOnlyOptions";
 import { isNormanValanceOnly, valanceOnlyUnitLabel, VALANCE_ONLY_KEY } from "@/lib/quote/norman-valance-only";
 import { NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from '@/lib/quote/norman-shutter-panels';
@@ -10150,7 +10151,7 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "Sheer Shades" && field === "json:perfectsheer_magnetic_hold_down") {
-      onUpdateFields({options_json:{...currentJson,perfectsheer_magnetic_hold_down:value,perfectsheer_magnet_color:null,magnetic_hold_down:false}});
+      onUpdateFields({options_json:{...currentJson,perfectsheer_magnetic_hold_down:value,perfectsheer_magnet_color:null,magnetic_hold_down:false,...(value !== "Yes"?{magnet_left_clearance_inches:null,magnet_right_clearance_inches:null,magnet_bottom_clearance_inches:null}:{})}});
       return;
     }
     if (productType === "Sheer Shades" && field === "json:perfectsheer_common_valance_id") {
@@ -10187,7 +10188,7 @@ function ShadesAndBlindsOptions({
       return;
     }
     if (productType === "SmartFold Shades" && field === "json:smartfold_hold_down") {
-      onUpdateFields({options_json:{...currentJson,smartfold_hold_down:value,magnetic_hold_down:false,...(value !== "Magnetic"?{smartfold_magnet_color:null}:{})}});
+      onUpdateFields({options_json:{...currentJson,smartfold_hold_down:value,magnetic_hold_down:false,...(value !== "Magnetic"?{smartfold_magnet_color:null,magnet_left_clearance_inches:null,magnet_right_clearance_inches:null,magnet_bottom_clearance_inches:null}:{})}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "json:smartfold_pole") {
@@ -10566,6 +10567,7 @@ function ShadesAndBlindsOptions({
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
           { key:"hold_down",label:"Hold-Downs",field:"json:smartfold_hold_down",type:"select",options:SMARTFOLD_HOLD_DOWNS },
           ...(optionsJson.smartfold_hold_down === "Magnetic" ? [{key:"magnet_color",label:"Magnet Catch Color",field:"json:smartfold_magnet_color",type:"select",options:SMARTFOLD_MAGNET_COLORS} as GridOption] : []),
+          ...(magneticHoldDownActive("smartfold",optionsJson)?MAGNET_CLEARANCE_FIELDS.map(([key,label,min])=>({key,label:`${label} (minimum ${min} inches)`,field:`json:${key}`,type:"number",min:0,step:"any",unit:"in"} as GridOption)):[]),
           ...(/cordless/i.test(String(design?.lift_system)) ? [{key:"pole",label:"Additional Pole per Shade",field:"json:smartfold_pole",type:"select",options:SMARTFOLD_POLES} as GridOption] : []),
           { key: "shim", label: "Shim Layers", field: "json:smartfold_shim_layers", type: "buttons", options: ["0", "1", "2", "3"] },
           {key:"full_fold",label:"Full Fold Required",field:"json:full_fold_required",type:"buttons",options:["No","Yes"]},
@@ -11853,6 +11855,7 @@ function ShadesAndBlindsOptions({
         if (["Basic Light Guard","Premium Wood Light Guard"].includes(String(optionsJson.perfectsheer_light_guard))) options.push(psChoice("perfectsheer_light_guard_color","Light Guard Finish",optionsJson.perfectsheer_light_guard === "Basic Light Guard" ? PERFECTSHEER_BASIC_GUARD_COLORS : PERFECTSHEER_WOOD_GUARD_COLORS));
         options.push(psChoice("perfectsheer_magnetic_hold_down","Magnetic Hold-Down",["No","Yes"]));
         if (optionsJson.perfectsheer_magnetic_hold_down === "Yes") options.push(psChoice("perfectsheer_magnet_color","Magnet Catch Finish",PERFECTSHEER_MAGNET_COLORS));
+        if(magneticHoldDownActive("perfectsheer",{...optionsJson,motor_type:design?.motor_type})) options.push(...MAGNET_CLEARANCE_FIELDS.map(([key,label,min])=>({key,label:`${label} (minimum ${min} inches)`,field:`json:${key}`,type:"number",min:0,step:"any",unit:"in"} as GridOption)));
         options.push(psChoice("perfectsheer_shim_layers","Shim Layers",["0","1","2","3"]));
         if (/autowand/i.test(String(design?.motor_type))) options.push(psChoice("perfectsheer_wand_color","AutoWand Color",PERFECTSHEER_WAND_COLORS));
 
