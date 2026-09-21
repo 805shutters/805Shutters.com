@@ -138,3 +138,15 @@ An end-to-end test exposed that FPX had no customer-delivery hold despite unreso
 Validation: 76 tests passed across two-blind source coverage, native pricing, exact-interface adaptation, UI, authority and legacy delivery suites. New route exercises all four documented programs at 94×84 using two measured47-inch widths; missing second width, explicit third component, unversioned count2 and unsupported FTX are rejected. Production save/reopen proof remains pending release.
 
 Source review also found RTX/faux minimum cut and general maximum height reduction, but no authoritative maximum horizontal cut or safe donor-headrail limit. The 1-inch MLX/RLX six-inch width limit is not borrowed for these programs. The current guide's general12-inch height reduction conflicts with individual10-inch limits; no broader acceptance is inferred.
+
+## MLX/RLX donor and exact part-model production proof
+
+Verified on deployed `ff47e7df551005a57c80542522134d5a0dd8733e` at www.805shutters.com in internal native805-0337A. Reloaded client before testing.
+
+- Kitchen line5: initialized current typed MLX, White, Inside Mount,48×60; visible donorMLX4860WH. At47.75×60 the quarter-inch cut fails the MLX half-inch minimum: no source donor displayed and authoritative pricing remains blocked. At47.5×60 donorMLX4860WH returns.
+- Kitchen line5 subsequently changed to current RLX White Inside47.75×60: donorRLX4860WH; saved and closed/reopened with the same dimensions/program/color/mount/donor.
+- Separate copied line16 named **INTERNAL MLX donor boundary** preserves MLX White Inside47.5×60. After Quote saved, closed/reopened: same dimensions/program/color/mount and donorMLX4860WH. Customer pricing remains blocked.
+- Hall item-only line6: exact MLXWAND60WH, dealer description60 INCH WAND FOR MLX/RLX BLINDS. Intended-model choices were exactly MLX/RLX; selectedMLX and entered “INTERNAL AUDIT — MLX installed model; revision and fit unconfirmed”. Both persisted after close/reopen. No fake dimensions. No price or compatibility approval inferred beyond the dealer's named models.
+- FTXLG LivingRoom sibling retained119.94 after mixed held-line saves/reopen. Quote saved; Send Quote/Payment Link remained disabled; total unavailable. No external send/sale/order actions.
+
+UI displays the overall price hold, not the detailed stored donor validation record. Native server-save regression tests verify exact donor/model validation evidence in the protected validation snapshot, with no authoritative price snapshot on these held paths. This live proof is selection/persistence/boundary evidence, not dealer-price or factory-fit certification.
