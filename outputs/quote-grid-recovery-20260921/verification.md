@@ -5,8 +5,10 @@
 - Complete: trace Jon Loring draft 805-0367 and preserve its selected designs.
 - Complete: isolate quote-time grid/option inputs from installation and order-readiness validation.
 - Complete: retain $25 installation + existing $14 shipping for each physical blind/shade, multiplied by line quantity.
-- In progress: integrate retail component ledger independent of incomplete dealer costs, automatic recovery of blocked drafts, and focused regression checks.
-- Remaining: required release checks, production migrations/deployment, save/reopen Jon's quote, verify staff and customer output.
+- Complete: integrate retail component ledger independent of incomplete dealer costs, automatic recovery of blocked drafts, and focused regression checks.
+- Complete: apply all seven reviewed production migrations in the documented dependency order; verify guarded nullable cost fields, constraints and service-only RPC permissions.
+- In progress: full release checks; first gate found six regressions before push, including one real Lotus price-conflict snapshot safeguard being retained.
+- Remaining: deployment, save/reopen Jon's quote, verify staff and customer output.
 
 ## Independent expected amounts
 
