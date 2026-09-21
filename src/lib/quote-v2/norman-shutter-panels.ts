@@ -1,3 +1,4 @@
+import {validateNormanShutterBottomSupport} from './norman-shutter-bottom-support';
 import { validateNormanShutterBifold180 } from './norman-shutter-bifold180';
 import { NORMAN_SHUTTER_PANEL_RECORD, normanPanelMaxHeight, normanDividerThreshold, parseNormanPanelRecord } from '../quote/norman-shutter-panels';
 import { normanShutterProgram } from '../quote/norman-shutter-assortment';
@@ -29,6 +30,6 @@ export function validateNormanShutterPanels(s:SelectionContext):ValidationIssue[
     if(panel.heightInches!==null&&panel.heightInches>threshold&&panel.divider!=='present')add('divider_required',`Panel ${index+1} exceeds the ${threshold}-inch no-divider limit for this program/application.`,[specs,dividerPage]);
     if(panel.divider==='present')add('divider_geometry',`Panel ${index+1} divider presence is saved. Exact positions, measurement basis and louver spacing still require verification.`,[dividerPage]);
   });
-  issues.push(...validateNormanShutterBifold180(s,record));
+  issues.push(...validateNormanShutterBifold180(s,record),...validateNormanShutterBottomSupport(s,record));
   return issues;
 }

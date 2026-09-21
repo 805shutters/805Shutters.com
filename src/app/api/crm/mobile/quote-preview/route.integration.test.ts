@@ -188,7 +188,7 @@ describe("mobile quote preview current-catalog integration", () => {
 
     const completeRestricted = prepareSalesQuoteV2PricingBatch({
       lines: parsed.lines,
-      selectedDesigns: [{ ...withFrameSides, mount_type: "Outside Mount", options_json: {...withFrameSides.options_json, norman_shutter_panels_v1: {version:1,application:"regular",motor:"none",existingDoorGlassOrSidelight:false,panels:[{heightInches:44,divider:"none"},{heightInches:44,divider:"none"}]}} }],
+      selectedDesigns: [{ ...withFrameSides, mount_type: "Outside Mount", options_json: {...withFrameSides.options_json, norman_shutter_panels_v1: {version:1,application:"regular",motor:"none",existingDoorGlassOrSidelight:false,panels:[{heightInches:44,divider:"none",bottomSupport:{version:1,support:"existing_sill",gapInches:0.0625,frequentlyOpen:false}},{heightInches:44,divider:"none",bottomSupport:{version:1,support:"existing_sill",gapInches:0.0625,frequentlyOpen:false}}]}} }],
       serverDate: quoteV2ServerCatalogDate(),
     }).prepared[0];
     expect(completeRestricted.rpcResult).toMatchObject({

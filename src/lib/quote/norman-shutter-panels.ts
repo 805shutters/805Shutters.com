@@ -1,3 +1,4 @@
+import {parseNormanShutterBottomSupport,type NormanShutterBottomSupport} from './norman-shutter-bottom-support';
 import { parseNormanBifold180Record, type NormanBifold180Record } from './norman-shutter-bifold180';
 /** Saved finished-panel facts. Opening/grid dimensions are deliberately excluded. */
 export const NORMAN_SHUTTER_PANEL_RECORD = 'norman_shutter_panels_v1';
@@ -12,7 +13,7 @@ export type NormanShutterPanelRecord = {
   application: NormanShutterApplication | '';
   motor: 'none' | 'perfect_tilt_g4' | 'other' | '';
   existingDoorGlassOrSidelight: boolean;
-  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null}>;
+  panels: Array<{heightInches:number|null;divider:'none'|'present'|'';widthInches?:number|null;bottomSupport?:NormanShutterBottomSupport}>;
   bifold180?: NormanBifold180Record;
 };
 export function normanPanelMaxHeight(programId:string){return ['brightwood','normandy_painted','normandy_stained'].includes(programId)?132:120;}
@@ -31,5 +32,6 @@ export function parseNormanPanelRecord(value:unknown):NormanShutterPanelRecord|n
   if(r.panels.some(p=>!p||typeof p!=='object'||Array.isArray(p)||!['','none','present'].includes(p.divider)||(p.heightInches!==null&&(typeof p.heightInches!=='number'||!Number.isFinite(p.heightInches)))))return null;
   if(r.bifold180!==undefined&&!parseNormanBifold180Record(r.bifold180))return null;
   if(r.panels.some(p=>p.widthInches!==undefined&&p.widthInches!==null&&(typeof p.widthInches!=='number'||!Number.isFinite(p.widthInches))))return null;
+  if(r.panels.some(p=>p.bottomSupport!==undefined&&!parseNormanShutterBottomSupport(p.bottomSupport)))return null;
   return r as NormanShutterPanelRecord;
 }
