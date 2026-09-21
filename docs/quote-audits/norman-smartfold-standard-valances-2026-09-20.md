@@ -1,0 +1,7 @@
+# SmartFold standard outside valances — September 20, 2026
+
+Catalog r13 admits current individual outside-mount valances at the default shade width, without returns, custom width, joints or keystones. Guide pages15–16 establish 4.5-inch curved/square fascias and Modern Wood, plus 4.5/6/8-inch fabric valances; Louise above72inches requires6/8-inch fabric. Pages34/37/38 document the outside mounting clearances and standard shade-width hardware counts. Page38 was visually checked; its conflicting custom-width bracket formulas are excluded from this branch.
+
+September suggested retail PDF page21 (printed20) supplies the width ladders: at36inches fascia/wood133, 4.5/6 fabric155, 8 fabric216 per shade. Source material limits and95-inch unspliced maximum remain enforced; oversize processing-fee uncertainty remains independently blocked. All15 current fabrics × seven valance/style cases × three documented controls exercise the actual server adapter, exact surcharge delta, saved derived geometry and JSON reopen. Invalid Louise height/valance and clearance combinations, custom/returned/spliced configurations and historical r12 holds are covered.
+
+No new price policy, dealer factor or historical snapshot changes. Inside and semi-inside mounting, AutoWand, common/custom/spliced valances, traditional hold-down pricing and October motor revisions retain their exact existing exceptions. Publication and production verification pending.

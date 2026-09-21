@@ -49,6 +49,27 @@ describe("SmartFold narrow price eligibility through CRM",()=>{
   const r=run(q);expect(r.sendability.sendable,JSON.stringify(r)).toBe(true);expect(r.total-baseline.total).toBe((16+28)*4);expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
   q.designs[0].options_json.magnet_left_clearance_inches=.5;expect(run(q).sendability.sendable).toBe(false);q.designs[0].options_json.magnet_left_clearance_inches=.5625;q.designs[0].options_json.smartfold_hem_color="White";expect(run(q).sendability.sendable).toBe(false);
  });
+ it.each(SMARTFOLD_FABRICS.flatMap(f=>[
+  ["Curved Fascia",133,{smartfold_fascia_style:"Plain",smartfold_fascia_color:"Anodized Silver"}],
+  ["Curved Fascia",133,{smartfold_fascia_style:"Fabric-Wrapped",smartfold_valance_fabric_code:"F1934"}],
+  ["Square Fascia",133,{}],["Modern Wood",133,{smartfold_wood_valance_color:"001 Pure White"}],
+  ["4.5-inch Fabric",155,{}],["6-inch Fabric",155,{}],["8-inch Fabric",216,{}],
+ ].flatMap(([valance,price,options])=>["PrecisionLift Cordless","Continuous Cord Loop","Motorized"].map(lift=>({code:f.code,valance:valance as string,price:price as number,options:options as Record<string,unknown>,lift})))))("prices source standard valance $valance for $code / $lift with exact grid and saved records",({code,valance,price,options,lift})=>{
+  const q=quote(code);q.designs[0].lift_system=lift;if(lift!=="Motorized"){q.designs[0].motor_type=null;q.designs[0].remote_type=null;}const base=run(q);
+  q.designs[0].valance=valance;q.designs[0].options_json={...q.designs[0].options_json,...options};
+  const r=run(q);expect(r.sendability.sendable,JSON.stringify(r.designs[0].result)).toBe(true);expect(r.total-base.total).toBe(price*4);
+  expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({valance:{finishedWidth:36,widthBasis:"default",jointCount:0,returnQuantity:0}});
+  expect(run(JSON.parse(JSON.stringify(q)))).toEqual(r);
+ });
+ it("holds custom/spliced/returned valances while enforcing tall Louise clearance for standard fabric valances",()=>{
+  const q=quote();q.designs[0].valance="6-inch Fabric";q.lines[0].width_whole=95;
+  const wide=run(q);expect(wide.designs[0].result.productStatus).toBe("documented_limited");expect(wide.designs[0].result.validationIssues.map(i=>i.ruleId)).toEqual(["norman.processing_fee.oversize_scope_unverified"]);q.lines[0].width_fraction="1/16";expect(run(q).designs[0].result.productStatus).toBe("restriction_source_incomplete");
+  q.lines[0].width_whole=36;q.lines[0].width_fraction="0";q.lines[0].height_whole=73;
+  expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.outside_mounting_area");
+  q.designs[0].options_json[KEY]={version:1,mountingAreaHeight:1.15,mountingSpaceHeight:2};expect(run(q).sendability.sendable).toBe(true);
+  q.designs[0].valance="Square Fascia";expect(run(q).designs[0].result.validationIssues.map(i=>i.ruleId)).toContain("norman.smartfold.louise_valance");
+  q.designs[0].valance="6-inch Fabric";for(const options of [{smartfold_valance_width:36},{smartfold_valance_returns:"Both"},{smartfold_valance_joinery:"Square Keystone"}]){const copy=JSON.parse(JSON.stringify(q));copy.designs[0].options_json={...copy.designs[0].options_json,...options};expect(run(copy).sendability.sendable).toBe(false);}
+ });
  it("prices the exact B0342 charging extras once, retains allocation/clearance and reopens unchanged",()=>{
   const q=quote(),base=run(q);q.designs[0].options_json={...q.designs[0].options_json,smartfold_charging_v1:{version:1,extraChargingKits:2,extensionCables:3,extensionColor:"Black"}};
   const r=run(q);expect(r.total-base.total).toBe(215);expect(r.sendability.sendable).toBe(true);expect(r.designs[0].selection.configuration.norman_assembly_v1).toMatchObject({outsideClearance:{mountingAreaHeight:.75,mountingSpaceHeight:1.5},includedChargingKits:{motorQuantity:4,orderQuantity:2},motorAccessories:{extraChargingKits:2,extension:{quantity:3,length:78.74,color:"Black",adapterWatts:36}}});

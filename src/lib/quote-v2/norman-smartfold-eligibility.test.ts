@@ -19,7 +19,7 @@ describe("SmartFold bounded outside rechargeable eligibility",()=>{
   expect(validateSmartfoldEligibility(shade({[KEY]:{version:1,mountingAreaHeight,mountingSpaceHeight}})).map(i=>i.ruleId)).toContain(`norman.smartfold.${id}`);
  });
  it("keeps other branches held with an exact explanatory warning, rather than blanket enabling",()=>{
-  for(const c of [{mount_type:"Inside Mount"},{mount_type:"Semi-Inside Mount"},{valance:"6-inch Fabric"},{motor_type:"AutoWand"},{lift_system:"PrecisionLift Cordless",motor_type:"unexpected motor"},{fabric_color_code:"unknown"},{smartfold_common_valance_id:"V1"},{side_by_side:true},{basic_light_guard:"Yes"},{premium_hem_bar:"Premium"},{installed_on_door:true},{shade_type:"Day & Night"},{smartfold_hold_down:"Traditional"},{smartfold_valance_width:40}] as SelectionRecord[]){const s=shade(c);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);expect(productRuleStatusForSelection(s)).toBe("restriction_source_incomplete");expect(validateSmartfoldEligibility(s)[0]).toMatchObject({severity:"warning",ruleId:"norman.smartfold.branch_verification"});}
+  for(const c of [{mount_type:"Inside Mount"},{mount_type:"Semi-Inside Mount"},{valance:"3.5-inch Fabric"},{motor_type:"AutoWand"},{lift_system:"PrecisionLift Cordless",motor_type:"unexpected motor"},{fabric_color_code:"unknown"},{smartfold_common_valance_id:"V1"},{side_by_side:true},{basic_light_guard:"Yes"},{premium_hem_bar:"Premium"},{installed_on_door:true},{shade_type:"Day & Night"},{smartfold_hold_down:"Traditional"},{smartfold_valance_width:40}] as SelectionRecord[]){const s=shade(c);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);expect(productRuleStatusForSelection(s)).toBe("restriction_source_incomplete");expect(validateSmartfoldEligibility(s)[0]).toMatchObject({severity:"warning",ruleId:"norman.smartfold.branch_verification"});}
  });
  it("keeps r10 manual pricing held and requires current manual power selections to be clear",()=>{
   const s=shade({lift_system:"PrecisionLift Cordless",motor_type:null});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);
@@ -28,6 +28,12 @@ describe("SmartFold bounded outside rechargeable eligibility",()=>{
  it("preserves the old manual branch accessory hold when replaying r11",()=>{
   const s=shade({lift_system:"PrecisionLift Cordless",motor_type:null,smartfold_pole:"Pole Attachment Only"});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);
   s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-manual-2026-09-20-r11`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
+ });
+ it("preserves historical r12 valance holds and confines current valances to standard unspliced widths",()=>{
+  const s=shade({valance:"6-inch Fabric"});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);
+  s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-accessories-2026-09-20-r12`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
+  s.catalogVersion=quoteV2CatalogVersionFor("smartfold",s.catalogAsOf);s.widthInches=95;expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);s.widthInches=95.0625;expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
+  s.widthInches=36;for(const patch of [{smartfold_valance_returns:"Both"},{smartfold_valance_width:36},{smartfold_valance_joinery:"Square Keystone"},{smartfold_common_valance_id:"1"}] as SelectionRecord[])expect(smartfoldHasDocumentedPricingBranch({...s,configuration:{...s.configuration,...patch}})).toBe(false);
  });
  it("retains historical r7 status and holds October motor revisions",()=>{
   const s=shade();s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-charging-2026-09-20-r7`;expect(isRecognizedQuoteV2Catalog("smartfold",s.catalogAsOf,s.catalogVersion)).toBe(true);expect(validateSmartfoldEligibility(s)).toEqual([]);expect(productRuleStatusForSelection(s)).toBe("restriction_source_incomplete");s.catalogVersion=quoteV2CatalogVersionFor("smartfold","2026-10-01");s.catalogAsOf="2026-10-01";expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);expect(validateSmartfoldEligibility(s)[0].explanation).toContain("October");

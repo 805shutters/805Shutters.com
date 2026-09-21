@@ -1,3 +1,4 @@
+import {smartfoldValance} from "./norman-smartfold-valance";
 import {SMARTFOLD_FABRICS} from "@/lib/quote/norman-current-assortment";
 import {SMARTFOLD_CLEARANCE_KEY,parseSmartfoldClearance} from "@/lib/quote/norman-smartfold-clearance";
 import {smartfoldHardware} from "./norman-smartfold-hardware";
@@ -5,13 +6,19 @@ import type {SelectionContext,SelectionRecord,ValidationIssue} from "./core";
 import {sourceProvenance} from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const active=(v:unknown)=>v!=null&&!["","no","false","off","none","0"].includes(norm(v));
-export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11","-norman-smartfold-accessories-2026-09-20-r12"].some(version=>s.catalogVersion.endsWith(version));
+export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11","-norman-smartfold-accessories-2026-09-20-r12","-norman-smartfold-standard-valances-2026-09-20-r13"].some(version=>s.catalogVersion.endsWith(version));
 export function smartfoldBranchExceptions(s:SelectionContext):string[]{
  const c=s.configuration,reasons:string[]=[];
  if(s.catalogAsOf>="2026-10-01")reasons.push("the October motor revision requires its separately effective source verification");
  if(!["outside","outside mount","om","ob"].includes(norm(c.mount_type)))reasons.push("inside/semi-inside mounting needs its exact roll-diameter/depth verification");
- if(!["none","no valance"].includes(norm(c.valance)))reasons.push("valance-specific mounting, splicing and pricing verification remains separate");
- const pricedAccessories=s.catalogVersion.endsWith("-norman-smartfold-accessories-2026-09-20-r12");
+ const standardValances=s.catalogVersion.endsWith("-norman-smartfold-standard-valances-2026-09-20-r13");
+ if(!["none","no valance"].includes(norm(c.valance))){
+  const v=smartfoldValance(s);
+  if(!standardValances)reasons.push("valance-specific mounting, splicing and pricing verification remains separate");
+  else if(!["curved fascia","square fascia","modern wood","4 5 inch fabric","6 inch fabric","8 inch fabric"].includes(norm(c.valance)))reasons.push("select a current 4.5-inch fascia or wood valance, or 4.5/6/8-inch fabric valance");
+  else if(!v||v.finishedWidth>v.maxUnspliced||v.minimumJoints>0||v.keystone||v.gapPlacement)reasons.push("spliced valances and optional keystones require separate hardware verification");
+ }
+ const pricedAccessories=standardValances||s.catalogVersion.endsWith("-norman-smartfold-accessories-2026-09-20-r12");
  const manual=(pricedAccessories||s.catalogVersion.endsWith("-norman-smartfold-manual-2026-09-20-r11"))&&["continuous cord loop","precisionlift cordless"].includes(norm(c.lift_system));
  if(!manual&&(norm(c.lift_system)!=="motorized"||norm(c.motor_type)!=="norman smart rechargeable battery ac charger"))reasons.push("this verified branch uses standard cord loop, PrecisionLift Cordless or Norman Smart rechargeable battery with AC charger");
  if(manual&&(active(c.motor_type)||active(c.remote_type)||active(c.shared_power_panel_id)||active(c.hub_required)))reasons.push("clear motor power, remote and shared-panel selections before pricing a manual shade");
