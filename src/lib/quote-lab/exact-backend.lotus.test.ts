@@ -333,3 +333,18 @@ it("server-prices the typed inside-mount AMX example without lifting MLX holds",
   expect(result.costSummary.status).toBe("incomplete");
   expect(result.designs[0]?.snapshot?.pricingDerivations).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:"lotus.amx.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["AMX2772WH"])}})]));
 });
+
+
+it("persists typed vinyl donor derivations without approving conflicted prices", () => {
+  const mlxLine={...line("Vinyl Blinds"),width_whole:48,height_whole:60};
+  const mlxDesign={...design({quote_v2_backend:true,catalog_product_id:"lotus_vinyl_blinds",catalog_program_id:"lotus_mlx_1in_vinyl_custom",lotus_color_configuration_version:"lotus-color-v1",lotus_vinyl_configuration_version:"lotus-vinyl-v1",lotus_measurement_basis:"inside_opening",color:"White"}),product_type:"Vinyl Blinds",supplier:"Lotus",mount_type:"Inside Mount",lift_system:"Cordless",valance:"None"} as SalesQuoteDesign;
+  const result=repriceExactQuoteBuilder({lines:[mlxLine],designs:[mlxDesign],selectedVariantByLine:{[mlxLine.id]:"A"}});
+  expect("backend" in result && result.backend).toBe("v2");
+  if (!("backend" in result) || result.backend!=="v2") return;
+  expect(result.designs[0]?.result.validationIssues).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:"lotus.vinyl.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["MLX4860WH"])}})]));
+  expect(result.designs[0]?.snapshot).toBeNull(); // Held validation evidence must not become an approved price snapshot.
+  expect(result.sendability.sendable).toBe(false);
+  expect(result.sendability.lines[0].blockingIssues).toEqual(expect.arrayContaining([expect.objectContaining({explanation:expect.stringContaining("Lotus MLX dealer-guide and portal prices conflict")})]));
+  const rejected=repriceExactQuoteBuilder({lines:[{...mlxLine,width_whole:16,width_fraction:"3/4",height_whole:36}],designs:[mlxDesign],selectedVariantByLine:{[mlxLine.id]:"A"}});
+  expect("backend" in rejected && rejected.backend==="v2" && rejected.designs[0].result).toMatchObject({ok:false,code:"CONFIGURATION_INCOMPLETE"});
+});

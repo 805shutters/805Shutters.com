@@ -622,3 +622,13 @@ describe("authoritative sales quote V2 pricing save", () => {
     expect(response.revision).toBe(8);
   });
 });
+
+it("stores held MLX donor identities in protected validation evidence, never an approved price", async () => {
+  const rows=validRows();
+  Object.assign(rows.sales_quote_line_items[0],{product_type:"Vinyl Blinds",width_whole:48,height_whole:60,selected_design_id:DESIGN_ID});
+  Object.assign(rows.sales_quote_designs[0],{product_type:"Vinyl Blinds",supplier:"Lotus",fabric:null,shade_type:null,lift_system:"Cordless",valance:"None",options_json:{quote_v2_backend:true,catalog_product_id:"lotus_vinyl_blinds",catalog_program_id:"lotus_mlx_1in_vinyl_custom",lotus_color_configuration_version:"lotus-color-v1",lotus_vinyl_configuration_version:"lotus-vinyl-v1",lotus_measurement_basis:"inside_opening",color:"White"}});
+  const {client,rpcCalls}=fakeSupabase(rows,[{quote_id:QUOTE_ID,new_revision:8,quote_status:"draft",quote_total:0,priced_design_count:0,blocked_design_count:1}]);
+  await saveSalesQuoteV2AuthoritativePrice(client,{quoteId:QUOTE_ID,lineItemId:LINE_ID,designId:DESIGN_ID,expectedRevision:7,idempotencyKey:"price-save:vinyl-donor",actorId:ACTOR_ID,serverDate:"2026-09-20"});
+  const saved=(rpcCalls[0].args.p_results as Array<Record<string,unknown>>)[0];
+  expect(saved).toMatchObject({priceStatus:"blocked",authoritativeSnapshot:null,validationSnapshot:{validationStatus:"blocked",issues:expect.arrayContaining([expect.objectContaining({ruleId:"lotus.vinyl.eligible_stock_donors",derivedValues:{eligible_donor_skus:expect.arrayContaining(["MLX4860WH"])}})])}});
+});
