@@ -1,11 +1,11 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September20,19:54
-- Completed live:2046fadd;6,401 tests passed,28 skipped; typecheck/build/public deployment passed. Includes SmartFold hems/magnets/poles, control-reset and inactive-display fixes, exact439Roller widths/physical tube/valance associations, shutter specialty template/outline/manufacturing rules, and Sundance panels/privacy/Portfolio blackout pricing. Concurrent Job Status filters remain preserved.
-- Production proof: SmartFold E0360/F0362 manual choices and72-inch boundary saved/reopened at$2,848; G0364 exact accessory combination$3,380, insufficient magnet clearance rejected/restored; H0365 motor-to-manual automatically clears charging/power/remote and reopens/customer-preview$2,580. Original motorized B0342 remains$5,023. Shutter missing-template and inactive-hinge fixes verified by agent.
-- Source coverage completed: all266Vertical fabric/cell routes ×6stacks ×3mounts =4,788 actual-backend configurations, plus splice/deduction boundary and persistence checks. Vertical Day & Night independent widths and cut-out charge evidence remain distinct exceptions.
-- In progress: standard default-width outside SmartFold valances (315fabric/style/control cases), Roller source accessories and valance-specific errors, shutter one-louver/arch controls and exact panel restrictions, Sundance shared order controllers/chargers.
-- Remaining: complete finite source rules, account pricing evidence and production proof for new controls. No manufacturer or whole Norman family is certified complete.
-- External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805. Dealer factors and selling policy remain unchanged.
+## Current checkpoint — September 20, 20:13
+- Completed live: abaf1d63 at https://805-5fbquq9ar-805-shutters.vercel.app; 6,793 tests passed, 28 skipped, typecheck/build/public deployment passed. Adds standard SmartFold valances, exact Roller chain and inline specification rules, curved/single-louver shutter controls, and Sundance shared order accessories.
+- Current live verification: SmartFold I805-0369 six-inch fabric valance saves $3,200; J805-0370 Modern Wood 001 Pure White saves $3,112. Both saved totals survive full browser reload; detailed reopened/customer preview checks underway.
+- In deployment: 14240264 adds SmartFold r14 AutoWand exact seven lengths/three colors, 315 actual-backend configurations and customer details; Roller r10 poles; actual individual shutter widths/narrow joins; Sundance measured Europanel layout.
+- Next queued: Roller Light Guard exact finishes/length/splice rules; source-backed Double Hung row rules; remaining finite Sundance source items and associated live proof. Each agent will consolidate exact remaining source/account/factory exceptions.
+- Previously completed production proofs and 4,788 Vertical source configurations remain recorded below and in RESULTS.md.
+- External intervention still pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to 805. Dealer factors and selling policy remain unchanged. No manufacturer or whole Norman family is certified complete.
 
 Historical progress entries below are retained as an execution log; this checkpoint and RESULTS.md determine current status.
 

@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-20",
+  "release": "abaf1d631d8805b964622b6dadcff281485b7266",
+  "deployment": "https://805-5fbquq9ar-805-shutters.vercel.app",
+  "source": "September SmartFold Guide pp15-16,34,37-38; September retail valance grids",
+  "common": {
+    "fabric": "Louise F1709 White Jade",
+    "width": 36,
+    "height": 60,
+    "quantity": 4,
+    "lift": "PrecisionLift Cordless",
+    "mount": "Outside Mount",
+    "installation": "Back / Wall Mount with Raceway",
+    "foldSize": 6,
+    "mountingArea": 0.75,
+    "mountingSpace": 1.5,
+    "baseEach": 606,
+    "installationEach": 25,
+    "shippingEach": 14
+  },
+  "quotes": [
+    {
+      "quote": "805-0369",
+      "alternative": "I",
+      "valance": "6-inch Fabric",
+      "valanceEach": 155,
+      "total": 3200
+    },
+    {
+      "quote": "805-0370",
+      "alternative": "J",
+      "valance": "Modern Wood",
+      "finish": "001 Pure White",
+      "valanceEach": 133,
+      "total": 3112
+    }
+  ],
+  "proof": [
+    "saved authoritative quote",
+    "closed builder",
+    "full browser reload",
+    "saved list totals",
+    "reopened builder J Modern Wood and Pure White persisted",
+    "customer preview both I and J exact fabric/control/valance/totals"
+  ],
+  "negative": "Modern Wood without required finish blocks pricing before restoration",
+  "noCustomerSendOrOrder": true
+}
