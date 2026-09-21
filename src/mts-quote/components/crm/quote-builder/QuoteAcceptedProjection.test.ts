@@ -10,7 +10,7 @@ import type { SalesQuote, SalesQuoteLineItem } from "@mts/types/quote";
 
 const state = vi.hoisted(() => ({
   quote: {} as SalesQuote, lines: [] as SalesQuoteLineItem[], group: [] as SalesQuote[], groupLines: [] as SalesQuoteLineItem[],
-  pending: false, isolated: false, mutate: vi.fn(),
+  pending: false, isolated: false, mutate: vi.fn(), executeMutations: false, revision: vi.fn(), invalidate: vi.fn(),
   designs: [{ id: "design-living", line_item_id: "living", variant: "A", unit_price: 90,
     product_type: "Shutters", options_json: { authoritative_once_total: 30.02, authoritative_price_status: "authoritative" } }],
 }));
@@ -23,10 +23,22 @@ vi.mock("@tanstack/react-query", () => ({
     if (queryKey.includes("designs") || queryKey.includes("group-designs")) return { data: state.designs, isPending: false };
     return { data: state.quote, isPending: false, isError: false };
   },
-  useMutation: () => ({ mutate: state.mutate, mutateAsync: state.mutate, isPending: false }), useQueryClient: () => ({}), useIsMutating: () => 0,
+  useMutation: (options: { mutationFn: (value: unknown) => Promise<unknown>; onSuccess?: () => Promise<void>; onError?: (error: unknown) => void; onSettled?: () => Promise<void> }) => {
+    const execute = async (value: unknown) => {
+      state.mutate(value);
+      if (!state.executeMutations) return;
+      try { await options.mutationFn(value); await options.onSuccess?.(); }
+      catch (error) { options.onError?.(error); }
+      finally { await options.onSettled?.(); }
+    };
+    return { mutate: execute, mutateAsync: execute, isPending: false };
+  }, useQueryClient: () => ({ getQueryData: () => state.quote, isMutating: () => 0, invalidateQueries: state.invalidate }), useIsMutating: () => 0,
 }));
 vi.mock("@mts/integrations/supabase/quoteBuilderDatabase", () => ({ useQuoteBuilderDatabase: () => ({ database: {}, isolated: state.isolated }) }));
 vi.mock("@mts/integrations/supabase/client", () => ({ supabase: {} }));
+vi.mock("@mts/lib/quoteV2ServerClient", async importOriginal => ({
+  ...await importOriginal<typeof import("@mts/lib/quoteV2ServerClient")>(), createQuoteRevision: state.revision,
+}));
 vi.mock("./DesignCard", () => ({ DesignCard: () => "Editable design must not render", loadQuoteBuilderCatalog: async () => ({ products: [] }), buildCatalogSelectionPatch: () => ({}) }));
 vi.mock("./QuoteGroupTabs", () => ({ QuoteGroupTabs: () => null }));
 vi.mock("./SendQuoteDialog", () => ({ SendQuoteDialog: () => null }));
@@ -39,7 +51,7 @@ beforeEach(() => {
     customer_signature: "signed", signed_at: "2026-09-10", total_amount: 350.02,
     installer_notes: JSON.stringify({ __stackedLineItemIds: ["living", "kitchen"], __adminControls: { showExtras: true, extraFees: [{ id: "fee", name: "Original fee", amount: 200 }], showTax: true, taxPercent: 10 } }),
   } as SalesQuote;
-  state.group = []; state.groupLines = []; state.pending = false; state.isolated = false; state.mutate.mockClear();
+  state.group = []; state.groupLines = []; state.pending = false; state.isolated = false; state.mutate.mockClear(); state.executeMutations = false; state.revision.mockReset(); state.invalidate.mockReset().mockResolvedValue(undefined);
   useQuoteBuilderStore.getState().setActiveQuote("source");
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
 });
@@ -60,6 +72,38 @@ describe("accepted native quote in actual Builder and Contract", () => {
     expect(container.textContent).not.toContain("Editable design must not render");
     expect(JSON.stringify({ quote: state.quote, lines: state.lines, designs: state.designs })).toBe(before);
     expect(state.mutate).not.toHaveBeenCalled();
+  });
+  it.each([QuoteBuilder, QuoteContract])("keeps delete and custom-price actions available on accepted lines (%#)", async component => {
+    await render(component);
+    const remove = container.querySelector<HTMLButtonElement>('button[aria-label="Delete Living room line item"]');
+    expect(remove).not.toBeNull(); expect(remove!.disabled).toBe(false);
+    const edit = container.querySelector<HTMLInputElement>('input[aria-label="Custom merchandise price each for Living room"]');
+    expect(edit).not.toBeNull(); expect(edit!.disabled).toBe(false);
+    expect(edit!.value).toBe("90.00");
+  });
+  it.each([QuoteBuilder, QuoteContract])("creates only one revision on duplicate accepted delete clicks and refreshes saved lists (%#)", async component => {
+    state.executeMutations = true;
+    let complete!: (value: { quoteId: string }) => void;
+    state.revision.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    await render(component);
+    const remove = container.querySelector<HTMLButtonElement>('button[aria-label="Delete Living room line item"]')!;
+    await act(async () => { remove.click(); remove.click(); });
+    expect(state.revision).toHaveBeenCalledTimes(1);
+    expect(state.revision.mock.calls[0][2]).toMatchObject({ action: "delete", lineItemId: "living" });
+    await act(async () => { complete({ quoteId: "revised" }); });
+    expect(useQuoteBuilderStore.getState().activeQuoteId).toBe("revised");
+    expect(state.invalidate).toHaveBeenCalledWith({ queryKey: ["sales-quotes"] });
+  });
+  it.each([QuoteBuilder, QuoteContract])("does not reopen a revised quote after staff navigate elsewhere (%#)", async component => {
+    state.executeMutations = true;
+    let complete!: (value: { quoteId: string }) => void;
+    state.revision.mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    await render(component);
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label="Delete Living room line item"]')!.click(); });
+    await act(async () => { useQuoteBuilderStore.getState().setActiveQuote("elsewhere"); });
+    await act(async () => { complete({ quoteId: "revised" }); });
+    expect(useQuoteBuilderStore.getState().activeQuoteId).toBe("elsewhere");
+    expect(state.invalidate).toHaveBeenCalledWith({ queryKey: ["sales-quotes"] });
   });
   it.each([QuoteBuilder, QuoteContract])("shows an explicit error for invalid mapping without original windows (%#)", async (component) => {
     state.quote.quote_v2_accepted_selection!.lineQuantities[0].lineItemId = "missing";

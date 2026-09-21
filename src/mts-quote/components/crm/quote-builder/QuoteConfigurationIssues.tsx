@@ -1,12 +1,12 @@
 import type { ValidationIssue } from "@/lib/quote-v2/core";
-import { quotePricingValidationIssues } from "@/lib/quote-v2/quote-pricing-policy";
+import { isOrderingOnlyIssue } from "@/lib/quote-v2/quote-pricing-policy";
 
-/** Display fit checks without presenting them as missing quote prices. */
-export function QuoteConfigurationIssues({ issues, gridOptionQuoting }: {
+/** The quote displays pricing issues; installation evidence belongs to order preparation. */
+export function QuoteConfigurationIssues({ issues }: {
   issues: readonly ValidationIssue[];
   gridOptionQuoting: boolean;
 }) {
-  const displayed = gridOptionQuoting ? quotePricingValidationIssues(issues) : issues;
+  const displayed = issues.filter(issue => !isOrderingOnlyIssue(issue));
   const blockers = displayed.filter(issue => issue.severity === "hard_block");
   const notes = displayed.filter(issue => issue.severity !== "hard_block");
   return <>

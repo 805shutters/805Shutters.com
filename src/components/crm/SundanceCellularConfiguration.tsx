@@ -1,16 +1,17 @@
 'use client';
+import { nonNormanQuoteIssues } from "@/lib/quote/non-norman-ordering-only";
 import { QuoteChoiceButtons } from "./QuoteChoiceButtons";
 import { SundanceCellularAccessories } from './SundanceCellularAccessories';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import { sundanceCellularColors } from '@/lib/quote/sundance/cellular-assortment';
 import { sundanceCellularShapes, sundanceCellularShapePatch, sundanceCellularSystems, sundanceCellularSystemPatch, sundanceCellularBottomPatch, validateSundanceCellularConfiguration } from '@/lib/quote/sundance/cellular-configuration';
-export function SundanceCellularConfiguration({ options, widthInches = 0, heightInches = 0, onUpdateFields }: {
+export function SundanceCellularConfiguration({ options, widthInches = 0, heightInches = 0, onUpdateFields, pricingOnly = true }: { pricingOnly?: boolean;
   options: Record<string, unknown>; widthInches?: number; heightInches?: number; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const classes = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
   const field = (key: string, value: string) => onUpdateFields({ options_json: { ...options, [key]: value || null } });
-  const issues = validateSundanceCellularConfiguration({ widthInches, heightInches, programId: String(options.catalog_program_id ?? ''), configuration: options as SelectionRecord });
+  const issues = nonNormanQuoteIssues(validateSundanceCellularConfiguration({ widthInches, heightInches, programId: String(options.catalog_program_id ?? ''), configuration: options as SelectionRecord }), pricingOnly);
   return <>
     <div className="block text-sm">Operating system<QuoteChoiceButtons aria-label="Sundance cellular operating system" value={String(options.sundance_cellular_system ?? '')} onChange={value => { const patch = sundanceCellularSystemPatch(options, value); onUpdateFields({ ...(patch.fabric_color_id == null ? { fabric: null } : {}), options_json: patch }); }}><option value="">Select operating system</option>{sundanceCellularSystems.map(system => <option key={system.name}>{system.name}</option>)}</QuoteChoiceButtons></div>
     <div className="block text-sm">Mount<QuoteChoiceButtons aria-label="Sundance cellular mount" value={String(options.mount_type ?? '')} onChange={value => onUpdateFields({ mount_type: value, options_json: { ...options, mount_type: value, sundance_cellular_mount_depth: null, sundance_cellular_recess: null } })}><option value="">Select mount</option><option>Inside</option><option>Outside</option></QuoteChoiceButtons></div>
@@ -27,8 +28,8 @@ export function SundanceCellularConfiguration({ options, widthInches = 0, height
     </>}
     {options.sundance_cellular_system === 'Verticell' && <>
       <div className="block text-sm">Stack<QuoteChoiceButtons aria-label="Sundance cellular stack" value={String(options.sundance_cellular_stack ?? '')} onChange={value => field('sundance_cellular_stack', value)}><option value="">Select stack</option><option>Left Stack</option><option>Right Stack</option><option>Center Split</option></QuoteChoiceButtons></div>
-      <label className="block text-sm">{options.mount_type === 'Outside' ? 'Flat vertical surface' : 'Available mounting depth'} (inches)<input type="number" step="0.0625" className={classes} aria-label="Sundance cellular mount depth" value={String(options.sundance_cellular_mount_depth ?? '')} onChange={e => field('sundance_cellular_mount_depth', e.target.value)} /></label>
-      {options.mount_type === 'Inside' && <div className="block text-sm">Recess<QuoteChoiceButtons aria-label="Sundance cellular recess" value={String(options.sundance_cellular_recess ?? '')} onChange={value => field('sundance_cellular_recess', value)}><option value="">Select recess</option><option>Flush</option><option>Partial recess</option></QuoteChoiceButtons></div>}
+      {!pricingOnly && <label className="block text-sm">{options.mount_type === 'Outside' ? 'Flat vertical surface' : 'Available mounting depth'} (inches)<input type="number" step="0.0625" className={classes} aria-label="Sundance cellular mount depth" value={String(options.sundance_cellular_mount_depth ?? '')} onChange={e => field('sundance_cellular_mount_depth', e.target.value)} /></label>}
+      {!pricingOnly && options.mount_type === 'Inside' && <div className="block text-sm">Recess<QuoteChoiceButtons aria-label="Sundance cellular recess" value={String(options.sundance_cellular_recess ?? '')} onChange={value => field('sundance_cellular_recess', value)}><option value="">Select recess</option><option>Flush</option><option>Partial recess</option></QuoteChoiceButtons></div>}
       <p className="text-sm text-amber-900">Off White aluminum rails; integrated headrail without separate valance. Minimum stack width 6 inches. Factory inside deductions are ¼-inch width and ½-inch height; do not subtract them twice. Verticell pricing must be confirmed.</p>
     </>}
     {options.sundance_cellular_system === 'Skylight' && <p className="text-sm text-amber-900">White #001 side rails. Enter finished size; the factory takes no deductions. The source specialty/skylight surcharge is $116 net, separate from retail fabric pricing.</p>}

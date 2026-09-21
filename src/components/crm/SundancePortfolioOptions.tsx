@@ -1,4 +1,5 @@
 "use client";
+import { nonNormanQuoteIssues } from "@/lib/quote/non-norman-ordering-only";
 import {sundancePortfolioBaseEvidence} from "@/lib/quote/sundance/portfolio-base-evidence";
 import {SundanceAccessoryOptions} from "./SundanceAccessoryOptions";
 import type { SelectionRecord } from "@/lib/quote-v2/core";
@@ -6,7 +7,7 @@ import { sundancePortfolioControls, sundancePortfolioLiners, sundancePortfolioDe
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import { sundancePortfolioColors, sundancePortfolioColorMatchesContext, sundancePortfolioColorPatch, sundancePortfolioStylePatch, sundancePortfolioStyles, sundancePortfolioSource } from "@/lib/quote/sundance/portfolio-assortment";
 
-export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,heightInches=0}: {
+export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,heightInches=0, pricingOnly = true}: { pricingOnly?: boolean;
   options: Record<string,unknown>; widthInches?:number; heightInches?:number; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
   const rows = sundancePortfolioColors.filter(row => sundancePortfolioColorMatchesContext(row,options));
@@ -14,7 +15,7 @@ export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,h
   const classes = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
   const baseEvidence=sundancePortfolioBaseEvidence(options,widthInches,heightInches);
   const valanceOnly=options.roman_style==="Valance Only";
-  const issues=validateSundancePortfolioConfiguration({widthInches,heightInches,programId:options.catalog_program_id?String(options.catalog_program_id):null,configuration:options as SelectionRecord});
+  const issues=nonNormanQuoteIssues(validateSundancePortfolioConfiguration({widthInches,heightInches,programId:options.catalog_program_id?String(options.catalog_program_id):null,configuration:options as SelectionRecord}), pricingOnly);
   const field=(key:string,value:string)=>onUpdateFields({options_json:sundancePortfolioDesignPatch(options,key,value)});
   return <>
     <label className="block text-sm">Shade style<select aria-label="Sundance Portfolio style" className={classes} value={String(options.roman_style??"")} onChange={e => onUpdateFields({fabric:null,options_json:sundancePortfolioStylePatch(options,e.target.value)})}>
@@ -34,7 +35,7 @@ export function SundancePortfolioOptions({options,onUpdateFields,widthInches=0,h
       <label className="block text-sm">Control<select aria-label="Sundance Portfolio control" className={classes} value={String(options.sundance_portfolio_control??"")} onChange={e=>field("sundance_portfolio_control",e.target.value)}><option value="">Select control</option>{sundancePortfolioControls.filter(control=>control!=="Cordless TDBU"||(options.roman_style==="Knife Pleat"&&selected?.tdbuAvailable)).map(control=><option key={control}>{control}</option>)}</select></label>
       <label className="block text-sm">Shade drop<select aria-label="Sundance Portfolio drop" className={classes} value={String(options.sundance_portfolio_drop??"")} onChange={e=>field("sundance_portfolio_drop",e.target.value)}><option value="">Select drop</option>{options.roman_style!=="Hobbled"&&<option>Standard</option>}{options.sundance_portfolio_control!=="Cordless TDBU"&&<option>Waterfall</option>}</select></label>
       <label className="block text-sm">Mount<select aria-label="Sundance Portfolio shade mount" className={classes} value={String(options.mount_type??"")} onChange={e=>onUpdateFields({mount_type:e.target.value,options_json:sundancePortfolioDesignPatch(options,"mount_type",e.target.value)})}><option value="">Select mount</option><option>Inside</option><option>Outside</option></select></label>
-      {options.mount_type==="Inside"&&<label className="block text-sm">Top mount bracket depth (inches)<input aria-label="Sundance Portfolio mount depth" type="number" step="0.0625" min="0.75" className={classes} value={String(options.sundance_portfolio_mount_depth??"")} onChange={e=>field("sundance_portfolio_mount_depth",e.target.value)}/></label>}
+      {!pricingOnly&&options.mount_type==="Inside"&&<label className="block text-sm">Top mount bracket depth (inches)<input aria-label="Sundance Portfolio mount depth" type="number" step="0.0625" min="0.75" className={classes} value={String(options.sundance_portfolio_mount_depth??"")} onChange={e=>field("sundance_portfolio_mount_depth",e.target.value)}/></label>}
       <label className="block text-sm">Returns<select aria-label="Sundance Portfolio shade returns" className={classes} value={String(options.sundance_portfolio_returns??"")} onChange={e=>field("sundance_portfolio_returns",e.target.value)}><option value="">Select returns</option><option>None</option>{!(options.mount_type==="Inside"&&options.sundance_portfolio_control==="Cordless TDBU")&&<option>Standard</option>}{options.mount_type==="Outside"&&<option>Extended</option>}</select></label>
       <label className="block text-sm">Front valance<select aria-label="Sundance Portfolio front valance" className={classes} value={String(options.sundance_portfolio_front_valance??"")} onChange={e=>field("sundance_portfolio_front_valance",e.target.value)}><option value="">Select front valance</option>{options.sundance_portfolio_drop==="Waterfall"?<><option>None</option><option>Added</option></>:<option>Included</option>}</select></label>
       <label className="block text-sm">Back valance<select aria-label="Sundance Portfolio back valance" className={classes} value={String(options.sundance_portfolio_back_valance??"")} onChange={e=>field("sundance_portfolio_back_valance",e.target.value)}><option value="">Select back valance</option>{(options.sundance_portfolio_drop==="Waterfall"||options.sundance_portfolio_control==="Cordless TDBU")&&<option>Yes</option>}{options.sundance_portfolio_control!=="Cordless TDBU"&&<option>No</option>}</select></label>

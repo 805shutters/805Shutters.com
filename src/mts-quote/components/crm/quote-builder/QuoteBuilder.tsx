@@ -87,12 +87,15 @@ import {
   parseQuoteMeta,
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
+import { LineItemPriceInput } from "./LineItemPriceInput";
+import { quoteMerchandisePriceForEditor } from "@mts/lib/quotePricingDisplay";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
 import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
 import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { formatCurrency, getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { getQuoteV2DeliveryCapability } from "@mts/lib/quoteV2DeliveryCapability";
 import {
+  createQuoteRevision,
   mutateQuoteV2Structure,
   priceQuoteV2,
   saveQuoteLinePrice,
@@ -607,6 +610,7 @@ export function QuoteBuilder({
   const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
   const designsQueryKey = [...quoteQueryKey, "designs"] as const;
   const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const revisionInFlightRef = useRef(false);
   const draftPricingRecoveryRef = useRef(createDraftPricingRecovery());
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
@@ -826,6 +830,7 @@ export function QuoteBuilder({
 
   const refreshServerOwnedV2Rows = async () => {
     await refreshQuoteV2Rows(queryClient, quoteQueryKey, lineItemsQueryKey, designsQueryKey);
+    await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.lists() });
   };
 
   const updateServerOwnedV2QuoteCache = (
@@ -1271,9 +1276,35 @@ export function QuoteBuilder({
     },
   });
 
+  const createEditableRevision = async (input: Parameters<typeof createQuoteRevision>[2]) => {
+    if (!activeQuoteId || useQuoteBuilderStore.getState().activeQuoteId !== activeQuoteId) {
+      throw new Error("The active quote changed. Apply this edit to the current quote.");
+    }
+    if (revisionInFlightRef.current) throw new Error("A revised quote is being created. Wait for it before another edit.");
+    revisionInFlightRef.current = true;
+    try {
+      const revision = await createQuoteRevision(supabase, activeQuoteId, input);
+      if (useQuoteBuilderStore.getState().activeQuoteId === activeQuoteId) setActiveQuote(revision.quoteId);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      return revision;
+    } finally {
+      revisionInFlightRef.current = false;
+    }
+  };
+
   // Delete line item
   const deleteLineItem = useMutation({
     mutationFn: async (id: string) => {
+      const current = queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
+      if (isQuotePriceLocked(current) && activeQuoteId) {
+        await createEditableRevision({
+          action: "delete", lineItemId: id,
+          expectedRevision: current?.quote_v2_backend ? Number(current.quote_v2_revision) : null,
+          requestId: crypto.randomUUID(),
+        });
+        toast.success("Line deleted in a new draft revision. Original quote preserved.");
+        return;
+      }
       if (serverOwnedV2) {
         await mutateAndRepriceServerOwnedV2([
           { type: "line.delete", lineItemId: id },
@@ -1282,14 +1313,15 @@ export function QuoteBuilder({
       }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
-        .delete()
-        .eq("id", id);
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("quote_id", activeQuoteId)
+        .is("archived_at", null);
       if (error) throw error;
+      await syncQuoteTotal({ allowZero: true });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
-      });
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
     },
     onError: (error) => {
       toast.error(
@@ -1451,6 +1483,15 @@ export function QuoteBuilder({
       }
       const cachedQuote = queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
       if (!activeQuoteId) throw new Error("No active quote is open.");
+      if (isQuotePriceLocked(cachedQuote)) {
+        await createEditableRevision({
+          action: "manual-price", lineItemId, variant, unitPrice,
+          expectedRevision: cachedQuote?.quote_v2_backend ? Number(cachedQuote.quote_v2_revision) : null,
+          requestId: crypto.randomUUID(),
+        });
+        toast.success("Custom price saved in a new draft revision. Original quote preserved.");
+        return;
+      }
       const saved = await saveQuoteLinePrice(supabase, activeQuoteId, {
         lineItemId, variant, unitPrice,
         expectedRevision: serverOwnedV2 ? Number(cachedQuote?.quote_v2_revision) : null,
@@ -2147,7 +2188,14 @@ export function QuoteBuilder({
               productType={design?.product_type || item.product_type} quantity={item.quantity}
               dimensions={formatDimensionsOrNull(item)}
               options={design ? getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`) : []}
-              price={formatCurrency(acceptedProjection.lineTotals.get(item.id)!)} priceLabel="Accepted item total" />;
+              price={formatCurrency(acceptedProjection.lineTotals.get(item.id)!)} priceLabel="Accepted item total"
+              actions={<div className="flex items-center justify-end gap-3">
+                {design && <LineItemPriceInput value={quoteMerchandisePriceForEditor(design)}
+                  label="Custom merchandise price each" roomName={item.room_name}
+                  onSave={price => saveLinePrice(item.id, design.variant, price)} />}
+                <Button variant="ghost" size="sm" aria-label={`Delete ${item.room_name} line item`} disabled={deleteLineItem.isPending}
+                  onClick={() => deleteLineItem.mutate(item.id)}>Delete line</Button>
+              </div>} />;
           })}
           <p className="text-right text-lg font-bold">Accepted total: {formatCurrency(acceptedProjection.acceptedTotal!)}</p>
           {!isolated && quote.signed_at && <SendPaymentLinkDialog open={showPaymentLinkDialog}

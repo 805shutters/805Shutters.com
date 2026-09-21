@@ -19,9 +19,10 @@ export function validateLotusAmx(context: SelectionContext): ValidationIssue[] {
   });
   if (!lotusColorsForSelection(context.productId, context.programId ?? "", context.widthInches, context.heightInches).includes(String(config.color ?? ""))) add("exact_color_sku", "Select a color with an exact ordering SKU in this custom price cell.");
   if (config.mount_type !== "Inside Mount") add("inside_mount_only", "This verified AMX route uses inside-mount nominal ordering dimensions. Outside or side mounting needs confirmed finished dimensions.");
-  if (config.lift_system !== "Cordless" || config.valance !== "None" || config.lotus_measurement_basis !== "inside_opening") {
-    add("standard_configuration", "AMX uses cordless lift, its standard headrail without a valance, and inside-opening measurements. The factory deducts ½ inch from the ordered width.");
+  if (config.lift_system !== "Cordless" || config.valance !== "None") {
+    add("standard_configuration", "AMX uses cordless lift and its standard headrail without a valance.");
   }
+  if (config.lotus_measurement_basis !== "inside_opening") add("measurement_basis", "AMX ordering uses inside-opening measurements; the factory deducts ½ inch from the ordered width.");
   if (!Number.isInteger(context.widthInches * 4) || !Number.isInteger(context.heightInches)) add("cut_increments", "AMX custom width must use quarter-inch increments and custom height must use whole inches.");
   const donorSkus = lotusAmxDonorSkus(context.widthInches, context.heightInches, String(config.color ?? ""));
   if (donorSkus.length) issues.push({severity:"auto_derive", ruleId:"lotus.amx.eligible_stock_donors", source:{...sourceProvenance("lotus-west-a26-v1"),pages:[20,21,22,23,24,97]}, selectedValues:{width:context.widthInches,height:context.heightInches,color:String(config.color ?? "")}, derivedValues:{eligible_donor_skus:donorSkus}, explanation:"Eligible same-color stock donors are retained in the immutable pricing derivations; they do not replace the custom grid price or select a fulfillment SKU."});

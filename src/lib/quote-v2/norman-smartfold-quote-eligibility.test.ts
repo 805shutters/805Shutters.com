@@ -17,6 +17,9 @@ describe('SmartFold separate quote-only price branch',()=>{
   const originalIssues=validateSmartfoldEligibility(s);expect(quoteBranch(s)).toBe(true);
   expect(validateSmartfoldEligibility(s)).toEqual(originalIssues);expect(originalIssues[0].ruleId).toBe('norman.smartfold.branch_verification');expect(s).toEqual(before);
  });
+ it.each([{smartfold_side_by_side_id:'G1'},{side_by_side:true},{side_by_side_match_line_id:'other'},{installed_on_door:true},{door_application:true},{application:'Door'}] as SelectionRecord[])('quotes unchanged individual shade pricing despite ordering placement %j',c=>{
+  const s=shade({mount_type:'Outside Mount',...c});expect(quoteBranch(s)).toBe(true);expect(orderBranch(s)).toBe(false);
+ });
  const blocked:SelectionRecord[]=[
   {mount_type:'Outside Mount',basic_light_guard:'Yes'},
   {mount_type:'Semi-Inside Mount',basic_light_guard:'Yes'},
@@ -24,8 +27,8 @@ describe('SmartFold separate quote-only price branch',()=>{
   {fabric_color_code:'unknown'}, {valance:'3.5-inch Fabric'},
   {lift_system:'Motorized',motor_type:'AC Plug-In'},
   {motor_type:'unexpected motor'}, {smartfold_common_valance_id:'V1'},
-  {smartfold_side_by_side_id:'G1'}, {smartfold_hold_down:'Traditional'},
-  {smartfold_valance_width:40}, {installed_on_door:true},
+  {smartfold_hold_down:'Traditional'},
+  {smartfold_valance_width:40}, {application:'Day Night'}, {shade_type:'Dual'},
   {premium_hem_bar:'Premium'}, {mount_type:'unknown'},
  ];
  it.each(blocked)('retains price/identity/assembly hold %j',c=>expect(quoteBranch(shade(c))).toBe(false));

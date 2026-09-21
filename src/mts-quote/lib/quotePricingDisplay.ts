@@ -1,5 +1,6 @@
 import type { SalesQuote } from "@mts/types/quote";
 import { isQuotePriceLocked } from "./quotePriceLock";
+import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 
 type PricedDesign = {
   unit_price?: number | null;
@@ -36,4 +37,11 @@ export function manualMerchandisePriceForDisplay(design: PricedDesign | null | u
   return options?.manual_customer_charge_policy === "blind-shade-install-ship-v1" &&
     typeof merchandise === "number" && Number.isFinite(merchandise) && merchandise >= 0
     ? merchandise : displayedUnitPrice;
+}
+
+/** The editor sends merchandise; an unchanged save must not add fixed fees twice. */
+export function quoteMerchandisePriceForEditor(design: PricedDesign): number {
+  const unitPrice = Number(design.unit_price) || 0;
+  const merchandise = Math.max(0, unitPrice - (storedCustomerCharges(design.options_json)?.perWindowTotal ?? 0));
+  return manualMerchandisePriceForDisplay(design, merchandise);
 }

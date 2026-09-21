@@ -98,12 +98,13 @@ describe("getQuoteDesignDetails", () => {
     const design = miniBlindDesign();
     design.options_json = {
       control_side: "Left", authoritative_once_total: 30.02,
+      manual_customer_charge_policy: "blind-shade-install-ship-v1", manual_merchandise_unit_price: 400, customer_charge_policy_version: "v1",
       authoritative_price_status: "authoritative", authoritative_price_error: "Internal pricing diagnostic",
       authoritative_v2_snapshot: { total: 300.02, dealerCost: 70 },
     };
     const details = getQuoteDesignDetails(design);
     expect(details).toContainEqual({ label: "Control Side", value: "Left" });
-    expect(details.some((detail) => /authoritative|diagnostic|dealer/i.test(`${detail.label} ${detail.value}`))).toBe(false);
+    expect(details.some((detail) => /authoritative|diagnostic|dealer|Manual Customer|Merchandise Unit|Policy Version/i.test(`${detail.label} ${detail.value}`))).toBe(false);
   });
   it("labels CityLights mini-blind colors as colors on customer output", () => {
     const details = getQuoteDesignDetails(miniBlindDesign());

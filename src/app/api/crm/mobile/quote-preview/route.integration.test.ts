@@ -192,16 +192,21 @@ describe("mobile quote preview current-catalog integration", () => {
       serverDate: quoteV2ServerCatalogDate(),
     }).prepared[0];
     expect(incompleteConstruction.rpcResult).toMatchObject({
-      // The captured projection has no actual whole-panel louver counts. Do not
-      // fabricate them to make an account-held shutter look construction-complete.
+      // Missing manufacturing counts remain explicit ordering warnings. They do
+      // not prevent quoting the existing Norman program and priced frame size.
       validationSnapshot: { productStatus: "documented_limited", issues: expect.arrayContaining([
-        expect.objectContaining({ruleId:"norman.shutter.single_louver.count"}),
+        expect.objectContaining({ruleId:"norman.shutter.single_louver.count",severity:"warning"}),
       ]) },
     });
+    expect(incompleteConstruction).toMatchObject({
+      priceStatus: "authoritative",
+      customerPrice: {ok: true, productId: "norman_shutters", programId: "normandy_painted"},
+    });
+    expect(Number(incompleteConstruction.customerPrice.total)).toBeGreaterThan(0);
     expect(mobileQuotePreviewLineResponse(incompleteConstruction)).toMatchObject({
-      status: "blocked",
+      status: "authoritative",
       requiresManualPricing: false,
-      blockedReason: "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+      blockedReason: null,
     });
   });
 });

@@ -1,15 +1,16 @@
 'use client';
+import { nonNormanQuoteIssues } from "@/lib/quote/non-norman-ordering-only";
 import {sundanceChateauWandReference} from '@/lib/quote/sundance/horizontal-configuration';
 import {sundanceHorizontalRailReference} from '@/lib/quote/sundance/installation-reference';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import { sundanceSolidTapeCodes,sundanceDecorativeTapeCodes,validateSundanceHorizontalConfiguration,sundanceHorizontalOptionEvidence } from '@/lib/quote/sundance/horizontal-configuration';
-export function SundanceHorizontalConfiguration({productId,options,widthInches,heightInches,onUpdateFields}:{productId:string;options:Record<string,unknown>;widthInches:number;heightInches:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
+export function SundanceHorizontalConfiguration({productId,options,widthInches,heightInches,onUpdateFields, pricingOnly = true}:{ pricingOnly?: boolean; productId:string;options:Record<string,unknown>;widthInches:number;heightInches:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
  const p=productId,chateau=p==='sundance_chateau_woods',basic=p==='sundance_basicvue',classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null,...(key==='sundance_blind_ladder'?{sundance_blind_tape_code:null}:{})}});
  const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance blind ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
  const number=(key:string,label:string,step='1')=><label className="block text-sm">{label}<input aria-label={`Sundance blind ${label}`} type="number" min="0" step={step} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}/></label>;
- const issues=validateSundanceHorizontalConfiguration({productId:p,programId:String(options.catalog_program_id??''),widthInches,heightInches,configuration:options as SelectionRecord});
+ const issues=nonNormanQuoteIssues(validateSundanceHorizontalConfiguration({productId:p,programId:String(options.catalog_program_id??''),widthInches,heightInches,configuration:options as SelectionRecord}), pricingOnly);
  const evidence=sundanceHorizontalOptionEvidence(p,options,widthInches),wand=sundanceChateauWandReference(heightInches);
  const tapeCodes=options.sundance_blind_ladder==='Solid 1-inch tape'?sundanceSolidTapeCodes:options.sundance_blind_ladder==='Decorative 1-inch tape'?sundanceDecorativeTapeCodes:[];
  return <>
@@ -30,7 +31,7 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  {select('sundance_blind_ladder','Ladder',['Standard Ladder','Solid 1-inch tape','Decorative 1-inch tape'])}
  {tapeCodes.length>0&&select('sundance_blind_tape_code','Tape code',tapeCodes)}
  {options.sundance_blind_assembly!=='Single'&&select('sundance_blind_connection','Valance connection',['Keystone','Edge-joint'])}
- {options.mount_type==='Inside'&&<>{select('sundance_blind_flush','Flush mount',['No','Yes'])}{number('sundance_blind_depth','Mounting depth in inches','0.0625')}</>}
+ {!pricingOnly&&options.mount_type==='Inside'&&<>{select('sundance_blind_flush','Flush mount',['No','Yes'])}{number('sundance_blind_depth','Mounting depth in inches','0.0625')}</>}
  {number('sundance_blind_custom_return','Custom return inches (optional)','0.0625')}
  <p className="text-sm">Chateau over 84 inches requires separate blinds and joined valance. Standard returns: inside ¾ inch, outside 3 inches; custom returns ½–6 inches. Included wand matches the blind color. Valance width: inside without returns minus ⅛ inch; inside with returns/outside plus ½ inch.</p>
  </>}

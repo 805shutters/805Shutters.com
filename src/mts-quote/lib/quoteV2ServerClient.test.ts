@@ -3,6 +3,7 @@ import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuild
 import { parseSalesQuoteV2StructureBody } from "@/lib/crm/sales-quote-v2-structure";
 import {
   createQuoteV2Draft,
+  createQuoteRevision,
   createQuoteV2Alternative,
   customerSafeQuoteV2Options,
   isQuoteV2FullyAuthoritative,
@@ -283,5 +284,17 @@ describe("V2 alternative client", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ message: "Refresh the source quote." }), { status: 409 }));
     await expect(createQuoteV2Alternative(databaseWithToken(), "source-id", { mode: "blank", expectedRevision: 4, idempotencyKey: "alternative:retry:1" })).rejects.toThrow("Refresh the source quote.");
     fetchMock.mockRestore();
+  });
+});
+
+describe("Finalized quote revision client", () => {
+  it("uses the authenticated revision endpoint and returns the new draft identity", async () => {
+    const result = { quoteId: "new-quote", lineItemId: "new-line", revision: 2, total: 78, quote: { id: "new-quote", status: "draft" } };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify(result), { status: 201 }));
+    try {
+      const input = { action: "manual-price" as const, lineItemId: "line", variant: "B", unitPrice: 0, expectedRevision: 7, requestId: "stable-request" };
+      expect(await createQuoteRevision(databaseWithToken(), "signed-quote", input)).toEqual(result);
+      expect(fetchMock).toHaveBeenCalledWith("/api/crm/sales-quotes/signed-quote/revisions/", expect.objectContaining({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer crm-token" }), body: JSON.stringify(input) }));
+    } finally { fetchMock.mockRestore(); }
   });
 });

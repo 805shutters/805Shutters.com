@@ -1,9 +1,12 @@
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
+import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
+import { createQuoteRevision, saveQuoteLinePrice, mutateQuoteV2Structure, priceQuoteV2 } from "@mts/lib/quoteV2ServerClient";
+import { quoteMerchandisePriceForEditor } from "@mts/lib/quotePricingDisplay";
 import { valanceIllustration, valanceSurchargeIds } from "@/lib/quote/valance-illustrations";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
@@ -177,8 +180,9 @@ export function QuoteContract({
 }: {
   historicalPriceLock?: HistoricalQuotePriceLock | null;
 } = {}) {
-  const { activeQuoteId, setActiveTab } = useQuoteBuilderStore();
+  const { activeQuoteId, setActiveTab, setActiveQuote } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
+  const revisionInFlightRef = useRef(false);
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
   const pendingQuoteDesignWrites = useIsMutating({ mutationKey: quoteDesignMutationKey });
   const designWritesPending = pendingQuoteDesignWrites > 0;
@@ -454,6 +458,24 @@ export function QuoteContract({
     saveAdminControls(updated);
   };
 
+  const createEditableRevision = async (quoteId: string, input: Parameters<typeof createQuoteRevision>[2]) => {
+    if (useQuoteBuilderStore.getState().activeQuoteId !== activeQuoteId) {
+      throw new Error("The active quote changed. Apply this edit to the current quote.");
+    }
+    if (revisionInFlightRef.current) throw new Error("A revised quote is being created. Wait for it before another edit.");
+    revisionInFlightRef.current = true;
+    try {
+      const revision = await createQuoteRevision(supabase, quoteId, input);
+      if (useQuoteBuilderStore.getState().activeQuoteId === activeQuoteId) {
+        setActiveQuote(revision.quoteId);
+        setActiveTab("builder");
+      }
+      return revision;
+    } finally {
+      revisionInFlightRef.current = false;
+    }
+  };
+
   const updateDesignPrice = useMutation({
     mutationKey: quoteDesignMutationKey,
     mutationFn: async ({
@@ -465,29 +487,67 @@ export function QuoteContract({
       designId: string;
       unitPrice: number;
     }) => {
-      if ((quoteId === quote?.id && acceptedProjection.accepted) || groupProjections.get(quoteId)?.accepted) {
-        throw new Error("Accepted contract pricing is immutable.");
-      }
       const quoteDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
       const design = quoteDesigns.find(row => row.id === designId);
       const targetQuote = quoteId === quote?.id ? quote : groupQuotes.find(row => row.id === quoteId);
       if (!design || !targetQuote) throw new Error("Reload the contract before editing this price.");
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !data.session) throw new Error("Sign in again to save the price.");
-      const response = await fetch(`/api/crm/sales-quotes/${quoteId}/line-price/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session.access_token}` },
-        body: JSON.stringify({ lineItemId: design.line_item_id, variant: design.variant, unitPrice,
-          expectedRevision: targetQuote.quote_v2_backend ? targetQuote.quote_v2_revision : null,
-          requestId: crypto.randomUUID() }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Price could not be saved.");
+      const input = { lineItemId: design.line_item_id, variant: design.variant, unitPrice,
+        expectedRevision: targetQuote.quote_v2_backend ? Number(targetQuote.quote_v2_revision) : null,
+        requestId: crypto.randomUUID() };
+      if (isQuotePriceLocked(targetQuote)) {
+        await createEditableRevision(quoteId, { ...input, action: "manual-price" });
+        toast.success("New draft revision created. Original quote preserved.");
+      } else {
+        await saveQuoteLinePrice(supabase, quoteId, input);
+      }
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
       toast.success("Line item price updated");
     },
+  });
+
+  const deleteContractLine = useMutation({
+    mutationKey: quoteDesignMutationKey,
+    mutationFn: async ({ quoteId, lineItemId }: { quoteId: string; lineItemId: string }) => {
+      const target = quoteId === quote?.id ? quote : groupQuotes.find(row => row.id === quoteId);
+      if (!target) throw new Error("Reload the quote before deleting this line.");
+      if (isQuotePriceLocked(target)) {
+        await createEditableRevision(quoteId, {
+          action: "delete", lineItemId, expectedRevision: target.quote_v2_backend ? Number(target.quote_v2_revision) : null,
+          requestId: crypto.randomUUID(),
+        });
+        toast.success("Line deleted in a new draft revision. Original quote preserved.");
+      } else if (target.quote_v2_backend) {
+        const changed = await mutateQuoteV2Structure(supabase, quoteId, Number(target.quote_v2_revision), [{ type: "line.delete", lineItemId }]);
+        const selected = Object.entries(changed.selectedDesigns).find((entry): entry is [string, string] => Boolean(entry[1]));
+        if (changed.lineCount > 0 && selected) await priceQuoteV2(supabase, quoteId, {
+          lineItemId: selected[0], designId: selected[1], expectedRevision: changed.revision,
+        });
+      } else {
+        const { error } = await (supabase as any).from("sales_quote_line_items")
+          .update({ archived_at: new Date().toISOString() }).eq("id", lineItemId).eq("quote_id", quoteId).is("archived_at", null);
+        if (error) throw error;
+        const { data: savedLines, error: linesError } = await supabase.from("sales_quote_line_items")
+          .select("*").eq("quote_id", quoteId).is("archived_at", null);
+        if (linesError) throw linesError;
+        const remaining = (savedLines ?? []) as SalesQuoteLineItem[];
+        const { data: savedDesigns, error: designsError } = remaining.length
+          ? await supabase.from("sales_quote_designs").select("*").in("line_item_id", remaining.map(line => line.id))
+          : { data: [], error: null };
+        if (designsError) throw designsError;
+        const selection = effectiveContractDesigns(remaining, (savedDesigns ?? []) as SalesQuoteDesign[]);
+        const mode = selection.selectionAware ? "authoritative_v2" : "legacy";
+        const subtotal = calculateQuoteDesignSubtotal(remaining, selection.designs, { mode });
+        const fixed = calculateQuoteFixedCharges(remaining, selection.designs, { mode });
+        const total = calculateQuoteTotalBreakdown(subtotal, parseQuoteAdminControls(target), fixed).total;
+        const { error: totalError } = await supabase.from("sales_quotes").update({ total_amount: total }).eq("id", quoteId);
+        if (totalError) throw totalError;
+      }
+    },
+    // Deletion may commit before a separate pricing request fails. Always reload saved rows.
+    onSettled: async () => { await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all }); },
+    onError: error => toast.error(error instanceof Error ? error.message : "Line item could not be deleted."),
   });
 
   // Calculate totals with admin controls
@@ -903,6 +963,12 @@ export function QuoteContract({
                 const itemDimensions = formatDimensionsOrNull(item);
                 return (
                   <div key={item.id} className="space-y-3">
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" aria-label={`Delete ${item.room_name} line item`} disabled={deleteContractLine.isPending}
+                        onClick={() => deleteContractLine.mutate({ quoteId: gq.id, lineItemId: item.id })}>
+                        Delete line
+                      </Button>
+                    </div>
                     {itemDesigns.length === 0 ? <QuoteLineItemCard
                       lineNumber={itemIndex + 1} room={item.room_name} productType={item.product_type}
                       price={formatCurrency(itemTotal)} quantity={item.quantity} dimensions={itemDimensions}
@@ -922,17 +988,16 @@ export function QuoteContract({
                         notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
                         actions={<>
                           <div className="flex flex-wrap items-center justify-end gap-1 text-xs text-muted-foreground">
-                            <span>{accepted.accepted ? "Base unit price" : "Unit price"}</span>
-                            {accepted.accepted ? <span>{formatCurrency(design.unit_price)}</span> : (
+                            <span>Unit price</span>
                               <LineItemPriceInput
                                 key={design.id}
-                                value={design.unit_price}
+                                value={quoteMerchandisePriceForEditor(design)}
+                                label="Custom merchandise price each"
                                 roomName={item.room_name}
                                 onSave={async (unitPrice) => { await updateDesignPrice.mutateAsync({
                                   quoteId: gq.id, designId: design.id, unitPrice,
                                 }); }}
                               />
-                            )}
                           </div>
                         </>}
                       />;

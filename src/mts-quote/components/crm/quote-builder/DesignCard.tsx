@@ -19,7 +19,6 @@ import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, replacementUnitL
 import { NormanSmartdrapeReplacementOptions } from "@/components/crm/NormanSmartdrapeReplacementOptions";
 import { honeycombChargingClearance } from "@/lib/quote-v2/norman-honeycomb-charging-clearance";
 import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
-import { NormanSmartfoldClearanceOptions } from "@/components/crm/NormanSmartfoldClearanceOptions";
 import { NormanRollerPanelOptions } from "@/components/crm/NormanRollerPanelOptions";
 import { NormanRollerCommonOptions } from "@/components/crm/NormanRollerCommonOptions";
 import { NormanRollerHardwareOptions } from "@/components/crm/NormanRollerHardwareOptions";
@@ -80,6 +79,7 @@ import { lotusCustomerDeliveryBlock } from "@/lib/quote/lotus-authority";
 import { LotusDesignOptions, lotusProgramSelectionPatch } from "@/components/crm/LotusDesignOptions";
 import { QuoteLinePriceReadout } from "./QuoteLinePriceReadout";
 import { QuoteConfigurationIssues } from "./QuoteConfigurationIssues";
+import { quotePricingInputs } from "@/lib/quote-v2/quote-input-policy";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import {
   useState,
@@ -6090,12 +6090,11 @@ export function DesignCard({
           />
         )}
 
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && ["roller","roman"].includes(manufacturerOptionsRoute.productId??"") && <NormanSharedAutomateHubOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerChainOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerPoleOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerLightGuardOptions design={currentDesign} onUpdateFields={updateFields} /></>}
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldClearanceOptions design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerChainOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerPoleOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerLightGuardOptions design={currentDesign} onUpdateFields={updateFields} /></>}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldChargingOptions design={currentDesign} quantity={lineItem.quantity} onUpdateFields={updateFields} />}
 
         {/* Design options based on the exact persisted manufacturer route. */}
@@ -6107,9 +6106,9 @@ export function DesignCard({
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
+          manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isNormanValanceOnly(manufacturerOptionsRoute.productId) ? (<NormanValanceOnlyOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />) :
-          manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions design={currentDesign} onUpdateFields={updateFields} />) :
+          manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (
             <NormanRomanAncillaryOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
@@ -7071,7 +7070,7 @@ function ShutterDesignOptions({
       }]
     : [];
   const gridOptions = standardComplete && !useOldSteps
-    ? getStandardShutterGridOptions(workingDesign, authoritativeV2)
+    ? quotePricingInputs(getStandardShutterGridOptions(workingDesign, authoritativeV2))
     : [];
   const slotOptions = standardComplete && !useOldSteps ? [...mobileMaterialOptions, ...definingOptions, ...gridOptions] : [...mobileMaterialOptions, ...definingOptions];
   const optionRows = partitionOptionSlots(slotOptions, [
@@ -12446,7 +12445,7 @@ function ShadesAndBlindsOptions({
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,...ultimateSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),faux_blind_widths_inches:Number(optionsJson.faux_blind_count)===3?[1,2,3].map(n=>Number(optionsJson[`faux_blind_${n}_width_inches`])):undefined,mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null,shade_type:design?.shade_type??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
-  const gridOptions = getGridOptions();
+  let gridOptions = getGridOptions();
   const smartdrapeIssues = productType === "Smart Drapes" && design?.supplier === "Norman" ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateNormanFamilyRules(context),...validateNormanShadeMotorization(context).filter(i=>i.severity==="hard_block" && !i.ruleId.includes("canonical_components") && !i.ruleId.startsWith("smartdrape.accessory."))])({
     productId:"smartdrape",manufacturerId:"Norman",catalogVersion:"",catalogAsOf:"2026-09-19",programId:String(optionsJson.fabric_program_id??"smartdrape_smartdrape_light_filtering"),
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
@@ -12663,6 +12662,8 @@ function ShadesAndBlindsOptions({
     }
     return undefined;
   };
+
+  gridOptions = quotePricingInputs(gridOptions);
 
   const mainGridOptions =
     productType === "Roller Shades"
@@ -12958,16 +12959,12 @@ function ShadesAndBlindsOptions({
       ) : null}
 
       <QuoteConfigurationIssues issues={honeycombMountingIssues} gridOptionQuoting={authoritativeV2} />
-      {productType === "SmartFold Shades" && design?.lift_system === "Continuous Cord Loop" && <p className="text-sm text-slate-700">Chain length runs from the top of the mounting bracket to the bottom of the tension device. Leave 2 inches clear below the device for access and removal.</p>}
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /common valance/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">Two motors: the left shade has its motor on the left; the right shade has its motor on the right. Each shade retains its own width.</p>}
-      {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /day.*night/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">The rear roller motor is on the opposite side from the front Roman motor. The standard arrangement is front right and rear left.</p>}
       {productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" && Boolean(optionsJson.ultimate_common_group) && optionsJson.ultimate_common_group !== "None" && <p className="text-sm text-slate-700">Use the same common-valance group and shared valance choices on each blind line. Number blinds from left to right and enter the gap after each blind; the last gap is zero. Common-valance pricing requires dealer confirmation.</p>}
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {((productType === "SmartFold Shades" && optionsJson.smartfold_keystone_layout === "At Gaps Between Shades") || (productType === "Sheer Shades" && optionsJson.perfectsheer_keystone_layout === "At Gaps Between Shades")) && <p className="text-sm text-slate-700">Save every common-valance shade to establish its gaps. Zero-gap joints follow the shade boundaries. For each positive gap, enter the measured joint position from the left end of the finished valance. If the valance and shade span widths differ, measure the first shade offset; a negative offset means the shade starts left of the valance.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
-      {authoritativeV2 && productType === "Roman Shades" && /Continuous Cord Loop|SmartRelease/.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">Chain length runs from the top of the headrail to the bottom of the tension device. The default is shade height minus 3 inches. Leave at least 2 inches clear below the tension device.{design?.shade_type === "Common Valance" ? " The left shade has its chain on the left; the right shade has its chain on the right." : ""}</p>}
-      {authoritativeV2 && productType === "Roman Shades" && optionsJson.hold_downs === "Magnetic" && <p className="text-sm text-slate-700">Allow 1 7/16 inches beside the shade and 5/16 inch below it for the magnet catch. Magnetic hold-downs are not recommended on metal doors.</p>}
       <QuoteConfigurationIssues issues={romanHardwareIssues} gridOptionQuoting={authoritativeV2} />
       <QuoteConfigurationIssues issues={woodIssues} gridOptionQuoting={authoritativeV2} />
       <QuoteConfigurationIssues issues={smartprivacyIssues} gridOptionQuoting={authoritativeV2} />

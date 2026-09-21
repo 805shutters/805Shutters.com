@@ -1,5 +1,6 @@
+import { calculateCustomerCharges } from "@/lib/quote/customer-charges";
 import { describe, expect, it } from "vitest";
-import { authoritativeDesignPriceIssue, isSavedQuotePricingIncomplete, manualMerchandisePriceForDisplay } from "./quotePricingDisplay";
+import { authoritativeDesignPriceIssue, isSavedQuotePricingIncomplete, manualMerchandisePriceForDisplay, quoteMerchandisePriceForEditor } from "./quotePricingDisplay";
 
 describe("saved quote pricing presentation", () => {
   it("reads normalized saved pricing status without losing exact catalog failures", () => {
@@ -45,3 +46,9 @@ describe("saved quote pricing presentation", () => {
     expect(authoritativeDesignPriceIssue(undefined)).not.toBeNull();
   });
 });
+
+ it("edits merchandise from an inclusive automatic or manual contract price without repeating charges", () => {
+ const customer_charges=calculateCustomerCharges({product:"shade",physicalUnitsPerWindow:1,quantity:2});
+ expect(quoteMerchandisePriceForEditor({unit_price:360,options_json:{customer_charges}})).toBe(321);
+ expect(quoteMerchandisePriceForEditor({unit_price:439,options_json:{customer_charges,manual_price_override:true,manual_customer_charge_policy:"blind-shade-install-ship-v1",manual_merchandise_unit_price:400}})).toBe(400);
+ });

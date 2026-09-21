@@ -498,3 +498,26 @@ export function priceQuoteV2(
     },
   );
 }
+
+export type QuoteRevisionResponse = Readonly<{
+  quoteId: string;
+  lineItemId: string;
+  quote: SalesQuote;
+  revision: number;
+  total: number;
+}>;
+/** Finalized quotes remain intact; the requested edit is applied to a new draft. */
+export function createQuoteRevision(
+  database: QuoteBuilderDatabase,
+  quoteId: string,
+  input: Readonly<{
+    action: 'delete' | 'manual-price';
+    lineItemId: string;
+    variant?: string;
+    unitPrice?: number;
+    expectedRevision: number | null;
+    requestId: string;
+  }>,
+): Promise<QuoteRevisionResponse> {
+  return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/revisions/`, input);
+}
