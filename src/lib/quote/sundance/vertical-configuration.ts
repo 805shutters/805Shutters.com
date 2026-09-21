@@ -1,3 +1,4 @@
+import {sundanceVerticalComponentEvidence} from './vertical-components';
 import type { SelectionContext, ValidationIssue } from '@/lib/quote-v2/core';
 import { sourceProvenance } from '@/lib/quote-v2/source-manifest';
 import { sundanceVerticalSource, lookupSundanceVerticalValanceSource } from './vertical-assortment';
@@ -7,7 +8,9 @@ export const sundanceVerticalBrackets=['Standard','3-inch extension','4-inch ext
 export function validateSundanceVerticalConfiguration(s:Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'>):ValidationIssue[]{
  const c=s.configuration,issues:ValidationIssue[]=[];
  if(c.sundance_vertical_type==='Stock')return issues;
+ const componentEvidence=sundanceVerticalComponentEvidence(c);
  const add=(key:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`sundance.vertical.${key}`,source:sourceProvenance(sundanceVerticalSourceId,{page}),selectedValues:{...c,widthInches:s.widthInches,heightInches:s.heightInches},explanation});
+ componentEvidence.issues.forEach((explanation,i)=>add(`component_${i}`,11,explanation));
  if(!Number.isFinite(s.widthInches)||!Number.isFinite(s.heightInches)||s.widthInches<7||s.widthInches>192||s.heightInches<10||s.heightInches>144)add('size',11,'Custom Vertical Essence requires width 7–192 inches and height 10–144 inches.');
  const material=sundanceVerticalSource.rows.find(row=>row.id===c.fabric_color_id);
  if(!material||material.programId!==s.programId||material.color!==c.fabric_color_name)add('material',3,'Select the exact custom vertical pattern/color and matching price group.');
@@ -36,6 +39,7 @@ export function sundanceVerticalOptionEvidence(options:Record<string,unknown>,wi
  const grid=lookupSundanceVerticalValanceSource(String(options.catalog_sundance_vertical_valance_id??''),width);
  if(grid&&['Square','Rounded'].includes(valance))entries.push({label:valance,amount:grid.sourceRetail,basis:'retail',page:grid.sourcePage});
  if(Number.isFinite(width)&&width>0&&['Crown only','Crown with dust cover'].includes(valance))entries.push({label:`${valance}, ${width/12} linear feet before unverified rounding`,amount:width/12*(valance==='Crown only'?7:10),basis:'net',page:4});
- if(Number.isFinite(width)&&width>0&&options.sundance_vertical_fulfillment==='Track only')entries.push({label:'Track only, 36-inch minimum',amount:Math.max(36,width)*0.95,basis:'net',page:4});
+ const component=sundanceVerticalComponentEvidence(options);
+ if(options.sundance_vertical_fulfillment==='Track only'&&component.sourceAmount!==null)entries.push({label:'Recorded track components, 36-inch minimum each',amount:component.sourceAmount,basis:'net',page:4});
  return {entries,retailSubtotal:entries.filter(e=>e.basis==='retail').reduce((sum,e)=>sum+e.amount,0),netSubtotal:entries.filter(e=>e.basis==='net').reduce((sum,e)=>sum+e.amount,0),customerPriceEligible:false as const};
 }

@@ -1,4 +1,5 @@
 'use client';
+import {sundanceChateauWandReference} from '@/lib/quote/sundance/horizontal-configuration';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import { sundanceSolidTapeCodes,sundanceDecorativeTapeCodes,validateSundanceHorizontalConfiguration,sundanceHorizontalOptionEvidence } from '@/lib/quote/sundance/horizontal-configuration';
@@ -8,7 +9,7 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance blind ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
  const number=(key:string,label:string,step='1')=><label className="block text-sm">{label}<input aria-label={`Sundance blind ${label}`} type="number" min="0" step={step} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}/></label>;
  const issues=validateSundanceHorizontalConfiguration({productId:p,programId:String(options.catalog_program_id??''),widthInches,heightInches,configuration:options as SelectionRecord});
- const evidence=sundanceHorizontalOptionEvidence(p,options,widthInches);
+ const evidence=sundanceHorizontalOptionEvidence(p,options,widthInches),wand=sundanceChateauWandReference(heightInches);
  const tapeCodes=options.sundance_blind_ladder==='Solid 1-inch tape'?sundanceSolidTapeCodes:options.sundance_blind_ladder==='Decorative 1-inch tape'?sundanceDecorativeTapeCodes:[];
  return <>
  {select('mount_type','Mount',['Inside','Outside'])}
@@ -21,6 +22,7 @@ export function SundanceHorizontalConfiguration({productId,options,widthInches,h
  {!basic&&<>{number('sundance_blind_cutout_sides','Cut-out sides')}{Number(options.sundance_blind_cutout_sides)>0&&<label className="block text-sm">Cut-out dimensions and template reference<textarea aria-label="Sundance blind cut-out details" className={classes} value={String(options.sundance_blind_cutout_details??'')} onChange={e=>field('sundance_blind_cutout_details',e.target.value)}/></label>}</>}
  {(p.includes('advantage_ii')||p.includes('premium_ii'))&&<>{select('sundance_blind_extra_valance','Extra valance charge',['None','Extra valance','Valance with dust cover'])}{options.sundance_blind_extra_valance&&options.sundance_blind_extra_valance!=='None'&&number('sundance_blind_extra_valance_inches','Extra valance length in inches','0.0625')}<p className="text-sm">Standard returns: inside ⅝ inch, outside 2¾ inches. Multiple blinds under one valance are priced individually.</p></>}
  {chateau&&<>
+ {wand&&<p className="text-sm">Published matching wood wand: {wand.wandLength} inches for blind heights through {wand.heightThrough} inches (PDF19). Custom wand lengths and raised-stack clearance require confirmation.</p>}
  {select('sundance_blind_valance','Chateau valance',['3-inch Metro','3-inch Sutton','3-inch Harvard','4-inch Rope'])}
  {select('sundance_blind_rounded_corners','Rounded corners',['No','Yes'])}
  {select('sundance_blind_ladder','Ladder',['Standard Ladder','Solid 1-inch tape','Decorative 1-inch tape'])}

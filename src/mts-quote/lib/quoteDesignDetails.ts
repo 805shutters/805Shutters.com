@@ -5,6 +5,7 @@ import { parseRollerAccessories, ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED 
 import { parseRollerHardware, ROLLER_HARDWARE_KEY } from "@/lib/quote/norman-roller-hardware";
 import { parseSmartfoldCharging, SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
 import { parseSmartfoldClearance, SMARTFOLD_CLEARANCE_KEY } from "@/lib/quote/norman-smartfold-clearance";
+import {SUNDANCE_VERTICAL_COMPONENT_KEY,sundanceVerticalComponentDescription} from "@/lib/quote/sundance/vertical-components";
 import {SUNDANCE_EUROPANEL_LAYOUT_KEY,sundanceEuropanelLayoutDescriptions} from "@/lib/quote/sundance/europanel-layout";
 import {SUNDANCE_PRIVACY_PIECES_KEY,sundancePrivacyPieceDescription} from "@/lib/quote/sundance/privacy-pieces";
 import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "@/lib/quote/sundance/walden-twin-records";
@@ -177,6 +178,9 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
     if (pairedRomanChains && key === "chain_location") return;
     if (options.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return;
 
+    if (key === SUNDANCE_VERTICAL_COMPONENT_KEY) {
+      const description=sundanceVerticalComponentDescription(value);if(description)details.push({label:"Vertical component",value:description});return;
+    }
     if (key === SUNDANCE_PRIVACY_PIECES_KEY) {
       const description=sundancePrivacyPieceDescription(value);
       if(description) details.push({label:"Privacy accessory pieces",value:description});

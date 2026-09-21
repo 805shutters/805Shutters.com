@@ -89,3 +89,10 @@ export function sundanceHorizontalOptionEvidence(p:string,c:Record<string,unknow
  if(p==='sundance_aluminum_1')for(const [key,price,label]of[['sundance_blind_pole_short_qty',64,'3–5-foot extension pole'],['sundance_blind_pole_long_qty',76,'5–9-foot extension pole']]as const){const q=Number(c[key]??0);if(Number.isSafeInteger(q)&&q>0)add(`${label} × ${q}`,q*price,'net',10);}
  return{entries,percentages,retailSubtotal:entries.filter(e=>e.basis==='retail').reduce((sum,e)=>sum+e.amount,0),netSubtotal:entries.filter(e=>e.basis==='net').reduce((sum,e)=>sum+e.amount,0),customerPriceEligible:false as const};
 }
+
+/** J PDF19: included Chateau wand references; no stack-height table is published. */
+export function sundanceChateauWandReference(height:number){
+ if(!Number.isFinite(height)||height<12||height>96)return null;
+ const row=[[42,18],[54,24],[66,30],[72,36],[78,42],[84,48],[96,54]].find(([maxHeight])=>height<=maxHeight)!;
+ return{heightThrough:row[0],wandLength:row[1],sourcePage:19};
+}

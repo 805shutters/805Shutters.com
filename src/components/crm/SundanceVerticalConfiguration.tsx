@@ -1,15 +1,17 @@
 'use client';
+import {SundanceVerticalComponents} from './SundanceVerticalComponents';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import { sundanceVerticalDraws, sundanceVerticalBrackets, validateSundanceVerticalConfiguration, sundanceVerticalOptionEvidence } from '@/lib/quote/sundance/vertical-configuration';
 export function SundanceVerticalConfiguration({options,widthInches,heightInches,onUpdateFields}:{options:Record<string,unknown>;widthInches:number;heightInches:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
  const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
- const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null}});
+ const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null,...(key==='sundance_vertical_fulfillment'?{sundance_vertical_component_v1:null}:{})}});
  const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance vertical ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(value=><option key={value}>{value}</option>)}</select></label>;
  const issues=validateSundanceVerticalConfiguration({widthInches,heightInches,programId:String(options.catalog_program_id??''),configuration:options as SelectionRecord});
  const evidence=sundanceVerticalOptionEvidence(options,widthInches);
  return <>
  {select('sundance_vertical_fulfillment','Components',['Complete blind','Track only','Vanes only'])}
+ <SundanceVerticalComponents options={options} widthInches={widthInches} onChange={options=>onUpdateFields({options_json:options})}/>
  {select('sundance_vertical_draw','Draw and control',sundanceVerticalDraws)}
  {select('sundance_vertical_bracket','Bracket',sundanceVerticalBrackets)}
  {select('mount_type','Mount',['Inside','Outside'])}

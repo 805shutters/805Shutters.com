@@ -25,8 +25,8 @@ describe('Vertical Essence configuration',()=>{
   expect(rounded.retailSubtotal).toBe(valance.sourceRetailPrices[0]);expect(rounded.netSubtotal).toBe(0);
   expect(evidence({...config,sundance_vertical_valance:'Crown only'},36).netSubtotal).toBe(21);
   expect(evidence({...config,sundance_vertical_valance:'Crown with dust cover'},36).netSubtotal).toBe(30);
-  expect(evidence({...config,sundance_vertical_fulfillment:'Track only'},20).netSubtotal).toBeCloseTo(34.2);
-  expect(evidence({...config,sundance_vertical_fulfillment:'Track only'},96).netSubtotal).toBeCloseTo(91.2);
+  expect(evidence({...config,sundance_vertical_fulfillment:'Track only'},20).netSubtotal).toBe(0);
+  expect(evidence({...config,sundance_vertical_fulfillment:'Track only'},96).netSubtotal).toBe(0);
   expect(evidence(config,36).customerPriceEligible).toBe(false);
   expect(validate(selection(37,60,{...config,sundance_vertical_valance:'Crown only'})).map(i=>i.ruleId)).toContain('sundance.vertical.crown_rounding');
  });
