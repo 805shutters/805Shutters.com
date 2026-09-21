@@ -74,3 +74,10 @@ it('clears stale power assignment when control changes and keeps derived IDs/net
  const details=getQuoteDesignDetails({options_json:{[SUNDANCE_ORDER_POWER_KEY]:l.selection.configuration[SUNDANCE_ORDER_POWER_KEY]}} as unknown as SalesQuoteDesign);
  expect(details).toEqual([]);
 });
+
+it('does not derive an undercounted panel when another connected motor is invalid',()=>{
+ const a=line('a',18),b=line('b',1,{sundance_shade_accessory_simphony24_qty:1});
+ expect(deriveSundanceOrderPower([a,b]).map(i=>i.ruleId)).toContain('sundance.order_power.incomplete_group');expect(panels(a)).toEqual([]);expect(panels(b)).toEqual([]);
+ b.selection.configuration={...b.selection.configuration,sundance_shade_accessory_simphony24_qty:0};expect(deriveSundanceOrderPower([a,b])[0].ruleId).toBe('sundance.order_power.capacity');
+ a.selection.quantity=17;expect(deriveSundanceOrderPower([a,b])).toEqual([]);expect(panels(a)[0]).toMatchObject({totalMotors:18,sourceNetCharge:800});
+});

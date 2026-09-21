@@ -34,9 +34,12 @@ export function deriveSundanceOrderPower(lines:readonly SundanceOrderLine[]):Val
    connections.push({line,componentId:candidate.componentId,quantity:line.selection.quantity,panelId:raw});
   }
  }
+ const invalidPanelIds=new Set<string>();
+ for(const line of lines.filter(l=>blocked.has(l.lineId))){const c=line.selection.configuration;for(const input of [c,...(readSundanceAssembly(c[SUNDANCE_ASSEMBLY_KEY])?.components.map(x=>x.configuration)??[])])if(typeof input[SUNDANCE_PANEL_ID_KEY]==='string')invalidPanelIds.add(input[SUNDANCE_PANEL_ID_KEY] as string);}
  const groups=new Map<string,Connection[]>();for(const connection of connections)groups.set(connection.panelId,[...(groups.get(connection.panelId)??[]),connection]);
  const records=new Map<string,SelectionRecord[]>();
  for(const[panelId,members]of groups){
+  if(invalidPanelIds.has(panelId)){for(const line of new Map(members.map(m=>[m.line.lineId,m.line])).values())add(line,'incomplete_group',`${panelId} has another invalid motor connection. Resolve every connection before deriving capacity or a charge.`);continue;}
   const count=members.reduce((sum,c)=>sum+c.quantity,0);
   if(count>18){for(const line of new Map(members.map(m=>[m.line.lineId,m.line])).values())add(line,'capacity',`${panelId} connects ${count} motors; the source distribution-box maximum is 18.`);continue;}
   if(members.some(m=>blocked.has(m.line.lineId)))continue;
