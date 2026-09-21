@@ -35,6 +35,7 @@ function branchExceptions(s:SelectionContext,quoteOnly=false):string[]{
  if(c.smartfold_valance_width!=null&&c.smartfold_valance_width!==""||!["","none"].includes(norm(c.smartfold_valance_returns))||active(c.keystone)||Number(c.smartfold_keystone_count)>0)reasons.push("clear stale custom-valance/return/keystone options or use their separate verified branch");
  return reasons;
 }
+export const smartfoldQuotePricingExceptions=(s:SelectionContext):string[]=>branchExceptions(s,true);
 export const smartfoldBranchExceptions=(s:SelectionContext):string[]=>branchExceptions(s);
 /** Quote-only eligibility excludes installation clearance, never unknown option prices.
  * The original eligibility and order validators remain unchanged for saved catalogs.

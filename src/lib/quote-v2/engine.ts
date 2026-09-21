@@ -1,4 +1,4 @@
-import { smartfoldHasDocumentedQuotePricingBranch } from './norman-smartfold-eligibility';
+import { smartfoldHasDocumentedQuotePricingBranch, smartfoldQuotePricingExceptions } from './norman-smartfold-eligibility';
 import { onyxPolyH3, withOnyxPolyH3Surcharges, ONYX_POLY_H3_SOURCE, ONYX_POLY_H3_SURCHARGE_ID } from './onyx-poly-h3';
 import { rollerLightGuard } from "./norman-roller-light-guard";
 import { rollerPoles } from "./norman-roller-poles";
@@ -1799,8 +1799,16 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
       ? {...issue, explanation: issue.explanation.replace('Automatic pricing remains held for this configuration:', 'Before ordering:')}
       : issue) : validationIssues;
   const orderStatus = productRuleStatusForSelection(selection);
-  const productStatus = quoteMode && (orderStatus === 'restriction_source_incomplete' || smartfoldPriceBranch)
-    ? 'documented_limited' : orderStatus;
+  const productStatus = quoteMode && selection.productId === 'smartfold'
+    ? smartfoldPriceBranch ? 'documented_limited' : 'manual_quote_required'
+    : quoteMode && orderStatus === 'restriction_source_incomplete' ? 'documented_limited' : orderStatus;
+  if (quoteMode && selection.productId === 'smartfold' && !smartfoldPriceBranch) {
+    const reasons = smartfoldQuotePricingExceptions(selection);
+    issues.push({severity: 'hard_block', ruleId: 'norman.smartfold.quote_pricing_branch',
+      source: sourceProvenance('norman-smartfold-guide-2026-09-10'), selectedValues: {...selection.configuration},
+      explanation: reasons.length ? `Unpriced SmartFold configuration: ${reasons.join('; ')}.`
+        : 'The selected SmartFold program and effective catalog do not identify a documented pricing branch.'});
+  }
   const pricingForbidden =
     productStatus === "manual_quote_required" || productStatus === "unavailable";
   if (hasHardBlock(issues) || pricingForbidden) {
