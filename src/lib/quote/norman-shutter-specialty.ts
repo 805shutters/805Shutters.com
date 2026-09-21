@@ -1,3 +1,4 @@
+import {parseNormanSpecialtyGeometry,type NormanSpecialtyGeometryRecord} from './norman-shutter-specialty-geometry';
 import {normanShutterFrames} from './norman-shutter-assortment';
 /** Exact shape identities in WLP128–136, BW126–134 and ND136–144. */
 export const NORMAN_SPECIALTY_SHAPES = [
@@ -13,7 +14,7 @@ export type NormanSpecialtyRecord = {
  version:1; shapeCode:string; archStyle:''|'standard'|'continuous';
  frameType:string; frameSides:''|'2'|'3'|'4'|'all'; frameIncludeInRail:boolean|null;
  hinges:boolean|null; magnets:boolean|null; hangStripBehind:boolean|null;
- sunburstHubInches:number|null; stileWidthInches:number|null;
+ sunburstHubInches:number|null; stileWidthInches:number|null; geometry?:NormanSpecialtyGeometryRecord;
 };
 export const emptyNormanSpecialtyRecord=():NormanSpecialtyRecord=>({version:1,shapeCode:'',archStyle:'',frameType:'',frameSides:'',frameIncludeInRail:null,hinges:null,magnets:null,hangStripBehind:null,sunburstHubInches:null,stileWidthInches:null});
 export function parseNormanSpecialtyRecord(value:unknown):NormanSpecialtyRecord|null{
@@ -22,6 +23,7 @@ export function parseNormanSpecialtyRecord(value:unknown):NormanSpecialtyRecord|
  if(r.version!==1||typeof r.shapeCode!=='string'||typeof r.frameType!=='string'||!['','standard','continuous'].includes(String(r.archStyle))||!['','2','3','4','all'].includes(String(r.frameSides)))return null;
  if(['frameIncludeInRail','hinges','magnets','hangStripBehind'].some(k=>![null,true,false].includes(r[k] as never)))return null;
  if(['sunburstHubInches','stileWidthInches'].some(k=>r[k]!==null&&(typeof r[k]!=='number'||!Number.isFinite(r[k]))))return null;
+ if(r.geometry!==undefined&&!parseNormanSpecialtyGeometry(r.geometry))return null;
  return r as NormanSpecialtyRecord;
 }
 export function normanSpecialtySupportedProgram(program:string){return ['woodlore_plus','woodlore_aquashield','brightwood','normandy_painted','normandy_stained'].includes(program);}
@@ -33,4 +35,4 @@ export function normanSpecialtyFrames(program:string,inRail:boolean|null){
  const labels=['3" Crown Z Frame','2" Bel Air Z Frame','2" Bullnose Z Frame','1 1/2" Bullnose Z Frame',program==='woodlore_aquashield'?'1 1/2" Deep Bullnose Z Frame *':'1 1/4" Beaded Z Frame'];
  return frames.filter(f=>labels.includes(f.label));
 }
-export function normanSpecialtySourcePages(program:string){return program.startsWith('woodlore_')?[124,125,126,127,128,129,130,131,132,133,134,135,136]:program==='brightwood'?[123,124,125,126,127,128,129,130,131,132,133,134]:[133,134,135,136,137,138,139,140,141,142,143,144];}
+export function normanSpecialtySourcePages(program:string){return program.startsWith('woodlore_')?[124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139]:program==='brightwood'?[123,124,125,126,127,128,129,130,131,132,133,134,135,136,137]:[133,134,135,136,137,138,139,140,141,142,143,144,145,146,147];}

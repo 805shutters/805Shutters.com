@@ -1,3 +1,4 @@
+import {normanSpecialtyGeometryProblems} from './norman-shutter-specialty-geometry';
 import {NORMAN_CONTINUOUS_ARCH_SHAPES,NORMAN_FRAME_IN_RAIL_SHAPES,normanSpecialtyFrames,normanSpecialtyIsSunburst,normanSpecialtyShapes,normanSpecialtySourcePages,normanSpecialtySupportedProgram} from '../quote/norman-shutter-specialty';
 import {normanShutterFrame,normanShutterProgram} from '../quote/norman-shutter-assortment';
 import type {NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
@@ -33,6 +34,7 @@ export function validateNormanShutterSpecialty(s:SelectionContext,record:NormanS
   if(panel.widthInches==null||panel.widthInches<=0||panel.heightInches===null||panel.heightInches<=0)add('net_dimensions',`Record specialty panel ${index+1} actual net width and height; opening dimensions do not establish these values.`);
   if(['YS15','YS20'].includes(r.shapeCode)&&[panel.widthInches,panel.heightInches].some(n=>n==null||n<15.5||n>84))add('round_net_range',`Circle/Oval Sunburst panel ${index+1} net width and height must each be 15½–84 inches.`);
  });
+ for(const problem of normanSpecialtyGeometryProblems(r,s.configuration.mount_type))add(problem.id,problem.explanation);
  // This bounded assortment record deliberately does not certify templates, leg/curve geometry or rates.
  add('geometry','Specialty identity and frame choices are saved. Exact net/leg/curve dimensions, template acceptance, final hardware and account pricing still require verification.');
  return issues;

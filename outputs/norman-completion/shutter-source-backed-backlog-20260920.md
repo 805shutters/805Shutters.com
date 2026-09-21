@@ -105,3 +105,22 @@ The additive saved record now contains exact shape, Standard/Continuous Arch, fr
 Regular rectangular finished-height/divider thresholds no longer pretend to certify specialty geometry. The exact specialty geometry/template/account holds remain for every shape, including otherwise-valid records. Remaining specialty work is net leg/middle/curve and T-post geometry, template acceptance, source-specific frame insert/solid construction, special hardware/tilt compatibility and order charges. Approximate arch charts and the8⅛-inch hinge-boundary contradiction remain unresolved as previously listed. This is an assortment/frame increment, not comprehensive specialty order certification.
 
 Validation:95 targeted tests across specialty, panels, assortment, Bi-fold, bypass, dividers and native DesignCard pass. Tests enumerate all46 identities, all300 permitted program/Frame-In-Rail-shape/frame combinations, exact hub and circle/oval boundaries, continuous-arch/Aqua exclusions, malformed data, old history and actual server-adapter persistence. Local changed-file typecheck is clean; full release and production save/reopen remain parent-owned/pending.
+
+## Specialty order-outline and template increment
+
+Reread WLP128/136–139, BW126/134–137 and ND136/144–147. Added a separate optional version-1 order-outline record under each specialty, retaining older identity records unchanged. Order width/height are explicit and independent from opening and finished-panel measurements. Perfect/imperfect classification and existing-molding use are declared; missing geometry is not silently treated as a perfect arch.
+
+Exact rules now cover YS57/58/68/69 strict middle-height inequality for perfect arches; YS05/10/51 inclusive left/right-leg minimum; YS02/06 imperfect-quarter middle-height requirement even at equal width/height; YS56 maximum six-inch curve above the leg; YS65/66/67 at least two vertical T-posts with no fabricated outer positions, required middle location for three, and all requested positions for more than three; and YS62 explicit centered versus measured WA. The source says two-post outer positions are unnecessary, not forbidden: saved optional pairs remain valid and subject to factory outline determination.
+
+Inside mount, imperfect arches, existing molding and oval shapes require a recorded template submission reference. The reference is only an evidence identifier; it does not establish template receipt or acceptance. The UI states that templates older than one year must be resent. No receipt date, age or factory approval is invented. Every specialty retains the final geometry/account hold. Existing shape records, old date validation, quote IDs and price snapshots are unchanged.
+
+Validation: 27 focused tests passed, including all explicit shape branches and exact boundaries, malformed/historical records, persisted nested geometry, current server validation and mandatory final holds. Local changed-file typecheck is clean; this clone still lacks unrelated PGlite/PDF packages, so parent owns full release checks. Production outline/template save/reopen proof remains pending deployment.
+
+### Remaining finite specialty implementation tasks
+
+1. Frame insert/solid construction and source-specific tilt/hinge/louver hardware compatibility; current frame identities do not fully represent manufacturing style.
+2. Lower horizontal-louver divider decision for YS10/51/68/69 using the correct leg height, with corresponding actual per-section louver/rail layout.
+3. Remaining per-shape net/leg/middle geometry and exact multi-panel/T-post membership beyond the explicit formulas above, including French-door cutout linkage.
+4. Document actual submitted-template identity and factory-returned acceptance/approved outline without using a user-entered reference as approval.
+
+The eight-branch ledger above otherwise remains open: Bi-fold180 hardware/clearance/pricing-size routing, other Bi-fold, complete bypass groups/hardware/stiles, final divider/motor layout, Double Hung/wide Woodlore, regular narrow/mixed panels, and the remaining specialty construction/geometry tasks. External rate/account evidence, approximate-chart factory verification and the conflicting8⅛-inch hinge boundary remain distinct exceptions. No whole-family completion claim follows from these bounded implementations.
