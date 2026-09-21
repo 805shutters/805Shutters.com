@@ -1,3 +1,4 @@
+import { parseRollerChain, ROLLER_CHAIN_KEY } from "@/lib/quote/norman-roller-chain";
 import { parseRollerAccessories, ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED } from "@/lib/quote/norman-roller-accessories";
 import { parseRollerHardware, ROLLER_HARDWARE_KEY } from "@/lib/quote/norman-roller-hardware";
 import { parseSmartfoldCharging, SMARTFOLD_CHARGING_KEY } from "@/lib/quote/norman-smartfold-charging";
@@ -40,7 +41,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
-  ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED,
+  ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED, ROLLER_CHAIN_KEY, "roller_chain_source_v1",
   "norman_valance_only_v1",
   "norman_valance_only_source_v1",
   "norman_roller_valance_choice_v1",
@@ -117,6 +118,8 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const rollerChain=parseRollerChain(options[ROLLER_CHAIN_KEY]);
+  if(rollerChain){details.push({label:"Operating Chain",value:rollerChain.material==="Plastic"?`${rollerChain.color} Plastic`:rollerChain.material});details.push({label:"Chain Length",value:rollerChain.lengthMode==="Custom"?`${rollerChain.customLength} inches`:"Default for each shade height"});}
   const rollerAccessories = parseRollerAccessories(options[ROLLER_ACCESSORY_KEY]);
   if(rollerAccessories){
     details.push({label:"Hold-Downs",value:rollerAccessories.holdDown});

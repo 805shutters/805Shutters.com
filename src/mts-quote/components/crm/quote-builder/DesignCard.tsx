@@ -1,3 +1,4 @@
+import { NormanRollerChainOptions } from "@/components/crm/NormanRollerChainOptions";
 import { NormanRollerAccessoriesOptions } from "@/components/crm/NormanRollerAccessoriesOptions";
 import { MAGNET_CLEARANCE_FIELDS, magneticHoldDownActive } from "@/lib/quote-v2/norman-magnet-clearance";
 import { NormanRollerValanceOptions } from "@/components/crm/NormanRollerValanceOptions";
@@ -6077,7 +6078,7 @@ export function DesignCard({
         {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions design={currentDesign} onUpdateFields={updateFields} /></>}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerChainOptions design={currentDesign} onUpdateFields={updateFields} /></>}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldClearanceOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldChargingOptions design={currentDesign} quantity={lineItem.quantity} onUpdateFields={updateFields} />}
 

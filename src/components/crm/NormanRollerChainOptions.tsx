@@ -1,0 +1,19 @@
+'use client';
+import {useEffect,useState} from 'react';
+import type {SalesQuoteDesign} from '@mts/types/quote';
+import {ROLLER_CHAIN_KEY as KEY,ROLLER_CHAIN_COLORS,emptyRollerChain,parseRollerChain,newRollerChainDraft,syncRollerChainDraft,rollerChainDirty,type RollerChain} from '@/lib/quote/norman-roller-chain';
+export function NormanRollerChainOptions({design,onUpdateFields}:{design:SalesQuoteDesign|undefined;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
+ const options=(design?.options_json??{}) as Record<string,unknown>,incoming=parseRollerChain(options[KEY])??emptyRollerChain(),serialized=JSON.stringify(incoming),key=design?.id??'';
+ const [state,setState]=useState(()=>newRollerChainDraft(key,incoming));useEffect(()=>setState(s=>syncRollerChainDraft(s,key,JSON.parse(serialized) as RollerChain)),[key,serialized]);
+ const r=state.record,edit=(p:Partial<RollerChain>)=>setState(s=>({...s,record:{...s.record,...p}})),cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm',active=/cord.*loop|smart\s*release/i.test(String(design?.lift_system??options.lift_system??''));
+ if(!active)return options[KEY]?<button type="button" onClick={()=>onUpdateFields({options_json:{...options,[KEY]:null}})}>Clear Roller chain selection</button>:null;
+ return <section className="space-y-3 rounded-lg border border-slate-200 p-3"><h3 className="font-semibold">Roller operating chain</h3>
+ <label className="block text-sm">Chain material<select aria-label="Roller chain material" className={cls} value={r.material} onChange={e=>edit({material:e.target.value as RollerChain['material']})}>{['Plastic','Stainless Steel'].map(v=><option key={v}>{v}</option>)}</select></label>
+ {r.material==='Plastic'&&<label className="block text-sm">Chain color<select aria-label="Roller chain color" className={cls} value={r.color} onChange={e=>edit({color:e.target.value})}>{ROLLER_CHAIN_COLORS.map(v=><option key={v}>{v}</option>)}</select></label>}
+ <label className="block text-sm">Chain length<select aria-label="Roller chain length mode" className={cls} value={r.lengthMode} onChange={e=>edit({lengthMode:e.target.value as RollerChain['lengthMode'],customLength:null})}>{['Default','Custom'].map(v=><option key={v}>{v}</option>)}</select></label>
+ {r.lengthMode==='Custom'&&<><label className="block text-sm">Custom chain length (inches)<input aria-label="Roller custom chain length" type="number" step="any" className={cls} value={r.customLength??''} onChange={e=>edit({customLength:e.target.value===''?null:Number(e.target.value)})}/></label><label className="block text-sm"><input type="checkbox" checked={r.unobstructedBelow} onChange={e=>edit({unobstructedBelow:e.target.checked})}/>No sill or obstruction below the tension device</label></>}
+ <label className="block text-sm">Clearance below tension device (at least 2 inches)<input aria-label="Roller tension device clearance" type="number" step="any" className={cls} value={r.deviceClearance??''} onChange={e=>edit({deviceClearance:e.target.value===''?null:Number(e.target.value)})}/></label>
+ <label className="block text-sm"><input type="checkbox" checked={r.safetyDeviceConfirmed} onChange={e=>edit({safetyDeviceConfirmed:e.target.checked})}/>Safety tension device will maintain chain tension</label>
+ <p className="text-xs">Length runs from bracket top to tension-device bottom. Default length is calculated separately from each shade height, including common valances. Stainless steel has no extra charge.</p>
+ <button className={cls} type="button" disabled={!rollerChainDirty(state)} onClick={()=>{setState(s=>({...s,submitted:s.record}));onUpdateFields({options_json:{...options,[KEY]:state.record}});}}>Save Roller chain</button><p role="status">{rollerChainDirty(state)?'Unsaved Roller chain':state.submitted?'Roller chain submitted':'No unsaved Roller chain'}</p></section>;
+}

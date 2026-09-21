@@ -15,3 +15,11 @@ Typed atomic record `roller_accessories_v1`; server-derived `roller_accessory_so
 Tests: 14 colors; three exact positive/negative clearance boundaries; malformed/legacy records; LightGuard360 exclusion; Dual/Coupled count; Cassette no duplicate charge; $28 × quote quantity; real saved backend positive/negative and forged-record reconstruction; save/reopen; atomic stale acknowledgement; historical r7. 6418 full-suite tests passed with 28 skipped before the final additional saved-backend regression (22 accessory tests now pass). Typecheck and production build passed.
 
 Production proof pending parent deployment. Chain, order poles and Basic/Premium Light Guard remain the next finite guide-backed increments; no claim that all accessories are finished.
+
+## Operating chain increment
+
+Source: Roller Guide p44 exact table; September Retail PDF p20 lists stainless steel chain at no extra charge. Current r9; r8 is preserved.
+
+SmartRelease default at heights 12–18: Y−2; (18,30]:16; (30,42]:24; (42,54]:36; (54,66]:48; (66,90]:60; (90,144]:84 inches. CCL default Y≤25.5:Y−2, otherwise 2Y/3+6. SmartRelease custom minimum10; CCL custom strictly greater than default. Custom above Y−2 requires no lower obstruction, and cannot exceed280. Clearance below tension device at least2; safety tension-device confirmation required. Exact chain material and eight Plastic colors are saved atomically. SmartRelease0–1.18inch tolerance and each-member chain basis are persisted. No guessed rounding.
+
+Validation: 16 SmartRelease boundaries; CCL25.5 boundary; strict custom minima and280maximum; obstruction and2inch safety boundaries; stale/inapplicable records; atomic edits/reopen; historicalr8; real saved backend positive48inch chain and negative1.999inch clearance. 6441 full-suite tests passed/28skipped before one final added backend regression (22chain tests now pass). Build/typecheck tracked separately in parent handoff.

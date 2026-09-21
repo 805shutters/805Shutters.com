@@ -1,3 +1,4 @@
+import { rollerChain } from "./norman-roller-chain";
 import { rollerAccessories } from "./norman-roller-accessories";
 import { ROLLER_ACCESSORY_DERIVED } from "../quote/norman-roller-accessories";
 import { deriveRollerSeparateValances } from "./norman-roller-valance-only";
@@ -77,6 +78,8 @@ export function deriveNormanOrderRecords(lines: readonly SmartfoldOrderLine[]): 
     if(smartdrape)selection.configuration={...selection.configuration,[NORMAN_ASSEMBLY_KEY]:smartdrape};
     const roller = rollerHardware(selection);
     const rollerExtras=rollerAccessories(selection);
+    const rollerChainSource=rollerChain(selection);
+    if(rollerChainSource)selection.configuration={...selection.configuration,roller_chain_source_v1:rollerChainSource.record};
     if(rollerExtras)selection.configuration={...selection.configuration,[ROLLER_ACCESSORY_DERIVED]:rollerExtras.record};
     if (roller) selection.configuration = {...selection.configuration, [NORMAN_ASSEMBLY_KEY]: roller.record};
     const smartfold = smartfoldHardware(selection);
