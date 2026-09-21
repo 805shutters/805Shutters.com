@@ -28,3 +28,6 @@ export function syncRollerValanceDraft(s:RollerValanceDraft,key:string,incoming:
  if(s.submitted&&equal(s.submitted,incoming))return {...s,base:incoming,submitted:null};
  return s.submitted||!equal(s.base,s.record)?s:newRollerValanceDraft(key,incoming);
 }
+
+/** Separate valances may associate with Roller shade lines despite their distinct natural-unit product type. */
+export const isRollerValanceAssociationType = (currentType:string,candidateType:string) => currentType === "Valances" && candidateType === "Roller Shades";

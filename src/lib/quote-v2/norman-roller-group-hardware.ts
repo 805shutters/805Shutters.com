@@ -1,3 +1,4 @@
+import { ROLLER_HARDWARE_KEY, parseRollerHardware } from '../quote/norman-roller-hardware';
 import type { SelectionContext, SelectionRecord, ValidationIssue } from './core';
 import { resolveRollerMatrixProfile, rollerComponentOrderWidthsForPricing, validateRollerMatrix } from './roller-matrix';
 import { sourceProvenance } from './source-manifest';
@@ -41,7 +42,7 @@ export function deriveRollerGroupHardware(
     source: sourceProvenance('norman-roller-guide-2026-09-16', { page }),
     selectedValues: { lineId: row.lineId, groupType: kind }, explanation,
   });
-  const diameters = members.map(row => rollerTubeDiameter(row.selection.configuration.roller_tube ?? row.selection.configuration.tube_class));
+  const diameters = members.map(row => parseRollerHardware(row.selection.configuration[ROLLER_HARDWARE_KEY])?.physicalTubeInches ?? rollerTubeDiameter(row.selection.configuration.roller_tube ?? row.selection.configuration.tube_class));
   const known = diameters.every(value => value !== null);
   const requiredTube = known && diameters.length ? Math.max(...diameters as number[]) : null;
   const minima = members.map(row => rollerMinimumFasciaSize(row.selection));
@@ -54,8 +55,10 @@ export function deriveRollerGroupHardware(
   if (crossMember) minimumFascia = 4.5;
   const records: SelectionRecord[] = members.map((row, index) => {
     const s = row.selection, lift = liftKind(s), selectedTube = diameters[index];
-    if (selectedTube === null) add(row, 'tube_identity', 37, 'Choose the exact source tube diameter for every associated shade; an unqualified size label cannot establish the largest tube.');
-    if (requiredTube !== null && selectedTube !== requiredTube) add(row, 'tube_matching', 37, `The largest selected tube in this group is ${requiredTube} inches. Select that exact tube on every shade after checking its fabric-specific limits.`);
+    const appendixDiameter = rollerTubeDiameter(s.configuration.roller_tube ?? s.configuration.tube_class);
+    if (appendixDiameter !== null && selectedTube !== null && appendixDiameter !== selectedTube) add(row, 'tube_profile_conflict', 37, 'The confirmed physical tube diameter disagrees with the diameter-specific fabric appendix selection. Reconcile both selections before pricing.');
+    if (selectedTube === null) add(row, 'tube_identity', 37, 'Confirm the physical tube diameter in Roller installation hardware for every associated shade. All Tubes is a fabric appendix classification and cannot establish the largest physical tube.');
+    if (requiredTube !== null && selectedTube !== requiredTube) add(row, 'tube_matching', 37, `The largest selected tube in this group is ${requiredTube} inches. Confirm that physical diameter on every shade after checking its fabric-specific limits; retain its applicable fabric appendix tube classification.`);
     if (requiredTube === 2 && lift === 'cordless' && memberWidths(s).some(width => width <= 20)) add(row, 'cordless_upgrade', 37, 'PrecisionLift Cordless shades 20 inches or narrower cannot upgrade to the 2-inch group tube.');
     let candidate = requiredTube === null ? null : { ...s, configuration: { ...s.configuration, roller_tube: tubeLabel(requiredTube), tube_class: tubeLabel(requiredTube) } };
     let resolved = candidate ? resolveRollerMatrixProfile(candidate) : null;
@@ -75,6 +78,8 @@ export function deriveRollerGroupHardware(
     return {
       lineId: row.lineId, physicalWidths: memberWidths(s), height: s.heightInches, liftSystem: lift,
       selectedTubeInches: selectedTube, requiredTubeInches: requiredTube,
+      selectedTubeBasis: parseRollerHardware(s.configuration[ROLLER_HARDWARE_KEY])?.physicalTubeInches != null ? 'confirmed_hardware_record' : 'explicit_appendix_diameter',
+      selectedAppendixTube: String(s.configuration.roller_tube ?? s.configuration.tube_class ?? ''),
       tubeStatus: candidate && matrixIssues.length === 0 ? 'source_dimension_profile_compatible' : 'not_verified',
       tubeSourceProfile: resolved?.ok ? resolved.profile.id : null,
       tubeSourceScope: resolved?.ok ? resolved.definition.tube || 'not_split_by_tube' : null,

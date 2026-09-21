@@ -1,11 +1,12 @@
 export const ROLLER_HARDWARE_KEY="roller_hardware_v1";
 export const ROLLER_INSTALLATIONS=["Top Mount","Back / Wall Mount","Side Mount"] as const;
-export type RollerHardwareChoice={version:1;installation:""|typeof ROLLER_INSTALLATIONS[number];shimLayers:number;raceway:boolean};
+export type RollerHardwareChoice={version:1;installation:""|typeof ROLLER_INSTALLATIONS[number];shimLayers:number;raceway:boolean;physicalTubeInches?:1.125|1.75|2|null};
 export const emptyRollerHardware=():RollerHardwareChoice=>({version:1,installation:"",shimLayers:0,raceway:false});
 export function parseRollerHardware(raw:unknown):RollerHardwareChoice|null {
  if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
  const r=raw as Record<string,unknown>;
- return r.version===1&&["",...ROLLER_INSTALLATIONS].includes(String(r.installation))&&Number.isSafeInteger(r.shimLayers)&&Number(r.shimLayers)>=0&&Number(r.shimLayers)<=3&&typeof r.raceway==="boolean"?{version:1,installation:r.installation as RollerHardwareChoice["installation"],shimLayers:r.shimLayers as number,raceway:r.raceway}:null;
+ if(r.physicalTubeInches!==undefined&&r.physicalTubeInches!==null&&![1.125,1.75,2].includes(r.physicalTubeInches as number))return null;
+ return r.version===1&&["",...ROLLER_INSTALLATIONS].includes(String(r.installation))&&Number.isSafeInteger(r.shimLayers)&&Number(r.shimLayers)>=0&&Number(r.shimLayers)<=3&&typeof r.raceway==="boolean"?{version:1,installation:r.installation as RollerHardwareChoice["installation"],shimLayers:r.shimLayers as number,raceway:r.raceway,...(r.physicalTubeInches===undefined?{}:{physicalTubeInches:r.physicalTubeInches as RollerHardwareChoice["physicalTubeInches"]})}:null;
 }
 export type RollerHardwareDraft={key:string;base:RollerHardwareChoice;record:RollerHardwareChoice;submitted:RollerHardwareChoice|null};
 const equal=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);

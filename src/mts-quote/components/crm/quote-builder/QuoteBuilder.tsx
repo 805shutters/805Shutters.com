@@ -1,3 +1,4 @@
+import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valance-only";
 import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
@@ -2557,7 +2558,7 @@ export function QuoteBuilder({
                   sideBySideLineOptions={lineItems.flatMap((candidate) => {
                     if (
                       candidate.id === item.id ||
-                      (item.product_type !== "Palladian Shelf" && candidate.product_type !== item.product_type)
+                      (item.product_type !== "Palladian Shelf" && candidate.product_type !== item.product_type && !isRollerValanceAssociationType(item.product_type, candidate.product_type))
                     ) {
                       return [];
                     }

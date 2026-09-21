@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {ROLLER_VALANCE_ONLY as ONLY,ROLLER_SEPARATE_VALANCE as SEPARATE,ROLLER_VALANCE_KEY as KEY,ROLLER_VALANCE_DERIVED as DERIVED,ROLLER_VALANCE_STYLES,ROLLER_FASCIA_COLORS,ROLLER_CAP_COLORS,rollerValanceProducts,emptyRollerValance,parseRollerValance,newRollerValanceDraft,syncRollerValanceDraft,rollerValanceDirty,type RollerValanceRecord} from '../quote/norman-roller-valance-only';
+import {ROLLER_VALANCE_ONLY as ONLY,ROLLER_SEPARATE_VALANCE as SEPARATE,ROLLER_VALANCE_KEY as KEY,ROLLER_VALANCE_DERIVED as DERIVED,ROLLER_VALANCE_STYLES,ROLLER_FASCIA_COLORS,ROLLER_CAP_COLORS,isRollerValanceAssociationType,rollerValanceProducts,emptyRollerValance,parseRollerValance,newRollerValanceDraft,syncRollerValanceDraft,rollerValanceDirty,type RollerValanceRecord} from '../quote/norman-roller-valance-only';
 import {validateRollerValance,deriveRollerSeparateValances,hasRollerValanceUnits} from './norman-roller-valance-only';
 import {quoteV2CatalogVersionFor} from './catalog';
 import {normanRollerFabricColors} from '../quote/norman-roller-fabrics';
@@ -84,4 +84,11 @@ describe('Roller Valance Only and Separate Valance source destinations',()=>{
   const output=v2CustomerConfigurationOptions(customerConfigurationFromSelection(row.selection)).join(' ');expect(output).toContain('Valance end-to-end width in inches: 190');expect(output).not.toMatch(/source_v1|associatedLineIds/);
   const html=renderToStaticMarkup(createElement(NormanRollerValanceOptions,{design,productId:id,lineOptions:[],onUpdateFields:()=>{}}));expect(html).toContain('Save Roller valance');expect(html).not.toContain('Add Size');
  });
+});
+
+it('lists exact Roller fabric identity for a separate valance without accepting conflicting products',()=>{
+ expect(isRollerValanceAssociationType('Valances','Roller Shades')).toBe(true);expect(isRollerValanceAssociationType('Valances','Roman Shades')).toBe(false);expect(isRollerValanceAssociationType('Roman Shades','Roller Shades')).toBe(false);
+ const make=(id:string,options:Record<string,unknown>)=>({lineId:id,label:`Shade ${id}`,design:{supplier:'Norman',options_json:options} as SalesQuoteDesign});
+ const html=renderToStaticMarkup(createElement(NormanRollerValanceOptions,{design:undefined,productId:SEPARATE,lineOptions:[make('fabric',{fabric_product_id:'roller'}),make('catalog',{catalog_product_id:'roller'}),make('conflict',{fabric_product_id:'roman',catalog_product_id:'roller'})],onUpdateFields:()=>{}}));
+ expect(html).toContain('Shade fabric');expect(html).toContain('Shade catalog');expect(html).not.toContain('Shade conflict');expect(html).not.toContain('Add the associated Norman Roller shades');
 });

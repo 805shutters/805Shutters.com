@@ -19,3 +19,11 @@ Roller current version becomes group-hardware r7; material r6 and all prior supp
 Tests cover seven cordless fascia boundaries, SmartRelease and exact 1:5 ratio, cross-member thresholds, physical coupled widths, unknown tube labels, largest-tube mismatch, narrow-cordless prohibition, exact appendix success/failure, CCL clutch distinction, saved reopen/forged-record rebuilding, separate bracket requirements, and old version behavior.
 
 Validation: 6,276 tests passed, 28 skipped; TypeScript and production build passed. Deployment and live proof remain separate parent-owned release steps.
+
+## Physical tube and association followup
+
+Production proof on the Cordless Amelia F1484 shade uses the valid appendix classification `All Tubes`. That is retained for fabric dimensional lookup. The atomic `roller_hardware_v1` record now optionally stores a separately confirmed physical diameter (1⅛, 1¾ or 2 inches). No default is fabricated. Shared hardware uses that confirmation, checks the exact appendix dimensions, rejects conflicts with a diameter-specific appendix selection and retains the independent factory-bracket and pricing holds. Existing records lacking this optional field parse unchanged.
+
+The Separate Valance UI now receives Roller Shades across the natural-unit Valances product type boundary, then filters Norman identities using the same `fabric_product_id`, `catalog_product_id`, `quote_lab_product_id` precedence as the authoritative adapter. The former same-product-type filter made every Roller shade invisible to the valance picker.
+
+Validation: focused hardware/common/separate tests, parser malformed/legacy cases, unchanged All Tubes profile, saved adapter roundtrip and cross-product UI regression; typecheck. Production verification resumes after parent deployment.

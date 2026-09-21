@@ -1,3 +1,4 @@
+import { ROLLER_HARDWARE_KEY, parseRollerHardware } from '../quote/norman-roller-hardware';
 import { describe, expect, it } from 'vitest';
 import { deriveRollerGroupHardware, rollerMinimumFasciaSize, rollerTubeDiameter } from './norman-roller-group-hardware';
 import { deriveRollerCommonValances } from './norman-roller-common';
@@ -41,6 +42,18 @@ describe('Roller exact shared hardware requirements',()=>{
   expect(ids(rows(shade(36,60,'Cordless',{roller_tube:'All Tubes'})))).toContain('roller.group_hardware.tube_identity');
   expect(ids(rows(shade(20,60)))).toContain('roller.group_hardware.cordless_upgrade');
   expect(ids(rows(shade(36,60,'Cordless',{fabric_color_code:'F0000'})))).toContain('roller.group_hardware.tube_compatibility');
+ });
+ it('retains All Tubes appendix identity while using separately confirmed physical hardware',()=>{
+  const configuration={roller_tube:'All Tubes',[ROLLER_HARDWARE_KEY]:{version:1,installation:'Back / Wall Mount',shimLayers:0,raceway:true,physicalTubeInches:2}};
+  const r=rows(shade(36,60,'Cordless',configuration),shade(40,60,'Cordless',configuration));const before=JSON.stringify(r);
+  const result=deriveRollerGroupHardware(r,'common');expect(result.issues).toEqual([]);expect(result.record.requiredTubeInches).toBe(2);
+  expect(result.record.members).toEqual(expect.arrayContaining([expect.objectContaining({selectedTubeBasis:'confirmed_hardware_record',selectedAppendixTube:'All Tubes',tubeStatus:'source_dimension_profile_compatible'})]));expect(JSON.stringify(r)).toBe(before);
+  r[0].selection.configuration={...r[0].selection.configuration,roller_tube:'1 3/4\" (43mm) Tube'};expect(ids(r)).toContain('roller.group_hardware.tube_profile_conflict');
+ });
+ it('preserves old hardware records and rejects malformed physical diameters',()=>{
+  const old={version:1,installation:'Back / Wall Mount',shimLayers:0,raceway:true};expect(parseRollerHardware(old)).toEqual(old);
+  for(const physicalTubeInches of [0,3,'2',true])expect(parseRollerHardware({...old,physicalTubeInches})).toBeNull();
+  for(const physicalTubeInches of [null,1.125,1.75,2])expect(parseRollerHardware({...old,physicalTubeInches})).toEqual({...old,physicalTubeInches});
  });
  it('records documented CCL raceway clutch independently from tube diameter, leaves p70 factory decision explicit',()=>{
   const r=deriveRollerGroupHardware(rows(shade(36,60,'Continuous Cord Loop'),shade(40,60,'Continuous Cord Loop')),'common');
