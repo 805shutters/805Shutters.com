@@ -24,7 +24,7 @@ export function smartfoldBranchExceptions(s:SelectionContext):string[]{
  if(manual&&(active(c.motor_type)||active(c.remote_type)||active(c.shared_power_panel_id)||active(c.hub_required)))reasons.push("clear motor power, remote and shared-panel selections before pricing a manual shade");
  if(!SMARTFOLD_FABRICS.some(f=>f.code===String(c.fabric_color_code??"").toUpperCase()))reasons.push("the ordering fabric must resolve to the current 15-color SmartFold assortment");
  if(!["","single","single shade","standard"].includes(norm(c.shade_type))||active(c.installed_on_door)||active(c.door_application)||/door|specialty|day night/.test(norm(c.application)))reasons.push("only individual standard shades are verified; door applications were removed in July");
- if(norm(c.smartfold_common_valance_id)||active(c.side_by_side)||c.side_by_side_match_line_id)reasons.push("common-valance/side-by-side assemblies need separate branch verification");
+ if(active(c.smartfold_common_valance_id)||active(c.smartfold_side_by_side_id)||active(c.side_by_side)||c.side_by_side_match_line_id)reasons.push("common-valance/side-by-side assemblies need separate branch verification");
  if(active(c.basic_light_guard)||active(c.light_guard))reasons.push("Light Guard requires its inside-mount verification");
  if(!pricedAccessories&&(active(c.premium_hem_bar)||!["","none"].includes(norm(c.smartfold_hold_down))||!["","none"].includes(norm(c.smartfold_pole))))reasons.push("optional premium hem, hold-down and pole pricing remains outside this historical verified branch");
  if(pricedAccessories&&active(c.premium_hem_bar)&&!["yes","true"].includes(norm(c.premium_hem_bar)))reasons.push("reconfirm premium hem as Yes or No before pricing");
