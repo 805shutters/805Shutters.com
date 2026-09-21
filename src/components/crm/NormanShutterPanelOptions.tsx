@@ -1,4 +1,5 @@
 "use client";
+import {NormanShutterDividerOptions} from "./NormanShutterDividerOptions";
 import {normanShutterUsesSillSupport} from '@/lib/quote/norman-shutter-bottom-support';
 import {NormanShutterBottomSupportOptions} from './NormanShutterBottomSupportOptions';
 import { NormanBifold180ConstructionOptions } from "./NormanBifold180ConstructionOptions";
@@ -24,7 +25,7 @@ export function NormanShutterPanelOptions({design,onUpdateFields}:{design:SalesQ
  const update=(patch:Partial<NormanShutterPanelRecord>)=>setDraft(previous=>editNormanPanelDraft(previous,patch));
  const updatePanel=(index:number,patch:Partial<NormanShutterPanelRecord['panels'][number]>)=>setDraft(previous=>editNormanPanelDraft(previous,{panels:previous.draft.panels.map((panel,i)=>i===index?{...panel,...patch}:panel)}));
  const unsaved=hasUnsavedNormanPanelDraft(draft);
- const save=()=>{onUpdateFields({...(record.application==='bifold_180'&&record.bifold180?.layout?{panel_config:record.bifold180.layout}:{}),options_json:{...options,[NORMAN_SHUTTER_PANEL_RECORD]:record}});setDraft(previous=>submitNormanPanelDraft(previous));};
+ const save=()=>{onUpdateFields({...(record.application==='bifold_180'&&record.bifold180?.layout?{panel_config:record.bifold180.layout}:{}),options_json:{...options,...(record.panels.some(p=>(p.dividerDetails?.splitTiltCentersInches.length??0)>0)?{split_tilt:"Yes"}:{}),[NORMAN_SHUTTER_PANEL_RECORD]:record}});setDraft(previous=>submitNormanPanelDraft(previous));};
  const cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  return <section data-testid="norman-shutter-panel-options" className="space-y-3 rounded-lg border border-slate-200 p-3">
   <div className="font-semibold">Finished panel construction</div>
@@ -44,6 +45,7 @@ export function NormanShutterPanelOptions({design,onUpdateFields}:{design:SalesQ
    {record.application==='bifold_180'&&<label className="text-sm">Panel {index+1} finished width (inches)<input aria-label={`Norman panel ${index+1} finished width`} className={cls} type="number" step="0.0625" min="6" value={panel.widthInches??''} onChange={e=>updatePanel(index,{widthInches:e.target.value===''?null:Number(e.target.value)})}/></label>}
    <label className="text-sm">Panel {index+1} finished height (inches)<input aria-label={`Norman panel ${index+1} finished height`} className={cls} type="number" step="0.0625" min="10" value={panel.heightInches??''} onChange={e=>updatePanel(index,{heightInches:e.target.value===''?null:Number(e.target.value)})}/></label>
    <label className="text-sm">Panel {index+1} divider rail<select aria-label={`Norman panel ${index+1} divider rail`} className={cls} value={panel.divider} onChange={e=>updatePanel(index,{divider:e.target.value as 'none'|'present'|''})}><option value="">Select</option><option value="none">No divider rail</option><option value="present">Divider rail present</option></select></label>
+   {panel.divider==='present'&&<NormanShutterDividerOptions value={panel.dividerDetails} panelNumber={index+1} programId={program?.id??''} louver={design?.louver_size} onChange={dividerDetails=>updatePanel(index,{dividerDetails})}/>}
    {normanShutterUsesSillSupport(record.application)&&<NormanShutterBottomSupportOptions value={panel.bottomSupport} panelNumber={index+1} onChange={bottomSupport=>updatePanel(index,{bottomSupport})}/>}
   </div>)}
   <div className="flex items-center gap-3"><button type="button" className={cls} disabled={!unsaved} onClick={save}>Save panel construction</button><span role="status" className="text-sm">{unsaved?"Unsaved panel changes":draft.submitted?"Panel construction submitted":"No unsaved panel changes"}</span></div>

@@ -27,7 +27,7 @@ describe('Norman exact finished-panel heights and divider requirements',()=>{
   expect(ids(context(program,record(height)))).toEqual([]);
   expect(ids(context(program,record(height+0.0625)))).toContain('divider_required');
   const r=record(height+0.0625);r.panels[0].divider='present';
-  expect(ids(context(program,r))).toEqual(['divider_geometry']);
+  expect(ids(context(program,r))).toEqual(['divider_geometry','norman.shutter.dividers.record_required']);
   expect(validateNormanShutterPanels(context(program,record(height+0.0625)))[0].source.pages).toEqual(program.startsWith('woodlore_')?[38,44]:[32,38]);
  });
  it('requires every panel and validates short and tall panels independently',()=>{
