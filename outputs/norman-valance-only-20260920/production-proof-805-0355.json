@@ -1,0 +1,57 @@
+{
+  "date": "2026-09-20",
+  "deployment": "850ed5f1",
+  "site": "https://www.805shutters.com/crm/",
+  "quote": "805-0355",
+  "customer": "Norman Standalone Valance Verification 2026-09-20",
+  "status": "verified_live_selection_validation_persistence_and_pricing_hold",
+  "lines": [
+    {
+      "productId": "norman_ultimate_faux_valance_only",
+      "quantity": 2,
+      "finish": "E008 Designer White Solid - Smooth",
+      "style": "3-inch Linear",
+      "innerLength": 192,
+      "returns": "Both",
+      "returnLength": 1,
+      "joinery": "Keystone",
+      "count": 2,
+      "layout": "Custom",
+      "positions": [
+        60,
+        132
+      ],
+      "negativeTest": {
+        "positions": [
+          60,
+          157
+        ],
+        "expected": "Every split valance piece must be positive and no longer than 96 inches; adjust keystone count or custom positions.",
+        "result": "server issue observed after save; restoring 132 cleared issue"
+      }
+    },
+    {
+      "productId": "norman_smartprivacy_valance_only",
+      "quantity": 1,
+      "finish": "P001 Pure White Solid - Embossed",
+      "style": "3.25-inch Designer Crown",
+      "innerLength": 384,
+      "returns": "None",
+      "negativeTest": {
+        "innerLength": 384.001,
+        "expected": "Record a positive valance inner length no greater than 384 inches.",
+        "result": "server issue observed after save; restoring 384 cleared issue"
+      }
+    }
+  ],
+  "proof": [
+    "Saved both complete typed records through atomic Save standalone valance",
+    "Closed builder, fully reloaded browser, reopened quote from Quotes list",
+    "All finish/style/length/return/keystone fields persisted; No unsaved selection on both forms",
+    "Natural headers show 192 and 384 inches inner length; summary counts 3 valances needing pricing",
+    "Send Quote and Send Payment Link disabled",
+    "Contract shows Pricing incomplete and blocks reviewing/sending until pricing completed"
+  ],
+  "pricingException": "Current standalone price, availability, freight and selling treatment require Norman confirmation. No rate substituted.",
+  "noExternalActions": "No send, order, checkout, or sold transition."
+}

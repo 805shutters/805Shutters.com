@@ -34,3 +34,7 @@ Create an internal verification draft without contact details. Select **Valances
 3. Both lines must retain the standalone price/availability/freight hold, produce no authoritative price snapshot and keep Contract/customer delivery blocked. Inspect readable valance details; no raw `V1`, source identity object or internal pricing metadata should appear.
 
 The 22-row `finish-routes.csv` and 10-row `controls.csv` account for every new current finish route and editable field. The source excerpt packet records the inspected pages and extraction hashes. This change closes the two **missing catalog destination** gaps found by the dynamic inventory; it does not close their price evidence gaps.
+
+## Production proof — 805-0355
+
+Release `850ed5f1`: both destinations saved and survived full browser reload/reopen. Ultimate quantity 2, E008 smooth Designer White, 3-inch Linear, 192-inch inner length, both 1-inch returns, two custom keystones at 60/132 inches. SmartPrivacy quantity 1, P001 embossed Pure White, 3.25-inch Designer Crown, 384-inch inner length, no returns. Ultimate 97-inch middle-piece and SmartPrivacy 384.001-inch negative cases produced the exact server errors and cleared after restoration. Natural units persisted. Send Quote remained disabled; Contract remained Pricing incomplete. This proves live configuration/validation/persistence and the pricing hold, not confirmed standalone pricing. See `production-proof-805-0355.json`.
