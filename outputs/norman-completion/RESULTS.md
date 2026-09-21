@@ -8,15 +8,15 @@ The audit currently accounts for **21 families and 56 programs**, up from the or
 
 There are **1,448 retained color identities**, including 1,422 currently selectable identities, and **678 Honeycomb color/cell routes**. The current exported option inventory has 623 records and 839 choices. Contextual numeric/text controls are additional; these inventory counts do not certify every combination. Discontinued identities remain available to historical quotes.
 
-## Current release checkpoint — September20,18:25
+## Current release checkpoint — September20,18:40
 
-Release **ce375e05** is verified live at https://805-buobskshc-805-shutters.vercel.app and the public site. Typecheck/build passed; **6,156 tests passed,28 skipped**. It includes SmartFold full-recess fit rules, Bi-fold180 panel/header/casing records, Sundance Walden rules, readable hardware/charging details, natural-unit labels and the published row ledger.
+Release **56d4f960** is verified live at https://805-8yldlsive-805-shutters.vercel.app and the public site. Typecheck/build passed; **6,168 tests passed,28 skipped**. It includes SmartFold full-recess fit rules, Bi-fold180 panel/header/casing records, shutter bottom-support rules and warnings, typed divider records, Sundance Walden/Vision rules, readable hardware/charging details, natural-unit labels and the published row ledger. New shutter construction controls still require complete production boundary proof.
 
 Production evidence now includes Honeycomb manual mounting0343 **$454**, charging0345 **$1,439** and specialty NET geometry0347 **$543**, each with a rejected boundary and saved/reopened customer preview. Vertical pair0344 **$2,647** rejects mismatched heights on both lines. SmartFold0342 is now **$5,023** for four shades with $215 accessories charged once, retained after full reload; insufficient mounting area/space both reject. Customer charging-count and measured-clearance labels passed a full-reload live recheck on0fcacb9b; raw atomic labels are absent. Roller0346 hardware **$1,332**,0350 shared panel **$13,121** (one$1,133 panel,9motors;19rejects) passed saved/reopened customer preview. Common-valance0349 remains held for exact shared-price evidence. SmartFold/PerfectSheer At Gaps0348 and SmartDrape standalone packs0339B retain their configurations and exact pricing holds.
 
 SmartFold0352C inside Basic Light Guard passed the3.50-inch rejection/3.52-inch restoration test, saved/closed/full reload/reopened. Customer output remains held for unresolved inside-mount pricing. This establishes the full-recess fit rule without certifying the entire inside-mount branch.
 
-The row exports below are an inventory snapshot. Typed assembly and numeric controls added since that export are documented in their source-specific modules and proof reports; the export counts must not be read as exhaustive option coverage.
+The row exports below are an inventory snapshot. The separate [contextual-control inventory](../norman-dynamic-inventory-20260920/README.md) records616 UI occurrences,641 typed fields,967 validation calls and1,198 configuration reads across97 pinned modules. These are implementation occurrences, not unique offerings or exhaustive compatible combinations; production and source gaps remain explicit.
 
 ## What has been proved in the actual CRM
 
