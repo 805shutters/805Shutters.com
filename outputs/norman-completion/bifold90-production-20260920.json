@@ -1,0 +1,51 @@
+{
+  "checked_at": "2026-09-20T21:02:00-07:00",
+  "release": "5054aec65e01d3b5cc77d5ea86a73d019a0960a2",
+  "quote": "805-0382",
+  "alternative": "J",
+  "copied_from": "805-0353 / A",
+  "program": "Woodlore",
+  "construction": {
+    "application": "Other Bi-fold Track",
+    "subtype": "Standard Bi-fold 90",
+    "layout": "LL",
+    "mount": "Inside Mount",
+    "measurement_basis": "Measured window opening",
+    "window_inches": [
+      48,
+      60
+    ],
+    "source_max_frame_reference_inches": [
+      47.875,
+      59.875
+    ],
+    "header_inches": 3,
+    "fascia": "Plain / flat",
+    "extension_inches": 0,
+    "flat_surface": true,
+    "panel_inches": [
+      [
+        24,
+        60
+      ],
+      [
+        24,
+        60
+      ]
+    ],
+    "divider": "No divider rail",
+    "motor": "No motor",
+    "stile": "2-inch Butt"
+  },
+  "negative_test": {
+    "panel1_width": 24.0625,
+    "saved_audit": "Panel 1 finished width must be between 6 and 24 inches for this track subtype.",
+    "restored_width": 24,
+    "width_warning_after_restore": false
+  },
+  "persistence": "saved, closed, full browser reload, reopened; all construction fields retained",
+  "customer_output": "Pricing incomplete; complete pricing for every selected window before reviewing or sending contract",
+  "unresolved_live_defect": "false mount warning despite exact Inside Mount UI/record; normalization fix f81f2c27 included in deploying4c24cfaa, final live recheck pending",
+  "remaining_source_hold": "Specialized manufacturing dimensions, cut sizes, hardware quantities, pricing measurement basis and current account charges remain unverified",
+  "external_actions": "No customer send, signature, sale, payment or dealer checkout"
+}
