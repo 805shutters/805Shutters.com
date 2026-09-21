@@ -216,7 +216,9 @@ export function QuoteGroupTabs() {
         .is("archived_at", null)
         .order("sort_order");
 
-      const activeLineItems = activeQuoteLines(lineItems || []);
+      const activeLineItems = activeQuoteLines(
+        (lineItems || []) as Array<{ id: string; archived_at?: string | null }>,
+      );
       if (activeLineItems.length > 0) {
         const newItems = activeLineItems.map((item: any) => ({
           quote_id: newQuote.id,
@@ -237,11 +239,11 @@ export function QuoteGroupTabs() {
 
         // Copy designs for each line item
         if (insertedItems) {
-          for (let i = 0; i < lineItems.length; i++) {
+          for (let i = 0; i < activeLineItems.length; i++) {
             const { data: designs } = await (supabase as any)
               .from("sales_quote_designs")
               .select("*")
-              .eq("line_item_id", lineItems[i].id);
+              .eq("line_item_id", activeLineItems[i].id);
 
             if (designs && designs.length > 0) {
               const newDesigns = designs.map((d: any) => ({

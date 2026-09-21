@@ -196,6 +196,12 @@ function fakeSupabase(options: FixtureOptions = {}) {
         rows = sourceRows(table, filters);
         return query;
       },
+      is: (column: string, value: unknown) => {
+        filters.push([column, value]);
+        reads.push({ table, column, value });
+        rows = sourceRows(table, filters);
+        return query;
+      },
       in: (column: string, value: unknown[]) => {
         filters.push([column, value]);
         reads.push({ table, column, value });

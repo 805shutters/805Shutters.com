@@ -1,6 +1,10 @@
--- Archive priced Quote V2 draft lines instead of hard-deleting them.
--- Price snapshots stay append-only. Sent and signed quotes stay locked.
--- Active reads, counts, and totals ignore sales_quote_line_items.archived_at.
+-- Mirror of prod migration quote_v2_soft_archive_priced_line_delete.
+-- Draft line.delete / lines.clear soft-archive when price snapshots exist.
+-- Hard-delete only when no snapshots. Snapshots stay append-only.
+-- Re-running this file is a no-op once mutate_quote_v2_structure already
+-- soft-archives, so a later deploy cannot rewrite that function.
+-- The existing draft / sent / signed guard inside mutate stays untouched.
+-- Active reads, counts, and totals ignore archived lines.
 
 alter table public.sales_quote_line_items
   add column if not exists archived_at timestamptz;
@@ -8,122 +12,9 @@ alter table public.sales_quote_line_items
 comment on column public.sales_quote_line_items.archived_at is
   'Set when a draft line with immutable Quote V2 price history is removed from the live quote. Null means the line is active.';
 
-create index if not exists sales_quote_line_items_active_quote_idx
-  on public.sales_quote_line_items (quote_id, sort_order)
+create index if not exists sales_quote_line_items_quote_active_idx
+  on public.sales_quote_line_items (quote_id)
   where archived_at is null;
-
--- QUOTE_V2_ARCHIVE_FUNCTIONS_BEGIN
-create or replace function public.quote_v2_reject_locked_structure(p_quote_id uuid)
-returns void
-language plpgsql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-begin
-  if exists (
-    select 1
-      from public.sales_quotes quotes
-     where quotes.id = p_quote_id
-       and (
-         quotes.status is distinct from 'draft'
-         or quotes.quote_v2_status = 'sent'
-         or quotes.sent_at is not null
-         or quotes.signed_at is not null
-       )
-  ) then
-    raise exception 'Only an unlocked, unsent Quote V2 draft can be structurally changed.'
-      using errcode = '55000';
-  end if;
-end;
-$$;
-
-create or replace function public.quote_v2_delete_active_line(
-  p_quote_id uuid,
-  p_line_id uuid
-)
-returns integer
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_affected integer;
-begin
-  if auth.role() is distinct from 'service_role' then
-    raise exception 'Quote V2 line archive requires the service role.'
-      using errcode = '42501';
-  end if;
-  perform public.quote_v2_reject_locked_structure(p_quote_id);
-  if exists (
-    select 1
-      from public.sales_quote_v2_price_snapshots snapshots
-     where snapshots.line_item_id = p_line_id
-       and snapshots.quote_id = p_quote_id
-  ) then
-    update public.sales_quote_line_items
-       set archived_at = now()
-     where id = p_line_id
-       and quote_id = p_quote_id
-       and archived_at is null;
-  else
-    delete from public.sales_quote_line_items
-     where id = p_line_id
-       and quote_id = p_quote_id
-       and archived_at is null;
-  end if;
-  get diagnostics v_affected = row_count;
-  return v_affected;
-end;
-$$;
-
-create or replace function public.quote_v2_clear_active_lines(p_quote_id uuid)
-returns integer
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-declare
-  v_archived integer;
-  v_deleted integer;
-begin
-  if auth.role() is distinct from 'service_role' then
-    raise exception 'Quote V2 line archive requires the service role.'
-      using errcode = '42501';
-  end if;
-  perform public.quote_v2_reject_locked_structure(p_quote_id);
-  update public.sales_quote_line_items lines
-     set archived_at = now()
-   where lines.quote_id = p_quote_id
-     and lines.archived_at is null
-     and exists (
-       select 1
-         from public.sales_quote_v2_price_snapshots snapshots
-        where snapshots.line_item_id = lines.id
-          and snapshots.quote_id = p_quote_id
-     );
-  get diagnostics v_archived = row_count;
-  delete from public.sales_quote_line_items lines
-   where lines.quote_id = p_quote_id
-     and lines.archived_at is null;
-  get diagnostics v_deleted = row_count;
-  return v_archived + v_deleted;
-end;
-$$;
-
-revoke all on function public.quote_v2_reject_locked_structure(uuid)
-  from public, anon, authenticated;
-revoke all on function public.quote_v2_delete_active_line(uuid, uuid)
-  from public, anon, authenticated;
-revoke all on function public.quote_v2_clear_active_lines(uuid)
-  from public, anon, authenticated;
-grant execute on function public.quote_v2_reject_locked_structure(uuid)
-  to service_role;
-grant execute on function public.quote_v2_delete_active_line(uuid, uuid)
-  to service_role;
-grant execute on function public.quote_v2_clear_active_lines(uuid)
-  to service_role;
--- QUOTE_V2_ARCHIVE_FUNCTIONS_END
 
 create or replace function public.quote_v2_sql_with_active_line_filter(p_definition text)
 returns text
@@ -165,25 +56,12 @@ $$;
 
 do $migration$
 declare
-  definition text;
+  def text;
   previous text;
   filtered text;
-  targets regprocedure[] := array[
-    'public.mutate_quote_v2_structure(uuid,bigint,text,uuid,jsonb)'::regprocedure,
-    'public.enforce_v2_quote_line_limit()'::regprocedure,
-    'public.save_quote_v2_catalog_pricing_batch(uuid,bigint,text,uuid,jsonb)'::regprocedure,
-    'public.save_quote_v2_pricing_batch(uuid,bigint,text,uuid,jsonb)'::regprocedure,
-    'public.prepare_native_quote_customer_snapshot(uuid,bigint,text,text,uuid,text,jsonb)'::regprocedure,
-    'public.prepare_quote_v2_customer_send(uuid,bigint,text,text,uuid,text,jsonb)'::regprocedure,
-    'public.set_sales_quote_line_price(uuid,uuid,text,numeric,uuid,bigint,uuid,boolean)'::regprocedure,
-    'public.apply_quote_v2_custom_override(uuid,uuid,uuid,bigint,text,uuid,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)'::regprocedure,
-    'public.quote_v2_legacy_state_hash(uuid)'::regprocedure
-  ];
-  target regprocedure;
-begin
-  definition := pg_get_functiondef('public.mutate_quote_v2_structure(uuid,bigint,text,uuid,jsonb)'::regprocedure);
-  previous := definition;
-  definition := replace(definition, $old$      if exists (
+  changed boolean := false;
+  old_line text := $old_line$
+      if exists (
         select 1
           from public.sales_quote_v2_price_snapshots snapshots
          where snapshots.line_item_id = v_line_id
@@ -194,12 +72,26 @@ begin
       end if;
       delete from public.sales_quote_line_items
        where id = v_line_id and quote_id = p_quote_id;
-      get diagnostics v_affected_count = row_count;$old$, $new$      v_affected_count := public.quote_v2_delete_active_line(p_quote_id, v_line_id);$new$);
-  if definition = previous then
-    raise exception 'Quote V2 line.delete archive target changed.';
-  end if;
-  previous := definition;
-  definition := replace(definition, $old$      if exists (
+$old_line$;
+  new_line text := $new_line$
+      if exists (
+        select 1
+          from public.sales_quote_v2_price_snapshots snapshots
+         where snapshots.line_item_id = v_line_id
+           and snapshots.quote_id = p_quote_id
+      ) then
+        update public.sales_quote_line_items
+           set archived_at = coalesce(archived_at, now())
+         where id = v_line_id
+           and quote_id = p_quote_id
+           and archived_at is null;
+      else
+        delete from public.sales_quote_line_items
+         where id = v_line_id and quote_id = p_quote_id;
+      end if;
+$new_line$;
+  old_clear text := $old_clear$
+      if exists (
         select 1
           from public.sales_quote_v2_price_snapshots snapshots
          where snapshots.quote_id = p_quote_id
@@ -208,38 +100,95 @@ begin
           using errcode = '55000';
       end if;
       delete from public.sales_quote_line_items where quote_id = p_quote_id;
-      get diagnostics v_affected_count = row_count;$old$, $new$      v_affected_count := public.quote_v2_clear_active_lines(p_quote_id);$new$);
-  if definition = previous then
-    raise exception 'Quote V2 lines.clear archive target changed.';
+$old_clear$;
+  new_clear text := $new_clear$
+      if exists (
+        select 1
+          from public.sales_quote_v2_price_snapshots snapshots
+         where snapshots.quote_id = p_quote_id
+      ) then
+        update public.sales_quote_line_items
+           set archived_at = coalesce(archived_at, now())
+         where quote_id = p_quote_id
+           and archived_at is null;
+      else
+        delete from public.sales_quote_line_items where quote_id = p_quote_id;
+      end if;
+$new_clear$;
+  targets regprocedure[] := array[
+    'public.enforce_v2_quote_line_limit()'::regprocedure,
+    'public.save_quote_v2_catalog_pricing_batch(uuid,bigint,text,uuid,jsonb)'::regprocedure,
+    'public.save_quote_v2_pricing_batch(uuid,bigint,text,uuid,jsonb)'::regprocedure,
+    'public.save_quote_v2_pricing_result(uuid,uuid,uuid,bigint,text,uuid,boolean,jsonb,text,text,text,jsonb,jsonb,jsonb,jsonb)'::regprocedure,
+    'public.prepare_native_quote_customer_snapshot(uuid,bigint,text,text,uuid,text,jsonb)'::regprocedure,
+    'public.prepare_quote_v2_customer_send(uuid,bigint,text,text,uuid,text,jsonb)'::regprocedure,
+    'public.set_sales_quote_line_price(uuid,uuid,text,numeric,uuid,bigint,uuid,boolean)'::regprocedure,
+    'public.apply_quote_v2_custom_override(uuid,uuid,uuid,bigint,text,uuid,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)'::regprocedure,
+    'public.quote_v2_legacy_state_hash(uuid)'::regprocedure,
+    'public.record_quote_v2_legacy_reprice_preview(uuid,bigint,text,uuid,date,jsonb,numeric,numeric,jsonb,jsonb)'::regprocedure
+  ];
+  target regprocedure;
+begin
+  def := pg_get_functiondef('public.mutate_quote_v2_structure(uuid,bigint,text,uuid,jsonb)'::regprocedure);
+  if def is null then
+    raise exception 'mutate_quote_v2_structure not found';
   end if;
-  filtered := public.quote_v2_sql_with_active_line_filter(definition);
-  if filtered = definition or position('lines.archived_at is null' in filtered) = 0 then
-    raise exception 'Quote V2 structure read filter did not install.';
-  end if;
-  execute filtered;
 
-  definition := pg_get_functiondef('public.enforce_v2_quote_line_limit()'::regprocedure);
-  previous := definition;
-  definition := replace(
-    definition,
-    'where quote_id = new.quote_id',
-    'where quote_id = new.quote_id and archived_at is null'
-  );
-  if definition = previous then
-    raise exception 'Quote V2 line limit archive filter did not install.';
+  if position(old_line in def) > 0 then
+    def := replace(def, old_line, new_line);
+    changed := true;
+  elsif position('A historically priced Quote V2 line cannot be deleted until the archive/read-filter contract is installed.' in def) > 0
+     or position('set archived_at = coalesce(archived_at, now())' in def) = 0 then
+    raise exception 'line.delete snapshot block not found — function may already be patched';
   end if;
-  execute definition;
+
+  if position(old_clear in def) > 0 then
+    def := replace(def, old_clear, new_clear);
+    changed := true;
+  elsif position('A Quote V2 with immutable price history cannot be cleared until the archive/read-filter contract is installed.' in def) > 0
+     or position('set archived_at = coalesce(archived_at, now())' in def) = 0 then
+    raise exception 'lines.clear snapshot block not found — function may already be patched';
+  end if;
+
+  filtered := public.quote_v2_sql_with_active_line_filter(def);
+  if filtered is distinct from def then
+    if position('lines.archived_at is null' in filtered) = 0 then
+      raise exception 'Quote V2 structure read filter did not install.';
+    end if;
+    def := filtered;
+    changed := true;
+  end if;
+
+  if changed then
+    if position('set archived_at = coalesce(archived_at, now())' in def) = 0
+      or position('A historically priced Quote V2 line cannot be deleted until the archive/read-filter contract is installed.' in def) > 0
+      or position('A Quote V2 with immutable price history cannot be cleared until the archive/read-filter contract is installed.' in def) > 0 then
+      raise exception 'refusing to replace mutate_quote_v2_structure without the soft-archive contract';
+    end if;
+    execute def;
+  end if;
 
   foreach target in array targets loop
-    if target = 'public.mutate_quote_v2_structure(uuid,bigint,text,uuid,jsonb)'::regprocedure
-      or target = 'public.enforce_v2_quote_line_limit()'::regprocedure then
+    def := pg_get_functiondef(target);
+    if target = 'public.enforce_v2_quote_line_limit()'::regprocedure then
+      if position('where quote_id = new.quote_id and archived_at is null' in def) = 0 then
+        previous := def;
+        def := replace(
+          def,
+          'where quote_id = new.quote_id',
+          'where quote_id = new.quote_id and archived_at is null'
+        );
+        if def = previous then
+          raise exception 'Quote V2 line limit archive filter did not install.';
+        end if;
+        execute def;
+      end if;
       continue;
     end if;
-    definition := pg_get_functiondef(target);
-    filtered := public.quote_v2_sql_with_active_line_filter(definition);
-    if filtered = definition then
-      if position('sales_quote_line_items' in definition) > 0
-        and position('archived_at is null' in definition) = 0 then
+    filtered := public.quote_v2_sql_with_active_line_filter(def);
+    if filtered = def then
+      if position('sales_quote_line_items' in def) > 0
+        and position('archived_at is null' in def) = 0 then
         raise exception 'Quote V2 active-line read filter did not match %', target::text;
       end if;
     else

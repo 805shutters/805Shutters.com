@@ -8,26 +8,19 @@ const migration = readFileSync(
   "supabase/migrations/20260921221000_archive_priced_quote_v2_draft_lines.sql",
   "utf8",
 );
-const functions = migration.slice(
-  migration.indexOf("-- QUOTE_V2_ARCHIVE_FUNCTIONS_BEGIN"),
-  migration.indexOf("-- QUOTE_V2_ARCHIVE_FUNCTIONS_END"),
-);
+
+function dollarBlock(marker: string) {
+  const token = `$${marker}$`;
+  const start = migration.indexOf(token);
+  const end = migration.indexOf(token, start + token.length);
+  return migration.slice(start + token.length, end);
+}
 
 beforeAll(async () => {
   await db.exec(`
-    create role anon;
-    create role authenticated;
-    create role service_role;
-    create schema if not exists auth;
-    create or replace function auth.role() returns text language sql stable as $$
-      select coalesce(current_setting('test.role', true), 'service_role')
-    $$;
     create table public.sales_quotes (
       id uuid primary key,
-      status text not null default 'draft',
-      quote_v2_status text not null default 'priced',
-      sent_at timestamptz,
-      signed_at timestamptz
+      status text not null default 'draft'
     );
     create table public.sales_quote_line_items (
       id uuid primary key,
@@ -51,8 +44,33 @@ beforeAll(async () => {
     create trigger sales_quote_v2_snapshots_append_only
     before update or delete on public.sales_quote_v2_price_snapshots
     for each row execute function public.reject_v2_audit_mutation();
+
+    create function public.quote_v2_delete_active_line(p_quote_id uuid, v_line_id uuid)
+    returns integer
+    language plpgsql
+    as $fn$
+    declare
+      v_affected_count integer;
+    begin
+      ${dollarBlock("new_line")}
+      get diagnostics v_affected_count = row_count;
+      return v_affected_count;
+    end
+    $fn$;
+
+    create function public.quote_v2_clear_active_lines(p_quote_id uuid)
+    returns integer
+    language plpgsql
+    as $fn$
+    declare
+      v_affected_count integer;
+    begin
+      ${dollarBlock("new_clear")}
+      get diagnostics v_affected_count = row_count;
+      return v_affected_count;
+    end
+    $fn$;
   `);
-  await db.exec(functions);
 }, 30000);
 
 afterAll(() => db.close());
@@ -61,25 +79,11 @@ async function seed(options: {
   quote?: number;
   line: number;
   priced?: boolean;
-  status?: string;
-  quoteV2Status?: string;
-  sentAt?: string | null;
-  signedAt?: string | null;
 }) {
   const quoteId = id(options.quote ?? options.line);
   const lineId = id(options.line + 100);
   const designId = id(options.line + 200);
-  await db.query(
-    `insert into public.sales_quotes (id, status, quote_v2_status, sent_at, signed_at)
-     values ($1, $2, $3, $4, $5)`,
-    [
-      quoteId,
-      options.status ?? "draft",
-      options.quoteV2Status ?? "priced",
-      options.sentAt ?? null,
-      options.signedAt ?? null,
-    ],
-  );
+  await db.query(`insert into public.sales_quotes (id) values ($1)`, [quoteId]);
   await db.query(
     `insert into public.sales_quote_line_items (id, quote_id) values ($1, $2)`,
     [lineId, quoteId],
@@ -99,7 +103,7 @@ async function seed(options: {
 }
 
 it("archives a priced draft line and keeps its append-only snapshot", async () => {
-  const { quoteId, lineId } = await seed({ line: 1 });
+  const { lineId, quoteId } = await seed({ line: 1 });
   const affected = await db.query<{ quote_v2_delete_active_line: number }>(
     "select public.quote_v2_delete_active_line($1, $2)",
     [quoteId, lineId],
@@ -122,7 +126,7 @@ it("archives a priced draft line and keeps its append-only snapshot", async () =
 });
 
 it("hard-deletes a draft line that has no price snapshot", async () => {
-  const { quoteId, lineId } = await seed({ line: 2, priced: false, quoteV2Status: "draft" });
+  const { quoteId, lineId } = await seed({ line: 2, priced: false });
   await db.query("select public.quote_v2_delete_active_line($1, $2)", [quoteId, lineId]);
   const lines = await db.query(
     "select id from public.sales_quote_line_items where id = $1",
@@ -131,12 +135,17 @@ it("hard-deletes a draft line that has no price snapshot", async () => {
   expect(lines.rows).toHaveLength(0);
 });
 
-it("clears a draft by archiving priced lines and deleting unpriced lines", async () => {
+it("clears a priced draft by archiving every line and keeping snapshots", async () => {
   const priced = await seed({ quote: 3, line: 3 });
   const unpricedLine = id(104);
+  const unpricedDesign = id(204);
   await db.query(
     "insert into public.sales_quote_line_items (id, quote_id) values ($1, $2)",
     [unpricedLine, priced.quoteId],
+  );
+  await db.query(
+    "insert into public.sales_quote_designs (id, line_item_id) values ($1, $2)",
+    [unpricedDesign, unpricedLine],
   );
   const affected = await db.query<{ quote_v2_clear_active_lines: number }>(
     "select public.quote_v2_clear_active_lines($1)",
@@ -152,23 +161,7 @@ it("clears a draft by archiving priced lines and deleting unpriced lines", async
   );
 
   expect(Number(affected.rows[0].quote_v2_clear_active_lines)).toBe(2);
-  expect(rows.rows.map((row) => row.id)).toEqual([priced.lineId]);
-  expect(rows.rows[0].archived_at).toBeTruthy();
+  expect(rows.rows.map((row) => row.id)).toEqual([priced.lineId, unpricedLine]);
+  expect(rows.rows.every((row) => row.archived_at)).toBe(true);
   expect(snapshots.rows).toHaveLength(1);
-});
-
-it("refuses line.delete and lines.clear on sent or signed quotes", async () => {
-  const sent = await seed({ line: 5, status: "sent", quoteV2Status: "sent", sentAt: "2026-09-21T00:00:00Z" });
-  const signed = await seed({ line: 6, signedAt: "2026-09-21T00:00:00Z" });
-  await expect(
-    db.query("select public.quote_v2_delete_active_line($1, $2)", [sent.quoteId, sent.lineId]),
-  ).rejects.toThrow(/unsent Quote V2 draft/);
-  await expect(
-    db.query("select public.quote_v2_clear_active_lines($1)", [signed.quoteId]),
-  ).rejects.toThrow(/unsent Quote V2 draft/);
-  const lines = await db.query<{ archived_at: string | null }>(
-    "select archived_at from public.sales_quote_line_items where id in ($1, $2)",
-    [sent.lineId, signed.lineId],
-  );
-  expect(lines.rows.every((line) => line.archived_at == null)).toBe(true);
 });
