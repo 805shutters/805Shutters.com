@@ -3,7 +3,7 @@ import {sourceProvenance} from "./source-manifest";
 export const SMARTFOLD_WAND_LENGTHS=["8","16","24","36","48","60","72"] as const;
 export const SMARTFOLD_WAND_COLORS=["White","Cottage White","Black"] as const;
 export function smartfoldAutoWand(s:SelectionContext){
- if(s.productId!=="smartfold"||s.catalogAsOf<"2026-09-20"||!s.catalogVersion.endsWith("-norman-smartfold-autowand-2026-09-20-r14")||String(s.configuration.lift_system).toLowerCase()!=="motorized"||String(s.configuration.motor_type).toLowerCase()!=="autowand")return null;
+ if(s.productId!=="smartfold"||s.catalogAsOf<"2026-09-20"||!["-norman-smartfold-autowand-2026-09-20-r14","-norman-smartfold-inside-fascia-2026-09-20-r15"].some(v=>s.catalogVersion.endsWith(v))||String(s.configuration.lift_system).toLowerCase()!=="motorized"||String(s.configuration.motor_type).toLowerCase()!=="autowand")return null;
  const c=s.configuration,issues:ValidationIssue[]=[];
  const add=(key:string,message:string)=>issues.push({severity:"hard_block",ruleId:`norman.smartfold.autowand_${key}`,source:sourceProvenance("norman-motorization-guide-2026-09-16",{page:94}),selectedValues:{...c},explanation:message});
  const length=String(c.smartfold_wand_length??""),color=String(c.smartfold_wand_color??"");

@@ -176,6 +176,8 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["smartfold_valance_fabric_code", "Valance Fabric Code"],
   ["smartfold_wood_valance_color", "Wood Valance Finish"],
   ["smartfold_chain_color", "Chain Color"],
+  ["smartfold_fascia_recess", "Fascia Recess Arrangement"],
+  ["smartfold_fascia_recess_depth_inches", "Available Fascia Assembly Recess Depth (inches)"],
   ["smartfold_wand_length", "AutoWand Length (inches)"],
   ["smartfold_wand_color", "AutoWand Color"],
   ["smartfold_chain_length", "Custom Chain Length"],
@@ -465,6 +467,7 @@ export function customerConfigurationFromSelection(
   const source = plainRecord(selection.configuration) ?? {};
   const selections: Partial<Record<V2CustomerConfigurationKey, SelectionValue>> = {};
   for (const [key] of V2_CUSTOMER_CONFIGURATION_FIELDS) {
+    if (["smartfold_fascia_recess","smartfold_fascia_recess_depth_inches"].includes(key) && (source.mount_type !== "Inside Mount" || !["Curved Fascia","Square Fascia"].includes(String(source.valance)))) continue;
     if (["smartfold_wand_length", "smartfold_wand_color"].includes(key) && (source.lift_system !== "Motorized" || source.motor_type !== "AutoWand")) continue;
     const cutoutMeasurement = /^wood_cutout_(left|right)_(width|top|bottom)$/.exec(key);
     if (cutoutMeasurement) {

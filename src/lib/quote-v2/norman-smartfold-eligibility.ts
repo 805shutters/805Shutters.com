@@ -1,3 +1,4 @@
+import {smartfoldInsideFascia} from "./norman-smartfold-inside-fascia";
 import {smartfoldValance} from "./norman-smartfold-valance";
 import {SMARTFOLD_FABRICS} from "@/lib/quote/norman-current-assortment";
 import {SMARTFOLD_CLEARANCE_KEY,parseSmartfoldClearance} from "@/lib/quote/norman-smartfold-clearance";
@@ -6,12 +7,12 @@ import type {SelectionContext,SelectionRecord,ValidationIssue} from "./core";
 import {sourceProvenance} from "./source-manifest";
 const norm=(v:unknown)=>String(v??"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const active=(v:unknown)=>v!=null&&!["","no","false","off","none","0"].includes(norm(v));
-export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11","-norman-smartfold-accessories-2026-09-20-r12","-norman-smartfold-standard-valances-2026-09-20-r13","-norman-smartfold-autowand-2026-09-20-r14"].some(version=>s.catalogVersion.endsWith(version));
+export const currentSmartfoldEligibility=(s:SelectionContext)=>s.productId==="smartfold"&&s.catalogAsOf>="2026-09-20"&&["-norman-smartfold-outside-2026-09-20-r8","-norman-smartfold-mounting-2026-09-20-r9","-norman-smartfold-mounting-2026-09-20-r10","-norman-smartfold-manual-2026-09-20-r11","-norman-smartfold-accessories-2026-09-20-r12","-norman-smartfold-standard-valances-2026-09-20-r13","-norman-smartfold-autowand-2026-09-20-r14","-norman-smartfold-inside-fascia-2026-09-20-r15"].some(version=>s.catalogVersion.endsWith(version));
 export function smartfoldBranchExceptions(s:SelectionContext):string[]{
  const c=s.configuration,reasons:string[]=[];
  if(s.catalogAsOf>="2026-10-01")reasons.push("the October motor revision requires its separately effective source verification");
- if(!["outside","outside mount","om","ob"].includes(norm(c.mount_type)))reasons.push("inside/semi-inside mounting needs its exact roll-diameter/depth verification");
- const autowand=s.catalogVersion.endsWith("-norman-smartfold-autowand-2026-09-20-r14");
+ if(!smartfoldInsideFascia(s)&&!["outside","outside mount","om","ob"].includes(norm(c.mount_type)))reasons.push("inside/semi-inside mounting needs its exact roll-diameter/depth verification");
+ const autowand=["-norman-smartfold-autowand-2026-09-20-r14","-norman-smartfold-inside-fascia-2026-09-20-r15"].some(v=>s.catalogVersion.endsWith(v));
  const standardValances=autowand||s.catalogVersion.endsWith("-norman-smartfold-standard-valances-2026-09-20-r13");
  if(!["none","no valance"].includes(norm(c.valance))){
   const v=smartfoldValance(s);
@@ -46,6 +47,7 @@ export function validateSmartfoldEligibility(s:SelectionContext):ValidationIssue
  const exceptions=smartfoldBranchExceptions(s),issues:ValidationIssue[]=[];
  const add=(rule:string,page:number,message:string)=>issues.push({severity:"hard_block",ruleId:`norman.smartfold.${rule}`,source:sourceProvenance("norman-smartfold-guide-2026-09-10",{page}),selectedValues:{...s.configuration},explanation:message});
  if(exceptions.length){issues.push({severity:"warning",ruleId:"norman.smartfold.branch_verification",source:sourceProvenance("norman-smartfold-guide-2026-09-10",{pages:[2,14,16,29,30,31,32,33,34,38]}),selectedValues:{...s.configuration},explanation:`Automatic pricing remains held for this configuration: ${exceptions.join("; ")}.`});return issues;}
+ const insideFascia=smartfoldInsideFascia(s);if(insideFascia)return insideFascia.issues;
  const r=parseSmartfoldClearance(s.configuration[SMARTFOLD_CLEARANCE_KEY]),d=smartfoldOutsideClearance(s)!;
  if(!r||r.mountingAreaHeight===null||r.mountingSpaceHeight===null)add("outside_clearance_required",34,"Record both screw mounting-area height and available shade mounting-space height before pricing this outside-mount SmartFold shade.");
  else if(d.minimumMountingAreaHeight===null||d.minimumMountingSpaceHeight===null)add("outside_bracket",37,"Resolve the fabric, lift and bracket size before validating mounting clearance.");

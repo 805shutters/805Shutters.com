@@ -1,3 +1,4 @@
+import {smartfoldInsideFascia} from "./norman-smartfold-inside-fascia";
 import {smartfoldAutoWand} from "./norman-smartfold-autowand";
 import { magneticClearanceRecord, validateMagneticClearance } from "./norman-magnet-clearance";
 import { SMARTFOLD_FABRICS } from "@/lib/quote/norman-current-assortment";
@@ -38,6 +39,7 @@ export function smartfoldHardware(context: SelectionContext) {
   const customChain = c.smartfold_chain_length != null && c.smartfold_chain_length !== "";
   const chainLength = customChain ? Number(c.smartfold_chain_length) : context.heightInches <= 25.5 ? context.heightInches - 2 : context.heightInches * 2 / 3 + 6;
   const autoWand = smartfoldAutoWand(context);
+  const insideFascia = smartfoldInsideFascia(context);
   return {
     validMount, validLayers,
     record: {
@@ -52,6 +54,7 @@ export function smartfoldHardware(context: SelectionContext) {
       quantityBasis: "per_shade",
       style: smartfoldStyle(context),
       ...(autoWand ? {autoWand:autoWand.record} : {}),
+      ...(insideFascia ? {insideFasciaClearance:insideFascia.record} : {}),
       magneticClearance: magneticClearanceRecord(context),
       chain: /cord.*loop/.test(lift) ? {
         sourceId: "norman-smartfold-guide-2026-09-10", sourcePage:21,

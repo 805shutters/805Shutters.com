@@ -922,6 +922,7 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     contractChoice("smartfold_hold_down", "Hold-downs", SMARTFOLD_HOLD_DOWNS),
     contractChoice("smartfold_magnet_color", "Magnet catch color", SMARTFOLD_MAGNET_COLORS),
     contractChoice("smartfold_pole", "Additional pole per shade", SMARTFOLD_POLES),
+    contractChoice("smartfold_fascia_recess","Fascia recess arrangement",["Fully Recessed","Partial Projection"]),
     contractChoice("smartfold_wand_length","AutoWand length",SMARTFOLD_WAND_LENGTHS),
     contractChoice("smartfold_wand_color","AutoWand color",SMARTFOLD_WAND_COLORS),
     contractChoice("smartfold_light_guard_recess", "Light Guard recess arrangement", ["Fully Recessed", "Partial Projection"]),

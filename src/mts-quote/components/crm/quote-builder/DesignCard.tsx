@@ -10199,7 +10199,7 @@ function ShadesAndBlindsOptions({
     }
     if (productType === "SmartFold Shades" && field === "mount_type") {
       const outside=value === "Outside Mount";
-      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,...(value !== "Inside Mount"?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null,smartfold_light_guard_recess:null,smartfold_full_recess_depth_inches:null}:{})}});
+      onUpdateFields({mount_type:typeof value === "string" ? value : null,options_json:{...currentJson,smartfold_fascia_recess:null,smartfold_fascia_recess_depth_inches:null,smartfold_installation:outside?SMARTFOLD_INSTALLATIONS[1]:null,smartfold_valance_returns:null,smartfold_valance_return_size:null,...(value !== "Inside Mount"?{basic_light_guard:"No",light_guard:"none",smartfold_light_guard_color:null,smartfold_light_guard_recess:null,smartfold_full_recess_depth_inches:null}:{})}});
       return;
     }
     if (productType === "SmartFold Shades" && field === "lift_system") {
@@ -10585,6 +10585,10 @@ function ShadesAndBlindsOptions({
           ...(design?.mount_type === "Inside Mount" && optionsJson.basic_light_guard === "Yes" ? [
             {key:"light_guard_recess",label:"Light Guard Recess Arrangement",field:"json:smartfold_light_guard_recess",type:"select",options:["Fully Recessed","Partial Projection"]} as GridOption,
             ...(optionsJson.smartfold_light_guard_recess === "Fully Recessed" ? [{key:"full_recess_depth",label:"Available Full-Assembly Recess Depth",field:"json:smartfold_full_recess_depth_inches",type:"number",min:0,step:"0.0625",unit:"in"} as GridOption]:[]),
+          ]:[]),
+          ...(design?.mount_type === "Inside Mount" && ["Curved Fascia","Square Fascia"].includes(design.valance || "") && optionsJson.basic_light_guard !== "Yes" ? [
+            {key:"fascia_recess",label:"Fascia Recess Arrangement",field:"json:smartfold_fascia_recess",type:"select",options:["Fully Recessed","Partial Projection"]} as GridOption,
+            ...(optionsJson.smartfold_fascia_recess === "Fully Recessed" ? [{key:"fascia_recess_depth",label:"Available Fascia Assembly Recess Depth",field:"json:smartfold_fascia_recess_depth_inches",type:"number",min:0,step:"any",unit:"in"} as GridOption]:[]),
           ]:[]),
           { key: "hem", label: "Premium Hem Bar", field: "json:premium_hem_bar", type: "yes-no", noFirst: true },
           { key:"hold_down",label:"Hold-Downs",field:"json:smartfold_hold_down",type:"select",options:SMARTFOLD_HOLD_DOWNS },

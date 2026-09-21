@@ -25,6 +25,10 @@ describe("SmartFold bounded outside rechargeable eligibility",()=>{
   const s=shade({motor_type:"AutoWand",remote_type:null,smartfold_wand_length:"36",smartfold_wand_color:"White"});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);
   s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-standard-valances-2026-09-20-r13`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
  });
+ it("preserves r14 inside-fascia pricing holds while current exact full recess is validated",()=>{
+  const s=shade({mount_type:"Inside Mount",valance:"Square Fascia",smartfold_fascia_recess:"Fully Recessed",smartfold_fascia_recess_depth_inches:4.087});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);expect(validateSmartfoldEligibility(s)).toEqual([]);
+  s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-autowand-2026-09-20-r14`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
+ });
  it("keeps r10 manual pricing held and requires current manual power selections to be clear",()=>{
   const s=shade({lift_system:"PrecisionLift Cordless",motor_type:null});expect(smartfoldHasDocumentedPricingBranch(s)).toBe(true);
   s.catalogVersion=`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-mounting-2026-09-20-r10`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(smartfoldHasDocumentedPricingBranch(s)).toBe(false);
