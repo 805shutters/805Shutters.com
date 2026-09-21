@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildOperationsItems, type OperationsItem } from './operations-overview';
 import { jobStatusFilters, matchesJobStatusFilter as matches } from './job-status-filters';
-import { JOB_TRACKING_STAGES } from './job-tracking-view';
 import type { CrmDashboardData } from './types';
 
 const base = buildOperationsItems({ jobs: [], quotes: [{ id: 'q', customer_name: 'Test', status: 'sold', quote_total: 1000, balance_due: 500, created_at: '2026-09-01', meta: {} }], bookkeepingRows: [], customerFiles: [], customerProducts: [], orderCogsEmails: [], installationInvoiceEmails: [] } as unknown as CrmDashboardData)[0];
@@ -30,11 +29,12 @@ describe('job status filters', () => {
     expect(matches(item({ source: { ...base.source, depositOutstanding: 200 } }), 'deposit_needed')).toBe(true);
     expect(matches(item({ source: { ...base.source, depositOutstanding: 0 } }), 'deposit_paid')).toBe(true);
   });
-  it('makes all derived stages reachable, including lost and archived records', () => {
-    for (const stage of JOB_TRACKING_STAGES) {
-      const record = item({ source: { ...base.source, stageId: stage.id, progress: { ...base.source.progress, product: stage.id === 'shipped' ? 'received' : 'unprepared' } }, archived: ['lost', 'archived'].includes(stage.id), complete: stage.id === 'complete' });
-      expect(jobStatusFilters.some(filter => !['all', 'active'].includes(filter.id) && matches(record, filter.id))).toBe(true);
-    }
+  it('shows only the seven checkmark categories in workflow order', () => {
+    expect(jobStatusFilters.map(filter => filter.label)).toEqual([
+      'Quote', 'Sold', 'Deposit', 'Ordered', 'Shipped', 'Installed', 'Balance paid',
+    ]);
+  });
+  it('retains internal historical queries without exposing extra filter buttons', () => {
     const archived = item({ archived: true, source: { ...base.source, stageId: 'archived' } });
     expect(matches(archived, 'archived')).toBe(true);
     expect(matches(archived, 'all')).toBe(true);
