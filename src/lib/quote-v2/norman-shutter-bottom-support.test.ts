@@ -24,7 +24,7 @@ describe('actual Norman shutter panel bottom support',()=>{
   const r=record();r.panels.push({heightInches:60,divider:'none'});
   expect(issues(context(r))[0].explanation).toContain('Panel 2');
   r.panels[1].bottomSupport={...support(),support:'none'};expect(issues(context(r))[0].ruleId).toBe('norman.shutter.support.missing_support');
-  r.panels[1].bottomSupport={...support(),frequentlyOpen:true};expect(issues(context(r))[0].ruleId).toBe('norman.shutter.support.frequent_open');
+  r.panels[1].bottomSupport={...support(),frequentlyOpen:true};expect(issues(context(r))[0]).toMatchObject({ruleId:'norman.shutter.support.frequent_open',severity:'warning'});
   r.panels[1].bottomSupport={...support(),support:'bottom_frame'};expect(issues(context(r))).toEqual([]);
   r.panels[1].bottomSupport.frequentlyOpen=null;expect(issues(context(r))[0].ruleId).toBe('norman.shutter.support.record_required');
  });
