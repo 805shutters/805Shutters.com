@@ -1,9 +1,9 @@
 # Norman completion — 2026-09-18
-## Current checkpoint — September 20, 18:40
-- Completed live:56d4f960;6,168 tests passed,28 skipped, typecheck/build/public deployment passed. Includes all earlier SmartFold/Bi-fold/Walden work plus corrected shutter bottom-support warnings, per-panel divider records and exact Sundance Vision identity/control routes.
-- Production proof: SmartFold0352C inside Light Guard rejects3.50 inches against3.52 required; restored3.52 survives full reload/reopen. Pricing stays held. SmartFold0342B remains$5,023. Earlier family proofs remain in individual evidence files.
-- In progress:4b2bd345 deployment integrates Sundance six-family controls and stock-vertical actual before-cut dimensions, native Norman shutter program routing, Walden production evidence and contextual Norman control inventory. Production verification follows deployment.
-- Parallel agents: Norman standalone valance destinations; Norman shutter track rules/live proof; Sundance component/order records. Source/account exceptions remain explicit.
+## Current checkpoint — September20,19:08
+- Completed live:4c38a3e4;6,238 tests passed,28 skipped; typecheck/build/public deployment passed. Adds measured SmartFold/PerfectSheer magnetic clearances, shutter section counts/bypass routing and Sundance component records. All earlier releases remain included.
+- Production proof: standalone Ultimate/SmartPrivacy valances0355 retained all choices after full reload and rejected invalid section/max widths. Shutter0353/0356/0357 cover native construction, bypass references and split datums with saved negative checks. StockVertical0354 and Sundance roller/Europanel0335 proofs passed with unresolved customer pricing held.
+- In progress: magnetic-clearance production proof; next release integrates standard manual SmartFold branches, Walden twin component records and exact Norman specialty identities/frame restrictions. Wood legacy common-cutout backend regression passed; no current code defect found.
+- Parallel agents: Roller standalone/separate valances and hardware/fabric-width mapping; shutter specialty rules/live proof; Sundance order-shared power/accessories.
 - Remaining: complete source assortment/rule reconciliation, account pricing evidence and production proof for new controls. No manufacturer or whole Norman family is certified complete.
 - External intervention pending: Norman and Onyx portal sign-in; confirmation R00743/RA00743 costs apply to805. Dealer factors and selling policy remain unchanged.
 
