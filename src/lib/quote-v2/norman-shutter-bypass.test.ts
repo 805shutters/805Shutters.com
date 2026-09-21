@@ -6,6 +6,7 @@ import {getStandardShutterGridOptions} from '@mts/components/crm/quote-builder/D
 import {NORMAN_SHUTTER_PROGRAMS} from '../quote/norman-shutter-assortment';
 import {normanBypassPanelMaxWidth,normanBypassFrameReference,parseNormanBypassRecord,type NormanBypassRecord} from '../quote/norman-shutter-bypass';
 import {NORMAN_SHUTTER_PANEL_RECORD,parseNormanPanelRecord,type NormanShutterPanelRecord} from '../quote/norman-shutter-panels';
+import {validateNormanShutterAssortment} from './norman-shutter-assortment';
 import {validateNormanShutterPanels} from './norman-shutter-panels';
 import {selectionContextFromExactInterface} from './exact-interface-adapter';
 import type {SelectionContext} from './core';
@@ -34,6 +35,11 @@ describe('2020 Bypass source panel and mounting records',()=>{
   const r=record();r.panels.pop();expect(byIds(ctx('woodlore',r))).toContain('norman.shutter.bypass.panel_count');r.bypass!.layout='other';expect(byIds(ctx('woodlore',r))).toContain('norman.shutter.bypass.layout_geometry');
   const s=ctx();expect(byIds({...s,configuration:{...s.configuration,mount_type:'Outside Mount'}})).toContain('norman.shutter.bypass.mount');
   const noGuide=record();noGuide.bypass!.interlockingBottomGuide=false;expect(byIds(ctx('woodlore',noGuide))).toContain('norman.shutter.bypass.bottom_guide');noGuide.application='bypass_open';expect(byIds(ctx('woodlore',noGuide))).toEqual([]);expect(ids(ctx('woodlore_aquashield',noGuide))).toContain('norman.shutter.panels.aquashield_open_bypass');noGuide.bypass!.frontPanel='';expect(byIds(ctx('woodlore',noGuide))).toContain('norman.shutter.bypass.front_panel');
+ });
+ it('does not apply stale regular-frame or stile constraints to a saved bypass schedule',()=>{
+  const s=ctx();s.configuration={...s.configuration,color:'001',frame_type:'old regular frame',stile_width:'2 inch',stile_join:'Butt',panel_config:'LL',widest_panel_width_inches:99};
+  const before=JSON.stringify(s.configuration);expect(validateNormanShutterAssortment(s)).toEqual([]);expect(JSON.stringify(s.configuration)).toBe(before);expect(ids(s)).toContain('norman.shutter.panels.application_geometry');
+  expect(validateNormanShutterAssortment({...s,catalogAsOf:'2026-09-19'}).map(x=>x.ruleId)).toContain('norman.shutter.assortment.frame');
  });
  it('preserves old history and rejects malformed newly supplied records',()=>{
   const r=record();delete r.bypass;expect(parseNormanPanelRecord(r)).toEqual(r);expect(ids({...ctx('woodlore',r),catalogAsOf:'2026-09-19'})).toEqual([]);expect(byIds(ctx('woodlore',r))).toContain('norman.shutter.bypass.record_required');
