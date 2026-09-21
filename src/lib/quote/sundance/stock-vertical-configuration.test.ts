@@ -25,7 +25,10 @@ describe('Stock Vertical Essence source and fulfillment',()=>{
   expect(evidence(selection(42,60,{...s.configuration,stock_vertical_height_cut_down:'No'}))).toMatchObject({base:{sourceRetail:178,gridHeight:60},netCutSubtotal:5});
  });
  it('does not treat grid breakpoints as evidence of the larger physical blind',()=>{
-  for(const before of [undefined,null,42,41.9,NaN,'45'])expect(ids(selection(42,60,{...config,stock_vertical_width_cut_down:'Yes',stock_vertical_before_width:before??null}))).toContain('width_before_cut');
+  for(const before of [undefined,null,42,41.9,NaN,'45']){
+   const s=selection(42,60,{...config,stock_vertical_width_cut_down:'Yes',stock_vertical_before_width:before??null});
+   expect(ids(s)).toContain('width_before_cut');expect(evidence(s).base).toBeNull();
+  }
   expect(ids(selection(42,60,{...config,stock_vertical_width_cut_down:'Yes',stock_vertical_before_width:126.0625}))).toContain('base_grid');
   expect(ids(selection(31.9375,60))).toContain('width_lower_cut_limit');expect(ids(selection(42,43.9375))).toContain('height_lower_cut_limit');
   expect(ids(selection(126.0625,60))).toContain('width_range');expect(ids(selection(42,96.0625))).toContain('height_range');

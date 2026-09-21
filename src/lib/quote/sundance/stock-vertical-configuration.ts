@@ -14,7 +14,8 @@ export function sundanceStockVerticalEvidence(s:StockSelection) {
  const c=s.configuration, widthCut=c.stock_vertical_width_cut_down==='Yes', heightCut=c.stock_vertical_height_cut_down==='Yes';
  const beforeWidth=widthCut?finite(c.stock_vertical_before_width):s.widthInches;
  const beforeHeight=heightCut?finite(c.stock_vertical_before_height):s.heightInches;
- const base=beforeWidth!==null&&beforeHeight!==null?lookupSundanceSourceGrid('sundance_vertical_essence',SUNDANCE_STOCK_VERTICAL_PROGRAM,beforeWidth,beforeHeight):null;
+ const largerBlindRecorded=beforeWidth!==null&&beforeHeight!==null&&(!widthCut||beforeWidth>s.widthInches)&&(!heightCut||beforeHeight>s.heightInches);
+ const base=largerBlindRecorded?lookupSundanceSourceGrid('sundance_vertical_essence',SUNDANCE_STOCK_VERTICAL_PROGRAM,beforeWidth,beforeHeight):null;
  const wi=STOCK_VERTICAL_WIDTHS.findIndex(w=>w>=s.widthInches);
  const square=c.stock_vertical_valance==='Square corner valance'&&Number.isFinite(s.widthInches)&&s.widthInches>0&&wi>=0?STOCK_VERTICAL_SQUARE[wi]:null;
  return {version:1 as const,sourceId:STOCK_VERTICAL_SOURCE,sourcePage:12,effectiveDate:'2024-08-01',beforeWidth,beforeHeight,base,
