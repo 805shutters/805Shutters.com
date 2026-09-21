@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-20",
+  "deployment": "72db3c042477c9bde16907af3b68728ab5605099",
+  "quote": "805-0352",
+  "alternative": "C",
+  "configuration": {
+    "room": "Office",
+    "width": 36,
+    "height": 60,
+    "quantity": 4,
+    "fabric": "Louise F1709 White Jade LF",
+    "mount": "Inside Mount",
+    "mountingMethod": "Back / Wall Mount with Raceway",
+    "lift": "Motorized",
+    "power": "Norman Smart Rechargeable Battery (AC Charger)",
+    "lightGuard": "3058 White",
+    "recessArrangement": "Fully Recessed",
+    "fullAssemblyRecessDepth": 3.52
+  },
+  "source": {
+    "guide": "norman-smartfold-guide-2026-09-10",
+    "pdfPage": 33,
+    "measurementBasis": "full_assembly_outer_envelope_with_basic_light_guard"
+  },
+  "negative": {
+    "savedDepth": 3.5,
+    "savedServerIssue": "This complete Basic Light Guard assembly needs 3.52 inches of unobstructed recess depth for a fully recessed installation.",
+    "priceHeld": true
+  },
+  "restored": {
+    "depth": 3.52,
+    "quoteSaved": true,
+    "depthIssueAbsent": true
+  },
+  "proof": {
+    "close": true,
+    "fullReloadReopen": true,
+    "customerOutputHold": true,
+    "savedPrice": 0
+  },
+  "limitations": [
+    "Inside-mount price authority remains unresolved; this proves the new fit rule and saved configuration only.",
+    "Derived assembly record covered by backend round-trip test; live staff audit exposes selected fields and blocking issues rather than the entire raw record."
+  ],
+  "preservedAlternatives": {
+    "B": "805-0342 at5023",
+    "A": "805-0315 common assembly held"
+  },
+  "externalActions": "No customer send/sign/sold/vendor order."
+}
