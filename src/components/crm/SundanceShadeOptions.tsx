@@ -23,7 +23,7 @@ export function SundanceShadeOptions({productId, options, onUpdateFields, widthI
     {selected && <p className="text-sm">{selected.privacyType} · Fabric width {selected.fabricWidth} · Railroading {selected.railroaded === null ? "unverified" : selected.railroaded ? "available" : "not available"}. Final shade limits also depend on the control and top treatment.</p>}
     {colors.length === 0 && <p className="text-sm text-amber-900">The source collection has a pricing destination, but no unambiguous current dealer color is reconciled here. Confirm availability and exact material before quoting.</p>}
     {productId.includes("flat_roman") && <p className="text-sm text-amber-900">A dedicated current dealer ordering type for this flat Roman family was not found. Confirm current orderability before quoting.</p>}
-    {productId==="sundance_zebra"&&<SundanceZebraConfiguration options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
+    {["sundance_zebra","sundance_louvolite_zebra"].includes(productId)&&<SundanceZebraConfiguration productId={productId} options={options} onUpdateFields={onUpdateFields} widthInches={widthInches} heightInches={heightInches} />}
     <p className="text-sm text-amber-900">Source collection routes do not verify control, mounting, fabric-width, accessory or account-price compatibility. Confirm the complete configuration and charges with the dealer.</p>
   </>;
 }

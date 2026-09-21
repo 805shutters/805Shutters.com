@@ -41,3 +41,16 @@ it("warns when a source collection has no reconciled current dealer colors",()=>
  expect(html).toContain('no unambiguous current dealer color');expect(html).toContain('Railroading unverified');
  expect(html).toContain('Capri Black &amp; Navy');
 });
+
+it('applies the jointly published Zebra rules to the separate Vision identity without aliasing its grid',async()=>{
+ const {validateSundanceZebraConfiguration:validate}=await import('./zebra-configuration');
+ const row=sundanceShadeColors.find(r=>r.colorName==='MODELLA- SAND-VISION 110')!;
+ const c={...sundanceShadeColorPatch({},row.productId,row.id),sundance_zebra_control:'Cordless',sundance_zebra_cassette:'3-inch Square Aluminum',sundance_zebra_cassette_color:'White',mount_type:'Inside',sundance_zebra_assembly:'Single'};
+ const context={productId:row.productId,programId:row.programId,widthInches:36,heightInches:60,configuration:c};
+ expect(row.programId).toBe('sundance_louvolite_zebra_p8_t1');
+ expect(validate(context)).toEqual([]);
+ expect(validate({...context,widthInches:96.0625}).map(r=>r.ruleId)).toContain('sundance.zebra.size');
+ expect(validate({...context,productId:'sundance_zebra'}).map(r=>r.ruleId)).toContain('sundance.zebra.material');
+ const html=renderToStaticMarkup(createElement(SundanceDesignOptions,{productId:row.productId,design:{options_json:c},widthInches:36,heightInches:60,onUpdateFields:()=>{}}));
+ expect(html).toContain('Sundance Zebra operating system');expect(html).toContain('MODELLA- SAND-VISION 110');
+});

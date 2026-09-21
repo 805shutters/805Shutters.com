@@ -3,10 +3,10 @@ import { sundanceZebraAccessories, sundanceZebraAccessoryKey } from '@/lib/quote
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import { sundanceZebraControls, sundanceZebraCassettes, sundanceZebraCassetteColors, sundanceZebraChains, sundanceZebraControlPatch, validateSundanceZebraConfiguration, sundanceZebraOptionEvidence } from '@/lib/quote/sundance/zebra-configuration';
-export function SundanceZebraConfiguration({options,widthInches=0,heightInches=0,onUpdateFields}:{options:Record<string,unknown>;widthInches?:number;heightInches?:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}) {
+export function SundanceZebraConfiguration({productId='sundance_zebra',options,widthInches=0,heightInches=0,onUpdateFields}:{productId?:string;options:Record<string,unknown>;widthInches?:number;heightInches?:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}) {
  const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null}});
- const issues=validateSundanceZebraConfiguration({widthInches,heightInches,programId:String(options.catalog_program_id??''),configuration:options as SelectionRecord});
+ const issues=validateSundanceZebraConfiguration({productId,widthInches,heightInches,programId:String(options.catalog_program_id??''),configuration:options as SelectionRecord});
  const evidence=sundanceZebraOptionEvidence(options);
  return <>
   <label className="block text-sm">Operating system<select aria-label="Sundance Zebra operating system" className={classes} value={String(options.sundance_zebra_control??'')} onChange={e=>onUpdateFields({options_json:sundanceZebraControlPatch(options,e.target.value)})}><option value="">Select system</option>{sundanceZebraControls.map(c=><option key={c.name}>{c.name}</option>)}</select></label>

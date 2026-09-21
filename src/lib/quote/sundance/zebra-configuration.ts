@@ -20,10 +20,10 @@ export const sundanceZebraChains = ['White', 'Ivory', 'Gray', 'Bronze', 'Black',
 export function sundanceZebraControlPatch(options: Record<string, unknown>, control: string) {
   return { ...clearSundanceZebraAccessories(options), sundance_zebra_control: control || null, sundance_zebra_chain: null };
 }
-export function validateSundanceZebraConfiguration(s: Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'>): ValidationIssue[] {
+export function validateSundanceZebraConfiguration(s: Pick<SelectionContext,'widthInches'|'heightInches'|'programId'|'configuration'> & {productId?:string}): ValidationIssue[] {
   const c=s.configuration, issues:ValidationIssue[]=[];
   const add=(key:string,page:number,explanation:string)=>issues.push({severity:'hard_block',ruleId:`sundance.zebra.${key}`,source:sourceProvenance(sundanceZebraSourceId,{page}),selectedValues:{...c,widthInches:s.widthInches,heightInches:s.heightInches},explanation});
-  const row=sundanceShadeColors.find(row=>row.productId==='sundance_zebra'&&row.id===c.fabric_color_id);
+  const row=sundanceShadeColors.find(row=>row.productId===(s.productId??'sundance_zebra')&&row.id===c.fabric_color_id);
   if(!row||row.programId!==s.programId||row.colorName!==c.fabric_color_name||row.automaticDetails.catalog_sundance_shade_collection_id!==c.catalog_sundance_shade_collection_id)add('material',3,'Select the exact Zebra dealer fabric and its matching collection price group.');
   const control=sundanceZebraControls.find(control=>control.name===c.sundance_zebra_control);
   if(!control)add('control',9,'Choose a documented Zebra operating system.');

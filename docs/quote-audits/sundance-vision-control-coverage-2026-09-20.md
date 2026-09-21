@@ -1,0 +1,7 @@
+# Louvolite Vision control coverage
+
+The G-Zebra-Shades-V2.pdf source is jointly titled Sundance Zebra and Louvolite Vision, with separate collection/group indexes on PDF3, Vision groups5–8 on PDF7–8, and shared specifications/options/controls on PDF9–14. The earlier completion matrix incorrectly implied that Vision's assortment had not been reconciled: all22 source collections and four grids already have distinct catalog destinations; two exact dealer colors are captured (MODELLA- SAND-VISION110 and RIMINI- ASH). The remaining20 Vision collections lack reconciled current dealer color choices and remain exceptions.
+
+The UI and shared save/server validation now apply the source's jointly published control, cassette, dimensions, mounting, chains and accessory rules to `sundance_louvolite_zebra`. Product identity is explicit: a Vision color cannot pass as SundanceCaress, and group7/8 never aliases group3/4. All existing IDs, source evidence, options and snapshots remain intact. Availability and account-price holds remain unchanged.
+
+Validation:509 Sundance/shared-rule tests and TypeScript pass. New regression verifies Modella's exact Vision group7 grid,96+1/16-inch rejection, cross-brand identity rejection and rendered operating-system choices. Production persistence awaits deployment. This closes the missing Vision control destination; shared assembly/accessory-allocation modeling and20 availability exceptions remain.

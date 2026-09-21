@@ -2437,7 +2437,7 @@ export function validateSelection(context: SelectionContext): readonly Validatio
   if (["sundance_walden_premier","sundance_walden_select"].includes(context.productId)) issues.push(...validateSundanceWaldenConfiguration(context));
   if (sundanceHorizontalProductIds.includes(context.productId)) issues.push(...validateSundanceHorizontalConfiguration(context));
   if (context.productId === "sundance_vertical_essence") issues.push(...validateSundanceVerticalConfiguration(context));
-  if (context.productId === "sundance_zebra") issues.push(...validateSundanceZebraConfiguration(context));
+  if (["sundance_zebra","sundance_louvolite_zebra"].includes(context.productId)) issues.push(...validateSundanceZebraConfiguration(context));
   if (context.productId === "sundance_cellular") issues.push(...validateSundanceCellularConfiguration(context));
   if (context.productId === "sundance_exterior_zip") issues.push(...validateSundanceExteriorZipConfiguration(context));
   if (context.productId === "sundance_portfolio_roman") issues.push(...validateSundancePortfolioConfiguration(context));
