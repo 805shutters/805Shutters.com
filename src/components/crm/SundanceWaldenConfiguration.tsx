@@ -1,4 +1,5 @@
 'use client';
+import {SundanceWaldenTwinOptions} from './SundanceWaldenTwinOptions';
 import type {SalesQuoteDesign} from '@mts/types/quote';
 import type {SelectionRecord} from '@/lib/quote-v2/core';
 import {sundanceWaldenControls,validateSundanceWaldenConfiguration} from '@/lib/quote/sundance/walden-configuration';
@@ -26,6 +27,7 @@ export function SundanceWaldenConfiguration({productId,options,widthInches,heigh
  {!valanceOnly&&<details className="text-sm"><summary className="cursor-pointer">Motor accessories allocated to this line</summary>{sundanceWaldenAccessories.filter(a=>a.controls.includes(control)).map(a=><div key={a.key}>{number(sundanceWaldenAccessoryKey(a.key),`${a.label} quantity`)}</div>)}<p>Chargers are separate. Allocate shared remotes, hubs and chargers once per order; confirm the complete quantity and compatibility.</p></details>}
  <p className="text-sm">Standard shade: included 6-inch lined front valance. Waterfall: no front valance; interior/back valances follow liner and control requirements. TDBU includes lined front and back valances. Inside factory width deduction is ⅜ inch; keep the opening dimensions. Clutch-adjacent and Pro Wand fabric offsets depend on returns and do not change the ordered grid width. Twin and common-headrail shades require independent components.</p>
  <details className="text-sm"><summary className="cursor-pointer">Published Walden option evidence</summary>{evidence.entries.map(e=><p key={e.label}>{e.label}: ${e.retail.toFixed(2)} source retail (PDF {e.page})</p>)}<p>Selected source retail evidence: ${evidence.sourceRetailSubtotal.toFixed(2)}. This is not a customer price. Shade base, attached liner/binding grids, shared component allocations, account factors and freight remain separate.</p>{evidence.unresolved.map(message=><p key={message} className="text-amber-900">{message}</p>)}</details>
+ <SundanceWaldenTwinOptions productId={productId} options={options} widthInches={widthInches} heightInches={heightInches} onUpdateFields={onUpdateFields} />
  {issues.length>0&&<div role="alert" className="text-sm text-amber-900">{issues.map(i=><p key={i.ruleId}>{i.explanation}</p>)}</div>}
  </>;
 }

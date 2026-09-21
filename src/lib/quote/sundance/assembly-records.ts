@@ -38,6 +38,7 @@ export function sundanceAssemblySpec(productId: string, configuration: Record<st
 export function sundanceComponentConfiguration(configuration: Record<string, unknown>): SelectionRecord {
   const next: Record<string, unknown> = {...configuration};
   delete next[SUNDANCE_ASSEMBLY_KEY];
+  delete next.sundance_walden_twin_v1;
   for (const key of Object.keys(next)) {
     if (/qty$|quantity$|^manual_|^quote_v2_|^pricing_|^price_|^dealer_|^cost_|^unit_price|^surcharges$|^motorization$/i.test(key)) delete next[key];
   }

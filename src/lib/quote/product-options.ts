@@ -1,3 +1,4 @@
+import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "./sundance/walden-twin-records";
 import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "./sundance/assembly-records";
 import { SUNDANCE_DRAPERY_TRACK_ID, sundanceDraperyTrackFields } from "./sundance/drapery-track";
 import { PERFECTSHEER_RETURNS, PERFECTSHEER_JOINERY } from "@/lib/quote-v2/norman-perfectsheer-valance";
@@ -1088,6 +1089,7 @@ export function getMotorizationGroupsForProduct(productId: string): string[] {
 }
 
 export function detailDisplayValue(productId: string, fieldId: string, value: unknown): string | null {
+  if(productId.startsWith("sundance_walden_") && fieldId === SUNDANCE_WALDEN_TWIN_KEY) return sundanceWaldenTwinDescriptions(value).join(" | ") || null;
   if(productId.startsWith("sundance_") && fieldId === SUNDANCE_ASSEMBLY_KEY) return sundanceAssemblyDescriptions(value).join(" | ") || null;
   const field = getDetailFieldsForProduct(productId).find((f) => f.id === fieldId);
   if (!field) return null;
