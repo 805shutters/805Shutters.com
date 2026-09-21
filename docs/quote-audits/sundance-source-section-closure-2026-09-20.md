@@ -28,12 +28,14 @@ This crosswalk consolidates the finite implementation queue after the source-bac
 
 Each valid measured component retains its own cited base grid cell. The CRM now displays the sum of valid component **base retail cells only** (independent source anchor: cellular PDF7,30×60=$431 plus42×60=$558 gives$989). An invalid dimension or material removes that subtotal. Each component's option evidence remains visible independently; common hardware belongs to the parent; shared physical devices/panels derive one owner across selected lines. Net and retail are never combined into one amount. Remaining complete-assembly customer pricing requires the account basis/factors, undocumented hardware/factory conditions and correct final allocation; a sum of component base cells does not close those external conditions.
 
-## Finite remaining implementation / production proof
+## Finite implementation / production proof closure
 
-- New installation references and valid base-cell subtotal: release and verify rendered UI.
-- New vertical measured components: verify saved/reopened track or vane record and invalid-size/basis recovery after deployment.
-- New selected-order Zebra alignment: server unit/integration proof complete; saved group input production check remains. Factory ordered-together confirmation remains external even after this proof.
-- Louvolite Vision: exact identity/control save/reopen proof remains; use a separate internal copy to preserve original Zebra fixture.
-- Run the combined Sundance suite after the last changes and tie final ledger to the actual deployed SHA.
+- New installation references and valid base-cell subtotal: deployed and rendered on76fe135b.
+- New vertical measured components: vane97½×3/basis negative→restore/full-reload proof completed on76fe135b.
+- New selected-order Zebra alignment: server unit/integration proof and saved group input full-reload production proof complete. Factory ordered-together confirmation and live server execution trace remain explicitly unclaimed.
+- Louvolite Vision: separate line24 exact Modella Sand/group7/control36×60 save/reopen proof complete; original Zebra retained.
+- Combined Sundance suite595 tests passed; final live proof ties the checklist to76fe135b.
 
-These remaining proof items do not authorize removing the account-price gate. All17 dealer ordering types are accounted for in the CSV;448 distinct unmatched labels remain concrete external assortment work, and cannot be converted into verified offerings from source-name guesses.
+These completed source-path proofs do not authorize removing the account-price gate. All17 dealer ordering types are accounted for in the CSV;448 distinct unmatched labels remain concrete external assortment work, and cannot be converted into verified offerings from source-name guesses.
+
+Final production evidence: [76fe135b source paths](sundance-live-final-source-paths-2026-09-20.md).
