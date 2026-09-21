@@ -127,3 +127,10 @@ export function isLotusFauxWoodProductId(
 ): productId is typeof LOTUS_FAUX_WOOD_PRODUCT_ID {
   return productId === LOTUS_FAUX_WOOD_PRODUCT_ID;
 }
+
+/** West A26.v1 pp99,100,102,103 explicitly say “Use Two Blinds”.
+ * Separate measured blinds, not a shared headrail or an approved donor cut. */
+export const LOTUS_TWO_BLIND_VERSION = "lotus-two-independent-blinds-v1";
+export function lotusFauxTwoBlindSupported(programId: string | null | undefined): boolean {
+  return ["FLX", "FLXE", "FCX", "FPX"].includes(lotusFauxWoodProgramProfile(programId)?.programCode ?? "");
+}

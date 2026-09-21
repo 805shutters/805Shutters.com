@@ -9,7 +9,7 @@ import { LOTUS_AMX_PROGRAM, LOTUS_AMX_VERSION } from "@/lib/quote/lotus-amx";
 import { getProduct, getProgram } from "@/lib/quote/catalog";
 import { lotusProductId } from "@/lib/quote/lotus-selection";
 import { LOTUS_COLOR_CONFIGURATION_VERSION, LOTUS_COLOR_PRODUCTS, lotusColorsForSelection } from "@/lib/quote/lotus-colors";
-import { lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
+import { LOTUS_TWO_BLIND_VERSION, lotusFauxTwoBlindSupported, lotusFauxWoodConfigurationForProgram } from "@/lib/quote-v2/lotus-faux-wood";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 export function lotusProgramSelectionPatch(
@@ -94,11 +94,11 @@ export function LotusDesignOptions({ design, productType, widthInches, heightInc
     {lotusVerticalProfile(programId) && <LotusVerticalOptions design={design} programId={programId} width={widthInches} height={heightInches} onUpdateFields={onUpdateFields} />}
     {isFaux && <>
       <label className="block text-sm">Blinds in this opening
-        <select aria-label="Lotus blind count" className={selectClass} value={Number(options.lotus_blind_count) || 1} onChange={event => updateOptions({ lotus_blind_count: Number(event.target.value), lotus_blind_1_width_inches: null, lotus_blind_2_width_inches: null, lotus_blind_3_width_inches: null })}>
-          <option value={1}>One blind</option><option value={3}>Three blinds</option>
+        <select aria-label="Lotus blind count" className={selectClass} value={Number(options.lotus_blind_count) || 1} onChange={event => updateOptions({ lotus_blind_count: Number(event.target.value), lotus_split_configuration_version: Number(event.target.value) === 2 ? LOTUS_TWO_BLIND_VERSION : null, lotus_blind_widths_inches: null, lotus_blind_1_width_inches: null, lotus_blind_2_width_inches: null, lotus_blind_3_width_inches: null })}>
+          <option value={1}>One blind</option>{lotusFauxTwoBlindSupported(programId) && <option value={2}>Two independent blinds</option>}<option value={3}>Three blinds</option>
         </select>
       </label>
-      {Number(options.lotus_blind_count) === 3 && [1, 2, 3].map(index => <label key={index} className="block text-sm">Blind {index} measured width (inches)
+      {[2, 3].includes(Number(options.lotus_blind_count)) && Array.from({ length: Number(options.lotus_blind_count) }, (_, index) => index + 1).map(index => <label key={index} className="block text-sm">Blind {index} measured width (inches)
         <input aria-label={`Lotus blind ${index} width`} className={selectClass} type="number" min="0" step="0.0625" value={String(options[`lotus_blind_${index}_width_inches`] ?? "")} onChange={event => updateOptions({ [`lotus_blind_${index}_width_inches`]: event.target.value === "" ? null : Number(event.target.value) })} />
       </label>)}
     </>}

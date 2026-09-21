@@ -204,7 +204,7 @@ export function wholesaleAuthorityFindings(
   }];
 }
 
-/** Block only programs with recorded source conflicts; preserve their guide grids. */
+/** Block recorded source conflicts or unresolved current availability; preserve guide grids. */
 export function lotusCustomerDeliveryBlock(
   productId: string, programId: string, mountType?: unknown,
 ): string | null {
@@ -219,6 +219,12 @@ export function lotusCustomerDeliveryBlock(
   // portal versus $53.97 in West A26.v1 (fresh-portal-order-recipes.json).
   if (programId === "lotus_fcx_2in_soft_white_custom") {
     return "Lotus FCX dealer-guide and portal prices conflict. Customer delivery requires source authority confirmation.";
+  }
+  // West A26.v1 p103 has FPX, but the current linked assortment and exhaustive
+  // authenticated 2026-09-20 listing do not identify any FPX offering. Absence
+  // does not establish discontinuation or authorize current customer delivery.
+  if (productId === "lotus_faux_wood_blinds" && programId === "lotus_fpx_2in_privacy_bright_white_custom") {
+    return "Lotus FPX current availability and exact orderable SKUs require dealer confirmation; the retained dealer-guide grid is historical price evidence.";
   }
   if (typeof mountType === "string" && /\bside\s*mount\b/i.test(mountType)) {
     return "Lotus Side Mount fitment and ordering dimensions require manufacturer confirmation.";

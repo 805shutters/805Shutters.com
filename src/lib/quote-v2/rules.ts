@@ -81,7 +81,7 @@ import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
 import { resolveNormanShutterWindowSizePricing } from "./norman-shutter-pricing-size";
 import { validateNormanShadeMotorization } from "./norman-shade-motorization";
-import { lotusFauxWoodProgramProfile } from "./lotus-faux-wood";
+import { LOTUS_TWO_BLIND_VERSION, lotusFauxTwoBlindSupported, lotusFauxWoodProgramProfile } from "./lotus-faux-wood";
 import { catalog as pricingCatalog, getProduct } from "@/lib/quote/catalog";
 
 type RuleSource = {
@@ -2274,33 +2274,36 @@ function validateLotusFauxWood(
   const blindCount = finiteNumber(
     configValue(context, "lotus_blind_count"),
   );
-  if (blindCount !== 1 && blindCount !== 3) {
+  const twoBlindSupported = blindCount === 2 && context.catalogAsOf >= "2026-09-20" &&
+    configValue(context, "lotus_split_configuration_version") === LOTUS_TWO_BLIND_VERSION &&
+    lotusFauxTwoBlindSupported(context.programId);
+  if (blindCount !== 1 && blindCount !== 3 && !twoBlindSupported) {
     issues.push(
       issue(
         "hard_block",
         "lotus.faux.blind_count.required",
         source,
         { lotus_blind_count: blindCount },
-        "Select whether this original opening uses one blind or a three-blind split.",
+        "Select one or three blinds, or the source-documented two-independent-blind route for FLX, FLXE, FCX or FPX.",
       ),
     );
   }
 
-  if (blindCount === 3) {
+  if (blindCount === 3 || twoBlindSupported) {
     const widths = numericArray(
       configValue(context, "lotus_blind_widths_inches"),
     );
-    if (!widths || widths.length !== 3 || widths.some((width) => width <= 0)) {
+    if (!widths || widths.length !== blindCount || widths.some((width) => width <= 0)) {
       issues.push(
         issue(
           "hard_block",
-          "lotus.faux.split.three_widths_required",
+          blindCount === 2 ? "lotus.faux.split.two_widths_required" : "lotus.faux.split.three_widths_required",
           source,
           {
             lotus_blind_count: blindCount,
             lotus_blind_widths_inches: widths,
           },
-          "A three-blind Lotus opening requires the measured left, center, and right blind widths. The center width is never inferred.",
+          blindCount === 2 ? "Two independent Lotus blinds require both measured widths; no equal split or common headrail is inferred." : "A three-blind Lotus opening requires the measured left, center, and right blind widths. The center width is never inferred.",
         ),
       );
     } else if (widths.some((width) => width > profile.maxWidth)) {

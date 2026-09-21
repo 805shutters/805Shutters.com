@@ -47,3 +47,12 @@ it("persists a color contract and filters the visible colors by source dimension
   expect(render(17)).not.toContain('>Alabaster</option>');
   expect(render(23)).toContain('>Alabaster</option>');
 });
+
+it("offers two measured independent blinds only on source-directed programs", () => {
+ const render=(program:string)=>renderToStaticMarkup(createElement(LotusDesignOptions,{productType:"Faux Wood Blinds",design:{options_json:{catalog_program_id:program,lotus_blind_count:2}} as unknown as SalesQuoteDesign,onUpdateFields:()=>{}}));
+ const supported=render("lotus_flx_2in_bright_white_custom");
+ expect(supported).toContain("Two independent blinds");
+ expect(supported).toContain('aria-label="Lotus blind 2 width"');
+ expect(supported).not.toContain('aria-label="Lotus blind 3 width"');
+ expect(render("lotus_ftx_2in_snow_white_custom")).not.toContain("Two independent blinds");
+});

@@ -316,6 +316,8 @@ import {
   LOTUS_FAUX_WOOD_PRODUCT_ID,
   isLotusFauxWoodProductId,
   lotusFauxWoodConfigurationForProgram,
+  LOTUS_TWO_BLIND_VERSION,
+  lotusFauxTwoBlindSupported,
   lotusFauxWoodProgramProfile,
   lotusFauxWoodProgramProfileForCode,
   lotusFauxWoodProgramProfiles,
@@ -2701,8 +2703,9 @@ function legacyPricingSnapshot(
 function lotusFauxWoodComponentWidths(
   options: Record<string, unknown>,
 ): readonly number[] | undefined {
-  if (Number(options.lotus_blind_count) !== 3) return undefined;
-  const widths = [1, 2, 3].map((index) =>
+  const count = Number(options.lotus_blind_count);
+  if (count !== 2 && count !== 3) return undefined;
+  const widths = Array.from({ length: count }, (_, index) => index + 1).map((index) =>
     Number(options[`lotus_blind_${index}_width_inches`]),
   );
   return widths.every((width) => Number.isFinite(width) && width > 0)
@@ -10432,6 +10435,8 @@ function ShadesAndBlindsOptions({
         options_json: {
           ...currentJson,
           lotus_blind_count: blindCount,
+          lotus_split_configuration_version: blindCount === 2 ? LOTUS_TWO_BLIND_VERSION : null,
+          lotus_blind_widths_inches: null,
           ...(blindCount === 3
             ? {}
             : {
@@ -11968,9 +11973,9 @@ function ShadesAndBlindsOptions({
               label: "Blinds for this opening",
               field: "json:lotus_blind_count",
               type: "buttons",
-              options: ["1", "3"] as const,
+              options: lotusFauxTwoBlindSupported(selectedProgramId) ? ["1", "2", "3"] : ["1", "3"],
             },
-            ...(blindCount === 3
+            ...([2, 3].includes(blindCount)
               ? ([
                   {
                     key: "lotus_blind_1_width_inches",
@@ -11984,7 +11989,7 @@ function ShadesAndBlindsOptions({
                   },
                   {
                     key: "lotus_blind_2_width_inches",
-                    label: "Center blind width",
+                    label: blindCount === 2 ? "Right blind width" : "Center blind width",
                     field: "json:lotus_blind_2_width_inches",
                     type: "number",
                     min: 1,
@@ -12002,7 +12007,7 @@ function ShadesAndBlindsOptions({
                     step: "0.0625",
                     unit: '"',
                   },
-                ] satisfies GridOption[])
+                ] satisfies GridOption[]).slice(0, blindCount)
               : []),
           ] satisfies GridOption[];
         }

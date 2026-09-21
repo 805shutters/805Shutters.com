@@ -577,7 +577,7 @@ export function selectionContextFromExactInterface(
       leadingNumberArray(
         sourceOptions,
         (index) => `lotus_blind_${index}_width_inches`,
-        3,
+        Number(sourceOptions.lotus_blind_count) === 2 ? 2 : 3,
       ),
   );
   alias(
