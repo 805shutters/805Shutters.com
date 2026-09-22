@@ -4,7 +4,7 @@
 .calendar button { cursor:pointer; min-height:0; }
 .calendar button:disabled { opacity:.45; cursor:not-allowed; }
 .calendar button:focus-visible,.calendar input:focus-visible,.dayScroll:focus-visible { outline:2px solid #72dcaf; outline-offset:-2px; }
-.header { display:flex; align-items:center; flex:none; flex-wrap:wrap; gap:14px; padding:8px 0 16px 70px; }
+.header { display:flex; align-items:center; flex:none; flex-wrap:wrap; gap:14px; padding:8px 0 16px 88px; }
 .weekLabel { flex:1; min-width:220px; margin:0; font:650 clamp(20px,2vw,30px)/1.2 var(--crm-ui-font,Arial); color:#f0f3f1; }
 .navigation,.headerActions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .navigation button,.hoursButton,.closeButton,.newBooking,.editingBar button,.status button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:8px 12px; border:1px solid #36423b; border-radius:8px; background:#18211c; color:#eff3f0; font-size:13px!important; }
@@ -79,7 +79,7 @@
 .bookingForm input { width:100%; border:1px solid #85857d; padding:12px; border-radius:6px; color-scheme:dark; }
 .bookingForm button { padding:12px; border:0; border-radius:6px; }
 
-@media(max-width:900px) { .header { padding-left:40px; gap:10px; }.weekLabel { flex-basis:50%; }.headerActions { gap:6px; }.navigation button,.hoursButton,.newBooking { font-size:12px!important; }.grid { gap:8px; min-width:calc(var(--day-count) * 248px - 8px); }.footer { font-size:10px; }.legend { gap:10px; } }
+@media(max-width:900px) { .header { padding-left:88px; gap:10px; }.weekLabel { flex-basis:50%; }.headerActions { gap:6px; }.navigation button,.hoursButton,.newBooking { font-size:12px!important; }.grid { gap:8px; min-width:calc(var(--day-count) * 248px - 8px); }.footer { font-size:10px; }.legend { gap:10px; } }
 @media(prefers-reduced-motion:reduce) { .weekendSwitch input::after { transition:none; } }
 
 .addDay { display:flex; align-items:center; justify-content:center; width:32px; height:32px; flex:none; padding:5px; border:0; border-radius:6px; color:#72dcaf; background:transparent; }.addDay svg { width:18px; height:18px; }.addDay:hover { background:#294235; }
@@ -89,7 +89,7 @@
 .date span { white-space:nowrap; }
 .date small { display:inline; }
 @media(max-width:750px) {
- .header { display:grid; grid-template-columns:minmax(0,1fr) auto; padding:8px 0 12px 28px; gap:10px; }
+ .header { display:grid; grid-template-columns:minmax(0,1fr) auto; padding:8px 0 12px 34px; gap:10px; }
  .weekLabel { min-width:0; font-size:17px; }
  .navigation { gap:4px; }
  .navigation button { padding:6px; }
