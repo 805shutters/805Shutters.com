@@ -51,3 +51,18 @@
   .panel .form input, .panel .form select { min-height: 38px; padding: 8px 11px; }
   .panel .footer { padding: 13px 22px; }
 }
+.panel .customerPicker { margin: 0 0 22px; padding: 14px; border: 1px solid #426652; border-radius: 10px; background: #1b2922; }
+.panel .pickerHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.panel .pickerHeading small { display: block; margin-top: 4px; color: #a9c9b8; font-size: 11px; }
+.panel .customerToggle { width: auto; flex-shrink: 0; border: 1px solid #75dbac; background: #75dbac; color: #11281d; border-radius: 7px; padding: 9px 12px; font-size: 12px; font-weight: 600; min-height: 38px; }
+.panel .clearCustomer { width: auto; margin-top: 8px; border: 0; padding: 5px 0; min-height: 30px; background: none; color: #bad4c5; text-decoration: underline; font-size: 11px; }
+.panel .searchPanel { margin-top: 14px; }
+.panel .searchPanel p { font-size: 12px; color: #bdc9c0; margin: 10px 0 0; }
+.panel .customerResults { list-style: none; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; padding: 0; margin: 10px 0 0; }
+.panel .customerResults li + li { margin-top: 6px; }
+.panel .customerResults button { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; border: 1px solid #445b4d; border-radius: 7px; background: #202c25; color: #ecf4ee; padding: 11px 12px; white-space: normal; overflow-wrap: anywhere; }
+.panel .customerResults span { font-size: 12px; color: #c4d0c8; }
+.panel .customerResults small { font-size: 11px; color: #a1b8aa; }
+.panel .searchPages { display: flex; gap: 8px; }
+.panel .searchPages button, .panel .searchPanel p button { width: auto; padding: 6px 10px; margin-top: 8px; background: transparent; border: 1px solid #577663; color: #b6ebcf; border-radius: 5px; font-size: 12px; }
+@media (max-width: 420px) { .panel .pickerHeading { align-items: flex-start; flex-direction: column; } }

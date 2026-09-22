@@ -2250,6 +2250,26 @@ describe("rescheduleCrmCalendarEvent admin override", () => {
     }
   });
 
+  it("links a return visit without reopening or rescheduling the existing job", async () => {
+    const existing = job({ status: "closed", appointment_start: "2026-01-01T17:00:00Z", notes: "Old visit notes" });
+    const { supabase, rpcCalls, updates } = calendarCancelRecorder({ event, job: existing });
+    const saved = await createCrmCalendarEvent(supabase, {
+      ...event, job_id: existing.id, existing_customer: true,
+      appointment_customer: { name: "Return customer", phone: "8055550101", city: "Ventura", productInterest: "Shades" },
+    }, actor);
+    expect(updates.filter(update => update.table === "crm_jobs")).toEqual([]);
+    expect(rpcCalls[0].args.p_event).toMatchObject({job_id: existing.id, start_at: event.start_at, end_at: event.end_at, meta: {returnVisit: true}});
+    expect(enrichCalendarEventsWithJobDetails([saved], [existing])[0]).toMatchObject({customer_name: "Return customer", customer_phone: "8055550101", customer_city: "Ventura", product_interest: "Shades", job_status: "closed", customer_notes: null});
+  });
+
+  it("rejects missing or deleted return customers before creating an appointment", async () => {
+    for (const existing of [null, job({meta: {deleted_at: "2026-09-22"}})]) {
+      const { supabase, rpcCalls } = calendarCancelRecorder({event, job: existing});
+      await expect(createCrmCalendarEvent(supabase, {...event, job_id: "missing", existing_customer: true}, actor)).rejects.toThrow(/no longer available/);
+      expect(rpcCalls).toHaveLength(0);
+    }
+  });
+
   it("rejects manual creation without a staff actor or a valid range", async () => {
     const { supabase, rpcCalls } = calendarCancelRecorder({ event });
     await expect(createCrmCalendarEvent(supabase, event, { email: actor.email })).rejects.toThrow(/authenticated staff/);

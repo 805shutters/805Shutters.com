@@ -1162,16 +1162,18 @@ export function enrichCalendarEventsWithJobDetails(
     }
 
     const relatedContracts = [...relatedContractsById.values()];
+    const savedCustomer = jsonRecord(event.meta?.appointmentCustomer);
+    const visitField = (key: string, fallback: string | null) => typeof savedCustomer[key] === "string" ? savedCustomer[key] as string : fallback;
 
     return {
       ...event,
-      customer_name: event.customer_name || job.customer_name,
-      customer_phone: job.phone,
-      customer_email: job.email,
-      customer_address: event.location || job.address,
-      customer_city: job.city,
-      product_interest: job.product_interest,
-      customer_notes: event.notes || job.notes,
+      customer_name: visitField("name", event.customer_name || job.customer_name) || job.customer_name,
+      customer_phone: visitField("phone", job.phone),
+      customer_email: visitField("email", job.email),
+      customer_address: event.meta?.returnVisit ? event.location : event.location || job.address,
+      customer_city: visitField("city", job.city),
+      product_interest: visitField("productInterest", job.product_interest) || job.product_interest,
+      customer_notes: event.meta?.returnVisit ? event.notes : event.notes || job.notes,
       job_status: relatedJobs.reduce((status, relatedJob) => advanceJobStatus(status, relatedJob.status), job.status),
       quote_sent_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.sent_at)),
       quote_signed_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.signed_at)),
@@ -2686,6 +2688,19 @@ export async function createCrmCalendarEvent(
     throw new CrmAuthError(403, "Manual scheduling requires an authenticated staff account.");
   }
 
+  const isReturnVisit = payload.existing_customer === true;
+  let linkedJob: CrmJob | null = null;
+  if (isReturnVisit) {
+    const jobId = requiredText(payload.job_id, "Select an existing customer before booking a return visit.");
+    const { data: job, error: jobError } = await supabase.from("crm_jobs").select("*").eq("id", jobId).maybeSingle();
+    if (jobError) throw new CrmAuthError(502, "Existing customer could not be verified. Please try again.");
+    if (!job || jsonRecord(job.meta).deleted_at) throw new CrmAuthError(404, "This customer is no longer available. Search again.");
+    linkedJob = job as CrmJob;
+  }
+  const customerInput = jsonRecord(payload.appointment_customer);
+  const appointmentCustomer = isReturnVisit ? Object.fromEntries(
+    ["name", "phone", "email", "address", "city", "productInterest", "leadSource"].map(key => [key, optionalText(customerInput[key]) || ""])
+  ) : undefined;
   const record = {
     job_id: payload.job_id || null,
     title,
@@ -2696,7 +2711,7 @@ export async function createCrmCalendarEvent(
     end_at: endAt,
     location: optionalText(payload.location),
     notes: optionalText(payload.notes),
-    meta: metadataWithActor(payload, actor, "createdBy")
+    meta: { ...metadataWithActor(payload, actor, "createdBy"), ...(isReturnVisit ? { returnVisit: true, appointmentCustomer } : {}) }
   };
 
   // Manual CRM entry is staff-authoritative, just like manual rescheduling.
@@ -2708,8 +2723,7 @@ export async function createCrmCalendarEvent(
   });
   if (error) throw new CrmAuthError(502, "Appointment could not be saved. Please try again.");
 
-  let linkedJob: CrmJob | null = null;
-  if (payload.job_id) {
+  if (payload.job_id && !isReturnVisit) {
     const { data: job } = await supabase
       .from("crm_jobs")
       .update({
@@ -2767,9 +2781,9 @@ export async function createCrmCalendarEvent(
     startAt,
     endAt,
     location: optionalText(payload.location) || linkedJob?.address || null,
-    customerName: linkedJob?.customer_name || null,
-    phone: linkedJob?.phone || null,
-    productInterest: linkedJob?.product_interest || null
+    customerName: appointmentCustomer?.name || linkedJob?.customer_name || null,
+    phone: appointmentCustomer?.phone || linkedJob?.phone || null,
+    productInterest: appointmentCustomer?.productInterest || linkedJob?.product_interest || null
   });
 
   await recordCrmActivity(supabase, actor, {

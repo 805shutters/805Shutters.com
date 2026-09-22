@@ -14,6 +14,7 @@ import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
 import { orderCostParent } from "./ProductOrderEditor";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
+import { ExistingAppointmentCustomer, type AppointmentCustomer } from "./ExistingAppointmentCustomer";
 import appointmentStyles from "./CalendarAppointmentModal.module.css";
 import { ClosedSalesCard, ClosedSalesWeekSelector, closedSalesCurrency, selectedClosedSalesWeek } from "./ClosedSalesCard";
 import type { CrmClosedSalesWeek } from "@/lib/crm/types";
@@ -2497,7 +2498,8 @@ export function CrmApp({
     setMessage(null);
 
     try {
-      const { job } = await crmFetch<{ job: CrmJob }>(session, "/api/crm/jobs", {
+      const existingJobId = formString(formData, "existing_job_id");
+      const { job } = existingJobId ? { job: { id: existingJobId } } : await crmFetch<{ job: CrmJob }>(session, "/api/crm/jobs", {
         method: "POST",
         body: JSON.stringify({
           customer_name: customerName,
@@ -2520,6 +2522,8 @@ export function CrmApp({
         method: "POST",
         body: JSON.stringify({
           job_id: job.id,
+          existing_customer: Boolean(existingJobId),
+          appointment_customer: existingJobId ? { name: customerName, phone, email, address, city, productInterest, leadSource: formString(formData, "lead_source") } : undefined,
           title: `${customerName} consultation`,
           event_type: "sales_consult",
           assigned_to: assignedTo,
@@ -3666,6 +3670,7 @@ export function CrmApp({
           />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
+                  session={session!}
                   busy={busy}
                   selectedSlot={selectedCalendarSlot}
                   onClose={() => setSelectedCalendarSlot(null)}
@@ -14577,16 +14582,19 @@ function KenPayoffView({
 }
 
 function CalendarAppointmentModal({
+  session,
   selectedSlot,
   busy,
   onClose,
   onSubmit
 }: {
+  session: Session;
   selectedSlot: CalendarSlotSelection;
   busy: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
+  const [customer, setCustomer] = useState<AppointmentCustomer | null>(null);
   const defaultAssignedTo = selectedSlot.availableOwners?.[0] || "Unassigned";
   const monthLabel = new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "America/Los_Angeles" })
     .format(new Date(selectedSlot.startAt));
@@ -14615,40 +14623,42 @@ function CalendarAppointmentModal({
               </div>
               <span className={appointmentStyles.zone}>Pacific time</span>
             </div>
-            <fieldset className={appointmentStyles.group}>
+            <ExistingAppointmentCustomer session={session} selected={customer} onSelect={setCustomer} />
+            <input type="hidden" name="existing_job_id" value={customer?.jobId || ""} />
+            <fieldset key={`customer-${customer?.jobId || "new"}`} className={appointmentStyles.group}>
               <legend>Customer details</legend>
               <div className={appointmentStyles.fields}>
                 <label className={appointmentStyles.full}>
                   Customer name
-                  <input name="customer_name" required placeholder="Full name" autoFocus />
+                  <input name="customer_name" defaultValue={customer?.name || ""} required placeholder="Full name" autoFocus />
                 </label>
-                <label>Phone<input name="phone" type="tel" required placeholder="(805) 000-0000" /></label>
-                <label>Email<input name="email" type="email" placeholder="name@email.com" /></label>
-                <label>Street address<AddressAutocomplete name="address" cityFieldName="city" placeholder="Project address" /></label>
-                <label>City<input name="city" placeholder="e.g. Ventura" /></label>
+                <label>Phone<input name="phone" defaultValue={customer?.phone || ""} type="tel" required placeholder="(805) 000-0000" /></label>
+                <label>Email<input name="email" defaultValue={customer?.email || ""} type="email" placeholder="name@email.com" /></label>
+                <label>Street address<AddressAutocomplete name="address" defaultValue={customer?.address || ""} cityFieldName="city" placeholder="Project address" /></label>
+                <label>City<input name="city" defaultValue={customer?.city || ""} placeholder="e.g. Ventura" /></label>
               </div>
             </fieldset>
-            <fieldset className={appointmentStyles.group}>
+            <fieldset key={`consultation-${customer?.jobId || "new"}`} className={appointmentStyles.group}>
               <legend>Consultation details</legend>
               <div className={appointmentStyles.fields}>
                 <label>
                   Product
-                  <select name="product_interest" defaultValue="Shutters">
-                    {productOptions.map((item) => <option key={item}>{item}</option>)}
+                  <select name="product_interest" defaultValue={customer?.productInterest || "Shutters"}>
+                    {Array.from(new Set([...(customer?.productInterest ? [customer.productInterest] : []), ...productOptions])).map((item) => <option key={item}>{item}</option>)}
                   </select>
                 </label>
                 <label>
                   Assigned to
-                  <select name="assigned_to" defaultValue={defaultAssignedTo}>
-                    {ownerOptions.map((item) => <option key={item}>{item}</option>)}
+                  <select name="assigned_to" defaultValue={customer?.assignedTo || defaultAssignedTo}>
+                    {Array.from(new Set([...(customer?.assignedTo ? [customer.assignedTo] : []), ...ownerOptions])).map((item) => <option key={item}>{item}</option>)}
                   </select>
                 </label>
-                <label className={appointmentStyles.full}>Lead source<LeadSourceSelect /></label>
+                <label className={appointmentStyles.full}>Lead source<LeadSourceSelect defaultValue={customer?.leadSource} /></label>
               </div>
             </fieldset>
-            <details className={appointmentStyles.notes}>
+            <details key={`notes-${customer?.jobId || "new"}`} className={appointmentStyles.notes} open={customer?.notes ? true : undefined}>
               <summary>Add job notes</summary>
-              <label>Job notes<textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring…" /></label>
+              <label>Job notes<textarea name="notes" defaultValue={customer?.notes || ""} rows={3} placeholder="Gate code, rooms, samples to bring…" /></label>
             </details>
             <p className={appointmentStyles.notice} id="crm-slot-booking-notice">
               <span aria-hidden="true">ⓘ</span> Manual booking overrides travel time, appointment conflicts, and public availability restrictions.
