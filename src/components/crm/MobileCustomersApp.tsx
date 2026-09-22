@@ -118,7 +118,7 @@ export function MobileCustomersApp() {
     </header>
     <div className={styles.heading}><small>CUSTOMERS</small><h1>Info & payments</h1><p>Everything you need to collect and connect.</p></div>
     {notice && <p className={styles.notice} role="status">{notice}</p>}
-    {error && <div className={styles.error} role="alert">{error}<button onClick={() => void refresh()}>Try again</button>{error.includes("Sign in") && <a href="/crm">Open CRM sign in</a>}</div>}
+    {error && <div className={styles.error} role="alert">{error}<button onClick={() => void refresh()}>Try again</button>{error.includes("Sign in") && <a href="/api/crm/oauth/google?redirectTo=%2Fcrm%2Fmobile%2Fsearch%2F">Sign in to 805 payments</a>}</div>}
     {loading && <p className={styles.muted} role="status">{rows.length ? "Refreshing balances…" : "Loading customers and payment balances…"}</p>}
     {selected && !current && !loading && !error && <p role="status" className={styles.notice}>This job is no longer on the active customer list.<button onClick={() => setSelected(null)}>Back to customers</button></p>}
     {current ? <>

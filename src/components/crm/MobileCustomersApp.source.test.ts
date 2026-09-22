@@ -5,13 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileCustomersApp, mobilePaymentSendRequest } from "./MobileCustomersApp";
 import type { MobilePaymentCustomer } from "@/lib/crm/mobile-payment-queue";
 
-vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: { access_token: "test-only" } } }) } }) }));
+const auth = vi.hoisted(() => ({ getSession: vi.fn() }));
+vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => ({ auth }) }));
 const row = { id: "q1", quoteId: "q1", jobId: "j1", name: "Ada Customer", phone: "8055551212", email: "ada@example.com", address: "1 Main St", project: "Order 1", products: ["Shutters"], contractTotal: 1000, outstanding: 500, deposit: 0, balance: 500, amountDue: 500, dueType: "balance", priority: true, shipped: true, archived: false, closed: false, paidInFull: false, paid: 500, contractUrl: "/quote/sample", soldDate: "2026-09-01" } satisfies MobilePaymentCustomer;
 let root: Root;
 let host: HTMLDivElement;
 let fetchMock: ReturnType<typeof vi.fn>;
 async function click(text: string) { const button = [...host.querySelectorAll("button")].find(b => b.textContent?.includes(text)); expect(button).toBeTruthy(); await act(async () => button!.click()); }
 beforeEach(() => {
+  auth.getSession.mockResolvedValue({ data: { session: { access_token: "test-only" } } });
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   HTMLDialogElement.prototype.close = function () { this.open = false; };
@@ -22,6 +24,16 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("customer payments C", () => {
+  it("keeps the redesigned payments destination when a signed-out user signs in", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: null } });
+    await act(async () => root.render(createElement(MobileCustomersApp)));
+    expect(fetchMock).not.toHaveBeenCalled();
+    const signIn = [...host.querySelectorAll("a")].find(link => link.textContent === "Sign in to 805 payments");
+    expect(signIn).toBeTruthy();
+    const target = new URL(signIn!.getAttribute("href")!, "https://www.805shutters.com");
+    expect(target.pathname).toBe("/api/crm/oauth/google");
+    expect(target.searchParams.get("redirectTo")).toBe("/crm/mobile/search/");
+  });
   it("loads priority immediately and opens real customer detail and contract", async () => {
     await act(async () => root.render(createElement(MobileCustomersApp)));
     expect(fetchMock.mock.calls[0][0]).toBe("/api/crm/mobile/customers");
