@@ -182,3 +182,8 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-calendar-c .mobile-crm-day-card small{background:transparent;border-color:#608e73;color:inherit}
 .mobile-calendar-c .mobile-crm-upcoming-list{padding:8px 16px}
 .mobile-calendar-c .mobile-crm-upcoming-date span,.mobile-calendar-c .mobile-crm-loading{color:#aebbb5}
+
+.mobile-calendar-c .mobile-805-time-slot[data-available=true]{background:rgba(155,218,184,.07)}
+.mobile-calendar-c .mobile-805-time-slot:enabled{cursor:pointer}
+.mobile-calendar-c .mobile-805-time-slot:enabled:hover{background:rgba(155,218,184,.15)}
+.mobile-calendar-c .mobile-805-time-slot:focus-visible{outline:2px solid #9bdab8;outline-offset:-3px;background:rgba(155,218,184,.15)}

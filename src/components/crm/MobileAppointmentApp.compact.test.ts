@@ -41,6 +41,10 @@ it("filters every view, retains overlapping appointments, and keeps month day se
     expect(ui.host.querySelectorAll(".mobile-805-timed-event")).toHaveLength(3);
     const cards = [...ui.host.querySelectorAll<HTMLElement>(".mobile-805-timed-event")];
     expect(new Set(cards.map(c => c.style.left)).size).toBe(3);
+    const busySlot = ui.host.querySelector<HTMLButtonElement>('[aria-label="Book 2026-09-22 at 09:30"]')!;
+    expect(busySlot.disabled).toBe(true);
+    await act(async () => busySlot.click());
+    expect(ui.host.querySelector(".mobile-crm-add-form")).toBeNull();
     const filter = ui.host.querySelector<HTMLSelectElement>('select[aria-label="Filter by assigned person"]')!;
     for (const owner of ["Mike", "Jessica", "Unassigned"]) {
       await act(async () => { filter.value = owner; filter.dispatchEvent(new Event("change", { bubbles: true })); });

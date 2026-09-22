@@ -474,7 +474,7 @@ function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBo
   const startSlot = Math.min(14, ...intervals.map(item => Math.floor(item.start / 30)));
   const endSlot = Math.min(48, Math.max(38, ...intervals.map(item => Math.ceil((item.start + item.duration) / 30))));
   const slots = Array.from({ length: endSlot - startSlot }, (_, index) => startSlot + index);
-  return <><p className="mobile-805-calendar-hint">{showAvailability ? "Tap an open half-hour to start booking. Confirm staff availability before saving." : `${dayCount === 5 ? "Five consecutive days" : "Day schedule"} · Pacific time`}</p>
+  return <><p className="mobile-805-calendar-hint">{showAvailability ? "Tap an open half-hour to start booking. Confirm staff availability before saving." : "Tap an open time to book · Pacific time"}</p>
     <div className="mobile-805-five-scroll"><div className="mobile-805-five-grid" style={{ gridTemplateColumns: `40px repeat(${dayCount}, minmax(0, 1fr))` }}>
       <div className="mobile-805-time-column"><div className="mobile-805-five-heading">PT</div>{slots.map(slot => <div key={slot}>{halfHourTime(slot)}</div>)}</div>
       {days.map(day => { const dayEvents = eventsForDay(events, day); const laneEnds: number[] = [];
@@ -482,7 +482,7 @@ function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBo
         const laneCount = Math.max(1, laneEnds.length);
         return <section key={day}><div className="mobile-805-five-heading" data-today={day === todayLosAngelesDate()}><small>{shortWeekdayFormatter.format(dateToUtcNoon(day))}</small><strong>{Number(day.slice(-2))}</strong></div>
         <div className="mobile-805-five-day" style={{ height: slots.length * 44 }}>
-          {slots.map(slot => { const busy = positioned.some(item => item.start < slot * 30 + 30 && item.start + item.duration > slot * 30); return <button type="button" className="mobile-805-time-slot" key={slot} disabled={!showAvailability || busy} aria-label={`Book ${day} at ${halfHourTime(slot)}`} onClick={() => onBook(day, halfHourTime(slot))}>{showAvailability && !busy ? "+" : ""}</button>; })}
+          {slots.map(slot => { const busy = positioned.some(item => item.start < slot * 30 + 30 && item.start + item.duration > slot * 30); return <button type="button" className="mobile-805-time-slot" key={slot} disabled={busy} data-available={showAvailability && !busy} aria-label={`Book ${day} at ${halfHourTime(slot)}`} onClick={() => onBook(day, halfHourTime(slot))} />; })}
           {positioned.map(({ event, start, duration, lane }) => <button type="button" className="mobile-805-timed-event" data-owner={assignedPerson(event)} aria-label={`${eventTitle(event)}, ${formatEventTime(event)}, ${assignedPerson(event)}`} key={event.id} style={{ top: (start / 30 - startSlot) * 44, height: Math.min(duration / 30 * 44, (endSlot - start / 30) * 44) - 2, left: `${lane / laneCount * 100}%`, width: `${100 / laneCount}%` }} onClick={() => onSelectEvent(event)}><small>{compactEventTime(event)}</small><strong>{eventTitle(event)}</strong><small>{assignedPerson(event)}</small></button>)}
         </div></section>;
       })}
@@ -1188,7 +1188,7 @@ export function MobileAppointmentApp() {
         <button type="button" onClick={() => setAnchorDate(todayLosAngelesDate())}>Today</button>
         <button type="button" aria-label="Next" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, 1))}><ChevronRight size={18} /></button>
       </section>
-      <div className="calendar-c-availability"><button type="button" aria-pressed={showAvailability} onClick={() => { setShowAvailability(!showAvailability); if (view !== "day") setView("five"); }}><Plus size={14} />Open time slots</button></div>
+      <div className="calendar-c-availability"><button type="button" aria-pressed={showAvailability} onClick={() => { setShowAvailability(!showAvailability); if (view !== "day") setView("five"); }}>Highlight open times</button></div>
       <main className="mobile-crm-calendar">
         {bookingNotice ? <p role="status" className="mobile-crm-alert">{bookingNotice}</p> : null}
         {message ? <p className="mobile-crm-alert">{message}</p> : null}

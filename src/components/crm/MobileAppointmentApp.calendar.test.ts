@@ -14,7 +14,7 @@ it("loads five consecutive LA calendar dates across month and DST boundaries", (
   expect(halfHourTime(31)).toBe("15:30");
 });
 describe("appointment calendar booking", () => {
-  it("starts in five days, supports month, and pre-fills an exact half-hour without saving or sending", async () => {
+  it("books directly from five-day and day time slots without enabling availability or saving", async () => {
     (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ appointments: [], user: { email: "test@example.com" } }) });
     vi.stubGlobal("fetch", fetchMock);
@@ -25,16 +25,25 @@ describe("appointment calendar booking", () => {
       await click("Open Appointments");
       expect(host.querySelectorAll(".mobile-805-five-day")).toHaveLength(5);
       expect(host.querySelector(".mobile-crm-month-grid")).toBeNull();
+      for (const view of ["5 days", "Day"]) {
+        const viewButton = [...host.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent?.trim() === view)!;
+        await act(async () => viewButton.click());
+        const slot = [...host.querySelectorAll<HTMLButtonElement>(".mobile-805-time-slot")].find(button => button.getAttribute("aria-label")?.endsWith("at 09:30"))!;
+        expect(slot.disabled).toBe(false);
+        expect(slot.textContent).toBe("");
+        expect(slot.getAttribute("data-available")).toBe("false");
+        const date = slot.getAttribute("aria-label")!.split(" ")[1];
+        await act(async () => slot.click());
+        expect(host.querySelector<HTMLInputElement>('input[name="date"]')?.value).toBe(date);
+        expect(host.querySelector<HTMLInputElement>('input[name="time"]')?.value).toBe("09:30");
+        await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Close add appointment"]')!.click());
+      }
       await click("Month");
       expect(host.querySelector(".mobile-crm-month-grid")).toBeTruthy();
       expect(host.querySelectorAll(".mobile-crm-month-head")).toHaveLength(7);
-      await click("Open time slots");
+      await click("Highlight open times");
       expect(host.querySelectorAll(".mobile-805-five-day")).toHaveLength(5);
-      const slot = [...host.querySelectorAll<HTMLButtonElement>(".mobile-805-time-slot")].find(button => button.getAttribute("aria-label")?.endsWith("at 09:30"))!;
-      const date = slot.getAttribute("aria-label")!.split(" ")[1];
-      await act(async () => slot.click());
-      expect(host.querySelector<HTMLInputElement>('input[name="date"]')?.value).toBe(date);
-      expect(host.querySelector<HTMLInputElement>('input[name="time"]')?.value).toBe("09:30");
+      expect(host.querySelector('.mobile-805-time-slot[data-available="true"]')).toBeTruthy();
       expect(fetchMock.mock.calls.every(call => !call[1]?.method || call[1].method === "GET")).toBe(true);
     } finally { await act(async () => root.unmount()); host.remove(); }
   });
