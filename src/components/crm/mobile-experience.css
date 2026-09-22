@@ -78,3 +78,26 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-experience .crm-login-panel :is(p,label){color:#aebbb5}
 .mobile-805-experience .crm-login-panel input{background:#101516;color:#fff;border-color:#46534c}
 .mobile-805-experience .crm-login-panel .button{border-color:#46534c;background:#294b39;color:#fff}
+/* Keep the calendar itself above the fold on a phone. */
+.mobile-805-experience .mobile-805-calendar-actions button{width:auto;flex:1 1 auto;padding:8px;font-size:11px}
+.mobile-805-experience .mobile-805-calendar-actions button:first-child{flex:0 0 52px}
+.mobile-805-experience .mobile-crm-topbar h1{font-size:26px}
+.mobile-805-experience .mobile-crm-topbar-actions button{width:40px;height:40px;padding:8px}
+.mobile-805-experience .mobile-crm-month-grid :is(.mobile-crm-month-day,.mobile-crm-month-head){border-radius:0}
+.mobile-805-experience .mobile-crm-chip.compact em{display:none}
+.mobile-805-experience .mobile-crm-chip.compact strong{display:block;white-space:nowrap}
+.mobile-805-experience .mobile-crm-chip.compact span{display:block;white-space:nowrap;letter-spacing:-.03em;font-size:8px}
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-header>a,.technical-measure-address,.technical-measure-queue-actions>a){background:#202729!important;color:#fff!important;border-color:#46534c!important;border-radius:8px}
+.mobile-805-experience .technical-measure-shell .technical-measure-header h1{font:700 28px/1.2 var(--font-body)!important}
+.mobile-805-experience .technical-measure-shell .technical-measure-list-heading h2{font:700 19px/1.3 var(--font-body)!important}
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-products-heading>span,.technical-measure-choice-field>span,.technical-measure-opening-choice>span,.technical-measure-quick-field>span,.tm805-contract-options header,.tm805-contract-summary>span){color:#aebbb5!important}
+.mobile-805-experience .technical-measure-ledger-item>details{padding:8px 14px;border-top:1px solid #30383a}
+.mobile-805-experience .technical-measure-ledger-item>details>summary{cursor:pointer;color:#b7efd0;font-size:11px;min-height:30px;padding:7px 0}
+.mobile-805-experience .technical-measure-shell .technical-measure-vendor-fields{background:#191e20;color:#fff;border-color:#394348}
+.mobile-805-experience [role=dialog]{background:#191e20!important;color:#fff!important;border-color:#46534c!important}
+.mobile-805-experience [role=dialog] :is(h1,h2,h3,p){color:#e2eee7!important}
+.mobile-805-experience [role=dialog] :is(button,input,select,textarea){background:#202729;color:#fff;border-color:#46534c}
+.mobile-805-experience [role=dialog] button[aria-pressed=true]{background:#b7efd0;color:#102019}
+.mobile-805-experience .quote-add-card{background:#191e20!important;color:#fff!important;border-color:#394348!important;box-shadow:none!important}
+.mobile-805-experience .quote-add-card :is(label,p){color:#aebbb5!important}
+.mobile-805-experience .mobile-customer-payments>header>a{background:#191e20;color:#fff;border-color:#46534c}

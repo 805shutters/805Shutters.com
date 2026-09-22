@@ -1131,7 +1131,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                       <span className="technical-measure-ledger-size"><small>Field size</small>{inches(line.current_values.width_in)} × {inches(line.current_values.height_in)}</span>
                       <span className="technical-measure-ledger-status">{complete ? <><Check />Done</> : <>Needs measure<ChevronRight /></>}</span>
                     </button>
-                    <ContractOptions baseline={line.baseline} contractUrl={form.contractUrl} lineId={line.id} inline />
+                    <details><summary>Original contract options</summary><ContractOptions baseline={line.baseline} contractUrl={form.contractUrl} lineId={line.id} inline /></details>
                   </article>
                 );
               })}
