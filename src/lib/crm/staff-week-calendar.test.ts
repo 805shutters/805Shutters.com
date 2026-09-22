@@ -6,6 +6,18 @@ describe("weekly staff calendar",()=>{
   it.each([['2026-09-16','2026-09-13','2026-09-19'],['2026-10-01','2026-09-27','2026-10-03'],['2027-01-01','2026-12-27','2027-01-02'],['2026-11-01','2026-11-01','2026-11-07']])("shows exactly Sunday through Saturday for %s",(date,first,last)=>{
     const days=weekCalendarDays(date);expect(days).toHaveLength(7);expect(days[0]).toBe(first);expect(days[6]).toBe(last);expect(new Set(days).size).toBe(7);
   });
+  it.each([
+    ["2026-09-21", "2026-09-21", "2026-09-27"],
+    ["2026-09-27", "2026-09-21", "2026-09-27"],
+    ["2027-01-01", "2026-12-28", "2027-01-03"],
+    ["2026-11-01", "2026-10-26", "2026-11-01"],
+  ])("keeps Monday workweeks and Sunday weekend bookings in the same week for %s", (anchor, first, last) => {
+    const days = weekCalendarDays(anchor, 1);
+    expect(days).toHaveLength(7);
+    expect(days[0]).toBe(first);
+    expect(days[6]).toBe(last);
+    expect(new Date(`${days[4]}T12:00:00Z`).getUTCDay()).toBe(5);
+  });
   it("moves by calendar weeks across daylight saving boundaries",()=>{expect(shiftCalendarWeek('2026-11-01',1)).toBe('2026-11-08');expect(shiftCalendarWeek('2026-03-08',-1)).toBe('2026-03-01');});
   it("places appointments by Pacific time and separates overlaps within each day",()=>{
     const events=[event('a','2026-09-18T16:00:00Z','2026-09-18T17:00:00Z'),event('b','2026-09-18T16:30:00Z','2026-09-18T17:30:00Z'),event('c','2026-09-18T18:00:00Z','2026-09-18T19:00:00Z')];

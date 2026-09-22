@@ -2,9 +2,9 @@ import { losAngelesTimeString } from "@/lib/booking/availability";
 import type { CrmCalendarEvent } from "./types";
 import { monthDayEvents } from "./staff-month-calendar";
 
-export function weekCalendarDays(anchor: string) {
+export function weekCalendarDays(anchor: string, startsOn: 0 | 1 = 0) {
   const date = new Date(`${anchor}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  date.setUTCDate(date.getUTCDate() - (date.getUTCDay() - startsOn + 7) % 7);
   return Array.from({ length: 7 }, (_, index) => new Date(date.getTime() + index * 86400000).toISOString().slice(0, 10));
 }
 export function shiftCalendarWeek(anchor: string, delta: number) {
