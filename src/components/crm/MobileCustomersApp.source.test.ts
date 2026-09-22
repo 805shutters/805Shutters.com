@@ -7,7 +7,7 @@ import type { MobilePaymentCustomer } from "@/lib/crm/mobile-payment-queue";
 
 const auth = vi.hoisted(() => ({ getSession: vi.fn() }));
 vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => ({ auth }) }));
-const row = { id: "q1", quoteId: "q1", jobId: "j1", name: "Ada Customer", phone: "8055551212", email: "ada@example.com", address: "1 Main St", project: "Order 1", products: ["Shutters"], contractTotal: 1000, outstanding: 500, deposit: 0, balance: 500, amountDue: 500, dueType: "balance", priority: true, shipped: true, archived: false, closed: false, paidInFull: false, paid: 500, contractUrl: "/quote/sample", soldDate: "2026-09-01" } satisfies MobilePaymentCustomer;
+const row = { id: "q1", quoteId: "q1", jobId: "j1", name: "Ada Customer", phone: "8055551212", email: "ada@example.com", address: "1 Main St", project: "Order 1", products: ["Shutters"], contractTotal: 1000, outstanding: 500, deposit: 0, balance: 500, amountDue: 500, dueType: "balance", priority: true, activePayment: true, shipped: true, archived: false, closed: false, paidInFull: false, paid: 500, contractUrl: "/quote/sample", soldDate: "2026-09-01" } satisfies MobilePaymentCustomer;
 let root: Root;
 let host: HTMLDivElement;
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
 });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
+afterEach(async () => { vi.useRealTimers(); await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("customer payments C", () => {
   it("keeps the redesigned payments destination when a signed-out user signs in", async () => {
@@ -43,6 +43,26 @@ describe("customer payments C", () => {
     expect(host.querySelector('a[href="/quote/sample"]')).toBeTruthy();
     await click("Customer info");
     expect(host.querySelector('a[href="tel:+18055551212"]')).toBeTruthy();
+  });
+  it("searches beyond active jobs and hides paid/closed results immediately when cleared", async () => {
+    vi.useFakeTimers();
+    const paid = { ...row, id: "paid", name: "Paid Customer", activePayment: false, priority: false, closed: true, outstanding: 0, amountDue: 0, dueType: null };
+    fetchMock.mockImplementation(async path => ({ ok: true, json: async () => ({ results: String(path).includes("?q=Paid") ? [paid] : [row] }) }));
+    await act(async () => root.render(createElement(MobileCustomersApp)));
+    const input = host.querySelector('input[aria-label="Search customers"]') as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Paid");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+    expect(fetchMock.mock.calls.some(call => call[0] === "/api/crm/mobile/customers?q=Paid")).toBe(true);
+    expect(host.textContent).toContain("Search results");
+    expect(host.textContent).toContain("Paid Customer");
+    expect(host.textContent).not.toContain("Next payment");
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Clear search"]')!.click());
+    expect(host.textContent).not.toContain("Paid Customer");
+    expect(host.textContent).toContain("Ada Customer");
+    expect(host.textContent).toContain("Active jobs needing payment");
   });
   it("reviews email without sending, then posts one exact confirmed request and leaves balance due", async () => {
     await act(async () => root.render(createElement(MobileCustomersApp)));

@@ -21,7 +21,7 @@ beforeEach(() => {
   });
   vi.mocked(requireCrmUser).mockResolvedValue({ supabase: { from }, email: "staff@example.test", user: { id: "staff" } } as never);
   vi.mocked(loadCrmDashboardData).mockResolvedValue({} as never);
-  vi.mocked(buildMobilePaymentQueue).mockReturnValue([{ id: "row:q1", name: "Ada", priority: true, archived: false }] as never);
+  vi.mocked(buildMobilePaymentQueue).mockReturnValue([{ id: "row:q1", name: "Ada", priority: true, activePayment: true, archived: false }] as never);
   vi.mocked(sendSquareOrderPaymentLink).mockResolvedValue({ paymentType: "balance", amount: 500, url: "https://square.example.test/pay", linkId: "link", providerStatus: "queued" } as never);
 });
 const post = (data = body) => POST(new NextRequest("http://localhost/api/crm/mobile/customers", { method: "POST", body: JSON.stringify(data) }));
@@ -32,6 +32,11 @@ describe("mobile payment API", () => {
     expect(loadCrmDashboardData).toHaveBeenCalledOnce();
     expect((await response.json()).results).toHaveLength(1);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+  });
+  it("returns paid or closed records only for a manual search", async () => {
+    vi.mocked(buildMobilePaymentQueue).mockReturnValue([{ id: "paid", name: "Paid Customer", activePayment: false, closed: true, outstanding: 0 }] as never);
+    expect((await (await GET(new NextRequest("http://localhost/api/crm/mobile/customers"))).json()).results).toEqual([]);
+    expect((await (await GET(new NextRequest("http://localhost/api/crm/mobile/customers?q=Paid"))).json()).results).toHaveLength(1);
   });
   it("does not read customer data if authentication fails", async () => {
     vi.mocked(requireCrmUser).mockRejectedValue(new Error("No session"));

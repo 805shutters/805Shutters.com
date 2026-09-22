@@ -24,10 +24,31 @@ describe("mobile next-payment queue", () => {
     expect(buildMobilePaymentQueue(fixture({ statuses: ["shipped", "ordered"] }))[0].priority).toBe(false);
     expect(buildMobilePaymentQueue(fixture({ statuses: ["ordered"] }))[0].shipped).toBe(false);
   });
-  it("removes paid and closed from every list and search", () => {
+  it("hides paid and closed by default but retrieves them through manual search", () => {
     const rows = buildMobilePaymentQueue(fixture({ balance: 0 }));
-    expect(rows).toEqual([]);
-    expect(filterMobilePaymentCustomers(rows, "Ada")).toEqual([]);
+    expect(rows[0]).toMatchObject({ closed: true, activePayment: false, priority: false });
+    expect(filterMobilePaymentCustomers(rows)).toEqual([]);
+    expect(filterMobilePaymentCustomers(rows, "Ada")).toHaveLength(1);
+  });
+  it("includes sold work needing a deposit before shipment", () => {
+    const data = fixture({ statuses: ["ordered"] });
+    data.bookkeepingRows[0].depositPaid = 0;
+    const rows = buildMobilePaymentQueue(data);
+    expect(filterMobilePaymentCustomers(rows)[0]).toMatchObject({ activePayment: true, priority: false, dueType: "deposit", amountDue: 500 });
+  });
+  it("excludes zero balances, closed jobs, archived work and unsold quotes until searched", () => {
+    const paid = fixture({ balance: 0, open: true });
+    const closed = fixture({ balance: 0 });
+    const archived = fixture({ status: "archived" });
+    const unsold = fixture({ status: "draft" });
+    unsold.bookkeepingRows = [];
+    for (const [label, data] of Object.entries({ paid, closed, archived, unsold })) {
+      const rows = buildMobilePaymentQueue(data);
+      expect(rows[0].activePayment, label).toBe(false);
+      expect(rows[0].priority).toBe(false);
+      expect(filterMobilePaymentCustomers(rows, "  ")).toEqual([]);
+      expect(filterMobilePaymentCustomers(rows, "Ada")).toHaveLength(1);
+    }
   });
   it("retains paid work with the same explicit open override as desktop Job Status", () => {
     expect(buildMobilePaymentQueue(fixture({ balance: 0, open: true }))[0]).toMatchObject({ outstanding: 0, priority: false, closed: false, dueType: null });

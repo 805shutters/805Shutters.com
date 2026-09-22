@@ -31,6 +31,12 @@ export function MobileCustomersApp() {
   const [rows, setRows] = useState<MobilePaymentCustomer[]>([]);
   const [query, setQuery] = useState("");
   useEffect(() => { setQuery(new URLSearchParams(window.location.search).get("q") || ""); }, []);
+  const [lookup, setLookup] = useState("");
+  useEffect(() => {
+    if (!query.trim()) { setLookup(""); return; }
+    const timer = setTimeout(() => setLookup(query.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [query]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -51,12 +57,12 @@ export function MobileCustomersApp() {
     request.current = controller;
     setLoading(true); setError("");
     try {
-      const result = await api("/api/crm/mobile/customers", { signal: controller.signal });
+      const result = await api(`/api/crm/mobile/customers${lookup ? `?q=${encodeURIComponent(lookup)}` : ""}`, { signal: controller.signal });
       if (!controller.signal.aborted) { setRows(result.results); setAsOf(result.asOf); }
     } catch (e) {
       if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Customers could not be loaded.");
     } finally { if (!controller.signal.aborted) setLoading(false); }
-  }, []);
+  }, [lookup]);
   useEffect(() => {
     void refresh();
     const visible = () => { if (document.visibilityState === "visible" && !sendingRef.current) void refresh(); };
@@ -66,11 +72,13 @@ export function MobileCustomersApp() {
   }, [refresh]);
   useEffect(() => { if (action) dialog.current?.showModal(); else dialog.current?.close(); }, [action]);
   const term = query.trim().toLowerCase();
-  const filtered = rows.filter(row => !term || [row.name, row.phone, row.email, row.address, row.project].some(value => value?.toLowerCase().includes(term)));
+  const filtered = rows.filter(row => term
+    ? [row.name, row.phone, row.email, row.address, row.project].some(value => value?.toLowerCase().includes(term))
+    : row.activePayment);
   const priority = filtered.filter(row => row.priority);
-  const other = filtered.filter(row => !row.priority);
+  const other = term ? filtered : filtered.filter(row => !row.priority);
   const current = rows.find(row => row.id === selected);
-  const ready = !loading && !error;
+  const ready = !loading && !error && query.trim() === lookup;
 
   function open(row: MobilePaymentCustomer) { setSelected(row.id); setDetailTab("payments"); }
   function beginSend(row: MobilePaymentCustomer, method: PaymentChannel) {
@@ -105,7 +113,7 @@ export function MobileCustomersApp() {
   function compact(row: MobilePaymentCustomer) {
     return <button key={row.id} className={styles.customerRow} onClick={() => open(row)}>
       <span className={styles.avatar}>{row.name.split(/\s+/).map(part => part[0]).slice(0, 2).join("")}</span>
-      <span className={styles.rowName}><strong>{row.name}</strong><small>{row.project}{row.archived ? " · Archived" : row.shipped ? " · Shipped" : ""}</small></span>
+      <span className={styles.rowName}><strong>{row.name}</strong><small>{row.project}{row.closed ? " · Closed" : row.archived ? " · Archived" : row.shipped ? " · Shipped" : ""}</small></span>
       <span className={styles.rowAmount}>{row.outstanding === null ? "Review" : row.outstanding > 0 ? money(row.outstanding) : row.paidInFull ? "Paid" : "No balance"}<ChevronRight size={16} /></span>
     </button>;
   }
@@ -142,6 +150,7 @@ export function MobileCustomersApp() {
       </section>}
     </> : <>
       <label className={styles.search}><Search size={19} /><input aria-label="Search customers" placeholder="Search name, phone or address" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="Clear search" onClick={() => setQuery("")}><X size={18} /></button>}</label>
+      {!term && <>
       <div className={styles.sectionHeading}><h2>Next payment</h2><span>{priority.length} ready</span></div>
       <p className={styles.muted}>Shipped with a balance due · oldest sale first</p>
       {priority[0] ? <section className={`${styles.card} ${styles.featured}`}>
@@ -152,11 +161,12 @@ export function MobileCustomersApp() {
         {priority[0].dueType === "deposit" && <p className={styles.muted}>Deposit due now: {money(priority[0].amountDue)}</p>}
         {actions(priority[0])}
         <button className={styles.details} onClick={() => open(priority[0])}>Customer info & payment details <ChevronRight size={16}/></button>
-      </section> : !loading && !error && <div className={styles.card}><Check className={styles.green}/><h3>{query ? "No matching shipped jobs due" : "No shipped jobs awaiting payment"}</h3><p className={styles.muted}>Other customer records are below.</p></div>}
+      </section> : !loading && !error && <div className={styles.card}><Check className={styles.green}/><h3>No shipped jobs awaiting payment</h3><p className={styles.muted}>Active jobs needing a deposit or balance are listed below.</p></div>}
       {priority.length > 1 && <section><div className={styles.sectionHeading}><h2>Up next</h2><span>{priority.length - 1}</span></div><div className={styles.list}>{priority.slice(1).map(compact)}</div></section>}
-      <section><div className={styles.sectionHeading}><h2>Other customers</h2><span>{other.length}</span></div><div className={styles.list}>{other.map(compact)}</div>{!loading && !error && !other.length && <p className={styles.muted}>No other customers{query ? " match this search" : " to show"}.</p>}</section>
+      </>}
+      <section><div className={styles.sectionHeading}><h2>{term ? "Search results" : "Active jobs needing payment"}</h2><span>{other.length}</span></div><div className={styles.list}>{other.map(compact)}</div>{!loading && !error && !other.length && <p className={styles.muted}>{term ? "No customers match this search." : "No active jobs need a deposit or balance payment. Search to find other customers."}</p>}</section>
     </>}
-    {asOf && <p className={styles.updated}>Updated {new Date(asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · Paid & closed jobs hidden</p>}
+    {asOf && <p className={styles.updated}>Updated {new Date(asOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · {term ? "Search includes paid and closed jobs" : "Active sold jobs with money due only"}</p>}
     <dialog ref={dialog} aria-labelledby="payment-review-title" className={styles.dialog} onCancel={event => { if (sending) event.preventDefault(); else setAction(null); }}>
       {action && <form onSubmit={send}>
         <div className={styles.sectionHeading}><h2 id="payment-review-title">Review payment link</h2><button type="button" aria-label="Close payment review" disabled={sending} onClick={() => setAction(null)}><X size={20}/></button></div>

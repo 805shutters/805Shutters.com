@@ -9,6 +9,7 @@ export type MobilePaymentCustomer = MobileCustomerResult & {
   dueType: "deposit" | "balance" | null;
   amountDue: number;
   priority: boolean;
+  activePayment: boolean;
   shipped: boolean;
   archived: boolean;
   closed: boolean;
@@ -24,7 +25,6 @@ export type MobilePaymentCustomer = MobileCustomerResult & {
 export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCustomer[] {
   return buildOperationsItems(data).flatMap(item => {
     const s = item.source;
-    if (item.paid && item.closed) return [];
     // The customer page must not revive a quote whose source job was deleted.
     if (s.quote?.job_id && !s.job) return [];
     const outstanding = s.balanceOutstanding;
@@ -33,6 +33,10 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
     const dueType = deposit > 0 ? "deposit" : balance > 0 ? "balance" : null;
     const amountDue = dueType === "deposit" ? deposit : dueType === "balance" ? balance : 0;
     const shipped = matchesJobStatusFilter(item, "shipment_complete");
+    const archived = item.archived || Boolean(s.quote?.archived_at)
+      || ["lost", "archived"].includes(s.quote?.status || s.job?.status || "");
+    const activePayment = item.sold && !archived && matchesJobStatusFilter(item, "active")
+      && outstanding !== null && outstanding > 0.005 && amountDue > 0.005;
     const quoteId = s.quote?.id || s.row?.quoteId || null;
     return [{
       id: s.id, jobId: s.job?.id || s.quote?.job_id || s.row?.jobId || "", quoteId,
@@ -40,8 +44,8 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
       address: [s.address, s.job?.city].filter(Boolean).join(", ") || null,
       deposit, balance, outstanding, contractTotal: s.total ?? 0,
       paid: s.row ? s.row.depositPaid + s.row.balancePaid : null,
-      dueType, amountDue, shipped, priority: shipped && outstanding !== null && outstanding > 0.005,
-      archived: item.archived, closed: item.closed, paidInFull: item.paid, soldDate: s.soldDate,
+      dueType, amountDue, shipped, activePayment, priority: activePayment && shipped,
+      archived, closed: item.closed, paidInFull: item.paid, soldDate: s.soldDate,
       project: s.project, products: item.products.map(p => p.name), contractUrl: s.contractUrl,
     } satisfies MobilePaymentCustomer];
   }).sort((a, b) => Number(b.priority) - Number(a.priority)
@@ -51,7 +55,8 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
 
 export function filterMobilePaymentCustomers(rows: MobilePaymentCustomer[], query = "", letter = "", scope?: string) {
   const term = query.trim().toLowerCase();
-  return rows.filter(row => (!scope || row.archived === (scope === "archived"))
+  return rows.filter(row => (term ? true : row.activePayment)
+    && (!scope || row.archived === (scope === "archived"))
     && (!letter || mobileCustomerMatchesLetter(row.name, letter))
     && (!term || [row.name, row.phone, row.email, row.address, row.project].some(value => value?.toLowerCase().includes(term))));
 }
