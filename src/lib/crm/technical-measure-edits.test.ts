@@ -77,6 +77,22 @@ describe("technical measure notes saving", () => {
 });
 
 describe("technical measure number selection", () => {
+  const eighths = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"];
+  it.each(eighths.map((fraction, index) => [fraction, index / 8] as const))(
+    "round-trips the eighth-inch keypad selection %s without halving it",
+    (fraction, decimal) => {
+      const selected = selectTechnicalMeasureInches(null, 42, fraction, eighths);
+      expect(selected.inches).toBe(42 + decimal);
+      const values = lineValues({ width_in: selected.inches, height_in: 106.875 });
+      const payload = technicalMeasureDraftPayload([{ id: "line-1", current_values: values }]);
+      expect(normalizeTechnicalMeasureLineValues(payload.lines[0].currentValues).width_in).toBe(42 + decimal);
+      expect(normalizeTechnicalMeasureLineValues(payload.lines[0].currentValues).height_in).toBe(106.875);
+    },
+  );
+  it.each(FRACTIONS.map((fraction, index) => [fraction, index / 16] as const))(
+    "preserves sixteenth-inch detail selection %s",
+    (fraction, decimal) => expect(selectTechnicalMeasureInches(null, 32, fraction, FRACTIONS).inches).toBe(32 + decimal),
+  );
   it("registers a number as selected even when it equals the current value so save can proceed", () => {
     const selection = selectTechnicalMeasureInches(48, 48, "0", FRACTIONS);
 

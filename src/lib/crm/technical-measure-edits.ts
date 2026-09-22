@@ -10,8 +10,11 @@ export function selectTechnicalMeasureInches(
   fraction: string,
   fractions: readonly string[],
 ): { inches: number; selected: true; valueChanged: boolean } {
-  const index = fractions.indexOf(fraction);
-  const inches = Math.round((whole + Math.max(0, index) / 16) * 16) / 16;
+  // The keypad can offer eighths or sixteenths. Its array index is not a
+  // measurement: parse the displayed fraction so 1/8 always means 0.125.
+  const parts = fractions.includes(fraction) ? fraction.split("/").map(Number) : [0];
+  const fractionalInches = parts.length === 2 && parts[1] > 0 ? parts[0] / parts[1] : 0;
+  const inches = Math.round((whole + fractionalInches) * 16) / 16;
   const previous = current == null ? null : Math.round(Number(current) * 16) / 16;
   return {
     inches,

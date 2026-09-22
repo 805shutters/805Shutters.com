@@ -796,6 +796,26 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     finally { setBusy(false); }
   }
 
+  async function emailSavedMeasurements() {
+    if (!session || !navigator.onLine) {
+      setMessage("Reconnect before emailing saved measurements to 805@805shutters.com.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!readOnly) {
+        const saved = await flushLatestDraft();
+        if (saved.queued) throw new Error("Measurements are still saved only on this phone. Reconnect and sync before emailing.");
+      }
+      const result = await crmFetch<{ email: { sent: boolean; error?: string; skipped?: string } }>(session, `/api/crm/technical-measures/${formId}/office-email`, { method: "POST", body: "{}" });
+      setMessage(result.email.sent ? "Saved measurements emailed to 805@805shutters.com." : `Measurements saved. Office email needs retry: ${result.email.error || result.email.skipped || "delivery unavailable"}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The office report could not be emailed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleNextLine(index: number) {
     if (!form || busy) return;
     const currentLines = linesRef.current;
@@ -895,6 +915,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       }
       hydrate(result.form, false);
       await cacheTechnicalMeasureForm(owner(), result.form);
+      if (result.form.officeEmail && !result.form.officeEmail.sent) {
+        setMeasureView("ledger");
+        setMessage(`Measure submitted. Office email needs retry: ${result.form.officeEmail.error || result.form.officeEmail.skipped || "delivery unavailable"}. Use Email saved measurements to 805.`);
+        return;
+      }
       setMessage("Measure submitted");
       setSubmitSuccess(true);
       window.setTimeout(() => window.location.assign(workspaceHome), 1300);
@@ -1325,6 +1350,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       </footer> : null}
 
       {measureView === "ledger" ? <div className="tm805-secondary-tools">
+      <button type="button" disabled={busy || !session} onClick={() => void emailSavedMeasurements()}><Mail /> Email saved measurements to 805</button>
       {(technicalMeasureFormIsArchived(form) || vendorOrderPreparations.length > 0 || canBackfillVendorOrders || canRebuildVendorOrders) ? (
         <details className="tm805-details" open={orderDetailsOpen} onToggle={(event) => setOrderDetailsOpen(event.currentTarget.open)}>
           <summary>Order status</summary>

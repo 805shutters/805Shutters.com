@@ -130,6 +130,7 @@ export type TechnicalMeasureAddendum = {
 };
 
 export type TechnicalMeasureForm = {
+  officeEmail?: EmailResult;
   contractUrl?: string | null;
   id: string;
   created_at: string;
@@ -1000,9 +1001,11 @@ export async function submitTechnicalMeasureWithoutAddendum(
 ) {
   const form = await loadTechnicalMeasureForm(supabase, formId);
   if (form.status === "submitted") {
+    const { deliverTechnicalMeasureOfficeEmail } = await import("./technical-measure-office-email");
+    const officeEmail = await deliverTechnicalMeasureOfficeEmail(supabase, formId);
     const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
     await createAndSendInstallerForm(supabase, form.quote_id);
-    return loadTechnicalMeasureForm(supabase, formId);
+    return { ...await loadTechnicalMeasureForm(supabase, formId), officeEmail };
   }
   if (form.requiresAddendum) throw new CrmAuthError(409, "The customer must acknowledge and sign the listed contract changes.");
   return finalizeTechnicalMeasure(
@@ -1174,6 +1177,8 @@ async function finalizeTechnicalMeasure(
     )));
   }
   const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
+  const { deliverTechnicalMeasureOfficeEmail } = await import("./technical-measure-office-email");
+  const officeEmail = await deliverTechnicalMeasureOfficeEmail(supabase, form.id);
   const installerHandoff = await createAndSendInstallerForm(supabase, form.quote_id);
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
@@ -1183,6 +1188,7 @@ async function finalizeTechnicalMeasure(
       formId: form.id,
       submittedAt,
       installationDurationMinutes,
+      officeEmail,
       installationHandoff: {
         sent: installerHandoff.email.sent,
         messageId: installerHandoff.email.id || null,
@@ -1191,7 +1197,7 @@ async function finalizeTechnicalMeasure(
       orderPreparations,
     },
   });
-  return loadTechnicalMeasureForm(supabase, form.id);
+  return { ...await loadTechnicalMeasureForm(supabase, form.id), officeEmail };
 }
 
 export async function backfillSubmittedVendorOrderPreparation(
