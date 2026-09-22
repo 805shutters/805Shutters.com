@@ -101,3 +101,74 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-experience .quote-add-card{background:#191e20!important;color:#fff!important;border-color:#394348!important;box-shadow:none!important}
 .mobile-805-experience .quote-add-card :is(label,p){color:#aebbb5!important}
 .mobile-805-experience .mobile-customer-payments>header>a{background:#191e20;color:#fff;border-color:#46534c}
+/* Approved C calendar: isolated from every other mobile workspace. */
+.mobile-805-experience:has(.mobile-calendar-c)>:is(.mobile-805-brand,.mobile-805-navigation,.mobile-workspace-exit){display:none}
+.mobile-805-experience .mobile-calendar-c{max-width:900px;padding:0 0 env(safe-area-inset-bottom);min-height:100dvh;background:#000;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+.mobile-calendar-c .calendar-c-brand{display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #30383a;min-height:88px}
+.calendar-c-brand>a{flex-shrink:0}
+.calendar-c-brand img{display:block;width:64px;height:54px;object-fit:contain;filter:brightness(0) invert(1)}
+.calendar-c-brand>span{margin-left:auto;color:#aebbb5;letter-spacing:.16em;font-size:9px}
+.calendar-c-menu{position:relative;margin-left:12px}
+.calendar-c-menu summary{list-style:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid #394348;border-radius:9px;cursor:pointer}
+.calendar-c-menu summary::-webkit-details-marker{display:none}
+.calendar-c-menu nav{position:absolute;right:0;top:50px;width:240px;z-index:15;padding:8px;background:#191e20;border:1px solid #394348;border-radius:12px;box-shadow:0 10px 35px #0009}
+.calendar-c-menu nav :is(a,button){display:block;width:100%;text-align:left;color:#fff;text-decoration:none;background:transparent;border:0;padding:12px;font-size:14px;min-height:44px}
+.calendar-c-title{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 16px 12px}
+.mobile-calendar-c .calendar-c-title h1{font-size:24px;line-height:1.2;font-weight:600;margin:0;letter-spacing:-.04em}
+.calendar-c-title p{font-size:12px;color:#aebbb5;margin:6px 0 0}
+.mobile-calendar-c .calendar-c-new{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;min-height:44px;border:0;border-radius:9px;background:#b7efd0;color:#102019;font-size:13px;font-weight:600}
+.calendar-c-controls{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:0 16px 8px}
+.mobile-calendar-c .mobile-crm-segment{display:flex;flex:0 1 auto;gap:2px;padding:3px;border:1px solid #394348;background:#000;border-radius:9px}
+.mobile-calendar-c .mobile-crm-segment button{flex:0 1 auto;width:auto;padding:8px 10px;min-height:44px;border:0;border-radius:6px;font-size:12px;white-space:nowrap;background:transparent;color:#bac4be}
+.mobile-calendar-c .mobile-crm-segment button.active{background:#efefeb;color:#171713}
+.calendar-c-controls select{width:110px;min-width:0;min-height:44px;background:#191e20;color:#fff;border:1px solid #394348;border-radius:8px;font-size:12px;padding:8px}
+.calendar-c-range{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px;align-items:center;gap:8px;padding:0 16px 8px}
+.calendar-c-range button,.calendar-c-agenda button{display:flex;align-items:center;justify-content:center;min-height:44px;background:#191e20;border:1px solid #394348;border-radius:8px;color:#fff;padding:8px 12px;font-size:12px}
+.calendar-c-range button:first-child,.calendar-c-range button:last-child{padding:0;background:transparent}
+.calendar-c-range>div{text-align:center;min-width:0}
+.calendar-c-range strong{display:block;font-size:14px;line-height:1.3;font-weight:600}
+.calendar-c-range small{display:block;font-size:11px;color:#aebbb5;margin-top:3px}
+.calendar-c-availability{padding:0 16px 8px}
+.calendar-c-availability button{display:flex;align-items:center;gap:5px;min-height:36px;border:1px solid #394348;border-radius:8px;background:transparent;color:#aebbb5;font-size:12px;padding:6px 10px}
+.calendar-c-availability button[aria-pressed=true]{background:#243c2d;color:#d3efdb;border-color:#608e73}
+.mobile-calendar-c .mobile-crm-calendar{padding:0}
+.mobile-calendar-c .mobile-805-calendar-hint{font-size:11px;margin:0;padding:0 16px 8px}
+.mobile-calendar-c .mobile-805-five-scroll{max-height:65dvh;min-height:280px;border-radius:0;border-left:0;border-right:0}
+.mobile-calendar-c .mobile-805-five-grid{min-width:0;background:#0d1110}
+.mobile-calendar-c .mobile-805-five-heading{height:54px;background:#171c1a;font-size:14px}
+.mobile-calendar-c .mobile-805-five-heading small{font-size:11px}
+.mobile-calendar-c .mobile-805-time-column>div:not(:first-child){font-size:10px;padding-top:3px}
+.mobile-calendar-c .mobile-805-timed-event{font-size:11px;padding:4px;gap:3px}
+.mobile-calendar-c .mobile-805-timed-event strong{font-size:11px;line-height:1.25}
+.mobile-calendar-c .mobile-805-timed-event small{font-size:10px;line-height:1.25}
+.mobile-calendar-c :is(.mobile-crm-chip,.mobile-805-timed-event,.mobile-crm-day-card){background:#243c2d;border-left:3px solid #9bdbb5;color:#d3efdb}
+.mobile-calendar-c :is(.mobile-crm-chip,.mobile-805-timed-event,.mobile-crm-day-card)[data-owner=Jessica]{background:#2a3147;border-left-color:#a7b7ef;color:#dbe2fa}
+.mobile-calendar-c :is(.mobile-crm-chip,.mobile-805-timed-event,.mobile-crm-day-card)[data-owner=Unassigned]{background:#3c3728;border-left-color:#d8c68c;color:#eee1b9}
+.mobile-calendar-c .mobile-crm-month-day[data-selected=true]{box-shadow:inset 0 0 0 1px #9bdbb5;background:#1b3023}
+.calendar-c-agenda{padding:16px}
+.calendar-c-agenda>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.calendar-c-agenda h2{font-size:15px;margin:0}
+.calendar-c-agenda>button{width:100%;margin-top:12px}
+.mobile-calendar-c .mobile-crm-day-card{padding:12px;min-height:0}
+.mobile-calendar-c .mobile-crm-day-card strong{font-size:15px}
+.mobile-calendar-c .mobile-crm-day-card :is(small,em,span){font-size:12px;color:inherit}
+.calendar-c-legend{display:flex;flex-wrap:wrap;gap:15px;padding:12px 16px;color:#aebbb5;font-size:11px}
+.calendar-c-legend span:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#9bdbb5;margin-right:5px}
+.calendar-c-legend [data-owner=Jessica]:before{background:#a7b7ef}
+.calendar-c-legend [data-owner=Unassigned]:before{background:#d8c68c}
+.calendar-c-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px 8px;color:#aebbb5;font-size:11px}
+.calendar-c-footer button{display:flex;align-items:center;gap:6px;min-height:44px;background:transparent;border:0;color:#aebbb5;font-size:12px}
+.calendar-c-footer span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.calendar-c-bottom{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid #30383a;background:#141917;padding:7px 4px}
+.calendar-c-bottom :is(a,button){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:transparent;border:0;color:#aebbb5;text-decoration:none;font-size:10px;min-height:48px;padding:5px 0}
+.calendar-c-bottom [aria-current=page]{color:#b7efd0}
+.calendar-c-bottom svg{width:18px;height:18px}
+.mobile-calendar-c .mobile-crm-add-form fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:14px}
+.mobile-calendar-c .mobile-crm-add-form h3{font-size:14px;margin:12px 0 0;color:#fff}
+.mobile-calendar-c .mobile-crm-add-form h3:not(:first-child){padding-top:16px;border-top:1px solid #30383a}
+.mobile-calendar-c .mobile-crm-add-form .mobile-crm-alert{margin:0}
+@media(max-width:370px){.calendar-c-controls{gap:6px;padding-left:10px;padding-right:10px}.mobile-calendar-c .mobile-crm-segment button{padding:8px}.calendar-c-controls select{width:90px}.calendar-c-range{padding-left:10px;padding-right:10px;gap:5px}.calendar-c-range strong{font-size:12px}.calendar-c-title{padding-left:10px;padding-right:10px}.mobile-calendar-c .mobile-805-timed-event{padding:3px 1px}.mobile-calendar-c .mobile-805-timed-event small{font-size:9px}}
+.mobile-calendar-c .mobile-crm-sheet{max-width:640px;margin:0 auto;background:#191e20}
+.mobile-calendar-c .mobile-crm-sheet-bar h2{font-family:inherit;font-size:24px;font-weight:600}
+.mobile-calendar-c .mobile-crm-detail-grid p,.mobile-calendar-c .mobile-crm-detail-notes p{background:#121719;border-color:#394348;color:#fff}
+.mobile-calendar-c .calendar-c-availability button{min-height:44px}

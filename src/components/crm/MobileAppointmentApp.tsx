@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   CircleCheck,
   Loader2,
   MapPin,
+  Menu,
   MessageSquare,
   Navigation,
   Phone,
@@ -267,6 +268,14 @@ function eventsForDay(events: MobileAppointment[], day: string) {
     .sort((left, right) => new Date(left.start_at).getTime() - new Date(right.start_at).getTime());
 }
 
+function compactEventTime(event: MobileAppointment) {
+  return timeFormatter.format(new Date(event.start_at)).replace(":00", "").replace(" AM", "a").replace(" PM", "p");
+}
+
+function shortDateLabel(day: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(dateToUtcNoon(day));
+}
+
 function formatEventTime(event: MobileAppointment) {
   return `${timeFormatter.format(new Date(event.start_at))} - ${timeFormatter.format(new Date(event.end_at))}`;
 }
@@ -346,7 +355,7 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   return body as T;
 }
 
-function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 1) {
+export function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 1) {
   if (view === "list") return addDays(anchorDate, direction * 30);
   if (view === "month") return addMonths(anchorDate, direction);
   if (view === "week") return addDays(anchorDate, direction * 7);
@@ -354,7 +363,7 @@ function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 
   return addDays(anchorDate, direction);
 }
 
-function appointmentDateTimeRange(date: string, time: string, durationMinutes: number) {
+export function appointmentDateTimeRange(date: string, time: string, durationMinutes: number) {
   const start = zonedTimeToUtc(date, time);
   const safeDuration = Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : bookingSlotDurationMinutes;
   const end = new Date(start.getTime() + safeDuration * 60 * 1000);
@@ -389,7 +398,7 @@ function AppointmentChip({
   onClick: (event: MobileAppointment) => void;
 }) {
   return (
-    <button type="button" className={compact ? "mobile-crm-chip compact" : "mobile-crm-chip"} onClick={() => onClick(event)}>
+    <button type="button" data-owner={assignedPerson(event)} className={compact ? "mobile-crm-chip compact" : "mobile-crm-chip"} onClick={() => onClick(event)}>
       <span>{timeFormatter.format(new Date(event.start_at))}</span>
       <strong>{eventTitle(event)}</strong>
       <em>{assignedPerson(event)}</em>
@@ -418,7 +427,7 @@ function MonthView({
       {days.map((day) => {
         const dayEvents = eventsForDay(events, day);
         return (
-          <article className={`mobile-crm-month-day${isSameMonth(day, monthStart) ? "" : " outside"}`} data-today={day === todayLosAngelesDate()} key={day}>
+          <article className={`mobile-crm-month-day${isSameMonth(day, monthStart) ? "" : " outside"}`} data-today={day === todayLosAngelesDate()} data-selected={day === anchorDate} key={day}>
             <button type="button" className="mobile-crm-day-number" aria-label={`View appointments for ${day}`} onClick={() => onSelectDay(day)}>
               <span>{Number(day.slice(-2))}</span>
               {dayEvents.length ? <em>{dayEvents.length}</em> : null}
@@ -456,17 +465,17 @@ export function calendarDayInterval(event: Pick<MobileAppointment, "start_at" | 
   return end > start ? { start, duration: end - start } : null;
 }
 
-function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBook }: {
-  events: MobileAppointment[]; anchorDate: string; showAvailability: boolean;
+function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBook, dayCount = 5 }: {
+  events: MobileAppointment[]; anchorDate: string; showAvailability: boolean; dayCount?: number;
   onSelectEvent: (event: MobileAppointment) => void; onBook: (day: string, time: string) => void;
 }) {
-  const days = Array.from({ length: 5 }, (_, index) => addDays(anchorDate, index));
+  const days = Array.from({ length: dayCount }, (_, index) => addDays(anchorDate, index));
   const intervals = days.flatMap(day => events.flatMap(event => { const interval = calendarDayInterval(event, day); return interval ? [interval] : []; }));
   const startSlot = Math.min(14, ...intervals.map(item => Math.floor(item.start / 30)));
   const endSlot = Math.min(48, Math.max(38, ...intervals.map(item => Math.ceil((item.start + item.duration) / 30))));
   const slots = Array.from({ length: endSlot - startSlot }, (_, index) => startSlot + index);
-  return <><p className="mobile-805-calendar-hint">{showAvailability ? "Tap an open half-hour to start booking. Confirm staff availability before saving." : "Five consecutive days · tap an appointment for details."}</p>
-    <div className="mobile-805-five-scroll"><div className="mobile-805-five-grid">
+  return <><p className="mobile-805-calendar-hint">{showAvailability ? "Tap an open half-hour to start booking. Confirm staff availability before saving." : `${dayCount === 5 ? "Five consecutive days" : "Day schedule"} · Pacific time`}</p>
+    <div className="mobile-805-five-scroll"><div className="mobile-805-five-grid" style={{ gridTemplateColumns: `40px repeat(${dayCount}, minmax(0, 1fr))` }}>
       <div className="mobile-805-time-column"><div className="mobile-805-five-heading">PT</div>{slots.map(slot => <div key={slot}>{halfHourTime(slot)}</div>)}</div>
       {days.map(day => { const dayEvents = eventsForDay(events, day); const laneEnds: number[] = [];
         const positioned = dayEvents.map(event => { const { start, duration } = calendarDayInterval(event, day)!; let lane = laneEnds.findIndex(end => end <= start); if (lane < 0) lane = laneEnds.length; laneEnds[lane] = start + duration; return { event, start, duration, lane }; });
@@ -474,7 +483,7 @@ function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBo
         return <section key={day}><div className="mobile-805-five-heading" data-today={day === todayLosAngelesDate()}><small>{shortWeekdayFormatter.format(dateToUtcNoon(day))}</small><strong>{Number(day.slice(-2))}</strong></div>
         <div className="mobile-805-five-day" style={{ height: slots.length * 44 }}>
           {slots.map(slot => { const busy = positioned.some(item => item.start < slot * 30 + 30 && item.start + item.duration > slot * 30); return <button type="button" className="mobile-805-time-slot" key={slot} disabled={!showAvailability || busy} aria-label={`Book ${day} at ${halfHourTime(slot)}`} onClick={() => onBook(day, halfHourTime(slot))}>{showAvailability && !busy ? "+" : ""}</button>; })}
-          {positioned.map(({ event, start, duration, lane }) => <button type="button" className="mobile-805-timed-event" key={event.id} style={{ top: (start / 30 - startSlot) * 44, height: Math.min(duration / 30 * 44, (endSlot - start / 30) * 44) - 2, left: `${lane / laneCount * 100}%`, width: `${100 / laneCount}%` }} onClick={() => onSelectEvent(event)}><small>{timeFormatter.format(new Date(event.start_at))}</small><strong>{eventTitle(event)}</strong><small>{assignedPerson(event)}</small></button>)}
+          {positioned.map(({ event, start, duration, lane }) => <button type="button" className="mobile-805-timed-event" data-owner={assignedPerson(event)} aria-label={`${eventTitle(event)}, ${formatEventTime(event)}, ${assignedPerson(event)}`} key={event.id} style={{ top: (start / 30 - startSlot) * 44, height: Math.min(duration / 30 * 44, (endSlot - start / 30) * 44) - 2, left: `${lane / laneCount * 100}%`, width: `${100 / laneCount}%` }} onClick={() => onSelectEvent(event)}><small>{compactEventTime(event)}</small><strong>{eventTitle(event)}</strong><small>{assignedPerson(event)}</small></button>)}
         </div></section>;
       })}
     </div></div></>;
@@ -530,7 +539,7 @@ function DayView({
     <div className="mobile-crm-day-list">
       {dayEvents.length ? (
         dayEvents.map((event) => (
-          <button type="button" className="mobile-crm-day-card" key={event.id} onClick={() => onSelectEvent(event)}>
+          <button type="button" className="mobile-crm-day-card" data-owner={assignedPerson(event)} key={event.id} onClick={() => onSelectEvent(event)}>
             <span>{formatEventTime(event)}</span>
             <strong>{eventTitle(event)}</strong>
             <small>{assignedPerson(event)}</small>
@@ -565,7 +574,7 @@ function UpcomingView({
           </div>
           <div className="mobile-crm-day-list">
             {eventsForDay(events, day).map((event) => (
-              <button type="button" className="mobile-crm-day-card" key={event.id} onClick={() => onSelectEvent(event)}>
+              <button type="button" className="mobile-crm-day-card" data-owner={assignedPerson(event)} key={event.id} onClick={() => onSelectEvent(event)}>
                 <span>{formatEventTime(event)}</span>
                 <strong>{eventTitle(event)}</strong>
                 <small>{assignedPerson(event)}</small>
@@ -723,49 +732,36 @@ function AddAppointmentSheet({
   defaultDate,
   defaultTime = "09:00",
   busy,
+  error,
+  defaultOwner,
   onClose,
   onSubmit
 }: {
   defaultDate: string;
   defaultTime?: string;
   busy: boolean;
+  error: string | null;
+  defaultOwner: string;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   return (
-    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={onClose}>
+    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={() => { if (!busy) onClose(); }}>
       <section className="mobile-crm-sheet mobile-crm-add-sheet" role="dialog" aria-modal="true" aria-label="Add appointment" onClick={(eventClick) => eventClick.stopPropagation()}>
         <div className="mobile-crm-sheet-bar">
           <div>
             <span>New appointment</span>
             <h2>Add Appointment</h2>
           </div>
-          <button type="button" aria-label="Close add appointment" onClick={onClose}>
+          <button type="button" aria-label="Close add appointment" disabled={busy} onClick={onClose}>
             <X />
           </button>
         </div>
 
         <form className="mobile-crm-add-form" onSubmit={onSubmit}>
-          <label>
-            Customer
-            <input name="customer_name" required placeholder="Customer name" autoFocus />
-          </label>
-          <label>
-            Phone
-            <input name="phone" required inputMode="tel" placeholder="805-000-0000" />
-          </label>
-          <label>
-            Address
-            <input name="address" placeholder="Project address" />
-          </label>
-          <label>
-            City
-            <input name="city" placeholder="Camarillo" />
-          </label>
-          <label>
-            Email
-            <input name="email" type="email" placeholder="customer@email.com" />
-          </label>
+          {error ? <p role="alert" className="mobile-crm-alert">{error}</p> : null}
+          <fieldset disabled={busy}>
+          <h3>When &amp; who</h3>
           <div className="mobile-crm-form-row">
             <label>
               Date
@@ -789,13 +785,35 @@ function AddAppointmentSheet({
             </label>
             <label>
               Assigned
-              <select name="assigned_to" defaultValue="Unassigned">
+              <select name="assigned_to" defaultValue={defaultOwner}>
                 {ownerOptions.map((item) => (
                   <option key={item}>{item}</option>
                 ))}
               </select>
             </label>
           </div>
+          <h3>Customer details</h3>
+          <label>
+            Customer
+            <input name="customer_name" required placeholder="Customer name" />
+          </label>
+          <label>
+            Phone
+            <input name="phone" required inputMode="tel" placeholder="805-000-0000" />
+          </label>
+          <label>
+            Address
+            <input name="address" placeholder="Project address" />
+          </label>
+          <label>
+            City
+            <input name="city" placeholder="Camarillo" />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" placeholder="customer@email.com" />
+          </label>
+          <h3>Consultation details</h3>
           <label>
             Product
             <select name="product_interest" defaultValue="Shutters">
@@ -819,6 +837,7 @@ function AddAppointmentSheet({
             Notes
             <textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring..." />
           </label>
+          </fieldset>
           <div className="mobile-crm-sheet-actions">
             <button type="submit" className="mobile-crm-primary-action" disabled={busy}>
               {busy ? <Loader2 className="spin" /> : <Plus />}
@@ -847,6 +866,20 @@ export function MobileAppointmentApp() {
   const [addingAppointment, setAddingAppointment] = useState(false);
   const [bookingTime, setBookingTime] = useState("09:00");
   const [showAvailability, setShowAvailability] = useState(false);
+  const [ownerFilter, setOwnerFilter] = useState("All");
+  const [bookingNotice, setBookingNotice] = useState<string | null>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const bookingBusy = useRef(false);
+  const pendingBookingJob = useRef<{ id: string; payload: string } | null>(null);
+  const visibleAppointments = useMemo(() => appointments.filter(event => ownerFilter === "All" || assignedPerson(event) === ownerFilter), [appointments, ownerFilter]);
+  function openBooking(day = anchorDate, time = "09:00") {
+    pendingBookingJob.current = null;
+    setBookingNotice(null);
+    setBookingError(null);
+    setAnchorDate(day);
+    setBookingTime(time);
+    setAddingAppointment(true);
+  }
   useEffect(() => { if (new URLSearchParams(window.location.search).get("appointments") === "1") setShowWorkspaceMenu(false); }, []);
   const [savingAppointment, setSavingAppointment] = useState(false);
   const [appointmentMutationBusy, setAppointmentMutationBusy] = useState(false);
@@ -878,14 +911,14 @@ export function MobileAppointmentApp() {
     };
   }, [supabase]);
 
-  async function loadAppointments(activeSession = session) {
+  async function loadAppointments(activeSession = session, range = activeRange) {
     if (!activeSession) return;
     setLoading(true);
     setMessage(null);
     try {
       const params = new URLSearchParams({
-        start: activeRange.start,
-        end: activeRange.end,
+        start: range.start,
+        end: range.end,
         scope: "all"
       });
       const result = await crmFetch<MobileAppointmentsResponse>(activeSession, `/api/crm/mobile/appointments?${params}`);
@@ -905,7 +938,7 @@ export function MobileAppointmentApp() {
 
   async function createAppointment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) return;
+    if (!session || bookingBusy.current) return;
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -922,13 +955,13 @@ export function MobileAppointmentApp() {
     const durationMinutes = Number(formString(formData, "duration") || bookingSlotDurationMinutes);
     const { startAt, endAt } = appointmentDateTimeRange(date, time, durationMinutes);
 
+    bookingBusy.current = true;
     setSavingAppointment(true);
+    setBookingError(null);
     setMessage(null);
 
     try {
-      const { job } = await crmFetch<{ job: { id: string } }>(session, "/api/crm/jobs", {
-        method: "POST",
-        body: JSON.stringify({
+      const jobPayload = JSON.stringify({
           customer_name: customerName,
           phone,
           email,
@@ -942,13 +975,15 @@ export function MobileAppointmentApp() {
           next_action_due: date,
           estimated_total: 0,
           notes
-        })
-      });
-
+        });
+      if (!pendingBookingJob.current || pendingBookingJob.current.payload !== jobPayload) {
+        const { job } = await crmFetch<{ job: { id: string } }>(session, "/api/crm/jobs", { method: "POST", body: jobPayload });
+        pendingBookingJob.current = { id: job.id, payload: jobPayload };
+      }
       await crmFetch<{ event: MobileAppointment }>(session, "/api/crm/calendar", {
         method: "POST",
         body: JSON.stringify({
-          job_id: job.id,
+          job_id: pendingBookingJob.current.id,
           title: `${customerName} consultation`,
           event_type: "sales_consult",
           assigned_to: assignedTo,
@@ -962,12 +997,14 @@ export function MobileAppointmentApp() {
       form.reset();
       setAddingAppointment(false);
       setAnchorDate(date);
-      await loadAppointments(session);
-      setMessage("Appointment saved.");
+      setOwnerFilter("All");
+      pendingBookingJob.current = null;
+      await loadAppointments(session, rangeForView(date, view));
+      setBookingNotice("Appointment saved.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Appointment could not be saved.");
-      await loadAppointments(session);
+      setBookingError(error instanceof Error ? error.message : "Appointment could not be saved.");
     } finally {
+      bookingBusy.current = false;
       setSavingAppointment(false);
     }
   }
@@ -1094,7 +1131,7 @@ export function MobileAppointmentApp() {
           <h1>Appointments</h1>
           <p>Sign in with an approved 805 Shutters Google account.</p>
           {message ? <em>{message}</em> : null}
-          <a className="mobile-crm-google-button" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/mobile")}`}>
+          <a className="mobile-crm-google-button" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(showWorkspaceMenu ? "/crm/mobile" : "/crm/mobile/?appointments=1")}`}>
             <span aria-hidden="true"><b>G</b></span>
             Continue with Google
           </a>
@@ -1122,57 +1159,38 @@ export function MobileAppointmentApp() {
   }
 
   return (
-    <div className="mobile-crm-app">
-      <header className="mobile-crm-topbar">
-        <button type="button" className="mobile-crm-back-button" aria-label="Back to workspaces" onClick={() => setShowWorkspaceMenu(true)}>
-          <ArrowLeft />
-        </button>
-        <div>
-          <span>805 Shutters</span>
-          <h1>Appointments</h1>
-          <p>All appointments</p>
-        </div>
-        <div className="mobile-crm-topbar-actions">
-          <button type="button" aria-label="Add appointment" onClick={() => { setBookingTime("09:00"); setAddingAppointment(true); }}>
-            <Plus />
-          </button>
-          <button type="button" aria-label="Close appointments and return to mobile app home" onClick={() => setShowWorkspaceMenu(true)}>
-            <X />
-          </button>
-        </div>
+    <div className="mobile-crm-app mobile-calendar-c">
+      <header className="calendar-c-brand">
+        <a href="/crm/mobile/" aria-label="805 Shutters mobile home"><img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" width="76" height="64" /></a>
+        <span>FIELD OPERATIONS</span>
+        <details className="calendar-c-menu">
+          <summary aria-label="Open workspaces"><Menu size={20} /></summary>
+          <nav aria-label="Calendar workspaces">
+            <button type="button" aria-label="Close appointments and return to mobile app home" onClick={() => setShowWorkspaceMenu(true)}>Home</button>
+            <a href="/crm/technical-measures/">Technical Measures</a>
+            <a href="/crm/mobile/quotes/">Quotes</a>
+            <a href="/crm/mobile/contracts/">Contracts</a>
+            <a href="/crm/mobile/search/">Customer Info / Payments</a>
+            <a href="/crm/mobile/job-status/">Job Status</a>
+          </nav>
+        </details>
       </header>
-
-      <nav className="mobile-crm-workspaces" aria-label="Mobile CRM workspaces">
-        <button type="button" className="active" aria-current="page"><CalendarDays />Appointments</button>
-        <a href="/crm/technical-measures"><Ruler />Measures</a>
-        <a href="/crm/mobile/quotes"><FileText />Quotes</a>
-      </nav>
-
-      <section className="mobile-crm-controls">
+      <div className="calendar-c-title"><div><h1>Appointments</h1><p>Schedule &amp; book in one place</p></div><button type="button" className="calendar-c-new" onClick={() => openBooking()}><Plus size={16} />New</button></div>
+      <section className="calendar-c-controls">
         <div className="mobile-crm-segment" aria-label="Calendar view">
-          {calendarViews.map((item) => (
-            <button type="button" className={view === item ? "active" : ""} aria-pressed={view === item} key={item} onClick={() => setView(item)}>
-              {item === "five" ? "5 days" : item[0].toUpperCase() + item.slice(1)}
-            </button>
-          ))}
+          {calendarViews.map(item => <button type="button" className={view === item ? "active" : ""} aria-pressed={view === item} key={item} onClick={() => setView(item)}>{item === "five" ? "5 days" : item[0].toUpperCase() + item.slice(1)}</button>)}
         </div>
+        <select aria-label="Filter by assigned person" value={ownerFilter} onChange={event => setOwnerFilter(event.target.value)}>{["All", ...ownerOptions].map(owner => <option key={owner}>{owner}</option>)}</select>
       </section>
-
-      <div className="mobile-805-calendar-actions"><button type="button" onClick={() => setAnchorDate(todayLosAngelesDate())}>Today</button><button type="button" aria-pressed={showAvailability} onClick={() => { setShowAvailability(!showAvailability); setView("five"); }}>Open time slots</button><button type="button" onClick={() => { setBookingTime("09:00"); setAddingAppointment(true); }}><Plus size={16} />New appointment</button></div>
-      <section className="mobile-crm-range">
-        <button type="button" aria-label="Previous" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, -1))}>
-          <ChevronLeft />
-        </button>
-        <button type="button" onClick={() => setAnchorDate(todayLosAngelesDate())}>
-          <strong>{rangeLabel}</strong>
-          <span>{appointments.length} scheduled</span>
-        </button>
-        <button type="button" aria-label="Next" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, 1))}>
-          <ChevronRight />
-        </button>
+      <section className="calendar-c-range">
+        <button type="button" aria-label="Previous" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, -1))}><ChevronLeft size={18} /></button>
+        <div><strong>{view === "five" ? `${shortDateLabel(activeRange.start)} – ${shortDateLabel(addDays(activeRange.end, -1))}` : rangeLabel}</strong><small aria-live="polite">{visibleAppointments.length} scheduled</small></div>
+        <button type="button" onClick={() => setAnchorDate(todayLosAngelesDate())}>Today</button>
+        <button type="button" aria-label="Next" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, 1))}><ChevronRight size={18} /></button>
       </section>
-
+      <div className="calendar-c-availability"><button type="button" aria-pressed={showAvailability} onClick={() => { setShowAvailability(!showAvailability); if (view !== "day") setView("five"); }}><Plus size={14} />Open time slots</button></div>
       <main className="mobile-crm-calendar">
+        {bookingNotice ? <p role="status" className="mobile-crm-alert">{bookingNotice}</p> : null}
         {message ? <p className="mobile-crm-alert">{message}</p> : null}
         {loading ? (
           <div className="mobile-crm-loading">
@@ -1182,30 +1200,29 @@ export function MobileAppointmentApp() {
         ) : null}
         {view === "list" ? (
           <UpcomingView
-            events={appointments}
+            events={visibleAppointments}
             onSelectEvent={(event) => {
               setEtaMessage(null);
               setSelectedAppointment(event);
             }}
           />
         ) : view === "month" ? (
-          <MonthView
-            events={appointments}
+          <><MonthView
+            events={visibleAppointments}
             anchorDate={anchorDate}
             onSelectDay={(day) => {
               setAnchorDate(day);
-              setView("day");
             }}
             onSelectEvent={(event) => {
               setEtaMessage(null);
               setSelectedAppointment(event);
             }}
-          />
+          /><section className="calendar-c-agenda"><div><h2>{longDayFormatter.format(dateToUtcNoon(anchorDate))}</h2><button type="button" onClick={() => openBooking()}>Book</button></div><DayView events={visibleAppointments} anchorDate={anchorDate} onSelectEvent={setSelectedAppointment} /><button type="button" onClick={() => setView("day")}>Open day &amp; choose a time</button></section></>
         ) : view === "five" ? (
-          <FiveDayView events={appointments} anchorDate={anchorDate} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={(day, time) => { setAnchorDate(day); setBookingTime(time); setAddingAppointment(true); }} />
+          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={openBooking} />
         ) : view === "week" ? (
           <WeekView
-            events={appointments}
+            events={visibleAppointments}
             anchorDate={anchorDate}
             onSelectDay={(day) => {
               setAnchorDate(day);
@@ -1217,23 +1234,13 @@ export function MobileAppointmentApp() {
             }}
           />
         ) : (
-          <DayView
-            events={appointments}
-            anchorDate={anchorDate}
-            onSelectEvent={(event) => {
-              setEtaMessage(null);
-              setSelectedAppointment(event);
-            }}
-          />
+          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} dayCount={1} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={openBooking} />
         )}
       </main>
 
-      <footer className="mobile-crm-footer">
-        <button type="button" onClick={() => loadAppointments()} disabled={loading}>
-          <RefreshCw className={loading ? "spin" : ""} />
-          <span>{userLabel || "Refresh"}</span>
-        </button>
-      </footer>
+      <div className="calendar-c-legend" aria-label="Appointment colors">{ownerOptions.map(owner => <span data-owner={owner} key={owner}>{owner}</span>)}</div>
+      <footer className="calendar-c-footer"><button type="button" onClick={() => loadAppointments()} disabled={loading} aria-label="Refresh appointments"><RefreshCw size={16} className={loading ? "spin" : ""} />Refresh</button><span>{userLabel}</span></footer>
+      <nav className="calendar-c-bottom" aria-label="Quick workspaces"><a href="/crm/mobile/?appointments=1" aria-current="page"><CalendarDays />Appts</a><a href="/crm/technical-measures/"><Ruler />Measures</a><a href="/crm/mobile/quotes/"><FileText />Quotes</a><a href="/crm/mobile/job-status/"><CircleCheck />Job Status</a><button type="button" onClick={() => setShowWorkspaceMenu(true)}><Menu />More</button></nav>
 
       {selectedAppointment ? (
         <AppointmentDetailSheet
@@ -1267,6 +1274,8 @@ export function MobileAppointmentApp() {
         <AddAppointmentSheet
           defaultDate={anchorDate}
           defaultTime={bookingTime}
+          defaultOwner={ownerFilter === "All" ? "Unassigned" : ownerFilter}
+          error={bookingError}
           busy={savingAppointment}
           onClose={() => {
             if (!savingAppointment) setAddingAppointment(false);
