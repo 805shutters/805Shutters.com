@@ -6,10 +6,6 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-brand{display:flex;align-items:center;gap:20px;max-width:1120px;margin:auto;padding:12px 24px;border-bottom:1px solid #30383a;min-height:90px}
 .mobile-805-brand img{display:block;object-fit:contain;filter:brightness(0) invert(1);width:76px;height:64px}
 .mobile-805-brand span{color:#aebbb5;font-size:10px;letter-spacing:.2em}
-.mobile-805-navigation{display:flex;overflow-x:auto;gap:6px;max-width:1120px;margin:auto;padding:10px 16px;border-bottom:1px solid #30383a;scrollbar-width:thin}
-.mobile-805-navigation a{display:flex;align-items:center;gap:6px;flex-shrink:0;min-height:40px;padding:8px 10px;border-radius:9px;color:#c8d1cc;text-decoration:none;font-size:12px}
-.mobile-805-navigation a:hover{background:#253a30;color:#b7efd0}
-.mobile-805-navigation svg{width:16px;height:16px}
 .mobile-805-experience :is(a,button,input,select,textarea):focus-visible{outline:2px solid #b7efd0;outline-offset:3px}
 .mobile-805-experience .mobile-workspace-exit{background:#191e20;border-color:#394348;color:#fff}
 .mobile-805-experience :is(.mobile-crm-app,.mobile-crm-login,.technical-measure-shell,.mobile-customer-payments){background:#000;color:#fff}
@@ -57,7 +53,7 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-timed-event small{font-size:9px}
 /* Field editor: same compact list and focused opening, with the original document untouched. */
 .mobile-805-experience .technical-measure-shell{--ink:#fff;--paper:#000;--white:#191e20;--line:#30383a;--muted:#aebbb5;--accent:#b7efd0;--platinum:#202729;--platinum-soft:#14191b;--platinum-deep:#394348}
-.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 151px)}
+.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 90px - var(--mobile-nav-height))}
 .mobile-805-experience .technical-measure-shell :is(button,input,select,textarea){background:#202729!important;color:#fff!important;border-color:#46534c!important;border-radius:8px;min-height:44px}
 .mobile-805-experience .technical-measure-shell :is(.technical-measure-queue-card,.technical-measure-ledger-item,.technical-measure-line,.technical-measure-line-head,.technical-measure-line-top,.technical-measure-section-label,.technical-measure-priority-grid,.technical-measure-fields,.technical-measure-secondary,.technical-measure-ledger,.technical-measure-products,.technical-measure-schedule-dialog,.technical-measure-measure-picker,.tm805-contract-options,.tm805-contract-jump){background:#191e20!important;color:#fff!important;border-color:#30383a!important;border-radius:12px}
 .mobile-805-experience .technical-measure-shell :is(small,label,dt,.technical-measure-section-label,.technical-measure-header span,.technical-measure-header p,.technical-measure-address,.technical-measure-ledger-size,.technical-measure-ledger-status,.technical-measure-line-head span,.technical-measure-list-heading){color:#afbeb5!important}
@@ -71,7 +67,7 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-experience .technical-measure-status-filters{overflow:auto;display:flex;gap:8px}
 .mobile-805-experience .technical-measure-status-filters button{flex:0 0 auto;padding:9px 13px}
 .mobile-805-experience .technical-measure-status-filters button[aria-pressed=true] strong{color:#102019}
-@media(max-width:540px){.mobile-805-brand{padding:8px 18px;min-height:78px}.mobile-805-brand img{height:56px;width:68px}.mobile-805-navigation{padding:7px 10px}.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 133px)}.mobile-805-experience .mobile-crm-calendar{padding:8px}.mobile-805-experience .mobile-crm-month-day{min-height:100px;padding:2px}.mobile-805-experience .mobile-crm-topbar{padding:18px 12px}.mobile-805-experience .mobile-crm-segment button{padding:10px 14px}.mobile-805-experience .mobile-crm-day-number em{display:none}}
+@media(max-width:540px){.mobile-805-brand{padding:8px 18px;min-height:78px}.mobile-805-brand img{height:56px;width:68px}.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 78px - var(--mobile-nav-height))}.mobile-805-experience .mobile-crm-calendar{padding:8px}.mobile-805-experience .mobile-crm-month-day{min-height:100px;padding:2px}.mobile-805-experience .mobile-crm-topbar{padding:18px 12px}.mobile-805-experience .mobile-crm-segment button{padding:10px 14px}.mobile-805-experience .mobile-crm-day-number em{display:none}}
 .mobile-805-experience .crm-app-shell{background:#000;color:#fff;min-height:70dvh}
 .mobile-805-experience .crm-login-panel{background:#191e20;border-color:#394348;color:#fff;border-radius:18px}
 .mobile-805-experience .crm-login-panel :is(h1,h2){font-family:inherit;color:#fff}
@@ -102,7 +98,7 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-805-experience .quote-add-card :is(label,p){color:#aebbb5!important}
 .mobile-805-experience .mobile-customer-payments>header>a{background:#191e20;color:#fff;border-color:#46534c}
 /* Approved C calendar: isolated from every other mobile workspace. */
-.mobile-805-experience:has(.mobile-calendar-c)>:is(.mobile-805-brand,.mobile-805-navigation,.mobile-workspace-exit){display:none}
+.mobile-805-experience:has(.mobile-calendar-c)>:is(.mobile-805-brand,.mobile-workspace-exit){display:none}
 .mobile-805-experience .mobile-calendar-c{max-width:900px;padding:0 0 env(safe-area-inset-bottom);min-height:100dvh;background:#000;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
 .mobile-calendar-c .calendar-c-brand{display:flex;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid #393935;min-height:88px}
 .calendar-c-brand>a{flex-shrink:0}
@@ -157,10 +153,6 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .calendar-c-legend [data-owner=Jessica]:before{background:#a7b7ef}
 .calendar-c-legend [data-owner=Unassigned]:before{background:#d8c68c}
 .calendar-c-user{color:#b7b7af;font-size:12px;padding:4px 12px;overflow-wrap:anywhere}
-.calendar-c-bottom{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid #393935;background:#171715;padding:10px 4px}
-.calendar-c-bottom :is(a,button){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:transparent;border:0;color:#b7b7af;text-decoration:none;font-size:10px;min-height:48px;padding:7px 1px}
-.calendar-c-bottom [aria-current=page]{color:#b7efd0}
-.calendar-c-bottom svg{width:18px;height:18px}
 .mobile-calendar-c .mobile-crm-add-form fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:14px}
 .mobile-calendar-c .mobile-crm-add-form h3{font-size:14px;margin:12px 0 0;color:#fff}
 .mobile-calendar-c .mobile-crm-add-form h3:not(:first-child){padding-top:16px;border-top:1px solid #393935}
@@ -194,3 +186,21 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-calendar-c .mobile-805-timed-event[data-owner=Unassigned]{background:#3b3525;border:1px solid #7a6a42;color:#f1e8ce}
 .mobile-calendar-c .mobile-805-timed-event span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mobile-calendar-c .calendar-c-availability button[aria-label="Refresh appointments"]{width:44px;justify-content:center}
+
+/* Persistent iPhone-style navigation shared by every mobile workspace. */
+.mobile-805-experience{--mobile-nav-height:calc(72px + env(safe-area-inset-bottom,0px));padding-bottom:var(--mobile-nav-height)}
+.mobile-805-bottom-nav{position:fixed;z-index:40;left:0;right:0;bottom:0;height:var(--mobile-nav-height);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:8px max(4px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom,0px)) max(4px,env(safe-area-inset-left));border-top:1px solid #393935;background:#171715;box-shadow:0 -8px 24px #0003}
+.mobile-805-bottom-nav :is(a,button){display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:48px;width:100%;padding:3px 0;border:0;border-radius:7px;background:transparent;color:#b7b7af;text-decoration:none;font:500 11px/1.2 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;white-space:nowrap;touch-action:manipulation}
+.mobile-805-bottom-nav svg{width:21px;height:21px;flex-shrink:0}
+.mobile-805-bottom-nav :is([aria-current=page],.active){color:#b7efd0}
+.mobile-805-bottom-nav :is(a,button):hover{background:#24372b}
+.mobile-workspace-more{position:fixed;inset:auto 0 0;width:100%;max-width:600px;max-height:80dvh;margin:0 auto;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));overflow-y:auto;border:1px solid #393935;border-bottom:0;border-radius:20px 20px 0 0;background:#171715;color:#fff}
+.mobile-workspace-more::backdrop{background:#0009}
+.mobile-workspace-more header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.mobile-workspace-more h2{font-family:inherit;font-size:20px;margin:0}
+.mobile-workspace-more header button{display:grid;place-items:center;width:44px;min-height:44px;background:transparent;border:1px solid #393935;border-radius:10px;color:#fff}
+.mobile-workspace-more nav{display:grid;gap:6px}
+.mobile-workspace-more nav a{display:flex;align-items:center;gap:12px;min-height:52px;padding:12px;border-radius:8px;color:#fff;text-decoration:none}
+.mobile-workspace-more nav a[aria-current=page]{background:#24372b;color:#b7efd0}
+.mobile-workspace-more nav svg{width:21px;height:21px}
+.mobile-805-experience .technical-measure-actions{bottom:var(--mobile-nav-height)}

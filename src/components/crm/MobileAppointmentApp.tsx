@@ -1245,7 +1245,7 @@ export function MobileAppointmentApp() {
       </main>
 
       <div className="calendar-c-legend" aria-label="Appointment colors">{ownerOptions.map(owner => <span data-owner={owner} key={owner}>{owner}</span>)}</div>
-      <nav className="calendar-c-bottom" aria-label="Quick workspaces"><a href="/crm/mobile/?appointments=1" aria-current="page"><CalendarDays />Appts</a><a href="/crm/technical-measures/"><Ruler />Measures</a><a href="/crm/mobile/quotes/"><FileText />Quotes</a><a href="/crm/mobile/job-status/"><CircleCheck />Job Status</a><button type="button" onClick={() => setShowWorkspaceMenu(true)}><Menu />More</button></nav>
+
 
       {selectedAppointment ? (
         <AppointmentDetailSheet
