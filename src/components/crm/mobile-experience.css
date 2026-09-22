@@ -172,3 +172,13 @@ body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-
 .mobile-calendar-c .mobile-crm-sheet-bar h2{font-family:inherit;font-size:24px;font-weight:600}
 .mobile-calendar-c .mobile-crm-detail-grid p,.mobile-calendar-c .mobile-crm-detail-notes p{background:#121719;border-color:#394348;color:#fff}
 .mobile-calendar-c .calendar-c-availability button{min-height:44px}
+/* Override public-site heading/button defaults inside the calendar only. */
+.mobile-calendar-c :is(h1,h2,h3){font-family:inherit}
+.mobile-calendar-c .calendar-c-new{width:auto;flex-shrink:0}
+.mobile-calendar-c .calendar-c-title>div{min-width:0}
+.mobile-calendar-c .calendar-c-availability button{width:auto;font-weight:500}
+.mobile-calendar-c .mobile-crm-segment button,.mobile-calendar-c .calendar-c-range button{font-weight:500}
+.mobile-calendar-c .mobile-crm-empty-day{min-height:140px;background:#121719;color:#aebbb5;border-color:#394348;border-radius:10px;font-size:13px}
+.mobile-calendar-c .mobile-crm-day-card small{background:transparent;border-color:#608e73;color:inherit}
+.mobile-calendar-c .mobile-crm-upcoming-list{padding:8px 16px}
+.mobile-calendar-c .mobile-crm-upcoming-date span,.mobile-calendar-c .mobile-crm-loading{color:#aebbb5}
