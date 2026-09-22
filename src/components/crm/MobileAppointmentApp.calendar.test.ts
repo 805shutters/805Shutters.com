@@ -2,7 +2,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MobileAppointmentApp, halfHourTime, rangeForView, calendarDayInterval } from "./MobileAppointmentApp";
+import { MobileAppointmentApp, halfHourTime, halfHourLabel, rangeForView, calendarDayInterval } from "./MobileAppointmentApp";
 
 const client = vi.hoisted(() => ({ auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { access_token: "test" } } }), onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) } }));
 vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => client }));
@@ -12,6 +12,7 @@ it("loads five consecutive LA calendar dates across month and DST boundaries", (
   expect(rangeForView("2026-09-22", "month")).toEqual({ start: "2026-08-30", end: "2026-10-04" });
   expect(halfHourTime(19)).toBe("09:30");
   expect(halfHourTime(31)).toBe("15:30");
+  expect([0, 16, 24, 25, 26, 35].map(halfHourLabel)).toEqual(["12a", "8a", "12p", "12:30p", "1p", "5:30p"]);
 });
 describe("appointment calendar booking", () => {
   it("books directly from five-day and day time slots without enabling availability or saving", async () => {
@@ -30,7 +31,8 @@ describe("appointment calendar booking", () => {
         await act(async () => viewButton.click());
         const slot = [...host.querySelectorAll<HTMLButtonElement>(".mobile-805-time-slot")].find(button => button.getAttribute("aria-label")?.endsWith("at 09:30"))!;
         expect(slot.disabled).toBe(false);
-        expect(slot.textContent).toBe("");
+        expect(slot.textContent).toBe("+");
+        expect(slot.querySelector("span")?.getAttribute("aria-hidden")).toBe("true");
         expect(slot.getAttribute("data-available")).toBe("false");
         const date = slot.getAttribute("aria-label")!.split(" ")[1];
         await act(async () => slot.click());
