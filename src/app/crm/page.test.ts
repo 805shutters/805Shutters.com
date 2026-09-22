@@ -13,7 +13,7 @@ describe("iPad access to all saved quotes", () => {
     expect(result.props.initialTab).toBe("quotes");
   });
   it("keeps the normal iPad landing page and existing tracking/report overrides", async () => {
-    await expect(CrmPage({ searchParams: Promise.resolve({}) })).rejects.toThrow("redirect:/crm/mobile/quotes");
+    await expect(CrmPage({ searchParams: Promise.resolve({}) })).rejects.toThrow("redirect:/crm/mobile/");
     for (const view of ["tracking", "reports"]) {
       expect((await CrmPage({ searchParams: Promise.resolve({ view }) })).props.initialTab).toBe(view);
     }

@@ -30,6 +30,7 @@ export function mobilePaymentSendRequest(action: PaymentAction, channel: Payment
 export function MobileCustomersApp() {
   const [rows, setRows] = useState<MobilePaymentCustomer[]>([]);
   const [query, setQuery] = useState("");
+  useEffect(() => { setQuery(new URLSearchParams(window.location.search).get("q") || ""); }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

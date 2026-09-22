@@ -12,7 +12,7 @@ import {
   Clock,
   Files,
   FileText,
-  Landmark,
+  CircleCheck,
   Loader2,
   MapPin,
   MessageSquare,
@@ -32,7 +32,7 @@ import { productInterestOptions } from "@/lib/product-interest-options";
 import { leadSourceOptions } from "@/lib/lead-source";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 
-type CalendarView = "list" | "month" | "week" | "day";
+type CalendarView = "list" | "month" | "five" | "week" | "day";
 
 type MobileAppointment = CrmCalendarEvent & {
   window_count?: number | null;
@@ -70,7 +70,7 @@ type MobileEtaResponse = {
   appointment: MobileAppointment;
 };
 
-const calendarViews: CalendarView[] = ["list", "week", "day"];
+const calendarViews: CalendarView[] = ["month", "five", "day", "list"];
 
 export function MobileWorkspaceMenu({
   appointmentCount,
@@ -102,7 +102,7 @@ export function MobileWorkspaceMenu({
             <span className="mobile-crm-action-icon"><CalendarDays /></span>
             <div>
               <strong>Open Appointments</strong>
-              <span>{appointmentCount} upcoming · Schedule, navigation, and arrival texts</span>
+              <span>{appointmentCount} in this calendar range · Schedule and arrival texts</span>
             </div>
             <ArrowRight />
           </button>
@@ -129,9 +129,9 @@ export function MobileWorkspaceMenu({
             <div><strong>Customer Info / Payments</strong><span>Fast lookup and payment links</span></div>
             <ArrowRight />
           </a>
-          <a className="mobile-crm-home-control" href="/crm/mobile/bookkeeping">
-            <span className="mobile-crm-action-icon"><Landmark /></span>
-            <div><strong>Bookkeeping</strong><span>Balances and payments</span></div>
+          <a className="mobile-crm-home-control" href="/crm/mobile/job-status/">
+            <span className="mobile-crm-action-icon"><CircleCheck /></span>
+            <div><strong>Job Status</strong><span>Orders, shipments, installation, and payments</span></div>
             <ArrowRight />
           </a>
         </section>
@@ -229,7 +229,7 @@ function todayLosAngelesDate() {
   return `${map.year}-${map.month}-${map.day}`;
 }
 
-function rangeForView(anchorDate: string, view: CalendarView) {
+export function rangeForView(anchorDate: string, view: CalendarView) {
   if (view === "list") {
     return { start: anchorDate, end: addDays(anchorDate, 30) };
   }
@@ -237,6 +237,8 @@ function rangeForView(anchorDate: string, view: CalendarView) {
     const days = monthDays(anchorDate);
     return { start: days[0], end: addDays(days[days.length - 1], 1) };
   }
+
+  if (view === "five") return { start: anchorDate, end: addDays(anchorDate, 5) };
 
   if (view === "week") {
     const start = startOfWeek(anchorDate);
@@ -261,7 +263,7 @@ function eventDay(event: MobileAppointment) {
 
 function eventsForDay(events: MobileAppointment[], day: string) {
   return events
-    .filter((event) => eventDay(event) === day)
+    .filter((event) => calendarDayInterval(event, day) !== null)
     .sort((left, right) => new Date(left.start_at).getTime() - new Date(right.start_at).getTime());
 }
 
@@ -348,6 +350,7 @@ function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 
   if (view === "list") return addDays(anchorDate, direction * 30);
   if (view === "month") return addMonths(anchorDate, direction);
   if (view === "week") return addDays(anchorDate, direction * 7);
+  if (view === "five") return addDays(anchorDate, direction * 5);
   return addDays(anchorDate, direction);
 }
 
@@ -415,8 +418,8 @@ function MonthView({
       {days.map((day) => {
         const dayEvents = eventsForDay(events, day);
         return (
-          <article className={`mobile-crm-month-day${isSameMonth(day, monthStart) ? "" : " outside"}`} key={day}>
-            <button type="button" className="mobile-crm-day-number" onClick={() => onSelectDay(day)}>
+          <article className={`mobile-crm-month-day${isSameMonth(day, monthStart) ? "" : " outside"}`} data-today={day === todayLosAngelesDate()} key={day}>
+            <button type="button" className="mobile-crm-day-number" aria-label={`View appointments for ${day}`} onClick={() => onSelectDay(day)}>
               <span>{Number(day.slice(-2))}</span>
               {dayEvents.length ? <em>{dayEvents.length}</em> : null}
             </button>
@@ -435,6 +438,46 @@ function MonthView({
       })}
     </div>
   );
+}
+
+export function halfHourTime(index: number) {
+  return `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`;
+}
+
+export function calendarDayInterval(event: Pick<MobileAppointment, "start_at" | "end_at">, day: string) {
+  const parts = (value: string) => {
+    const values = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(value)).map(part => [part.type, part.value]));
+    return { day: `${values.year}-${values.month}-${values.day}`, minutes: Number(values.hour) * 60 + Number(values.minute) };
+  };
+  const from = parts(event.start_at); const to = parts(event.end_at);
+  if (from.day > day || to.day < day || Date.parse(event.end_at) <= Date.parse(event.start_at)) return null;
+  const start = from.day < day ? 0 : from.minutes;
+  const end = to.day > day ? 1440 : to.minutes;
+  return end > start ? { start, duration: end - start } : null;
+}
+
+function FiveDayView({ events, anchorDate, showAvailability, onSelectEvent, onBook }: {
+  events: MobileAppointment[]; anchorDate: string; showAvailability: boolean;
+  onSelectEvent: (event: MobileAppointment) => void; onBook: (day: string, time: string) => void;
+}) {
+  const days = Array.from({ length: 5 }, (_, index) => addDays(anchorDate, index));
+  const intervals = days.flatMap(day => events.flatMap(event => { const interval = calendarDayInterval(event, day); return interval ? [interval] : []; }));
+  const startSlot = Math.min(14, ...intervals.map(item => Math.floor(item.start / 30)));
+  const endSlot = Math.min(48, Math.max(38, ...intervals.map(item => Math.ceil((item.start + item.duration) / 30))));
+  const slots = Array.from({ length: endSlot - startSlot }, (_, index) => startSlot + index);
+  return <><p className="mobile-805-calendar-hint">{showAvailability ? "Tap an open half-hour to start booking. Confirm staff availability before saving." : "Five consecutive days · tap an appointment for details."}</p>
+    <div className="mobile-805-five-scroll"><div className="mobile-805-five-grid">
+      <div className="mobile-805-time-column"><div className="mobile-805-five-heading">PT</div>{slots.map(slot => <div key={slot}>{halfHourTime(slot)}</div>)}</div>
+      {days.map(day => { const dayEvents = eventsForDay(events, day); const laneEnds: number[] = [];
+        const positioned = dayEvents.map(event => { const { start, duration } = calendarDayInterval(event, day)!; let lane = laneEnds.findIndex(end => end <= start); if (lane < 0) lane = laneEnds.length; laneEnds[lane] = start + duration; return { event, start, duration, lane }; });
+        const laneCount = Math.max(1, laneEnds.length);
+        return <section key={day}><div className="mobile-805-five-heading" data-today={day === todayLosAngelesDate()}><small>{shortWeekdayFormatter.format(dateToUtcNoon(day))}</small><strong>{Number(day.slice(-2))}</strong></div>
+        <div className="mobile-805-five-day" style={{ height: slots.length * 44 }}>
+          {slots.map(slot => { const busy = positioned.some(item => item.start < slot * 30 + 30 && item.start + item.duration > slot * 30); return <button type="button" className="mobile-805-time-slot" key={slot} disabled={!showAvailability || busy} aria-label={`Book ${day} at ${halfHourTime(slot)}`} onClick={() => onBook(day, halfHourTime(slot))}>{showAvailability && !busy ? "+" : ""}</button>; })}
+          {positioned.map(({ event, start, duration, lane }) => <button type="button" className="mobile-805-timed-event" key={event.id} style={{ top: (start / 30 - startSlot) * 44, height: Math.min(duration / 30 * 44, (endSlot - start / 30) * 44) - 2, left: `${lane / laneCount * 100}%`, width: `${100 / laneCount}%` }} onClick={() => onSelectEvent(event)}><small>{timeFormatter.format(new Date(event.start_at))}</small><strong>{eventTitle(event)}</strong><small>{assignedPerson(event)}</small></button>)}
+        </div></section>;
+      })}
+    </div></div></>;
 }
 
 function WeekView({
@@ -678,11 +721,13 @@ function RescheduleAppointmentSheet({
 
 function AddAppointmentSheet({
   defaultDate,
+  defaultTime = "09:00",
   busy,
   onClose,
   onSubmit
 }: {
   defaultDate: string;
+  defaultTime?: string;
   busy: boolean;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -728,7 +773,7 @@ function AddAppointmentSheet({
             </label>
             <label>
               Time
-              <input name="time" type="time" required defaultValue="09:00" />
+              <input name="time" type="time" step="1800" required defaultValue={defaultTime} />
             </label>
           </div>
           <div className="mobile-crm-form-row">
@@ -791,7 +836,7 @@ export function MobileAppointmentApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appointments, setAppointments] = useState<MobileAppointment[]>([]);
-  const [view, setView] = useState<CalendarView>("list");
+  const [view, setView] = useState<CalendarView>("month");
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(true);
   const [anchorDate, setAnchorDate] = useState(() => todayLosAngelesDate());
   const [loading, setLoading] = useState(false);
@@ -800,6 +845,9 @@ export function MobileAppointmentApp() {
   const [selectedAppointment, setSelectedAppointment] = useState<MobileAppointment | null>(null);
   const [reschedulingAppointment, setReschedulingAppointment] = useState<MobileAppointment | null>(null);
   const [addingAppointment, setAddingAppointment] = useState(false);
+  const [bookingTime, setBookingTime] = useState("09:00");
+  const [showAvailability, setShowAvailability] = useState(false);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("appointments") === "1") setShowWorkspaceMenu(false); }, []);
   const [savingAppointment, setSavingAppointment] = useState(false);
   const [appointmentMutationBusy, setAppointmentMutationBusy] = useState(false);
   const [etaBusy, setEtaBusy] = useState(false);
@@ -1037,7 +1085,7 @@ export function MobileAppointmentApp() {
         <section>
           <div className="mobile-crm-logo">
             <img
-              src="/brand/805-shutters-logo.png"
+              src="/brand/805-shutters-logo-exact-transparent.png"
               alt="805 Shutters, Blinds, Shades, Drapery"
               width="286"
               height="270"
@@ -1060,7 +1108,7 @@ export function MobileAppointmentApp() {
       ? `Upcoming 30 days`
       : view === "month"
       ? monthLabelFormatter.format(dateToUtcNoon(startOfMonth(anchorDate)))
-      : view === "week"
+      : view === "week" || view === "five"
         ? `${longDayFormatter.format(dateToUtcNoon(activeRange.start))} - ${longDayFormatter.format(dateToUtcNoon(addDays(activeRange.end, -1)))}`
         : longDayFormatter.format(dateToUtcNoon(anchorDate));
 
@@ -1085,7 +1133,7 @@ export function MobileAppointmentApp() {
           <p>All appointments</p>
         </div>
         <div className="mobile-crm-topbar-actions">
-          <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
+          <button type="button" aria-label="Add appointment" onClick={() => { setBookingTime("09:00"); setAddingAppointment(true); }}>
             <Plus />
           </button>
           <button type="button" aria-label="Close appointments and return to mobile app home" onClick={() => setShowWorkspaceMenu(true)}>
@@ -1103,13 +1151,14 @@ export function MobileAppointmentApp() {
       <section className="mobile-crm-controls">
         <div className="mobile-crm-segment" aria-label="Calendar view">
           {calendarViews.map((item) => (
-            <button type="button" className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>
-              {item[0].toUpperCase() + item.slice(1)}
+            <button type="button" className={view === item ? "active" : ""} aria-pressed={view === item} key={item} onClick={() => setView(item)}>
+              {item === "five" ? "5 days" : item[0].toUpperCase() + item.slice(1)}
             </button>
           ))}
         </div>
       </section>
 
+      <div className="mobile-805-calendar-actions"><button type="button" onClick={() => setAnchorDate(todayLosAngelesDate())}>Today</button><button type="button" aria-pressed={showAvailability} onClick={() => { setShowAvailability(!showAvailability); setView("five"); }}>Open time slots</button><button type="button" onClick={() => { setBookingTime("09:00"); setAddingAppointment(true); }}><Plus size={16} />New appointment</button></div>
       <section className="mobile-crm-range">
         <button type="button" aria-label="Previous" onClick={() => setAnchorDate(moveAnchorDate(anchorDate, view, -1))}>
           <ChevronLeft />
@@ -1152,6 +1201,8 @@ export function MobileAppointmentApp() {
               setSelectedAppointment(event);
             }}
           />
+        ) : view === "five" ? (
+          <FiveDayView events={appointments} anchorDate={anchorDate} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={(day, time) => { setAnchorDate(day); setBookingTime(time); setAddingAppointment(true); }} />
         ) : view === "week" ? (
           <WeekView
             events={appointments}
@@ -1215,6 +1266,7 @@ export function MobileAppointmentApp() {
       {addingAppointment ? (
         <AddAppointmentSheet
           defaultDate={anchorDate}
+          defaultTime={bookingTime}
           busy={savingAppointment}
           onClose={() => {
             if (!savingAppointment) setAddingAppointment(false);

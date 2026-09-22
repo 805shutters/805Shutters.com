@@ -15,7 +15,7 @@ export default async function CrmPage({ searchParams }: { searchParams: Promise<
   const isIpad = /iPad/i.test(userAgent) || (/Macintosh/i.test(userAgent) && /Mobile/i.test(userAgent));
 
   if (isIpad && !tracking && !reports && !quotes && !contracts) {
-    redirect("/crm/mobile/quotes");
+    redirect("/crm/mobile/");
   }
 
   return <CrmApp initialTab={contracts ? "contracts" : quotes ? "quotes" : tracking ? "tracking" : reports ? "reports" : "tracking"} />;

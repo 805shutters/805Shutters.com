@@ -1,8 +1,2 @@
-import { MobileBookkeepingApp } from "@/components/crm/MobileBookkeepingApp";
-import { privatePageMetadata } from "@/lib/private-page-metadata";
-
-export const metadata = privatePageMetadata("805 Mobile Bookkeeping");
-
-export default function MobileBookkeepingPage() {
-  return <MobileBookkeepingApp />;
-}
+import { redirect } from "next/navigation";
+export default function MobileBookkeepingPage() { redirect("/crm/mobile/job-status/"); }

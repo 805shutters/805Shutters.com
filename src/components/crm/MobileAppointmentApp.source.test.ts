@@ -6,8 +6,8 @@ const styles = readFileSync("src/app/globals.css", "utf8");
 
 describe("MobileAppointmentApp source contract", () => {
   it("keeps the mobile appointment app calendar views without a scope toggle", () => {
-    expect(source).toContain('type CalendarView = "list" | "month" | "week" | "day"');
-    expect(source).toContain('const calendarViews: CalendarView[] = ["list", "week", "day"]');
+    expect(source).toContain('type CalendarView = "list" | "month" | "five" | "week" | "day"');
+    expect(source).toContain('const calendarViews: CalendarView[] = ["month", "five", "day", "list"]');
     expect(source).toContain('scope: "all"');
     expect(source).not.toContain("calendarScopes");
     expect(source).not.toContain('type CalendarScope = "my" | "all"');
@@ -27,12 +27,12 @@ describe("MobileAppointmentApp source contract", () => {
     expect(source).toContain("setShowWorkspaceMenu(true)");
   });
 
-  it("presents the branded technician workspace without the job-status view", () => {
+  it("presents the branded technician workspace with the shared Job Status view", () => {
     expect(source).toContain("/brand/805-shutters-logo-exact-transparent.png");
     expect(source).toContain("Open Appointments");
     expect(source).not.toContain("Good work starts here");
-    expect(source).not.toContain("/crm/mobile/job-status");
-    expect(source).not.toContain("<strong>Job Status</strong>");
+    expect(source).toContain("/crm/mobile/job-status/");
+    expect(source).toContain("<strong>Job Status</strong>");
     expect(styles).toMatch(/\.mobile-crm-home-logo img \{[\s\S]*?width: 168px;/);
     expect(styles).toMatch(/\.mobile-crm-home-control \{[\s\S]*?min-height: 88px;[\s\S]*?border-radius: 12px;/);
     expect(styles).toMatch(/\.mobile-crm-home-control--primary \{[\s\S]*?background: #171817;/);

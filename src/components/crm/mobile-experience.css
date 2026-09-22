@@ -1,0 +1,80 @@
+/* Shared only by mobile CRM routes, including technical measures. */
+body:has(.mobile-805-experience){background:#000}
+body:has(.mobile-805-experience) :is(.site-header-shell,.site-footer,.assistant-widget){display:none}
+.mobile-805-experience{--ink:#fff;--paper:#000;--white:#191e20;--line:#30383a;--muted:#aebbb5;--accent:#b7efd0;--platinum:#202729;--platinum-soft:#14191b;--platinum-deep:#394348;background:#000;color:#fff;min-height:100dvh;color-scheme:dark;font-family:var(--font-body)}
+.mobile-805-experience *{box-sizing:border-box}
+.mobile-805-brand{display:flex;align-items:center;gap:20px;max-width:1120px;margin:auto;padding:12px 24px;border-bottom:1px solid #30383a;min-height:90px}
+.mobile-805-brand img{display:block;object-fit:contain;filter:brightness(0) invert(1);width:76px;height:64px}
+.mobile-805-brand span{color:#aebbb5;font-size:10px;letter-spacing:.2em}
+.mobile-805-navigation{display:flex;overflow-x:auto;gap:6px;max-width:1120px;margin:auto;padding:10px 16px;border-bottom:1px solid #30383a;scrollbar-width:thin}
+.mobile-805-navigation a{display:flex;align-items:center;gap:6px;flex-shrink:0;min-height:40px;padding:8px 10px;border-radius:9px;color:#c8d1cc;text-decoration:none;font-size:12px}
+.mobile-805-navigation a:hover{background:#253a30;color:#b7efd0}
+.mobile-805-navigation svg{width:16px;height:16px}
+.mobile-805-experience :is(a,button,input,select,textarea):focus-visible{outline:2px solid #b7efd0;outline-offset:3px}
+.mobile-805-experience .mobile-workspace-exit{background:#191e20;border-color:#394348;color:#fff}
+.mobile-805-experience :is(.mobile-crm-app,.mobile-crm-login,.technical-measure-shell,.mobile-customer-payments){background:#000;color:#fff}
+.mobile-805-experience :is(.mobile-crm-app,.mobile-customer-payments){max-width:1120px;margin:auto}
+.mobile-805-experience .mobile-crm-home-header{display:none}
+.mobile-805-experience .mobile-crm-home-main{padding-top:24px}
+.mobile-805-experience :is(.mobile-crm-home-control,.mobile-crm-day-card,.mobile-crm-sheet,.mobile-crm-login section,.mobile-crm-topbar,.mobile-crm-controls,.mobile-crm-range,.mobile-crm-footer,.mobile-crm-segment,.mobile-crm-week-day,.mobile-crm-month-day,.mobile-crm-month-head,.mobile-customer-payments article){background:#191e20;color:#fff;border-color:#30383a;box-shadow:none;border-radius:12px}
+.mobile-805-experience .mobile-crm-home-control{padding:20px;min-height:94px}
+.mobile-805-experience .mobile-crm-home-control--primary{background:#20382c;border-color:#608e73}
+.mobile-805-experience :is(.mobile-crm-home-control strong,.mobile-crm-topbar h1,.mobile-crm-login h1,.mobile-customer-payments h1,.mobile-customer-payments h2){font-family:inherit;font-weight:700}
+.mobile-805-experience :is(.mobile-crm-home-control span,.mobile-crm-functional-label,.mobile-crm-home-footer,.mobile-crm-topbar span,.mobile-crm-topbar p,.mobile-crm-login p,.mobile-crm-day-card em,.mobile-crm-day-card small,.mobile-crm-day-card>span,.mobile-crm-range span,.mobile-crm-week-events p,.mobile-crm-month-head,.mobile-crm-detail-grid,.mobile-crm-detail-notes,.mobile-crm-add-form label,.mobile-crm-sheet-bar span){color:#aebbb5}
+.mobile-805-experience :is(.mobile-crm-action-icon,.mobile-crm-day-number,.mobile-crm-week-date,.mobile-crm-range button,.mobile-crm-topbar button,.mobile-crm-footer button,.mobile-crm-sheet-bar button,.mobile-crm-more,.mobile-crm-segment button,.mobile-crm-workspaces a,.mobile-crm-workspaces button){background:transparent;color:#fff;border-color:#394348}
+.mobile-805-experience :is(.mobile-crm-workspaces,.technical-measure-workspaces){display:none}
+.mobile-805-experience :is(.mobile-crm-home-logo img,.mobile-crm-logo img){filter:brightness(0) invert(1)}
+.mobile-805-experience :is(.mobile-crm-primary-action,.mobile-crm-google-button,.mobile-crm-segment button.active){background:#b7efd0;color:#102019;border-color:#b7efd0}
+.mobile-805-experience :is(.mobile-crm-secondary-action,.mobile-crm-danger-action){background:#242d30;color:#fff;border-color:#394348}
+.mobile-805-experience .mobile-crm-danger-action{color:#ffb9b0}
+.mobile-805-experience :is(.mobile-crm-alert,.mobile-crm-eta-status,.mobile-crm-login em){background:#263c30;color:#d3ffe6;border-color:#608e73}
+.mobile-805-experience :is(.mobile-crm-add-form input,.mobile-crm-add-form select,.mobile-crm-add-form textarea,.mobile-customer-search input,.mobile-customer-letter-index button){background:#121719;color:#fff;border-color:#46534c;border-radius:9px;min-height:44px}
+.mobile-805-experience .mobile-crm-sheet{border-radius:22px 22px 0 0}
+.mobile-805-experience .mobile-crm-month-grid{background:#30383a;border-color:#30383a;border-radius:12px}
+.mobile-805-experience :is(.mobile-crm-month-day,.mobile-crm-month-head){border-radius:0}
+.mobile-805-experience .mobile-crm-month-day{padding:4px;min-height:105px}
+.mobile-805-experience .mobile-crm-month-day.outside{background:#101516;color:#92a09a}
+.mobile-805-experience .mobile-crm-month-day[data-today=true] .mobile-crm-day-number span{background:#b7efd0;color:#102019;border-radius:50%;padding:4px}
+.mobile-805-experience .mobile-crm-chip{background:#284537;color:#e1ffed;border:0;border-left:3px solid #b7efd0;border-radius:4px;padding:5px;min-width:0;overflow:hidden}
+.mobile-805-experience .mobile-crm-chip :is(span,strong,em){color:inherit;overflow:hidden;text-overflow:ellipsis}
+.mobile-805-experience .mobile-crm-chip.compact strong{font-size:10px}
+.mobile-805-experience .mobile-crm-chip.compact span{font-size:9px}
+.mobile-805-calendar-actions{display:flex;gap:7px;padding:12px;flex-wrap:wrap}
+.mobile-805-calendar-actions button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:42px;border:1px solid #394348;background:#191e20;color:#fff;border-radius:9px;padding:8px 12px;font-size:12px}
+.mobile-805-calendar-actions button:last-child,.mobile-805-calendar-actions button[aria-pressed=true]{background:#b7efd0;color:#102019}
+.mobile-805-calendar-hint{color:#aebbb5;font-size:12px;padding:0 12px}
+.mobile-805-five-scroll{overflow:auto;max-height:70dvh;border:1px solid #30383a;border-radius:12px}
+.mobile-805-five-grid{display:grid;grid-template-columns:44px repeat(5,minmax(56px,1fr));min-width:340px;background:#101516}
+.mobile-805-five-heading{position:sticky;top:0;z-index:3;height:56px;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#191e20;border-bottom:1px solid #394348;font-size:15px}
+.mobile-805-five-heading small{font-size:10px;color:#aebbb5}
+.mobile-805-five-heading[data-today=true]{color:#b7efd0}
+.mobile-805-time-column>div:not(:first-child){height:44px;text-align:center;font-size:10px;color:#aebbb5;padding-top:3px}
+.mobile-805-five-day{position:relative;border-left:1px solid #30383a}
+.mobile-805-time-slot{display:block;width:100%;height:44px;min-height:44px;border:0;border-bottom:1px solid #30383a;background:transparent;color:#87a996;text-align:center}
+.mobile-805-time-slot:disabled{opacity:1;cursor:default}
+.mobile-805-timed-event{position:absolute;z-index:1;display:flex;flex-direction:column;text-align:left;gap:4px;overflow:hidden;background:#294b39;color:#e0ffed;border:1px solid #709d83;border-left:3px solid #b7efd0;border-radius:5px;padding:4px 3px;font-size:10px;min-height:20px}
+.mobile-805-timed-event strong{font-size:11px;overflow-wrap:anywhere}
+.mobile-805-timed-event small{font-size:9px}
+/* Field editor: same compact list and focused opening, with the original document untouched. */
+.mobile-805-experience .technical-measure-shell{--ink:#fff;--paper:#000;--white:#191e20;--line:#30383a;--muted:#aebbb5;--accent:#b7efd0;--platinum:#202729;--platinum-soft:#14191b;--platinum-deep:#394348}
+.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 151px)}
+.mobile-805-experience .technical-measure-shell :is(button,input,select,textarea){background:#202729!important;color:#fff!important;border-color:#46534c!important;border-radius:8px;min-height:44px}
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-queue-card,.technical-measure-ledger-item,.technical-measure-line,.technical-measure-line-head,.technical-measure-line-top,.technical-measure-section-label,.technical-measure-priority-grid,.technical-measure-fields,.technical-measure-secondary,.technical-measure-ledger,.technical-measure-products,.technical-measure-schedule-dialog,.technical-measure-measure-picker,.tm805-contract-options,.tm805-contract-jump){background:#191e20!important;color:#fff!important;border-color:#30383a!important;border-radius:12px}
+.mobile-805-experience .technical-measure-shell :is(small,label,dt,.technical-measure-section-label,.technical-measure-header span,.technical-measure-header p,.technical-measure-address,.technical-measure-ledger-size,.technical-measure-ledger-status,.technical-measure-line-head span,.technical-measure-list-heading){color:#afbeb5!important}
+.mobile-805-experience .technical-measure-shell :is(h1,h2,h3,strong,b,dd){color:#fff}
+.mobile-805-experience .technical-measure-shell :is(button[aria-pressed=true],button[data-confirmed=true],.technical-measure-primary,.technical-measure-product-ordered){background:#b7efd0!important;color:#102019!important;border-color:#b7efd0!important}
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-alert,.technical-measure-offline-status){background:#243d30;color:#d7ffe8;border-color:#608e73}
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-ledger-number,.technical-measure-list em){background:#243d30;color:#b7efd0;border-color:#608e73}
+.mobile-805-experience .technical-measure-shell .technical-measure-ledger-item[data-complete=true]{border-left:3px solid #b7efd0!important}
+.mobile-805-experience .technical-measure-queue-card{padding:16px;border:1px solid #30383a;margin:12px 0}
+.mobile-805-experience .technical-measure-queue-main strong{font-size:20px}
+.mobile-805-experience .technical-measure-status-filters{overflow:auto;display:flex;gap:8px}
+.mobile-805-experience .technical-measure-status-filters button{flex:0 0 auto;padding:9px 13px}
+.mobile-805-experience .technical-measure-status-filters button[aria-pressed=true] strong{color:#102019}
+@media(max-width:540px){.mobile-805-brand{padding:8px 18px;min-height:78px}.mobile-805-brand img{height:56px;width:68px}.mobile-805-navigation{padding:7px 10px}.mobile-805-experience .tm805-split.technical-measure-shell{height:calc(100dvh - 133px)}.mobile-805-experience .mobile-crm-calendar{padding:8px}.mobile-805-experience .mobile-crm-month-day{min-height:100px;padding:2px}.mobile-805-experience .mobile-crm-topbar{padding:18px 12px}.mobile-805-experience .mobile-crm-segment button{padding:10px 14px}.mobile-805-experience .mobile-crm-day-number em{display:none}}
+.mobile-805-experience .crm-app-shell{background:#000;color:#fff;min-height:70dvh}
+.mobile-805-experience .crm-login-panel{background:#191e20;border-color:#394348;color:#fff;border-radius:18px}
+.mobile-805-experience .crm-login-panel :is(h1,h2){font-family:inherit;color:#fff}
+.mobile-805-experience .crm-login-panel :is(p,label){color:#aebbb5}
+.mobile-805-experience .crm-login-panel input{background:#101516;color:#fff;border-color:#46534c}
+.mobile-805-experience .crm-login-panel .button{border-color:#46534c;background:#294b39;color:#fff}

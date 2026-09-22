@@ -13,7 +13,7 @@
 .empty {
   padding: 36px 20px;
   text-align: center;
-  color: #64645e;
+  color: #aebbb5;
 }
 .empty svg {
   width: 30px;
@@ -41,7 +41,7 @@
 .contractButtons small {
   display: block;
   font-size: 13px;
-  color: #575752;
+  color: #aebbb5;
   margin-top: 7px;
   line-height: 1.5;
 }
@@ -59,23 +59,23 @@
   gap: 12px;
   padding: 14px;
   min-height: 64px;
-  border: 1px solid #c9c9c3;
+  border: 1px solid #46534c;
   border-radius: 8px;
-  background: #fafaf8;
+  background: #191e20;
   text-align: left;
   cursor: pointer;
-  color: #171717;
+  color: #fff;
 }
 .contractButtons button span {
   flex: 1;
 }
 .contractButtons button:hover,
 .customerButton:hover {
-  background: #efefeb;
+  background: #191e20;
 }
 .documentShell {
-  background: #fff;
-  color: #171717;
+  background: #191e20;
+  color: #fff;
   min-height: 100dvh;
   padding-bottom: 80px;
 }
@@ -87,8 +87,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px 66px 12px 16px;
-  background: #f5f5f3;
-  border-bottom: 1px solid #d6d6ce;
+  background: #191e20;
+  border-bottom: 1px solid #46534c;
 }
 .toolbar span {
   flex: 1;
@@ -102,10 +102,10 @@
   gap: 5px;
   min-height: 44px;
   padding: 8px 13px;
-  border: 1px solid #aaa;
+  border: 1px solid #46534c;
   border-radius: 6px;
-  background: #fff;
-  color: #171717;
+  background: #191e20;
+  color: #fff;
   cursor: pointer;
 }
 .toolbar svg {
@@ -138,13 +138,13 @@
   color: #9b1c1c;
 }
 .notice {
-  color: #45453f;
+  color: #fff;
 }
 .actionPanel {
   padding: 20px;
-  border: 1px solid #c9c9c3;
+  border: 1px solid #46534c;
   border-radius: 10px;
-  background: #f5f5f3;
+  background: #191e20;
 }
 .actionPanel fieldset {
   border: 0;
@@ -162,9 +162,9 @@
   gap: 8px;
   min-height: 44px;
   padding: 4px 16px;
-  border: 1px solid #aaa;
+  border: 1px solid #46534c;
   border-radius: 6px;
-  background: white;
+  background: #191e20;
   cursor: pointer;
 }
 .channels input {
@@ -176,15 +176,15 @@
 .retry {
   min-height: 44px;
   padding: 10px 16px;
-  border: 1px solid #aaa;
+  border: 1px solid #46534c;
   border-radius: 6px;
-  background: white;
-  color: #171717;
+  background: #191e20;
+  color: #fff;
   margin: 8px 8px 0 0;
   cursor: pointer;
 }
 .actionPanel > .primary {
-  background: #171717;
+  background: #294b39;
   color: white;
 }
 .documentShell :global(.customer-contract-print-action) {
@@ -218,3 +218,6 @@
     margin: 16px 10px;
   }
 }
+
+/* Approved 805 mobile typography and mint actions. */
+.searchShell h1,.searchShell h2,.customerButton strong{font-family:inherit;font-weight:700}.customerButton strong{font-size:19px}.actionPanel>.primary{background:#b7efd0;color:#102019}.searchShell{background:#000}.documentShell{background:#000}.toolbar{flex-wrap:wrap}
