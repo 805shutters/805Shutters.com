@@ -39,6 +39,16 @@ describe("mobile next-payment queue", () => {
     expect(buildMobilePaymentQueue(fixture({ balance: 100 }))[0]).toMatchObject({ amountDue: 100, priority: true });
     expect(buildMobilePaymentQueue(fixture({ balance: 0, open: true }))[0].priority).toBe(false);
   });
+  it("does not revive orphaned quotes whose customer job is missing or deleted", () => {
+    const data = fixture(); data.jobs = [];
+    expect(buildMobilePaymentQueue(data)).toEqual([]);
+  });
+  it("does not call a zero-value draft paid", () => {
+    const data = fixture({ balance: 0, status: "draft", open: true });
+    data.bookkeepingRows = [];
+    data.quotes[0].quote_total = 0;
+    expect(buildMobilePaymentQueue(data)[0]).toMatchObject({ paidInFull: false, outstanding: 0 });
+  });
   it("searches linked customer contacts and preserves archived scope without a cap", () => {
     const rows = buildMobilePaymentQueue(fixture());
     expect(filterMobilePaymentCustomers(rows, "805555")).toHaveLength(1);

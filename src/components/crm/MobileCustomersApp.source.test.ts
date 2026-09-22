@@ -6,7 +6,7 @@ import { MobileCustomersApp, mobilePaymentSendRequest } from "./MobileCustomersA
 import type { MobilePaymentCustomer } from "@/lib/crm/mobile-payment-queue";
 
 vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: { access_token: "test-only" } } }) } }) }));
-const row = { id: "q1", quoteId: "q1", jobId: "j1", name: "Ada Customer", phone: "8055551212", email: "ada@example.com", address: "1 Main St", project: "Order 1", products: ["Shutters"], contractTotal: 1000, outstanding: 500, deposit: 0, balance: 500, amountDue: 500, dueType: "balance", priority: true, shipped: true, archived: false, closed: false, paid: 500, contractUrl: "/quote/sample", soldDate: "2026-09-01" } satisfies MobilePaymentCustomer;
+const row = { id: "q1", quoteId: "q1", jobId: "j1", name: "Ada Customer", phone: "8055551212", email: "ada@example.com", address: "1 Main St", project: "Order 1", products: ["Shutters"], contractTotal: 1000, outstanding: 500, deposit: 0, balance: 500, amountDue: 500, dueType: "balance", priority: true, shipped: true, archived: false, closed: false, paidInFull: false, paid: 500, contractUrl: "/quote/sample", soldDate: "2026-09-01" } satisfies MobilePaymentCustomer;
 let root: Root;
 let host: HTMLDivElement;
 let fetchMock: ReturnType<typeof vi.fn>;

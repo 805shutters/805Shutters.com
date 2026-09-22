@@ -105,7 +105,7 @@ export function MobileCustomersApp() {
     return <button key={row.id} className={styles.customerRow} onClick={() => open(row)}>
       <span className={styles.avatar}>{row.name.split(/\s+/).map(part => part[0]).slice(0, 2).join("")}</span>
       <span className={styles.rowName}><strong>{row.name}</strong><small>{row.project}{row.archived ? " · Archived" : row.shipped ? " · Shipped" : ""}</small></span>
-      <span className={styles.rowAmount}>{row.outstanding === null ? "Review" : row.outstanding > 0 ? money(row.outstanding) : "Paid"}<ChevronRight size={16} /></span>
+      <span className={styles.rowAmount}>{row.outstanding === null ? "Review" : row.outstanding > 0 ? money(row.outstanding) : row.paidInFull ? "Paid" : "No balance"}<ChevronRight size={16} /></span>
     </button>;
   }
   return <main className={styles.page}>

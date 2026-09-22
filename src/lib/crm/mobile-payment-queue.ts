@@ -12,6 +12,7 @@ export type MobilePaymentCustomer = MobileCustomerResult & {
   shipped: boolean;
   archived: boolean;
   closed: boolean;
+  paidInFull: boolean;
   soldDate: string | null;
   project: string;
   products: string[];
@@ -24,6 +25,8 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
   return buildOperationsItems(data).flatMap(item => {
     const s = item.source;
     if (item.paid && item.closed) return [];
+    // The customer page must not revive a quote whose source job was deleted.
+    if (s.quote?.job_id && !s.job) return [];
     const outstanding = s.balanceOutstanding;
     const deposit = s.depositOutstanding ?? 0;
     const balance = s.squareBalanceOutstanding ?? 0;
@@ -38,7 +41,7 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
       deposit, balance, outstanding, contractTotal: s.total ?? 0,
       paid: s.row ? s.row.depositPaid + s.row.balancePaid : null,
       dueType, amountDue, shipped, priority: shipped && outstanding !== null && outstanding > 0.005,
-      archived: item.archived, closed: item.closed, soldDate: s.soldDate,
+      archived: item.archived, closed: item.closed, paidInFull: item.paid, soldDate: s.soldDate,
       project: s.project, products: item.products.map(p => p.name), contractUrl: s.contractUrl,
     } satisfies MobilePaymentCustomer];
   }).sort((a, b) => Number(b.priority) - Number(a.priority)
