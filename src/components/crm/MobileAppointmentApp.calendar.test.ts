@@ -14,7 +14,7 @@ it("loads five consecutive LA calendar dates across month and DST boundaries", (
   expect(halfHourTime(31)).toBe("15:30");
 });
 describe("appointment calendar booking", () => {
-  it("starts in month and pre-fills an exact five-day half-hour without saving or sending", async () => {
+  it("starts in five days, supports month, and pre-fills an exact half-hour without saving or sending", async () => {
     (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ appointments: [], user: { email: "test@example.com" } }) });
     vi.stubGlobal("fetch", fetchMock);
@@ -23,6 +23,9 @@ describe("appointment calendar booking", () => {
     try {
       await act(async () => root.render(createElement(MobileAppointmentApp)));
       await click("Open Appointments");
+      expect(host.querySelectorAll(".mobile-805-five-day")).toHaveLength(5);
+      expect(host.querySelector(".mobile-crm-month-grid")).toBeNull();
+      await click("Month");
       expect(host.querySelector(".mobile-crm-month-grid")).toBeTruthy();
       expect(host.querySelectorAll(".mobile-crm-month-head")).toHaveLength(7);
       await click("Open time slots");

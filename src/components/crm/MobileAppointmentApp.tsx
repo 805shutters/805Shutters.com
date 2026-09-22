@@ -836,7 +836,7 @@ export function MobileAppointmentApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appointments, setAppointments] = useState<MobileAppointment[]>([]);
-  const [view, setView] = useState<CalendarView>("month");
+  const [view, setView] = useState<CalendarView>("five");
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(true);
   const [anchorDate, setAnchorDate] = useState(() => todayLosAngelesDate());
   const [loading, setLoading] = useState(false);
