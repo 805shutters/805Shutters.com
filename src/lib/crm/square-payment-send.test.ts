@@ -4,6 +4,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/lib/crm/public-quote";
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
+import { sendSms } from "@/lib/notify/twilio";
 import { sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
@@ -12,6 +13,7 @@ vi.mock("@/lib/crm/public-quote", () => ({ ensureShareToken: vi.fn(), loadPublic
 vi.mock("@/lib/finance/square", () => ({
   isSquareConfigured: vi.fn(), createSquarePaymentLink: vi.fn(), dollarsToCents: (amount: number) => Math.round(amount * 100)
 }));
+vi.mock("@/lib/notify/twilio", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/notify/twilio")>(), sendSms: vi.fn() }));
 vi.mock("@/lib/notify/email", () => ({ buildSquareOrderPaymentEmail: vi.fn(), sendEmail: vi.fn() }));
 
 const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "deposit" | "balance", actor: { email: string; userId?: string }, confirmation?: { expectedAmount: number; expectedRecipient: string; customAmount?: number }) => sendCurrentSquareOrderPaymentLink(client, id, type, actor, undefined, undefined, confirmation);
@@ -242,5 +244,28 @@ describe("custom Square payment requests", () => {
       customAmount: 123.45, expectedAmount: 123.45, expectedRecipient: customerEmail,
     });
     expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 12345, paymentType: "deposit" }));
+  });
+});
+
+
+describe("mobile text confirmation", () => {
+  it("verifies the reviewed phone rather than comparing it to the customer's email", async () => {
+    vi.mocked(sendSms).mockResolvedValue({ sent: true, sid: "test-sms", providerStatus: "queued" });
+    const db = ledger({});
+    const result = await sendCurrentSquareOrderPaymentLink(db.client, quoteId, "deposit", actor, "+18055551212",
+      { channel: "text", phone: "+18055551212", idempotencyKey: "test-once" },
+      { expectedAmount: 500, expectedRecipient: "+18055551212" });
+    expect(result.amount).toBe(500);
+    expect(sendSms).toHaveBeenCalledTimes(1);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it.each([
+    { expectedAmount: 499, expectedRecipient: "+18055551212" },
+    { expectedAmount: 500, expectedRecipient: "+18055550000" }
+  ])("rejects a stale amount or phone before link creation or texting", async confirmation => {
+    await expect(sendCurrentSquareOrderPaymentLink(ledger({}).client, quoteId, "deposit", actor, null,
+      { channel: "text", phone: "+18055551212" }, confirmation)).rejects.toMatchObject({ status: 409 });
+    expect(createSquarePaymentLink).not.toHaveBeenCalled();
+    expect(sendSms).not.toHaveBeenCalled();
   });
 });

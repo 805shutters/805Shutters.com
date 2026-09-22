@@ -44,7 +44,7 @@ export function verifySquarePaymentConfirmation(
   }
   if (dollarsToCents(amount) !== dollarsToCents(confirmation.expectedAmount) ||
       recipient.trim().toLowerCase() !== confirmation.expectedRecipient.trim().toLowerCase()) {
-    throw new CrmAuthError(409, "The amount or customer email has changed. Refresh the job and review the payment request again.");
+    throw new CrmAuthError(409, "The amount or customer contact has changed. Refresh the job and review the payment request again.");
   }
 }
 
@@ -135,7 +135,7 @@ export async function sendSquareOrderPaymentLink(
   const phone = delivery?.channel === "text" ? toE164(delivery.phone) : null;
   if (delivery?.channel === "text" && !phone) throw new CrmAuthError(400, "A valid customer phone number is required to text a payment link.");
 
-  if (confirmation) verifySquarePaymentConfirmation(amount, customerEmail || "", confirmation);
+  if (confirmation) verifySquarePaymentConfirmation(amount, delivery?.channel === "text" ? phone || "" : customerEmail || "", confirmation);
 
   const label = confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
   const { data: quoteIdentity, error: quoteIdentityError } = await supabase
