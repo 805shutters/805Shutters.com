@@ -24,6 +24,7 @@ interface MeasurementGridModalProps {
   onDirectMeasurements?: (
     width: { whole: number; fraction: string },
     height: { whole: number; fraction: string },
+    reviewedSides?: readonly ("width" | "height")[],
   ) => void;
   pendingWidth: { whole: number; fraction: string } | null;
   pendingHeight: { whole: number; fraction: string } | null;
@@ -36,7 +37,7 @@ export function MeasurementGridModal({
   saveError,
   singleDimensionLabel,
   measurementAxis = null,
-  wholeStart = 10,
+  wholeStart,
   wholeEnd,
   fractions = FRACTIONS,
   onClose,
@@ -62,7 +63,7 @@ export function MeasurementGridModal({
 
   const maxWholeInches = wholeEnd ?? (measurementAxis === "height" ? 120 : showDirectEntry && isWidth ? 250 : 119);
   const wholeNumbers: number[] = [];
-  for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
+  for (let i = wholeStart ?? 10; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
   const handleWholeClick = (n: number) => {
     if (step === "width_whole") onWidthWhole(n);
@@ -103,6 +104,8 @@ export function MeasurementGridModal({
     return open ? <QuoteMeasurementCalculator
       saving={saving} saveError={saveError} measurementAxis={measurementAxis}
       pendingWidth={pendingWidth} pendingHeight={pendingHeight}
+      initialSide={isWidth ? "width" : "height"} singleDimensionLabel={singleDimensionLabel}
+      minWhole={wholeStart ?? 1} maxWidth={wholeEnd ?? 250} maxHeight={wholeEnd ?? (measurementAxis === "height" ? 120 : 119)} fractions={fractions}
       onClose={onClose} onSave={onDirectMeasurements}
     /> : null;
   }
@@ -220,7 +223,7 @@ export function MeasurementGridModal({
   );
 }
 
-function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendingWidth, pendingHeight, onClose, onSave }: {
+function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendingWidth, pendingHeight, onClose, onSave, initialSide, singleDimensionLabel, minWhole, maxWidth, maxHeight, fractions }: {
   saving: boolean;
   saveError?: string;
   measurementAxis: "width" | "height" | null;
@@ -228,26 +231,41 @@ function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendin
   pendingHeight: { whole: number; fraction: string } | null;
   onClose: () => void;
   onSave: NonNullable<MeasurementGridModalProps["onDirectMeasurements"]>;
+  initialSide: "width" | "height";
+  singleDimensionLabel?: string;
+  minWhole: number;
+  maxWidth: number;
+  maxHeight: number;
+  fractions: readonly string[];
 }) {
   const [width, setWidth] = useState(pendingWidth ?? { whole: 0, fraction: "0" });
   const [height, setHeight] = useState(pendingHeight ?? { whole: 0, fraction: "0" });
   const [error, setError] = useState("");
+  const [reviewedSides, setReviewedSides] = useState<readonly ("width" | "height")[]>([measurementAxis ?? initialSide]);
   function save() {
     if (saving) return;
-    const values = parseDirectMeasurements(measurementToDecimalString(width), measurementToDecimalString(height), measurementAxis);
+    const zero = { whole: 0, fraction: "0" };
+    const parsedWidth = measurementAxis === "height" ? zero : parseDirectMeasurement(measurementToDecimalString(width), maxWidth);
+    const parsedHeight = measurementAxis === "width" ? zero : parseDirectMeasurement(measurementToDecimalString(height), maxHeight);
+    const values = parsedWidth && parsedHeight
+      && (measurementAxis === "height" || parsedWidth.whole >= minWhole)
+      && (measurementAxis === "width" || parsedHeight.whole >= minWhole)
+      ? { width: parsedWidth, height: parsedHeight } : null;
     if (!values) {
-      setError(measurementAxis === "width" ? "Enter a headrail width from 1 to 250 15/16 inches." : measurementAxis === "height" ? "Enter a vane length from 1 to 120 15/16 inches." : "Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
+      setError(measurementAxis ? `Enter ${singleDimensionLabel ?? (measurementAxis === "width" ? "headrail width" : "vane length")} from ${minWhole} to ${measurementAxis === "width" ? maxWidth : maxHeight} 15/16 inches.` : `Enter a width from ${minWhole} to ${maxWidth} 15/16 and a height from ${minWhole} to ${maxHeight} 15/16 inches.`);
       return;
     }
     setError("");
-    onSave(values.width, values.height);
+    onSave(values.width, values.height, reviewedSides);
   }
   return <Dialog open onOpenChange={open => !open && !saving && onClose()}>
     <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6">
-      <DialogHeader><DialogTitle>{measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size"}</DialogTitle></DialogHeader>
+      <DialogHeader><DialogTitle>{singleDimensionLabel ?? (measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size")}</DialogTitle></DialogHeader>
       <fieldset disabled={saving} className="min-w-0">
         <MobileMeasurementKeypad widthWhole={width.whole} widthFraction={width.fraction}
           heightWhole={height.whole} heightFraction={height.fraction} measurementAxis={measurementAxis}
+          initialSide={initialSide} fractions={fractions} dimensionLabel={singleDimensionLabel}
+          onSideSelected={(side) => setReviewedSides(previous => previous.includes(side) ? previous : [...previous, side])}
           onWholeChange={(side, whole) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, whole }))}
           onFractionChange={(side, fraction) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, fraction }))}
           onDone={save} doneLabel="Save size" />

@@ -21,7 +21,8 @@ describe("technical measure mobile controls", () => {
     expect(component).not.toContain("technical-measure-stepper");
     expect(component).toContain("technical-measure-choice-grid");
     expect(component).toContain("SHUTTER_PANEL_CONFIGS");
-    expect(component.match(/showDirectEntry={false}/g)).toHaveLength(3);
+    expect(component.match(/showDirectEntry\n/g)).toHaveLength(3);
+    expect(component).not.toContain("showDirectEntry={false}");
     expect(styles).toContain(".technical-measure-dimensions { grid-template-columns: 1fr 1fr; }");
     expect(component).toContain('aria-label="Select width"');
     expect(component).toContain('aria-label="Select height"');

@@ -63,8 +63,12 @@ export function MobileMeasurementKeypad({
   onFractionChange,
   onOpenGrid,
   onDone,
+  onSideSelected,
   measurementAxis,
   doneLabel = "Done",
+  initialSide = "width",
+  fractions = MOBILE_QUOTE_FRACTIONS,
+  dimensionLabel,
 }: {
   widthWhole: number;
   widthFraction: string;
@@ -74,14 +78,18 @@ export function MobileMeasurementKeypad({
   onFractionChange: (side: MobileMeasurementSide, fraction: string) => void;
   onOpenGrid?: (side: MobileMeasurementSide, trigger: HTMLButtonElement) => void;
   onDone?: () => void;
+  onSideSelected?: (side: MobileMeasurementSide) => void;
   measurementAxis?: MobileMeasurementSide | null;
   doneLabel?: string;
+  initialSide?: MobileMeasurementSide;
+  fractions?: readonly string[];
+  dimensionLabel?: string;
 }) {
-  const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? "width");
+  const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? initialSide);
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(true);
   const [replaceNext, setReplaceNext] = useState(true);
-  const [manualValue, setManualValue] = useState(String(measurementAxis === "height" ? heightWhole : widthWhole));
+  const [manualValue, setManualValue] = useState(String((measurementAxis ?? initialSide) === "height" ? heightWhole : widthWhole));
 
   const whole = activeSide === "width" ? widthWhole : heightWhole;
   const fraction = activeSide === "width" ? widthFraction : heightFraction;
@@ -92,6 +100,7 @@ export function MobileMeasurementKeypad({
 
   function selectSide(side: MobileMeasurementSide) {
     setActiveSide(side);
+    onSideSelected?.(side);
     setOpen(true);
     setReplaceNext(true);
     setManualValue(String(side === "width" ? widthWhole : heightWhole));
@@ -121,20 +130,20 @@ export function MobileMeasurementKeypad({
   const nonQuarter = !QUICK_FRACTIONS.includes(fraction) ? fraction : null;
 
   return <section className={styles.measurement} aria-label="Window measurements">
-    <div className={styles.segments} role="group" aria-label="Choose dimension">
+    <div className={styles.segments} style={measurementAxis ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} role="group" aria-label="Choose dimension">
       {(["width", "height"] as const).filter(side => !measurementAxis || side === measurementAxis).map((side) => {
         const selected = side === activeSide;
         const sideWhole = side === "width" ? widthWhole : heightWhole;
         const sideFraction = side === "width" ? widthFraction : heightFraction;
         const filled = isMeasurementFilled(sideWhole, sideFraction);
         return <button type="button" key={side} aria-pressed={selected} data-filled={filled} onClick={() => selectSide(side)}>
-          <span>{side}</span><strong>{displayMeasurement(sideWhole, sideFraction)}</strong>
+          <span>{dimensionLabel ?? side}</span><strong>{displayMeasurement(sideWhole, sideFraction)}</strong>
         </button>;
       })}
     </div>
     {open && <div className={styles.editor}>
       <div className={styles.entryRow} style={!onOpenGrid ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined}>
-        <label><span>{activeSide} whole inches</span><input
+        <label><span>{dimensionLabel ?? activeSide} whole inches</span><input
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
@@ -154,11 +163,11 @@ export function MobileMeasurementKeypad({
         </button>)}
       </div>
       <div className={styles.quickFractions} role="group" aria-label={`${activeSide} quick fractions`}>
-        {QUICK_FRACTIONS.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
-        <button type="button" className={styles.allButton} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>All 16ths{nonQuarter ? ` · ${nonQuarter}` : ""}</button>
+        {QUICK_FRACTIONS.filter(value => fractions.includes(value)).map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
+        <button type="button" className={styles.allButton} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{fractions.length === 8 ? "All 8ths" : "All 16ths"}{nonQuarter ? ` · ${nonQuarter}` : ""}</button>
       </div>
-      {expanded && <div className={styles.allFractions} role="group" aria-label={`${activeSide} all sixteenth fractions`}>
-        {MOBILE_QUOTE_FRACTIONS.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
+      {expanded && <div className={styles.allFractions} role="group" aria-label={`${activeSide} all ${fractions.length === 8 ? "eighth" : "sixteenth"} fractions`}>
+        {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
       </div>}
       <button type="button" className={styles.nextButton} onClick={() => activeSide === "width" && !measurementAxis ? selectSide("height") : onDone ? onDone() : setOpen(false)}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
     </div>}

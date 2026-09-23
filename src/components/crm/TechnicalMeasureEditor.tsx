@@ -681,7 +681,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     fraction: string,
     currentValue: number | null,
   ) {
-    const selection = selectTechnicalMeasureInches(currentValue, whole, fraction, FIELD_MEASURE_FRACTIONS);
+    const selection = selectTechnicalMeasureInches(currentValue, whole, fraction, FRACTIONS);
     updateLine(lineId, {
       [field]: selection.inches,
       [field === "width_in" ? "width_confirmed" : "height_confirmed"]: true,
@@ -1454,7 +1454,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       {measurePicker && activePickerLine ? (
         <MeasurementGridModal
           open
-          showDirectEntry={false}
+          showDirectEntry
+          wholeStart={10}
           wholeEnd={125}
           fractions={FIELD_MEASURE_FRACTIONS}
           onClose={closeMeasurePicker}
@@ -1465,13 +1466,19 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           onWidthFraction={(fraction) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "width_in", wholeFraction(activePickerLine.current_values.width_in).whole, fraction, activePickerLine.current_values.width_in); setMeasurePicker({ ...measurePicker, step: "height_whole" }); }}
           onHeightWhole={(whole) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "height_in", whole, "0", activePickerLine.current_values.height_in); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
           onHeightFraction={(fraction) => { selectLineInches(activePickerLine.id, "height_in", wholeFraction(activePickerLine.current_values.height_in).whole, fraction, activePickerLine.current_values.height_in); setMeasurePicker(null); }}
-          onDirectMeasurements={(width, height) => { selectLineInches(activePickerLine.id, "width_in", width.whole, width.fraction, activePickerLine.current_values.width_in); selectLineInches(activePickerLine.id, "height_in", height.whole, height.fraction, activePickerLine.current_values.height_in); setMeasurePicker(null); }}
+          onDirectMeasurements={(width, height, reviewedSides) => {
+            if (reviewedSides?.includes("width")) selectLineInches(activePickerLine.id, "width_in", width.whole, width.fraction, activePickerLine.current_values.width_in);
+            if (reviewedSides?.includes("height")) selectLineInches(activePickerLine.id, "height_in", height.whole, height.fraction, activePickerLine.current_values.height_in);
+            setMeasurePicker(null);
+          }}
         />
       ) : null}
       {futurePicker ? (
         <MeasurementGridModal
           open
-          showDirectEntry={false}
+          showDirectEntry
+          wholeStart={10}
+          wholeEnd={119}
           onClose={() => setFuturePicker(null)}
           step={futurePicker}
           pendingWidth={futureMeasure.width_in ? wholeFraction(futureMeasure.width_in) : null}
@@ -1488,9 +1495,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         const pickerValue = pickerLine ? Number(pickerLine.current_values.details[locationPicker.valueKey] || 0) : 0;
         return pickerLine ? <MeasurementGridModal
           open
-          showDirectEntry={false}
+          showDirectEntry
           singleDimensionLabel={locationPicker.label}
+          measurementAxis="width"
           wholeStart={1}
+          wholeEnd={119}
           onClose={() => setLocationPicker(null)}
           step={locationPicker.step}
           pendingWidth={pickerValue ? wholeFraction(pickerValue) : null}
@@ -1499,7 +1508,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           onWidthFraction={(fraction) => { const selection = selectTechnicalMeasureInches(pickerValue || null, wholeFraction(pickerValue).whole, fraction, FRACTIONS); updateDetail(pickerLine.id, locationPicker.valueKey, String(selection.inches)); setLocationPicker(null); }}
           onHeightWhole={() => undefined}
           onHeightFraction={() => undefined}
-          onDirectMeasurements={() => undefined}
+          onDirectMeasurements={(width) => { const selection = selectTechnicalMeasureInches(pickerValue || null, width.whole, width.fraction, FRACTIONS); updateDetail(pickerLine.id, locationPicker.valueKey, String(selection.inches)); setLocationPicker(null); }}
         /> : null;
       })() : null}
       {submitSuccess ? <div className="technical-measure-submit-success" role="status" aria-live="assertive">
