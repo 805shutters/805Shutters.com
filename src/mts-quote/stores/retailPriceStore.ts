@@ -61,9 +61,27 @@ interface RetailPriceStore {
 }
 
 // Build default price lookup from hardcoded constants
+export function shutterRetailProgramName(supplier: string, program: string): string {
+  if (supplier !== "Onyx") return program;
+  const aliases: Readonly<Record<string, string>> = {
+    basswood: "Painted Basswood",
+    "painted basswood": "Painted Basswood",
+    "basswood stain": "Stained Basswood",
+    "stained basswood": "Stained Basswood",
+    sycamore: "Secamore",
+    secamore: "Secamore",
+    "mdf hybrid": "VLO Hybrid",
+    "vlo hybrid": "VLO Hybrid",
+    "onyx u.s. made vinyl": "Onyx US Made Vinyl",
+    "onyx us made vinyl": "Onyx US Made Vinyl",
+  };
+  return aliases[program.trim().toLowerCase()] ?? program;
+}
+
 function getDefaultRetailPrice(supplier: string, program: string): number | null {
+  if (supplier !== "Norman" && supplier !== "Onyx") return null;
   const programs = supplier === "Norman" ? NORMAN_SHUTTER_PROGRAMS : ONYX_SHUTTER_PROGRAMS;
-  const found = programs.find((p) => p.name === program);
+  const found = programs.find((p) => p.name === shutterRetailProgramName(supplier, program));
   return found ? found.retailPrice : null;
 }
 

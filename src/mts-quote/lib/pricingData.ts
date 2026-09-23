@@ -1146,6 +1146,7 @@ export interface Surcharge {
   type: "percentage" | "fixed";
   value: number;
   applicableTo?: string[]; // product types or programs
+  billingBasis?: "square_foot"; // Existing customer selling policy, not manufacturer cost evidence.
 }
 
 export const SHUTTER_PERCENTAGE_SURCHARGES: Surcharge[] = [
@@ -1201,7 +1202,7 @@ export const SHUTTER_FIXED_SURCHARGES: Surcharge[] = [
 ];
 
 export const ONYX_SHUTTER_PERCENTAGE_SURCHARGES: Surcharge[] = [
-  { name: "Hidden Tilt Rod ($1.20/sqft; set quantity to sqft)", type: "fixed", value: 1.2 },
+  { name: "Hidden Tilt Rod ($1.20/sqft; set quantity to sqft)", type: "fixed", value: 1.2, billingBasis: "square_foot" },
   { name: "Double Hung", type: "percentage", value: 10 },
   { name: "Offset Tilt Rod", type: "percentage", value: 5 },
   { name: "Flat Slade / Fixed Louver", type: "percentage", value: 5 },

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { resolveRetailPrice } from "@mts/stores/retailPriceStore";
 import { describe, expect, it } from "vitest";
 import {
   BACK_FABRIC_CODE_DETAIL,
@@ -23,11 +24,13 @@ import {
   canonicalRollerMotorizationSelections,
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
+  getShutterProgramPricing,
   getAutomaticOptionSurcharges,
   getDefiningSteps,
   isStandardShutterComplete,
   ManufacturerCatalogStampChooser,
   ManualQuoteOnlyBadge,
+  ShutterBillableAreaLabel,
   mobileShutterMaterialRoutePatch,
   motorizationEligibleControlOptions,
   needsShutterRoutePatch,
@@ -1631,6 +1634,60 @@ describe("exact Norman configuration entry", () => {
   });
 });
 
+
+describe("Shutter billable area label", () => {
+  it.each([
+    ["Basswood", "Painted Basswood", 35],
+    ["Basswood Stain", "Stained Basswood", 38],
+    ["Secamore", "Secamore", 31],
+    ["MDF Hybrid", "VLO Hybrid", 29],
+    ["Vinyl", "Vinyl", 31],
+    ["Onyx U.S. Made Vinyl", "Onyx US Made Vinyl", 32],
+    ["Poly Composite", "Poly Composite", 31],
+  ])("resolves the independent displayed rate for catalog program %s", (catalogName, legacyName, rate) => {
+    expect(getShutterProgramPricing("Onyx", String(catalogName))).toMatchObject({ name: legacyName, retailPrice: rate });
+    expect(resolveRetailPrice("Onyx", String(catalogName), {})).toBe(rate);
+    expect(resolveRetailPrice("Onyx", String(legacyName), {})).toBe(rate);
+    expect(resolveRetailPrice("Onyx", String(catalogName), { [`Onyx:${catalogName}`]: 4125 })).toBe(41.25);
+  });
+
+  it("does not borrow a displayed rate for an unrecognized manufacturer or shutter", () => {
+    expect(getShutterProgramPricing("Onyx", "Unknown")).toBeNull();
+    expect(getShutterProgramPricing("Unknown", "Woodlore")).toBeNull();
+    expect(resolveRetailPrice("Onyx", "Unknown", {})).toBeNull();
+    expect(resolveRetailPrice("Unknown", "Vinyl", {})).toBeNull();
+  });
+
+  it.each([
+    [12.5, 13],
+    [8, 8],
+    [12, 12],
+    [8.0104166667, 9],
+  ])("shows the billable area for %s actual square feet without a false minimum badge", (actualSquareFeet, billableSquareFeet) => {
+    const html = renderToStaticMarkup(createElement(ShutterBillableAreaLabel, { actualSquareFeet, billableSquareFeet }));
+    expect(html).toBe(`<span>${billableSquareFeet} ft² billable</span>`);
+    expect(html).not.toContain("min 8");
+  });
+
+  it("labels the eight-square-foot minimum only when it applies", () => {
+    const html = renderToStaticMarkup(createElement(ShutterBillableAreaLabel, { actualSquareFeet: 4, billableSquareFeet: 8 }));
+    expect(html).toContain("8 ft² billable");
+    expect(html).toContain("(min 8)");
+  });
+
+  it.each([
+    [null, 8],
+    [0, 8],
+    [Number.NaN, 8],
+    [Number.POSITIVE_INFINITY, 8],
+    [12.5, null],
+    [12.5, 7],
+    [12.5, 12.5],
+    [12.5, Number.POSITIVE_INFINITY],
+  ])("hides invalid or unavailable area (%s, %s)", (actualSquareFeet, billableSquareFeet) => {
+    expect(renderToStaticMarkup(createElement(ShutterBillableAreaLabel, { actualSquareFeet, billableSquareFeet }))).toBe("");
+  });
+});
 
 describe("SmartFold control transitions", () => {
   it("clears incompatible order charging extras and motor allocation without losing fabric hardware", () => {

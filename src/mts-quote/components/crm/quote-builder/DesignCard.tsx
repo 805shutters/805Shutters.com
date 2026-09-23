@@ -351,6 +351,9 @@ import {
   measurementToInches,
   getProductPriceBreakdown,
   calculateSqft,
+  calculateLegacySurchargeTotal,
+  resolveLegacySurchargeQuantities,
+  isOnyxAreaSurcharge,
   resolveShutterPricingDimensions,
   type ProductPriceBreakdown,
 } from "@mts/lib/pricingEngine";
@@ -411,7 +414,7 @@ import {
   type ShutterProgram,
   type Surcharge,
 } from "@mts/lib/pricingData";
-import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
+import { shutterRetailProgramName, useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
 import { authoritativeDesignPriceIssue, manualMerchandisePriceForDisplay } from "@mts/lib/quotePricingDisplay";
@@ -734,6 +737,7 @@ interface QuoteSurcharge {
   quantity: number;
   category: string;
   portalLabel?: string;
+  billingBasis?: "square_foot";
 }
 
 interface SurchargeCatalogItem extends QuoteSurcharge {
@@ -768,6 +772,7 @@ function toCatalogItem(
     quantity: 1,
     category,
     applicableTo: surcharge.applicableTo,
+    billingBasis: surcharge.billingBasis,
   };
 }
 
@@ -795,6 +800,7 @@ function getSelectedSurcharges(design: SalesQuoteDesign | undefined): QuoteSurch
       quantity: Math.max(1, Number(item.quantity) || 1),
       category: item.category || "Surcharges",
       portalLabel: item.portalLabel,
+      ...(item.billingBasis === "square_foot" ? { billingBasis: "square_foot" as const } : {}),
     }));
 }
 
@@ -1381,16 +1387,6 @@ function getAvailableSurcharges(
   return dedupeSurcharges(base);
 }
 
-function calculateSurchargeTotal(basePrice: number, surcharges: QuoteSurcharge[]): number {
-  const total = surcharges.reduce((sum, item) => {
-    if (item.type === "percentage") {
-      return sum + basePrice * (item.value / 100);
-    }
-    return sum + item.value * Math.max(1, item.quantity || 1);
-  }, 0);
-
-  return Math.round(total * 100) / 100;
-}
 
 function hasMotorizationSurcharge(surcharges: QuoteSurcharge[]): boolean {
   return surcharges.some(
@@ -1419,13 +1415,14 @@ function normalizeLineItemQuantity(value: unknown): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function getShutterProgramPricing(
+export function getShutterProgramPricing(
   supplier: string | null | undefined,
   programName: string | undefined
 ): ShutterProgram | null {
   if (!supplier || !programName) return null;
+  if (supplier !== "Onyx" && supplier !== "Norman") return null;
   const programs = supplier === "Onyx" ? ONYX_SHUTTER_PROGRAMS : NORMAN_SHUTTER_PROGRAMS;
-  return programs.find((program) => program.name === programName) ?? null;
+  return programs.find((program) => program.name === shutterRetailProgramName(supplier, programName)) ?? null;
 }
 
 const CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -3278,11 +3275,13 @@ function SurchargePicker({
   productType,
   design,
   width,
+  billableSquareFeet,
   onUpdate,
   showLegacyPricingSummary = true,
 }: {
   productType: string;
   showLegacyPricingSummary?: boolean;
+  billableSquareFeet?: number | null;
   design: SalesQuoteDesign | undefined;
   width?: number | null;
   onUpdate: (field: string, value: unknown) => void;
@@ -3293,12 +3292,12 @@ function SurchargePicker({
   const sundanceSourceCharges = String(opts.catalog_product_id ?? opts.quote_lab_product_id ?? "").startsWith("sundance_")
     || design?.supplier?.trim().toLowerCase() === "sundance";
   const automaticSurcharges = sundanceSourceCharges ? [] : getAutomaticOptionSurcharges(productType, design, width);
-  const savedSurcharges = getSelectedSurcharges(design);
+  const savedSurcharges = resolveLegacySurchargeQuantities(getSelectedSurcharges(design), design?.supplier, billableSquareFeet);
   const selectedSurcharges = dedupeQuoteSurcharges([...automaticSurcharges, ...savedSurcharges]);
   const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
   const catalog = sundanceSourceCharges ? [] : getAvailableSurcharges(productType, design);
   const basePrice = Number(opts.base_price) || 0;
-  const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+  const surchargeTotal = calculateLegacySurchargeTotal(basePrice, selectedSurcharges);
   const selectedIds = new Set(selectedSurcharges.map((item) => item.id));
   const available = catalog.filter((item) => !selectedIds.has(item.id));
 
@@ -3309,7 +3308,7 @@ function SurchargePicker({
   const persistSurcharges = (next: QuoteSurcharge[]) => {
     onUpdate("options_json", {
       ...opts,
-      surcharges: next,
+      surcharges: resolveLegacySurchargeQuantities(next, design?.supplier, billableSquareFeet),
     });
   };
 
@@ -3333,6 +3332,7 @@ function SurchargePicker({
           quantity: 1,
           category: item.category,
           portalLabel: item.portalLabel,
+          billingBasis: item.billingBasis,
         },
       ]);
     }
@@ -3374,7 +3374,7 @@ function SurchargePicker({
           <SelectContent className="max-h-80">
             {available.map((item) => (
               <SelectItem key={item.id} value={item.id}>
-                {item.name} · {formatSurchargePrice(item)}
+                {item.billingBasis === "square_foot" ? "Hidden Tilt Rod" : item.name} · {formatSurchargePrice(item)}{item.billingBasis === "square_foot" ? "/sqft" : ""}
               </SelectItem>
             ))}
           </SelectContent>
@@ -3383,6 +3383,7 @@ function SurchargePicker({
 
       {selectedSurcharges.map((item) => {
         const isAutomatic = automaticIds.has(item.id);
+        const isAreaCharge = isOnyxAreaSurcharge(item, design.supplier);
         if (isAutomatic && !showLegacyPricingSummary) return null;
         return (
           <span
@@ -3391,8 +3392,8 @@ function SurchargePicker({
             title={item.category}
           >
             <span className="font-medium">{item.name}</span>
-            <span className="text-muted-foreground">{formatSurchargePrice(item)}</span>
-            {item.type === "fixed" && !isAutomatic && (
+            <span className="text-muted-foreground">{formatSurchargePrice(item)}{isAreaCharge ? `/sqft × ${item.quantity} sqft` : ""}</span>
+            {item.type === "fixed" && !isAutomatic && !isAreaCharge && (
               <Input
                 type="number"
                 min={1}
@@ -4816,6 +4817,24 @@ function GridYesNo({
 
 // --- Main DesignCard ---
 
+export function ShutterBillableAreaLabel({
+  actualSquareFeet,
+  billableSquareFeet,
+}: {
+  actualSquareFeet: number | null;
+  billableSquareFeet: number | null;
+}) {
+  if (actualSquareFeet === null || billableSquareFeet === null ||
+    !Number.isFinite(actualSquareFeet) || actualSquareFeet <= 0 ||
+    !Number.isInteger(billableSquareFeet) || billableSquareFeet < 8) return null;
+  return (
+    <span>
+      {billableSquareFeet} ft² billable
+      {actualSquareFeet < 8 && <span className="ml-1 text-[10px]">(min 8)</span>}
+    </span>
+  );
+}
+
 export function DesignCard({
   lineItem,
   lineNumber,
@@ -5374,11 +5393,11 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
-    const selectedSurcharges = dedupeQuoteSurcharges([
+    const selectedSurcharges = resolveLegacySurchargeQuantities(dedupeQuoteSurcharges([
       ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthIn),
       ...getSelectedSurcharges(currentDesign),
-    ]);
-    const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+    ]), currentDesign.supplier, priceBreakdown.billableSquareFeet);
+    const surchargeTotal = calculateLegacySurchargeTotal(basePrice, selectedSurcharges);
     const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
     const recalculatedOptions = stripDerivedAutomaticPrice(stripPriceFreezeMetadata(opts));
     const recalculatedDiscountPercent = Number(opts.discount_percent) || 0;
@@ -5401,6 +5420,9 @@ export function DesignCard({
         customer_charges: customerCharges,
         base_price: basePrice,
         surcharge_total: surchargeTotal,
+        ...(getSelectedSurcharges(currentDesign).some((item) => isOnyxAreaSurcharge(item, currentDesign.supplier))
+          ? { surcharges: resolveLegacySurchargeQuantities(getSelectedSurcharges(currentDesign), currentDesign.supplier, priceBreakdown.billableSquareFeet) }
+          : {}),
         pricing_method: priceBreakdown.pricingMethod,
         ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
         ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
@@ -5495,13 +5517,13 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
-    const selectedSurcharges = dedupeQuoteSurcharges([
+    const selectedSurcharges = resolveLegacySurchargeQuantities(dedupeQuoteSurcharges([
       ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthInches),
       ...getSelectedSurcharges(currentDesign),
-    ]);
+    ]), currentDesign.supplier, priceBreakdown.billableSquareFeet);
     if (!hasMotorizationSurcharge(selectedSurcharges)) return;
 
-    const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+    const surchargeTotal = calculateLegacySurchargeTotal(basePrice, selectedSurcharges);
     const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
     const discountPercent = Number(opts.discount_percent) || 0;
     const discount =
@@ -5560,6 +5582,9 @@ export function DesignCard({
         customer_charges: customerCharges,
         base_price: basePrice,
         surcharge_total: surchargeTotal,
+        ...(getSelectedSurcharges(currentDesign).some((item) => isOnyxAreaSurcharge(item, currentDesign.supplier))
+          ? { surcharges: resolveLegacySurchargeQuantities(getSelectedSurcharges(currentDesign), currentDesign.supplier, priceBreakdown.billableSquareFeet) }
+          : {}),
         pricing_method: priceBreakdown.pricingMethod,
         ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
         ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
@@ -5678,11 +5703,11 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
 
     if (basePrice !== null) {
-      const selectedSurcharges = dedupeQuoteSurcharges([
+      const selectedSurcharges = resolveLegacySurchargeQuantities(dedupeQuoteSurcharges([
         ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthInches),
         ...getSelectedSurcharges(currentDesign),
-      ]);
-      const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+      ]), currentDesign.supplier, priceBreakdown.billableSquareFeet);
+      const surchargeTotal = calculateLegacySurchargeTotal(basePrice, selectedSurcharges);
       const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
       const discountPercent = Number(opts.discount_percent) || 0;
       const discount =
@@ -5734,6 +5759,9 @@ export function DesignCard({
             customer_charges: customerCharges,
             base_price: basePrice,
             surcharge_total: surchargeTotal,
+            ...(getSelectedSurcharges(currentDesign).some((item) => isOnyxAreaSurcharge(item, currentDesign.supplier))
+              ? { surcharges: resolveLegacySurchargeQuantities(getSelectedSurcharges(currentDesign), currentDesign.supplier, priceBreakdown.billableSquareFeet) }
+              : {}),
             pricing_method: priceBreakdown.pricingMethod,
             ...automaticPricingSnapshotOptions("priced", pricingSnapshot),
             ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
@@ -5908,12 +5936,12 @@ export function DesignCard({
             {/* Sqft + editable $/sqft for shutters */}
             {!mobilePresentation && isShutters && sqft !== null && currentRetailPerSqft !== null && (
               <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
-                <span>
-                  {rawSqft !== null ? rawSqft.toFixed(1) : "—"} ft²
-                  {sqft !== rawSqft && <span className="ml-1 text-[10px]">(min 8)</span>}
-                </span>
+                <ShutterBillableAreaLabel
+                  actualSquareFeet={rawSqft}
+                  billableSquareFeet={shutterFramePricing && !shutterFramePricing.supported ? null : sqft}
+                />
                 {shutterFramePricing?.supported &&
-                  (shutterFramePricing.widthAdditionInches ||
+                  Boolean(shutterFramePricing.widthAdditionInches ||
                     shutterFramePricing.heightAdditionInches) && (
                     <span
                       className="text-[10px]"
@@ -6302,6 +6330,7 @@ export function DesignCard({
               productType={lineItem.product_type}
               design={currentDesign}
               width={widthIn}
+              billableSquareFeet={!isPriceLocked && currentOptions.manual_price_override !== true ? sqft : undefined}
               onUpdate={updateField}
             />
           )}

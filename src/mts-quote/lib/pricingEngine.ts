@@ -884,3 +884,37 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
 export function getProductPrice(options: ProductPricingOptions): number | null {
   return getProductPriceBreakdown(options).price;
 }
+
+
+export interface LegacyQuoteSurcharge {
+  name: string;
+  type: "percentage" | "fixed";
+  value: number;
+  quantity: number;
+  billingBasis?: "square_foot";
+}
+
+/** The existing Onyx selling add-on is separate from manufacturer/dealer H3 evidence. */
+export function isOnyxAreaSurcharge(item: LegacyQuoteSurcharge, supplier?: string | null): boolean {
+  return supplier?.trim().toLowerCase() === "onyx" && item.type === "fixed" &&
+    (item.name === "Hidden Tilt Rod ($1.20/sqft; set quantity to sqft)" ||
+      (item.name === "Hidden Tilt Rod" && item.billingBasis === "square_foot"));
+}
+
+/** Resolve per-unit surcharge area from the same frame-aware row used for the base price.
+ * Call only for current automatic pricing; historical/manual amounts remain untouched.
+ */
+export function resolveLegacySurchargeQuantities<T extends LegacyQuoteSurcharge>(
+  surcharges: T[], supplier?: string | null, billableSquareFeet?: number | null,
+): T[] {
+  if (!Number.isFinite(billableSquareFeet) || Number(billableSquareFeet) <= 0) return surcharges;
+  return surcharges.map((item) => isOnyxAreaSurcharge(item, supplier)
+    ? { ...item, name: "Hidden Tilt Rod", portalLabel: "Hidden Tilt Rod", billingBasis: "square_foot", quantity: Number(billableSquareFeet) }
+    : item);
+}
+
+export function calculateLegacySurchargeTotal(basePrice: number, surcharges: LegacyQuoteSurcharge[]): number {
+  return Math.round(surcharges.reduce((total, item) => total + (item.type === "percentage"
+    ? basePrice * item.value / 100
+    : item.value * Math.max(1, item.quantity || 1)), 0) * 100) / 100;
+}
