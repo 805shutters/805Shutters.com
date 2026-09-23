@@ -12,7 +12,7 @@ import type {
   SalesQuoteDesign,
   SalesQuoteLineItem,
 } from "@mts/types/quote";
-import type { SelectionContext } from "@/lib/quote-v2/core";
+import { matchesSavedSelectionFingerprint, type SelectionContext } from "@/lib/quote-v2/core";
 import {
   customerConfigurationFromSelection,
   type V2CustomerConfiguration,
@@ -572,8 +572,8 @@ export function prepareV2CustomerSendPayload(
       return fail(`Selected design ${selectedDesignId} is not priced with the current server catalog.`);
     }
     if (
-      stored.fingerprint !== priced.result.selectionFingerprint ||
-      stored.fingerprint !== priced.result.pricedSelectionFingerprint
+      !matchesSavedSelectionFingerprint(priced.selection, stored.fingerprint, stored.snapshot.catalogAsOf) ||
+      priced.result.selectionFingerprint !== priced.result.pricedSelectionFingerprint
     ) {
       return fail(`Selected design ${selectedDesignId} changed after authoritative pricing.`);
     }

@@ -763,6 +763,11 @@ describe("older Norman shutter snapshot area metadata", () => {
         catalog_version: priced.catalogVersion, retail_total: 736, retail_snapshot: snapshot,
       }] };
     expect(prepareV2CustomerSendPayload(input).total).toBe(736);
+    // A saved quote remains sendable tomorrow, with today's rules still checked.
+    expect(prepareV2CustomerSendPayload({ ...input, serverDate: "2026-09-23" }).total).toBe(736);
+    expect(() => prepareV2CustomerSendPayload({ ...input, serverDate: "2026-09-23",
+      lineItems: [{ ...line, width_whole: 23 }],
+    })).toThrow(/stale|changed|authoritative/);
     snapshot.retail.billableSqft = 999;
     expect(() => prepareV2CustomerSendPayload(input)).toThrow(/retail snapshot/);
   });

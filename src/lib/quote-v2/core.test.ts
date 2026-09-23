@@ -3,6 +3,7 @@ import {
   canonicalizeSelectionContext,
   catalogIsActiveAsOf,
   createSelectionFingerprint,
+  matchesSavedSelectionFingerprint,
   evaluateSendability,
   hasHardBlock,
   isProductRuleStatusSendable,
@@ -58,6 +59,17 @@ function issue(
 }
 
 describe("selection fingerprints", () => {
+  it("allows only an elapsed evaluation date when matching an older fingerprint", () => {
+    const fingerprint = createSelectionFingerprint(baseSelection);
+    const current: SelectionContext = { ...baseSelection, catalogAsOf: "2026-07-21" };
+    expect(matchesSavedSelectionFingerprint(current, fingerprint, baseSelection.catalogAsOf)).toBe(true);
+    for (const patch of [{ widthInches: 73 }, { quantity: 2 }, { catalogVersion: "new-catalog" }, { options: {} }]) {
+      expect(matchesSavedSelectionFingerprint({ ...current, ...patch }, fingerprint, baseSelection.catalogAsOf)).toBe(false);
+    }
+    for (const date of [undefined, "2026-02-30", "2026-07-22", "invalid"]) {
+      expect(matchesSavedSelectionFingerprint(current, fingerprint, date)).toBe(false);
+    }
+  });
   it("is deterministic across object insertion order", () => {
     const reordered: SelectionContext = {
       ...baseSelection,

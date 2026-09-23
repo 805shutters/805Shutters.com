@@ -26,7 +26,7 @@ import {
 } from "@/lib/quote/product-options";
 import { priceDealerNetDesign, priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
-import { evaluateSendability } from "@/lib/quote-v2/core";
+import { evaluateSendability, matchesSavedSelectionFingerprint } from "@/lib/quote-v2/core";
 import {
   authoritativeAutomaticSurchargeSelections,
   authoritativePriceInputForSelection,
@@ -1670,9 +1670,14 @@ function repriceExactQuoteBuilderV2(
     const result = entry.priced.result;
     const storedSnapshot = storedV2Snapshot(entry.design);
     const hasStoredSnapshot = storedSnapshot !== null;
-    const pricedSelectionFingerprint = hasStoredSnapshot
+    let pricedSelectionFingerprint = hasStoredSnapshot
       ? storedText(storedSnapshot, "selectionFingerprint")
       : result.pricedSelectionFingerprint;
+    if (hasStoredSnapshot && matchesSavedSelectionFingerprint(
+      entry.priced.selection, pricedSelectionFingerprint, storedSnapshot.catalogAsOf,
+    )) {
+      pricedSelectionFingerprint = result.selectionFingerprint;
+    }
     const pricedCatalogVersion = hasStoredSnapshot
       ? storedText(storedSnapshot, "catalogVersion")
       : result.pricedCatalogVersion;

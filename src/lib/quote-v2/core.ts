@@ -286,6 +286,24 @@ export function createSelectionFingerprint(
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+/** Compare a current selection with a saved fingerprint without treating the
+ * passage of a day as an edit. Callers still validate today's catalog/rules and
+ * prices; only the evaluation date is restored for this identity comparison. */
+export function matchesSavedSelectionFingerprint(
+  selection: SelectionContext,
+  fingerprint: string | null,
+  savedCatalogDate: unknown,
+): boolean {
+  if (createSelectionFingerprint(selection) === fingerprint) return true;
+  if (typeof savedCatalogDate !== "string" || savedCatalogDate > selection.catalogAsOf) return false;
+  try {
+    const catalogAsOf = normalizeCatalogDate(savedCatalogDate as ISODate, "Saved catalog date");
+    return createSelectionFingerprint({ ...selection, catalogAsOf }) === fingerprint;
+  } catch {
+    return false;
+  }
+}
+
 function normalizeCatalogDate(value: ISODate | Date, label: string): ISODate {
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) {
