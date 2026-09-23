@@ -3279,8 +3279,10 @@ function SurchargePicker({
   design,
   width,
   onUpdate,
+  showLegacyPricingSummary = true,
 }: {
   productType: string;
+  showLegacyPricingSummary?: boolean;
   design: SalesQuoteDesign | undefined;
   width?: number | null;
   onUpdate: (field: string, value: unknown) => void;
@@ -3381,6 +3383,7 @@ function SurchargePicker({
 
       {selectedSurcharges.map((item) => {
         const isAutomatic = automaticIds.has(item.id);
+        if (isAutomatic && !showLegacyPricingSummary) return null;
         return (
           <span
             key={item.id}
@@ -3413,7 +3416,7 @@ function SurchargePicker({
         );
       })}
 
-      {selectedSurcharges.length > 0 && (
+      {showLegacyPricingSummary && selectedSurcharges.length > 0 && (
         <span className="text-xs text-muted-foreground">
           Base: ${basePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} + Add-ons: $
           {surchargeTotal.toLocaleString("en-US", { maximumFractionDigits: 2 })}
@@ -6295,6 +6298,7 @@ export function DesignCard({
           </Button>
           {!authoritativeV2 && (
             <SurchargePicker
+              showLegacyPricingSummary={!normanServerPricing}
               productType={lineItem.product_type}
               design={currentDesign}
               width={widthIn}

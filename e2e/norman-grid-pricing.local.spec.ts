@@ -24,6 +24,9 @@ test('Norman grids automatically price saved selections and preserve manual pric
  await page.getByRole('option',{name:'Square Fascia*',exact:true}).click();
  // Width 42 fascia ladder adds $139 to the same $467 source grid.
  await expect.poll(async()=>(await saved(page)).sales_quote_designs[0].unit_price).toBe(645);
+ await expect(page.getByTitle('Automatic Option Surcharges',{exact:true})).not.toBeVisible();
+ await expect(page.getByText(/Base: \$0 \+ Add-ons:/)).not.toBeVisible();
+ await expect(page.getByRole('button',{name:'Add Surcharge',exact:true})).toBeVisible();
  await page.getByLabel('Quantity for Kitchen').fill('3');await page.getByLabel('Quantity for Kitchen').press('Tab');
  await expect.poll(async()=>(await saved(page)).sales_quotes[0].total_amount).toBe(1935);
  await expect.poll(async()=>(await saved(page)).sales_quote_designs[0].options_json.authoritative_price_breakdown.quantity).toBe(3);
