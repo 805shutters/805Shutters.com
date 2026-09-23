@@ -1,4 +1,5 @@
 const DERIVED_PRICE_OPTION_KEYS = new Set([
+  "norman_grid_pricing",
   "authoritative_cost_breakdown",
   "authoritative_once_total",
   "authoritative_price_breakdown",

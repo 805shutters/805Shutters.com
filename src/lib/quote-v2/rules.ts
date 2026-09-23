@@ -249,7 +249,9 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  if (!dimensionlessPart && (!Number.isFinite(context.heightInches) || context.heightInches <= 0)) {
+  // Palladian is a width-priced shelf; opening height is not a pricing input.
+  const widthOnlyShelf = context.productId === "palladian_shelf";
+  if (!dimensionlessPart && !widthOnlyShelf && (!Number.isFinite(context.heightInches) || context.heightInches <= 0)) {
     issues.push(
       issue(
         "hard_block",

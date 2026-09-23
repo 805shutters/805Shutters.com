@@ -1,0 +1,399 @@
+[
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "roman",
+      "programId": "roman_cordless_usa_price_group_2_pg2",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-roman-mounting-2026-09-20-r9",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "roman:lakeside:semi-transparent:f0183:milk:89",
+        "fabric_color_code": "F0183",
+        "fabric_color_type": "Semi-transparent",
+        "fabric_collection": "Lakeside",
+        "color": "Milk",
+        "fabric_color_name": "Milk",
+        "lift_system": "Cordless",
+        "shade_type": "Single",
+        "fold_style": "Flat Fold with Batten Back",
+        "lining": "Translucent",
+        "seaming": "Vertical Seams",
+        "fabric_orientation": "Standard / Non-Railroaded"
+      },
+      "options": {}
+    },
+    "base": 1038,
+    "unit": 1038
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "roller",
+      "programId": "roller_cordless_fabric_price_group_2_pg2",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-roller-2026-08-01-msrp-r1-light-guard-2026-09-20-r11",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "roller:amelia:light-filtering:f1484:mist-gray:0",
+        "fabric_color_code": "F1484",
+        "fabric_color_type": "Light Filtering",
+        "fabric_collection": "Amelia",
+        "color": "Mist Gray",
+        "fabric_color_name": "Mist Gray",
+        "lift_system": "Cordless",
+        "roller_application": "Single",
+        "roller_top_treatment": "No Top Treatment",
+        "roller_tube": "All Tubes",
+        "roller_region_scope": "ca_ma"
+      },
+      "options": {}
+    },
+    "base": 384,
+    "unit": 384
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "honeycomb",
+      "programId": "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-honeycomb-mounting-2026-09-20-r3",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "honeycomb:designer-fabric:light-filtering-designer:c7114k:c7114-winter-solstice:0",
+        "fabric_color_code": "C7114K",
+        "fabric_color_type": "Light Filtering / Designer",
+        "fabric_collection": "Designer Fabric (LF) (Langley)",
+        "color": "C7114 Winter Solstice",
+        "fabric_color_name": "C7114 Winter Solstice",
+        "cell_size": "3/4\" Single Cell",
+        "lift_system": "Cordless",
+        "application": "Standard"
+      },
+      "options": {}
+    },
+    "base": 415,
+    "unit": 415
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "vertical_honeycomb",
+      "programId": "vertical_honeycomb_3_4in_single_and_1_1_4in_single_vertical",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-vertical-honeycomb-mounting-2026-09-20-r1",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "vertical_honeycomb:designer-fabric:light-filtering-designer:c7114k:c7114-winter-solstice:0",
+        "fabric_color_code": "C7114K",
+        "fabric_color_type": "Light Filtering / Designer",
+        "fabric_collection": "Designer Fabric (LF) (Langley)",
+        "color": "C7114 Winter Solstice",
+        "fabric_color_name": "C7114 Winter Solstice",
+        "cell_size": "3/4\" Single Cell",
+        "lift_system": "Patio Door Vertical",
+        "application": "Patio Door Vertical",
+        "stacking_configuration": "Left Stack"
+      },
+      "options": {}
+    },
+    "base": 869,
+    "unit": 869
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "smartfold",
+      "programId": "smartfold_smartfold_shades",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-smartfold-inside-light-guard-2026-09-20-r16",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "smartfold:louise:light-filtering:f1709:white-jade:110",
+        "fabric_color_code": "F1709",
+        "fabric_color_type": "Light Filtering",
+        "fabric_collection": "Louise",
+        "color": "White Jade",
+        "fabric_color_name": "White Jade",
+        "lift_system": "PrecisionLift Cordless",
+        "fold_size": 6,
+        "smartfold_installation": "Back / Wall Mount with Raceway",
+        "smartfold_shim_layers": 0
+      },
+      "options": {}
+    },
+    "base": 606,
+    "unit": 606
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "perfectsheer",
+      "programId": "perfectsheer_perfectsheer_shades_light_filtering",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-perfectsheer-hubs-2026-09-20-r10",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "Curved Fascia with Fabric",
+        "fabric_color_id": "perfectsheer:color:light-filtering:f1179:lily-cream:75",
+        "fabric_color_code": "F1179",
+        "fabric_color_type": "Light Filtering",
+        "fabric_collection": "",
+        "color": "Lily Cream",
+        "fabric_color_name": "Lily Cream",
+        "lift_system": "Continuous Cord Loop",
+        "light_control": "Light Filtering"
+      },
+      "options": {}
+    },
+    "base": 927,
+    "unit": 927
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "smartdrape",
+      "programId": "smartdrape_smartdrape_light_filtering",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-smartdrape-mounting-2026-09-19-r3",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Outside Mount",
+        "valance": "No Valance",
+        "fabric_surcharge_id": "room_darkening",
+        "fabric_color_id": "smartdrape:dealer-2026-09:f1603",
+        "fabric_color_code": "F1603",
+        "fabric_color_type": "Room Darkening",
+        "fabric_collection": "Room Darkening",
+        "color": "Light Gray",
+        "fabric_color_name": "Light Gray",
+        "lift_system": "Manual",
+        "control_type": "Manual",
+        "installation_method": "Wall Mount",
+        "stack_option": "Left Stack"
+      },
+      "options": {}
+    },
+    "base": 842,
+    "unit": 1010.4
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "citylights_aluminum",
+      "programId": "citylights_aluminum_1in_slats_cordless_pgusa",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-citylights-2026-09-19-r2",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "slat_finish": "standard",
+        "fabric_color_id": "citylights_aluminum:color:available-in-1-2-1-2:7024:pure-white:227",
+        "fabric_color_code": "7024",
+        "fabric_color_type": "Available in 1\" & 2\"",
+        "fabric_collection": "",
+        "color": "Pure White",
+        "fabric_color_name": "Pure White",
+        "slat_size": "1\"",
+        "lift_system": "Cordless",
+        "light_control": "Regular Route Holes"
+      },
+      "options": {}
+    },
+    "base": 303,
+    "unit": 303
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "wood_blinds",
+      "programId": "wood_blinds_2in_and_2_1_2in_slats",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-wood-hardware-2026-09-20-r1",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "wood_blinds:color:paint:nd001:pure-white:201",
+        "fabric_color_code": "ND001",
+        "fabric_color_type": "Paint",
+        "fabric_collection": "",
+        "color": "Pure White",
+        "fabric_color_name": "Pure White",
+        "slat_size": "2\"",
+        "lift_system": "Cordless"
+      },
+      "options": {}
+    },
+    "base": 535,
+    "unit": 535
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "faux_wood",
+      "programId": "faux_wood_2in_and_2_1_2in_slats_cordless",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-ultimate-faux-hardware-2026-09-20-r1",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "None",
+        "finish_type": "Smooth",
+        "fabric_color_id": "faux_wood:color:solid-smooth:p001:pure-white:171",
+        "fabric_color_code": "P001",
+        "fabric_color_type": "Solid - Smooth",
+        "fabric_collection": "",
+        "color": "Pure White",
+        "fabric_color_name": "Pure White",
+        "product_line": "Ultimate",
+        "slat_size": "2\"",
+        "faux_configuration_version": "faux-wood-v2",
+        "faux_blind_count": 1
+      },
+      "options": {}
+    },
+    "base": 228.62,
+    "unit": 228.62
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "smartprivacy_faux",
+      "programId": "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-smartprivacy-2026-09-19-r1",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "None",
+        "finish_type": "Smooth",
+        "fabric_color_id": "smartprivacy_faux:color:solid-smooth:p001:pure-white:172",
+        "fabric_color_code": "P001",
+        "fabric_color_type": "Solid - Smooth",
+        "fabric_collection": "",
+        "color": "Pure White",
+        "fabric_color_name": "Pure White",
+        "product_line": "SmartPrivacy",
+        "slat_size": "2\"",
+        "faux_configuration_version": "faux-wood-v2",
+        "faux_blind_count": 1
+      },
+      "options": {}
+    },
+    "base": 206.18,
+    "unit": 206.18
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "synchrony_vertical",
+      "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_2_pg2",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-synchrony-2026-09-19-r1",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "fabric_color_id": "synchrony_vertical:dealer-2026-06:s-curved:pure-white",
+        "fabric_color_code": "8078",
+        "fabric_color_type": "PVC",
+        "fabric_collection": "S-Curved",
+        "color": "Pure White",
+        "fabric_color_name": "Pure White",
+        "stack_option": "Left Stack",
+        "draw_direction": "Left"
+      },
+      "options": {}
+    },
+    "base": 319,
+    "unit": 319
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "palladian_shelf",
+      "programId": "palladian_shelf_palladian_shelf_without_product",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-palladian-2026-09-19-r2",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "color": "Winchester White 2010"
+      },
+      "options": {}
+    },
+    "base": 450,
+    "unit": 450
+  },
+  {
+    "selection": {
+      "manufacturerId": "Norman",
+      "productId": "norman_shutters",
+      "programId": "woodlore",
+      "catalogAsOf": "2026-09-22",
+      "catalogVersion": "805-v2-norman-2026-07-msrp-r1-norman-shutter-assortment-2026-09-19-r4",
+      "widthInches": 36,
+      "heightInches": 60,
+      "quantity": 1,
+      "configuration": {
+        "mount_type": "Inside Mount",
+        "valance": "No Valance",
+        "color": "001",
+        "fabric_color_id": "norman_shutters:woodlore:001",
+        "fabric_color_code": "001",
+        "fabric_color_type": "Paint",
+        "fabric_collection": "Woodlore",
+        "fabric_color_name": "Pure White",
+        "louver_size": "3 1/2\"",
+        "frame_type": "Direct Mount (No Frame)",
+        "measurement_basis": "frame_size",
+        "panel_config": "LR",
+        "tilt_type": "Standard Tilt"
+      },
+      "options": {}
+    },
+    "base": 525,
+    "unit": 525
+  }
+]

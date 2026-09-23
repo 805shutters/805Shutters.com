@@ -247,6 +247,26 @@ describe("V2 exact-interface adapter", () => {
     },
   );
 
+  it("excludes manual-price bookkeeping from the configuration fingerprint", () => {
+    const identity = { productId: "roller", programId: "roller_cordless_fabric_price_group_1_pg1" };
+    const base = selectionContextFromExactInterface(line, design, identity);
+    for (const amount of [0, 1002]) {
+      const overridden = selectionContextFromExactInterface(line, {
+        ...design,
+        options_json: {
+          ...design.options_json,
+          norman_grid_pricing: true,
+          manual_price_override: true,
+          manual_merchandise_unit_price: amount,
+          manual_customer_charge_policy: "blind-shade-install-ship-v1",
+        },
+      }, identity);
+      expect(createSelectionFingerprint(overridden)).toBe(createSelectionFingerprint(base));
+      expect(overridden.configuration).not.toHaveProperty("manual_merchandise_unit_price");
+      expect(overridden.configuration).not.toHaveProperty("manual_customer_charge_policy");
+    }
+  });
+
   it("does not invalidate a selection when its immutable snapshot pointers are persisted", () => {
     const base = selectionContextFromExactInterface(line, design, {
       productId: "roller",

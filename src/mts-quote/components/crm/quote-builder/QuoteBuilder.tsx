@@ -89,6 +89,7 @@ import {
 } from "@mts/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 import { quoteMerchandisePriceForEditor } from "@mts/lib/quotePricingDisplay";
+import { legacyNormanPricingSignature } from "@mts/lib/normanGridPricing";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
 import { projectAcceptedQuote } from "@mts/lib/acceptedQuoteProjection";
 import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
@@ -98,6 +99,7 @@ import {
   createQuoteRevision,
   mutateQuoteV2Structure,
   priceQuoteV2,
+  priceLegacyNormanQuote,
   saveQuoteLinePrice,
   quoteV2DesignPatch,
   quoteV2LinePatch,
@@ -612,6 +614,7 @@ export function QuoteBuilder({
   const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
   const revisionInFlightRef = useRef(false);
   const draftPricingRecoveryRef = useRef(createDraftPricingRecovery());
+  const lastNormanPricingAttemptRef = useRef<string | null>(null);
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
   // The class is removed on unmount (e.g. when the X switches back to the
@@ -1472,15 +1475,11 @@ export function QuoteBuilder({
     },
   });
 
-  const saveLinePrice = (lineItemId: string, variant: string, unitPrice: number) => {
+  const manualLinePrice = useMutation({
+    mutationKey: quoteDesignMutationKey,
+    scope: { id: `quote-pricing-${activeQuoteId}` },
+    mutationFn: ({lineItemId, variant, unitPrice}: {lineItemId:string;variant:string;unitPrice:number}) => {
     const execute = async () => {
-      if (!serverOwnedV2) {
-        const started = Date.now();
-        while (queryClient.isMutating({ mutationKey: quoteDesignMutationKey }) > 0) {
-          if (Date.now() - started > 10000) throw new Error("The previous edit is still saving. Try the price again in a moment.");
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
       const cachedQuote = queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
       if (!activeQuoteId) throw new Error("No active quote is open.");
       if (isQuotePriceLocked(cachedQuote)) {
@@ -1510,7 +1509,10 @@ export function QuoteBuilder({
     const queued = v2MutationQueueRef.current.then(execute, execute);
     v2MutationQueueRef.current = queued.then(() => undefined, () => undefined);
     return queued;
-  };
+    },
+  });
+  const saveLinePrice = (lineItemId:string, variant:string, unitPrice:number) =>
+    manualLinePrice.mutateAsync({lineItemId,variant,unitPrice});
 
   const designEditSequence = useRef(0);
   // Upsert design
@@ -1518,17 +1520,11 @@ export function QuoteBuilder({
     scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationKey: quoteDesignMutationKey,
     mutationFn: async (edit: QuoteDesignEdit) => {
-      let design = edit.design;
+      const latestDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ?? designs;
+      const existing = latestDesigns.find(row =>
+        row.line_item_id === edit.design.line_item_id && row.variant === edit.design.variant);
+      const design = applyQuoteDesignEdit(edit, existing);
       if (serverOwnedV2) {
-        const latestDesigns =
-          queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ??
-          designs;
-        const existing = latestDesigns.find(
-          (row) =>
-            row.line_item_id === design.line_item_id &&
-            row.variant === design.variant,
-        );
-        design = applyQuoteDesignEdit(edit, existing);
         const designId = existing?.id ?? crypto.randomUUID();
         await mutateAndRepriceServerOwnedV2(
           [
@@ -2025,7 +2021,38 @@ export function QuoteBuilder({
     applyDiscount.mutate({ percent, lineItemIds: [lineItemId] });
   };
 
+  const normanGridPricing = useMutation({
+    mutationKey: quoteDesignMutationKey,
+    scope: { id: `quote-pricing-${activeQuoteId}` },
+    mutationFn: async ({quoteId}: {quoteId:string;signature:string}) => {
+      const execute = async () => {
+        try {
+          await priceLegacyNormanQuote(supabase, quoteId);
+        } catch (error) {
+          // Refresh a concurrent server edit before the bounded retry reads persisted inputs.
+          await refreshQuoteV2Rows(queryClient, queryKeys.salesQuotes.detail(quoteId),
+            [...queryKeys.salesQuotes.detail(quoteId), 'line-items'],
+            [...queryKeys.salesQuotes.detail(quoteId), 'designs']);
+          throw error;
+        }
+        await refreshQuoteV2Rows(queryClient, queryKeys.salesQuotes.detail(quoteId),
+          [...queryKeys.salesQuotes.detail(quoteId), 'line-items'],
+          [...queryKeys.salesQuotes.detail(quoteId), 'designs']);
+        await queryClient.invalidateQueries({queryKey:queryKeys.salesQuotes.lists()});
+      };
+      // Manual saves use this queue too, so an in-flight override is never overtaken.
+      const queued = v2MutationQueueRef.current.then(execute, execute);
+      v2MutationQueueRef.current = queued.then(() => undefined, () => undefined);
+      await queued;
+    },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(750 * (attempt + 1), 1500),
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Norman grid pricing could not be refreshed.'),
+  });
+
   const isSavingQuote =
+    normanGridPricing.isPending ||
+    manualLinePrice.isPending ||
     updateQuote.isPending ||
     addLineItem.isPending ||
     updateLineItem.isPending ||
@@ -2036,6 +2063,27 @@ export function QuoteBuilder({
     upsertDesign.isPending ||
     copyDesigns.isPending ||
     applyDiscount.isPending;
+
+  const normanPricingSignature = legacyNormanPricingSignature(quote, lineItems, designs);
+  useEffect(() => { lastNormanPricingAttemptRef.current = null; }, [activeQuoteId]);
+  useEffect(() => {
+    if (isolated || authoritativeV2 || useHistoricalPriceLock || !activeQuoteId ||
+        isSavingQuote || isQuoteLoading || areLineItemsLoading || areDesignsLoading ||
+        isQuoteFetching || areLineItemsFetching || areDesignsFetching ||
+        isQuoteLoadError || isLineItemsLoadError || isDesignsLoadError ||
+        !normanPricingSignature || lastNormanPricingAttemptRef.current === normanPricingSignature) return;
+    // Wait for rapid selection edits to finish. The shared mutation scope serializes
+    // this request with dimensions, options and manual-price writes.
+    const timer = window.setTimeout(() => {
+      if (queryClient.isMutating({mutationKey:quoteDesignMutationKey}) > 0) return;
+      lastNormanPricingAttemptRef.current = normanPricingSignature;
+      normanGridPricing.mutate({quoteId:activeQuoteId,signature:normanPricingSignature});
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [activeQuoteId, isolated, authoritativeV2, useHistoricalPriceLock, normanPricingSignature,
+    isSavingQuote, isQuoteLoading, areLineItemsLoading, areDesignsLoading,
+    isQuoteFetching, areLineItemsFetching, areDesignsFetching,
+    isQuoteLoadError, isLineItemsLoadError, isDesignsLoadError]);
 
   useEffect(() => {
     if (!isSavingQuote) return;
@@ -2668,9 +2716,8 @@ export function QuoteBuilder({
                       },
                     ];
                   })}
-                  onUpdateDesign={(design) => upsertDesign.mutate(serverOwnedV2
-                    ? captureQuoteDesignEdit(design, designs.find(row => row.line_item_id === design.line_item_id && row.variant === design.variant))
-                    : { design })}
+                  onUpdateDesign={(design) => upsertDesign.mutate(captureQuoteDesignEdit(design,
+                    designs.find(row => row.line_item_id === design.line_item_id && row.variant === design.variant)))}
                   onSaveLinePrice={(variant, price) => saveLinePrice(item.id, variant, price)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}

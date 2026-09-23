@@ -13,6 +13,7 @@ import {
   quoteV2PricingOutcome,
   quoteV2QuotePatch,
   saveQuoteLinePrice,
+  priceLegacyNormanQuote,
 } from "./quoteV2ServerClient";
 
 function databaseWithToken(token = "crm-token") {
@@ -298,3 +299,12 @@ describe("Finalized quote revision client", () => {
     } finally { fetchMock.mockRestore(); }
   });
 });
+
+ it('prices saved Norman selections using only an authenticated empty request',async()=>{
+  const result={quoteId:'quote',pricedDesignCount:2,blockedDesignCount:1,total:500};
+  const request=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(new Response(JSON.stringify(result),{status:200}));
+  try{
+   expect(await priceLegacyNormanQuote(databaseWithToken(),'quote')).toEqual(result);
+   expect(request).toHaveBeenCalledWith('/api/crm/sales-quotes/quote/norman-price',expect.objectContaining({method:'POST',headers:expect.objectContaining({Authorization:'Bearer crm-token'}),body:'{}'}));
+  }finally{request.mockRestore();}
+ });

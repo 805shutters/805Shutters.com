@@ -873,7 +873,7 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain("pricingBlockReasonMessage(legacyPricingBlockReason) : null");
     expect(source).toContain("onSaveLinePrice(activeVariant, price)");
     expect(source).not.toContain('aria-label="Authoritative price"');
-    expect(source).toContain("if (authoritativeV2) return;");
+    expect(source).toContain("if (authoritativeV2 || normanServerPricing) return;");
     expect(source).toContain("<QuoteLinePriceReadout");
     expect(source).toContain("Price unavailable");
     expect(source).not.toContain("Enter your price");

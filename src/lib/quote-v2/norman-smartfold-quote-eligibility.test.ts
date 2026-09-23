@@ -35,8 +35,12 @@ describe('SmartFold separate quote-only price branch',()=>{
  it('retains unspliced valance size boundary',()=>{
   const s=shade({mount_type:'Outside Mount',valance:'6-inch Fabric'});s.widthInches=95;expect(quoteBranch(s)).toBe(true);s.widthInches=95.0625;expect(quoteBranch(s)).toBe(false);
  });
- it('does not reopen historical catalogs, October revisions or other program identities',()=>{
-  const patches:Partial<SelectionContext>[]=[{catalogAsOf:'2026-09-20'},{catalogAsOf:'2026-10-01'},{catalogVersion:`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-autowand-2026-09-20-r14`},{manufacturerId:'Onyx'},{programId:'other'},{productId:'roman'}];
+ it('keeps unchanged manual grids available in October while retaining the motor revision hold',()=>{
+  const manual:SelectionContext={...shade(),catalogAsOf:'2026-10-01'};expect(quoteBranch(manual)).toBe(true);expect(orderBranch(manual)).toBe(false);
+  const motor:SelectionContext={...manual,configuration:{...manual.configuration,lift_system:'Motorized',motor_type:'Norman Smart Rechargeable Battery (AC Charger)'}};expect(quoteBranch(motor)).toBe(false);
+ });
+ it('does not reopen historical catalogs or other program identities',()=>{
+  const patches:Partial<SelectionContext>[]=[{catalogAsOf:'2026-09-20'},{catalogVersion:`${QUOTE_V2_CATALOG_VERSION}-norman-smartfold-autowand-2026-09-20-r14`},{manufacturerId:'Onyx'},{programId:'other'},{productId:'roman'}];
   for(const patch of patches)expect(quoteBranch({...shade(),...patch})).toBe(false);
  });
 });

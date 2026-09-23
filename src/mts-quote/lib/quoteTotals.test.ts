@@ -211,3 +211,18 @@ describe("selected-design quote totals", () => {
     ).toBe(true);
   });
 });
+
+describe('Norman server grid amounts in legacy mixed quotes',()=>{
+ it('preserves once charges and cent allocation only for the Norman server marker',()=>{
+  const norman={line_item_id:'norman',variant:'A',unit_price:145.28,options_json:{norman_grid_pricing:true,authoritative_once_total:.02}};
+  const other={line_item_id:'other',variant:'A',unit_price:100,options_json:{authoritative_once_total:999}};
+  expect(calculateLineItemDesignTotal({id:'norman',quantity:3},[norman])).toBe(435.86);
+  expect(calculateQuoteDesignSubtotal([{id:'norman',quantity:3},{id:'other',quantity:2}],[norman,other])).toBe(635.86);
+  expect(calculateLineItemDesignTotal({id:'norman',quantity:3},[{...norman,options_json:{norman_grid_pricing:true,authoritative_once_total:125}}])).toBe(560.84);
+ });
+ it('respects the persisted selected alternative and allows a legitimate zero unit with a once charge',()=>{
+  const selected={line_item_id:'line',variant:'B',unit_price:0,[QUOTE_V2_SELECTED_DESIGN_MARKER]:true,options_json:{norman_grid_pricing:true,authoritative_once_total:89}};
+  expect(calculateLineItemDesignTotal({id:'line',quantity:3},[{...selected,variant:'A',unit_price:500,[QUOTE_V2_SELECTED_DESIGN_MARKER]:false},selected])).toBe(89);
+  expect(hasPricedQuoteDesigns([selected])).toBe(true);
+ });
+});

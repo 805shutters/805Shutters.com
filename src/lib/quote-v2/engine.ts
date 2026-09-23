@@ -1200,8 +1200,9 @@ function sourceCostPlusRetail(
     return costResult;
   }
   const quantity = Math.max(1, costResult.quantity);
+  const normanLine = ["faux_wood", "smartprivacy_faux"].includes(costResult.productId);
   const marginPerUnit = moneyFromCents(
-    Math.round(moneyCents(marginPerLine) / quantity),
+    (normanLine ? Math.floor : Math.round)(moneyCents(marginPerLine) / quantity),
   );
   const surchargeLines = costResult.surchargeLines.map((line) => ({
     ...line,
@@ -1223,7 +1224,11 @@ function sourceCostPlusRetail(
     unitPrice,
     discountPercent: 0,
     discountAmount: 0,
-    onceTotal: onceWholesale,
+    // Allocate the indivisible margin cents once so saved unit × quantity +
+    // once charges exactly equals the existing line selling-price policy.
+    onceTotal: normanLine ? sumMoney([onceWholesale, moneyFromCents(
+      moneyCents(marginPerLine) - moneyCents(marginPerUnit) * quantity,
+    )]) : onceWholesale,
     total: sumMoney([costResult.wholesaleTotal, marginPerLine]),
     warnings: [
       ...costResult.warnings,

@@ -11,7 +11,7 @@ const yes=(v:unknown)=>v===true||v==="Yes";
 export function ultimateFauxComponents(s:SelectionContext) {
  if(s.productId!=="faux_wood"||s.catalogAsOf<"2026-09-19")return null;
  const c=s.configuration,common=ultimateCommon(s),inside=c.mount_type==="Inside Mount",issues:ValidationIssue[]=[];
- const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.ultimate_faux.${id}`,source:sourceProvenance(ULTIMATE_FAUX_SOURCE,{page}),selectedValues:{...c,width:s.widthInches,height:s.heightInches},explanation});
+ const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.ultimate_faux.${id}`,source:sourceProvenance(ULTIMATE_FAUX_SOURCE,{page}),selectedValues:{...c,width:s.widthInches,height:s.heightInches,legacyCutoutPricingAvailable:s.catalogAsOf>="2026-09-22"},explanation});
  if(!inside&&c.mount_type!=="Outside Mount")add("mount",10,"Choose Inside Mount or Outside Mount, then specify its recess arrangement.");
  const count=Number(c.faux_blind_count??1),raw=c.faux_blind_widths_inches;
  const widths=count===1?[s.widthInches]:count===3&&Array.isArray(raw)&&raw.length===3?raw.map(Number):[];
@@ -75,7 +75,10 @@ export function ultimateFauxComponents(s:SelectionContext) {
  const shims=components.reduce((n,c)=>n+c.shims,0);if(shims)surchargeSelections.push({id:"shim",units:shims});
  if(sideMount)surchargeSelections.push({id:"side_mount_bracket",units:components.length});
  if(hasValance)surchargeSelections.push({id:"valance_surcharge",units:1});
- if(cutouts.length)surchargeSelections.push({id:"cut_out",units:cutouts.length});
+ // Legacy one/two side selections specify the same per-side retail charge without fabrication geometry.
+ const legacyCutoutCount=s.catalogAsOf>="2026-09-22"?({one:1,two:2}[String(c.cut_out_sides).toLowerCase()]??0):0;
+ const pricedCutoutCount=cutouts.length||legacyCutoutCount;
+ if(pricedCutoutCount)surchargeSelections.push({id:"cut_out",units:pricedCutoutCount});
  if(keystoneCount)surchargeSelections.push({id:"keystone",units:keystoneCount});
  return {issues,surchargeSelections,record:{version:1,type:"ultimate_faux_independent_blinds",sourceId:ULTIMATE_FAUX_SOURCE,sourcePages:[6,7,8,9,10,11,14,15],components:components.map(component=>({...component,...(s.catalogAsOf>="2026-09-20"?{...ultimateFauxLadders(component.netWidth),screws:normanBlindScrews(component.brackets,layers>0,component.holdDowns,sideMount)}:{}),orderedWidth:finiteOrNull(component.orderedWidth),netWidth:finiteOrNull(component.netWidth),height:finiteOrNull(component.height),valance:component.valance?{...component.valance,width:finiteOrNull(Number(component.valance.width)),returnSize:component.valance.returnSize===null?null:finiteOrNull(component.valance.returnSize)}:null})),commonValance:common,cutouts:cutouts.map(cut=>({...cut,width:finiteOrNull(cut.width),top:finiteOrNull(cut.top),...(cut.bottom!==undefined?{bottom:finiteOrNull(cut.bottom)}:{})})),keystones:{count:finiteOrNull(keystoneCount),layout,locations:locations.map(finiteOrNull)},color:color?{...color,factoryCode:ULTIMATE_FAUX_FACTORY_CODES[color.code]}:null,wandDrop:finiteOrNull(wand),mountFit:inside?fit:null,requiredMountDepth:inside?depth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
 }

@@ -1,3 +1,4 @@
+import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
 import { assertLegacyLotusDeliveryAllowed } from "./lotus-legacy-delivery";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -922,6 +923,15 @@ export function calculateSalesQuoteMirrorPricing(
   quoteLineItems: AnyRow[],
   designsByLineItemId: Map<string, AnyRow[]>,
 ) {
+  for (const line of quoteLineItems) {
+    const designs = designsByLineItemId.get(line.id) ?? [];
+    const selected = designs.find(design => design.id === line.selected_design_id);
+    for (const design of selected ? [selected] : designs) {
+      if (design.options_json?.norman_grid_pricing !== true || design.options_json?.manual_price_override === true) continue;
+      const issue = authoritativeDesignPriceIssue(design);
+      if (issue) throw new CrmAuthError(409, `${textOrNull(line.room_name) || "Norman line"}: ${issue}`);
+    }
+  }
   const subtotal = legacyQuoteSubtotal(quoteLineItems, designsByLineItemId);
   const adjustments = legacyQuoteAdjustments(quote.installer_notes);
   const fixedCharges = quoteLineItems.reduce((sum, line) => {
@@ -994,16 +1004,25 @@ function legacyQuoteSubtotal(quoteLineItems: AnyRow[], designsByLineItemId: Map<
     quoteLineItems.reduce((quoteSum, lineItem) => {
       const designs = designsByLineItemId.get(lineItem.id) || [];
       const selected = designs.find((design) => design.id === lineItem.selected_design_id);
-      const designTotal = (selected ? [selected] : designs).reduce((designSum, design) => designSum + money(design.unit_price), 0);
-      return quoteSum + designTotal * normalizeQuantity(lineItem.quantity);
+      const designTotal = (selected ? [selected] : designs).reduce((designSum, design) =>
+        designSum + money(design.unit_price) * normalizeQuantity(lineItem.quantity) + normanGridOnceTotal(design), 0);
+      return quoteSum + designTotal;
     }, 0),
   );
 }
 
-function legacyDesignBreakdown(lineItem: AnyRow, design: AnyRow, label: string) {
+function normanGridOnceTotal(design: AnyRow): number {
+  const options = design.options_json;
+  return options?.norman_grid_pricing === true && options.manual_price_override !== true
+    ? money(options.authoritative_once_total) : 0;
+}
+
+export function legacyDesignBreakdown(lineItem: AnyRow, design: AnyRow, label: string) {
   return {
     source: "mts_805_bookkeeping",
     pricingMethod: "legacy_mts_snapshot",
+    ...(design.options_json?.norman_grid_pricing === true
+      ? { onceTotal: normanGridOnceTotal(design) } : {}),
     legacyTotalMode: "sum_all_design_options",
     mtsLineItemId: lineItem.id,
     mtsDesignId: design.id,

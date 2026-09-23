@@ -335,6 +335,17 @@ function requireStoredSnapshot(
   return { snapshotRow, snapshot, fingerprint, catalogVersion };
 }
 
+/** Manual line pricing preserves the manufacturer's catalog identity. Only
+ * append-only server provenance, never editable design options, authorizes it. */
+function isStoredPriceOverride(stored: ReturnType<typeof requireStoredSnapshot>): boolean {
+  const provenance = record(stored.snapshotRow.provenance_snapshot);
+  return stored.catalogVersion === "custom-override-v1" || (
+    provenance?.mode === "custom_override" &&
+    provenance.internalOnly === true &&
+    provenance.manualLinePrice === true
+  );
+}
+
 /**
  * Revalidate selected designs with the same authoritative engine used for
  * filtering/pricing, then create a customer-only payload from immutable retail
@@ -480,13 +491,12 @@ export function prepareV2CustomerSendPayload(
       "Lotus FLX remains draft-only until the supplied manufacturer grid has authoritative effective-date and fitment confirmation.",
     );
   }
-  // Custom Mode has its own immutable snapshot/provenance validation below.
-  // Its original catalog configuration can be unpriceable without blocking
-  // independently validated standard lines in the same quote.
-  const blockedStandardLine = repriced.sendability.lines.find((line) =>
-    storedByDesignId.get(line.selectedDesignId ?? "")?.catalogVersion !== "custom-override-v1" &&
-    (!line.sendable || line.stale),
-  );
+  // Both Custom Mode and staff-entered prices have immutable provenance.
+  // Their original grid price/fingerprint must not replace the saved override.
+  const blockedStandardLine = repriced.sendability.lines.find((line) => {
+    const stored = storedByDesignId.get(line.selectedDesignId ?? "");
+    return (!stored || !isStoredPriceOverride(stored)) && (!line.sendable || line.stale);
+  });
   if (blockedStandardLine) {
     const reason = blockedStandardLine.reasons[0]?.message;
     fail(reason ? `Authoritative V2 validation blocked sending: ${reason}` : "Authoritative V2 validation blocked sending.");
@@ -502,7 +512,7 @@ export function prepareV2CustomerSendPayload(
     const priced = repriced.designs.find(
       (entry) => entry.lineItemId === line.id && entry.designId === selectedDesignId,
     );
-    if (stored.catalogVersion === "custom-override-v1") {
+    if (isStoredPriceOverride(stored)) {
       const provenance = record(stored.snapshotRow.provenance_snapshot);
       if (provenance?.mode !== "custom_override" || provenance.internalOnly !== true) {
         return fail(`Custom Mode snapshot ${selectedDesignId} is missing internal provenance.`);
@@ -570,6 +580,12 @@ export function prepareV2CustomerSendPayload(
 
     const customerPrice = projectV2CustomerRetailPrice(stored.snapshot.retail);
     const currentCustomerPrice = projectV2CustomerRetailPrice(priced.result);
+    // Older Norman shutter snapshots omitted optional area diagnostics. Their
+    // unchanged selection and full money breakdown still establish the price.
+    if (customerPrice.productId === "norman_shutters") {
+      if (customerPrice.sqft === undefined) delete currentCustomerPrice.sqft;
+      if (customerPrice.billableSqft === undefined) delete currentCustomerPrice.billableSqft;
+    }
     // Earlier snapshots recorded entered dimensions in matchedWidth/Height.
     // Accept that representation only when it equals this line's dimensions;
     // the fingerprint, catalog identity and every retail amount still match.

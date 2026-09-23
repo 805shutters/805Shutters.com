@@ -127,7 +127,7 @@ export function calculateLineItemDesignTotal(
   const onceTotal =
     mode === "authoritative_v2"
       ? authoritativeOnceTotal(billableDesigns[0])
-      : 0;
+      : billableDesigns.reduce((sum, design) => sum + (design.options_json?.norman_grid_pricing === true ? authoritativeOnceTotal(design) : 0), 0);
   return roundCurrency(unitTotal * quantity + onceTotal);
 }
 
@@ -177,7 +177,7 @@ export function hasPricedQuoteDesigns(
     (design) =>
       (design.options_json?.manual_price_override === true && design.unit_price != null && Number.isFinite(Number(design.unit_price))) ||
       normalizeMoney(design.unit_price) > 0 ||
-      (mode === "authoritative_v2" && authoritativeOnceTotal(design) > 0),
+      ((mode === "authoritative_v2" || design.options_json?.norman_grid_pricing === true) && authoritativeOnceTotal(design) > 0),
   );
 }
 

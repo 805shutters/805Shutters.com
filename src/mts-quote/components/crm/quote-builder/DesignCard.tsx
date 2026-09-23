@@ -345,6 +345,7 @@ import {
   POLAR_DRAPERY_MOTORIZATION_FIELD,
   POLAR_AWNING_MOTORIZATION_FIELD,
 } from "@/lib/quote/product-options";
+import { isNormanGridDesign } from "@mts/lib/normanGridPricing";
 import { lookupWholesaleLedgerCost } from "@/lib/quote/wholesale-ledger";
 import {
   measurementToInches,
@@ -4844,6 +4845,7 @@ export function DesignCard({
 }: DesignCardProps) {
   const {
     authoritativeV2: runtimeAuthoritativeV2,
+    isolated,
     showLabCatalogControls,
   } = useQuoteBuilderDatabase();
   const authoritativeV2 = authoritativeV2Override ?? runtimeAuthoritativeV2;
@@ -4871,6 +4873,7 @@ export function DesignCard({
     currentDesign && currentDesign.options_json?.manual_price_override !== true ? historicalDesignUnitPrices?.[currentDesign.id] : null,
   );
   const displayedUnitPrice = displayedPrice.amount;
+  const normanServerPricing = !isolated && isNormanGridDesign(currentDesign);
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
   const automaticPricingSignature = currentDesign
     ? automaticPricingInputSignature({
@@ -4933,10 +4936,10 @@ export function DesignCard({
       );
   const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const manufacturerStamp = resolveManufacturerStamp(currentDesign);
-  const authoritativePriceError = authoritativeV2 && !displayedPrice.fromHistoricalLock && !isPriceLocked
+  const authoritativePriceError = (authoritativeV2 || normanServerPricing) && currentOptions.manual_price_override !== true && !displayedPrice.fromHistoricalLock && !isPriceLocked
     ? authoritativeDesignPriceIssue(currentDesign)
     : null;
-  const legacyPricingBlockReason = !authoritativeV2 && !isPriceLocked && currentOptions.manual_price_override !== true
+  const legacyPricingBlockReason = !authoritativeV2 && !normanServerPricing && !isPriceLocked && currentOptions.manual_price_override !== true
     ? (typeof currentOptions.pricing_block_reason === "string"
         ? currentOptions.pricing_block_reason.trim()
         : "") ||
@@ -5307,7 +5310,7 @@ export function DesignCard({
   };
 
   const handleRecalculateLockedPrice = () => {
-    if (authoritativeV2) return;
+    if (authoritativeV2 || normanServerPricing) return;
     if (!currentDesign || widthIn === 0 || heightIn === 0) return;
 
     const opts = (currentDesign.options_json as Record<string, unknown>) || {};
@@ -5422,7 +5425,7 @@ export function DesignCard({
 
   // Locked contract lines stay frozen unless motorization totals are stale or missing.
   useEffect(() => {
-    if (authoritativeV2) return;
+    if (authoritativeV2 || normanServerPricing) return;
     if (!currentDesign || !isPriceLocked || currentDesign.options_json?.manual_price_override === true) return;
     if (!consumeAutomaticPricingTrigger()) return;
 
@@ -5601,7 +5604,7 @@ export function DesignCard({
 
   // Auto-calculate price when options or retail override change
   useEffect(() => {
-    if (authoritativeV2) return;
+    if (authoritativeV2 || normanServerPricing) return;
     if (!currentDesign) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
@@ -5970,13 +5973,13 @@ export function DesignCard({
             <div className="quote-line-price-readout">
               <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
                 unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal}
-                issue={authoritativeV2 ? authoritativePriceError :
+                issue={authoritativeV2 || normanServerPricing ? authoritativePriceError :
                   !isPriceLocked && currentOptions.manual_price_override !== true && legacyPricingBlockReason
                     ? pricingBlockReasonMessage(legacyPricingBlockReason) : null}
                 roomName={lineItem.room_name}
                 manualPrice={currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
                 onSave={(price) => onSaveLinePrice(activeVariant, price)} />
-              {!mobilePresentation && !authoritativeV2 && isPriceLocked && (
+              {!mobilePresentation && !authoritativeV2 && !normanServerPricing && isPriceLocked && (
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
                   className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">
                   <Calculator className="mr-1 h-3.5 w-3.5" />Reprice
@@ -9152,6 +9155,14 @@ function ShadesAndBlindsOptions({
         ...(powerChanged ? { remote_type: null } : {}),
         options_json: nextJson,
       });
+      return;
+    }
+
+    if (productType === "Roller Shades" && !authoritativeV2 && isNormanGridDesign(design) && field === "valance") {
+      const valance = typeof value === "string" ? value : null;
+      const topTreatment = getRollerTopTreatmentForValance(valance);
+      onUpdateFields({valance, options_json: {...currentJson,
+        top_treatment_class: topTreatment, roller_top_treatment: topTreatment}});
       return;
     }
 

@@ -37,10 +37,10 @@ describe('SmartFold quote-only backend price protection',()=>{
   expect(r.ok).toBe(false);
   expect(r.validationIssues).toContainEqual(expect.objectContaining({ruleId:'norman.smartfold.quote_pricing_branch',severity:'hard_block',explanation:expect.stringContaining('spliced valances')}));
  });
- it('does not make the unverified October catalog sendable through the generic product override',()=>{
-  const q=quote({},36,'2026-10-01'),r=q.designs[0].result;
-  expect(r.ok).toBe(false);expect(r.validationStatus).toBe('blocked');
-  expect(r.validationIssues).toContainEqual(expect.objectContaining({ruleId:'norman.smartfold.quote_pricing_branch',explanation:expect.stringContaining('October')}));
-  expect(q.designs[0].snapshot).toBeNull();
+ it('keeps unchanged manual grid pricing available on the October motor revision date',()=>{
+  const before=quote({},36,'2026-09-30').designs[0].result;
+  const after=quote({},36,'2026-10-01').designs[0].result;
+  expect(before.ok).toBe(true);expect(after.ok,JSON.stringify(after)).toBe(true);
+  if(before.ok&&after.ok){expect(after.base).toBe(before.base);expect(after.total).toBe(before.total);}
  });
 });

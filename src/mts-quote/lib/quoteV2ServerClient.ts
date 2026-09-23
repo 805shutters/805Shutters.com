@@ -521,3 +521,11 @@ export function createQuoteRevision(
 ): Promise<QuoteRevisionResponse> {
   return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/revisions/`, input);
 }
+
+/** Price persisted Norman selections on a legacy quote without converting other manufacturers. */
+export function priceLegacyNormanQuote(
+  database: QuoteBuilderDatabase,
+  quoteId: string,
+): Promise<{quoteId:string;pricedDesignCount:number;blockedDesignCount:number;total:number}> {
+  return postAuthenticated(database, `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/norman-price`, {});
+}

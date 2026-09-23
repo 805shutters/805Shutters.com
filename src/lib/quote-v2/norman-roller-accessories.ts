@@ -13,8 +13,12 @@ export function rollerAccessories(s:SelectionContext):{issues:ValidationIssue[];
  if(!r){add('record','Save the listed Roller hold-down, catch color and measured clearances.');return {issues,selections,record:{version:1,status:'invalid'}};}
  const app=norm(c.roller_application??c.shade_type),valance=norm(c.valance),cassette=/cassette/.test(valance+' '+norm(c.roller_top_treatment??c.top_treatment_class));
  const lg360=/light ?guard ?360/.test(app+' '+valance),legacy=norm(c.hold_downs??c.hold_down??c.magnetic_hold_down);
- const active=cassette?'Magnetic':r.holdDown;
- if(raw==null&&legacy&&!['none','no','false','0'].includes(legacy))add('legacy_hold_down','Record the hold-down and its required clearances in Roller accessories before pricing.');
+ // Only the named magnetic selector (or an explicit Magnetic alias) establishes this price.
+ // Generic Yes hold-downs still need a type because Traditional has no confirmed charge.
+ const legacyValues=Object.entries({hold_downs:c.hold_downs,hold_down:c.hold_down,magnetic_hold_down:c.magnetic_hold_down}).filter(([,v])=>v!=null&&v!=='');
+ const legacyMagnetic=raw==null&&s.catalogAsOf>='2026-09-22'&&legacyValues.length>0&&legacyValues.every(([key,v])=>norm(v)==='magnetic'||key==='magnetic_hold_down'&&['true','yes','on','1'].includes(norm(v)));
+ const active=cassette||legacyMagnetic?'Magnetic':r.holdDown;
+ if(raw==null&&(legacy&&!['none','no','false','0'].includes(legacy)||s.catalogAsOf>='2026-09-22'&&legacyValues.some(([,v])=>!['none','no','false','off','0'].includes(norm(v)))))add(legacyMagnetic?'legacy_magnetic_details':'legacy_hold_down','Record the hold-down and its required clearances in Roller accessories before ordering.');
  if(cassette&&raw!=null&&r.holdDown==='Traditional')add('cassette_hold_down','Cassette retail includes magnetic hold-downs; Traditional is not a replacement for its included hardware.');
  if(lg360&&active!=='None')add('lightguard360','Traditional and magnetic hold-downs are unavailable with LightGuard360.');
  let count=1;

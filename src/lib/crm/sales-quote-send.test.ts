@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateSalesQuoteMirrorPricing,
+  legacyDesignBreakdown,
   publicQuoteTokenFromUrl,
   resolveSalesQuoteCustomerWorkflow,
   salesQuotesToMirror,
@@ -486,5 +487,46 @@ describe("upsertSalesQuoteMirrorRow", () => {
     expect(attempts[0]).toHaveProperty("details");
     expect(attempts[1]).not.toHaveProperty("details");
     expect(attempts[1]).toHaveProperty("unit_price", 123.45);
+  });
+});
+
+
+describe("Norman grid cents in legacy customer delivery", () => {
+  const line = { id: "norman", quantity: 3, selected_design_id: "chosen", product_type: "Faux Wood Blinds" };
+  const design = { id: "chosen", unit_price: 184.28,
+    options_json: { norman_grid_pricing: true, authoritative_price_status: "authoritative", authoritative_once_total: 0.02 } };
+  it("preserves quantity-three once charges in both quote totals and the customer line breakdown", () => {
+    const pricing = calculateSalesQuoteMirrorPricing({ total_amount: 552.86 }, [line], new Map([[line.id,[design]]]));
+    expect(pricing).toEqual({subtotal:552.86,total:552.86,shouldSyncSourceTotal:false});
+    const breakdown=legacyDesignBreakdown(line,design,"A");
+    expect(breakdown.onceTotal).toBe(0.02);
+    expect(design.unit_price*line.quantity+Number(breakdown.onceTotal)).toBeCloseTo(pricing.total,2);
+  });
+  it("does not charge an inactive variant or copy stale once charges onto manual and other-manufacturer lines", () => {
+    const unrelated = { id: "other", quantity: 2, selected_design_id: "other-design" };
+    const manual = { ...design, id: "manual", options_json:{...design.options_json,manual_price_override:true} };
+    const otherDesign = { id: "other-design", unit_price: 100, options_json:{authoritative_once_total:50} };
+    const pricing=calculateSalesQuoteMirrorPricing({total_amount:752.86}, [line,unrelated], new Map([
+      [line.id,[design,{...design,id:"inactive",unit_price:999}]], [unrelated.id,[otherDesign]],
+    ]));
+    expect(pricing).toEqual({subtotal:752.86,total:752.86,shouldSyncSourceTotal:false});
+    expect(legacyDesignBreakdown(line,manual,"A").onceTotal).toBe(0);
+    expect(legacyDesignBreakdown(unrelated,otherDesign,"A")).not.toHaveProperty("onceTotal");
+  });
+});
+
+
+describe("Norman missing-price server send guard", () => {
+  const line={id:"norman",quantity:1,selected_design_id:"design",room_name:"Kitchen"};
+  it.each(['blocked','unpriceable','stale','legacy'])('rejects %s automatic pricing with its saved explanation',status=>{
+    const design={id:"design",unit_price:0,options_json:{norman_grid_pricing:true,authoritative_price_status:status,
+      authoritative_price_error:"Traditional hold-down price is missing."}};
+    expect(()=>calculateSalesQuoteMirrorPricing({total_amount:0},[line],new Map([[line.id,[design]]])))
+      .toThrow('Kitchen: Traditional hold-down price is missing.');
+  });
+  it('preserves explicitly entered manual zero even when older automatic metadata was blocked',()=>{
+    const design={id:"design",unit_price:0,options_json:{norman_grid_pricing:true,manual_price_override:true,
+      authoritative_price_status:'blocked',authoritative_once_total:50}};
+    expect(calculateSalesQuoteMirrorPricing({total_amount:0},[line],new Map([[line.id,[design]]])).total).toBe(0);
   });
 });

@@ -12,7 +12,7 @@ const yes=(v:unknown)=>v===true||v==="Yes";
 export function woodComponents(s:SelectionContext) {
  if(s.productId!=="wood_blinds"||s.catalogAsOf<"2026-09-19")return null;
  const c=s.configuration,common=woodCommon(s),inside=c.mount_type==="Inside Mount",issues:ValidationIssue[]=[];
- const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.wood_blinds.${id}`,source:sourceProvenance(WOOD_SOURCE,{page}),selectedValues:{...c,width:s.widthInches,height:s.heightInches},explanation});
+ const add=(id:string,page:number,explanation:string)=>issues.push({severity:"hard_block",ruleId:`norman.wood_blinds.${id}`,source:sourceProvenance(WOOD_SOURCE,{page}),selectedValues:{...c,width:s.widthInches,height:s.heightInches,legacyCutoutPricingAvailable:s.catalogAsOf>="2026-09-22"},explanation});
  if(!inside&&c.mount_type!=="Outside Mount")add("mount",15,"Choose Inside Mount or Outside Mount, then specify its recess arrangement.");
  const widths=[s.widthInches];
  if(Number(c.faux_blind_count??1)!==1)add("component_widths",7,"Record each wood blind on its own measured quote line.");
@@ -79,7 +79,10 @@ export function woodComponents(s:SelectionContext) {
  // Dealer reconciliation September 19: shared valance and keystones are charged once per assembly.
  const chargeShared=!common || common.chargeSharedOptions===true;
  if(hasValance&&chargeShared)surchargeSelections.push({id:valance==="Designer Crown"?"valance_surcharge_designer_crown":"valance_surcharge_contempo",units:1});
- if(cutouts.length)surchargeSelections.push({id:"cut_out",units:cutouts.length});
+ // Legacy one/two side selections specify the same per-side retail charge without fabrication geometry.
+ const legacyCutoutCount=s.catalogAsOf>="2026-09-22"?({one:1,two:2}[String(c.cut_out_sides).toLowerCase()]??0):0;
+ const pricedCutoutCount=cutouts.length||legacyCutoutCount;
+ if(pricedCutoutCount)surchargeSelections.push({id:"cut_out",units:pricedCutoutCount});
  if(keystoneCount&&chargeShared)surchargeSelections.push({id:"keystone",units:keystoneCount});
  return {issues,surchargeSelections,record:{version:1,type:"wood_blinds_independent_blinds",sourceId:WOOD_SOURCE,sourcePages:[7,8,9,11,12,13,14,15,16,17,19,20,23,24],components:components.map(component=>({...component,...woodLadders(component.netWidth,c.slat_size!=='2"'),screws:s.catalogAsOf>="2026-09-20"?normanBlindScrews(component.brackets,layers>0,component.holdDowns,sideMount):{mounting:component.brackets*2,mountingLength:layers?2:1.25,holdDown:component.holdDowns,holdDownLength:.75,sideNutBolt:sideOnly?4:0},orderedWidth:finiteOrNull(component.orderedWidth),netWidth:finiteOrNull(component.netWidth),height:finiteOrNull(component.height),valance:component.valance?{...component.valance,width:finiteOrNull(Number(component.valance.width)),returnSize:component.valance.returnSize===null?null:finiteOrNull(component.valance.returnSize)}:null})),commonValance:common,cutouts:cutouts.map(cut=>({...cut,width:finiteOrNull(cut.width),top:finiteOrNull(cut.top),...(cut.bottom!==undefined?{bottom:finiteOrNull(cut.bottom)}:{})})),keystones:{count:finiteOrNull(keystoneCount),layout,locations:locations.map(finiteOrNull)},color,wandDrop:finiteOrNull(wand),wandMaterial:"Metal",splitWand:false,mountFit:inside?fit:null,requiredMountDepth:inside?depth:null,shimExtension:layers===2?.6875:layers===1?.375:0}};
 }

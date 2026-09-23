@@ -402,6 +402,7 @@ const ORDER_ONLY_RULES = new Set([
   'norman.smartfold.side_by_side_room', 'norman.perfectsheer.side_by_side_room',
   'roman.side_by_side.september.room',
   'norman.shutter.bifold90.flat_surface', 'norman.shutter.bifold180.flat_surface',
+  'roller.accessories.legacy_magnetic_details',
   'norman.smartfold.outside_clearance_required',
   'norman.smartfold.outside_mounting_area', 'norman.smartfold.outside_mounting_space',
   'norman.smartfold.inside_fascia_fit', 'norman.smartfold.inside_fascia_route',
@@ -433,7 +434,17 @@ export function isOrderingOnlyIssue(issue: ValidationIssue): boolean {
   // Without purchased shims, this attachment changes only included mounting hardware.
   const unpricedVerticalAttachment = issue.ruleId === 'honeycomb.vertical.mounting' &&
     Number(issue.selectedValues?.vertical_shim_layers ?? 0) === 0;
-  return unpricedVerticalAttachment || ORDER_ONLY_RULES.has(issue.ruleId) || isNonNormanOrderingOnlyRule(issue.ruleId) ||
+  const values = issue.selectedValues ?? {};
+  const missing = (value: unknown) => value == null || value === '';
+  const unpricedSmartfoldDetail =
+    issue.ruleId === 'norman.smartfold.fold_size' && missing(values.fold_size) ||
+    issue.ruleId === 'norman.smartfold.light_guard_color' && missing(values.smartfold_light_guard_color) ||
+    issue.ruleId === 'norman.smartfold.installation' && missing(values.smartfold_installation) && Number(values.smartfold_shim_layers ?? 0) === 0 ||
+    issue.ruleId === 'norman.smartfold.shim_layers' && missing(values.smartfold_shim_layers);
+  // The legacy selector already records the priced side count; fabrication geometry remains required to order.
+  const countedLegacyCutout = ['norman.wood_blinds.cutout_details', 'norman.ultimate_faux.cutout_measurements'].includes(issue.ruleId) &&
+    values.legacyCutoutPricingAvailable === true && ['one', 'two'].includes(String(values.cut_out_sides ?? '').toLowerCase());
+  return unpricedVerticalAttachment || unpricedSmartfoldDetail || countedLegacyCutout || ORDER_ONLY_RULES.has(issue.ruleId) || isNonNormanOrderingOnlyRule(issue.ruleId) ||
     // Source dimension profiles express manufacturing capacity; grid lookup still enforces actual cells.
     /^(?:honeycomb\.matrix\.(?:[a-z0-9_-]+\.)*|(?:honeycomb|roman|smartfold|perfectsheer)\.motorization\.dimension\.[a-z0-9_.-]+\.)(?:min_width|max_width|min_height|max_height|max_area|min_area)(?:\.rear)?$/.test(issue.ruleId) ||
     /^(?:honeycomb|roman|smartfold|perfectsheer)\.motorization\.motor_position_(?:required|invalid)$/.test(issue.ruleId) ||

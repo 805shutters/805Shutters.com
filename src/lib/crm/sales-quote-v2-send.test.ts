@@ -629,3 +629,141 @@ describe("saved snapshot delivery compatibility", () => {
   expect(()=>prepareV2CustomerSendPayload(input)).toThrow(/provenance/);
  });
 });
+
+
+describe("staff manual prices retaining a Norman catalog", () => {
+  function manualFixture(unitPrice: number) {
+    const fixture = authoritativeRollerFixture();
+    const fingerprint = `sha256:${"b".repeat(64)}`;
+    const total = unitPrice * fixture.line.quantity;
+    // The production RPC deliberately preserves the catalog and old embedded
+    // options snapshot while pointing the design at a new immutable override.
+    const design = {
+      ...fixture.design,
+      unit_price: unitPrice,
+      quote_v2_price_status: "authoritative" as NonNullable<SalesQuoteDesign["quote_v2_price_status"]>,
+      quote_v2_selection_fingerprint: fingerprint,
+      options_json: {
+        ...fixture.design.options_json,
+        manual_price_override: true,
+        manual_merchandise_unit_price: unitPrice,
+        manual_customer_charge_policy: "blind-shade-install-ship-v1",
+      },
+    };
+    const snapshot = {
+      ...fixture.storedSnapshot,
+      selection_fingerprint: fingerprint,
+      retail_total: total,
+      retail_snapshot: {
+        ...fixture.storedSnapshot.retail_snapshot,
+        selectionFingerprint: fingerprint,
+        retail: {
+          ...fixture.storedSnapshot.retail_snapshot.retail,
+          base: unitPrice,
+          unitPrice,
+          total,
+          surchargeLines: [],
+          discountPercent: 0,
+          discountAmount: 0,
+          onceTotal: 0,
+        },
+      },
+      provenance_snapshot: {
+        mode: "custom_override",
+        internalOnly: true,
+        manualLinePrice: true,
+        costResolution: "preserved_snapshot",
+        originalSnapshotId: "original-grid-snapshot",
+      },
+    };
+    return {
+      quote: authoritativeQuote(total),
+      lineItems: [fixture.line], designs: [design], snapshots: [snapshot],
+      serverDate: "2026-08-01",
+    };
+  }
+
+  it.each([0, 1002, 1048.25])("preserves an explicit $%s price through customer preparation", (price) => {
+    const input = manualFixture(price);
+    const before = structuredClone(input);
+    const payload = prepareV2CustomerSendPayload(input);
+    expect(payload.lines[0].price.unitPrice).toBe(price);
+    expect(payload.total).toBe(price * 2);
+    expect(payload.lines[0].configuration).toBeDefined();
+    expect(JSON.stringify(payload)).not.toMatch(/dealer_cost|internalCost|manual_customer|costResolution/);
+    expect(input).toEqual(before);
+  });
+
+  it("does not treat an editable manual flag as immutable authorization", () => {
+    const input = manualFixture(1002);
+    input.snapshots[0].provenance_snapshot.internalOnly = false;
+    expect(() => prepareV2CustomerSendPayload(input)).toThrow(/stale|authoritative/);
+  });
+
+  it("requires explicit manual-line provenance when the catalog is preserved", () => {
+    const input = manualFixture(1002);
+    input.snapshots[0].provenance_snapshot.manualLinePrice = false;
+    expect(() => prepareV2CustomerSendPayload(input)).toThrow(/stale|authoritative/);
+  });
+
+  it.each(["unit", "quantity", "total", "status", "fingerprint"])("rejects a changed %s after the override snapshot was saved", (field) => {
+    const input = manualFixture(1002);
+    if (field === "unit") input.designs[0].unit_price = 1003;
+    if (field === "quantity") input.lineItems[0].quantity = 3;
+    if (field === "total") input.quote.total_amount = 2005;
+    if (field === "status") input.designs[0].quote_v2_price_status = "stale";
+    if (field === "fingerprint") input.designs[0].quote_v2_selection_fingerprint = "changed";
+    expect(() => prepareV2CustomerSendPayload(input)).toThrow();
+  });
+
+  it("still rejects a stale automatic line alongside a valid manual override", () => {
+    const input = manualFixture(1002);
+    const automatic = authoritativeRollerFixture();
+    const line = { ...automatic.line, id: "automatic-line", selected_design_id: "automatic-design" };
+    const design = { ...automatic.design, id: "automatic-design", line_item_id: line.id, current_v2_snapshot_id: "automatic-snapshot" };
+    const snapshot = { ...automatic.storedSnapshot, id: "automatic-snapshot", line_item_id: line.id, design_id: design.id };
+    line.width_whole = 37;
+    expect(() => prepareV2CustomerSendPayload({
+      ...input, quote: authoritativeQuote(2004 + automatic.total),
+      lineItems: [...input.lineItems, line], designs: [...input.designs, design],
+      snapshots: [...input.snapshots, snapshot],
+    })).toThrow(/stale|authoritative/);
+  });
+});
+
+describe("older Norman shutter snapshot area metadata", () => {
+  it("accepts omitted optional area fields only while every price and selection still agrees", () => {
+    const line = { ...rollerLine(), product_type: "Shutters", width_whole: 22, height_whole: 46 };
+    const original: SalesQuoteDesign = {
+      ...unpricedRollerDesign(), product_type: "Shutters", material: "Normandy Stained",
+      fabric: null, valance: null, lift_system: null, shade_type: null,
+      mount_type: "Outside Mount", tilt_type: "Standard Tilt", louver_size: '3 1/2"',
+      hinge_color: "Antique Brass", panel_config: "L",
+      options_json: {
+        quote_v2_backend: true, quote_lab_product_id: "norman_shutters",
+        quote_lab_program_id: "normandy_stained", color: "229 - Rich Walnut",
+        size_type: "F - Frame to Frame", frame_type: "Beaded L Frame", split_tilt: "No",
+        stile_join: "Butt", stile_width: '2"', stile_profile: "Beaded", surcharges: [],
+      },
+    };
+    const { prepared } = prepareSalesQuoteV2PricingBatch({ lines: [line], selectedDesigns: [original], serverDate: "2026-09-22" });
+    const priced = prepared[0].rpcResult;
+    expect(priced.priceStatus).toBe("authoritative");
+    const snapshot = structuredClone(priced.authoritativeSnapshot) as ReturnType<typeof createImmutablePriceSnapshot>;
+    delete snapshot.retail.sqft;
+    delete snapshot.retail.billableSqft;
+    const design = { ...original, unit_price: 368,
+      quote_v2_selection: priced.selection as unknown as Record<string, unknown>,
+      quote_v2_price_status: "authoritative" as const, quote_v2_selection_fingerprint: String(priced.selectionFingerprint),
+      quote_v2_priced_catalog_version: String(priced.catalogVersion), current_v2_snapshot_id: SNAPSHOT_ID };
+    const input = { quote: authoritativeQuote(736, { quote_v2_catalog_version: priced.catalogVersion }),
+      lineItems: [line], designs: [design], serverDate: "2026-09-22", snapshots: [{
+        id: SNAPSHOT_ID, quote_id: line.quote_id, line_item_id: line.id, design_id: design.id,
+        quote_revision: QUOTE_REVISION, selection_fingerprint: priced.selectionFingerprint,
+        catalog_version: priced.catalogVersion, retail_total: 736, retail_snapshot: snapshot,
+      }] };
+    expect(prepareV2CustomerSendPayload(input).total).toBe(736);
+    snapshot.retail.billableSqft = 999;
+    expect(() => prepareV2CustomerSendPayload(input)).toThrow(/retail snapshot/);
+  });
+});

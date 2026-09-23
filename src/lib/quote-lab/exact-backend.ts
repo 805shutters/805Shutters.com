@@ -217,7 +217,13 @@ function resolveV2ProgramId(
 
   if (productId === "palladian_shelf") {
     const accompanying = textOption(options, "accompanying_product_id");
-    if (!accompanying) return null;
+    if (!accompanying) {
+      // The standalone shelf table needs only its width; an accompanying
+      // product is evidence for the discounted table, not for this table.
+      return textOption(options, "catalog_program_id", "quote_lab_program_id") ===
+        "palladian_shelf_palladian_shelf_without_product"
+        ? "palladian_shelf_palladian_shelf_without_product" : null;
+    }
     const eligible = palladianProductEligible(accompanying);
     return `palladian_shelf_palladian_shelf_${eligible ? "with" : "without"}_product`;
   }

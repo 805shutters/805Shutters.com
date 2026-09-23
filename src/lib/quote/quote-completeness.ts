@@ -16,7 +16,7 @@ export function incompleteQuoteLineIds(lines: {id:string}[], designs: Design[], 
     const rows=designs.filter(d=>d.line_item_id===line.id);
     const d=rows.find(d=>d[QUOTE_V2_SELECTED_DESIGN_MARKER]) ?? rows.find(d=>d.variant==='A') ?? rows[0];
     if (d?.options_json?.manual_price_override === true && d.unit_price != null && Number.isFinite(Number(d.unit_price)) && Number(d.unit_price)>=0) return false;
-    if (authoritativeV2) return authoritativeDesignPriceIssue(d)!==null;
+    if (authoritativeV2 || d?.options_json?.norman_grid_pricing === true) return authoritativeDesignPriceIssue(d)!==null;
     return !d || !!d.options_json?.pricing_block_reason || !!d.options_json?.authoritative_price_error ||
       ['blocked','stale','unpriceable'].includes(String(d.options_json?.authoritative_price_status)) ||
       d.unit_price == null || !Number.isFinite(Number(d.unit_price)) || Number(d.unit_price)<=0;

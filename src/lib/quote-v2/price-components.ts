@@ -1051,6 +1051,23 @@ export function buildAuthoritativePriceComponents(
     );
   }
 
+  // The existing Norman faux selling policy allocates a fixed amount per line.
+  // Keep indivisible cents out of the per-window price, without representing
+  // them as a manufacturer accessory or changing the line's selling amount.
+  if (["faux_wood", "smartprivacy_faux"].includes(input.selection.productId)) {
+    const allocated = componentTotals(components).customerOncePerLine;
+    const remainder = roundMoney(input.retailResult.onceTotal - allocated);
+    if (remainder > 0 && remainder < input.selection.quantity / 100) {
+      components.push({
+        id: "base_grid:line_rounding", category: "base_grid", label: "Base price rounding",
+        status: "priced", basis: "flat", billingScope: "once_per_line", units: 1,
+        source: baseline.source,
+        selectionBindings: [{ field: "quantity", value: input.selection.quantity }],
+        catalogAmount: 0, wholesaleAmount: 0, customerAmount: remainder,
+      });
+    }
+  }
+
   const ids = new Set<string>();
   for (const component of components) {
     if (ids.has(component.id)) {

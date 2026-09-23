@@ -47,3 +47,10 @@ it('preserves isolated adapter selection evidence while explicit null stays unse
  expect(v1Subtotal(lines,projectPersistedDesignSelections(marked as any,[{id:'line'}]))).toBe(278);
  expect(projectPersistedDesignSelections(marked as any,[{id:'line',selected_design_id:null}]).some(d=>d[selected])).toBe(false);
 });
+
+it('uses the saved Norman grid result instead of obsolete browser pricing failures',()=>{
+ const d={...rows[1],[selected]:true,options_json:{norman_grid_pricing:true,authoritative_price_status:'authoritative',pricing_block_reason:'invalid_dimensions'}};
+ expect(incompleteQuoteLineIds(lines,[d])).toEqual([]);
+ expect(incompleteQuoteLineIds(lines,[{...d,options_json:{...d.options_json,authoritative_price_status:'blocked',authoritative_price_error:'Grid cell unavailable'}}])).toEqual(['line']);
+ expect(incompleteQuoteLineIds(lines,[{...d,options_json:{...d.options_json,norman_grid_pricing:false}}])).toEqual(['line']);
+});

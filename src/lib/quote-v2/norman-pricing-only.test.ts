@@ -8,7 +8,7 @@ import { authoritativeAutomaticSurchargeSelections, priceQuoteV2Selection } from
 import { deriveNormanOrderRecords } from './norman-assemblies';
 import { quotePricingValidationIssues } from './quote-pricing-policy';
 import { validateSelection } from './rules';
-import type { SelectionContext, SelectionRecord } from './core';
+import type { SelectionContext, SelectionRecord, SelectionValue } from './core';
 
 const rows: [string,string,SelectionRecord][] = [
  ['roman','F0183',{lift_system:'Cordless',shade_type:'Single',fold_style:'Flat Fold with Batten Back',lining:'Translucent',seaming:'Vertical Seams',fabric_orientation:'Standard / Non-Railroaded',fabric_collection:'Lakeside'}],
@@ -77,5 +77,51 @@ describe('Norman prices do not require fabrication measurements',()=>{
   const s=fixture('wood_blinds','ND001',{slat_size:'2"',lift_system:'Cordless'});
   expect(validateSelection(s).some(i=>i.ruleId==='norman.wood_blinds.mount_depth'&&i.severity==='hard_block')).toBe(true);
   expect(price(s,'order').ok).toBe(false);
+ });
+});
+
+describe('Norman source-priced selections without ordering-only details',()=>{
+ const current=(productId:string)=>{
+  const s=fixture(...rows.find(row=>row[0]===productId)!);
+  s.catalogAsOf='2026-09-22';s.catalogVersion=quoteV2CatalogVersionFor(productId,s.catalogAsOf);return s as SelectionContext<Record<string,SelectionValue>>;
+ };
+ it.each(['fold_size','smartfold_installation','smartfold_shim_layers'])('SmartFold prices without %s and retains its ordering requirement',key=>{
+  const s=current('smartfold'),baseline=price(s);delete s.configuration[key];const r=price(s);
+  expect(baseline.ok).toBe(true);expect(r.ok,JSON.stringify(r)).toBe(true);
+  if(baseline.ok&&r.ok){expect(r.base).toBe(baseline.base);expect(r.surchargeLines).toEqual(baseline.surchargeLines);expect(r.total).toBe(baseline.total);}
+  expect(price(s,'order').ok).toBe(false);
+ });
+ it('SmartFold Light Guard uses the documented $45 charge without a finish, retaining unavailable mounts and unknown finishes',()=>{
+  const s=current('smartfold');s.configuration.basic_light_guard='Yes';const r=price(s);
+  expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.surchargeLines).toContainEqual(expect.objectContaining({id:'basic_light_guard',amount:45}));
+  s.configuration.smartfold_light_guard_color='3058 White';const finished=price(s);expect(finished.ok).toBe(true);
+  if(r.ok&&finished.ok)expect(finished.total).toBe(r.total);
+  s.configuration.smartfold_light_guard_color='Invented';expect(price(s).ok).toBe(false);
+  s.configuration.smartfold_light_guard_color='3058 White';s.configuration.mount_type='Outside Mount';expect(price(s).ok).toBe(false);
+ });
+ it('SmartFold still requires mounting method for purchased shims and rejects unlisted folds',()=>{
+  const s=current('smartfold');s.configuration.smartfold_shim_layers=1;delete s.configuration.smartfold_installation;
+  const r=price(s);expect(r.ok).toBe(false);expect(r.validationIssues).toContainEqual(expect.objectContaining({ruleId:'norman.smartfold.installation',severity:'hard_block'}));
+  const badFold=current('smartfold');badFold.configuration.fold_size=9;expect(price(badFold).ok).toBe(false);
+ });
+ it.each(['wood_blinds','faux_wood'])('%s prices the selected legacy side count without inventing cutout geometry',productId=>{
+  for(const [sides,count] of [['one',1],['two',2]] as const){
+   const s=current(productId);s.configuration.cut_out_sides=sides;const original=structuredClone(s),r=price(s);
+   expect(r.ok,JSON.stringify(r)).toBe(true);
+   if(r.ok){const cut=r.surchargeLines.filter(line=>line.id==='cut_out');expect(cut).toHaveLength(1);expect(authoritativeAutomaticSurchargeSelections(s)).toContainEqual({id:'cut_out',units:count});expect(cut[0].amount).toBe((productId==='wood_blinds'?99:29.37)*count);}
+   expect(s).toEqual(original);expect(price(s,'order').ok).toBe(false);
+  }
+  const unknown=current(productId);unknown.configuration.cutout=true;expect(price(unknown).ok).toBe(false);
+  const historical=current(productId);historical.catalogAsOf='2026-09-21';historical.configuration.cut_out_sides='one';expect(price(historical).ok).toBe(false);
+ });
+ it('Roller legacy magnetic selection produces the same $28 charge as an explicit accessory record',()=>{
+  const s=current('roller');s.configuration.magnetic_hold_down=true;const r=price(s);
+  expect(r.ok,JSON.stringify(r)).toBe(true);if(r.ok)expect(r.surchargeLines.filter(line=>line.id==='magnetic_hold_down')).toMatchObject([{amount:28}]);
+  const explicit=current('roller');explicit.configuration.roller_accessories_v1={version:1,holdDown:'Magnetic',magnetColor:'Nickel-Plated',leftClearance:null,rightClearance:null,bottomClearance:null};const e=price(explicit);
+  expect(e.ok).toBe(true);if(e.ok&&r.ok){expect(r.total).toBe(e.total);expect(r.surchargeLines).toEqual(e.surchargeLines);}
+  expect(price(s,'order').ok).toBe(false);
+  const unknown=current('roller');unknown.configuration.hold_downs='Yes';expect(price(unknown).ok).toBe(false);
+  const conflicting=current('roller');conflicting.configuration.hold_downs='None';conflicting.configuration.magnetic_hold_down=true;expect(price(conflicting).ok).toBe(false);
+  const traditional=current('roller');traditional.configuration.roller_accessories_v1={version:1,holdDown:'Traditional',magnetColor:'Nickel-Plated',leftClearance:null,rightClearance:null,bottomClearance:null};expect(price(traditional).ok).toBe(false);
  });
 });
