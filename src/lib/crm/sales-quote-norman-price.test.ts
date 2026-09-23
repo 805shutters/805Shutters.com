@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
@@ -8,6 +8,11 @@ import { calculateSalesQuoteMirrorPricing } from "./sales-quote-send";
 import { ROMAN_PILLOWS, ROMAN_YARDAGE, ROMAN_ANCILLARY_RECORD, romanAncillaryFabrics } from "@/lib/quote/norman-roman-ancillary";
 import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_RECORD, emptyReplacementRequest, replacementColors } from "@/lib/quote/norman-smartdrape-replacement";
 import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
+
+// Saved fixtures were priced on this date; the mirror also reads the server
+// clock. Keep both sides on the same catalog date as the real day advances.
+beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-09-22T12:00:00-07:00")); });
+afterEach(() => vi.useRealTimers());
 
 const quoteId = "11111111-1111-4111-8111-111111111111";
 const actorId = "22222222-2222-4222-8222-222222222222";
