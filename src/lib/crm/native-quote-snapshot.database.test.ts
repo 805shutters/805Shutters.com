@@ -3,7 +3,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { customerConfigurationFromSelection } from './sales-quote-v2-customer-configuration';
+import { customerConfigurationFromSelection, V2_CUSTOMER_CONFIGURATION_FIELDS } from './sales-quote-v2-customer-configuration';
+import type { SelectionContext, SelectionValue } from '../quote-v2/core';
 const db = new PGlite({extensions:{pgcrypto}});
 const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const migration=(name:string)=>readFileSync(`supabase/migrations/${name}.sql`,'utf8');
@@ -66,6 +67,7 @@ beforeAll(async()=>{
  await db.exec(migration('20260921231523_native_manual_snapshot_customer_projection'));
  await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
  await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
+ await db.exec(migration('20260923215906_native_delivery_customer_configuration_parity'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -250,6 +252,36 @@ it.each(['No','Yes'])('reserves customer delivery with saved split tilt %s witho
  expect(delivery.customer_payload.total).toBe(387);
  const attempt=(await db.query<any>('select state from sales_quote_v2_delivery_attempts where delivery_id=$1',[delivery.id])).rows[0];
  expect(attempt.state).toBe('pending');
+});
+it('keeps every supported customer field consistent between TypeScript and real SQL',async()=>{
+ const configuration: Record<string,SelectionValue> = Object.fromEntries(V2_CUSTOMER_CONFIGURATION_FIELDS.map(([key])=>[key,'customer setting']));
+ Object.assign(configuration,{
+  mount_type:'Inside Mount',basic_light_guard:'Yes',valance:'Curved Fascia',
+  lift_system:'Motorized',motor_type:'AutoWand',
+  wood_cutout_left_type:'Side Middle',wood_cutout_right_type:'Corner Bottom',
+  motorization_selections:[{groupId:'motor',optionId:'motor-1',role:'motor',units:1,internal_cost:999}],
+  internal_cost:999,dealer_cost:999,selectionFingerprint:'private',
+ });
+ const cases: SelectionContext[] = [
+  {...selection,programId:price.programId,catalogAsOf:'2026-09-23',configuration,options:{expedited:false}},
+  {...selection,programId:price.programId,catalogAsOf:'2026-09-23',configuration:{...configuration,mount_type:'Outside Mount',lift_system:'Cordless',wood_cutout_left_type:'None',wood_cutout_right_type:'None'},options:{}},
+ ];
+ for(const value of cases){
+  const actual=(await db.query<any>('select quote_v2_customer_safe_configuration($1) as configuration',[value])).rows[0].configuration;
+  expect(actual).toEqual(customerConfigurationFromSelection(value));
+  expect(JSON.stringify(actual)).not.toMatch(/internal_cost|dealer_cost|selectionFingerprint/);
+ }
+});
+it('reserves a quote with a faux-wood finish without changing its retail price',async()=>{
+ const n=42;
+ await seed(n);
+ const configured={...selection,configuration:{...selection.configuration,finish_type:'Smooth'}};
+ await db.query('update sales_quote_designs set quote_v2_selection=$1 where id=$2',[configured,id(n+200)]);
+ const p=payload(n);
+ const configuration=customerConfigurationFromSelection({...configured,programId:price.programId,catalogAsOf:'2026-09-23'});
+ const delivery=await reserve(n,{...p,lines:p.lines.map(line=>({...line,configuration}))});
+ expect(delivery.customer_payload.lines[0].configuration.selections.finish_type).toBe('Smooth');
+ expect(delivery.customer_payload.total).toBe(387);
 });
 it('reserves, deduplicates dispatch, and accepts current discounted retail with unresolved cost',async()=>{
  await seed(30);
