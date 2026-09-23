@@ -472,6 +472,18 @@ describe("automatic order email uses the same product invoice workflow", () => {
 
 describe("confirmed shipment dates", () => {
   const shipment = { shippedOn: "2026-09-10", mailbox: "805@805shutters.com", messageId: "1a0b8ca64c60954b", orderReference: "8880985478" };
+  it("saves a manual shipment without details and accepts official email details afterward", async () => {
+    const db = database();
+    await completeProductMilestone(db.client, { ...input, step: "shipped" }, actor);
+    const manualAt = db.tables.crm_customer_products[0].meta.shipped_at;
+    expect(manualAt).toEqual(expect.any(String));
+    expect(db.tables.crm_customer_products[0].meta.shipping_confirmation).toBeUndefined();
+    expect(db.tables.crm_customer_products[0].meta.workflow_checks.shipped.source).toBe("staff_job_status");
+    const records = db.tables.crm_customer_products.map(p => ({ id: p.id, updatedAt: p.updated_at }));
+    await completeProductMilestone(db.client, { ...input, records, step: "shipped", shipment }, actor);
+    expect(db.tables.crm_customer_products[0].meta).toMatchObject({ shipped_at: manualAt, shipping_confirmation: shipment });
+    expect(db.tables.crm_customer_products[0].meta.ordered_at).toBeUndefined();
+  });
   it("stores actual dispatch separately from processing time and retries without rewriting", async () => {
     const db = database();
     const request = { ...input, step: "shipped", shipment };

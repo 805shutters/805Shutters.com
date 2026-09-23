@@ -1,7 +1,5 @@
 "use client";
 
-import { parseWholeJobRecordId } from "@/lib/crm/whole-job-workflow";
-import { ProductShipmentEditor } from "./ProductShipmentEditor";
 import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
@@ -93,7 +91,6 @@ export function ShipmentDates({ product }: { product: ProductProgress }) {
   return <small className={styles.shipmentDates}>{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
 }
 export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onAction, onDelete }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
-  const [shipmentEditor, setShipmentEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
   const contractButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -113,7 +110,6 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   async function act(item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) {
     if (lock.current || busy) return;
     if (step === "ordered" && product) { setOrderEditor({item,product}); return; }
-    if (step === "shipped" && product && product.records.every(record => /^[a-f\d-]{36}$/i.test(record.id) || Boolean(parseWholeJobRecordId(record.id) && record.productType))) { setShipmentEditor({item,product}); return; }
     setFeedbackId(item.source.id);
     lock.current = true; setPending(`${item.source.id}:${step}:${product?.id || ""}`); setError(""); setNotice("");
     try { const message = await onAction(item, step, product); if (message) setNotice(message); }
@@ -228,7 +224,6 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     })}</div>}
     {condensed && contractId && visible.some(item => item.source.id === contractId) && <CondensedContract item={visible.find(item => item.source.id === contractId)!} onClose={closeContract} />}
     {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
-    {shipmentEditor && <ProductShipmentEditor item={shipmentEditor.item} product={shipmentEditor.product} onSave={onAction} onClose={() => setShipmentEditor(null)} />}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || orderEditor.item.source.orderEmails} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
     <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence{condensed && <span>One line per customer job · Scroll right for all details</span>}</footer>
   </section>;
