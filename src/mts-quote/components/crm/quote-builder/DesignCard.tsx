@@ -12429,7 +12429,10 @@ function ShadesAndBlindsOptions({
     }
   };
 
-  const palladianIssues = productType === "Palladian Shelf" ? validateNormanFamilyRules({
+  // The server checks the saved shelf program. The legacy preview below guesses
+  // a paired-product program and can contradict a verified standalone shelf price.
+  const serverPricedNormanShelf = isNormanGridDesign(design) && optionsJson.norman_grid_pricing === true;
+  const palladianIssues = productType === "Palladian Shelf" && !serverPricedNormanShelf ? validateNormanFamilyRules({
     productId: "palladian_shelf", manufacturerId: "Norman", catalogVersion: "", catalogAsOf: "2026-09-19",
     programId: optionsJson.accompanying_product_id === "none" ? "palladian_shelf_without_product" : "palladian_shelf_with_product",
     quantity: _lineItem.quantity, widthInches: measurementToInches(_lineItem.width_whole, _lineItem.width_fraction),

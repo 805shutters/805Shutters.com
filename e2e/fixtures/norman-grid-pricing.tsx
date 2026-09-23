@@ -20,6 +20,11 @@ const initial = {
   sales_quote_line_items: [{ id: "norman-grid-line", quote_id: "norman-grid-quote", room_name: "Kitchen", product_type: "Roller Shades", width_whole: 0, width_fraction: "0", height_whole: 0, height_fraction: "0", quantity: 1, sort_order: 0, selected_design_id: "norman-grid-design" }],
   sales_quote_designs: [{ id: "norman-grid-design", line_item_id: "norman-grid-line", variant: "A", supplier: "Norman", product_type: "Roller Shades", material: "Soluna Roller Shades", unit_price: 0, mount_type:"Inside Mount", shade_type:"Single", lift_system:"Cordless",valance:"No Valance",fabric:"Amelia", options_json: { fabric_color_code:"F1484",fabric_collection:"Amelia",roller_application:"Single",roller_top_treatment:"No Top Treatment",roller_tube:"All Tubes",roller_region_scope:"ca_ma",catalog_product_id: "roller", catalog_program_id: "roller_cordless_fabric_price_group_2_pg2", catalog_manufacturer: "Norman", catalog_product_type: "Roller Shades", quote_lab_product_id: "roller", quote_lab_program_id: "roller_cordless_fabric_price_group_2_pg2", base_price: 0, surcharge_total: 0, pricing_method: "none", pricing_block_reason: "invalid_dimensions", pricing_calculation_status: "invalid", pricing_input_width_whole: 0, pricing_input_width_fraction: "0", pricing_input_height_whole: 0, pricing_input_height_fraction: "0" } }],
 };
+if (params.get("product") === "palladian_shelf") {
+  Object.assign(initial.sales_quote_line_items[0], {product_type:"Palladian Shelf",width_whole:36,height_whole:0});
+  Object.assign(initial.sales_quote_designs[0], {product_type:"Palladian Shelf",material:"Palladian Shelf",fabric:null,lift_system:null,
+    options_json:{catalog_product_id:"palladian_shelf",catalog_program_id:"palladian_shelf_palladian_shelf_without_product",color:"Winchester White 2010"}});
+}
 if (params.get("stale") === "1") {
   Object.assign(initial.sales_quote_line_items[0], { width_whole: 36, height_whole: 60 });
   Object.assign(initial.sales_quote_designs[0].options_json, { slat_size: '1"' });

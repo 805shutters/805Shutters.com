@@ -49,3 +49,14 @@ test('Norman grids automatically price saved selections and preserve manual pric
  await expect.poll(async()=>(await saved(page)).sales_quotes[0].total_amount).toBe(0);
  expect(errors).toEqual([]);
 });
+
+
+test('server-priced standalone Palladian shelf does not request paired-product pricing details',async({page})=>{
+ await page.route('**/*',route=>['localhost','127.0.0.1'].includes(new URL(route.request().url()).hostname)?route.continue():route.abort());
+ await page.goto('/e2e/fixtures/norman-grid-pricing.html?case=palladian&product=palladian_shelf');
+ await expect(page.getByRole('complementary',{name:'Contract Total $450.00',exact:true})).toBeVisible();
+ await expect(page.getByText('Pricing details needed',{exact:true})).not.toBeVisible();
+ await expect(page.getByText(/The paired-product price requires/)).not.toBeVisible();
+ expect((await saved(page)).sales_quote_line_items[0].height_whole).toBe(0);
+ await expect(page.getByRole('button',{name:'Edit price for Kitchen',exact:true})).toBeVisible();
+});
