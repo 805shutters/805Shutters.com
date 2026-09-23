@@ -106,6 +106,12 @@ export function MobileMeasurementKeypad({
     setManualValue(String(side === "width" ? widthWhole : heightWhole));
   }
 
+  function advanceOrDone() {
+    if (activeSide === "width" && !measurementAxis) selectSide("height");
+    else if (onDone) onDone();
+    else setOpen(false);
+  }
+
   function press(action: KeypadAction) {
     const next = applyMobileMeasurementKey(whole, action, replaceNext);
     setReplaceNext(next.replaceNext);
@@ -146,6 +152,12 @@ export function MobileMeasurementKeypad({
         <label><span>{dimensionLabel ?? activeSide} whole inches</span><input
           type="text"
           inputMode="numeric"
+          enterKeyHint={activeSide === "width" && !measurementAxis ? "next" : "done"}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            advanceOrDone();
+          }}
           pattern="[0-9]*"
           aria-label={`${activeSide} whole inches`}
           value={manualValue}
@@ -169,7 +181,7 @@ export function MobileMeasurementKeypad({
       {expanded && <div className={styles.allFractions} role="group" aria-label={`${activeSide} all ${fractions.length === 8 ? "eighth" : "sixteenth"} fractions`}>
         {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
       </div>}
-      <button type="button" className={styles.nextButton} onClick={() => activeSide === "width" && !measurementAxis ? selectSide("height") : onDone ? onDone() : setOpen(false)}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
+      <button type="button" className={styles.nextButton} onClick={advanceOrDone}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
     </div>}
   </section>;
 }

@@ -438,6 +438,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [message, setMessage] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [measurePicker, setMeasurePicker] = useState<{ lineId: string; step: MeasurementStep } | null>(null);
+  const [measurementSaving, setMeasurementSaving] = useState(false);
+  const [measurementSaveError, setMeasurementSaveError] = useState("");
+  const measurementSavingRef = useRef(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [signerName, setSignerName] = useState("");
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
@@ -542,7 +545,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   useEffect(() => { void load(); }, [session?.access_token, formId]);
 
   useEffect(() => {
-    if (!hydratedRef.current || !form || form.status === "submitted" || !lines.length) return;
+    if (!hydratedRef.current || !form || form.status === "submitted" || !lines.length || measurementSavingRef.current) return;
     linesRef.current = lines;
     const activeOwner = owner();
     const payload = technicalMeasureDraftPayload(lines);
@@ -697,6 +700,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   }
 
   function closeMeasurePicker() {
+    if (measurementSavingRef.current) return;
+    setMeasurementSaveError("");
     if (measurePickerAdvanceRef.current) {
       measurePickerAdvanceRef.current = false;
       return;
@@ -783,6 +788,50 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       return await pending;
     } finally {
       if (draftSyncPromiseRef.current === pending) draftSyncPromiseRef.current = null;
+    }
+  }
+
+  async function savePickerMeasurements(
+    lineId: string,
+    width: { whole: number; fraction: string },
+    height: { whole: number; fraction: string },
+    reviewedSides: readonly ("width" | "height")[] = [],
+  ) {
+    if (measurementSavingRef.current) return;
+    measurementSavingRef.current = true;
+    setMeasurementSaving(true);
+    setMeasurementSaveError("");
+    setMessage(null);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    // Commit the pair atomically before starting the shared persistence queue.
+    // Updating this ref inside a React state updater can save an older snapshot.
+    const nextLines = linesRef.current.map(line => {
+      if (line.id !== lineId) return line;
+      const values = { ...line.current_values, measure_complete: false };
+      if (reviewedSides.includes("width")) {
+        values.width_in = selectTechnicalMeasureInches(values.width_in, width.whole, width.fraction, FRACTIONS).inches;
+        values.width_confirmed = true;
+      }
+      if (reviewedSides.includes("height")) {
+        values.height_in = selectTechnicalMeasureInches(values.height_in, height.whole, height.fraction, FRACTIONS).inches;
+        values.height_confirmed = true;
+      }
+      return { ...line, current_values: values };
+    });
+    linesRef.current = nextLines;
+    setLines(nextLines);
+    userSelectedRef.current = false;
+    try {
+      const saved = await flushLatestDraft();
+      setMeasurePicker(null);
+      setMessage(saved.queued
+        ? "Measurements saved on this phone · waiting to upload."
+        : "Measurements saved. Continue with the next selection.");
+    } catch (error) {
+      setMeasurementSaveError(error instanceof Error ? error.message : "Measurements could not be saved. Please retry.");
+    } finally {
+      measurementSavingRef.current = false;
+      setMeasurementSaving(false);
     }
   }
 
@@ -1458,6 +1507,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           wholeStart={10}
           wholeEnd={125}
           fractions={FIELD_MEASURE_FRACTIONS}
+          saving={measurementSaving}
+          saveError={measurementSaveError}
           onClose={closeMeasurePicker}
           step={measurePicker.step}
           pendingWidth={pendingWidth}
@@ -1467,9 +1518,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           onHeightWhole={(whole) => { beginMeasurePickerAdvance(); selectLineInches(activePickerLine.id, "height_in", whole, "0", activePickerLine.current_values.height_in); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
           onHeightFraction={(fraction) => { selectLineInches(activePickerLine.id, "height_in", wholeFraction(activePickerLine.current_values.height_in).whole, fraction, activePickerLine.current_values.height_in); setMeasurePicker(null); }}
           onDirectMeasurements={(width, height, reviewedSides) => {
-            if (reviewedSides?.includes("width")) selectLineInches(activePickerLine.id, "width_in", width.whole, width.fraction, activePickerLine.current_values.width_in);
-            if (reviewedSides?.includes("height")) selectLineInches(activePickerLine.id, "height_in", height.whole, height.fraction, activePickerLine.current_values.height_in);
-            setMeasurePicker(null);
+            void savePickerMeasurements(activePickerLine.id, width, height, reviewedSides);
           }}
         />
       ) : null}
