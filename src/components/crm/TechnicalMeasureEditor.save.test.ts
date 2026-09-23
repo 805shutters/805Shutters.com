@@ -98,6 +98,16 @@ describe("technical measurement save and close", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.body.textContent).toContain("waiting to upload");
   });
+  it("queues the newest pair when an earlier in-flight save loses its connection", async () => {
+    await mount(); deferSave = true; await click("Save Draft");
+    expect(requests).toHaveLength(1);
+    await edit(); await click("Save size");
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    await act(async () => respond!(Response.json({ message: "Connection interrupted" }, { status: 503 })));
+    expect(mocks.queue).toHaveBeenLastCalledWith("test@example.invalid", "test-measure", "draft", expect.objectContaining({ lines: expect.arrayContaining([expect.objectContaining({ id: "line-0", currentValues: expect.objectContaining({ width_in: 29.5, height_in: 58.25 }) })]) }));
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(button("Select width").textContent).toContain("29 1/2");
+  });
   it("confirms only height when opened from height, and cancel never saves", async () => {
     await mount(); await click("Open field measure for Bathroom · A"); await click("Select height");
     await click("7"); await click("2"); await click("Close");

@@ -773,7 +773,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         const sourceLines = linesRef.current;
         const serialized = JSON.stringify(technicalMeasureDraftPayload(sourceLines));
         const result = await persistDraftOnce(sourceLines);
-        if (result.queued) return { form: result.form, queued: true };
+        if (result.queued) {
+          // A connection failure may have queued an older request while the
+          // calculator committed a newer pair. Persist that pair locally too.
+          if (serialized !== JSON.stringify(technicalMeasureDraftPayload(linesRef.current))) continue;
+          return { form: result.form, queued: true };
+        }
         if (!result.superseded) {
           lastSyncedPayloadRef.current = serialized;
           return { form: result.form, queued: false };
