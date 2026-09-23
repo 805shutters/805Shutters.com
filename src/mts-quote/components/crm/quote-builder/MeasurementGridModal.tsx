@@ -4,6 +4,7 @@ import { cn } from "@mts/lib/utils";
 import { FRACTIONS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { MobileMeasurementKeypad } from "@/components/crm/MobileMeasurementKeypad";
+import calculatorStyles from "./MeasurementCalculator.module.css";
 
 interface MeasurementGridModalProps {
   open: boolean;
@@ -259,7 +260,7 @@ function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendin
     onSave(values.width, values.height, reviewedSides);
   }
   return <Dialog open onOpenChange={open => !open && !saving && onClose()}>
-    <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6">
+    <DialogContent className={cn(calculatorStyles.dialog, "max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6")}>
       <DialogHeader><DialogTitle>{singleDimensionLabel ?? (measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size")}</DialogTitle></DialogHeader>
       <fieldset disabled={saving} className="min-w-0">
         <MobileMeasurementKeypad widthWhole={width.whole} widthFraction={width.fraction}

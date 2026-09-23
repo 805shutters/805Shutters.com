@@ -1,0 +1,7 @@
+.dialog { font-family: var(--font-body), sans-serif; border-radius: 16px; }
+.dialog > div:first-child { min-height: 44px; padding-right: 48px; justify-content: center; text-align: left; }
+.dialog h2 { margin: 0; font: 700 20px/1.2 var(--font-body), sans-serif; }
+.dialog > button:last-child { display: flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; padding: 10px; top: 12px; right: 12px; opacity: 1; }
+.dialog > button:last-child svg { display: block; width: 20px; height: 20px; flex-shrink: 0; }
+.dialog fieldset { margin: 0; padding: 0; border: 0; }
+.dialog [aria-label="Choose dimension"] strong { color: inherit !important; }

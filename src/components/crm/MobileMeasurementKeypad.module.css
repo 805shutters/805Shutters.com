@@ -3,3 +3,5 @@
 :global(.mobile-805-experience) .measurement :is(button,input){background:#202729;color:#fff;border-color:#46534c}
 :global(.mobile-805-experience) .measurement button[aria-pressed=true],:global(.mobile-805-experience) .measurement .nextButton{background:#b7efd0;color:#102019}
 :global(.mobile-805-experience) .measurement .gridButton small{color:#aebbb5}
+
+:global(.mobile-805-experience) .measurement .nextButton{background:#b7efd0!important;color:#102019!important}
