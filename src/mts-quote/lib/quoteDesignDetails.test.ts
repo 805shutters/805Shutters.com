@@ -39,6 +39,19 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("labels area-priced options as square feet while retaining per-item quantities", () => {
+    const design = {...miniBlindDesign(), product_type: "Shutters", supplier: "Onyx", options_json: {
+      surcharges: [
+        {name: "Hidden Tilt Rod", quantity: 20, billingBasis: "square_foot"},
+        {name: "Panel option", quantity: 2},
+        {name: "Double Hung", quantity: 1},
+      ],
+    }};
+    expect(getQuoteDesignDetails(design)).toContainEqual({
+      label: "Surcharges", value: "Hidden Tilt Rod (20 sq ft), Panel option x2, Double Hung",
+    });
+  });
+
   it("uses the current Norman Roller valance once when an imported option is stale", () => {
     const design = {...miniBlindDesign(), product_type:"Roller Shades", valance:"Square Fascia*",
       options_json:{valance:"No Valance",valance_color:"White"}};

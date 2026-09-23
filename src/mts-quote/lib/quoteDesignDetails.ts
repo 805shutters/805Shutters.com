@@ -222,7 +222,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
           const qty = Number(surcharge.quantity || 1);
           const amount = Number(surcharge.price || surcharge.amount || 0);
           const price = amount > 0 ? ` - ${formatCurrency(amount)}` : "";
-          return `${name}${qty > 1 ? ` x${qty}` : ""}${price}`;
+          const quantityLabel = surcharge.billingBasis === "square_foot" && Number.isFinite(qty) && qty > 0
+            ? ` (${qty} sq ft)`
+            : qty > 1 ? ` x${qty}` : "";
+          return `${name}${quantityLabel}${price}`;
         })
         .filter(Boolean)
         .join(", ");
