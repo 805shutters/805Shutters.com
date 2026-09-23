@@ -4919,7 +4919,7 @@ export function DesignCard({
       currentOptions,
     );
   };
-  const manufacturerOptionsRoute = authoritativeV2 || getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required"
+  const manufacturerOptionsRoute = authoritativeV2 || currentOptions.catalog_product_id === SMARTDRAPE_REPLACEMENT || currentOptions.quote_lab_product_id === SMARTDRAPE_REPLACEMENT || isRomanAncillary(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? "")) || getProduct(String(currentOptions.catalog_product_id ?? currentOptions.quote_lab_product_id ?? ""))?.priceBasis === "manual_required"
     ? resolveManufacturerOptionsUiRoute(
         currentDesign,
         lineItem.product_type,
@@ -5855,7 +5855,7 @@ export function DesignCard({
               />
               {manufacturerOptionsRoute.productId === "lotus_dealer_listed_parts" ? (
                 <span className="quote-line-card-size">By item / quantity</span>
-              ) : authoritativeV2 && isRollerValance(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{rollerValanceUnitLabel(currentOptions[ROLLER_VALANCE_KEY])}</span> : authoritativeV2 && isNormanValanceOnly(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{valanceOnlyUnitLabel(currentOptions[VALANCE_ONLY_KEY])}</span> : authoritativeV2 && manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? <span className="quote-line-card-size-value">{replacementUnitLabel(currentOptions[SMARTDRAPE_REPLACEMENT_RECORD])}</span> : authoritativeV2 && isRomanAncillary(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{romanAncillaryUnitLabel(manufacturerOptionsRoute.productId!, currentOptions[ROMAN_ANCILLARY_RECORD])}</span> : hasMeasurements ? (
+              ) : authoritativeV2 && isRollerValance(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{rollerValanceUnitLabel(currentOptions[ROLLER_VALANCE_KEY])}</span> : authoritativeV2 && isNormanValanceOnly(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{valanceOnlyUnitLabel(currentOptions[VALANCE_ONLY_KEY])}</span> : (authoritativeV2 || normanServerPricing) && manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? <span className="quote-line-card-size-value">{replacementUnitLabel(currentOptions[SMARTDRAPE_REPLACEMENT_RECORD])}</span> : (authoritativeV2 || normanServerPricing) && isRomanAncillary(manufacturerOptionsRoute.productId ?? "") ? <span className="quote-line-card-size-value">{romanAncillaryUnitLabel(manufacturerOptionsRoute.productId!, currentOptions[ROMAN_ANCILLARY_RECORD])}</span> : hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
                   className="quote-line-card-size"

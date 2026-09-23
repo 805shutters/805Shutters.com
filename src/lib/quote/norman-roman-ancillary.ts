@@ -6,6 +6,10 @@ export const ROMAN_YARDAGE = 'norman_roman_fabric_by_yard';
 export const ROMAN_PILLOWS = 'norman_roman_pillow_covers';
 export const ROMAN_ANCILLARY_RECORD = 'norman_roman_ancillary_v1';
 export const ROMAN_ANCILLARY_VERSION = '805-v2-norman-roman-ancillary-2026-09-20-r1';
+export const ROMAN_ANCILLARY_PRICING_FROM = '2026-09-22';
+export const ROMAN_ANCILLARY_PRICING_VERSION = '805-v2-norman-roman-ancillary-retail-2026-09-22-r1';
+export const ROMAN_ANCILLARY_PRICE_SOURCE = 'norman-retail-guide-2026-09-rechecked-2026-09-22' as const;
+export const ROMAN_ANCILLARY_PRICING_NOTE = 'Priced from the September Norman suggested-retail schedule. Dealer cost and manufacturer freight remain unverified.';
 export const ROMAN_ANCILLARY_HOLD = 'Suggested-retail reference only. Current ancillary availability, dealer pricing, freight and selling treatment require verification before a customer price is approved.';
 export const isRomanAncillary = (id: string) => id === ROMAN_YARDAGE || id === ROMAN_PILLOWS;
 export const pillowSizes = ['14x14','16x16','18x18','20x20','24x24','10x14','10x16','10x18','12x22','14x24','14x18'] as const;
@@ -43,7 +47,7 @@ export function parseRomanAncillary(value: unknown): RomanAncillaryRecord | null
   if (v.kind === 'pillow_cover' && (v.size === '' || pillowSizes.includes(v.size as PillowSize)) && ['', 'knife', 'piping'].includes(String(v.edge)) && v.pattern === 'standard') return {version:1,colorCode:v.colorCode,kind:v.kind,size:v.size as PillowSize|'',edge:v.edge as 'knife'|'piping'|'',pattern:'standard'};
   return null;
 }
-/** A source comparison, deliberately not a price-engine authorization. */
+/** Published suggested retail in natural units; never dealer cost. */
 export function romanAncillaryRetailReference(record: RomanAncillaryRecord): number | null {
   const row = romanFrontRows.find(r => r.colorCode === record.colorCode);
   if (!row) return null;
@@ -65,8 +69,8 @@ export const romanAncillaryProducts: CatalogProduct[] = [
   [ROMAN_YARDAGE, 'Centerpiece Roman Fabric by Yard', 'Fabric by Yard'],
   [ROMAN_PILLOWS, 'Centerpiece Decorative Pillow Covers', 'Decorative Pillow Covers'],
 ].map(([id,name,productType]) => ({
-  id,name,productType,manufacturer:'Norman',priceBasis:'manual_required',customerRetailStatus:'unverified',provisional:true,
+  id,name,productType,manufacturer:'Norman',priceBasis:'suggested_retail',customerRetailStatus:'verified',provisional:false,
   source:'Roman Shade Guide pp34,46,50; 2026Sep Retail Price Guide printed pp25–26',pages:[26,27],fabricRouting:null,
-  programs:[{id:`${id}_source`,name:id===ROMAN_YARDAGE?'Fabric cut · yards':'Pillow cover · each',priceGroup:null,priceAxis:'wh',priceBasis:'manual_required',sourceId:'norman-roman-guide-2026-09',grid:{widths:[],heights:[],prices:[]},minWidth:null,maxWidth:null,minHeight:null,maxHeight:null,maxAreaSqft:null,fabricCollections:[],sourcePages:[26,27],notes:[ROMAN_ANCILLARY_HOLD]}],
-  surcharges:[],fabricByYard:[],freightStatus:'unresolved',notes:[ROMAN_ANCILLARY_HOLD, id===ROMAN_YARDAGE?'Maximum 10 yards. Ordering increments not specified; fractional requests remain held.':'Cover only; pillow insert not included. Knife edge or piping (+15% suggested retail).'],
+  programs:[{id:`${id}_source`,name:id===ROMAN_YARDAGE?'Fabric cut · yards':'Pillow cover · each',priceGroup:null,priceAxis:'wh',priceBasis:'suggested_retail',sourceId:ROMAN_ANCILLARY_PRICE_SOURCE,grid:{widths:[],heights:[],prices:[]},minWidth:null,maxWidth:null,minHeight:null,maxHeight:null,maxAreaSqft:null,fabricCollections:[],sourcePages:[26,27],notes:[ROMAN_ANCILLARY_PRICING_NOTE]}],
+  surcharges:[],fabricByYard:[],freightStatus:'unresolved',notes:[ROMAN_ANCILLARY_PRICING_NOTE, id===ROMAN_YARDAGE?'Maximum 10 yards. Ordering increments not specified; fractional requests remain held.':'Cover only; pillow insert not included. Knife edge or piping (+15% suggested retail).'],
 }));

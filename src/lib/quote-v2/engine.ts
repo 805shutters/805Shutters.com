@@ -1,3 +1,7 @@
+import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
+import { priceSmartdrapeReplacement } from "./norman-smartdrape-replacement";
+import { isRomanAncillary } from "../quote/norman-roman-ancillary";
+import { priceRomanAncillary } from "./norman-roman-ancillary";
 import { smartfoldHasDocumentedQuotePricingBranch, smartfoldQuotePricingExceptions } from './norman-smartfold-eligibility';
 import { onyxPolyH3, withOnyxPolyH3Surcharges, ONYX_POLY_H3_SOURCE, ONYX_POLY_H3_SURCHARGE_ID } from './onyx-poly-h3';
 import { rollerLightGuard } from "./norman-roller-light-guard";
@@ -1835,8 +1839,11 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
       )
     : undefined;
   const effectivePriceBasis = selectedProgram?.priceBasis ?? product?.priceBasis;
-  const sourceResult =
-    effectivePriceBasis === "dealer_net" &&
+  const sourceResult = isRomanAncillary(selection.productId)
+    ? priceRomanAncillary(selection, authoritativePriceInput, quoteMode)
+    : selection.productId === SMARTDRAPE_REPLACEMENT
+      ? priceSmartdrapeReplacement(selection, authoritativePriceInput)
+      : effectivePriceBasis === "dealer_net" &&
     SOURCE_COST_PLUS_PRODUCTS.has(selection.productId)
       ? dealerNetSourceBreakdown(authoritativePriceInput)
       : priceDesign(authoritativePriceInput, selection.catalogAsOf);

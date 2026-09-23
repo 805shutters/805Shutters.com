@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(72);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(73);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(72);
+    ).toBe(73);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(72);
+    ).toBe(73);
 
 
 
@@ -91,6 +91,7 @@ describe("quote V2 source manifest", () => {
       "Roller Shade Guide 2026-09.pdf": "e9cc15ce95e5d0c2305b639df612af39e7f17fb316d001631e3c3cbff36e0b2e",
       "Roman Shade Guide 2026-09.pdf": "d312848c45bf49ee3c06a6ae11f3f7b4cd7b53d88984f114598154c54628d151",
       "PS-SD Guide.pdf": "3d00375007c3afb0d8e1cf0e75a51f2395d27dace067074f01033b72f70461a3",
+      "2026Sep Retail Price Guide (rechecked 2026-09-22).pdf": "ec61b3246e5c7d23adc20e01c54e0137172f0800308f8107144762b9ada3d9da",
       "2026Sep Retail Price Guide.pdf": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd",
       "2026Jul Retail Price Guide (1).pdf":
         "ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3",

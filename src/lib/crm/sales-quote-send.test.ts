@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { calculateCustomerCharges, CUSTOMER_CHARGE_POLICY_VERSION } from "@/lib/quote/customer-charges";
 import {
   calculateSalesQuoteMirrorPricing,
   legacyDesignBreakdown,
@@ -96,6 +97,50 @@ describe("calculateSalesQuoteMirrorPricing", () => {
 
     expect(pricing.total).toBe(2600.15);
     expect(pricing.shouldSyncSourceTotal).toBe(false);
+  });
+
+  it("honors a selected Norman manual zero instead of restoring the previous quote total", () => {
+    const lines = [{ id: "line", quantity: 3, selected_design_id: "manual" }];
+    const designs = new Map([["line", [
+      { id: "manual", supplier: "Norman", unit_price: 0, options_json: { manual_price_override: true, norman_grid_pricing: true, authoritative_once_total: 50 } },
+      { id: "inactive", supplier: "Norman", unit_price: 100 },
+    ]]]);
+    expect(calculateSalesQuoteMirrorPricing({ status: "draft", total_amount: 1234 }, lines, designs)).toEqual({ subtotal: 0, total: 0, shouldSyncSourceTotal: true });
+  });
+
+  it("retains existing project fees and discounts with zero Norman merchandise", () => {
+    const lines = [{ id: "norman", quantity: 2, selected_design_id: "manual" }, { id: "other", quantity: 1, selected_design_id: "other-design" }];
+    const designs = new Map([
+      ["norman", [{ id: "manual", supplier: "Norman", unit_price: 0, options_json: { manual_price_override: true } }]],
+      ["other", [{ id: "other-design", supplier: "Onyx", unit_price: 0, options_json: { manual_price_override: true } }]],
+    ]);
+    const quote = { status: "draft", total_amount: 1234, installer_notes: JSON.stringify({ __adminControls: { showExtras: true, extraFees: [{ name: "Agreed delivery", amount: 50 }], showDiscount: true, discountPercent: 10 } }) };
+    expect(calculateSalesQuoteMirrorPricing(quote, lines, designs)).toEqual({ subtotal: 0, total: 45, shouldSyncSourceTotal: true });
+  });
+
+  it("keeps required installation and shipping protected in a mixed manual-zero quote", () => {
+    const lines = [{ id: "free", quantity: 1, selected_design_id: "free-design" }, { id: "installed", quantity: 1, selected_design_id: "installed-design" }];
+    const designs = new Map<string, Record<string, unknown>[]>([
+      ["free", [{ id: "free-design", supplier: "Norman", unit_price: 0, options_json: { manual_price_override: true } }]],
+      ["installed", [{ id: "installed-design", supplier: "Norman", unit_price: 39, options_json: {
+        manual_price_override: true, manual_customer_charge_policy: CUSTOMER_CHARGE_POLICY_VERSION,
+        customer_charges: calculateCustomerCharges({ product: "Roman shade", physicalUnitsPerWindow: 1, quantity: 1 }),
+      } }]],
+    ]);
+    const quote = { status: "draft", total_amount: 1234, installer_notes: JSON.stringify({ __adminControls: { showDiscount: true, discountPercent: 100 } }) };
+    expect(calculateSalesQuoteMirrorPricing(quote, lines, designs)).toEqual({ subtotal: 39, total: 39, shouldSyncSourceTotal: true });
+  });
+
+  it.each(["other manufacturer", "frozen", "sent", "signed", "v2", "inactive override"])("preserves prior fallback for %s", kind => {
+    const quote: Record<string, unknown> = { status: "draft", total_amount: 1234 };
+    const options: Record<string, unknown> = { manual_price_override: true };
+    const design = { id: "manual", supplier: kind === "other manufacturer" ? "Onyx" : "Norman", unit_price: 0, options_json: options };
+    const lines = [{ id: "line", quantity: 1, selected_design_id: kind === "inactive override" ? "selected" : "manual" }];
+    if (kind === "frozen") options.sent_price_snapshot = { unit_price: 0 };
+    if (kind === "sent") quote.sent_at = "2026-09-22";
+    if (kind === "signed") quote.signed_at = "2026-09-22";
+    if (kind === "v2") quote.quote_v2_backend = true;
+    expect(calculateSalesQuoteMirrorPricing(quote, lines, new Map([["line", [design, { ...design, id: "selected", options_json: {} }]]]))).toEqual({ subtotal: 0, total: 1234, shouldSyncSourceTotal: false });
   });
 });
 

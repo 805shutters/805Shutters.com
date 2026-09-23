@@ -7,13 +7,14 @@ import { hasValanceOnlyUnits, validateValanceOnly } from "./norman-valance-only"
 import { validateSmartfoldInsideLightGuardClearance } from "./norman-smartfold-inside-clearance";
 import { validateLotusPartModel } from "./lotus-parts";
 import { validateLotusVinyl } from "./lotus-vinyl";
-import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
+import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_PRICING_FROM } from "../quote/norman-smartdrape-replacement";
 import { validateSmartdrapeReplacement } from "./norman-smartdrape-replacement";
 import { validateVerticalHoneycombPair } from "./norman-vertical-pair";
 import { smartfoldHasDocumentedPricingBranch, validateSmartfoldEligibility } from "./norman-smartfold-eligibility";
 import { rollerMotorizationForSelection } from "./norman-roller-panel";
 import { validateRollerCommon } from "./norman-roller-common";
 import { rollerHardware } from "./norman-roller-hardware";
+import { isRomanAncillary, ROMAN_ANCILLARY_PRICING_FROM } from "../quote/norman-roman-ancillary";
 import { hasRomanAncillaryUnits, validateRomanAncillary } from "./norman-roman-ancillary";
 import { validateNormanShutterPanels } from './norman-shutter-panels';
 import { validateOnyxHeldSelection } from "./onyx-held-rules";
@@ -2419,6 +2420,8 @@ function validateNormanShutterFramePricing(
 }
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
+  if (context.productId === SMARTDRAPE_REPLACEMENT && context.catalogAsOf >= SMARTDRAPE_REPLACEMENT_PRICING_FROM) return "documented_limited";
+  if (isRomanAncillary(context.productId) && context.catalogAsOf >= ROMAN_ANCILLARY_PRICING_FROM) return "documented_limited";
   if (smartfoldHasDocumentedPricingBranch(context)) return "documented_limited";
   if (isTypedLotusAmx(context) && context.catalogAsOf >= "2026-09-20") return "documented_limited";
   if (context.productId === "wood_blinds" && context.catalogAsOf >= "2026-09-19") return "documented_limited";

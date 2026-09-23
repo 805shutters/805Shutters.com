@@ -32,6 +32,76 @@ function isAutomatic(design: SalesQuoteDesign): boolean {
     options.custom_mode !== true && options.custom_pricing_mode !== true;
 }
 
+function record(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function sameMoney(saved: unknown, calculated: unknown): boolean {
+  if (saved === null || saved === undefined || saved === "" || calculated === null || calculated === undefined) return false;
+  const left = Number(saved);
+  const right = Number(calculated);
+  return Number.isFinite(left) && Number.isFinite(right) && Math.round(left * 100) === Math.round(right * 100);
+}
+
+function sameCustomerCharges(saved: unknown, calculated: unknown): boolean {
+  const left = record(saved);
+  const right = record(calculated);
+  return Object.keys(left).length === Object.keys(right).length &&
+    Object.entries(right).every(([key, value]) => left[key] === value);
+}
+
+/** A saved selection can reach send before its debounced automatic price does. */
+export function assertCurrentNormanLegacyPricing(
+  state: NormanQuotePricingState,
+  serverDate = quoteV2ServerCatalogDate(),
+): void {
+  if (!state.quote || state.quote.quote_v2_backend === true || isQuotePriceLocked(state.quote)) return;
+  const selected = state.lines.filter(line => !line.archived_at).flatMap(line => {
+    const candidates = state.designs.filter(design => design.line_item_id === line.id);
+    const design = line.selected_design_id
+      ? candidates.find(candidate => candidate.id === line.selected_design_id)
+      : candidates.find(candidate => candidate.variant === "A") ?? candidates[0];
+    return design && isNorman(design) && isAutomatic(design) && design.options_json?.norman_grid_pricing === true
+      ? [{ line, design }] : [];
+  });
+  if (!selected.length) return;
+  const stale = (room?: string | null): never => {
+    throw new CrmAuthError(409, `${room || "Norman line"}: Norman pricing is missing or stale. Refresh pricing for the current selections before sending.`);
+  };
+  let prepared: ReturnType<typeof prepareNormanLegacyPricing>;
+  try {
+    // Keep all selected Norman rows in the calculation: shared accessories and
+    // assemblies can change a line's price when another selected line changes.
+    prepared = prepareNormanLegacyPricing(state, serverDate);
+  } catch (error) {
+    if (error instanceof CrmAuthError && error.status === 422) stale(selected[0].line.room_name);
+    throw error;
+  }
+  for (const { line, design } of selected) {
+    const current = prepared.find(entry => entry.designId === design.id);
+    const options = design.options_json ?? {};
+    const expectedSnapshot = record(current?.rpcResult.authoritativeSnapshot);
+    const expected = record(expectedSnapshot.retail);
+    const snapshot = record(options.authoritative_v2_snapshot);
+    const retail = record(snapshot.retail);
+    const breakdown = record(options.authoritative_price_breakdown);
+    const fingerprint = current?.rpcResult.selectionFingerprint;
+    const catalogVersion = current?.rpcResult.catalogVersion;
+    if (current?.priceStatus !== "authoritative" || !fingerprint || !catalogVersion ||
+      design.quote_v2_price_status !== "authoritative" || options.authoritative_price_status !== "authoritative" ||
+      design.quote_v2_selection_fingerprint !== fingerprint || options.priced_selection_fingerprint !== fingerprint ||
+      snapshot.selectionFingerprint !== fingerprint ||
+      design.quote_v2_priced_catalog_version !== catalogVersion || options.priced_catalog_version !== catalogVersion ||
+      snapshot.catalogVersion !== catalogVersion ||
+      !sameMoney(design.unit_price, expected.unitPrice) || !sameMoney(options.authoritative_once_total, expected.onceTotal) ||
+      ![retail, breakdown].every(saved =>
+        ["unitPrice", "onceTotal", "total"].every(key => sameMoney(saved[key], expected[key])) &&
+        saved.quantity === expected.quantity &&
+        sameCustomerCharges(saved.customerCharges, expected.customerCharges)
+      )) stale(line.room_name);
+  }
+}
+
 /** Reuse the same calculator as V2 without promoting or rewriting the quote. */
 export function prepareNormanLegacyPricing(state: NormanQuotePricingState, serverDate: string) {
   const quote = state.quote;

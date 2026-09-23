@@ -1080,6 +1080,17 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     ],
     "sourceUrl": "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Roller%20Shades/Roller%20MinMax%20Appendix.xlsx"
   },
+  {
+    id: "norman-retail-guide-2026-09-rechecked-2026-09-22",
+    manufacturer: "Norman", kind: "price_book", format: "pdf",
+    fileName: "2026Sep Retail Price Guide (rechecked 2026-09-22).pdf", title: "2026 September Suggested Retail Guide",
+    revision: "2026-09; retrieved 2026-09-22", effectiveDate: "2026-09-01",
+    effectiveDateEvidence: "September retail guide effective September 1, 2026; Roman ancillary rates printed pp25–26 (PDF26–27).",
+    receivedDate: "2026-09-22", modifiedDate: null,
+    sha256: "ec61b3246e5c7d23adc20e01c54e0137172f0800308f8107144762b9ada3d9da",
+    authorities: ["pricing"], pageCount: 40,
+    sourceUrl: "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinder/PriceGuide/2026Sep%20Retail%20Price%20Guide.pdf",
+  },
 ] as const satisfies readonly SourceManifestEntry[];
 
 export type SourceManifestId =

@@ -437,6 +437,12 @@
       "fileName": "Roller MinMax Appendix 2026-09.xlsx",
       "byteLength": 422842,
       "sha256": "754e924e4b3c4429b5452e3de0d0ed330d7b2a376613783c9659766f61a04629"
+    },
+    {
+      "sourceId": "norman-retail-guide-2026-09-rechecked-2026-09-22",
+      "fileName": "2026Sep Retail Price Guide (rechecked 2026-09-22).pdf",
+      "byteLength": 16301663,
+      "sha256": "ec61b3246e5c7d23adc20e01c54e0137172f0800308f8107144762b9ada3d9da"
     }
   ],
   "derivedArtifacts": [

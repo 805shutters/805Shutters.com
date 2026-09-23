@@ -21,7 +21,7 @@ export const normanContractProducts: CatalogProduct[] = [
   { id: CONTRACT_FAUX, name: "Contract Cordless Faux Wood Blinds", productType: "Faux Wood Blinds", manufacturer: "Norman", priceBasis: "manual_required", customerRetailStatus: "unverified", provisional: true,
     source: "Norman Contract Sales Edition M, May 29, 2024", pages: [3,5,6,7,8,9,10,11,12,15], fabricRouting: null,
     programs: [program("norman_contract_faux_2", 'Contract 2-inch Cordless', false), program("norman_contract_faux_2_5", 'Contract 2.5-inch Cordless', false)],
-    surcharges: [], fabricByYard: [], freightStatus: "unresolved", notes: ["Five active color/finish combinations. Bright White 6018 discontinued.", "No valance is standard. Optional valance and hardware charges require a current Contract Sales quote. Ocean freight."] },
+    surcharges: [], fabricByYard: [], freightStatus: "unresolved", notes: ["Five active color/finish combinations. Bright White 6018 discontinued.", "Order entry is through Norman's website (Edition M, page 3). No valance is standard. This specification does not supply current project, optional valance/hardware or ocean freight prices."] },
   { id: CONTRACT_VERTICAL, name: "Contract 3.5-inch Vertical Blinds", productType: "Vertical Blinds", manufacturer: "Norman", priceBasis: "manual_required", customerRetailStatus: "unverified", provisional: true,
     source: "Norman Contract Sales Edition B, November 1, 2024", pages: [3,4,5,6,8,9,10], fabricRouting: null,
     programs: [program("norman_contract_vertical_3_5", "Contract 3.5-inch PVC Headrail", true)], surcharges: [], fabricByYard: [], freightStatus: "unresolved",

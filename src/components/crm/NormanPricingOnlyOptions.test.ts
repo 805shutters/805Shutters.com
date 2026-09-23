@@ -76,14 +76,15 @@ describe('Norman pricing-only quote controls', () => {
   });
 
   it('hides the replacement work-order reference but preserves it when priced pack selections change', async () => {
-    const record = { ...emptyReplacementRequest(), originalWorkOrder: 'previous-order', style: 'A' as const };
+    const record = { ...emptyReplacementRequest(), originalWorkOrder: 'previous-order', style: 'A' as const, vaneLengthInches: 82.625, shadeLengthInches: 84 };
     const onUpdateFields = vi.fn();
     const props = { design: design({ [SMARTDRAPE_REPLACEMENT_RECORD]: record }), onUpdateFields };
     await render(React.createElement(NormanSmartdrapeReplacementOptions, props));
     expect(host.querySelector('[aria-label="Original Norman work-order number"]')).not.toBeNull();
     await render(React.createElement(NormanSmartdrapeReplacementOptions, { ...props, pricingOnly: true }));
     expect(host.querySelector('[aria-label="Original Norman work-order number"]')).toBeNull();
-    expect(host.querySelector('[aria-label="Requested finished vane length"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="Requested finished vane length"]')).toBeNull();
+    expect(host.querySelector<HTMLInputElement>('[aria-label="Original shade length"]')?.value).toBe('84');
     await select('Replacement pack style', 'B'); await save('Save replacement request');
     expect(onUpdateFields.mock.calls[0][0].options_json[SMARTDRAPE_REPLACEMENT_RECORD]).toEqual({ ...record, style: 'B' });
   });

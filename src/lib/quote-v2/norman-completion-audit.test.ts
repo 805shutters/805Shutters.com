@@ -16,15 +16,19 @@ describe("Norman catalog coverage ledger", () => {
   it("accounts for every imported family, program and retained color identity", () => {
     expect(products).toHaveLength(25);
     expect(products.flatMap(p => p.programs)).toHaveLength(60);
-    for (const id of ["norman_roller_valance_only", "norman_roller_separate_valance", "norman_ultimate_faux_valance_only", "norman_smartprivacy_valance_only", "norman_roman_fabric_by_yard", "norman_roman_pillow_covers", "norman_smartdrape_replacement_vanes"]) {
+    for (const id of ["norman_roller_valance_only", "norman_roller_separate_valance", "norman_ultimate_faux_valance_only", "norman_smartprivacy_valance_only"]) {
       expect(getProduct(id)?.priceBasis).toBe("manual_required");
+      expect(getProduct(id)?.programs[0].grid.prices).toEqual([]);
+    }
+    for (const id of ["norman_roman_fabric_by_yard", "norman_roman_pillow_covers", "norman_smartdrape_replacement_vanes"]) {
+      expect(getProduct(id)?.priceBasis).toBe("suggested_retail");
       expect(getProduct(id)?.programs[0].grid.prices).toEqual([]);
     }
     const replacement = getProduct("norman_smartdrape_replacement_vanes")!;
     expect(replacement.productType).toBe("Vane Packs");
-    expect(replacement.programs[0].sourceId).toBe("norman-perfectsheer-smartdrape-guide-2026-09");
+    expect(replacement.programs[0].sourceId).toBe("norman-retail-guide-2026-09-rechecked-2026-09-22");
     expect(replacement.programs[0].sourcePages).toEqual([24]);
-    expect(replacement.customerRetailStatus).toBe("unverified");
+    expect(replacement.customerRetailStatus).toBe("verified");
     expect(QUOTE_V2_PRODUCT_STATUS[replacement.id]).toBe("manual_quote_required");
     expect(new Set(colors.map(c => c.id)).size).toBe(colors.length);
     for (const color of colors) {

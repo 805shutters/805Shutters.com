@@ -25,6 +25,7 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["standalone_valance_keystone_positions", "Keystone centers from inner left end"],
   ["standalone_valance_piece_lengths", "Valance piece lengths in inches"],
   ["replacement_pack_style", "Vane pack style"],
+  ["replacement_price_shade_length", "Original shade length in inches"],
   ["replacement_vane_length", "Requested vane length in inches"],
   ["replacement_shade_type", "Original shade arrangement"],
   ["replacement_stack", "Original stack"],

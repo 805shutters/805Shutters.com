@@ -301,6 +301,7 @@ function structuredCommercialDetails(design: SalesQuoteDesign, options: Record<s
   }
   const replacement = parseReplacementRequest(options[SMARTDRAPE_REPLACEMENT_RECORD]);
   if (replacement) {
+    if (replacement.shadeLengthInches != null && replacement.shadeLengthInches > 0) add("Original Shade Length", `${replacement.shadeLengthInches} inches`);
     if (replacement.style) add("Vane Pack", `Style ${replacement.style}; 6 vanes per pack`);
     if (replacement.vaneLengthInches !== null && replacement.vaneLengthInches > 0) add("Vane Length", `${replacement.vaneLengthInches} inches`);
     const codes = replacement.colorMode === "Alternating" ? [replacement.firstColor, replacement.secondColor] : [replacement.firstColor];

@@ -47,6 +47,7 @@ import {
 import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import { formatDimensionsOrNull } from "@mts/types/quote";
+import { formatQuoteDesignDimensions } from "@mts/lib/quotePricingDimensions";
 import { formatCurrency, getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import {
@@ -974,6 +975,7 @@ export function QuoteContract({
                       price={formatCurrency(itemTotal)} quantity={item.quantity} dimensions={itemDimensions}
                       notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
                     /> : itemDesigns.map((design) => {
+                      const designDimensions = formatQuoteDesignDimensions(item, design);
                       const options = getQuoteDesignDetails(design).map((detail) => `${detail.label}: ${detail.value}`);
                       return <QuoteLineItemCard
                         key={design.id}
@@ -984,8 +986,8 @@ export function QuoteContract({
                         valanceArtId={valanceIllustration(design.product_type || item.product_type, options, undefined, valanceSurchargeIds(design.options_json?.surcharges))}
                         price={itemDesigns.length === 1 ? formatCurrency(itemTotal) : formatCurrency(design.unit_price)}
                         priceLabel={itemDesigns.length === 1 ? "Item total" : "Option unit price"}
-                        quantity={item.quantity} dimensions={itemDimensions}
-                        notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
+                        quantity={item.quantity} dimensions={designDimensions}
+                        notice={!designDimensions ? "Size missing - add in Builder" : undefined}
                         actions={<>
                           <div className="flex flex-wrap items-center justify-end gap-1 text-xs text-muted-foreground">
                             <span>Unit price</span>

@@ -1,8 +1,8 @@
 import { isRollerValance, rollerValanceProducts, ROLLER_VALANCE_VERSION } from "../quote/norman-roller-valance-only";
 import { isNormanValanceOnly, valanceOnlyProducts, VALANCE_ONLY_VERSION } from "../quote/norman-valance-only";
-import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_VERSION } from "@/lib/quote/norman-smartdrape-replacement";
+import { SMARTDRAPE_REPLACEMENT, SMARTDRAPE_REPLACEMENT_VERSION, SMARTDRAPE_REPLACEMENT_PRICING_FROM, SMARTDRAPE_REPLACEMENT_PRICING_VERSION } from "@/lib/quote/norman-smartdrape-replacement";
 import { romanPriceGroup, romanFabricStyles } from '@/lib/quote/norman-roman-current-price-groups';
-import { isRomanAncillary, romanAncillaryProducts, ROMAN_ANCILLARY_VERSION } from "@/lib/quote/norman-roman-ancillary";
+import { isRomanAncillary, romanAncillaryProducts, ROMAN_ANCILLARY_VERSION, ROMAN_ANCILLARY_PRICING_FROM, ROMAN_ANCILLARY_PRICING_VERSION } from "@/lib/quote/norman-roman-ancillary";
 import { isOnyxHeldProduct, onyxHeldProducts, ONYX_HELD_VERSION } from "@/lib/quote/onyx-held-catalog";
 import { isLotusObservedProduct, lotusObservedProducts, LOTUS_OBSERVED_VERSION } from "@/lib/quote/lotus-observed-offerings";
 import { normanRomanSeptemberRearRows } from "@/lib/quote/norman-roman-rear-2026-09.generated";
@@ -42,8 +42,8 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
-  if (productId === SMARTDRAPE_REPLACEMENT) return SMARTDRAPE_REPLACEMENT_VERSION;
-  if (isRomanAncillary(productId)) return ROMAN_ANCILLARY_VERSION;
+  if (productId === SMARTDRAPE_REPLACEMENT) return asOf >= SMARTDRAPE_REPLACEMENT_PRICING_FROM ? SMARTDRAPE_REPLACEMENT_PRICING_VERSION : SMARTDRAPE_REPLACEMENT_VERSION;
+  if (isRomanAncillary(productId)) return asOf >= ROMAN_ANCILLARY_PRICING_FROM ? ROMAN_ANCILLARY_PRICING_VERSION : ROMAN_ANCILLARY_VERSION;
   if (isRollerValance(productId)) return ROLLER_VALANCE_VERSION;
   if (isNormanValanceOnly(productId)) return VALANCE_ONLY_VERSION;
   if (isOnyxHeldProduct(productId)) return ONYX_HELD_VERSION;

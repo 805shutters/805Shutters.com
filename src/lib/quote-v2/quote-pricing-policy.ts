@@ -7,6 +7,7 @@ export const GRID_OPTION_QUOTING_EFFECTIVE_FROM = '2026-09-21';
 // These rules do not supply a grid identity, billable dimension or option charge.
 // Keep unknown rules blocking: a new price-dependent rule must never silently disappear.
 const ORDER_ONLY_RULES = new Set([
+  'norman.roman.ancillary.yard_line_quantity',
 // Current Norman quote-only audit. Unknown rule IDs remain hard blocks.
   // Roman September guide pp13–24; motorization guide pp24/76/85. No charge varies with these installation/control dimensions.
   'roman.hardware.chain_length',
@@ -399,6 +400,8 @@ const ORDER_ONLY_RULES = new Set([
   'honeycomb.charging_clearance.obstruction', 'honeycomb.charging_clearance.ac_required',
   'norman.smartdrape.ceiling_attachment', 'norman.smartdrape.stale_ceiling_attachment',
   'norman.smartdrape.stale_pocket', 'norman.smartdrape.replacement.original_work_order',
+  'norman.smartdrape.replacement.configuration', 'norman.smartdrape.replacement.length',
+  'norman.smartdrape.replacement.original_vane_count',
   'norman.smartfold.side_by_side_room', 'norman.perfectsheer.side_by_side_room',
   'roman.side_by_side.september.room',
   'norman.shutter.bifold90.flat_surface', 'norman.shutter.bifold180.flat_surface',
