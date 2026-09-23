@@ -185,6 +185,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || isInternalOptionKey(key)) return;
+    // Imported Roller rows may retain the former valance inside options_json.
+    // The visible selection is persisted on the design and is the contract value.
+    if (key === "valance" && design.supplier?.trim().toLowerCase() === "norman" &&
+        design.product_type === "Roller Shades" && hasValue(design.valance)) return;
     if (design.supplier === "Norman" && design.product_type === "Roman Shades" &&
       ["roman_banding_layout", "banding_color"].includes(key) &&
       !["Edge Banded", "Ribbon Banded"].includes(String(options.fold_style))) return;

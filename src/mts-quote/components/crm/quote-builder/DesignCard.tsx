@@ -9165,7 +9165,7 @@ function ShadesAndBlindsOptions({
     if (productType === "Roller Shades" && !authoritativeV2 && isNormanGridDesign(design) && field === "valance") {
       const valance = typeof value === "string" ? value : null;
       const topTreatment = getRollerTopTreatmentForValance(valance);
-      onUpdateFields({valance, options_json: {...currentJson,
+      onUpdateFields({valance, options_json: {...currentJson, valance,
         top_treatment_class: topTreatment, roller_top_treatment: topTreatment}});
       return;
     }

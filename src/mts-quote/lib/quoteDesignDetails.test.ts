@@ -39,6 +39,16 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("uses the current Norman Roller valance once when an imported option is stale", () => {
+    const design = {...miniBlindDesign(), product_type:"Roller Shades", valance:"Square Fascia*",
+      options_json:{valance:"No Valance",valance_color:"White"}};
+    expect(getQuoteDesignDetails(design).filter(row=>row.label === "Valance"))
+      .toEqual([{label:"Valance",value:"Square Fascia*"}]);
+    expect(getQuoteDesignDetails(design)).toContainEqual({label:"Valance Color",value:"White"});
+    expect(getQuoteDesignDetails({...design,valance:null}).filter(row=>row.label === "Valance"))
+      .toEqual([{label:"Valance",value:"No Valance"}]);
+  });
+
   it("shows Roller hardware choices while hiding generated motor charge routing", () => {
     const design={...miniBlindDesign(),product_type:"Roller Shades",motor_type:"Automate Home DC Adapter",options_json:{
       roller_hardware_v1:{version:1,installation:"Back / Wall Mount",shimLayers:2,raceway:true},
