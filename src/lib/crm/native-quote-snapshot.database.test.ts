@@ -3,6 +3,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { customerConfigurationFromSelection } from './sales-quote-v2-customer-configuration';
 const db = new PGlite({extensions:{pgcrypto}});
 const id=(n:number)=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const migration=(name:string)=>readFileSync(`supabase/migrations/${name}.sql`,'utf8');
@@ -64,6 +65,7 @@ beforeAll(async()=>{
  await db.exec(migration('20260921231455_native_delivery_source_lifecycle'));
  await db.exec(migration('20260921231523_native_manual_snapshot_customer_projection'));
  await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
+ await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -224,7 +226,7 @@ it('persists staff-only pricing failure across reopen and clears it when a later
  expect(JSON.stringify(output.customer_payload)).not.toMatch(/staffPricingError|authoritative_price_error|No retail grid/);
 });
 
-async function reserve(n:number,p=payload(n),revision=1) {
+async function reserve(n:number,p:object=payload(n),revision=1) {
  return (await db.query<any>('select reserve_native_quote_group_delivery($1,$2,$3,$4,$5,$6) as delivery',[
   id(n),id(50),revision,`delivery-test-${n}`,
   {email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null},
@@ -236,6 +238,19 @@ async function accept(delivery:any,selected:string[],total:number) {
   delivery.crm_quote_id,delivery.share_token,selected,total,'LOCAL TEST SIGNATURE','Synthetic test',
  ])).rows[0];
 }
+it.each(['No','Yes'])('reserves customer delivery with saved split tilt %s without exposing private fields',async(splitTilt)=>{
+ const n=splitTilt==='No'?40:41;
+ await seed(n);
+ const shutterSelection={...selection,configuration:{...selection.configuration,split_tilt:splitTilt,internal_landed_cost_total:90}};
+ await db.query('update sales_quote_designs set quote_v2_selection=$1 where id=$2',[shutterSelection,id(n+200)]);
+ const p=payload(n);
+ const configuration=customerConfigurationFromSelection({...shutterSelection,programId:price.programId,catalogAsOf:'2026-09-23'});
+ const delivery=await reserve(n,{...p,lines:p.lines.map(line=>({...line,configuration}))});
+ expect(delivery.customer_payload.lines[0].configuration.selections).toEqual({...selection.configuration,split_tilt:splitTilt});
+ expect(delivery.customer_payload.total).toBe(387);
+ const attempt=(await db.query<any>('select state from sales_quote_v2_delivery_attempts where delivery_id=$1',[delivery.id])).rows[0];
+ expect(attempt.state).toBe('pending');
+});
 it('reserves, deduplicates dispatch, and accepts current discounted retail with unresolved cost',async()=>{
  await seed(30);
  await saveRetailOnly(30);
