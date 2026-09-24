@@ -1,5 +1,6 @@
 "use client";
 
+import { readCrmResponse } from "@/lib/crm/client-response";
 import type { ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 
 import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
@@ -760,10 +761,10 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
     }
   });
 
-  const body = await response.json().catch(() => ({}));
+  const body = await readCrmResponse(response, path, init.method);
 
   if (!response.ok) {
-    throw new CrmFetchError(body.message || "CRM request failed.", response.status);
+    throw new CrmFetchError(typeof body.message === "string" ? body.message : "CRM request failed.", response.status);
   }
 
   return body as T;
@@ -2059,7 +2060,7 @@ export function CrmApp({
       return false;
     } catch (error) {
       setMessage(
-        `Order email pull failed: ${error instanceof Error ? error.message : "unknown error"}. No product line was marked ordered.`
+        `Order email pull failed: ${error instanceof Error ? error.message : "unknown error"}. Some emails may already have applied; refresh before retrying.`
       );
       return false;
     } finally {
