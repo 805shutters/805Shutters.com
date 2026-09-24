@@ -34,6 +34,6 @@ describe("product-line order controls", () => {
   it("does not expose a generic sold-to-ordered advance button", () => {
     expect(statusPill).toContain('nextStatus !== "sold"');
     expect(crmApp).not.toContain('key: "mark-ordered"');
-    expect(crmApp).toContain("No product line was marked ordered.");
+    expect(crmApp).toContain("No new order update was verified for this customer in this pass.");
   });
 });

@@ -52,7 +52,7 @@ export function selectShipmentProduct(items: OperationsItem[], notice: ShippingN
 }
 
 export async function applyShippingNotice(db: SupabaseClient, notice: ShippingNotice, source: {mailbox: string; messageId: string; sentAt: string | null}, actor: {email:string}, loadDashboard?:()=>Promise<CrmDashboardData>) {
-  if (!notice.references.length) throw new CrmAuthError(409, 'Shipping notice has no recognized manufacturer order references.');
+  if (!notice.references.length) return [{reference:'',status:'needs_review' as const,reason:'Shipping notice has no recognized manufacturer order references; identify the exact order before applying it.'}];
   if (!['805@805shutters.com','805shutters@gmail.com'].includes(source.mailbox) || !source.sentAt) throw new CrmAuthError(409, 'A verified shipping mailbox and notification timestamp are required.');
   const load = loadDashboard || (async()=> (await import('./backend')).loadCrmDashboardData(db));
   const outcomes: {reference:string;status:'matched'|'needs_review'|'error';reason:string}[]=[];

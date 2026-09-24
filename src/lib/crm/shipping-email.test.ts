@@ -1,8 +1,12 @@
 import {describe,it,expect} from 'vitest';
-import {extractShippingNotice,selectShipmentProduct} from './shipping-email';
+import {applyShippingNotice,extractShippingNotice,selectShipmentProduct} from './shipping-email';
 import type {OperationsItem} from './operations-overview';
 const notice={manufacturer:'Norman' as const,references:['8880986311'],shippedOn:null};
 describe('vendor shipment evidence',()=>{
+ it('leaves missing order references in review without accessing or changing a sale',async()=>{
+  const db=new Proxy({}, {get(){throw new Error('Database must not be accessed');}});
+  await expect(applyShippingNotice(db as never,{manufacturer:'Onyx',references:[],shippedOn:'2026-09-16'},{mailbox:'805shutters@gmail.com',messageId:'notice',sentAt:'2026-09-16T10:00:00Z'},{email:'staff'})).resolves.toEqual([{reference:'',status:'needs_review',reason:'Shipping notice has no recognized manufacturer order references; identify the exact order before applying it.'}]);
+ });
  it('records Norman shipment without inventing a date from PO date',()=>{
   expect(extractShippingNotice('Shipping Notification: WO#8880986311 has shipped!','WO# : 8880986311\rPO Date: 09/13/2026\rCarrier: FDX IPD\rTracking Number: 544325051407 https://www.fedex.com/','Norman <NoReply@normanusa.com>')).toEqual({...notice,carrier:'FDX IPD',trackingNumber:'544325051407'});
  });

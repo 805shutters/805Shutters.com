@@ -2054,8 +2054,8 @@ export function CrmApp({
 
       setMessage(
         targetEmails.length > 0
-          ? `Order email found but needs review; no product line was marked ordered. ${targetEmails[0].match_reason || "Review COGS email."}`
-          : `Order email pull scanned ${result.scanned} recent confirmations and found no match. No product line was marked ordered.`
+          ? `An email for this customer needs review. ${targetEmails[0].match_reason || "Review COGS email."} Other customers may have been updated during this scan.`
+          : `Email scan finished (${result.scanned} messages scanned). No new order update was verified for this customer in this pass. Other customers may have been updated.`
       );
       return false;
     } catch (error) {
