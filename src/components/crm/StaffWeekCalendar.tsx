@@ -18,7 +18,7 @@ type Props = { session: Session; events: CrmCalendarEvent[]; jobs: CrmJob[]; anc
 
 export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateChange, onSelectSlot, onOpenEvent, onClose }: Props) {
   const month = anchorDate.slice(0, 7);
-  const days = weekCalendarDays(anchorDate, 1);
+  const days = weekCalendarDays(anchorDate);
   const week = days[0];
   const monthsKey = [...new Set(days.map(date => date.slice(0, 7)))].join(",");
   const [snapshots, setSnapshots] = useState<Record<string, Snapshot>>({});
@@ -28,7 +28,6 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   const [notice, setNotice] = useState("");
   const [reload, setReload] = useState(0);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [showWeekends, setShowWeekends] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState(false);
   const [showHours, setShowHours] = useState(false);
   const inFlight = useRef(false);
@@ -117,8 +116,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     </button>;
   }
   const labelDate = (date: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
-  const visibleDays = showWeekends ? days : days.slice(0, 5);
-  const weekLabel = `${labelDate(visibleDays[0])} – ${labelDate(visibleDays[visibleDays.length - 1])}, ${days[6].slice(0, 4)}`;
+  const weekLabel = `${labelDate(days[0])} – ${labelDate(days[days.length - 1])}, ${days[6].slice(0, 4)}`;
   const bounds = weekTimeBounds(events, days);
   const slots = Array.from({ length: (bounds.end - bounds.start) / staffCalendarIntervalMinutes }, (_, index) => bounds.start + index * staffCalendarIntervalMinutes);
   const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12}:${String(minute % 60).padStart(2, "0")} ${minute < 720 ? "AM" : "PM"}`;
@@ -131,9 +129,8 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
         <button type="button" disabled={saving} onClick={() => onDateChange(shiftCalendarWeek(anchorDate, 1))} aria-label="Next week"><ChevronRight /></button>
       </div>
       <div className={styles.headerActions}>
-        <button className={styles.newBooking} type="button" disabled={!ready || saving || !!error} onClick={() => beginBooking(visibleDays.includes(anchorDate) ? anchorDate : visibleDays[0], bounds.start)}><CalendarPlus aria-hidden="true" />Book appointment</button>
+        <button className={styles.newBooking} type="button" disabled={!ready || saving || !!error} onClick={() => beginBooking(days.includes(anchorDate) ? anchorDate : days[0], bounds.start)}><CalendarPlus aria-hidden="true" />Book appointment</button>
         <button className={styles.hoursButton} type="button" aria-pressed={editingAvailability} disabled={saving || loading} onClick={() => setEditingAvailability(value => !value)}><Settings2 aria-hidden="true" />{editingAvailability ? "Done editing" : "Edit availability"}</button>
-        <label className={styles.weekendSwitch}><input type="checkbox" role="switch" checked={showWeekends} onChange={event => setShowWeekends(event.target.checked)} /><span>Show weekends</span></label>
         <button className={styles.closeButton} type="button" aria-label="Return to CRM home" title="Return to CRM home" onClick={onClose}><X aria-hidden="true" /></button>
       </div>
     </header>
@@ -143,15 +140,15 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
       {error && <button type="button" disabled={saving} onClick={() => setReload(value => value + 1)}>Reload calendar</button>}
     </div>
     <div className={styles.weekScroll}>
-    <div className={styles.grid} style={{ "--day-count": visibleDays.length } as CSSProperties}>
-      {visibleDays.map((date, index) => {
+    <div className={styles.grid} style={{ "--day-count": days.length } as CSSProperties}>
+      {days.map((date, index) => {
         const state = !ready ? "unknown" : "loaded";
         const dayState = ready ? calendarDayState(published, events, date, slots, staffCalendarIntervalMinutes) : "unknown";
         const layout = weekDayLayout(events, date, bounds);
         return <article key={date} className={styles.day} data-date={date} data-state={state} aria-label={`${date}, ${state}`}>
           <div className={styles.dayHead}>
-            <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span><small>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}</small> {Number(date.slice(-2))}</span></button>
-            <span className={styles.dayCount} title={`${layout.length} appointments`}>{layout.length} {layout.length === 1 ? "appt" : "appts"}</span>
+            <button type="button" className={styles.date} aria-label={`Day details ${date}`} aria-current={date === losAngelesDateString() ? "date" : undefined} onClick={() => setSelectedDay(date)}><span><small>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][index]}</small> {Number(date.slice(-2))}</span></button>
+            <span className={styles.dayCount} title={`${layout.length} appointments`}>{layout.length}<span> {layout.length === 1 ? "appt" : "appts"}</span></span>
             <button type="button" className={styles.addDay} aria-label={`Add appointment ${date}`} title="Add appointment to this day" disabled={!ready || saving || !!error} onClick={() => beginBooking(date, bounds.start)}><Plus aria-hidden="true" /></button>
             {availabilityToggle(date, null, dayState, dayState === "booked")}
           </div>
