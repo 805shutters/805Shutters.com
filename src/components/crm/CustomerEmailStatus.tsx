@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { customerEmailStatus, type CustomerEmailRecord } from "@/lib/crm/customer-email-status";
-type Result = { messages?: CustomerEmailRecord[]; activation?: string | null; activated?: boolean; ok?: boolean; attention?: number; stale?: boolean; missing?: number; workerFailed?: boolean; providerConfigured?: boolean };
+type Result = { messages?: CustomerEmailRecord[]; activation?: string | null; activated?: boolean; ok?: boolean; attention?: number; stale?: boolean; missing?: number; workerFailed?: boolean; providerConfigured?: boolean; providerReady?: boolean; providerReason?: string | null };
 export function CustomerEmailStatus({ jobId }: { jobId?: string }) {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
@@ -33,7 +33,7 @@ export function CustomerEmailStatus({ jobId }: { jobId?: string }) {
         {(message.last_error || message.delivery_error) && <p role="alert">{message.last_error || message.delivery_error}</p>}
         {result.activation && Date.parse(message.created_at) < Date.parse(result.activation) && <p>Historical record · excluded from automatic retries.</p>}
       </div>)}
-    </> : <p role={result.ok ? "status" : "alert"}>{!result.activated ? "Customer email automation is awaiting activation." : result.ok ? "Signing and paid-in-full email checks are current." : `${result.attention || 0} customer email(s) need attention. ${result.missing ? `${result.missing} new event(s) are missing an email request. ` : ""}${result.providerConfigured === false ? "The email provider is not configured. " : ""}${result.workerFailed ? "The latest email worker run failed. " : ""}${result.stale ? "The email worker has not checked in within 15 minutes." : "Open the customer’s job to review delivery details."}`}</p>}
+    </> : <p role={result.ok ? "status" : "alert"}>{!result.activated ? "Customer email automation is awaiting activation." : result.ok ? "Signing and paid-in-full email checks are current." : `${result.attention || 0} customer email(s) need attention. ${result.missing ? `${result.missing} new event(s) are missing an email request. ` : ""}${result.providerConfigured === false ? "The email provider is not configured. " : ""}${result.providerReady === false ? `${result.providerReason || "Delivery tracking is unavailable."} ` : ""}${result.workerFailed ? "The latest email worker run failed. " : ""}${result.stale ? "The email worker has not checked in within 15 minutes." : "Open the customer’s job to review delivery details."}`}</p>}
     <button type="button" onClick={() => void refresh()}>Refresh email status</button>
   </section>;
 }

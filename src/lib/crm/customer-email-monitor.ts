@@ -42,13 +42,14 @@ export async function checkCustomerEmailDeliveries(db: SupabaseClient, activatio
 export async function getCustomerEmailMonitor(db: SupabaseClient, now = Date.now()) {
   const activation = await customerEmailActivation(db);
   if (!activation) return { ok: false, activated: false, reason: "Forward customer email delivery has not been activated.", attention: 0, stale: true };
-  const [queue, heartbeat, reconciliation] = await Promise.all([
+  const [queue, heartbeat, reconciliation, provider] = await Promise.all([
     db.from(TABLE).select(CUSTOMER_EMAIL_FIELDS).gte("created_at", activation)
       .or("delivery_status.is.null,delivery_status.not.in.(delivered,opened,clicked),delivery_error.not.is.null").order("created_at", { ascending: false }).limit(1000),
     db.from("crm_activity_events").select("created_at,action").eq("entity_type", "system")
       .eq("metadata->>processor", "customer-email").in("action", ["customer-email.succeeded", "customer-email.failed"])
       .order("created_at", { ascending: false }).limit(1),
     db.rpc("crm_customer_email_missing_count"),
+    customerEmailReadiness(db),
   ]);
   if (queue.error || heartbeat.error || reconciliation.error) throw new Error("Customer email health could not be read.");
   const rows = queue.data as CustomerEmailRecord[];
@@ -60,8 +61,8 @@ export async function getCustomerEmailMonitor(db: SupabaseClient, now = Date.now
   const lastRun = heartbeat.data?.[0]?.created_at || null;
   const stale = !lastRun || now - Date.parse(lastRun) > 15 * 60000;
   const workerFailed = heartbeat.data?.[0]?.action === "customer-email.failed";
-  return { ok: Boolean(process.env.RESEND_API_KEY) && attention === 0 && !stale && !workerFailed && rows.length < 1000 && reconciliation.data === 0, activated: true, activation,
-    providerConfigured: Boolean(process.env.RESEND_API_KEY), attention, stale, workerFailed, lastRun, missing: reconciliation.data as number, total: rows.length, truncated: rows.length >= 1000 };
+  return { ok: provider.providerReady && attention === 0 && !stale && !workerFailed && rows.length < 1000 && reconciliation.data === 0, activated: true, activation,
+    providerConfigured: Boolean(process.env.RESEND_API_KEY), providerReady: provider.providerReady, providerReason: "reason" in provider ? provider.reason : null, attention, stale, workerFailed, lastRun, missing: reconciliation.data as number, total: rows.length, truncated: rows.length >= 1000 };
 }
 
 /** Validates credentials and provider delivery access using an existing acceptance.
@@ -75,7 +76,12 @@ export async function customerEmailReadiness(db: SupabaseClient) {
   const response = await fetch(`https://api.resend.com/emails/${encodeURIComponent(id)}`, {
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` }, signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok) return { ok: false, providerReady: false, reason: `Email provider delivery access failed (${response.status}).` };
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    const sendingOnly = response.status === 401 && error.name === "restricted_api_key";
+    return { ok: false, providerReady: false, sendingOnly,
+      reason: sendingOnly ? "The email provider key permits sending but cannot read delivery status." : `Email provider delivery access failed (${response.status}).` };
+  }
   const result = await response.json();
   const providerReady = result.id === id && typeof result.last_event === "string";
   return { ok: providerReady, providerReady };
