@@ -4,8 +4,9 @@ const mocks = vi.hoisted(() => ({ email: vi.fn(), sms: vi.fn(), pub: vi.fn(), pr
 vi.mock("@/lib/notify/email", () => ({ sendEmail: mocks.email, buildQuoteEmail: () => ({ subject: "Quote", html: "safe", text: "safe" }) }));
 vi.mock("@/lib/notify/twilio", () => ({ sendSms: mocks.sms, toE164: (v: string) => /^\+1\d{10}$/.test(v) ? v : null }));
 vi.mock("./public-quote", () => ({ loadPublicQuoteByToken: mocks.pub, publicQuoteUrl: (t: string) => `https://805shutters.com/quote/${t}`, buildQuoteShareSms: (url: string) => url }));
-vi.mock("./sales-quote-v2-send", () => ({ prepareV2CustomerSendPayloadFromDatabase: mocks.prepare }));
-import { deliverFrozenNativeQuote, nativeDeliveryRequest, nativeQuoteDeliveryCapability } from "./native-quote-delivery";
+vi.mock("./sales-quote-v2-send", async (importOriginal) => ({ ...await importOriginal<typeof import("./sales-quote-v2-send")>(), prepareV2CustomerSendPayloadFromDatabase: mocks.prepare }));
+import { deliverFrozenNativeQuote, nativeDeliveryRequest, nativeQuoteDeliveryCapability, sendNativeSalesQuote } from "./native-quote-delivery";
+import { V2SendPreparationError } from "./sales-quote-v2-send";
 const delivery = { id: "delivery", quote_id: "source", crm_quote_id: "crm", share_token: "preserved", request_key: "request-1", quote_revision: 1, customer_payload: { total: 100.01 }, request: { email: ["customer@example.invalid"], sms: ["+18055550100"], note: null, measureDecision: null } };
 function db(states: string[] = ["pending", "pending"]) {
  const attempts = states.map((state, i) => ({ id: `attempt-${i}`, channel: i ? "sms" : "email", recipient: i ? "+18055550100" : "customer@example.invalid", state, claim_token: "claim" }));
@@ -65,5 +66,30 @@ describe("native customer delivery", () => {
   expect(nativeDeliveryRequest({}, { channels: { email: true, sms: false }, emails: [" CUSTOMER@example.invalid ", "customer@example.invalid"] })).toMatchObject({ email: ["customer@example.invalid"], sms: [] });
   expect(() => nativeDeliveryRequest({}, { channels: { email: false, sms: false } })).toThrow("Select");
   expect(() => nativeDeliveryRequest({}, { emails: "malformed" as unknown as string[] })).toThrow("Invalid");
+ });
+});
+
+describe("native quote preparation errors", () => {
+ const actor = { userId: "10000000-0000-4000-8000-000000000001" };
+ const options = { expectedRevision: 8, idempotencyKey: "test-delivery-8", channels: { email: true, sms: false }, emails: ["customer@example.invalid"] };
+ function preparationDb() {
+  const query = { select: () => query, eq: () => query, maybeSingle: async () => ({data:null,error:null}) };
+  const rpc = vi.fn().mockResolvedValue({data:{enabled:true,schemaVersion:1,native:true,canSend:true},error:null});
+  return {client:{from:()=>query,rpc} as unknown as SupabaseClient,rpc};
+ }
+ it.each([{status:"archived"},{status:"draft",archived_at:"2026-09-23T00:00:00Z"}])("blocks an archived quote before preparation or provider calls", async (quote) => {
+  ready(); const test=preparationDb();
+  await expect(sendNativeSalesQuote(test.client,quote,actor,options)).rejects.toMatchObject({status:409,message:expect.stringContaining("archived")});
+  expect(mocks.prepare).not.toHaveBeenCalled();expect(test.rpc).not.toHaveBeenCalled();expect(mocks.email).not.toHaveBeenCalled();
+ });
+ it("returns the quote and actionable preparation reason as a conflict", async () => {
+  ready(); const test=preparationDb();
+  mocks.prepare.mockRejectedValueOnce(new V2SendPreparationError("This quote has unfinished pricing. Save and price all selected designs before sending."));
+  await expect(sendNativeSalesQuote(test.client,{id:"quote",quote_number:"805-TEST",status:"draft"},actor,options)).rejects.toMatchObject({status:409,message:expect.stringContaining("Quote 805-TEST cannot be sent: This quote has unfinished pricing")});
+  expect(test.rpc).not.toHaveBeenCalledWith("reserve_native_quote_group_delivery",expect.anything());expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
+ });
+ it("does not disguise an unexpected preparation failure as a user error", async () => {
+  ready(); const test=preparationDb(); const failure=new Error("unexpected database failure");mocks.prepare.mockRejectedValueOnce(failure);
+  await expect(sendNativeSalesQuote(test.client,{id:"quote",status:"draft"},actor,options)).rejects.toBe(failure);
  });
 });

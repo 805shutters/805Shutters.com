@@ -503,7 +503,7 @@ describe("V2 production send boundary", () => {
 
     expect(() =>
       prepare(authoritativeQuote(total, { quote_v2_status: "stale" })),
-    ).toThrow("priced draft lifecycle state");
+    ).toThrow("unfinished pricing");
     expect(
       prepare(authoritativeQuote(total, { quote_v2_revision: QUOTE_REVISION + 1 }))
         .total,

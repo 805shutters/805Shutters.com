@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
-import { prepareV2CustomerSendPayloadFromDatabase } from "./sales-quote-v2-send";
+import { prepareV2CustomerSendPayloadFromDatabase, V2SendPreparationError } from "./sales-quote-v2-send";
 import { assertV2CustomerPayloadHasNoProtectedFields } from "./sales-quote-v2-send-persist";
 import { sendEmail, buildQuoteEmail } from "@/lib/notify/email";
 import { sendSms, toE164 } from "@/lib/notify/twilio";
@@ -44,6 +44,9 @@ export async function nativeQuoteDeliveryCapability(db: SupabaseClient, quoteId:
 
 export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { userId?: string }, options: SendSalesQuoteOptions) {
   runtimeGuard();
+  if (quote.status === "archived" || quote.archived_at) {
+    throw new CrmAuthError(409, "This quote is archived. Restore the intended revision before sending it.");
+  }
   if (!actor.userId || !UUID.test(actor.userId) || !Number.isSafeInteger(options.expectedRevision) || Number(options.expectedRevision) < 1 ||
       !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/.test(options.idempotencyKey || "")) {
     throw new CrmAuthError(400, "Reload this quote to obtain its current revision and delivery request key.");
@@ -62,7 +65,15 @@ export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor
   const payloads: Row[] = [];
   if (!existing) {
     for (const member of group) {
-      const payload = await prepareV2CustomerSendPayloadFromDatabase(db, member, { sendAsIs: options.sendAsIs === true });
+      let payload;
+      try {
+        payload = await prepareV2CustomerSendPayloadFromDatabase(db, member, { sendAsIs: options.sendAsIs === true });
+      } catch (error) {
+        if (error instanceof V2SendPreparationError) {
+          throw new CrmAuthError(409, `Quote ${member.quote_number || member.id} cannot be sent: ${error.message}`);
+        }
+        throw error;
+      }
       assertV2CustomerPayloadHasNoProtectedFields(payload);
       payloads.push({ quoteId: member.id, revision: member.quote_v2_revision, payload });
     }

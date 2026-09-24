@@ -260,9 +260,8 @@ function requireQuoteIdentity(quote: AnyRow): RequiredQuoteIdentity {
   }
   const id = text(quote.id);
   if (!id) fail("The authoritative V2 quote ID is missing.");
-  if (quote.status !== "draft" || quote.quote_v2_status !== "priced") {
-    fail("The authoritative V2 quote is not in the priced draft lifecycle state.");
-  }
+  if (quote.status !== "draft") fail("This quote is no longer a draft. Reopen its current revision before sending.");
+  if (quote.quote_v2_status !== "priced") fail("This quote has unfinished pricing. Save and price all selected designs before sending.");
   const revision = Number(quote.quote_v2_revision);
   if (!Number.isSafeInteger(revision) || revision < 1) {
     fail("The authoritative V2 quote revision is invalid.");
