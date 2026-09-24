@@ -1757,3 +1757,60 @@ describe("Roller quote controls without technical tube selection", () => {
     expect(design.options_json?.tube_class).toBe('2" (52mm) Tube');
   });
 });
+
+
+describe("Basic Norman roller quote flow", () => {
+  const product = catalogProduct("roller", "Norman", [{id:"roller_cordless_fabric_price_group_1_pg1", name:"Price Group 1", priceAxis:"wh"}]);
+  const render = (design: Partial<SalesQuoteDesign>) => renderToStaticMarkup(createElement(ShadesAndBlindsOptions, {
+    design: design as SalesQuoteDesign, productType:"Roller Shades", authoritativeV2:true,
+    lineItem:{id:"basic-roller",quantity:1,width_whole:48,width_fraction:"0",height_whole:60,height_fraction:"0"} as SalesQuoteLineItem,
+    onUpdate() {}, onUpdateFields() {}, sideBySideLineOptions:[], onSideBySidePairChange() {}, onClearSideBySidePartner() {},
+  }));
+
+  it("starts a standard single shade with no valance without choosing mount, tube, fabric or operation", () => {
+    const patch = buildCatalogSelectionPatch({quote_v2_backend:true,temporary_shade:true}, product);
+    expect(patch).toMatchObject({shade_type:"Single Shade",valance:"No Valance",mount_type:null,lift_system:null,fabric:null,motor_type:null,
+      options_json:{roller_application:"Single Shade",top_treatment_class:"No Top Treatment",roller_top_treatment:"No Top Treatment",temporary_shade:true}});
+    expect(patch.options_json?.tube_class).toBeUndefined();
+    const html = render(patch);
+    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric","lift_system"]);
+    expect(html).toContain("More Options");
+    expect(html).toContain('title="Valance: No Valance"');
+    expect(html).toContain('title="Shade Type: Single Shade"');
+  });
+
+  it("leaves other manufacturers and Norman products without roller defaults", () => {
+    for (const other of [catalogProduct("lotus_roller_shades","Lotus",[]), catalogProduct("roman","Norman",[],{productType:"Roman Shades"})]) {
+      const patch=buildCatalogSelectionPatch({},other);
+      expect(patch.shade_type).toBeNull();
+      expect(patch.valance).toBeNull();
+      expect(patch.options_json?.roller_application).toBeUndefined();
+    }
+  });
+
+  it("preserves and displays existing upgrades while keeping them out of the basic input row", () => {
+    const design={...buildCatalogSelectionPatch({},product),mount_type:"Outside Mount",valance:'4 1/2" Fabric Valance*',lift_system:"Continuous Cord Loop",
+      options_json:{catalog_product_id:"roller",roller_application:"Single Shade",top_treatment_class:"Fabric Valance",hem_bar:"Exposed Metal",control_side:"Right"}} as Partial<SalesQuoteDesign>;
+    const before=structuredClone(design);
+    const html=render(design);
+    expect(html).toContain("Fabric Valance*");
+    expect(html).toContain('title="Mount Type: Outside Mount"');
+    expect(html).toContain('title="Hem Bar: Exposed Metal"');
+    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric"]);
+    expect(design).toEqual(before);
+  });
+
+  it("keeps dependent coupled pricing inputs visible when a special assembly is selected", () => {
+    const html=render({...buildCatalogSelectionPatch({},product),shade_type:"Coupled Shades",lift_system:"Continuous Cord Loop",
+      options_json:{catalog_product_id:"roller",roller_application:"Coupled Shades",coupled_shade_count:2,top_treatment_class:"No Top Treatment"}});
+    expect(html).toContain('data-option-field="json:coupling_arrangement"');
+    expect(html).toContain('data-option-field="json:roller_component_width_1"');
+    expect(html).toContain('data-option-field="json:roller_component_width_2"');
+  });
+
+  it("updates both top-treatment identities when a priced upgrade replaces the standard default", () => {
+    const defaults=buildCatalogSelectionPatch({},product).options_json!;
+    expect(reconcileRollerTopTreatmentSelection(defaults,"Fabric Valance","Cordless").optionsJson).toMatchObject({top_treatment_class:"Fabric Valance",roller_top_treatment:"Fabric Valance"});
+    expect(defaults.roller_top_treatment).toBe("No Top Treatment");
+  });
+});

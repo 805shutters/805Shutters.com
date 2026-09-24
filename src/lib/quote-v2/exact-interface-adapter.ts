@@ -12,6 +12,7 @@ import type {
   SelectionValue,
 } from "./core";
 import { quoteV2CatalogVersionFor } from "./catalog";
+import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "./quote-pricing-policy";
 
 const INTERNAL_OPTION_KEYS = new Set([
   "norman_order_record_v1",
@@ -439,6 +440,12 @@ export function selectionContextFromExactInterface(
     "roller_top_treatment",
     firstString(sourceOptions, "top_treatment_class", "roller_top_treatment") ?? design.valance,
   );
+  if (input.productId === "roller" && (input.catalogAsOf ?? "") >= GRID_OPTION_QUOTING_EFFECTIVE_FROM) {
+    // An unconfigured upgrade means a standard single shade with no valance.
+    // Retain every explicit assembly/upgrade; never invent installation evidence.
+    if (!stringValue(configuration.roller_application)) configuration.roller_application = "Single Shade";
+    if (!stringValue(configuration.roller_top_treatment)) configuration.roller_top_treatment = "No Top Treatment";
+  }
   alias(
     configuration,
     "roller_tube",

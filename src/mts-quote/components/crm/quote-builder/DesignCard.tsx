@@ -2134,6 +2134,7 @@ export function reconcileRollerTopTreatmentSelection(
   const nextJson: Record<string, unknown> = {
     ...currentOptions,
     top_treatment_class: topTreatment,
+    roller_top_treatment: topTreatment,
   };
   const previousPower = stringOption(currentOptions, "power_configuration");
   const pruned = pruneRollerV2UiSelection({
@@ -2334,6 +2335,7 @@ export function buildCatalogSelectionPatch(
         : programs.length === 1
           ? programs[0]
           : null;
+  const normanRoller = product.manufacturer === "Norman" && product.id === "roller";
   const lotusDefaults = program && product.manufacturer === "Lotus" &&
     ["lotus_mini_blinds", "lotus_roller_shades", "lotus_vertical_blinds"].includes(product.id)
     ? lotusProgramSelectionPatch(current, product.productType, program.id)
@@ -2347,9 +2349,9 @@ export function buildCatalogSelectionPatch(
     hinge_color: null,
     panel_config: null,
     mount_type: null,
-    shade_type: null,
+    shade_type: normanRoller ? "Single Shade" : null,
     lift_system: product.id === "vertical_honeycomb" ? "Patio Door Vertical" : null,
-    valance: null,
+    valance: normanRoller ? "No Valance" : null,
     fabric: null,
     motor_type: null,
     remote_type: null,
@@ -2362,6 +2364,11 @@ export function buildCatalogSelectionPatch(
       program?.id ?? null,
       ),
       ...lotusDefaults?.options_json,
+      ...(normanRoller ? {
+        roller_application: "Single Shade",
+        top_treatment_class: "No Top Treatment",
+        roller_top_treatment: "No Top Treatment",
+      } : {}),
     },
   };
 }
@@ -2827,6 +2834,18 @@ const ROLLER_MORE_OPTION_FIELDS = new Set([
   "json:roll_type",
   "json:premium_hardware",
   "json:premium_hardware_color",
+]);
+
+const NORMAN_ROLLER_MORE_OPTION_FIELDS = new Set([
+  ...ROLLER_MORE_OPTION_FIELDS,
+  "mount_type",
+  "shade_type",
+  "valance",
+  "json:hem_bar",
+  "json:roller_application",
+  "json:top_treatment_class",
+  "json:control_side",
+  "json:cord_loop_release",
 ]);
 
 function getShutterMandatoryFields(options: GridOption[]): string[] {
@@ -8914,8 +8933,10 @@ export function ShadesAndBlindsOptions({
       const isLightGuardApplication = Boolean(application?.startsWith("LightGuard 360"));
       if (isLightGuardApplication) {
         nextJson.top_treatment_class = "LightGuard 360 Housing";
+        nextJson.roller_top_treatment = "LightGuard 360 Housing";
       } else if (nextJson.top_treatment_class === "LightGuard 360 Housing") {
         nextJson.top_treatment_class = null;
+        nextJson.roller_top_treatment = null;
       }
       const pruned = authoritativeV2
         ? pruneRollerV2UiSelection({
@@ -12676,13 +12697,16 @@ export function ShadesAndBlindsOptions({
 
   gridOptions = quotePricingInputs(gridOptions);
 
+  const rollerMoreOptionFields = authoritativeV2 && design?.supplier === "Norman"
+    ? NORMAN_ROLLER_MORE_OPTION_FIELDS
+    : ROLLER_MORE_OPTION_FIELDS;
   const mainGridOptions =
     productType === "Roller Shades"
-      ? gridOptions.filter((option) => !ROLLER_MORE_OPTION_FIELDS.has(option.field))
+      ? gridOptions.filter((option) => !rollerMoreOptionFields.has(option.field))
       : gridOptions;
   const moreGridOptions =
     productType === "Roller Shades"
-      ? gridOptions.filter((option) => ROLLER_MORE_OPTION_FIELDS.has(option.field))
+      ? gridOptions.filter((option) => rollerMoreOptionFields.has(option.field))
       : [];
   const optionRows = partitionOptionSlots(
     mainGridOptions,
@@ -12876,7 +12900,7 @@ export function ShadesAndBlindsOptions({
   );
 
   const handleConfirmedOptionReset = (field: string) => {
-    if (ROLLER_MORE_OPTION_FIELDS.has(field)) setShowMoreOptions(true);
+    if (productType === "Roller Shades" && rollerMoreOptionFields.has(field)) setShowMoreOptions(true);
     handleUpdate(field, null);
     setOpenOptionField(field);
   };

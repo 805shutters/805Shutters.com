@@ -21,6 +21,26 @@ function price(input = fixture()) {
   return result;
 }
 describe('Roller quote uses priced selections without tube fabrication input', () => {
+  it('prices size, fabric/color and operation alone, with no selected upgrades', () => {
+    const q = fixture();
+    q.designs[0].mount_type = null;
+    q.designs[0].shade_type = null;
+    q.designs[0].valance = null;
+    delete q.designs[0].options_json!.top_treatment_class;
+    delete q.designs[0].options_json!.roller_top_treatment;
+    delete q.designs[0].options_json!.hem_bar;
+    const untouched = structuredClone(q);
+    const row = price(q).designs[0];
+    expect(row.result.ok, JSON.stringify(row.result)).toBe(true);
+    if (!row.result.ok) return;
+    expect(row.result.base).toBe(465);
+    expect(row.result.surchargeLines).toEqual([]);
+    expect(row.result.unitPrice).toBe(504);
+    expect(row.result.total).toBe(2016);
+    expect(q).toEqual(untouched);
+    expect(prepareSalesQuoteV2PricingBatch({ lines: q.lines, selectedDesigns: q.designs, serverDate: '2026-09-23' }).prepared[0].priceStatus).toBe('authoritative');
+    expect(price(JSON.parse(JSON.stringify(q)))).toEqual(price(q));
+  });
   it('prices the reported 34 x 82 Ohara line, all four shades, and saves the same result', () => {
     const q = fixture();
     const actual = price(q), row = actual.designs[0];
@@ -56,6 +76,13 @@ describe('Roller quote uses priced selections without tube fabrication input', (
     }
     const result = price(q).designs[0].result;
     expect(result.ok, JSON.stringify(result)).toBe(true);
+  });
+  it('still requires an operation and the priced motor when motorized', () => {
+    const q = fixture();
+    q.designs[0].lift_system = null;
+    expect(price(q).designs[0].result.ok).toBe(false);
+    q.designs[0].lift_system = 'Motorized';
+    expect(price(q).designs[0].result.ok).toBe(false);
   });
   it('still blocks actual missing fabric identity and unavailable grid cells', () => {
     const unknown = fixture(); unknown.designs[0].options_json!.fabric_color_code = 'NO-SUCH-COLOR';

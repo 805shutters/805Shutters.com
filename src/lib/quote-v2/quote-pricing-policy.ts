@@ -9,6 +9,7 @@ export const GRID_OPTION_QUOTING_EFFECTIVE_FROM = '2026-09-21';
 const ORDER_ONLY_RULES = new Set([
   // Roller retail uses fabric group, size and priced controls; tube diameter is fabrication evidence.
   'roller.required.roller_tube',
+  'roller.required.mount_type',
   'roller.matrix.tube_required',
   'norman.roman.ancillary.yard_line_quantity',
 // Current Norman quote-only audit. Unknown rule IDs remain hard blocks.
@@ -465,6 +466,8 @@ export function quotePricingValidationIssues(issues: readonly ValidationIssue[])
   return issues.map(issue => issue.severity === 'hard_block' && isOrderingOnlyIssue(issue)
     ? { ...issue, severity: 'warning', explanation: issue.ruleId === 'roller.required.roller_tube'
       ? 'Before ordering: confirm the physical roller tube. Tube size is not required for quote pricing.'
-      : `Before ordering: ${issue.explanation}` }
+      : issue.ruleId === 'roller.required.mount_type'
+        ? 'Before ordering: confirm the mount type. Mount type is not required for the standard roller grid price.'
+        : `Before ordering: ${issue.explanation}` }
     : issue);
 }
