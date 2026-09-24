@@ -1,5 +1,6 @@
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 import { placesApiKey } from "@/lib/places/server";
+import { placesRequestError } from "@/lib/places/errors";
 
 const textSearchUrl = "https://places.googleapis.com/v1/places:searchText";
 
@@ -55,8 +56,9 @@ export async function geocodeBookingAddress(address: string): Promise<BookingGeo
   });
 
   if (!response.ok) {
-    console.error(`[booking] places text search failed (${response.status})`);
-    return { configured: true, point: null };
+    const error = await placesRequestError(response, "text search");
+    console.error(`[booking] ${error.message}`);
+    throw error;
   }
 
   const data = (await response.json()) as {

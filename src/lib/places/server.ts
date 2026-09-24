@@ -3,6 +3,7 @@
 // which call Google with this key. Keep `GOOGLE_MAPS_API_KEY` out of NEXT_PUBLIC_*.
 
 import type { PlaceSuggestion, ResolvedAddress } from "./types";
+import { placesRequestError } from "./errors";
 
 const AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const DETAILS_URL = "https://places.googleapis.com/v1/places";
@@ -55,7 +56,7 @@ export async function fetchAutocomplete(
   });
 
   if (!response.ok) {
-    throw new Error(`Places autocomplete failed (${response.status})`);
+    throw await placesRequestError(response, "autocomplete");
   }
 
   const data = (await response.json()) as {
@@ -100,7 +101,7 @@ export async function fetchPlaceDetails(
   });
 
   if (!response.ok) {
-    throw new Error(`Places details failed (${response.status})`);
+    throw await placesRequestError(response, "details");
   }
 
   const data = (await response.json()) as {

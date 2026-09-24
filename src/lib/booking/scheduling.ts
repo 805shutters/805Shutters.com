@@ -92,7 +92,7 @@ export async function validateServiceAddress(address: string) {
     if (!result.configured)
       throw new BookingError(
         503,
-        "Address and driving checks are temporarily unavailable.",
+        "We couldn't check appointment availability right now. Please try again shortly or call/text 805-806-9344 to book.",
       );
     if (!result.point)
       throw new BookingError(
@@ -104,7 +104,7 @@ export async function validateServiceAddress(address: string) {
     if (error instanceof BookingError) throw error;
     throw new BookingError(
       503,
-      "Address and driving checks are temporarily unavailable.",
+      "We couldn't check appointment availability right now. Please try again shortly or call/text 805-806-9344 to book.",
     );
   }
 }
