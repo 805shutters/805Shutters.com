@@ -2,7 +2,18 @@ import * as gmailAccess from "./installation-invoices";
 import * as productEmailWorkflow from "./apply-order-email-product";
 import { listGmailMessages } from "./order-cogs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, matchOrderCogs, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+
+describe("recorded order reference matching", () => {
+  const candidate = { source: "entry" as const, customerName: "Ashley Soto", customerEmail: null, customerPhone: null, customerAddress: null, productInterest: null, jobId: "job", quoteId: "quote", entryId: "entry", quoteNumber: null, quoteLabel: null, totalAmount: 5517.36, cogsAmount: 2424.23, soldDate: null, manufacturerName: "Norman", manufacturerOrderRef: null, manufacturerOrderUrl: null, meta: {orderCogsOrderRefs:["8880987043"]} };
+  const extraction = { customerName: "Ashley Soto HC", orderAmount: 764.88, orderNumber: "8880987043", confidence: 1, amountConfidence: 1, text: "", manufacturer: "Norman" };
+  it("resolves a vendor product suffix using the recorded exact order", () => {
+    expect(matchOrderCogs(extraction,[candidate])).toMatchObject({status:"matched",confidence:1,candidate});
+  });
+  it("leaves duplicated order references across sales for review", () => {
+    expect(matchOrderCogs(extraction,[candidate,{...candidate,entryId:"another-sale"}])).toMatchObject({status:"needs_review",candidate:null});
+  });
+});
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {

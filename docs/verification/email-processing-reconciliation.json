@@ -1,0 +1,1130 @@
+{
+  "before": [
+    {
+      "id": "0218438a-f3e8-4af6-8687-391463903533",
+      "customer_name": "Greg Coull",
+      "quote_id": "80510a4b-305d-4602-8cb0-131680d2735c",
+      "job_id": "b263cddc-32fd-4351-9aac-6239fce881b9",
+      "total_amount": "3893.94",
+      "cogs_amount": "2049.10",
+      "installation_invoice_amount": "0.00",
+      "installation_invoice_number": null,
+      "updated_at": "2026-09-24 03:06:23.027111+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "onyx:52609101336",
+          "norman:8880986504"
+        ],
+        "orderCogsOrderRefs": [
+          "52609101336",
+          "8880986504"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a089392e2e03478",
+          "1a0a519d23dcf1b0"
+        ],
+        "product_order_costs": {
+          "6c79bab6-1e53-44ef-8ae3-a2bbac545917": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "6c79bab6-1e53-44ef-8ae3-a2bbac545917"
+            ],
+            "reference": "52609101336",
+            "requestId": "bfc4777c-72fd-4b27-a534-2b4f2f0586d0"
+          },
+          "c3a3fe29-7378-491b-a2f1-159df7da85eb": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1a0a519d23dcf1b0",
+            "records": [
+              "c3a3fe29-7378-491b-a2f1-159df7da85eb"
+            ],
+            "reference": "8880986504",
+            "requestId": "4ef63654-9b04-481a-81e3-8ff8e41ac3ba"
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2049.1,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9"
+            ],
+            "reference": "52609101336, 8880986504",
+            "requestId": "3c15a400-0d49-489d-bf41-699046a67f5c"
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2049.1,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533"
+            ],
+            "reference": "52609101336, 8880986504",
+            "requestId": "845ad316-5b2f-4afa-ac04-067f6d843289"
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:shutters": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:shutters"
+            ],
+            "reference": "52609101336",
+            "requestId": "b7a7ff03-2cf1-45cf-ab56-933be78eface"
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:roller%20shades": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1a0a519d23dcf1b0",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:roller%20shades"
+            ],
+            "reference": "8880986504",
+            "requestId": "e194f5b7-d09d-4072-afbc-0cf02c6d485c"
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:shutters": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:shutters"
+            ],
+            "reference": "52609101336",
+            "requestId": "e9209f37-ebbf-4ce3-9662-35a3adbe178a"
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:roller%20shades": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1a0a519d23dcf1b0",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:roller%20shades"
+            ],
+            "reference": "8880986504",
+            "requestId": "4582ee40-9218-4ab9-91f2-a85d7bcb8c20"
+          }
+        },
+        "cancelled_order_refs": [
+          {
+            "ref": "8880985917",
+            "note": "Cancelled 2026-09-10; excluded from COGS",
+            "manufacturer": "Norman"
+          }
+        ],
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:58:43.569448+00:00",
+            "orderAmount": 1823.04,
+            "orderNumber": "52609101336",
+            "productType": "shutters",
+            "manufacturer": "Onyx",
+            "gmailMessageId": "1a089392e2e03478"
+          },
+          {
+            "appliedAt": "2026-09-24T02:58:43.569448+00:00",
+            "orderAmount": 226.06,
+            "orderNumber": "8880986504",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0a519d23dcf1b0"
+          }
+        ],
+        "product_type_workflow": {
+          "shutters": {
+            "ordered_at": "2026-09-24T02:58:43.569448+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:43.569448+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:58:43.569448+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:43.569448+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:58:43.569448+00:00",
+        "product_order_cogs_total": 2049.1,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        }
+      }
+    },
+    {
+      "id": "51bcd590-c983-45cf-977f-4b7e36027308",
+      "customer_name": "Brian Black",
+      "quote_id": "e689c57a-e27e-4221-8b81-fd494044729c",
+      "job_id": "d960323f-ac2f-498f-8ec6-a2e458342074",
+      "total_amount": "5312.70",
+      "cogs_amount": "2470.06",
+      "installation_invoice_amount": "0.00",
+      "installation_invoice_number": null,
+      "updated_at": "2026-09-24 03:06:23.027111+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "onyx:52609181390",
+          "norman:8880987029"
+        ],
+        "orderCogsOrderRefs": [
+          "52609181390",
+          "8880987029"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a0b64071e639c92",
+          "1a0b64c31b084879"
+        ],
+        "product_order_costs": {
+          "b69913e4-e97f-4355-bf9c-73ed068d7f1e": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "1a0b64071e639c92",
+            "records": [
+              "b69913e4-e97f-4355-bf9c-73ed068d7f1e"
+            ],
+            "reference": "52609181390",
+            "requestId": "bbd66d13-c250-470e-a498-f99a9ce48c5e"
+          },
+          "e5e6323c-519a-4026-a051-4d9082932778": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "e5e6323c-519a-4026-a051-4d9082932778"
+            ],
+            "reference": "8880987029",
+            "requestId": "599b9ff8-9f05-4596-b46d-9669da2d6d58"
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2470.06,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074"
+            ],
+            "reference": "52609181390, 8880987029",
+            "requestId": "f2ce4d29-5df8-478f-b2d5-19566fcacdcd"
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2470.06,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308"
+            ],
+            "reference": "52609181390, 8880987029",
+            "requestId": "6a2abb0e-2619-4b98-b4d5-14b6cd90bcc8"
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:shutters": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "1a0b64071e639c92",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:shutters"
+            ],
+            "reference": "52609181390",
+            "requestId": "e2989a9e-55c0-451e-8a59-67131d88f791"
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:roller%20shades": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:roller%20shades"
+            ],
+            "reference": "8880987029",
+            "requestId": "d7dc6b0d-f08d-4c3b-bbc6-9c0e8a6427c9"
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:shutters": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "1a0b64071e639c92",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:shutters"
+            ],
+            "reference": "52609181390",
+            "requestId": "90a2b434-8bd6-4b60-9848-add9094a8a97"
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:roller%20shades": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:roller%20shades"
+            ],
+            "reference": "8880987029",
+            "requestId": "bf7c830c-7754-4b04-bc6c-7d532c6bfcc9"
+          }
+        },
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:55:32.066972+00:00",
+            "orderAmount": 1780.28,
+            "orderNumber": "52609181390",
+            "productType": "shutters",
+            "manufacturer": "Onyx",
+            "gmailMessageId": "1a0b64071e639c92"
+          },
+          {
+            "appliedAt": "2026-09-24T02:55:32.066972+00:00",
+            "orderAmount": 689.78,
+            "orderNumber": "8880987029",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b64c31b084879"
+          }
+        ],
+        "product_type_workflow": {
+          "shutters": {
+            "ordered_at": "2026-09-24T02:55:32.066972+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:55:32.066972+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:55:32.066972+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:55:32.066972+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:55:32.066972+00:00",
+        "product_order_cogs_total": 2470.06,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        },
+        "product_order_cost_history": [
+          {
+            "at": "2026-09-19T00:45:05.282Z",
+            "by": "805shutters@gmail.com",
+            "key": "job-product-d960323f-ac2f-498f-8ec6-a2e458342074",
+            "amount": 1780.28,
+            "emailId": "a2e2700e-3e64-4079-88d0-5b698b0f0fc8",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074"
+            ],
+            "previous": null,
+            "reference": "52609181390",
+            "requestId": "99c46e54-a6bb-4622-9aca-284237e11ef0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ad7462d0-6400-47e4-99ab-02e60ba4f18f",
+      "customer_name": "Ashley Soto",
+      "quote_id": "3f85b581-2cc3-4ac0-994c-aa7eb0d3a6f2",
+      "job_id": "8f205351-b250-41ed-ba12-74a27b5fc51e",
+      "total_amount": "5517.36",
+      "cogs_amount": "2424.23",
+      "installation_invoice_amount": "0.00",
+      "installation_invoice_number": null,
+      "updated_at": "2026-09-24 03:06:23.027111+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "norman:8880987039",
+          "norman:8880987043"
+        ],
+        "orderCogsOrderRefs": [
+          "8880987039",
+          "8880987043"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a0b657a61c5fc8a",
+          "1a0b659f1c404b03"
+        ],
+        "product_order_costs": {
+          "d0426c5a-86bf-447b-93ad-7ca196450d52": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "d0426c5a-86bf-447b-93ad-7ca196450d52"
+            ],
+            "reference": "8880987039",
+            "requestId": "6c330fa4-ea59-479a-8b84-edddd963efd8"
+          },
+          "e4aa7050-5315-4526-a47b-d2907f9ae763": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "1a0b659f1c404b03",
+            "records": [
+              "e4aa7050-5315-4526-a47b-d2907f9ae763"
+            ],
+            "reference": "8880987043",
+            "requestId": "1a1bf3aa-706f-462e-88cf-bc3660589296"
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2424.23,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e"
+            ],
+            "reference": "8880987039, 8880987043",
+            "requestId": "4c1fcb2a-401c-4972-8b1a-483d7d4f4287"
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2424.23,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f"
+            ],
+            "reference": "8880987039, 8880987043",
+            "requestId": "386ef6c9-dbea-4c55-a2ce-ea5c071e2084"
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:roller%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:roller%20shades"
+            ],
+            "reference": "8880987039",
+            "requestId": "7d216a38-6bf7-42cc-9959-18127b555483"
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:honeycomb%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "1a0b659f1c404b03",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:honeycomb%20shades"
+            ],
+            "reference": "8880987043",
+            "requestId": "017336e3-0096-4ce8-be4d-a11d334fa449"
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:roller%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:roller%20shades"
+            ],
+            "reference": "8880987039",
+            "requestId": "db84dd34-f012-4ac6-a62b-9873a00856da"
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:honeycomb%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "1a0b659f1c404b03",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:honeycomb%20shades"
+            ],
+            "reference": "8880987043",
+            "requestId": "f0138dae-88c5-4753-a703-06f83b52f16f"
+          }
+        },
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:58:21.60995+00:00",
+            "orderAmount": 1659.35,
+            "orderNumber": "8880987039",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b657a61c5fc8a"
+          },
+          {
+            "appliedAt": "2026-09-24T02:58:21.60995+00:00",
+            "orderAmount": 764.88,
+            "orderNumber": "8880987043",
+            "productType": "honeycomb shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b659f1c404b03"
+          }
+        ],
+        "product_type_workflow": {
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:58:21.60995+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:21.60995+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "honeycomb shades": {
+            "ordered_at": "2026-09-24T02:58:21.60995+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:21.60995+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:58:21.60995+00:00",
+        "product_order_cogs_total": 2424.23,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        }
+      }
+    }
+  ],
+  "after": [
+    {
+      "id": "0218438a-f3e8-4af6-8687-391463903533",
+      "customer_name": "Greg Coull",
+      "total_amount": "3893.94",
+      "cogs_amount": "2049.10",
+      "updated_at": "2026-09-24 17:36:48.756995+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "onyx:52609101336",
+          "norman:8880986504"
+        ],
+        "orderCogsOrderRefs": [
+          "52609101336",
+          "8880986504"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a089392e2e03478",
+          "1a0a519d23dcf1b0"
+        ],
+        "product_order_costs": {
+          "6c79bab6-1e53-44ef-8ae3-a2bbac545917": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "8d7722a0-e91a-4cf5-b9ba-64144ba277db",
+            "records": [
+              "6c79bab6-1e53-44ef-8ae3-a2bbac545917"
+            ],
+            "reference": "52609101336",
+            "requestId": "bfc4777c-72fd-4b27-a534-2b4f2f0586d0",
+            "originalGmailMessageId": "1a089392e2e03478"
+          },
+          "c3a3fe29-7378-491b-a2f1-159df7da85eb": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1f587fa9-41d0-48a9-823e-2b8d84b8ba5e",
+            "records": [
+              "c3a3fe29-7378-491b-a2f1-159df7da85eb"
+            ],
+            "reference": "8880986504",
+            "requestId": "4ef63654-9b04-481a-81e3-8ff8e41ac3ba",
+            "originalGmailMessageId": "1a0a519d23dcf1b0"
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2049.1,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9"
+            ],
+            "reference": "52609101336, 8880986504",
+            "requestId": "3c15a400-0d49-489d-bf41-699046a67f5c",
+            "supersededAt": "2026-09-24T17:36:21.252Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2049.1,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533"
+            ],
+            "reference": "52609101336, 8880986504",
+            "requestId": "845ad316-5b2f-4afa-ac04-067f6d843289",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:shutters": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:shutters"
+            ],
+            "reference": "52609101336",
+            "requestId": "b7a7ff03-2cf1-45cf-ab56-933be78eface",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:roller%20shades": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1a0a519d23dcf1b0",
+            "records": [
+              "job-product-b263cddc-32fd-4351-9aac-6239fce881b9#product:roller%20shades"
+            ],
+            "reference": "8880986504",
+            "requestId": "e194f5b7-d09d-4072-afbc-0cf02c6d485c",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:shutters": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1823.04,
+            "emailId": "1a089392e2e03478",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:shutters"
+            ],
+            "reference": "52609101336",
+            "requestId": "e9209f37-ebbf-4ce3-9662-35a3adbe178a",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:roller%20shades": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 226.06,
+            "emailId": "1a0a519d23dcf1b0",
+            "records": [
+              "whole-job-bookkeeping-0218438a-f3e8-4af6-8687-391463903533#product:roller%20shades"
+            ],
+            "reference": "8880986504",
+            "requestId": "4582ee40-9218-4ab9-91f2-a85d7bcb8c20",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "6c79bab6-1e53-44ef-8ae3-a2bbac545917,c3a3fe29-7378-491b-a2f1-159df7da85eb",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          }
+        },
+        "cancelled_order_refs": [
+          {
+            "ref": "8880985917",
+            "note": "Cancelled 2026-09-10; excluded from COGS",
+            "manufacturer": "Norman"
+          }
+        ],
+        "emailProcessingRepair": {
+          "at": "2026-09-24T17:36:21.258Z",
+          "reason": "Normalize duplicate allocation aliases and link source audit receipts; financial totals unchanged."
+        },
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:58:43.569448+00:00",
+            "orderAmount": 1823.04,
+            "orderNumber": "52609101336",
+            "productType": "shutters",
+            "manufacturer": "Onyx",
+            "gmailMessageId": "1a089392e2e03478"
+          },
+          {
+            "appliedAt": "2026-09-24T02:58:43.569448+00:00",
+            "orderAmount": 226.06,
+            "orderNumber": "8880986504",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0a519d23dcf1b0"
+          }
+        ],
+        "product_type_workflow": {
+          "shutters": {
+            "ordered_at": "2026-09-24T02:58:43.569448+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:43.569448+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:58:43.569448+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:43.569448+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:58:43.569448+00:00",
+        "product_order_cogs_total": 2049.1,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:58:43.569448+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        }
+      }
+    },
+    {
+      "id": "51bcd590-c983-45cf-977f-4b7e36027308",
+      "customer_name": "Brian Black",
+      "total_amount": "5312.70",
+      "cogs_amount": "2470.06",
+      "updated_at": "2026-09-24 17:36:48.756995+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "onyx:52609181390",
+          "norman:8880987029"
+        ],
+        "orderCogsOrderRefs": [
+          "52609181390",
+          "8880987029"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a0b64071e639c92",
+          "1a0b64c31b084879"
+        ],
+        "product_order_costs": {
+          "b69913e4-e97f-4355-bf9c-73ed068d7f1e": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "a2e2700e-3e64-4079-88d0-5b698b0f0fc8",
+            "records": [
+              "b69913e4-e97f-4355-bf9c-73ed068d7f1e"
+            ],
+            "reference": "52609181390",
+            "requestId": "bbd66d13-c250-470e-a498-f99a9ce48c5e",
+            "originalGmailMessageId": "1a0b64071e639c92"
+          },
+          "e5e6323c-519a-4026-a051-4d9082932778": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "5cafae04-aecd-4cfb-9ff6-476b29ce24f7",
+            "records": [
+              "e5e6323c-519a-4026-a051-4d9082932778"
+            ],
+            "reference": "8880987029",
+            "requestId": "599b9ff8-9f05-4596-b46d-9669da2d6d58",
+            "originalGmailMessageId": "1a0b64c31b084879"
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2470.06,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074"
+            ],
+            "reference": "52609181390, 8880987029",
+            "requestId": "f2ce4d29-5df8-478f-b2d5-19566fcacdcd",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2470.06,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308"
+            ],
+            "reference": "52609181390, 8880987029",
+            "requestId": "6a2abb0e-2619-4b98-b4d5-14b6cd90bcc8",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:shutters": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "1a0b64071e639c92",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:shutters"
+            ],
+            "reference": "52609181390",
+            "requestId": "e2989a9e-55c0-451e-8a59-67131d88f791",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:roller%20shades": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074#product:roller%20shades"
+            ],
+            "reference": "8880987029",
+            "requestId": "d7dc6b0d-f08d-4c3b-bbc6-9c0e8a6427c9",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:shutters": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1780.28,
+            "emailId": "1a0b64071e639c92",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:shutters"
+            ],
+            "reference": "52609181390",
+            "requestId": "90a2b434-8bd6-4b60-9848-add9094a8a97",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:roller%20shades": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 689.78,
+            "emailId": "1a0b64c31b084879",
+            "records": [
+              "whole-job-bookkeeping-51bcd590-c983-45cf-977f-4b7e36027308#product:roller%20shades"
+            ],
+            "reference": "8880987029",
+            "requestId": "bf7c830c-7754-4b04-bc6c-7d532c6bfcc9",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "b69913e4-e97f-4355-bf9c-73ed068d7f1e,e5e6323c-519a-4026-a051-4d9082932778",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          }
+        },
+        "emailProcessingRepair": {
+          "at": "2026-09-24T17:36:21.258Z",
+          "reason": "Normalize duplicate allocation aliases and link source audit receipts; financial totals unchanged."
+        },
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:55:32.066972+00:00",
+            "orderAmount": 1780.28,
+            "orderNumber": "52609181390",
+            "productType": "shutters",
+            "manufacturer": "Onyx",
+            "gmailMessageId": "1a0b64071e639c92"
+          },
+          {
+            "appliedAt": "2026-09-24T02:55:32.066972+00:00",
+            "orderAmount": 689.78,
+            "orderNumber": "8880987029",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b64c31b084879"
+          }
+        ],
+        "product_type_workflow": {
+          "shutters": {
+            "ordered_at": "2026-09-24T02:55:32.066972+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:55:32.066972+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:55:32.066972+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:55:32.066972+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:55:32.066972+00:00",
+        "product_order_cogs_total": 2470.06,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:55:32.066972+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        },
+        "product_order_cost_history": [
+          {
+            "at": "2026-09-19T00:45:05.282Z",
+            "by": "805shutters@gmail.com",
+            "key": "job-product-d960323f-ac2f-498f-8ec6-a2e458342074",
+            "amount": 1780.28,
+            "emailId": "a2e2700e-3e64-4079-88d0-5b698b0f0fc8",
+            "records": [
+              "job-product-d960323f-ac2f-498f-8ec6-a2e458342074"
+            ],
+            "previous": null,
+            "reference": "52609181390",
+            "requestId": "99c46e54-a6bb-4622-9aca-284237e11ef0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ad7462d0-6400-47e4-99ab-02e60ba4f18f",
+      "customer_name": "Ashley Soto",
+      "total_amount": "5517.36",
+      "cogs_amount": "2424.23",
+      "updated_at": "2026-09-24 17:36:48.756995+00",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805shutters@gmail.com",
+        "orderCogsOrderKeys": [
+          "norman:8880987039",
+          "norman:8880987043"
+        ],
+        "orderCogsOrderRefs": [
+          "8880987039",
+          "8880987043"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a0b657a61c5fc8a",
+          "1a0b659f1c404b03"
+        ],
+        "product_order_costs": {
+          "d0426c5a-86bf-447b-93ad-7ca196450d52": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "825c6794-e507-457c-acae-594d548442d7",
+            "records": [
+              "d0426c5a-86bf-447b-93ad-7ca196450d52"
+            ],
+            "reference": "8880987039",
+            "requestId": "6c330fa4-ea59-479a-8b84-edddd963efd8",
+            "originalGmailMessageId": "1a0b657a61c5fc8a"
+          },
+          "e4aa7050-5315-4526-a47b-d2907f9ae763": {
+            "at": "2026-09-24T03:06:23.027111+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "a96eff89-589e-4b3c-9fd5-c4625d170d31",
+            "records": [
+              "e4aa7050-5315-4526-a47b-d2907f9ae763"
+            ],
+            "reference": "8880987043",
+            "requestId": "1a1bf3aa-706f-462e-88cf-bc3660589296",
+            "originalGmailMessageId": "1a0b659f1c404b03"
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2424.23,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e"
+            ],
+            "reference": "8880987039, 8880987043",
+            "requestId": "4c1fcb2a-401c-4972-8b1a-483d7d4f4287",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 2424.23,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f"
+            ],
+            "reference": "8880987039, 8880987043",
+            "requestId": "386ef6c9-dbea-4c55-a2ce-ea5c071e2084",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:roller%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:roller%20shades"
+            ],
+            "reference": "8880987039",
+            "requestId": "7d216a38-6bf7-42cc-9959-18127b555483",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:honeycomb%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "1a0b659f1c404b03",
+            "records": [
+              "job-product-8f205351-b250-41ed-ba12-74a27b5fc51e#product:honeycomb%20shades"
+            ],
+            "reference": "8880987043",
+            "requestId": "017336e3-0096-4ce8-be4d-a11d334fa449",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:roller%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 1659.35,
+            "emailId": "1a0b657a61c5fc8a",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:roller%20shades"
+            ],
+            "reference": "8880987039",
+            "requestId": "db84dd34-f012-4ac6-a62b-9873a00856da",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          },
+          "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:honeycomb%20shades": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "amount": 764.88,
+            "emailId": "1a0b659f1c404b03",
+            "records": [
+              "whole-job-bookkeeping-ad7462d0-6400-47e4-99ab-02e60ba4f18f#product:honeycomb%20shades"
+            ],
+            "reference": "8880987043",
+            "requestId": "f0138dae-88c5-4753-a703-06f83b52f16f",
+            "supersededAt": "2026-09-24T17:36:21.258Z",
+            "supersededBy": "d0426c5a-86bf-447b-93ad-7ca196450d52,e4aa7050-5315-4526-a47b-d2907f9ae763",
+            "supersededReason": "Duplicate legacy aliases replaced by source-verified individual product allocations."
+          }
+        },
+        "emailProcessingRepair": {
+          "at": "2026-09-24T17:36:21.258Z",
+          "reason": "Normalize duplicate allocation aliases and link source audit receipts; financial totals unchanged."
+        },
+        "orderCogsApplications": [
+          {
+            "appliedAt": "2026-09-24T02:58:21.60995+00:00",
+            "orderAmount": 1659.35,
+            "orderNumber": "8880987039",
+            "productType": "roller shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b657a61c5fc8a"
+          },
+          {
+            "appliedAt": "2026-09-24T02:58:21.60995+00:00",
+            "orderAmount": 764.88,
+            "orderNumber": "8880987043",
+            "productType": "honeycomb shades",
+            "manufacturer": "Norman",
+            "gmailMessageId": "1a0b659f1c404b03"
+          }
+        ],
+        "product_type_workflow": {
+          "roller shades": {
+            "ordered_at": "2026-09-24T02:58:21.60995+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:21.60995+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          },
+          "honeycomb shades": {
+            "ordered_at": "2026-09-24T02:58:21.60995+00:00",
+            "workflow_checks": {
+              "ordered": {
+                "at": "2026-09-24T02:58:21.60995+00:00",
+                "by": "805shutters@gmail.com",
+                "source": "staff_job_status",
+                "user_id": null
+              }
+            }
+          }
+        },
+        "manufacturer_updated_at": "2026-09-24T02:58:21.60995+00:00",
+        "product_order_cogs_total": 2424.23,
+        "whole_job_workflow_checks": {
+          "ordered": {
+            "at": "2026-09-24T02:58:21.60995+00:00",
+            "by": "805shutters@gmail.com",
+            "source": "staff_job_status",
+            "user_id": null
+          }
+        }
+      }
+    }
+  ]
+}

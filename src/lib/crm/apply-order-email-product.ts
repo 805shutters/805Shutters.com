@@ -49,22 +49,28 @@ export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrder
   const item = matches[0];
   const products = item.products.filter(product => !product.manufacturer || normalizedProductLabel(product.manufacturer) === normalizedProductLabel(manufacturer || ''));
   const simple = (product: ProductProgress) => !product.records.some(record => record.productType) && !/[,/&+]|\band\b/i.test(product.name);
-  let product: ProductProgress | undefined;
-  if (manufacturer === 'Onyx') {
+  const reference = email.extracted_order_number?.trim().toLowerCase();
+  const recorded = products.filter(product => {
+    const cost = productOrderCosts(costParent(item).meta)[orderCostKey(product.records)];
+    return Boolean(reference && cost?.reference.trim().toLowerCase() === reference);
+  });
+  if (recorded.length > 1) throw new CrmAuthError(409, 'The order is allocated across multiple product groups; review its line items.');
+  let product: ProductProgress | undefined = recorded[0];
+  if (!product && manufacturer === 'Onyx') {
     const shutters = products.filter(p => simple(p) && /\bshutters?\b/i.test(p.name));
     if (shutters.length === 1) product = shutters[0];
-  } else if (products.length === 1 && simple(products[0])) {
+  } else if (!product && products.length === 1 && simple(products[0])) {
     product = products[0];
   }
   if (!product) throw new CrmAuthError(409, 'Allocate this invoice to its product in Job status; the email does not identify one unambiguous product group.');
-  if (!product.manufacturer) {
+  if (!product.manufacturer && !recorded.length) {
     const suppliers = quoteManufacturers(item);
     if (suppliers.size > 1 || (suppliers.size === 1 && !suppliers.has(normalizedProductLabel(manufacturer || '')))) {
       throw new CrmAuthError(409, 'The contract supplier does not identify one matching product group. Allocate this invoice in Job status.');
     }
   }
   // A generated job product must not hide multiple product types in the signed contract.
-  if (product.records.some(r => r.id.startsWith('job-product-')) && item.headerProducts.length > 1) {
+  if (product.records.some(r => r.id.startsWith('job-product-') && !r.productType) && item.headerProducts.length > 1) {
     throw new CrmAuthError(409, 'The signed contract contains multiple products. Allocate the invoice in Job status.');
   }
   return { item, product };

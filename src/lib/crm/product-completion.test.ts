@@ -58,17 +58,21 @@ describe("staff product completion",()=>{
       expect(product.meta[`${step}_at`]).toEqual(expect.any(String));expect(product.meta[step==="ordered"?"shipped_at":"ordered_at"]).toBeUndefined();
     }
   });
+  it.each(["ordered", "shipped"])("accepts verified quote and cost links for %s",async step=>{
+    const db=database();for(const product of db.tables.crm_customer_products)product.bookkeeping_entry_id=entryId;
+    await completeProductMilestone(db.client,{...input,step},actor);expect(db.writes).toHaveLength(2);
+  });
   it("does not write twice when retried with a stale snapshot after success",async()=>{
     const db=database();await completeProductMilestone(db.client,input,actor);await completeProductMilestone(db.client,input,actor);expect(db.writes).toHaveLength(2);
   });
-  it.each(["stale","different quote","different type","deleted","missing","entry precedence"])("rejects %s before any write",async reason=>{
+  it.each(["stale","different quote","different type","deleted","missing","conflicting entry"])("rejects %s before any write",async reason=>{
     const db=database(),product=db.tables.crm_customer_products[1];
     if(reason==="stale")product.updated_at="2026-09-17";
     if(reason==="different quote")product.quote_id=jobId;
     if(reason==="different type")product.product_type="Blinds";
     if(reason==="deleted")product.meta.deleted_at=timestamp;
     if(reason==="missing")db.tables.crm_customer_products.pop();
-    if(reason==="entry precedence")product.bookkeeping_entry_id=entryId;
+    if(reason==="conflicting entry"){product.bookkeeping_entry_id=entryId;db.tables.crm_quote_bookkeeping_entries[0].quote_id=p1;}
     await expect(completeProductMilestone(db.client,input,actor)).rejects.toBeInstanceOf(CrmAuthError);expect(db.writes).toHaveLength(0);
   });
   it.each(["direct","quote","ledger"])("records an already placed order through %s links without changing outstanding prerequisites",async link=>{
@@ -512,7 +516,17 @@ describe("confirmed shipment dates", () => {
     await expect(completeProductMilestone(db.client, { ...input, step: "shipped", shipment }, actor)).rejects.toMatchObject({ status: 409 });
     expect(db.writes).toHaveLength(0);
   });
-  it.each([{ shippedOn: "2026-02-30" }, { shippedOn: "2099-01-01" }, { mailbox: "805shutters@gmail.com" }, { messageId: "" }, { orderReference: "" }])("rejects invalid source/date %j", override => {
+  it('preserves an undated vendor notice, retries idempotently, and later adds an explicit date',async()=>{
+    const db=database();const undated={...shipment,shippedOn:null,notifiedOn:'2026-09-19',trackingNumber:'TRACK123'};
+    const body={...input,step:'shipped',shipment:undated};
+    await completeProductMilestone(db.client,body,actor);
+    await completeProductMilestone(db.client,body,actor);
+    expect(db.writes).toHaveLength(2);
+    expect(db.tables.crm_customer_products[0].meta.shipping_confirmation).toMatchObject(undated);
+    await completeProductMilestone(db.client,{...body,records:db.tables.crm_customer_products.map(p=>({id:p.id,updatedAt:p.updated_at})),shipment:{...undated,shippedOn:'2026-09-18'}},actor);
+    expect(db.tables.crm_customer_products[0].meta.shipping_confirmation.shippedOn).toBe('2026-09-18');
+  });
+  it.each([{ shippedOn: "2026-02-30" }, { shippedOn: "2099-01-01" }, { mailbox: "wrong@example.test" }, { messageId: "" }, { orderReference: "" }])("rejects invalid source/date %j", override => {
     expect(() => parseProductCompletion({ ...input, step: "shipped", shipment: { ...shipment, ...override } })).toThrow();
   });
   it("rejects shipment evidence on generated product or whole-job records", () => {

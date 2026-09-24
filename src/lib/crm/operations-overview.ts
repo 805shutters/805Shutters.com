@@ -30,7 +30,7 @@ function productProgress(product: CrmCustomerProduct, name: string, mixed: boole
   return {
     id: productTargetIdentity(target), name, manufacturer: product.supplier?.trim() || null, quantity, records: [target],
     shipments: shipmentEvidence(meta),
-    undatedShipments: (meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)) && !shipmentEvidence(meta).length ? 1 : 0,
+    undatedShipments: (meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)) && !shipmentEvidence(meta).some(shipment => shipment.shippedOn) ? 1 : 0,
     ordered: Boolean(meta.ordered_at || status === "ordered"),
     shipped: Boolean(meta.shipped_at || meta.received_at || ["shipped", "received", "delivered"].includes(status)),
     installed: Boolean(meta.installed_at || status === "installed")
@@ -109,7 +109,8 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
     const soleJob = Boolean(jobId && sources.filter(item => (item.job?.id || item.row?.jobId || item.quote?.job_id) === jobId).length === 1);
     const matched = products.filter(product => {
       if (objectMeta(product.meta).deleted_at) return false;
-      if (product.bookkeeping_entry_id) return source.row?.source !== "crm_quote" && product.bookkeeping_entry_id === source.row?.id;
+      if (product.bookkeeping_entry_id) return product.bookkeeping_entry_id === (source.row?.costRecordId || source.row?.id)
+        && (!product.quote_id || product.quote_id === quoteId);
       if (product.quote_id) return product.quote_id === quoteId;
       return soleJob && Boolean(product.job_id && product.job_id === jobId);
     });
@@ -148,7 +149,7 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
         id: productTargetIdentity(target), name: expected.name, quantity: expected.quantity,
         manufacturer: null, records: [target], shipments,
         ordered: Boolean(meta.ordered_at), shipped: Boolean(meta.shipped_at), installed: Boolean(meta.installed_at),
-        undatedShipments: meta.shipped_at && !shipments.length ? 1 : 0
+        undatedShipments: meta.shipped_at && !shipments.some(shipment => shipment.shippedOn) ? 1 : 0
       });
     }
     if (installationPrerequisitesConfirmed(source)) {

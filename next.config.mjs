@@ -215,7 +215,7 @@ const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "pdf-parse", "@napi-rs/canvas"],
   outputFileTracingIncludes: {
     "/api/cron/customer-signed-contract-email": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     "/api/crm/quote-hub/**/*": [

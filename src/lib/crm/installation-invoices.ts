@@ -1,3 +1,4 @@
+import { extractPdfTextBuffer as parsePdfText } from "./pdf-text";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { ensureSoldQuoteInstallerDelivery } from "@/lib/crm/sold-installer-delivery";
@@ -111,6 +112,7 @@ export type InstallationInvoiceMatch = {
 export type ProcessInstallationInvoiceOptions = {
   /** Daily invoice reconciliation: cost only, exact identifiers, verified mailbox. */
   costsOnly?: boolean;
+  maxRunMs?: number;
   mailbox?: string;
   query?: string;
   maxResults?: number;
@@ -138,6 +140,7 @@ export type ProcessInstallationInvoiceResult = {
   unmatched: number;
   skipped: number;
   errors: number;
+  deferred?: number;
   auditTableAvailable: boolean;
   auditError: string | null;
   invoices: CrmInstallationInvoiceEmail[];
@@ -427,26 +430,6 @@ function pdfAttachmentParts(message: GmailMessage) {
   });
 }
 
-async function parsePdfText(buffer: Buffer) {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-
-  try {
-    const result = await parser.getText({ first: 3, pageJoiner: "\n" });
-    return cleanPdfText(result.text);
-  } finally {
-    await parser.destroy();
-  }
-}
-
-function cleanPdfText(value: string) {
-  return value
-    .replace(/\r/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
 
 async function extractPdfAttachmentText(input: {
   accessToken: string;
@@ -591,6 +574,8 @@ function extractMtsJobNumber(text: string) {
 }
 
 function extractExplicitCustomerName(text: string) {
+  const line = text.match(/\bcustomer\s+name\s*:?\s*\n?([^\n]+)/i);
+  if (line?.[1]?.trim()) return cleanText(line[1].split(/\s+(?:technician|service\s+type|invoice|date|due\s+date|bill\s+to|ship\s+to)\s*:/i)[0]);
   const match = text.match(
     /\bcustomer\s+name\s*:\s*([\s\S]{2,140}?)(?=\s+(?:technician|service\s+type|invoice|date|due\s+date|bill\s+to|ship\s+to)\s*:|$)/i
   );
@@ -645,7 +630,7 @@ export function extractInstallationInvoiceDetails(input: {
   const fallbackAmount = labeledAmount === null ? extractStandaloneMoney(text) : null;
   const invoiceAmount = labeledAmount ?? fallbackAmount?.amount ?? null;
   const amountConfidence = labeledAmount !== null ? 0.92 : fallbackAmount?.confidence || 0;
-  const customerName = extractNamedCustomer(text);
+  const customerName = extractNamedCustomer(attachmentText) || extractNamedCustomer(text);
 
   return {
     customerName,
@@ -863,7 +848,7 @@ function mtsJobNumbersFromMeta(meta: unknown) {
 }
 
 async function resolveMtsProjectNumber(mtsJobNumber: string | null) {
-  const url = process.env.MTS_SUPABASE_URL;
+  const url = process.env.MTS_SUPABASE_URL || "https://djduaqegxwjnmjlzjdor.supabase.co";
   const serviceRoleKey = process.env.MTS_SUPABASE_SERVICE_ROLE_KEY;
   if (!mtsJobNumber || !url || !serviceRoleKey) return null;
   const mts = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -923,6 +908,8 @@ export function exactInstallationInvoiceMatch(input: {
   candidates: InstallationInvoiceCandidate[];
   subject: string;
   from: string;
+  /** Explicit Customer Name field extracted from the attached invoice, never the email greeting. */
+  invoiceCustomerName?: string | null;
 }): InstallationInvoiceMatch {
   const { extraction, candidates, contractNumber, from, subject } = input;
   const sender = (/<([^>]+)>/.exec(from)?.[1] || from).trim().toLowerCase();
@@ -930,7 +917,14 @@ export function exactInstallationInvoiceMatch(input: {
   const trusted = mtsIdentity && (sender === "quickbooks@notification.intuit.com" || sender.endsWith("@mtsinstallations.com") || sender === "mtsshutters@gmail.com" || sender === "mtsagent101@gmail.com");
   const review = (reason: string): InstallationInvoiceMatch => ({ candidate: null, status: "needs_review", confidence: 0, reason });
   if (!trusted) return review("Verify MTS invoice sender and business identity.");
-  if (!extraction.invoiceNumber || !/\d/.test(extraction.invoiceNumber) || (!contractNumber && !extraction.mtsJobNumber)) return review("Invoice number and exact contract or MTS job reference required; customer name alone is insufficient.");
+  if (!extraction.invoiceNumber || !/\d/.test(extraction.invoiceNumber)) return review("An invoice number is required.");
+  if (!contractNumber && !extraction.mtsJobNumber) {
+    const name = normalizeCustomerName(input.invoiceCustomerName);
+    if (!name || name !== normalizeCustomerName(extraction.customerName)) return review("Invoice number and exact contract or MTS job reference required; customer name alone is insufficient.");
+    const named = candidates.filter(candidate => normalizeCustomerName(candidate.customerName) === name);
+    if (named.length !== 1 || named[0].source === "job") return review("The invoice Customer Name does not identify one unique sale; review its contract reference.");
+    return { candidate: named[0], status: "matched", confidence: 1, reason: "MTS attached invoice Customer Name identifies one unique sale." };
+  }
   const matches = candidates.filter(candidate => candidate.source !== "job" &&
     (!contractNumber || candidate.quoteNumber === contractNumber) &&
     (!extraction.mtsJobNumber || candidate.mtsJobNumbers.includes(extraction.mtsJobNumber) || Boolean(contractNumber && candidate.quoteNumber === contractNumber && !candidate.mtsJobNumbers.length)));
@@ -1346,7 +1340,8 @@ export function buildCompletedServiceReportWorkflowPatches(input: {
 
 function autoApplyDecision(
   match: InstallationInvoiceMatch,
-  extraction: ExtractedInstallationInvoice
+  extraction: ExtractedInstallationInvoice,
+  verifyInvoiceIdentity = false
 ): { status: CrmInstallationInvoiceEmailStatus; reason: string; canApply: boolean } {
   if (!match.candidate) return { status: match.status, reason: match.reason, canApply: false };
   if (match.status !== "matched") return { status: "needs_review", reason: match.reason, canApply: false };
@@ -1374,7 +1369,7 @@ function autoApplyDecision(
     };
   }
   if (
-    existingAmount > 0 &&
+    !verifyInvoiceIdentity && existingAmount > 0 &&
     isSameMoney(existingAmount, extraction.invoiceAmount) &&
     match.candidate.existingInstallationMatchStatus === "matched"
   ) {
@@ -1637,7 +1632,7 @@ export async function applyInstallationInvoiceCostOnly(
   const fresh = await query.maybeSingle();
   if (fresh.error) throw new CrmAuthError(502, "Could not reread installation ledger.");
   if (fresh.data && (fresh.data.quote_id !== candidate.quoteId || fresh.data.job_id !== candidate.jobId)) throw new CrmAuthError(409, "Invoice target changed; review required.");
-  if (fresh.data?.installation_invoice_document_id === message.id && Number(fresh.data.installation_invoice_amount) === extraction.invoiceAmount) return;
+  if (fresh.data && (fresh.data.installation_invoice_document_id === message.id || fresh.data.installation_invoice_number === extraction.invoiceNumber) && Number(fresh.data.installation_invoice_amount) === extraction.invoiceAmount) return;
   if (fresh.data && (Number(fresh.data.installation_invoice_amount) > 0 || fresh.data.installation_invoice_document_id || Number(fresh.data.installation_invoice_paid_amount) > 0)) throw new CrmAuthError(409, "An actual invoice/payment is already recorded; review before replacing it.");
   const now = new Date().toISOString();
   const patch = {
@@ -1716,6 +1711,7 @@ export async function processInstallationInvoiceInbox(
   supabase: CrmSupabaseClient,
   options: ProcessInstallationInvoiceOptions = {}
 ): Promise<ProcessInstallationInvoiceResult> {
+  const startedAt = Date.now();
   const mailbox = options.costsOnly ? (options.mailbox || process.env.INSTALLATION_INVOICE_MAILBOX || DEFAULT_INSTALLATION_INVOICE_MAILBOX).trim().toLowerCase() : normalizedMailbox(options.mailbox);
   const query = options.costsOnly ? (options.query || `in:anywhere newer_than:30d (invoice OR "amount due") "MTS Installations" -in:trash -in:spam`) : resolveInstallationInvoiceGmailQuery(mailbox, options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY);
   const maxResults = maxResultsValue(options.maxResults);
@@ -1727,6 +1723,16 @@ export async function processInstallationInvoiceInbox(
   const messageRefs = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
     : await listGmailMessageIds(accessToken, query, maxResults, options.costsOnly);
+  if (options.costsOnly && !options.messageIds?.length) {
+    const pending = await supabase.from("crm_installation_invoice_emails").select("gmail_message_id,processed_at")
+      .eq("mailbox_email", mailbox).in("match_status", ["needs_review", "unmatched", "error"])
+      .order("processed_at", { ascending: true }).limit(500);
+    if (pending.error || pending.data?.length === 500) throw new CrmAuthError(502, "Pending installation invoice queue could not be completely loaded.");
+    const seen = new Set(messageRefs.map(row => row.id));
+    for (const row of pending.data || []) if (!seen.has(row.gmail_message_id)) { messageRefs.push({ id: row.gmail_message_id }); seen.add(row.gmail_message_id); }
+    const attempted = new Map((pending.data || []).map(row => [row.gmail_message_id, row.processed_at]));
+    messageRefs.sort((a,b) => String(attempted.get(a.id) || "").localeCompare(String(attempted.get(b.id) || "")));
+  }
   const messageIds = messageRefs.map((message) => message.id).filter(Boolean);
 
   const result: ProcessInstallationInvoiceResult = {
@@ -1770,11 +1776,12 @@ export async function processInstallationInvoiceInbox(
   const candidates = await loadInvoiceCandidates(supabase, options.costsOnly);
   const appliedCandidateKeys = new Set<string>();
 
-  for (const messageId of messageIds) {
+  for (const [index, messageId] of messageIds.entries()) {
+    if (options.maxRunMs && Date.now() - startedAt >= options.maxRunMs) { result.deferred = messageIds.length - index; break; }
     const existingRecord = existingRecords.get(messageId);
     if (
       existingRecord &&
-      (existingRecord.appliedAt || existingRecord.matchStatus === "matched" || (!options.costsOnly && (!options.target || existingRecord.matchStatus === "skipped")))
+      (existingRecord.appliedAt || (!options.costsOnly && (existingRecord.matchStatus === "matched" || !options.target || existingRecord.matchStatus === "skipped")))
     ) {
       result.skipped += 1;
       continue;
@@ -1864,8 +1871,8 @@ export async function processInstallationInvoiceInbox(
               })
             : null;
         if (selectedTargetMatch) match = selectedTargetMatch;
-        if (options.costsOnly) match = exactInstallationInvoiceMatch({ extraction, contractNumber: authenticatedContractNumber, candidates: await loadInvoiceCandidates(supabase, true), subject, from });
-        decision = autoApplyDecision(match, extraction);
+        if (options.costsOnly) match = exactInstallationInvoiceMatch({ extraction, contractNumber: authenticatedContractNumber, candidates: await loadInvoiceCandidates(supabase, true), subject, from, invoiceCustomerName: extractExplicitCustomerName(pdfExtraction.text) });
+        decision = autoApplyDecision(match, extraction, options.costsOnly);
         if (await hasProcessedInvoiceNumber(supabase, extraction.invoiceNumber)) {
           decision = {
             status: "skipped",
@@ -1875,6 +1882,9 @@ export async function processInstallationInvoiceInbox(
         }
       }
 
+      if (pdfExtraction.errors.length) {
+        decision = { status: "error", reason: "Invoice attachment extraction failed: " + pdfExtraction.errors.join("; "), canApply: false };
+      }
       const candidate = match.candidate;
       const candidateKey = candidate ? candidateIdentity(candidate) : null;
       let appliedAt: string | null = null;
@@ -1887,18 +1897,7 @@ export async function processInstallationInvoiceInbox(
         };
       }
 
-      if (decision.canApply && candidate) {
-        if (isCompletedServiceReport) {
-          await applyCompletedServiceReport(supabase, candidate, serviceReport, message, options.actorEmail);
-        } else if (extraction) {
-          if (options.costsOnly) await applyInstallationInvoiceCostOnly(supabase, candidate, extraction, message, options.actorEmail);
-          else await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
-        }
-        if (!isCompletedServiceReport && candidateKey) appliedCandidateKeys.add(candidateKey);
-        appliedAt = new Date().toISOString();
-      }
-
-      const invoice = await insertInvoiceRecord(supabase, {
+      const auditInput: InstallationInvoiceRecordInput = {
         mailbox_email: mailbox,
         gmail_message_id: message.id,
         gmail_thread_id: message.threadId || null,
@@ -1924,7 +1923,7 @@ export async function processInstallationInvoiceInbox(
         match_reason: decision.reason,
         processed_at: new Date().toISOString(),
         applied_at: appliedAt,
-        error_message: null,
+        error_message: pdfExtraction.errors.length ? pdfExtraction.errors.join("; ") : null,
         raw: {
           emailKind: isCompletedServiceReport ? "completed_service_report" : "installation_invoice",
           amountConfidence: extraction?.amountConfidence || null,
@@ -1939,7 +1938,32 @@ export async function processInstallationInvoiceInbox(
           pdfExtractionErrors: pdfExtraction.errors,
           bodyPreview: (isCompletedServiceReport ? serviceReport.text : extraction?.text || "").slice(0, 1000)
         }
-      }, result.auditTableAvailable, result.auditError);
+      };
+
+      if (options.costsOnly && decision.canApply) {
+        const evidence = await insertInvoiceRecord(supabase, { ...auditInput, match_status: "needs_review", match_reason: "Verified invoice awaiting cost update." }, result.auditTableAvailable, result.auditError);
+        if (evidence.raw?.auditTableFallback) throw new CrmAuthError(502, "Invoice evidence could not be saved; no costs changed.");
+      }
+      if (decision.canApply && candidate) {
+        if (isCompletedServiceReport) {
+          await applyCompletedServiceReport(supabase, candidate, serviceReport, message, options.actorEmail);
+        } else if (extraction) {
+          if (options.costsOnly) {
+            try { await applyInstallationInvoiceCostOnly(supabase, candidate, extraction, message, options.actorEmail); }
+            catch (error) {
+              if (!(error instanceof CrmAuthError) || error.status >= 500) throw error;
+              decision = { status: "needs_review", reason: error.message, canApply: false };
+              auditInput.match_status = decision.status; auditInput.match_reason = decision.reason;
+            }
+          } else await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
+        }
+        if (decision.canApply) {
+          if (!isCompletedServiceReport && candidateKey) appliedCandidateKeys.add(candidateKey);
+          appliedAt = new Date().toISOString();
+        }
+      }
+
+      const invoice = await insertInvoiceRecord(supabase, { ...auditInput, applied_at: appliedAt }, result.auditTableAvailable, result.auditError);
 
       if (options.costsOnly && invoice.raw?.auditTableFallback) throw new CrmAuthError(502, "Invoice audit failed; reconcile the saved invoice before retrying.");
       result.invoices.push(invoice);

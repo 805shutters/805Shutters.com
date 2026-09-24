@@ -14,6 +14,14 @@ const snapshot = (lines: Array<{ lineItemId: string; productName: string; quanti
 const now = new Date("2026-09-16T19:00:00Z");
 
 describe("operations overview source integrity", () => {
+  it("keeps quote products carrying their exact cost-entry link visible", () => {
+    const row = { id: "q1", quoteId: "q1", jobId: "j1", source: "crm_quote", costRecordId: "cost1", customerName: "Brian", total: 1000, status: "sold" } as unknown as CrmBookkeepingRow;
+    const item = buildOperationsItems(data({ quotes: [quote({ status: "sold" })], bookkeepingRows: [row],
+      customerProducts: [product({ bookkeeping_entry_id: "cost1", supplier: "Onyx" }),
+        product({ id: "wrong", bookkeeping_entry_id: "cost2", supplier: "Norman" })] }))[0];
+    expect(item.products).toHaveLength(1);
+    expect(item.products[0]).toMatchObject({ manufacturer: "Onyx", ordered: true, records: [{ id: "p1" }] });
+  });
   it("projects exact signed snapshot quantities into separate header products", () => {
     const signed = contract({ meta: { contract_snapshot: snapshot([
       { lineItemId: "line-1", productName: "Plantation Shutters", quantity: 2 },

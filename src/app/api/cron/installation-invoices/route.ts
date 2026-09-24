@@ -8,11 +8,11 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 function requireCronAccess(request: NextRequest) {
-  const secret = process.env.INSTALLATION_INVOICE_CRON_SECRET || process.env.CRON_SECRET;
-  if (!secret) throw new CrmAuthError(503, "Installation invoice cron secret is not configured.");
+  const secrets = [process.env.INSTALLATION_INVOICE_CRON_SECRET, process.env.CRON_SECRET].filter(Boolean);
+  if (!secrets.length) throw new CrmAuthError(503, "Installation invoice cron secret is not configured.");
 
   const authorization = request.headers.get("authorization") || "";
-  if (authorization !== `Bearer ${secret}`) {
+  if (!secrets.some(secret => authorization === `Bearer ${secret}`)) {
     throw new CrmAuthError(401, "Installation invoice cron is not authorized.");
   }
 }
@@ -25,10 +25,11 @@ async function run(request: NextRequest) {
 
     const result = await observeIntegration(supabase, "installation-invoices", () => processInstallationInvoiceInbox(supabase, {
       actorEmail: "installation-invoice-cron",
-      costsOnly: request.nextUrl.searchParams.get("mode") === "costs-only"
-    }));
+      costsOnly: true,
+      maxRunMs: 230_000
+    }), result => !(result.errors || result.needsReview || result.unmatched || result.deferred) && result.auditTableAvailable);
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: result.errors || !result.auditTableAvailable ? 502 : 200 });
   } catch (error) {
     return crmAuthErrorResponse(error);
   }

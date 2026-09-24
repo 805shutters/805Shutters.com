@@ -13,6 +13,7 @@ import {
 } from "@/lib/crm/commercial-bid-opportunities";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type ProcessorRun<T> =
   | {
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
     const [installationInvoices, commercialBids] = await Promise.allSettled([
       processInstallationInvoiceInbox(supabase, {
         actorEmail: email,
+        costsOnly: true,
+        maxRunMs: 230_000,
         maxResults,
         target,
         query: targetedInstallationQuery(target),

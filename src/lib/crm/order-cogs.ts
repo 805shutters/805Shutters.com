@@ -1,3 +1,5 @@
+import { extractShippingNotice, applyShippingNotice } from './shipping-email';
+import { extractPdfTextBuffer as parsePdfText } from "./pdf-text";
 import { applyOrderEmailProduct } from "./apply-order-email-product";
 import { productOrderCosts } from "./product-order-cost";
 import { SupabaseClient } from "@supabase/supabase-js";
@@ -372,16 +374,6 @@ function pdfAttachmentParts(part?: GmailMessagePart) {
   });
 }
 
-async function parsePdfText(buffer: Buffer) {
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-  try {
-    const result = await parser.getText({ first: 4, pageJoiner: "\n" });
-    return result.text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-  } finally {
-    await parser.destroy();
-  }
-}
 
 async function extractPdfText(accessToken: string, message: GmailMessage) {
   const texts: string[] = [];
@@ -459,7 +451,7 @@ export function extractOrderCogsFromText(text: string): ExtractedOrderCogs {
 // product words ("Roller", "Shade") and re-order/unit markers ("2", "#2", "redo") —
 // e.g. "Jim Derenthal Roller" -> "Jim Derenthal", "SAUCEDO MICHELLE 2" -> "SAUCEDO MICHELLE".
 const NORMAN_SIDE_MARK_SUFFIX =
-  /\s+(#?\d+|roller|shades?|shutters?|blinds?|honeycomb|cellular|romans?|sheers?|drapery|drapes?|drape|verticals?|wood|faux|aluminum|smartdrape|pleated|solar|zebra|dual|motorized|cordless|re-?do|remake|reorder)$/i;
+  /\s+(#?\d+|roller|shades?|shutters?|blinds?|honeycomb|cellular|romans?|sheers?|drapery|drapes?|drape|verticals?|wood|faux|aluminum|smartdrape|pleated|solar|zebra|dual|motorized|cordless|re-?do|remake|reorder|HC|RMK|R)$/i;
 
 /** Side marks read "<customer> <product...> <rev#>"; peel the trailing markers off. */
 function stripProductSuffix(value: string) {
@@ -805,7 +797,17 @@ function candidateReferenceScore(extraction: ExtractedOrderCogs, candidate: Orde
   return score;
 }
 
-function matchOrderCogs(extraction: ExtractedOrderCogs, candidates: OrderCogsCandidate[]): OrderCogsMatch {
+export function matchOrderCogs(extraction: ExtractedOrderCogs, candidates: OrderCogsCandidate[]): OrderCogsMatch {
+  if (extraction.orderNumber) {
+    const reference = extraction.orderNumber.trim().toLowerCase();
+    const exact = candidates.filter(candidate => {
+      const meta = recordMeta(candidate.meta);
+      const refs = [candidate.manufacturerOrderRef, ...Object.values(productOrderCosts(meta)).map(cost => cost.reference), ...(Array.isArray(meta.orderCogsOrderRefs) ? meta.orderCogsOrderRefs : [])];
+      return (!candidate.manufacturerName || !extraction.manufacturer || candidate.manufacturerName.toLowerCase() === extraction.manufacturer.toLowerCase()) && refs.some(ref => typeof ref === "string" && ref.trim().toLowerCase() === reference);
+    });
+    if (exact.length === 1) return { candidate: exact[0], status: "matched", confidence: 1, reason: "Matched the exact recorded manufacturer order reference." };
+    if (exact.length > 1) return { candidate: null, status: "needs_review", confidence: 0, reason: "Manufacturer order reference appears on multiple sales." };
+  }
   if (!extraction.customerName) {
     return { candidate: null, status: "unmatched", confidence: 0, reason: "No customer name was found in the order email." };
   }
@@ -1168,6 +1170,7 @@ function shouldSkipOrderCogsMessage(record: OrderCogsEmailRecord | null, autoApp
   // row while auto-apply is off. When apply is on, only skip fully applied rows
   // so a prior needs_review candidate can still be applied.
   if (!autoApply) return true;
+  if (record.match_status === "skipped" && recordMeta(record.raw).emailKind === "non_order") return true;
   return Boolean(record.applied_at && record.match_status === "matched");
 }
 
@@ -1328,6 +1331,34 @@ export async function processOrderCogsInbox(
       const bodyText = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
       const fromEmail = getHeader(headers, "From");
       const subject = getHeader(headers, "Subject") || "";
+      const shipping = extractShippingNotice(subject, bodyText, fromEmail || "");
+      if (productAutoApply && shipping) {
+        const now = new Date().toISOString();
+        const source = { mailbox, messageId: message.id, sentAt: messageSentAt(message) };
+        const audit = {
+          mailbox_email: mailbox, gmail_message_id: message.id, gmail_thread_id: message.threadId || null,
+          gmail_history_id: message.historyId || null, from_email: fromEmail, to_email: getHeader(headers, "To"),
+          subject, sent_at: source.sentAt, snippet: message.snippet || null, attachment_names: attachmentNames(message.payload),
+          email_url: gmailUrl(message), extracted_customer_name: null, extracted_order_amount: null,
+          extracted_order_number: shipping.references.length === 1 ? shipping.references[0] : null,
+          extraction_confidence: 1, matched_job_id: null, matched_quote_id: null, matched_bookkeeping_entry_id: null,
+          match_status: "needs_review", match_confidence: 0, match_reason: "Shipment processing pending.",
+          processed_at: now, applied_at: existingRecord?.applied_at || null, error_message: null,
+          raw: { emailKind: "shipping", shipping, productCompletionVerified: false },
+        } satisfies Omit<CrmOrderCogsEmail,"id"|"created_at"|"updated_at">;
+        await insertOrderCogsRecord(supabase,audit);
+        const outcomes = await applyShippingNotice(supabase,shipping,source,actor);
+        const complete = outcomes.every(outcome=>outcome.status === "matched");
+        const status = outcomes.some(outcome=>outcome.status === "error") ? "error" : complete ? "matched" : "needs_review";
+        const saved = await insertOrderCogsRecord(supabase,{...audit,match_status:status,
+          match_reason:complete ? "All shipment product updates verified." : "One or more shipment references require review; see individual outcomes.",
+          applied_at:complete?now:audit.applied_at,raw:{...audit.raw,outcomes,productCompletionVerified:complete}});
+        records.push(saved); result.processed += 1;
+        if(status === "matched") result.matched += 1;
+        else if(status === "error") result.errors += 1;
+        else result.needsReview += 1;
+        continue;
+      }
       const orderIdentityText = `${subject} ${bodyText}`;
       const pdf = accessToken && (
         isNormanOrderEmail(orderIdentityText, fromEmail) || isLotusOrderEmail(orderIdentityText, fromEmail)
@@ -1338,6 +1369,9 @@ export async function processOrderCogsInbox(
       const extraction = extractOrderCogs(text, fromEmail);
       const match = matchOrderCogs(extraction, candidates);
       const review = reviewStatus(extraction, match);
+      const nonOrder = /survey|order payment summary|account statement|shipping issues/i.test(subject);
+      if (nonOrder) Object.assign(review, {status:"skipped",canApply:false,reason:"Vendor correspondence is not an order confirmation or shipment notice."});
+      if (pdf.errors.length) Object.assign(review, { status: "error", canApply: false, reason: "Order attachment extraction failed; retry required." });
       if (productAutoApply && review.canApply && match.confidence < 1) {
         review.canApply = false;
         review.status = "needs_review";
@@ -1415,6 +1449,7 @@ export async function processOrderCogsInbox(
         applied_at: review.canApply && cogsApplied ? now : productAutoApply ? existingRecord?.applied_at || null : null,
         error_message: null,
         raw: {
+          emailKind: nonOrder ? "non_order" : "order_confirmation",
           actorEmail: options.actorEmail || null,
           autoApplyDisabled: !autoApply,
           duplicateApplied: duplicateApplied || Boolean(productAutoApply && (recordMeta(existingRecord?.raw).duplicateApplied || (match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)))),
@@ -1450,7 +1485,7 @@ export async function processOrderCogsInbox(
         auditInput.match_status = status;
         auditInput.match_reason = reason;
         auditInput.applied_at = cogsApplied ? now : existingRecord?.applied_at || null;
-        Object.assign(auditInput.raw, { productCompletionVerified: cogsApplied, productAutoApply: true });
+        Object.assign(auditInput.raw, { productCompletionVerified: cogsApplied || nonOrder, productAutoApply: true });
       }
       try {
         const record = await insertOrderCogsRecord(supabase, auditInput);

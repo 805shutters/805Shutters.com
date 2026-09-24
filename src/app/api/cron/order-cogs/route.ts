@@ -89,8 +89,8 @@ export async function runOrderCogsCron(
           productAutoApply: true,
           archive: false,
           maxRunMs: 230_000,
-        }), result => !(result.errors || result.recordErrors || result.deferred)),
-        result => !(result.errors || result.recordErrors || result.deferred),
+        }), result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched)),
+        result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched),
       ),
       runAuxiliaryProcessor(
         "Square payment reconciliation",

@@ -1,3 +1,4 @@
+import { productBelongsToSale, verifyProductSaleLinks } from "./product-workflow-groups";
 import { scopedProductMeta, validProductTarget, productManufacturerKey, normalizedProductLabel, productTargetIdentity } from './product-workflow-groups';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmAuthError } from './auth';
@@ -39,7 +40,8 @@ export async function saveProductOrderCost(db: SupabaseClient, value: unknown, a
     if((table !== 'crm_jobs' && parent.job_id !== job.id) || (!replay && job.updated_at !== input.records[0].updatedAt)) throw new CrmAuthError(409,'The product changed. Refresh the job.');
   } else {
     const {data,error} = await db.from('crm_customer_products').select('*').in('id',input.records.map(r=>r.id));
-    if(error || !data || data.length !== input.records.length || data.some(p=>objectMeta(p.meta).deleted_at || (!replay && p.updated_at !== input.records.find(r=>r.id===p.id)?.updatedAt) || (p.bookkeeping_entry_id ? p.bookkeeping_entry_id !== input.bookkeepingEntryId : p.quote_id ? p.quote_id !== input.quoteId : p.job_id !== input.jobId)) || data.some(p=>!validProductTarget(p.product_type,input.records.find(r=>r.id===p.id)!)) || new Set(data.map(p=>JSON.stringify([input.records.find(r=>r.id===p.id)!.productType || normalizedProductLabel(p.product_type),productManufacturerKey(p)]))).size!==1) throw new CrmAuthError(409,'The product group changed. Refresh before saving.');
+    if(error || !data || data.length !== input.records.length || data.some(p=>objectMeta(p.meta).deleted_at || (!replay && p.updated_at !== input.records.find(r=>r.id===p.id)?.updatedAt) || (!productBelongsToSale(p, input))) || data.some(p=>!validProductTarget(p.product_type,input.records.find(r=>r.id===p.id)!)) || new Set(data.map(p=>JSON.stringify([input.records.find(r=>r.id===p.id)!.productType || normalizedProductLabel(p.product_type),productManufacturerKey(p)]))).size!==1) throw new CrmAuthError(409,'The product group changed. Refresh before saving.');
+    await verifyProductSaleLinks(db, data);
     if(table!=='crm_jobs' && data.some(p=>!p.quote_id && !p.bookkeeping_entry_id && p.job_id!==parent.job_id)) throw new CrmAuthError(409,'The selected product is not linked to this sale.');
   }
 

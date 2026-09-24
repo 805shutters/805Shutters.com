@@ -6,7 +6,13 @@ const match=(overrides:Partial<Parameters<typeof exactInstallationInvoiceMatch>[
 describe('daily installation invoice matching',()=>{
  it('requires one exact target and known MTS invoice source',()=>expect(match()).toMatchObject({status:'matched',candidate}));
  it('rejects names alone',()=>expect(match({contractNumber:null,extraction:{...extraction,contractNumber:null,mtsJobNumber:null}}).status).toBe('needs_review'));
- it('rejects conflicting references',()=>expect(match({extraction:{...extraction,mtsJobNumber:'other'}}).status).toBe('needs_review'));
+ it('accepts only an explicit attached customer field identifying exactly one sale',()=>{
+  const options={contractNumber:null,extraction:{...extraction,contractNumber:null,mtsJobNumber:null},invoiceCustomerName:'Sample Customer'};
+  expect(match(options).status).toBe('matched');
+  expect(match({...options,invoiceCustomerName:'Someone Else'}).status).toBe('needs_review');
+  expect(match({...options,candidates:[candidate,{...candidate,entryId:'repeat-sale'}]}).status).toBe('needs_review');
+ });
+ it('rejects conflicting references' ,()=>expect(match({extraction:{...extraction,mtsJobNumber:'other'}}).status).toBe('needs_review'));
  it('rejects ambiguity',()=>expect(match({candidates:[candidate,{...candidate,entryId:'other'}]}).status).toBe('needs_review'));
  it('rejects spoofed sender text and missing invoice numbers',()=>{
   expect(match({from:'MTS Installations <unknown@example.test>'}).status).toBe('needs_review');
@@ -58,5 +64,13 @@ describe('cost-only invoice persistence',()=>{
  });
  it('inserts a new quote ledger rather than upserting financial records',async()=>{
   const db=ledger(null);await applyInstallationInvoiceCostOnly(db.client,{...candidate,entryId:null,source:'quote'},extraction,{id:'mail'});expect(db.writes).toEqual(['insert']);
+ });
+});
+
+describe('late actual installation expense after customer payment',()=>{
+ it('preserves the paid sale and customer total while changing installation expense',async()=>{
+  const db=ledger({...initial,status:'paid',deposit_paid:500,balance_paid:500});
+  await applyInstallationInvoiceCostOnly(db.client,candidate,extraction,{id:'late-invoice'});
+  expect(db.get()).toMatchObject({status:'paid',total_amount:1000,deposit_paid:500,balance_paid:500,installation_invoice_amount:350,cogs_amount:300});
  });
 });
