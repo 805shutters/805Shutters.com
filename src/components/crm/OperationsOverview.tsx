@@ -130,6 +130,17 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   }
   const [filter, setFilter] = useState<JobStatusFilter>("active");
   const [search, setSearch] = useState("");
+  const searchQuery = search.trim().toLowerCase();
+  const searchLoadRequested = useRef(false);
+  useEffect(() => {
+    if (!searchQuery) { searchLoadRequested.current = false; return; }
+    if (data || !onLoadAll || searchLoadRequested.current) return;
+    searchLoadRequested.current = true;
+    setLoadingAll(true); setError(""); setFeedbackId(null);
+    void onLoadAll()
+      .catch(cause => setError(`${cause instanceof Error ? cause.message : "Jobs could not be loaded."} Clear search and try again.`))
+      .finally(() => setLoadingAll(false));
+  }, [searchQuery, data, onLoadAll]);
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
   const items = useMemo(() => data ? buildOperationsItems(data) : activeSnapshot?.items || [], [data, activeSnapshot]);
   async function selectFilter(next: JobStatusFilter) {
@@ -143,12 +154,14 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     setFilter(next);
   }
   const visible = items.filter(item => {
-    if (!matchesJobStatusFilter(item, filter)) return false;
-    return !search || [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(search.toLowerCase());
+    if (!searchQuery) return matchesJobStatusFilter(item, filter);
+    // Search the complete workspace regardless of the selected workflow filter.
+    if (!data) return false;
+    return [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(searchQuery);
   });
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
-    <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(filter === id ? "active" : id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search customers or products" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
-    {loadingAll && <p role="status">Loading all jobs…</p>}
+    <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(filter === id ? "active" : id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search all jobs" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
+    {loadingAll ? <p role="status">Loading all jobs…</p> : searchQuery && data ? <p role="status">Searching all job statuses</p> : null}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
     {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     {condensed && feedbackId && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{items.find(item => item.source.id === feedbackId)?.source.customerName}: {error || notice}</p>}
@@ -223,9 +236,9 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     </article>;
     })}</div>}
     {condensed && contractId && visible.some(item => item.source.id === contractId) && <CondensedContract item={visible.find(item => item.source.id === contractId)!} onClose={closeContract} />}
-    {!visible.length && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    {!visible.length && !loadingAll && !(searchQuery && !data) && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || orderEditor.item.source.orderEmails} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
-    <footer className={styles.footer}>{visible.length} jobs shown · Checks reflect recorded evidence{condensed && <span>One line per customer job · Scroll right for all details</span>}</footer>
+    <footer className={styles.footer}>{searchQuery && !data ? "All jobs must load before search results are available" : `${visible.length} jobs shown · Checks reflect recorded evidence`}{condensed && <span>One line per customer job · Scroll right for all details</span>}</footer>
   </section>;
 }
 
