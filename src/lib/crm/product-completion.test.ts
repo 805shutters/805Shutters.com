@@ -128,6 +128,23 @@ describe("job-derived product completion", () => {
     db.tables.crm_jobs[0].product_interest = "Blinds";
     expect(overview(db).products[0]).toMatchObject({ ordered: false, shipped: false });
   });
+  it.each([false, true])("persists vendor shipment evidence for a generated product, scoped=%s", async mixed => {
+    const db = setup(); if (!mixed) db.tables.crm_jobs[0].product_interest = "roller shades";
+    const records = [{id:`job-product-${jobId}`,updatedAt:timestamp,...(mixed?{productType:"roller shades"}:{})}];
+    const shipment={shippedOn:null,notifiedOn:"2026-09-16",mailbox:"805shutters@gmail.com",messageId:"shipping12345",orderReference:"8880986311"};
+    const body={step:"shipped",jobId,quoteId,records,shipment};
+    await completeProductMilestone(db.client,body,actor);
+    expect(overview(db).products[0]).toMatchObject({shipped:true,shipments:[shipment]});
+    if(mixed)expect(overview(db).products[1].shipped).toBe(false);
+    await completeProductMilestone(db.client,body,actor); expect(db.writes).toHaveLength(1);
+    await expect(completeProductMilestone(db.client,{...body,shipment:{...shipment,orderReference:"other"}},actor)).rejects.toThrow();
+    expect(db.tables.crm_jobs[0].status).toBe("sold");
+  });
+  it("rejects a generated shipment linked to another quote",async()=>{
+    const db=setup();db.tables.crm_quotes[0].job_id=p1;
+    await expect(completeProductMilestone(db.client,{...fallback,quoteId,shipment:{shippedOn:"2026-09-16",mailbox:"805shutters@gmail.com",messageId:"shipping12345",orderReference:"123"}},actor)).rejects.toThrow();
+    expect(db.writes).toHaveLength(0);
+  });
   it.each(["needed", "draft", "awaiting_signature"])("records manual order with a %s measure and retains its reminder", async state => {
     const db = setup();
     const measure = { status: "needed", form_status: state };
@@ -414,6 +431,14 @@ describe("automatic order email uses the same product invoice workflow", () => {
     expect(await apply()).toMatchObject({ addedCogs: 0 });
     expect(db.tables.crm_quotes[0].materials_cost).toBe(2823.29);
   });
+  it("matches a sole signed product even when no generated job product exists", async () => {
+    const {db,apply,load}=setup(); db.tables.crm_customer_products=[];
+    db.tables.crm_jobs[0].product_interest=null;
+    db.tables.crm_quotes[0].lineItems=[{id:"signed",product_type:"Shutters",quantity:2}];
+    await apply();
+    expect(buildOperationsItems(await load())[0].products[0]).toMatchObject({name:"Shutters",ordered:true});
+    expect(await apply()).toMatchObject({addedCogs:0});
+  });
   it.each([['Onyx', 'Norman'], ['Norman', 'Norman']])("holds unlabelled shutters with conflicting contract suppliers %s/%s", async (first, second) => {
     const {db, apply} = setup(); db.tables.crm_customer_products = [];
     db.tables.crm_quotes[0].lineItems = [first, second].map((supplier, index) => ({
@@ -529,8 +554,8 @@ describe("confirmed shipment dates", () => {
   it.each([{ shippedOn: "2026-02-30" }, { shippedOn: "2099-01-01" }, { mailbox: "wrong@example.test" }, { messageId: "" }, { orderReference: "" }])("rejects invalid source/date %j", override => {
     expect(() => parseProductCompletion({ ...input, step: "shipped", shipment: { ...shipment, ...override } })).toThrow();
   });
-  it("rejects shipment evidence on generated product or whole-job records", () => {
-    expect(() => parseProductCompletion({ step: "shipped", jobId, records: [{ id: `job-product-${jobId}`, updatedAt: timestamp }], shipment })).toThrow();
+  it("rejects unscoped whole-job shipment evidence", () => {
+    expect(() => parseProductCompletion({ step: "shipped", jobId, records: [{ id: `whole-job-job-${jobId}`, updatedAt: timestamp }], shipment })).toThrow();
   });
 });
 

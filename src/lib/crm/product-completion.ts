@@ -26,7 +26,7 @@ export function parseProductCompletion(value: unknown): ProductCompletionInput {
     (wholeJob[0].kind === "job" && (body.jobId !== wholeJob[0].id || body.quoteId || body.bookkeepingEntryId)) ||
     (wholeJob[0].kind === "quote" && (body.quoteId !== wholeJob[0].id || body.bookkeepingEntryId)) ||
     (wholeJob[0].kind === "bookkeeping" && body.bookkeepingEntryId !== wholeJob[0].id))) throw new CrmAuthError(400, "Refresh to load the exact linked source.");
-  if (body.shipment !== undefined && (body.step !== "shipped" || !isShipmentEvidence(body.shipment) || (body.shipment.shippedOn || body.shipment.notifiedOn || "") > losAngelesDateString(new Date()) || body.records.some(record => !uuid.test(record.id) && !(parseWholeJobRecordId(record.id) && record.productType)))) throw new CrmAuthError(400, "Use a confirmed shipment date, the 805 shipping mailbox, and exact product records.");
+  if (body.shipment !== undefined && (body.step !== "shipped" || !isShipmentEvidence(body.shipment) || (body.shipment.shippedOn || body.shipment.notifiedOn || "") > losAngelesDateString(new Date()) || body.records.some(record => !uuid.test(record.id) && !record.id.startsWith("job-product-") && !(parseWholeJobRecordId(record.id) && record.productType)))) throw new CrmAuthError(400, "Use a confirmed shipment date, the 805 shipping mailbox, and exact product records.");
   return { ...body, ...(body.shipment ? { shipment: { ...body.shipment, shippedOn: body.shipment.shippedOn, mailbox: body.shipment.mailbox, messageId: body.shipment.messageId, orderReference: body.shipment.orderReference.trim() } } : {}) } as ProductCompletionInput;
 }
 
@@ -92,15 +92,25 @@ export async function completeProductMilestone(supabase: SupabaseClient, value: 
     const scoped = scopedProductMeta(meta, input.records[0]);
     const previous = input.records[0].productType ? objectMeta(scoped.workflow_checks) : objectMeta(meta.product_workflow_checks);
     const checks = input.records[0].productType || previous.product_type === productType ? previous : {};
-    if (objectMeta(checks[input.step]).at) return { recorded: true, step: input.step, productIds: [input.records[0].id] };
+    if (input.shipment) {
+      if (input.quoteId) {
+        const { data: quote, error } = await supabase.from("crm_quotes").select("job_id,meta").eq("id", input.quoteId).maybeSingle();
+        if (error || !quote || quote.job_id !== job.id || objectMeta(quote.meta).deleted_at) throw new CrmAuthError(409, "Shipment quote does not belong to this job.");
+      }
+      await verifyProductSaleLinks(supabase, [{ job_id: job.id, quote_id: input.quoteId, bookkeeping_entry_id: input.bookkeepingEntryId }]);
+    }
+    const priorShipment = objectMeta(input.records[0].productType ? scoped.shipping_confirmation : checks.shipping_confirmation);
+    if (input.shipment && priorShipment.orderReference && ((priorShipment.shippedOn && input.shipment.shippedOn && priorShipment.shippedOn !== input.shipment.shippedOn) || priorShipment.orderReference !== input.shipment.orderReference)) throw new CrmAuthError(409, "A different shipment is already recorded. Review its source.");
+    if (objectMeta(checks[input.step]).at && (!input.shipment || (priorShipment.orderReference && (priorShipment.shippedOn || !input.shipment.shippedOn)))) return { recorded: true, step: input.step, productIds: [input.records[0].id] };
     if (job.updated_at !== input.records[0].updatedAt) throw new CrmAuthError(409, "This job changed. Refresh before trying again.");
     // Staff are recording an order that already happened. Readiness gates belong
     // to order submission; recording this fact must not clear or require a measure.
     const at = new Date().toISOString();
-    const check = { at, by: actor.email, user_id: actor.userId || null, source: "staff_job_status" };
+    const check = objectMeta(checks[input.step]).at ? checks[input.step] : { at, by: actor.email, user_id: actor.userId || null, source: input.shipment ? "shipping_email" : "staff_job_status" };
+    const shipmentMeta = input.shipment ? { shipping_confirmation: { ...input.shipment, recordedAt: at, recordedBy: actor.email } } : {};
     const next = input.records[0].productType
-      ? withScopedProductMeta(meta, input.records[0], { ...scoped, [`${input.step}_at`]: at, workflow_checks: { ...checks, [input.step]: check } })
-      : { ...meta, product_workflow_checks: { ...checks, product_type: productType, [input.step]: check } };
+      ? withScopedProductMeta(meta, input.records[0], { ...scoped, ...shipmentMeta, [`${input.step}_at`]: scoped[`${input.step}_at`] || at, workflow_checks: { ...checks, [input.step]: check } })
+      : { ...meta, product_workflow_checks: { ...checks, ...shipmentMeta, product_type: productType, [input.step]: check } };
     const { data: saved, error: saveError } = await supabase.from("crm_jobs").update({ meta: next }).eq("id", job.id).eq("updated_at", job.updated_at).select("id").maybeSingle();
     if (saveError) throw new CrmAuthError(502, "The manual status could not be saved. Try again.");
     if (!saved) throw new CrmAuthError(409, "The job changed before the check could be saved. Refresh and try again.");

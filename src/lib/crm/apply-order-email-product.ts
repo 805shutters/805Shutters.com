@@ -48,7 +48,7 @@ export function selectOrderEmailProduct(items: OperationsItem[], email: CrmOrder
   if (matches.length !== 1) throw new CrmAuthError(409, 'Order email needs one exact active sale before COGS can be applied.');
   const item = matches[0];
   const products = item.products.filter(product => !product.manufacturer || normalizedProductLabel(product.manufacturer) === normalizedProductLabel(manufacturer || ''));
-  const simple = (product: ProductProgress) => !product.records.some(record => record.productType) && !/[,/&+]|\band\b/i.test(product.name);
+  const simple = (product: ProductProgress) => (!product.records.some(record => record.productType) || product.records.every(record => record.id.startsWith("whole-job-") && record.productType)) && !/[,/&+]|\band\b/i.test(product.name);
   const reference = email.extracted_order_number?.trim().toLowerCase();
   const recorded = products.filter(product => {
     const cost = productOrderCosts(costParent(item).meta)[orderCostKey(product.records)];

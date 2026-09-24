@@ -74,3 +74,9 @@ describe('late actual installation expense after customer payment',()=>{
   expect(db.get()).toMatchObject({status:'paid',total_amount:1000,deposit_paid:500,balance_paid:500,installation_invoice_amount:350,cogs_amount:300});
  });
 });
+
+import { unrelatedInstallationMessage } from './installation-invoices';
+describe('installation inbox classification',()=>{
+ it.each(['R00743_09202026','ONYX CHE01 Statement','ORDER PAYMENT SUMMARY','Zelle® payment of $300 to MTS Installations has been sent','Customer - Scheduled','Invoice #107651 from: Sundance Window Coverings'])('separates unrelated message %s',subject=>expect(unrelatedInstallationMessage(subject)).toBe(true));
+ it.each(['Invoice 837670781 from MTS Installations Inc','Invoice 123','Installation invoice for Customer'])('retains possible invoice %s for verification',subject=>expect(unrelatedInstallationMessage(subject)).toBe(false));
+});

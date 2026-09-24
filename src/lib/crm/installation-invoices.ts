@@ -894,6 +894,14 @@ function isTrustedMtsInvoiceSource(subject: string | null | undefined, from: str
   );
 }
 
+/** Known non-invoice templates remain auditable without occupying the invoice review queue. */
+export function unrelatedInstallationMessage(subject: string) {
+  if (/^invoice\s+.*from MTS Installations/i.test(subject.trim())) return false;
+  return /^(?:re:\s*|fwd:\s*)?(?:R00743[_ ]|ORDER PAYMENT SUMMARY|ONYX CHE01 Statement|Online Order Confirmation:|Shipping Notification:|Zelle.|Google Workspace:|MTS CRM sold quote historical export|Create and send your first invoice|Four ways to start accepting payments|Need help deciding on the right payments)/i.test(subject.trim())
+    || / - (?:Scheduled|Complete Report)$/i.test(subject.trim())
+    || /(?:from: Sundance Window Coverings|Supabase Pte\. Ltd)/i.test(subject);
+}
+
 export function installationInvoiceTotal(text: string): number | null {
   // A remaining balance is not the installation expense. Do not guess from
   // amount-due labels or the largest dollar figure in an email.
@@ -1804,7 +1812,10 @@ export async function processInstallationInvoiceInbox(
         attachmentNames: names
       });
       const isCompletedServiceReport = serviceReport.isCompletedServiceReport;
-      if (options.costsOnly && isCompletedServiceReport) { result.skipped += 1; continue; }
+      if (options.costsOnly && isCompletedServiceReport) {
+        await supabase.from("crm_installation_invoice_emails").update({match_status:"skipped",match_reason:"Completed service report is handled separately from installation invoices.",processed_at:new Date().toISOString()}).eq("gmail_message_id",messageId).eq("mailbox_email",mailbox);
+        result.skipped += 1; continue;
+      }
       let extraction: ExtractedInstallationInvoice | null = null;
       let authenticatedContractNumber: string | null = null;
       let match: InstallationInvoiceMatch;
@@ -1885,6 +1896,7 @@ export async function processInstallationInvoiceInbox(
       if (pdfExtraction.errors.length) {
         decision = { status: "error", reason: "Invoice attachment extraction failed: " + pdfExtraction.errors.join("; "), canApply: false };
       }
+      if (options.costsOnly && unrelatedInstallationMessage(subject)) decision = { status: "skipped", reason: "This email is not an MTS installation invoice.", canApply: false };
       const candidate = match.candidate;
       const candidateKey = candidate ? candidateIdentity(candidate) : null;
       let appliedAt: string | null = null;

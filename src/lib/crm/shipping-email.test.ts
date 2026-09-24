@@ -22,3 +22,13 @@ describe('vendor shipment evidence',()=>{
   expect(()=>selectShipmentProduct([item],notice,'unknown')).toThrow();
  });
 });
+
+describe('legacy shipment allocation',()=>{
+ it('uses an exact old job allocation only for the sole matching signed product',()=>{
+  const product={id:'signed',name:'Faux Wood Blinds',records:[{id:'whole-job-quote-q',updatedAt:'now',productType:'faux wood blinds'}]};
+  const item={sold:true,source:{job:{id:'j'},row:{costMeta:{product_order_costs:{'job-product-j':{amount:100,reference:'8880986311',records:['job-product-j']}}}}},headerProducts:[{name:'Faux Wood Blinds'}],products:[product]} as unknown as OperationsItem;
+  expect(selectShipmentProduct([item],notice,'8880986311').product).toBe(product);
+  expect(()=>selectShipmentProduct([{...item,headerProducts:[{name:'Shutters'}]} as OperationsItem],notice,'8880986311')).toThrow();
+  expect(()=>selectShipmentProduct([{...item,products:[product,{...product,id:'other'}]} as OperationsItem],notice,'8880986311')).toThrow();
+ });
+});

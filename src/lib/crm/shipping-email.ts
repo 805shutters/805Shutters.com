@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CrmAuthError } from './auth';
-import { objectMeta } from './measure-needed-state';
+import { normalizedProductLabel } from './product-workflow-groups';
 import { buildOperationsItems, productCompletionSourceLinks, type OperationsItem } from './operations-overview';
 import { orderCostKey, productOrderCosts } from './product-order-cost';
 import { completeProductMilestone } from './product-completion';
@@ -35,6 +35,13 @@ export function selectShipmentProduct(items: OperationsItem[], notice: ShippingN
       if (product.manufacturer && product.manufacturer.toLowerCase() !== notice.manufacturer.toLowerCase()) return false;
       const allocation = costs[orderCostKey(product.records)];
       if (allocation?.reference.trim().toLowerCase() === reference.toLowerCase()) return true;
+      // Older imports allocated one signed product under a generated job key.
+      // This identifies shipment only; conflicting manual costs are not replaced.
+      const jobId = item.source.job?.id || item.source.row?.jobId || item.source.quote?.job_id;
+      const legacy = jobId ? costs[`job-product-${jobId}`] : undefined;
+      if (item.products.length === 1 && item.headerProducts?.length === 1
+        && normalizedProductLabel(item.headerProducts[0].name) === normalizedProductLabel(product.name)
+        && legacy?.reference.trim().toLowerCase() === reference.toLowerCase()) return true;
       // A sale-level reference is sufficient only for one explicitly labelled supplier/product.
       return item.products.length === 1 && product.manufacturer?.toLowerCase() === notice.manufacturer.toLowerCase()
         && item.source.orderReference?.trim().toLowerCase() === reference.toLowerCase();

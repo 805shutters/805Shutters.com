@@ -1369,7 +1369,7 @@ export async function processOrderCogsInbox(
       const extraction = extractOrderCogs(text, fromEmail);
       const match = matchOrderCogs(extraction, candidates);
       const review = reviewStatus(extraction, match);
-      const nonOrder = /survey|order payment summary|account statement|shipping issues/i.test(subject);
+      const nonOrder = /survey|order payment summary|\bstatement\b|shipping issues|^R00743_\d{8}$|Invoice .*from MTS Installations|Supabase Pte\. Ltd|Instagram ads receipt|received money with Zelle|ChatGPT - Your new plan|latest news for you/i.test(subject);
       if (nonOrder) Object.assign(review, {status:"skipped",canApply:false,reason:"Vendor correspondence is not an order confirmation or shipment notice."});
       if (pdf.errors.length) Object.assign(review, { status: "error", canApply: false, reason: "Order attachment extraction failed; retry required." });
       if (productAutoApply && review.canApply && match.confidence < 1) {

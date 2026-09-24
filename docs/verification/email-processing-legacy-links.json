@@ -1,0 +1,204 @@
+{
+  "before": [
+    {
+      "id": "0ecb5cc7-bfde-4f33-a44a-4b7271d8d109",
+      "customer_name": "Courtney Davis",
+      "quote_id": "8c8f4a36-6074-4113-8fa4-103180b85f0e",
+      "job_id": "44af268c-538c-470e-acd1-1e6a1c68d0a4",
+      "updated_at": "2026-09-20 15:10:21.323602+00",
+      "cogs_amount": "939.03",
+      "total_amount": "2236.35",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805 Fetch",
+        "orderCogsOrderRefs": [
+          "8880986311"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a09d1a5a6ac42cd"
+        ],
+        "product_order_costs": {
+          "job-product-44af268c-538c-470e-acd1-1e6a1c68d0a4": {
+            "at": "2026-09-20T15:10:21.323602+00:00",
+            "by": "805 Fetch",
+            "amount": 939.03,
+            "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+            "records": [
+              "job-product-44af268c-538c-470e-acd1-1e6a1c68d0a4"
+            ],
+            "reference": "8880986311",
+            "requestId": "cc6ed85c-e1f8-43e5-b3c8-76d395bd1a33",
+            "allocations": [
+              {
+                "amount": 939.03,
+                "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+                "reference": "8880986311",
+                "manufacturer": "Norman"
+              }
+            ]
+          }
+        },
+        "manufacturer_updated_at": "2026-09-20T15:10:21.323602+00:00",
+        "product_order_cogs_total": 939.03
+      },
+      "audit_id": "5f84dcae-4934-4333-8782-077434d06107",
+      "gmail_message_id": "1a09d1a5a6ac42cd",
+      "extracted_order_number": "8880986311",
+      "extracted_order_amount": "939.03",
+      "matched_quote_id": "8c8f4a36-6074-4113-8fa4-103180b85f0e",
+      "matched_bookkeeping_entry_id": "0ecb5cc7-bfde-4f33-a44a-4b7271d8d109",
+      "confirmation": "Online Order Confirmation: R00743 | WO# 8880986311 | PO#: Courtney Davis | Side Mark: Courtney Davis Dear Customer, Thank you for your order! If you have any questions, please contact your customer service representative. Norman Window Fashions www.normanusa.com --------------------------------------- Dear Customer, Thank you for your order! If you have any questions, please contact your customer service representative. Norman Window Fashions www.normanusa.com <http://www.normanusa.com/> ------------------------------------------------------------------------ ---------------------- Order Details Order Date: 9/13/2026 WO#: 8880986311 PO#: Courtney Davis Side Mark: Courtney Davis Ship Via: Air Freight to US Payment Terms: NET 15 DAY Customer ID: R00743 Company Name: SNS Interiors, Inc. Owner Name: KEN HILL Phone #: 805-630-0848 Checked Out By: MIKE S Ship To Address MTS Installations 387 South Lewis Road Camarillo, CA 93012 Phone1: 805-630-0848 Ext: Phone2: Ext: Contact: KEN HILL Special"
+    },
+    {
+      "id": "4e90092b-3a41-4e6b-80ec-b1cf5d5ed23f",
+      "customer_name": "Leila Fraser",
+      "quote_id": "322b7d60-893f-46aa-a4f1-15499a344135",
+      "job_id": "23ce63d8-97cd-4bae-aa2b-ca4d3c00c659",
+      "updated_at": "2026-09-20 15:10:44.521721+00",
+      "cogs_amount": "581.06",
+      "total_amount": "1254.00",
+      "meta": {
+        "lastUpdatedBy": "805 Fetch",
+        "orderCogsOrderRefs": [
+          "8880985478"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a07215587e9633d"
+        ],
+        "product_order_costs": {
+          "job-product-23ce63d8-97cd-4bae-aa2b-ca4d3c00c659": {
+            "at": "2026-09-20T15:10:44.521721+00:00",
+            "by": "805 Fetch",
+            "amount": 581.06,
+            "emailId": "cd777874-bfe9-4fd9-8fc6-5ebb34891138",
+            "records": [
+              "job-product-23ce63d8-97cd-4bae-aa2b-ca4d3c00c659"
+            ],
+            "reference": "8880985478",
+            "requestId": "7202ee63-b62d-4c75-9b54-036a73511951"
+          }
+        },
+        "manufacturer_updated_at": "2026-09-20T15:10:44.521721+00:00",
+        "product_order_cogs_total": 581.06
+      },
+      "audit_id": "cd777874-bfe9-4fd9-8fc6-5ebb34891138",
+      "gmail_message_id": "1a07215587e9633d",
+      "extracted_order_number": "8880985478",
+      "extracted_order_amount": "581.06",
+      "matched_quote_id": "322b7d60-893f-46aa-a4f1-15499a344135",
+      "matched_bookkeeping_entry_id": "4e90092b-3a41-4e6b-80ec-b1cf5d5ed23f",
+      "confirmation": "Online Order Confirmation: R00743 | WO# 8880985478 | PO#: Leila Fraser | Side Mark: Leila Fraser Dear Customer, Thank you for your order! If you have any questions, please contact your customer service representative. Norman Window Fashions www.normanusa.com --------------------------------------- Dear Customer, Thank you for your order! If you have any questions, please contact your customer service representative. Norman Window Fashions www.normanusa.com <http://www.normanusa.com/> ------------------------------------------------------------------------ ---------------------- Order Details Order Date: 9/5/2026 WO#: 8880985478 PO#: Leila Fraser Side Mark: Leila Fraser SalesNo: S88056779 Payment Terms: NET 15 DAY Customer ID: R00743 Company Name: SNS Interiors, Inc. Owner Name: KEN HILL Phone #: 805-630-0848 Checked Out By: MIKE S Ship To Address MTS Installations 387 South Lewis Road Camarillo, CA 93012 Phone1: 805-630-0848 Ext: Phone2: Ext: Contact: KEN HILL Special Delivery N/A - No"
+    }
+  ],
+  "after": [
+    {
+      "id": "0ecb5cc7-bfde-4f33-a44a-4b7271d8d109",
+      "customer_name": "Courtney Davis",
+      "cogs_amount": "939.03",
+      "total_amount": "2236.35",
+      "meta": {
+        "createdBy": "system:sold",
+        "lastUpdatedBy": "805 Fetch",
+        "orderCogsOrderRefs": [
+          "8880986311"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a09d1a5a6ac42cd"
+        ],
+        "product_order_costs": {
+          "job-product-44af268c-538c-470e-acd1-1e6a1c68d0a4": {
+            "at": "2026-09-20T15:10:21.323602+00:00",
+            "by": "805 Fetch",
+            "amount": 939.03,
+            "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+            "records": [
+              "job-product-44af268c-538c-470e-acd1-1e6a1c68d0a4"
+            ],
+            "reference": "8880986311",
+            "requestId": "cc6ed85c-e1f8-43e5-b3c8-76d395bd1a33",
+            "allocations": [
+              {
+                "amount": 939.03,
+                "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+                "reference": "8880986311",
+                "manufacturer": "Norman"
+              }
+            ],
+            "supersededAt": "2026-09-24T17:54:08.353Z",
+            "supersededBy": "whole-job-quote-8c8f4a36-6074-4113-8fa4-103180b85f0e#product:roller%20shades",
+            "supersededReason": "Exact signed product replaces legacy generated key; total unchanged."
+          },
+          "whole-job-quote-8c8f4a36-6074-4113-8fa4-103180b85f0e#product:roller%20shades": {
+            "at": "2026-09-20T15:10:21.323602+00:00",
+            "by": "805 Fetch",
+            "amount": 939.03,
+            "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+            "records": [
+              "whole-job-quote-8c8f4a36-6074-4113-8fa4-103180b85f0e#product:roller%20shades"
+            ],
+            "reference": "8880986311",
+            "requestId": "cc6ed85c-e1f8-43e5-b3c8-76d395bd1a33",
+            "allocations": [
+              {
+                "amount": 939.03,
+                "emailId": "5f84dcae-4934-4333-8782-077434d06107",
+                "reference": "8880986311",
+                "manufacturer": "Norman"
+              }
+            ]
+          }
+        },
+        "manufacturer_updated_at": "2026-09-20T15:10:21.323602+00:00",
+        "product_order_cogs_total": 939.03
+      }
+    },
+    {
+      "id": "4e90092b-3a41-4e6b-80ec-b1cf5d5ed23f",
+      "customer_name": "Leila Fraser",
+      "cogs_amount": "581.06",
+      "total_amount": "1254.00",
+      "meta": {
+        "lastUpdatedBy": "805 Fetch",
+        "orderCogsOrderRefs": [
+          "8880985478"
+        ],
+        "manufacturer_source": "order_confirmation_email",
+        "orderCogsMessageIds": [
+          "1a07215587e9633d"
+        ],
+        "product_order_costs": {
+          "job-product-23ce63d8-97cd-4bae-aa2b-ca4d3c00c659": {
+            "at": "2026-09-20T15:10:44.521721+00:00",
+            "by": "805 Fetch",
+            "amount": 581.06,
+            "emailId": "cd777874-bfe9-4fd9-8fc6-5ebb34891138",
+            "records": [
+              "job-product-23ce63d8-97cd-4bae-aa2b-ca4d3c00c659"
+            ],
+            "reference": "8880985478",
+            "requestId": "7202ee63-b62d-4c75-9b54-036a73511951",
+            "supersededAt": "2026-09-24T17:54:08.355Z",
+            "supersededBy": "whole-job-quote-322b7d60-893f-46aa-a4f1-15499a344135#product:faux%20wood%20blinds",
+            "supersededReason": "Exact signed product replaces legacy generated key; total unchanged."
+          },
+          "whole-job-quote-322b7d60-893f-46aa-a4f1-15499a344135#product:faux%20wood%20blinds": {
+            "at": "2026-09-20T15:10:44.521721+00:00",
+            "by": "805 Fetch",
+            "amount": 581.06,
+            "emailId": "cd777874-bfe9-4fd9-8fc6-5ebb34891138",
+            "records": [
+              "whole-job-quote-322b7d60-893f-46aa-a4f1-15499a344135#product:faux%20wood%20blinds"
+            ],
+            "reference": "8880985478",
+            "requestId": "7202ee63-b62d-4c75-9b54-036a73511951"
+          }
+        },
+        "manufacturer_updated_at": "2026-09-20T15:10:44.521721+00:00",
+        "product_order_cogs_total": 581.06
+      }
+    }
+  ]
+}
