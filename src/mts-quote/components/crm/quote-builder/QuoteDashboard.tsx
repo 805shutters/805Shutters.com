@@ -901,6 +901,7 @@ export function QuoteDashboard({
         isFetching={isFetching}
         onRetry={() => void refetch()}
         onOpen={handleOpenQuote}
+        onDelete={(quote) => deleteQuote.mutateAsync(quote)}
         onNewQuote={() => { setNewNormanQuote(false); setShowNewQuoteDialog(true); }}
         onNewNormanQuote={() => { setNewNormanQuote(true); normanDraftRequest.current = null; setShowNewQuoteDialog(true); }}
         onOpenTools={() => onOpenQuoteTools?.()}

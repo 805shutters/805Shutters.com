@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpRight, Check, Circle, Plus, Search } from "lucide-react";
+import { ArrowUpRight, Check, Circle, Plus, Search, Trash2 } from "lucide-react";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
-import { staffNextSteps, staffQuoteAmount, staffQuoteStage, staffQuoteView, staffStageLabels, type StaffQuoteFilter } from "./staff-quote-view";
+import { canDeleteStaffDraft, staffNextSteps, staffQuoteAmount, staffQuoteStage, staffQuoteView, staffStageLabels, type StaffQuoteFilter } from "./staff-quote-view";
 import styles from "./StaffQuoteDesk.module.css";
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   isFetching: boolean;
   onRetry: () => void;
   onOpen: (quote: QuoteTableRow) => void;
+  onDelete: (quote: QuoteTableRow) => Promise<unknown>;
   onNewQuote: () => void;
   onNewNormanQuote?: () => void;
   onOpenTools: () => void;
@@ -27,7 +28,29 @@ function Status({ quote }: { quote: QuoteTableRow }) {
   </span>;
 }
 
-export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onNewQuote, onNewNormanQuote, onOpenTools }: Props) {
+export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onDelete, onNewQuote, onNewNormanQuote, onOpenTools }: Props) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteDraft = async (quote: QuoteTableRow) => {
+    if (deletingId || !canDeleteStaffDraft(quote)) return;
+    const label = quote.quote_number || quote.id;
+    if (!window.confirm(`Delete draft quote ${label} for ${quote.customer_name || "this customer"}? The quote will be removed from your quote list. Other quotes for this customer will be kept.`)) return;
+    setDeletingId(quote.id);
+    setDeleteError(null);
+    try {
+      await onDelete(quote);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Quote could not be deleted. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const quoteActions = (quote: QuoteTableRow) => <div className={styles.quoteActions}>
+    <button type="button" onClick={() => onOpen(quote)} aria-label={`Open quote ${quote.quote_number || quote.id}`}>Open <ArrowUpRight size={15} /></button>
+    {canDeleteStaffDraft(quote) && <button type="button" className={styles.deleteButton} disabled={deletingId !== null} onClick={() => void deleteDraft(quote)} aria-label={`Delete draft quote ${quote.quote_number || quote.id}`}>
+      <Trash2 size={15} aria-hidden="true" /> {deletingId === quote.id ? "Deleting…" : "Delete draft"}
+    </button>}
+  </div>;
   const [filter, setFilter] = useState<StaffQuoteFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -62,6 +85,7 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
       </div>
       <label className={styles.search}><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search staff quotes" placeholder="Search name or quote" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>
     </div>
+    {deleteError && <p role="alert" className={styles.deleteError}>{deleteError}</p>}
     {isLoading ? <div role="status" className={styles.empty}>Loading quotes…</div> : isError ? <div role="alert" className={styles.empty}><h2>Quote history could not be loaded</h2><p>Retry to see the complete list.</p><button type="button" disabled={isFetching} onClick={onRetry}>{isFetching ? "Retrying…" : "Retry loading quotes"}</button></div> : <>
       <div className={styles.resultsHeader}><h2>{filtered ? staffStageLabels[filter] + " quotes" : "All quotes"}</h2><span>{matching.length} {matching.length === 1 ? "quote" : "quotes"} · {filtered ? "Card view" : "List view"}{isFetching ? " · Refreshing…" : ""}</span></div>
       {!visible.length ? <div role="status" className={styles.empty}>No quotes match this view.<button type="button" onClick={() => { setSearch(""); changeFilter("all"); }}>Show all quotes</button></div> : filtered ? <div className={styles.cards}>
@@ -70,14 +94,14 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
           <h3>{quote.customer_name || "Customer name unavailable"}</h3><p>{quote.customer_address || "Address unavailable"}</p>
           <strong className={styles.amount}>{staffQuoteAmount(quote)}</strong>
           <div className={styles.steps}><span><span className={styles.check}><Check size={13} /></span> Saved</span><span>{quote.sent_at ? <span className={styles.check}><Check size={13} /></span> : <Circle size={17} />} Sent</span></div>
-          <footer><span>{staffNextSteps[staffQuoteStage(quote)]}</span><button type="button" onClick={() => onOpen(quote)} aria-label={`Open quote ${quote.quote_number || quote.id}`}>Open <ArrowUpRight size={15} /></button></footer>
+          <footer><span>{staffNextSteps[staffQuoteStage(quote)]}</span>{quoteActions(quote)}</footer>
         </article>)}
       </div> : <div className={styles.list} role="table" aria-label="All quotes">
         <div className={`${styles.row} ${styles.columnHead}`} role="row"><span role="columnheader">Customer / quote</span><span role="columnheader">Status</span><span role="columnheader">Quote total</span><span role="columnheader">Next step</span><span role="columnheader">Action</span></div>
         {visible.map(quote => <div className={styles.row} role="row" key={`${quote.source}:${quote.id}`}>
           <div role="cell"><strong>{quote.customer_name || "Customer name unavailable"}</strong><small>{quote.quote_number || "Unnumbered quote"}</small></div>
           <div role="cell"><Status quote={quote} /></div><div role="cell" className={styles.money}>{staffQuoteAmount(quote)}</div><div role="cell" className={styles.next}>{staffNextSteps[staffQuoteStage(quote)]}</div>
-          <div role="cell"><button type="button" onClick={() => onOpen(quote)} aria-label={`Open quote ${quote.quote_number || quote.id}`}>Open <ArrowUpRight size={15} /></button></div>
+          <div role="cell">{quoteActions(quote)}</div>
         </div>)}
       </div>}
       <footer className={styles.pagination}><span>{matching.length ? `${currentPage * 25 + 1}–${Math.min((currentPage + 1) * 25, matching.length)} of ${matching.length} quotes` : "0 quotes"}</span>{pageCount > 1 && <div><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</button><button type="button" disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>Next</button></div>}</footer>

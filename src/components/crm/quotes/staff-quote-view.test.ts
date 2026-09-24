@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
-import { staffQuoteAmount, staffQuoteStage, staffQuoteView } from "./staff-quote-view";
+import { canDeleteStaffDraft, staffQuoteAmount, staffQuoteStage, staffQuoteView } from "./staff-quote-view";
 
 const rows: QuoteTableRow[] = [
   { id: "crm", source: "crm", customer_name: "April Example", quote_number: "805-0301", status: "sent", total_amount: 100 },
@@ -51,5 +51,19 @@ describe("staff quote presentation", () => {
     const quote = { id: "partial", total_amount: 650, salesQuote: { status: "draft", quote_v2_backend: true, quote_v2_status: "draft" } } as QuoteTableRow;
     expect(staffQuoteAmount(quote)).toBe("Pricing incomplete");
     expect(staffQuoteAmount({ ...quote, salesQuote: { ...quote.salesQuote, sent_at: "2026-09-16" } } as QuoteTableRow)).toBe("$650.00");
+  });
+});
+
+describe("staff draft deletion eligibility", () => {
+  it("offers deletion for drafts without treating zero totals as proof of a draft", () => {
+    expect(canDeleteStaffDraft({ id: "draft", status: "draft", total_amount: 0 })).toBe(true);
+    for (const status of ["sent", "sold", "approved", "ordered", "received", "installed", "archived", "unknown", null]) {
+      expect(canDeleteStaffDraft({ id: "protected", status, total_amount: 0 })).toBe(false);
+    }
+  });
+  it("keeps retained alternatives and evidenced sent or sold drafts protected", () => {
+    for (const evidence of [{ pendingAlternative: true }, { sent_at: "2026-09-23" }, { sold_at: "2026-09-23" }, { customer_signature: "signed" }, { bookkeeping_paid_total: 10 }, { job_status: "ordered" }]) {
+      expect(canDeleteStaffDraft({ id: "protected", status: "draft", ...evidence })).toBe(false);
+    }
   });
 });

@@ -18,6 +18,9 @@ export const staffNextSteps: Record<StaffQuoteStage, string> = {
 export function staffQuoteStage(quote: QuoteTableRow): StaffQuoteStage {
   return quote.pendingAlternative ? "pending" : getQuoteStatsStatus(quote);
 }
+export function canDeleteStaffDraft(quote: QuoteTableRow): boolean {
+  return quote.status === "draft" && staffQuoteStage(quote) === "draft";
+}
 export function isStaffQuoteSold(quote: QuoteTableRow): boolean {
   if (quote.pendingAlternative) return false;
   const soldStages = ["sold", "ordered", "received", "installed"];
