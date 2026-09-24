@@ -13,7 +13,7 @@ import type { CrmCustomerProduct, CrmDashboardData } from "./types";
 export const workflowSteps = ["quote", "sold", "ordered", "shipped", "installed", "paid"] as const;
 export type WorkflowStep = typeof workflowSteps[number];
 export const workflowLabels: Record<WorkflowStep, string> = { quote: "Quote", sold: "Sold", ordered: "Ordered", shipped: "Shipped", installed: "Installed", paid: "Balance paid" };
-export type ProductProgress = { shipments?: ShipmentEvidence[]; undatedShipments?: number; id: string; name: string; manufacturer?: string | null; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: ProductTargetRecord[]; wholeJob?: boolean };
+export type ProductProgress = { reconciledAt?: string; completionFromInstallation?: Partial<Record<"ordered" | "shipped", true>>; shipments?: ShipmentEvidence[]; undatedShipments?: number; id: string; name: string; manufacturer?: string | null; quantity?: number | null; ordered: boolean; shipped: boolean; installed: boolean; records: ProductTargetRecord[]; wholeJob?: boolean };
 export type OperationsItem = { source: JobTrackingViewItem; products: ProductProgress[]; headerProducts: HeaderProduct[]; headerProductSource: HeaderProductSource | null; wholeJob: ProductProgress; quote: boolean; sold: boolean; installed: boolean; paid: boolean; archived: boolean; complete: boolean; closed: boolean };
 
 function productProgress(product: CrmCustomerProduct, name: string, mixed: boolean): ProductProgress {
@@ -26,8 +26,7 @@ function productProgress(product: CrmCustomerProduct, name: string, mixed: boole
   )
     ? null
     : Number.isInteger(product.quantity) && product.quantity > 0 ? product.quantity : null;
-  // Each milestone needs its own source evidence; payment or a later workflow
-  // marker must never fabricate a manufacturer order or shipment.
+  // Preserve direct evidence separately from installation-based completion below.
   return {
     id: productTargetIdentity(target), name, manufacturer: product.supplier?.trim() || null, quantity, records: [target],
     shipments: shipmentEvidence(meta),
@@ -86,6 +85,21 @@ export function productCompletionSourceLinks(item: OperationsItem, product: Prod
   };
 }
 
+/** Physical completion establishes prerequisites, never event dates or financial settlement.
+ * Re-evaluate current exact-scope evidence so a reopened/partial job cannot retain a stale check.
+ */
+export function installationPrerequisitesConfirmed(source: JobTrackingViewItem): boolean {
+  const progress = source.progress;
+  const financialOnly = new Set(["Deposit prerequisite outstanding", "Payment evidence unavailable"]);
+  return source.isSale && !["lost", "archived"].includes(source.stageId)
+    && progress.installation === "complete" && progress.service === "none_known"
+    && objectMeta(source.job?.meta?.job_closure_override).closed !== false
+    && progress.conflicts.length === 0
+    && progress.blockers.every(blocker => financialOnly.has(blocker))
+    && progress.freshness.every(source => source.state === "complete")
+    && progress.evidence.some(evidence => ["recorded_installation", "installer_report", "completed_service_report"].includes(evidence.source));
+}
+
 export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
   const sources = buildJobTrackingView({ jobs: data.jobs, quotes: data.quotes, rows: data.bookkeepingRows, files: data.customerFiles, orderCogsEmails: data.orderCogsEmails, installationInvoiceEmails: data.installationInvoiceEmails, fulfillment: data.fulfillment, ownedActions: data.ownedActions, installerOutcomes: data.installerOutcomes, sourceHealth: data.sourceHealth });
   const products = [...new Map([...data.customerFiles.flatMap(file => file.products), ...data.customerProducts].map(product => [product.id, product])).values()];
@@ -136,6 +150,21 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
         ordered: Boolean(meta.ordered_at), shipped: Boolean(meta.shipped_at), installed: Boolean(meta.installed_at),
         undatedShipments: meta.shipped_at && !shipments.length ? 1 : 0
       });
+    }
+    if (installationPrerequisitesConfirmed(source)) {
+      for (const product of [...progress, wholeJob]) {
+        const inferred: ProductProgress["completionFromInstallation"] = {};
+        for (const step of ["ordered", "shipped"] as const) {
+          if (!product[step]) { product[step] = true; inferred[step] = true; }
+        }
+        if (Object.keys(inferred).length) {
+          product.completionFromInstallation = inferred;
+          const reconciliation = objectMeta(objectMeta(source.job?.meta?.workflow_reconciliation)[source.id]);
+          const entries = Array.isArray(reconciliation.products) ? reconciliation.products : [];
+          if (reconciliation.rule === "installed-prerequisites-v1" && entries.some(entry => objectMeta(entry).id === product.id)
+            && typeof reconciliation.recorded_at === "string") product.reconciledAt = reconciliation.recorded_at;
+        }
+      }
     }
     return { source, products: progress, headerProducts: header.products, headerProductSource: header.source, wholeJob, quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",

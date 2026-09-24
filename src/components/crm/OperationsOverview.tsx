@@ -79,7 +79,7 @@ function CompletionButton({ done, label, disabled, saving, onClick }: { done: bo
 }
 function OrderAmount({ item, product }: { item: OperationsItem; product: ProductProgress }) {
   const cost = displayedOrderAmount(item, product);
-  return <small>{cost ? `${cost.source === "job" ? "Job cost: " : ""}${currency(cost.amount)}` : "Enter invoice"}</small>;
+  return <small>{cost ? `${cost.source === "job" ? "Job cost: " : ""}${currency(cost.amount)}` : product.completionFromInstallation?.ordered ? "Completed from installation · Invoice unrecorded" : "Enter invoice"}</small>;
 }
 
 export function ProductChecks({ item, step, disabled, pending, onAction }: { item: OperationsItem; step: "ordered" | "shipped"; disabled: boolean; pending: string | null; onAction: (item: OperationsItem, step: WorkflowActionStep, product?: ProductProgress) => void }) {
@@ -88,7 +88,7 @@ export function ProductChecks({ item, step, disabled, pending, onAction }: { ite
 }
 export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn))].sort();
-  return <small className={styles.shipmentDates}>{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
+  return <small className={styles.shipmentDates}>{product.completionFromInstallation?.shipped && <span>Completed from installation · </span>}{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}</small>;
 }
 export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onAction, onDelete }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);

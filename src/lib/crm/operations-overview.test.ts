@@ -404,3 +404,41 @@ it('handles year rollover, leap years, empty data, and keeps customer alternativ
   expect(leap.periods.threeMonths.start).toBe('2024-01-01');
   expect(leap.periods.sixMonths).toMatchObject({start:'2023-10-01',grossCents:null,cashCents:0,cohort:{quoted:0,percent:null}});
 });
+
+describe('installation prerequisite reconciliation', () => {
+  const installed = () => quote({ status: 'sold', signed_at: '2026-09-01', installed_at: '2026-09-14', balance_due: 500 });
+
+  it('completes missing ordered and shipped checks for installed scope without making dates or payments', () => {
+    const snapshot = data({ quotes: [installed()], customerProducts: [product({ status: 'sold', meta: {} })] });
+    const item = buildOperationsItems(snapshot)[0];
+    expect(item).toMatchObject({ installed: true, paid: false, products: [{ ordered: true, shipped: true, shipments: [], completionFromInstallation: { ordered: true, shipped: true } }] });
+    expect(snapshot.customerProducts[0].meta).toEqual({});
+    expect(buildOperationsItems(snapshot)).toEqual(buildOperationsItems(snapshot));
+  });
+
+  it('supports productless historical jobs and preserves actual shipment dates', () => {
+    expect(buildOperationsItems(data({ quotes: [installed()] }))[0].wholeJob).toMatchObject({ ordered: true, shipped: true, completionFromInstallation: { ordered: true, shipped: true } });
+    const shipment = { shippedOn: '2026-09-10', mailbox: '805@805shutters.com', messageId: 'confirmed-message', orderReference: 'ORDER-123' };
+    const item = buildOperationsItems(data({ quotes: [installed()], customerProducts: [product({ meta: { ordered_at: '2026-09-03', shipped_at: '2026-09-10', shipping_confirmation: shipment }, status: 'shipped' })] }))[0];
+    expect(item.products[0].completionFromInstallation).toBeUndefined();
+    expect(item.products[0].shipments).toEqual([shipment]);
+  });
+
+  it('does not borrow installation from another quote on the same job', () => {
+    const items = buildOperationsItems(data({ quotes: [installed(), quote({ id: 'other', status: 'sold', signed_at: '2026-09-01' })], customerProducts: [product({ quote_id: 'other', status: 'sold' })] }));
+    expect(items.find(item => item.source.quote?.id === 'other')?.products[0]).toMatchObject({ ordered: false, shipped: false });
+  });
+
+  it.each(['partially_installed', 'completed'])('excludes %s reports with outstanding work or issues', status => {
+    const item = buildOperationsItems(data({ quotes: [installed()], customerProducts: [product({ status: 'sold' })], installerOutcomes: [{ id: 'report', job_id: 'j1', quote_id: 'q1', status, signed_at: '2026-09-16', issues: [{ lineId: 'line', notInstalled: status === 'partially_installed', details: 'Return visit required' }] }] }))[0];
+    expect(item.products[0]).toMatchObject({ ordered: false, shipped: false });
+  });
+
+  it('excludes reopened jobs and incomplete source loads', () => {
+    const base = { quotes: [installed()], customerProducts: [product({ status: 'sold' })] };
+    const reopened = buildOperationsItems(data({ ...base, jobs: [{ id: 'j1', meta: { job_closure_override: { closed: false } } } as unknown as CrmJob] }))[0];
+    expect(reopened.products[0].shipped).toBe(false);
+    const unavailable = buildOperationsItems(data({ ...base, sourceHealth: [{ source: 'installerReports', state: 'unavailable', loadedAt: '2026-09-23' }] }))[0];
+    expect(unavailable.products[0].shipped).toBe(false);
+  });
+});
