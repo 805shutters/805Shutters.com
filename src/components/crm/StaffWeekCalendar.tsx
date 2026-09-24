@@ -139,7 +139,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
       <span>{loading ? "Loading public hours…" : error || (hasDrafts ? "Unpublished hours need review. Open Working hours before changing a slot." : notice || "Select an open half-hour to book at that time. Circles change public availability.")}</span>
       {error && <button type="button" disabled={saving} onClick={() => setReload(value => value + 1)}>Reload calendar</button>}
     </div>
-    <div className={styles.weekScroll}>
+    <div className={styles.weekScroll} tabIndex={0} role="region" aria-label="Scroll weekly appointments">
     <div className={styles.grid} style={{ "--day-count": days.length } as CSSProperties}>
       {days.map((date, index) => {
         const state = !ready ? "unknown" : "loaded";
@@ -152,7 +152,6 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
             <button type="button" className={styles.addDay} aria-label={`Add appointment ${date}`} title="Add appointment to this day" disabled={!ready || saving || !!error} onClick={() => beginBooking(date, bounds.start)}><Plus aria-hidden="true" /></button>
             {availabilityToggle(date, null, dayState, dayState === "booked")}
           </div>
-          <div className={styles.dayScroll} tabIndex={0} role="region" aria-label={`Scroll appointments for ${date}`}>
           <div className={styles.timeline} style={{ "--slot-count": slots.length } as CSSProperties}>
           <div className={styles.timeAxis} aria-hidden="true">{slots.map((minute, index) => <span key={minute} style={{ top: `${index / slots.length * 100}%` }}>{timeLabel(minute)}</span>)}</div>
           {slots.map(minute => {
@@ -170,19 +169,18 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
           {layout.map(({ event, top, height, overlap }) => {
             const details = monthAppointmentDetails(event, jobs);
             const sale = calendarEventSalePresentation(event);
-            const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "NOT SOLD" : "";
+            const saleLabel = sale.tone === "sold" ? "SOLD" : sale.tone === "unsold" ? "UNSOLD" : "";
             const time = `${losAngelesTimeString(new Date(event.start_at))}–${losAngelesTimeString(new Date(event.end_at))}`;
             return <button type="button" key={event.id} className={styles.appointment} data-sale={sale.tone || "pending"} data-short={height / 100 * slots.length < 1.5} style={{ top: `calc(${top}% + 3px)`, height: `calc(${height}% - 6px)` }} aria-label={`${details.name}, ${date} ${time}.${saleLabel ? ` ${saleLabel}.` : ""} City: ${details.city}. Product: ${details.product}. Lead Type: ${details.leadType}.${overlap ? " Overlapping appointment times." : ""} Open appointment`} title={`${time} · ${details.name}\nCity: ${details.city}\nProduct: ${details.product}\nLead Type: ${details.leadType}`} onClick={() => onOpenEvent(event)}>
-              <span className={styles.eventTime}>{time}{saleLabel ? ` · ${saleLabel}` : ""}</span><strong>{details.name}</strong><span>{details.city} · {details.product}</span>
+              <span className={styles.appointmentMeta}><span className={styles.eventTime}>{time}</span>{saleLabel && <span className={styles.saleBadge}>{saleLabel}</span>}</span><strong>{details.name}</strong><span className={styles.eventDetails}>{details.city} · {details.product}</span>
             </button>;
           })}
-          </div>
           </div>
         </article>;
       })}
     </div>
     </div>
-    <footer className={styles.footer}><div className={styles.legend}><span><i />Available</span><span><i />Booked</span><span><i />Unavailable for public booking</span></div><span>30-minute starts · Pacific · Circle: availability · Scroll each day independently</span></footer>
+    <footer className={styles.footer}><div className={styles.legend}><span><i />Available</span><span><i />Booked</span><span><i />Unavailable for public booking</span><span><i className={styles.soldLegend} />Sold</span><span><i className={styles.unsoldLegend} />Unsold</span></div><span>30-minute starts · Pacific · Circle: availability · All days scroll together</span></footer>
     <dialog ref={dialog} className={styles.dialog} onCancel={closeDialog} onClose={closeDialog} aria-labelledby="week-dialog-title">
       <div className={styles.dialogHead}><h2 id="week-dialog-title">{showHours ? "Working hours" : selectedDay}</h2><button type="button" aria-label="Close calendar details" onClick={closeDialog}><X /></button></div>
       {showHours ? <JessicaWorkingRanges session={session} initialMonth={month} /> : selectedDay && <>

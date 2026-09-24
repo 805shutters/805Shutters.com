@@ -1,9 +1,9 @@
-/* Compact staff week: fixed headings and an independent timeline for each day. */
+/* One scroll surface keeps every day on the same time, with sticky headings. */
 .calendar { height:var(--calendar-height,calc(100dvh - 16px)); min-height:360px; min-width:0; display:flex; flex-direction:column; position:relative; color:#f0f3f1; background:#0b100d; font-family:var(--crm-ui-font,-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif); }
 .calendar button,.calendar input { font:inherit; box-sizing:border-box; }
 .calendar button { cursor:pointer; min-height:0; }
 .calendar button:disabled { opacity:.45; cursor:not-allowed; }
-.calendar button:focus-visible,.calendar input:focus-visible,.dayScroll:focus-visible { outline:2px solid #72dcaf; outline-offset:-2px; }
+.calendar button:focus-visible,.calendar input:focus-visible,.weekScroll:focus-visible { outline:2px solid #72dcaf; outline-offset:-2px; }
 .header { display:flex; align-items:center; flex:none; flex-wrap:wrap; gap:14px; padding:8px 0 16px 88px; }
 .weekLabel { flex:1; min-width:220px; margin:0; font:650 clamp(20px,2vw,30px)/1.2 var(--crm-ui-font,Arial); color:#f0f3f1; }
 .navigation,.headerActions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -17,16 +17,15 @@
 .status[role=alert] { color:#ffceba; }
 .statusQuiet { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 .statusVisible { flex:none; margin-bottom:6px; padding:8px; border:1px solid #716258; background:#292421; border-radius:6px; }
-.weekScroll { flex:1; min-height:0; overflow-x:auto; overflow-y:hidden; }
-.grid { display:grid; grid-template-columns:repeat(var(--day-count),minmax(190px,1fr)); grid-template-rows:minmax(0,1fr); gap:12px; height:100%; min-width:calc(var(--day-count) * 202px - 12px); }
-.day { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; background:#161e19; border:1px solid #344039; border-radius:8px; }
-.dayHead { flex:none; min-height:52px; display:flex; align-items:center; gap:5px; padding:8px; border-bottom:1px solid #344039; }
+.weekScroll { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#627368 #161e19; scrollbar-gutter:stable; }
+.grid { display:grid; grid-template-columns:repeat(var(--day-count),minmax(190px,1fr)); gap:12px; min-height:100%; min-width:calc(var(--day-count) * 202px - 12px); }
+.day { display:flex; flex-direction:column; min-width:0; min-height:0; background:#161e19; border:1px solid #344039; border-radius:8px; }
+.dayHead { position:sticky; top:0; z-index:5; background:#161e19; border-radius:7px 7px 0 0; flex:none; min-height:52px; display:flex; align-items:center; gap:5px; padding:8px; border-bottom:1px solid #344039; }
 .date { flex:1; min-width:0; padding:0; background:none; border:0; color:#f0f3f1; text-align:left; font-size:21px!important; font-weight:650!important; }
 .date small { font:inherit; }
 .date[aria-current=date] { color:#72dcaf; }
 .dayCount { font-size:11px; color:#aab9af; white-space:nowrap; }
-.dayScroll { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; scrollbar-width:thin; scrollbar-color:#627368 #161e19; scrollbar-gutter:stable; }
-.timeline { position:relative; height:calc(var(--slot-count) * 44px); }
+.timeline { flex:none; position:relative; height:calc(var(--slot-count) * 44px); }
 .timeAxis { position:absolute; inset:0 auto 0 0; width:57px; border-right:1px solid #303d34; color:#afbeb4; }
 .timeAxis span { position:absolute; right:7px; padding-top:6px; font-size:10px; line-height:1; white-space:nowrap; }
 .hourSlot,.appointment { position:absolute; left:58px; width:calc(100% - 60px); box-sizing:border-box; }
@@ -47,11 +46,16 @@
 .hourSlot .availabilityToggle { position:absolute; top:3px; right:3px; z-index:2; }
 .slotStatus { position:absolute; left:8px; bottom:5px; color:#b2dfc5; font-size:10px; pointer-events:none; }
 .appointment { z-index:3; min-width:0; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:4px; overflow:hidden; padding:5px 9px; border:1px solid #45554b; border-left:5px solid #72dcaf; border-radius:6px; background:#111a15; color:#f0f3f1; text-align:left; font-size:12px!important; line-height:1.15; }
-.appointment strong,.appointment span { display:block; flex:none; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.appointment > strong,.appointment > span { display:block; flex:none; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .appointment strong { font-size:14px; }
 .appointment span { color:#b9c9bf; }
-.appointment .eventTime { font-size:10px; }
-.appointment[data-sale=sold] { background:#193728; }
+.appointment .appointmentMeta { display:flex; align-items:center; gap:4px; overflow:visible; }
+.appointment .eventTime { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:9px; }
+.appointment .saleBadge { flex:none; display:inline-block; padding:2px 4px; border-radius:3px; color:#103b24; background:#c2f5d6; font-size:9px; line-height:1; font-weight:800; letter-spacing:.02em; }
+.appointment[data-sale=unsold] .saleBadge { color:#38290e; background:#ead09b; }
+.appointment[data-sale=sold] { background:#2d6445; border-color:#7acb99; border-left-color:#b4efc9; }
+.appointment[data-sale=sold] span { color:#e1f5e8; }
+.appointment[data-sale=sold] .saleBadge { color:#103b24; }
 .appointment[data-sale=unsold] { border-left-color:#c0a16c; }
 .footer { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; flex:none; padding:12px 4px 6px; color:#aab9af; font-size:11px; }
 .legend { display:flex; gap:18px; flex-wrap:wrap; }
@@ -59,6 +63,8 @@
 .legend i { display:inline-block; width:16px; height:16px; border:1px solid #42554a; border-radius:3px; background:#244b37; }
 .legend span:nth-child(2) i { background:#111a15; border-left:4px solid #72dcaf; }
 .legend span:nth-child(3) i { background:#161e19; }
+.legend .soldLegend { background:#2d6445; border-color:#7acb99; }
+.legend .unsoldLegend { background:#111a15; border-left:4px solid #c0a16c; }
 .blockDay { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:4px; height:28px; color:#efefed; border:1px solid #777; border-radius:5px; background:#292929; font-size:12px!important; }
 .dialog { box-sizing:border-box; width:min(640px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); margin:auto; padding:20px; border:1px solid #484843; border-radius:14px; background:#1d1d1b; color:#fbfbfa; font-family:var(--crm-ui-font,Arial); overflow:auto; }
 .dialog::backdrop { background:#000b; }
@@ -92,7 +98,7 @@
  .headerActions .closeButton { margin-left:auto; }
 }
 
-.appointment[data-short=true] { gap:1px; padding:2px 6px; }.appointment[data-short=true] strong { font-size:12px; }.appointment[data-short=true] span:last-child { display:none; }
+.appointment[data-short=true] { gap:1px; padding:2px 6px; }.appointment[data-short=true] strong { font-size:12px; }.appointment[data-short=true] .eventDetails { display:none; }
 
 .dayCount { flex:1; text-align:right; margin-left:4px; }.date { flex:none; }.hoursButton,.newBooking,.closeButton { height:40px; }
 
