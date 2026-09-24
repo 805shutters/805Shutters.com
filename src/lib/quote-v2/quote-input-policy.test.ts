@@ -3,6 +3,7 @@ import { isQuotePricingInput, quotePricingInputs } from './quote-input-policy';
 
 describe('pricing-only quote input policy', () => {
   it.each([
+    ['Roller tube fabrication', ['tube_class', 'roller_tube']],
     ['Roman', ['mount_depth_inches', 'roman_mount_fit', 'roman_chain_unobstructed']],
     ['Honeycomb and vertical honeycomb', ['honeycomb_mount_fit', 'honeycomb_recess_depth_inches', 'honeycomb_charging_port_recess_inches', 'honeycomb_charging_opening_height_inches', 'honeycomb_charging_obstruction', 'honeycomb_semi_inside_tensioner_holder']],
     ['SmartFold', ['smartfold_chain_unobstructed', 'smartfold_light_guard_recess', 'smartfold_full_recess_depth_inches', 'smartfold_fascia_recess', 'smartfold_fascia_recess_depth_inches']],

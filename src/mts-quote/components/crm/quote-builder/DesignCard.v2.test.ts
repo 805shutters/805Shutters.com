@@ -31,6 +31,7 @@ import {
   ManufacturerCatalogStampChooser,
   ManualQuoteOnlyBadge,
   ShutterBillableAreaLabel,
+  ShadesAndBlindsOptions,
   mobileShutterMaterialRoutePatch,
   motorizationEligibleControlOptions,
   needsShutterRoutePatch,
@@ -56,7 +57,7 @@ import {
 } from "@mts/lib/quoteConstants";
 import { getAutoShutterRoutePatch } from "@mts/lib/quoteShutterRouting";
 import type { QuoteLabCatalogProduct } from "@/lib/quote-lab/types";
-import type { SalesQuoteDesign } from "@mts/types/quote";
+import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 
 function catalogProduct(
   id: string,
@@ -1705,4 +1706,54 @@ it("omits hinge finishes only for current specialty records that explicitly have
  expect(getStandardShutterGridOptions(design,false).some(o=>o.key==='hinge_color')).toBe(true);
  specialty.hinges=true;expect(getStandardShutterGridOptions(design,true).some(o=>o.key==='hinge_color')).toBe(true);
  expect(design.hinge_color).toBe('Pure White');
+});
+
+
+describe("Roller quote controls without technical tube selection", () => {
+  function renderRoller(liftSystem: string, powerConfiguration?: string, tubeClass?: string) {
+    const design = {
+      supplier: "Norman", shade_type: "Single Shade", lift_system: liftSystem,
+      valance: "No Valance", mount_type: "Inside Mount",
+      options_json: {
+        quote_v2_backend: true, catalog_product_id: "roller",
+        roller_application: "Single Shade", top_treatment_class: "No Top Treatment",
+        power_configuration: powerConfiguration, tube_class: tubeClass,
+      },
+    } as unknown as SalesQuoteDesign;
+    const html = renderToStaticMarkup(createElement(ShadesAndBlindsOptions, {
+      design, productType: "Roller Shades", authoritativeV2: true,
+      lineItem: { id: "roller-quote", quantity: 1, width_whole: 48, width_fraction: "0", height_whole: 60, height_fraction: "0" } as SalesQuoteLineItem,
+      onUpdate() {}, onUpdateFields() {}, sideBySideLineOptions: [],
+      onSideBySidePairChange() {}, onClearSideBySidePartner() {},
+    }));
+    return { html, design };
+  }
+
+  it.each(["Cordless", "Continuous Cord Loop", "Smart Release", "Motorized"])("does not display or request a tube for %s", lift => {
+    const { html } = renderRoller(lift);
+    expect(html).not.toContain('data-option-field="json:tube_class"');
+    expect(html).not.toContain("Select Tube");
+    expect(html).toContain(`title="Control Type: ${lift}"`);
+    expect(html).toContain('title="Valance: No Valance"');
+  });
+
+  it("offers the priced motor choice immediately without tube selection", () => {
+    const { html } = renderRoller("Motorized");
+    expect(html).toContain('data-option-field="json:power_configuration"');
+    expect(html).toContain("Select Motor / Power System.");
+    expect(html).toContain('data-testid="roller-motorization-required"');
+  });
+
+  it("recognizes a selected priced motor as complete without a tube", () => {
+    const { html } = renderRoller("Motorized", "Automate ARC Motor");
+    expect(html).not.toContain('data-testid="roller-motorization-required"');
+    expect(html).toContain('data-testid="roller-motorization-complete"');
+    expect(html).toContain("Motor (Rechargeable Battery Pack)");
+  });
+
+  it("preserves saved technical tube evidence without presenting it as a quote choice", () => {
+    const { html, design } = renderRoller("Motorized", "Automate ARC Motor", '2" (52mm) Tube');
+    expect(html).not.toContain('data-option-field="json:tube_class"');
+    expect(design.options_json?.tube_class).toBe('2" (52mm) Tube');
+  });
 });

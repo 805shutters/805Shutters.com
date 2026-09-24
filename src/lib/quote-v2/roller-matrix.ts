@@ -467,6 +467,26 @@ function selectedValues(context: SelectionContext): SelectionRecord {
 
 export function validateRollerMatrix(context: SelectionContext): readonly ValidationIssue[] {
   const resolved = resolveRollerMatrixProfile(context);
+  if (!resolved.ok && resolved.code === "PROFILE_NOT_FOUND" &&
+      !stringConfig(context, "roller_tube", "tube_class") &&
+      context.catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM) {
+    // Tube columns describe manufacturing limits, not retail grids. Evaluate
+    // documented candidates without selecting or saving a physical tube.
+    const tubes = [...new Set(rollerSource(context).profileDefinitions.map(row => row.tube).filter(Boolean))];
+    const candidates = tubes.map(tube => ({
+      ...context, configuration: { ...context.configuration, roller_tube: tube },
+    })).filter(candidate => resolveRollerMatrixProfile(candidate).ok);
+    if (candidates.length) return [{
+      severity: "hard_block",
+      ruleId: "roller.matrix.tube_required",
+      source: sourceProvenance(rollerSourceId(context), { sheet: resolved.sheet }),
+      selectedValues: selectedValues(context),
+      explanation: "Select the physical roller tube before manufacturing. Tube size does not change the fabric grid or selected control price.",
+    }, ...candidates.flatMap(candidate => validateRollerMatrix(candidate).map(issue => ({
+      ...issue,
+      selectedValues: { ...issue.selectedValues, tube_class: null, evaluated_tube: candidate.configuration.roller_tube },
+    })))];
+  }
   if (!resolved.ok && resolved.code === "REGION_SCOPE_REQUIRED" &&
       context.catalogAsOf >= GRID_OPTION_QUOTING_EFFECTIVE_FROM) {
     // Retail is keyed by collection/color, not the regional manufacturing code.

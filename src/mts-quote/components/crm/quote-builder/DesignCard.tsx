@@ -169,7 +169,6 @@ import {
   ROLLER_APPLICATIONS,
   ROLLER_COUPLING_ARRANGEMENTS,
   ROLLER_TOP_TREATMENT_CLASSES,
-  ROLLER_TUBE_CLASSES,
   ROLLER_POWER_CONFIGURATIONS,
   getRollerFabricPriceGroup,
   getRomanFabricPriceGroup,
@@ -2855,7 +2854,6 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
         "json:roller_application",
         "json:coupling_arrangement",
         "json:top_treatment_class",
-        "json:tube_class",
         "json:power_configuration",
         "json:roller_component_width_1",
         "json:roller_component_width_2",
@@ -8755,7 +8753,7 @@ function PolarExteriorDesignOptions({
   );
 }
 
-function ShadesAndBlindsOptions({
+export function ShadesAndBlindsOptions({
   design,
   productType,
   lineItem: _lineItem,
@@ -9106,11 +9104,7 @@ function ShadesAndBlindsOptions({
       setRollerPowerConfiguration(nextJson, pruned.powerConfiguration);
 
       if (nextLift === "Motorized") {
-        requestOpenOptionField(
-          stringOption(nextJson, "tube_class")
-            ? "json:power_configuration"
-            : "json:tube_class",
-        );
+        requestOpenOptionField("json:power_configuration");
       }
 
       onUpdateFields({
@@ -9122,24 +9116,6 @@ function ShadesAndBlindsOptions({
         remote_type: null,
         options_json: nextJson,
       });
-      return;
-    }
-
-    if (
-      productType === "Roller Shades" &&
-      authoritativeV2 &&
-      field === "json:tube_class"
-    ) {
-      const tubeClass = typeof value === "string" ? value : null;
-      const nextJson = { ...currentJson, tube_class: tubeClass };
-      if (
-        design?.lift_system === "Motorized" &&
-        tubeClass &&
-        !stringOption(nextJson, "power_configuration")
-      ) {
-        requestOpenOptionField("json:power_configuration");
-      }
-      onUpdateFields({ options_json: nextJson });
       return;
     }
 
@@ -10781,18 +10757,6 @@ function ShadesAndBlindsOptions({
                 : ROLLER_TOP_TREATMENT_CLASSES.filter(
                     (choice) => choice !== "LightGuard 360 Housing",
                   ),
-            },
-            {
-              key: "tube_class",
-              label: "Tube",
-              field: "json:tube_class",
-              type: "select",
-              options:
-                authoritativeV2 && liftSystem === "Motorized"
-                  ? (rollerFacets?.tubeClasses ?? ROLLER_TUBE_CLASSES).filter(
-                      (tube) => tube !== "All Tubes",
-                    )
-                  : rollerFacets?.tubeClasses ?? ROLLER_TUBE_CLASSES,
             },
           );
           if (
@@ -12946,7 +12910,6 @@ function ShadesAndBlindsOptions({
     authoritativeV2 &&
     savedMotorizedSelection &&
     !motorizationEligibility.eligible;
-  const rollerTubeClass = stringOption(optionsJson, "tube_class");
   const rollerPowerConfiguration = stringOption(optionsJson, "power_configuration");
   const rollerPricedMotor = expectedRollerMotorForPowerConfiguration(
     rollerPowerConfiguration,
@@ -12983,20 +12946,17 @@ function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
-      {rollerMotorized && (!rollerTubeClass || !rollerPowerConfiguration) ? (
+      {rollerMotorized && !rollerPowerConfiguration ? (
         <div
           className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950"
           data-testid="roller-motorization-required"
         >
           <strong>Complete motorization:</strong>{" "}
-          {!rollerTubeClass
-            ? "Select Tube, then Motor / Power System."
-            : "Select Motor / Power System."}{" "}
-          The authoritative price updates automatically after both documented choices are complete.
+          Select Motor / Power System. The price updates automatically after selection.
         </div>
       ) : null}
 
-      {rollerMotorized && rollerTubeClass && rollerPowerConfiguration && rollerPricedMotor ? (
+      {rollerMotorized && rollerPowerConfiguration && rollerPricedMotor ? (
         <div
           className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
           data-testid="roller-motorization-complete"

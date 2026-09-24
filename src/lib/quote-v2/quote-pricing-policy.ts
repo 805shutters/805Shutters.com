@@ -7,6 +7,9 @@ export const GRID_OPTION_QUOTING_EFFECTIVE_FROM = '2026-09-21';
 // These rules do not supply a grid identity, billable dimension or option charge.
 // Keep unknown rules blocking: a new price-dependent rule must never silently disappear.
 const ORDER_ONLY_RULES = new Set([
+  // Roller retail uses fabric group, size and priced controls; tube diameter is fabrication evidence.
+  'roller.required.roller_tube',
+  'roller.matrix.tube_required',
   'norman.roman.ancillary.yard_line_quantity',
 // Current Norman quote-only audit. Unknown rule IDs remain hard blocks.
   // Roman September guide pp13–24; motorization guide pp24/76/85. No charge varies with these installation/control dimensions.
@@ -460,6 +463,8 @@ export function isOrderingOnlyIssue(issue: ValidationIssue): boolean {
 /** Preserve order evidence for staff without making it a prerequisite for a quote price. */
 export function quotePricingValidationIssues(issues: readonly ValidationIssue[]): ValidationIssue[] {
   return issues.map(issue => issue.severity === 'hard_block' && isOrderingOnlyIssue(issue)
-    ? { ...issue, severity: 'warning', explanation: `Before ordering: ${issue.explanation}` }
+    ? { ...issue, severity: 'warning', explanation: issue.ruleId === 'roller.required.roller_tube'
+      ? 'Before ordering: confirm the physical roller tube. Tube size is not required for quote pricing.'
+      : `Before ordering: ${issue.explanation}` }
     : issue);
 }

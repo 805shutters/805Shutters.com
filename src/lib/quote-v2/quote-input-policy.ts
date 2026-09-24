@@ -2,6 +2,7 @@
  * Saved order evidence is retained, but is not requested by the quote builder.
  */
 const ORDER_EVIDENCE_FIELDS = new Set([
+  "tube_class", "roller_tube",
   "mount_depth_inches", "available_depth_inches", "opening_diagonal_difference_inches",
   "roman_mount_fit", "roman_chain_unobstructed", "roman_chain_length",
   "roman_wand_length", "roman_wand_color", "roman_remote_channel", "roman_motor_network",
