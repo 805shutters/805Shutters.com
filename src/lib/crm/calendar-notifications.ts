@@ -315,8 +315,9 @@ export async function runDayBeforeAppointmentReminders(
     .from("crm_calendar_events")
     .select("id,job_id,title,start_at,status,event_type,meta")
     .in("status", ACTIVE_APPOINTMENT_STATUSES)
-    .neq("event_type", "block")
-    .neq("event_type", "measure");
+    .eq("event_type", "sales_consult")
+    .gte("start_at", now.toISOString())
+    .lt("start_at", new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString());
   if (eventError) throw eventError;
 
   const events = ((eventRows || []) as ReminderEvent[]).filter((event) => isTomorrowInPacific(event.start_at, now));
@@ -343,12 +344,23 @@ export async function runDayBeforeAppointmentReminders(
     }
     const job = event.job_id ? jobsById.get(event.job_id) : null;
     if (!job?.phone) {
-      skipped += 1;
+      failed += 1;
       continue;
     }
 
-    const result = await smsSender({ to: job.phone, body: buildDayBeforeAppointmentReminder(event.start_at) });
+    // An ambiguous provider response must be reconciled before another send.
+    if (meta.dayBeforeReminderUncertainStart === event.start_at) {
+      failed += 1;
+      continue;
+    }
+    const result = await smsSender({ to: job.phone, body: buildDayBeforeAppointmentReminder(event.start_at), timeoutMs: 15_000 });
     if (!result.sent) {
+      if (result.uncertain) {
+        const { error } = await supabase.from("crm_calendar_events").update({
+          meta: { ...meta, dayBeforeReminderUncertainStart: event.start_at }
+        }).eq("id", event.id);
+        if (error) throw error;
+      }
       failed += 1;
       continue;
     }
@@ -359,7 +371,9 @@ export async function runDayBeforeAppointmentReminders(
         meta: {
           ...meta,
           dayBeforeReminderSentAt: now.toISOString(),
-          dayBeforeReminderAppointmentStart: event.start_at
+          dayBeforeReminderAppointmentStart: event.start_at,
+          dayBeforeReminderMessageSid: result.sid || null,
+          dayBeforeReminderProviderStatus: result.providerStatus || "accepted"
         }
       })
       .eq("id", event.id);

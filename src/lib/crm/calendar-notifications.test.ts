@@ -201,3 +201,48 @@ describe("day-before customer reminders", () => {
     ].join("\n"));
   });
 });
+
+describe("day-before reminder processing", () => {
+  function database(events: Record<string, unknown>[], jobs: unknown[]) {
+    const updates: Record<string, unknown>[] = [];
+    const filters: [string, unknown][] = [];
+    return { updates, filters, client: { from: (table: string) => {
+      const query: Record<string, unknown> = {};
+      let update: unknown;
+      for (const key of ["select", "in", "gte", "lt"]) query[key] = () => query;
+      query.eq = (column: string, value: unknown) => { filters.push([column, value]); return query; };
+      query.update = (value: Record<string, unknown>) => { update = value; updates.push(value); return query; };
+      query.then = (resolve: (v: unknown) => unknown) => Promise.resolve({ error: null, data: update ? null : table === "crm_calendar_events" ? events : jobs }).then(resolve);
+      return query;
+    }} as never };
+  }
+  const event = { id: "event", job_id: "job", start_at: "2026-09-25T18:00:00Z", meta: {} };
+  const now = new Date("2026-09-25T02:00:00Z");
+  it("records Twilio message evidence for tomorrow's consultation", async () => {
+    const { runDayBeforeAppointmentReminders } = await import("./calendar-notifications");
+    const db = database([event], [{ id: "job", phone: "8055551212" }]);
+    const result = await runDayBeforeAppointmentReminders(db.client, now, async () => ({ sent: true, sid: "SMtest", providerStatus: "queued" }));
+    expect(result.sent).toBe(1);
+    expect(db.filters).toContainEqual(["event_type", "sales_consult"]);
+    expect(db.updates[0]).toMatchObject({ meta: { dayBeforeReminderMessageSid: "SMtest", dayBeforeReminderProviderStatus: "queued" } });
+  });
+  it("does not resend a reminder already recorded for the same appointment", async () => {
+    const { runDayBeforeAppointmentReminders } = await import("./calendar-notifications");
+    const db = database([{ ...event, meta: { dayBeforeReminderAppointmentStart: event.start_at, dayBeforeReminderSentAt: now.toISOString() } }], []);
+    const result = await runDayBeforeAppointmentReminders(db.client, now, async () => { throw new Error("must not send"); });
+    expect(result).toMatchObject({ sent: 0, skipped: 1, failed: 0 });
+  });
+  it("counts missing phones as failures instead of silently skipping customers", async () => {
+    const { runDayBeforeAppointmentReminders } = await import("./calendar-notifications");
+    const db = database([event], []);
+    expect(await runDayBeforeAppointmentReminders(db.client, now)).toMatchObject({ sent: 0, failed: 1 });
+  });
+  it("retains uncertain sends and does not automatically retry them", async () => {
+    const { runDayBeforeAppointmentReminders } = await import("./calendar-notifications");
+    const db = database([event], [{ id: "job", phone: "8055551212" }]);
+    expect(await runDayBeforeAppointmentReminders(db.client, now, async () => ({ sent: false, uncertain: true }))).toMatchObject({ failed: 1 });
+    expect(db.updates[0]).toMatchObject({ meta: { dayBeforeReminderUncertainStart: event.start_at } });
+    const retry = database([{ ...event, meta: { dayBeforeReminderUncertainStart: event.start_at } }], [{ id: "job", phone: "8055551212" }]);
+    expect(await runDayBeforeAppointmentReminders(retry.client, now, async () => { throw new Error("must not send"); })).toMatchObject({ failed: 1 });
+  });
+});

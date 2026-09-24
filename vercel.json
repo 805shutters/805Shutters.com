@@ -5,6 +5,10 @@
   "installCommand": "npm install",
   "crons": [
     {
+      "path": "/api/cron/appointment-reminders/",
+      "schedule": "0 2,3 * * *"
+    },
+    {
       "path": "/api/cron/order-cogs/",
       "schedule": "0 3,4,15,16 * * *"
     },

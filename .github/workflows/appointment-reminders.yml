@@ -2,21 +2,36 @@ name: Day-before appointment reminders
 
 on:
   schedule:
-    # 7 p.m. Pacific is 02:00 UTC during daylight time and 03:00 UTC during standard time.
-    - cron: "0 2 * * *"
-    - cron: "0 3 * * *"
+    # Independent read-only watchdog: after 7 PM PST / 8 PM PDT.
+    # Vercel owns sending at 7 PM Pacific; GitHub scheduling can be delayed.
+    - cron: "30 3 * * *"
   workflow_dispatch:
+    inputs:
+      check:
+        description: Readiness checks configuration; delivery checks the latest evening's sends.
+        type: choice
+        options: [delivery, readiness]
+        default: delivery
+
+permissions:
+  contents: read
 
 jobs:
-  send-reminders:
+  verify-reminders:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
-      - name: Send day-before appointment reminders
+      - name: Verify actual reminder results
         env:
           APPOINTMENT_REMINDER_CRON_SECRET: ${{ secrets.APPOINTMENT_REMINDER_CRON_SECRET }}
+          CHECK_MODE: ${{ inputs.check || 'delivery' }}
         run: |
-          curl --fail --silent --show-error \
-            --retry 2 \
-            --request POST \
+          set -euo pipefail
+          status=$(curl --silent --show-error --max-time 60 \
+            --output reminder-result.json --write-out '%{http_code}' \
             --header "Authorization: Bearer ${APPOINTMENT_REMINDER_CRON_SECRET}" \
-            https://805-one.vercel.app/api/cron/appointment-reminders
+            "https://www.805shutters.com/api/cron/appointment-reminders/?check=${CHECK_MODE}")
+          cat reminder-result.json
+          # Reject redirects, authentication failures, missing runs, and unsent reminders.
+          test "$status" = "200"
+          jq -e --arg mode "$CHECK_MODE" '.ok == true and .mode == $mode and .providerReady == true' reminder-result.json
