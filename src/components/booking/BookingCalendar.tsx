@@ -185,6 +185,7 @@ export function BookingCalendar({
   const [projectConfirmed, setProjectConfirmed] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const loadingRef = useRef(false);
+  const availabilityErrorRef = useRef<string | null>(null);
   const revisionRef = useRef<string | null>(null);
   const requestKey = useRef<{ body: string; key: string } | null>(null);
   const [contact, setContact] = useState({
@@ -241,6 +242,11 @@ export function BookingCalendar({
         if (!response.ok)
           throw new Error(body.message || "Availability could not be checked.");
         if (!current) return;
+        const recoveredError = availabilityErrorRef.current;
+        availabilityErrorRef.current = null;
+        if (recoveredError) {
+          setMessage((previous) => previous === recoveredError ? null : previous);
+        }
         if (revisionRef.current && revisionRef.current !== body.revision) {
           setSelectedTime(null);
           setMessage(
@@ -254,11 +260,12 @@ export function BookingCalendar({
         if (!current) return;
         setAvailability(null);
         setSelectedTime(null);
-        setMessage(
+        const availabilityError =
           error instanceof Error
             ? error.message
-            : "Availability could not be checked.",
-        );
+            : "Availability could not be checked.";
+        availabilityErrorRef.current = availabilityError;
+        setMessage(availabilityError);
       })
       .finally(() => {
         if (current) {
