@@ -5,3 +5,4 @@
 .dialog > button:last-child svg { display: block; width: 20px; height: 20px; flex-shrink: 0; }
 .dialog fieldset { margin: 0; padding: 0; border: 0; }
 .dialog [aria-label="Choose dimension"] strong { color: inherit !important; }
+@media(max-height:760px){.dialog.dialog{padding:12px;gap:8px}}

@@ -130,7 +130,6 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
 const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
 const HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"]);
 const OPENING_LABELS = ["A", "B", "C", "D", "E"] as const;
-const FIELD_MEASURE_FRACTIONS = ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"] as const;
 const FIELD_MEASURE_ROOMS = ["Living Room", "Family Room", "Dining Room", "Bathroom", "Bedroom", "Primary", "Primary Bath", "Office", "Den", "Laundry", "Loft", "Kitchen", "Garage", "Custom"] as const;
 const FIELD_MEASURE_FRAME_SIDES = ["4", "3 SP", "3 SPL", "3 SBT", "3 SPR", "3", "2 SP", "T", "B"] as const;
 const INSTALLATION_DURATION_CHOICES = Array.from({ length: 32 }, (_, index) => (index + 1) * 15);
@@ -441,6 +440,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   const [measurementSaving, setMeasurementSaving] = useState(false);
   const [measurementSaveError, setMeasurementSaveError] = useState("");
   const measurementSavingRef = useRef(false);
+  const savedMeasurementLineRef = useRef<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [signerName, setSignerName] = useState("");
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
@@ -828,6 +828,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     userSelectedRef.current = false;
     try {
       const saved = await flushLatestDraft();
+      savedMeasurementLineRef.current = lineId;
       setMeasurePicker(null);
       setMessage(saved.queued
         ? "Measurements saved on this phone · waiting to upload."
@@ -1275,7 +1276,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                 <button type="button" disabled={readOnly || !current.width_in} data-confirmed={current.width_confirmed} onClick={() => updateLine(line.id, { width_confirmed: true })}>{current.width_confirmed ? <Check /> : null} Confirm width</button>
                 <button type="button" disabled={readOnly || !current.height_in} data-confirmed={current.height_confirmed} onClick={() => updateLine(line.id, { height_confirmed: true })}>{current.height_confirmed ? <Check /> : null} Confirm height</button>
               </div>
-              {shutterProduct ? <><div className="technical-measure-section-label">4. Shutter configuration</div><div className="technical-measure-priority-grid">
+              {shutterProduct ? <><div id={`measure-next-${line.id}`} tabIndex={-1} className="technical-measure-section-label">4. Shutter configuration</div><div className="technical-measure-priority-grid">
                 <div className="technical-measure-quick-field technical-measure-frame-sides">
                   <span>Frame sides</span>
                   <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__frame_sides"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__frame_sides" ? null : { lineId: line.id, key: "__frame_sides" })}><span>{detailText(current.details, "frame_sides") || "Select"}</span><ChevronRight /></button>
@@ -1307,7 +1308,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                     <button type="button" disabled={readOnly} aria-pressed={dividerRailLocation === "Custom"} onClick={() => { updateDetail(line.id, "divider_rail", "Yes"); updateDetail(line.id, "divider_rail_location", "Custom"); setLocationPicker({ lineId: line.id, label: "Divider Rail Location", valueKey: "divider_rail_height", step: "width_whole" }); }}>Custom{current.details.divider_rail_height ? ` · ${inches(Number(current.details.divider_rail_height))}` : ""}</button>
                   </div>
                 </div>
-              </div></> : <div className="technical-measure-priority-grid technical-measure-priority-grid--shade">
+              </div></> : <div id={`measure-next-${line.id}`} tabIndex={-1} className="technical-measure-priority-grid technical-measure-priority-grid--shade">
                 <div className="technical-measure-basis"><span>Control side</span><div><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "left"} onClick={() => updateDetail(line.id, "control_side", "Left")}>Left</button><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "right"} onClick={() => updateDetail(line.id, "control_side", "Right")}>Right</button></div></div>
               </div>}
               <div className="technical-measure-secondary">
@@ -1509,12 +1510,22 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
         <MeasurementGridModal
           open
           showDirectEntry
-          wholeStart={10}
+          wholeStart={1}
           wholeEnd={125}
-          fractions={FIELD_MEASURE_FRACTIONS}
+          fractions={FRACTIONS}
           saving={measurementSaving}
           saveError={measurementSaveError}
           onClose={closeMeasurePicker}
+          onCloseAutoFocus={(event) => {
+            const lineId = savedMeasurementLineRef.current;
+            if (!lineId) return;
+            savedMeasurementLineRef.current = null;
+            const nextSection = document.getElementById(`measure-next-${lineId}`);
+            if (!nextSection) return;
+            event.preventDefault();
+            nextSection.focus({ preventScroll: true });
+            nextSection.scrollIntoView({ block: "start", behavior: "instant" });
+          }}
           step={measurePicker.step}
           pendingWidth={pendingWidth}
           pendingHeight={pendingHeight}

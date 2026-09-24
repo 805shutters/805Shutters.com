@@ -50,6 +50,7 @@ beforeEach(() => {
   vi.clearAllMocks(); saved = fixture(); requests = []; deferSave = false; respond = undefined;
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   HTMLElement.prototype.scrollTo = vi.fn();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal("fetch", vi.fn(async (_url, options) => {
     if (options?.method === "PATCH") {
       const body = JSON.parse(options.body); requests.push(body);
@@ -76,6 +77,23 @@ describe("technical measurement save and close", () => {
     deferSave = false; await click("Next line item"); expect(document.body.textContent).toContain("Bedroom"); expect(button("Select width").textContent).toContain('13');
     await act(async () => root.unmount()); root = createRoot(host); await mount();
     await click("Open field measure for Bathroom · A"); expect(button("Select height").textContent).toContain('58 1/4');
+  });
+  it("saves the screenshot's sub-ten-inch opening with every sixteenth directly available", async () => {
+    await mount(); await click("Open field measure for Bathroom · A"); await click("Select width");
+    const fractions = [...document.querySelectorAll('[aria-label="width fractions"] button')];
+    expect(fractions.map(button => button.textContent)).toEqual(["Even", "1/16", "1/8", "3/16", "1/4", "5/16", "3/8", "7/16", "1/2", "9/16", "5/8", "11/16", "3/4", "13/16", "7/8", "15/16"]);
+    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain("All 8ths");
+    await click("9"); await click("3/4"); await click("Next: height");
+    await click("5"); await click("9"); await click("3/4"); await click("Save size");
+    expect(saved.lines[0].current_values).toMatchObject({ width_in: 9.75, height_in: 59.75, width_confirmed: true, height_confirmed: true });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+  it("persists sixteenth fractions without rounding to eighths", async () => {
+    await mount(); await click("Open field measure for Bathroom · A"); await click("Select width");
+    await click("2"); await click("9"); await click("1/16"); await click("Next: height");
+    await click("5"); await click("9"); await click("15/16"); await enter();
+    expect(saved.lines[0].current_values).toMatchObject({ width_in: 29.0625, height_in: 59.9375 });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
   it("keeps failed measurements open for retry and closes only after the retry saves", async () => {
     await mount(); await edit(); deferSave = true;

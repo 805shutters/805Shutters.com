@@ -47,7 +47,7 @@ describe("quote size calculator", () => {
     expect(save).not.toHaveBeenCalled();
     await click("Next: height");
     expect(dialog().querySelector("input")?.getAttribute("aria-label")).toBe("height whole inches");
-    await click("6"); await click("0"); await click("All 16ths"); await click("3/16");
+    await click("6"); await click("0"); await click("3/16");
     await click("Save size");
     expect(save).toHaveBeenCalledExactlyOnceWith({ whole: 36, fraction: "1/2" }, { whole: 60, fraction: "3/16" }, ["width", "height"]);
     expect(close).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("quote size calculator", () => {
     await render({ wholeStart: 10, wholeEnd: 125, fractions: ["0", "1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"],
       pendingWidth: { whole: 29, fraction: "0" }, pendingHeight: { whole: 58, fraction: "3/16" } });
     expect(dialog().textContent).not.toContain("Select whole inches");
-    await click("1"); await click("2"); await click("5"); await click("All 8ths"); await click("7/8");
+    await click("1"); await click("2"); await click("5"); await click("7/8");
     await click("Next: height"); await click("Save size");
     expect(save).toHaveBeenCalledExactlyOnceWith({ whole: 125, fraction: "7/8" }, { whole: 58, fraction: "3/16" }, ["width", "height"]);
   });

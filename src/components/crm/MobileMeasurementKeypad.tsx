@@ -46,7 +46,6 @@ function isMeasurementFilled(whole: number, fraction: string) {
     && (whole > 0 || fraction !== "0");
 }
 
-const QUICK_FRACTIONS = ["0", "1/4", "1/2", "3/4"];
 const KEYPAD_ROWS: Array<Array<number | "backspace" | "clear">> = [
   [1, 2, 3],
   [4, 5, 6],
@@ -86,7 +85,6 @@ export function MobileMeasurementKeypad({
   dimensionLabel?: string;
 }) {
   const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? initialSide);
-  const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(true);
   const [replaceNext, setReplaceNext] = useState(true);
   const [manualValue, setManualValue] = useState(String((measurementAxis ?? initialSide) === "height" ? heightWhole : widthWhole));
@@ -133,7 +131,6 @@ export function MobileMeasurementKeypad({
     if (normalized !== whole) onWholeChange(activeSide, normalized);
   }
 
-  const nonQuarter = !QUICK_FRACTIONS.includes(fraction) ? fraction : null;
 
   return <section className={styles.measurement} aria-label="Window measurements">
     <div className={styles.segments} style={measurementAxis ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined} role="group" aria-label="Choose dimension">
@@ -174,13 +171,9 @@ export function MobileMeasurementKeypad({
           {key === "backspace" ? <DeleteIcon /> : key === "clear" ? "Clear" : key}
         </button>)}
       </div>
-      <div className={styles.quickFractions} role="group" aria-label={`${activeSide} quick fractions`}>
-        {QUICK_FRACTIONS.filter(value => fractions.includes(value)).map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
-        <button type="button" className={styles.allButton} aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>{fractions.length === 8 ? "All 8ths" : "All 16ths"}{nonQuarter ? ` · ${nonQuarter}` : ""}</button>
-      </div>
-      {expanded && <div className={styles.allFractions} role="group" aria-label={`${activeSide} all ${fractions.length === 8 ? "eighth" : "sixteenth"} fractions`}>
+      <div className={styles.allFractions} role="group" aria-label={`${activeSide} fractions`}>
         {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
-      </div>}
+      </div>
       <button type="button" className={styles.nextButton} onClick={advanceOrDone}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
     </div>}
   </section>;

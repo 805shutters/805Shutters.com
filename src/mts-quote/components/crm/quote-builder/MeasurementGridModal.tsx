@@ -17,6 +17,7 @@ interface MeasurementGridModalProps {
   wholeEnd?: number;
   fractions?: readonly string[];
   onClose: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
   step: MeasurementStep;
   onWidthWhole: (n: number) => void;
   onWidthFraction: (f: string) => void;
@@ -42,6 +43,7 @@ export function MeasurementGridModal({
   wholeEnd,
   fractions = FRACTIONS,
   onClose,
+  onCloseAutoFocus,
   step,
   onWidthWhole,
   onWidthFraction,
@@ -107,7 +109,7 @@ export function MeasurementGridModal({
       pendingWidth={pendingWidth} pendingHeight={pendingHeight}
       initialSide={isWidth ? "width" : "height"} singleDimensionLabel={singleDimensionLabel}
       minWhole={wholeStart ?? 1} maxWidth={wholeEnd ?? 250} maxHeight={wholeEnd ?? (measurementAxis === "height" ? 120 : 119)} fractions={fractions}
-      onClose={onClose} onSave={onDirectMeasurements}
+      onClose={onClose} onCloseAutoFocus={onCloseAutoFocus} onSave={onDirectMeasurements}
     /> : null;
   }
 
@@ -224,13 +226,14 @@ export function MeasurementGridModal({
   );
 }
 
-function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendingWidth, pendingHeight, onClose, onSave, initialSide, singleDimensionLabel, minWhole, maxWidth, maxHeight, fractions }: {
+function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendingWidth, pendingHeight, onClose, onCloseAutoFocus, onSave, initialSide, singleDimensionLabel, minWhole, maxWidth, maxHeight, fractions }: {
   saving: boolean;
   saveError?: string;
   measurementAxis: "width" | "height" | null;
   pendingWidth: { whole: number; fraction: string } | null;
   pendingHeight: { whole: number; fraction: string } | null;
   onClose: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
   onSave: NonNullable<MeasurementGridModalProps["onDirectMeasurements"]>;
   initialSide: "width" | "height";
   singleDimensionLabel?: string;
@@ -260,19 +263,19 @@ function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendin
     onSave(values.width, values.height, reviewedSides);
   }
   return <Dialog open onOpenChange={open => !open && !saving && onClose()}>
-    <DialogContent className={cn(calculatorStyles.dialog, "max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6")}>
+    <DialogContent onCloseAutoFocus={onCloseAutoFocus} className={cn(calculatorStyles.dialog, "max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6")}>
       <DialogHeader><DialogTitle>{singleDimensionLabel ?? (measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size")}</DialogTitle></DialogHeader>
+      {(error || saveError) && <p role="alert" className="text-sm text-destructive">{error || saveError} Your measurements are kept here until saved.</p>}
       <fieldset disabled={saving} className="min-w-0">
         <MobileMeasurementKeypad widthWhole={width.whole} widthFraction={width.fraction}
           heightWhole={height.whole} heightFraction={height.fraction} measurementAxis={measurementAxis}
           initialSide={initialSide} fractions={fractions} dimensionLabel={singleDimensionLabel}
           onSideSelected={(side) => setReviewedSides(previous => previous.includes(side) ? previous : [...previous, side])}
-          onWholeChange={(side, whole) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, whole }))}
-          onFractionChange={(side, fraction) => (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, fraction }))}
+          onWholeChange={(side, whole) => { setError(""); (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, whole })); }}
+          onFractionChange={(side, fraction) => { setError(""); (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, fraction })); }}
           onDone={save} doneLabel="Save size" />
       </fieldset>
       {saving && <p role="status" className="text-sm">Saving measurements…</p>}
-      {(error || saveError) && <p role="alert" className="text-sm text-destructive">{error || saveError} Your measurements are kept here until saved.</p>}
     </DialogContent>
   </Dialog>;
 }
