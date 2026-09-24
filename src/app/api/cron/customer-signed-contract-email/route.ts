@@ -1,49 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import {
-  getCustomerSignedContractEmailHealth,
-  processCustomerSignedContractEmailOutbox,
-} from "@/lib/crm/customer-signed-contract-email";
-
+import { processCustomerSignedContractEmailOutbox } from "@/lib/crm/customer-signed-contract-email";
+import { checkCustomerEmailDeliveries, customerEmailActivation, customerEmailReadiness, getCustomerEmailMonitor } from "@/lib/crm/customer-email-monitor";
+import { observeIntegration } from "@/lib/crm/integration-health";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 240;
-
-function authorized(request: NextRequest) {
-  return Boolean(
-    process.env.CRON_SECRET &&
-    request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`,
-  );
-}
-
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  const supabase = getSupabaseServiceClient();
-  if (!supabase) return NextResponse.json({ message: "Customer contract email service unavailable" }, { status: 503 });
-
+  const readOnly = request.nextUrl.searchParams.get("dryRun") === "1" || ["health", "readiness"].includes(request.nextUrl.searchParams.get("check") || "");
+  const token = request.headers.get("authorization");
+  const authorized = [process.env.CRON_SECRET, ...(readOnly ? [process.env.APPOINTMENT_REMINDER_CRON_SECRET] : [])]
+    .some(secret => Boolean(secret) && token === `Bearer ${secret}`);
+  if (!authorized) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  const db = getSupabaseServiceClient();
+  if (!db) return NextResponse.json({ message: "Customer email service unavailable" }, { status: 503 });
   try {
-    const dryRun = request.nextUrl.searchParams.get("dryRun") === "1";
-    const result = dryRun
-      ? { processed: 0, ...await getCustomerSignedContractEmailHealth(supabase) }
-      : await processCustomerSignedContractEmailOutbox(supabase, { limit: 20, deadlineMs: 220_000 });
-    console.info("customer_signed_contract_email_health", {
-      dryRun,
-      processed: result.processed,
-      pending: result.pending,
-      processing: result.processing,
-      retry: result.retry,
-      uncertain: result.uncertain,
-      accepted: result.accepted,
-      blocked: result.blocked,
-      total: result.total,
-      errorCount: result.errors.length,
-    });
-    const { errors, ...health } = result;
-    return NextResponse.json({ ...health, errorCount: errors.length });
-  } catch (error) {
-    console.error("customer_signed_contract_email_worker_failed", {
-      errorType: error instanceof Error ? error.name : "UnknownError",
-    });
-    return NextResponse.json({ message: "Customer contract email worker failed" }, { status: 500 });
+    if (request.nextUrl.searchParams.get("check") === "readiness") {
+      const readiness = await customerEmailReadiness(db);
+      return NextResponse.json(readiness, { status: readiness.ok ? 200 : 503 });
+    }
+    if (readOnly) {
+      const health = await getCustomerEmailMonitor(db);
+      return NextResponse.json(health, { status: health.ok ? 200 : 503 });
+    }
+    const activation = await customerEmailActivation(db);
+    if (!activation) return NextResponse.json({ ok: false, activated: false }, { status: 503 });
+    const result = await observeIntegration(db, "customer-email", async () => {
+      const result = await processCustomerSignedContractEmailOutbox(db, { limit: 10, deadlineMs: 180_000 });
+      await checkCustomerEmailDeliveries(db, activation);
+      return result;
+    }, result => result.errors.length === 0);
+    const health = await getCustomerEmailMonitor(db);
+    return NextResponse.json({ ...health, processed: result.processed, errorCount: result.errors.length },
+      { status: health.ok && result.errors.length === 0 ? 200 : 503 });
+  } catch {
+    return NextResponse.json({ message: "Customer email worker or health check failed" }, { status: 503 });
   }
 }

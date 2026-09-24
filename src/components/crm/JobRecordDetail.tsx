@@ -1,5 +1,6 @@
 "use client";
 
+import { CustomerEmailStatus } from "./CustomerEmailStatus";
 import { trackingJobClosed, trackingPaymentSettled } from "@/lib/crm/job-closure";
 import { useState } from "react";
 import { Check, ChevronDown, FileText, Package, Wallet, LayoutGrid, ExternalLink } from "lucide-react";
@@ -43,6 +44,7 @@ export function JobRecordDetail({item,disabled,onEdit,onFulfillment}:{item:JobTr
       <button disabled={disabled||!canSend||!item.squareBalanceOutstanding||item.squareBalanceOutstanding<=0} onClick={()=>onEdit("square","balance")}>Send balance link <b>{money(item.squareBalanceOutstanding)}</b></button>
     </div>
     {!canSend&&<p className={styles.hint}>{!canEdit?"A sold quote or bookkeeping sale is needed for payments.":!item.email?"Add a verified customer email to send payment links.":"Record the sale to enable payment links."}</p>}
+    {item.job?.id && <CustomerEmailStatus jobId={item.job.id} />}
     <nav className={styles.views} aria-label="Customer file views">{views.map(({id,label,Icon})=><button key={id} aria-pressed={view===id} aria-controls="job-record-panel" onClick={()=>setView(id)}><Icon size={17}/>{label}</button>)}</nav>
     <section id="job-record-panel" className={styles.panel} aria-label={views.find(v=>v.id===view)!.label}>
       {view==="overview"&&<div className={styles.columns}>

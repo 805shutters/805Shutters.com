@@ -1,3 +1,4 @@
+import { buildCustomerCloseoutEmail, buildCustomerReceiptPdf } from "./customer-closeout";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSignedContractPdf } from "./signed-contract-pdf";
 import { ContractContentError, validateSignedContractSnapshot } from "./signed-contract-snapshot";
@@ -17,7 +18,7 @@ type DeliveryStatus = "pending" | "processing" | "retry" | "uncertain" | "accept
 export type FrozenCustomerContractEmail = {
   to: string;
   from: typeof CUSTOMER_SIGNED_CONTRACT_FROM;
-  subject: typeof CUSTOMER_SIGNED_CONTRACT_SUBJECT;
+  subject: string;
   html: string;
   text: string;
   attachments: EmailAttachment[];
@@ -26,8 +27,12 @@ export type FrozenCustomerContractEmail = {
 
 export type CustomerContractEmailClaim = {
   id: string;
-  contract_id: string;
-  quote_id: string;
+  kind?: "signed_contract" | "paid_in_full";
+  paid_snapshot?: { customerName: string; quoteNumber: string; total: number; paidOn: string; recipient: string; scopeKey: string };
+  scope_key?: string | null;
+  bookkeeping_entry_id?: string | null;
+  contract_id: string | null;
+  quote_id: string | null;
   status: "processing";
   recipient: string;
   signed_snapshot: SignedContractSnapshot;
@@ -122,13 +127,27 @@ export function buildCustomerSignedContractEmail(customerName: string): {
   return { subject: CUSTOMER_SIGNED_CONTRACT_SUBJECT, text, html };
 }
 
-function expectedIdempotencyKey(claim: Pick<CustomerContractEmailClaim, "contract_id">) {
-  return `805-signed-contract-${claim.contract_id}-${PAYLOAD_VERSION}`;
+function expectedIdempotencyKey(claim: Pick<CustomerContractEmailClaim, "contract_id" | "kind" | "id">) {
+  return claim.kind === "paid_in_full" ? `805-paid-receipt-${claim.id}-v1` : `805-signed-contract-${claim.contract_id}-${PAYLOAD_VERSION}`;
 }
 
 async function prepareEmail(claim: CustomerContractEmailClaim): Promise<FrozenCustomerContractEmail> {
   const recipient = email(claim.recipient);
   if (!recipient) throw new ContractContentError("The signed customer contract has no valid customer email.");
+  if (claim.kind === "paid_in_full") {
+    const snapshot = claim.paid_snapshot;
+    if (!snapshot || snapshot.recipient !== recipient || snapshot.scopeKey !== claim.scope_key ||
+        !snapshot.customerName || !snapshot.quoteNumber || !Number.isFinite(snapshot.total) || snapshot.total <= 0 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(snapshot.paidOn)) {
+      throw new ContractContentError("The paid-in-full receipt snapshot is incomplete or does not match its recipient.");
+    }
+    return {
+      ...buildCustomerCloseoutEmail(snapshot), to: recipient, from: CUSTOMER_SIGNED_CONTRACT_FROM,
+      attachments: [{ filename: `805-Shutters-${safeFilename(snapshot.quoteNumber)}-receipt.pdf`,
+        content: buildCustomerReceiptPdf(snapshot).toString("base64"), contentType: "application/pdf" }],
+      idempotencyKey: expectedIdempotencyKey(claim),
+    };
+  }
   const snapshot = validateSignedContractSnapshot(claim.signed_snapshot, claim.customer_signature);
   if (snapshot.quote.id !== claim.quote_id) {
     throw new ContractContentError("The signed contract snapshot belongs to a different quote.");
@@ -160,7 +179,8 @@ function assertFrozenPayload(payload: FrozenCustomerContractEmail, claim: Custom
   if (
     payload.to !== email(claim.recipient) ||
     payload.from !== CUSTOMER_SIGNED_CONTRACT_FROM ||
-    payload.subject !== CUSTOMER_SIGNED_CONTRACT_SUBJECT ||
+    payload.subject !== (claim.kind === "paid_in_full"
+      ? `Thank you - ${claim.paid_snapshot?.quoteNumber} is paid in full` : CUSTOMER_SIGNED_CONTRACT_SUBJECT) ||
     payload.idempotencyKey !== expectedIdempotencyKey(claim) ||
     payload.attachments.length !== 1 ||
     payload.attachments[0].contentType !== "application/pdf" ||

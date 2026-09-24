@@ -73,38 +73,12 @@ describe("customer closeout payment state", () => {
   });
 });
 
-describe("maybeSendCustomerCloseoutForQuote", () => {
+describe("legacy closeout hook", () => {
   beforeEach(() => sendEmailMock.mockReset());
-
-  it("sends after the CRM ledger reaches zero and stamps the quote", async () => {
-    sendEmailMock.mockResolvedValue({ sent: true, id: "email-123" });
+  it("never sends or backfills even an old fully paid job with an email", async () => {
     const { supabase, updates } = makeSupabase({ total: 1000, paid: 1000 });
-    const result = await maybeSendCustomerCloseoutForQuote(supabase, "quote-1", actor, "square-payment-email-poller");
-    expect(result.status).toBe("sent");
-    expect(updateCrmJob).not.toHaveBeenCalled();
-    expect(sendEmailMock).toHaveBeenCalledWith(expect.objectContaining({
-      to: "customer@example.com",
-      idempotencyKey: "customer-closeout-quote-1",
-      attachments: [expect.objectContaining({ contentType: "application/pdf" })]
-    }));
-    const stamped = customerCloseoutMeta(updates.at(-1)?.meta);
-    expect(stamped.status).toBe("sent");
-    expect(stamped.recipient).toBe("customer@example.com");
-  });
-
-  it("does not send while a balance remains", async () => {
-    const { supabase } = makeSupabase({ total: 1000, paid: 500 });
-    expect((await maybeSendCustomerCloseoutForQuote(supabase, "quote-1", actor)).status).toBe("not_paid");
+    expect((await maybeSendCustomerCloseoutForQuote(supabase, "quote-1", actor)).status).toBe("skipped");
     expect(sendEmailMock).not.toHaveBeenCalled();
-  });
-
-  it("never sends twice after the CRM record is stamped", async () => {
-    const { supabase } = makeSupabase({
-      total: 1000,
-      paid: 1000,
-      meta: { [CUSTOMER_CLOSEOUT_META_KEY]: { status: "sent", sent_at: "2026-07-18T20:00:00Z" } }
-    });
-    expect((await maybeSendCustomerCloseoutForQuote(supabase, "quote-1", actor, "manual")).status).toBe("already_sent");
-    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(updates).toEqual([]);
   });
 });

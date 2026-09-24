@@ -1,4 +1,5 @@
 "use client";
+import { CustomerEmailStatus } from "./CustomerEmailStatus";
 import { JobTrackingSearch } from "./JobTrackingSearch";
 import {FulfillmentWorkspace,type FulfillmentChange} from "./FulfillmentWorkspace";
 import {emptyFulfillment,type FulfillmentData,type FulfillmentScope} from "@/lib/crm/fulfillment";
@@ -174,6 +175,7 @@ export function JobTrackingWorkspace(props: JobTrackingWorkspaceProps) {
       <div><span className={styles.eyebrow}>805 / Operations</span><h2 id="job-tracking-heading">{props.focusedItemId ? "Job details" : "Job tracking"}</h2>{!props.focusedItemId && <p>Every job. Every stage. One working record.</p>}</div>
       <button type="button" className={styles.secondary} onClick={props.onPullInstallInvoices} disabled={disabled}>Pull install invoices</button>
     </header>
+    {!props.editorOnly && !props.focusedItemId && <CustomerEmailStatus />}
     <div className={styles.summary}>
       <div><span>All order / opportunity records</span><strong>{items.length}</strong></div><div><span>Active order / opportunity records</span><strong>{active.length}</strong></div><div><span>Active order balances</span><strong>{money(openBalance)}</strong></div><div><span>Sold date missing</span><strong>{items.filter((item) => item.isSale && !item.soldDate).length}</strong></div>
     </div>

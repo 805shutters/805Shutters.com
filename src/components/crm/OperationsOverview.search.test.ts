@@ -6,6 +6,8 @@ import { JobStatusOverview } from './OperationsOverview';
 import { buildActiveJobsSnapshot } from '@/lib/crm/active-jobs';
 import type { CrmDashboardData } from '@/lib/crm/types';
 
+vi.mock('./CustomerEmailStatus', () => ({ CustomerEmailStatus: () => null }));
+
 const at = '2026-09-01';
 const data = {
   jobs: [],

@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { objectMeta } from "@/lib/crm/measure-needed-state";
-import { sendEmail } from "@/lib/notify/email";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -74,7 +73,7 @@ export function buildCustomerCloseoutEmail(input: CloseoutEmailInput) {
   const amount = money(input.total);
   const paidOn = shortDate(input.paidOn);
   const subject = `Thank you - ${order} is paid in full`;
-  const text = `Hello ${firstName},\n\nThank you so much for your order with 805 Shutters. We have received your final payment and your balance is now paid in full.\n\nReceipt\nOrder: ${order}\nAmount paid: ${amount}\nPaid in full: ${paidOn}\nBalance remaining: $0.00\n\nWarranty information\nYour window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. If you need warranty service, contact us at 805-806-9344 or 805@805shutters.com and include your order number.\n\nYour paid-in-full receipt is attached for your records.\n\nThank you,\n805 Shutters\n805-806-9344\n805shutters.com`;
+  const text = `Hello ${firstName},\n\nThank you so much for your order with 805 Shutters. We have received your final payment and your balance is now paid in full.\n\nReceipt\nOrder: ${order}\nOrder total: ${amount}\nPaid in full: ${paidOn}\nBalance remaining: $0.00\n\nWarranty information\nYour window treatments remain covered by the applicable manufacturer warranty. Installation workmanship is covered by 805 Shutters for 12 months from installation. If you need warranty service, contact us at 805-806-9344 or 805@805shutters.com and include your order number.\n\nYour paid-in-full receipt is attached for your records.\n\nThank you,\n805 Shutters\n805-806-9344\n805shutters.com`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:640px;margin:auto;padding:28px 18px">
     <div style="border-bottom:2px solid #111;padding-bottom:16px"><div style="font-size:18px;font-weight:700;letter-spacing:.06em">805 SHUTTERS</div><h1 style="font-size:26px;margin:14px 0 0">Thank you for your order</h1></div>
     <p style="font-size:15px;line-height:1.6">Hello ${escapeHtml(firstName)},</p>
@@ -126,79 +125,14 @@ export function buildCustomerReceiptPdf(input: CloseoutEmailInput) {
   return Buffer.from(pdf, "latin1");
 }
 
+/** Compatibility hook for existing payment callers. The database transition queues
+ * the receipt atomically; this hook must never send or backfill a historical job. */
 export async function maybeSendCustomerCloseoutForQuote(
-  supabase: CrmSupabaseClient,
-  quoteId: string,
-  actor: CrmActor,
-  source = "crm_payment",
-  recipientOverride?: string | null
+  _supabase: CrmSupabaseClient,
+  _quoteId: string,
+  _actor: CrmActor,
+  _source = "crm_payment",
+  _recipientOverride?: string | null
 ): Promise<CustomerCloseoutResult> {
-  try {
-    const { data: quote, error: quoteError } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
-    if (quoteError || !quote) return { status: "error", message: "CRM quote was not found." };
-    if (customerCloseoutMeta(quote.meta).status === "sent") return { status: "already_sent" };
-
-    const [paymentsResult, creditsInResult, creditsOutResult, jobResult] = await Promise.all([
-      supabase.from("crm_quote_bookkeeping_payments").select("amount,paid_at").eq("quote_id", quoteId),
-      supabase.from("crm_quote_bookkeeping_credits").select("amount").eq("to_quote_id", quoteId),
-      supabase.from("crm_quote_bookkeeping_credits").select("amount").eq("from_quote_id", quoteId),
-      quote.job_id ? supabase.from("crm_jobs").select("*").eq("id", quote.job_id).maybeSingle() : Promise.resolve({ data: null, error: null })
-    ]);
-    if (paymentsResult.error || creditsInResult.error || creditsOutResult.error) {
-      return { status: "error", message: "CRM payment ledger could not be read." };
-    }
-    const remaining = remainingQuoteBalance({
-      total: quote.quote_total,
-      payments: paymentsResult.data || [],
-      creditsIn: creditsInResult.data || [],
-      creditsOut: creditsOutResult.data || []
-    });
-    if (roundMoney(quote.quote_total) <= 0 || remaining > 0.005) return { status: "not_paid" };
-
-    const job = jobResult.data as Record<string, unknown> | null;
-    // A receipt acknowledges financial settlement; it does not close purchased work.
-    const recipient = String(recipientOverride || quote.customer_email || job?.email || "").trim();
-    if (!recipient) return { status: "skipped", message: "Customer email is missing." };
-    const customerName = String(job?.customer_name || quote.customer_name || quote.customer_printed_name || "Valued customer");
-    const paidOn = (paymentsResult.data || []).map((row) => String(row.paid_at || "")).filter(Boolean).sort().at(-1) || null;
-    const emailInput = { customerName, quoteNumber: quote.quote_number, total: roundMoney(quote.quote_total), paidOn };
-    const mail = buildCustomerCloseoutEmail(emailInput);
-    const receipt = buildCustomerReceiptPdf(emailInput);
-    const result = await sendEmail({
-      to: recipient,
-      ...mail,
-      idempotencyKey: `customer-closeout-${quoteId}`,
-      attachments: [{
-        filename: `805-Shutters-${String(quote.quote_number || quoteId).replace(/[^a-z0-9-]/gi, "-")}-receipt.pdf`,
-        content: receipt.toString("base64"),
-        contentType: "application/pdf"
-      }]
-    });
-    if (!result.sent && result.skipped === "resend not configured") return { status: "skipped", message: result.skipped };
-
-    const now = new Date().toISOString();
-    const outcome: CustomerCloseoutMeta = result.sent
-      ? { status: "sent", sent_at: now, attempted_at: now, recipient, email_id: result.id || null, source }
-      : { status: "failed", sent_at: null, attempted_at: now, recipient, error: result.skipped || result.error || "Email could not be sent.", source };
-    const meta = { ...objectMeta(quote.meta), [CUSTOMER_CLOSEOUT_META_KEY]: outcome };
-    const { error: updateError } = await supabase.from("crm_quotes").update({ meta }).eq("id", quoteId);
-    if (updateError) console.error("customer closeout meta stamp failed", updateError.message);
-
-    try {
-      const { recordCrmActivity } = await import("@/lib/crm/backend");
-      await recordCrmActivity(supabase, actor, {
-        entityType: "quote",
-        entityId: quoteId,
-        action: result.sent ? "customer_closeout.sent" : "customer_closeout.failed",
-        metadata: { source, recipient, emailId: result.id || null, reason: outcome.error || null }
-      });
-    } catch (activityError) {
-      console.error("customer closeout activity log failed", activityError);
-    }
-
-    return result.sent ? { status: "sent" } : { status: "error", message: outcome.error || undefined };
-  } catch (error) {
-    console.error("customer closeout automation failed", error);
-    return { status: "error", message: error instanceof Error ? error.message : String(error) };
-  }
+  return { status: "skipped", message: "New paid-in-full receipts are handled by the durable customer email queue." };
 }

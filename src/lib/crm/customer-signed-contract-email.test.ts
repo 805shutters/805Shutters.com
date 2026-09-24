@@ -224,3 +224,22 @@ describe("signed customer contract email", () => {
     expect(result.errors).toContain("database connection reset");
   });
 });
+
+it("queues a paid-in-full thank-you from its immutable receipt snapshot with the 805 sender", async () => {
+  const paid = claim({ kind: "paid_in_full", contract_id: null, scope_key: "quote:receipt-1", payload: null,
+    paid_snapshot: { customerName: "Jane Customer", quoteNumber: "805-0400", total: 1000, paidOn: "2026-09-24", recipient: "jose@example.com", scopeKey: "quote:receipt-1" } });
+  const h = harness({ claims: [paid] });
+  await processCustomerSignedContractEmailOutbox({} as never, { dependencies: h.dependencies });
+  expect(h.send).toHaveBeenCalledWith(expect.objectContaining({
+    from: "805 Shutters <805@805shutters.com>", to: "jose@example.com", subject: "Thank you - 805-0400 is paid in full",
+    text: expect.stringContaining("Warranty information"),
+    attachments: [expect.objectContaining({ filename: "805-Shutters-805-0400-receipt.pdf", contentType: "application/pdf" })],
+  }), expect.any(Number));
+  expect(h.updates.at(-1)).toMatchObject({ status: "accepted", provider_message_id: "resend-provider-id" });
+});
+it("blocks a paid receipt whose recipient differs from its frozen snapshot", async () => {
+  const h = harness({ claims: [claim({ kind: "paid_in_full", scope_key: "quote:receipt-1", payload: null,
+    paid_snapshot: { customerName: "Jane Customer", quoteNumber: "805-0400", total: 1000, paidOn: "2026-09-24", recipient: "different@example.com", scopeKey: "quote:receipt-1" } })] });
+  await processCustomerSignedContractEmailOutbox({} as never, { dependencies: h.dependencies });
+  expect(h.send).not.toHaveBeenCalled();expect(h.updates.at(-1)).toMatchObject({ status: "blocked" });
+});

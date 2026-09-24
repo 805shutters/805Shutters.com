@@ -11,6 +11,7 @@ import { performancePeriods, type PerformancePeriod, attentionDetail, buildOpera
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
 import { type SaveJobCost } from "./InlineJobCost";
+import { CustomerEmailStatus } from "./CustomerEmailStatus";
 import { InlineJobContract } from "./InlineJobContract";
 import { ProductOrderEditor, orderCostParent, orderCostTotal, displayedOrderAmount } from "./ProductOrderEditor";
 import { allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
@@ -160,6 +161,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     return [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(searchQuery);
   });
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
+    <CustomerEmailStatus />
     <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(filter === id ? "active" : id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search all jobs" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll ? <p role="status">Loading all jobs…</p> : searchQuery && data ? <p role="status">Searching all job statuses</p> : null}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
