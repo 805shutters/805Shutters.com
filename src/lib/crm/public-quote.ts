@@ -847,7 +847,7 @@ export function applyStoredSignedSelection(
   return selectedLines;
 }
 
-async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise<CrmQuote | null> {
+async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreMissingMirror = true): Promise<CrmQuote | null> {
   if (!token) return null;
   const { data, error } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
   if (error) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
@@ -887,6 +887,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise
     // The source row is stamped immediately after the send audit. Only repair
     // when that narrow window contains exactly one quote; concurrent or
     // ambiguous sends fail closed instead of attaching a link to the wrong job.
+    if (!restoreMissingMirror) continue;
     const sentWindow = historicalSalesQuoteSentWindow(historicalSend?.created_at);
     if (!sentWindow) continue;
     const { data: sourceCandidates, error: sourceError } = await supabase
@@ -1680,6 +1681,23 @@ async function syncTechnicalMeasureDecisionForSoldJob(
   return decision;
 }
 
+/** Read-only confirmation: a payment or sold timestamp alone is not a signature. */
+export async function publicQuoteSigningStatus(supabase: CrmSupabaseClient, token: string) {
+  const quote = await fetchByToken(supabase, token, false);
+  if (!quote) throw new CrmAuthError(404, "This contract link is no longer valid.");
+  return { signed: Boolean(quote.signed_at && quote.customer_signature?.trim()), signedAt: quote.signed_at || null };
+}
+
+async function confirmConcurrentSignature(supabase: CrmSupabaseClient, quoteId: string) {
+  const { data, error } = await supabase.from("crm_quotes")
+    .select("signed_at,customer_signature").eq("id", quoteId).maybeSingle();
+  if (error) throw new CrmAuthError(502, "We couldn't confirm your signature. Please try again.");
+  if (!data?.signed_at || !data.customer_signature?.trim()) {
+    throw new CrmAuthError(409, "This contract changed before your signature could be saved. Please refresh and review it again.");
+  }
+  return { ok: true as const, alreadySigned: true };
+}
+
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
@@ -1687,6 +1705,9 @@ export async function acceptPublicQuote(
 ): Promise<{ ok: true; alreadySigned: boolean; futureQuoteId?: string; futureJobId?: string }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This contract link is no longer valid.");
+  if (quote.signed_at && !quote.customer_signature?.trim()) {
+    throw new CrmAuthError(409, "This contract has a sale recorded but no saved electronic signature. Please contact 805 Shutters to review it.");
+  }
   if (quote.signed_at) {
     let pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
@@ -1774,11 +1795,17 @@ export async function acceptPublicQuote(
     return { ok: true, alreadySigned: true };
   }
 
-  const claimToken = await claimTokenForResolvedQuote(supabase, quote, token);
+  if (["archived", "lost"].includes(quote.status) || quote.archived_at || record(quote.meta).native_superseded_by_quote_id) {
+    throw new CrmAuthError(409, "This contract is no longer available to sign. Please contact 805 Shutters for the current contract.");
+  }
 
   const printedName = (input.printedName || "").trim();
   if (!printedName) throw new CrmAuthError(400, "Please type your name to sign.");
-  const signature = (input.signature || printedName).trim();
+  const signature = (input.signature ?? printedName).trim();
+  if (!signature) throw new CrmAuthError(400, "Please type your signature.");
+  if (input.acknowledgedTotal !== undefined && (!Number.isFinite(input.acknowledgedTotal) || input.acknowledgedTotal <= 0)) {
+    throw new CrmAuthError(400, "Please review the contract total before signing.");
+  }
   const now = new Date().toISOString();
 
   // Guard: never let a customer sign an unfinished / unpriced / $0 quote.
@@ -1836,6 +1863,8 @@ export async function acceptPublicQuote(
     throw new CrmAuthError(409, "This contract was updated since you opened it. Please refresh to review the new total before signing.");
   }
 
+  const claimToken = await claimTokenForResolvedQuote(supabase, quote, token);
+
   // Atomic claim: only the first request that flips signed_at from null wins
   // (guards against double-submit / concurrent sign of the same link).
   const native = Boolean(record(quote.meta).native_delivery_id);
@@ -1861,7 +1890,7 @@ export async function acceptPublicQuote(
     : null;
   const claim = partialResult
     ? {
-        data: partialResult.data
+        data: partialResult.data?.length
           ? [{
               id: quote.id,
               futureQuoteId: partialResult.data[0]?.future_quote_id as string | undefined,
@@ -1889,18 +1918,21 @@ export async function acceptPublicQuote(
         .eq("id", quote.id)
         .eq("share_token", claimToken)
         .is("signed_at", null)
+        .is("archived_at", null)
+        .eq("status", quote.status)
         .select("id");
   const { data: claimed, error } = claim;
   if (error) {
     // The one-signed-per-group unique index (crm_quotes_one_signed_per_group)
-    // rejects a second concurrent sign in the same group — treat that as a
-    // graceful "already decided", not a server error.
-    if ((error as { code?: string }).code === "23505") return { ok: true, alreadySigned: true };
+    // rejects a second concurrent sign in the same group. Only report success
+    // if this exact contract has a persisted signature.
+    if ((error as { code?: string }).code === "23505") return confirmConcurrentSignature(supabase, quote.id);
     if (native && ["40001", "55000", "22023"].includes((error as { code?: string }).code || "")) throw new CrmAuthError(409, "This contract changed or was already accepted. Refresh and review it before signing.");
     throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
   }
-  if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
-  if ("alreadySigned" in claimed[0] && claimed[0].alreadySigned) return { ok: true, alreadySigned: true };
+  if (!claimed || claimed.length === 0 || ("alreadySigned" in claimed[0] && claimed[0].alreadySigned)) {
+    return confirmConcurrentSignature(supabase, quote.id);
+  }
   const futureQuoteId = "futureQuoteId" in claimed[0] ? claimed[0].futureQuoteId : undefined;
   const futureJobId = "futureJobId" in claimed[0] ? claimed[0].futureJobId : undefined;
 
@@ -1931,7 +1963,7 @@ export async function acceptPublicQuote(
         .from("crm_quotes")
         .update({ status: "archived", signed_at: null, sold_at: null, customer_signature: null, customer_printed_name: null, share_token: null })
         .eq("id", quote.id);
-      return { ok: true, alreadySigned: true };
+      throw new CrmAuthError(409, "Another option for this project was accepted. Please refresh to view the accepted contract.");
     }
 
     let archiveSiblings = supabase

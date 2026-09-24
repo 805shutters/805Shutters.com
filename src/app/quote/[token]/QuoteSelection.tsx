@@ -59,7 +59,13 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   };
   const [mode, setMode] = useState<"all" | "some">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
-  const [live, setLive] = useState<LiveMoney>(fullMoney);
+  const [computedMoney, setLive] = useState<LiveMoney>(fullMoney);
+  const selectionKey = mode === "all" ? "all" : JSON.stringify([...selected].sort());
+  const [computedKey, setComputedKey] = useState("all");
+  const [totalError, setTotalError] = useState<string | null>(null);
+  const [totalRetry, setTotalRetry] = useState(0);
+  const [signingBusy, setSigningBusy] = useState(false);
+  const live = mode === "all" ? fullMoney : computedMoney;
   const [computing, setComputing] = useState(false);
   const [squareBusy, setSquareBusy] = useState<QuotePaymentType | null>(null);
   const [walletBusy, setWalletBusy] = useState(false);
@@ -76,50 +82,48 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   }, []);
 
   useEffect(() => {
-    if (previewOnly) return;
-    if (mode === "all") {
-      setLive(fullMoney);
-      return;
-    }
     const id = ++reqId.current;
+    const controller = new AbortController();
+    setTotalError(null);
+    if (previewOnly || mode === "all" || selected.size === 0) {
+      setComputing(false);
+      return () => { ++reqId.current; controller.abort(); };
+    }
     setComputing(true);
     const handle = setTimeout(async () => {
+      const timeout = setTimeout(() => controller.abort(), 15_000);
       try {
         const res = await fetch(`/api/quote/${quote.token}/total`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ selectedLineIds: [...selected] }),
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ selectedLineIds: [...selected] }), signal: controller.signal,
         });
         const data = await res.json();
-        if (id === reqId.current && data && typeof data.total === "number") {
-          setLive({
-            subtotal: data.subtotal,
-            fees: data.fees,
-            discount: data.discount,
-            tax: data.tax,
-            total: data.total,
-            depositDue: data.depositDue,
-            balanceDue: data.balanceDue,
-            payment: data.payment,
-          });
+        if (!res.ok || !data || !["subtotal", "fees", "discount", "tax", "total", "depositDue", "balanceDue"]
+          .every(key => typeof data[key] === "number" && Number.isFinite(data[key])) || !data.payment) {
+          throw new Error("We couldn't verify the total for these items. Please try again.");
+        }
+        if (id === reqId.current) {
+          setLive(data);
+          setComputedKey(selectionKey);
         }
       } catch {
-        /* keep the last known total */
+        if (id === reqId.current) setTotalError("We couldn't verify the total for these items. Please try again.");
       } finally {
+        clearTimeout(timeout);
         if (id === reqId.current) setComputing(false);
       }
     }, 250);
-    return () => clearTimeout(handle);
-    // fullMoney is derived from `quote` (stable per render of this quote)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, previewOnly, selected, quote.token]);
+    return () => { clearTimeout(handle); ++reqId.current; controller.abort(); };
+  }, [mode, previewOnly, selected, quote.token, selectionKey, totalRetry]);
 
   const contractSigned = quote.signed || signedNow;
   const allowSelection = !previewOnly && !quote.superseded && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
+  const totalPending = mode === "some" && !selectionEmpty && (computing || computedKey !== selectionKey);
+  const actionBlocked = totalPending || Boolean(totalError) || signingBusy;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
-  const canSign = !quote.superseded && !contractSigned && quote.allPriced;
+  const canSign = !quote.superseded && !["archived", "lost"].includes(quote.status) && !contractSigned && quote.allPriced && quote.total > 0;
   const showActionPanel = !previewOnly && !quote.superseded && (canSign || Boolean(paymentOptions));
   const paymentType = live.payment.available ? live.payment.dueType : null;
   const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
@@ -188,11 +192,11 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
         <div className={styles.purchaseSelector}>
           <span className={styles.purchaseHeading}>Purchase:</span>
           <label className={styles.purchaseOption} data-selected={mode === "all"}>
-            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "all"} onChange={() => setMode("all")} />
+            <input className={styles.purchaseRadio} type="radio" disabled={signingBusy} name="purchase-mode" checked={mode === "all"} onChange={() => setMode("all")} />
             <span>All</span>
           </label>
           <label className={styles.purchaseOption} data-selected={mode === "some"}>
-            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "some"} onChange={chooseSome} />
+            <input className={styles.purchaseRadio} type="radio" disabled={signingBusy} name="purchase-mode" checked={mode === "some"} onChange={chooseSome} />
             <span>Some</span>
           </label>
           {mode === "some" ? (
@@ -256,9 +260,9 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                       priceLabel={configurations.length > 1 ? "Option total" : "Item total"}
                       quantity={line.quantity}
                       notice={line.discountPercent > 0 ? `${line.discountPercent}% off applied` : undefined}
-                      selection={mode === "some" && configurationIndex === 0 ? (
+                      selection={allowSelection && mode === "some" && configurationIndex === 0 ? (
                         <label className={styles.lineSelect}>
-                          <input type="checkbox" checked={isChecked} onChange={() => toggle(line.id)} aria-label={`Select item ${lineIndex + 1}: ${line.room}`} />
+                          <input type="checkbox" disabled={signingBusy} checked={isChecked} onChange={() => toggle(line.id)} aria-label={`Select item ${lineIndex + 1}: ${line.room}`} />
                           <span>Select item</span>
                         </label>
                       ) : undefined}
@@ -275,7 +279,8 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
           </div>
 
           <div className={styles.orderTotals}>
-            <PricingSummary quote={quote} live={live} computing={computing} />
+            <PricingSummary quote={quote} live={live} computing={totalPending && !totalError} />
+            {totalError ? <div role="alert"><p>{totalError}</p><button type="button" onClick={() => setTotalRetry(value => value + 1)}>Try updating total again</button></div> : null}
           </div>
         </section>
 
@@ -314,6 +319,8 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                         total={acknowledgedTotal}
                         selectedLineIds={selectedLineIds}
                         onSigned={() => setSignedNow(true)}
+                        onBusyChange={setSigningBusy}
+                        disabled={actionBlocked}
                         placement="top"
                         compact
                       />
@@ -345,7 +352,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                     <button
                       type="button"
                       className={styles.cardPaymentButton}
-                      disabled={squareBusy !== null || walletBusy || walletPaid || selectionEmpty}
+                      disabled={squareBusy !== null || walletBusy || walletPaid || selectionEmpty || actionBlocked}
                       onClick={() => startSquare(paymentType)}
                     >
                       {squareBusy === paymentType ? "Opening secure card checkout…" : `Pay ${paymentType} with card`}
@@ -361,7 +368,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                         customerName={quote.customerName}
                         customerEmail={quote.customerEmail}
                         customerPhone={quote.customerPhone}
-                        disabled={selectionEmpty || squareBusy !== null || walletPaid}
+                        disabled={selectionEmpty || squareBusy !== null || walletPaid || actionBlocked}
                         onBusyChange={setWalletBusy}
                         onPaid={() => setWalletPaid(true)}
                       />
