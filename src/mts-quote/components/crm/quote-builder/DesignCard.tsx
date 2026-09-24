@@ -12697,7 +12697,7 @@ export function ShadesAndBlindsOptions({
 
   gridOptions = quotePricingInputs(gridOptions);
 
-  const rollerMoreOptionFields = authoritativeV2 && design?.supplier === "Norman"
+  const rollerMoreOptionFields = design?.supplier === "Norman"
     ? NORMAN_ROLLER_MORE_OPTION_FIELDS
     : ROLLER_MORE_OPTION_FIELDS;
   const mainGridOptions =

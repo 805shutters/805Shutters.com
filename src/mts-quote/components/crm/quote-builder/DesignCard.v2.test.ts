@@ -1761,8 +1761,8 @@ describe("Roller quote controls without technical tube selection", () => {
 
 describe("Basic Norman roller quote flow", () => {
   const product = catalogProduct("roller", "Norman", [{id:"roller_cordless_fabric_price_group_1_pg1", name:"Price Group 1", priceAxis:"wh"}]);
-  const render = (design: Partial<SalesQuoteDesign>) => renderToStaticMarkup(createElement(ShadesAndBlindsOptions, {
-    design: design as SalesQuoteDesign, productType:"Roller Shades", authoritativeV2:true,
+  const render = (design: Partial<SalesQuoteDesign>, authoritativeV2 = true) => renderToStaticMarkup(createElement(ShadesAndBlindsOptions, {
+    design: design as SalesQuoteDesign, productType:"Roller Shades", authoritativeV2,
     lineItem:{id:"basic-roller",quantity:1,width_whole:48,width_fraction:"0",height_whole:60,height_fraction:"0"} as SalesQuoteLineItem,
     onUpdate() {}, onUpdateFields() {}, sideBySideLineOptions:[], onSideBySidePairChange() {}, onClearSideBySidePartner() {},
   }));
@@ -1777,6 +1777,16 @@ describe("Basic Norman roller quote flow", () => {
     expect(html).toContain("More Options");
     expect(html).toContain('title="Valance: No Valance"');
     expect(html).toContain('title="Shade Type: Single Shade"');
+  });
+
+  it("keeps the actual CRM's legacy presentation limited to fabric and operation too", () => {
+    const patch=buildCatalogSelectionPatch({quote_v2_backend:true},product);
+    const html=render(patch,false);
+    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric","lift_system"]);
+    expect(html).toContain("More Options");
+    expect(html).toContain('title="Valance: No Valance"');
+    expect(html).not.toContain('data-option-field="mount_type"');
+    expect(html).not.toContain('data-option-field="json:hem_bar"');
   });
 
   it("leaves other manufacturers and Norman products without roller defaults", () => {
