@@ -33,10 +33,6 @@
       "schedule": "5 18 * * 1-5"
     },
     {
-      "path": "/api/cron/commercial-bid-opportunities",
-      "schedule": "17 * * * *"
-    },
-    {
       "path": "/api/cron/indexnow",
       "schedule": "45 18 * * 1"
     },

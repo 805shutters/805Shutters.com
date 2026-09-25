@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { processCommercialBidOpportunityInbox } from "@/lib/crm/commercial-bid-opportunities";
+import { COMMERCIAL_BID_PULLER_PAUSED, COMMERCIAL_BID_PAUSE_REASON } from "@/lib/crm/commercial-bid-pause";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -14,6 +15,13 @@ function requireCronAccess(request: NextRequest) {
 }
 
 async function run(request: NextRequest) {
+  if (COMMERCIAL_BID_PULLER_PAUSED) {
+    return NextResponse.json({
+      paused: true,
+      reason: COMMERCIAL_BID_PAUSE_REASON
+    });
+  }
+
   try {
     requireCronAccess(request);
     const supabase = getSupabaseServiceClient();
