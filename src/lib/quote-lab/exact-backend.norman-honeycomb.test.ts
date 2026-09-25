@@ -22,6 +22,8 @@ function dualQuote(rearFamily = "Light Filtering", frontFamily = "Light Filterin
 }
 
 describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
+ // Exhaustive coverage reprices all 642 color/cell combinations in both fabric
+ // positions; allow headroom over the observed 6.5-8.2 seconds on shared CI.
  it("routes every SmartFit Dual workbook color/cell in both fabric positions",()=>{
   let routes=0;
   for(const color of normanHoneycombV2Source.activeColors){
@@ -38,7 +40,7 @@ describe("Norman Honeycomb multiple-fabric authoritative pricing",()=>{
    }
   }
   expect(routes).toBe(642);
- });
+ },20_000);
  it("keeps internal rear fabric identifiers out of customer details",()=>{
   const q=dualQuote("Room Darkening");q.designs[0].options_json={...q.designs[0].options_json,back_fabric_color_id:"internal-color",back_fabric_product_id:"honeycomb",back_fabric_program_id:"internal-grid",back_fabric_surcharge_id:"room_darkening"};
   const details=getQuoteDesignDetails(q.designs[0]);
