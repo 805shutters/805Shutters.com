@@ -1,3 +1,5 @@
+> Historical audit snapshot: final approved decisions are in [RELEASE-DECISIONS.md](RELEASE-DECISIONS.md). The outside-county wording is approved and unchanged; claims are confirmed; directory decisions are resolved there.
+
 # 805 Shutters JSON-LD audit — 2026-09-25
 
 Scope: all 152 URLs in the live sitemap at production commit `7f2f3022ff3f6d2045bdfd03e474aefbee4287c9`. Direct HTTP GET captured initial HTML, without browser JavaScript. All pages returned 200. All 292 JSON-LD script blocks parsed. This is a source-backed audit and automated field validation, not a claimed Google Rich Results Test or Search Console result. No Google account was accessed.

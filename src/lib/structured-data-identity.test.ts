@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { localBusinessJsonLd, servicePageJsonLd, answerPageJsonLd } from "./structured-data";
 import { getPageByPath } from "./site-data";
 import { getAnswerPage } from "./llm-search-pages";
-import { normalizeStructuredData } from "./structured-data-identity";
+import { approvedProfiles, verifiedDirectoryProfiles, normalizeStructuredData } from "./structured-data-identity";
 
 type Node = Record<string, any>;
 const normalize = (data: unknown) => normalizeStructuredData(data) as Node;
@@ -19,18 +19,43 @@ describe("approved schema-only business identity", () => {
     expect(business().contactPoint).toMatchObject({ telephone: "+1-805-806-9344", email: "805@805shutters.com" });
   });
 
-  it("uses only the approved county and fourteen service areas without a street address", () => {
+  it("includes the fourteen Ventura areas plus Santa Clarita and north LA County without an address", () => {
     expect(business().areaServed.map((area: Node) => area.name)).toEqual([
       "Ventura County", "Oxnard", "Ventura", "Camarillo", "Ojai", "Simi Valley", "Port Hueneme",
-      "Thousand Oaks", "Fillmore", "Moorpark", "Oak Park", "Westlake Village", "Santa Paula", "Santa Rosa Valley", "Newbury Park"
+      "Thousand Oaks", "Fillmore", "Moorpark", "Oak Park", "Westlake Village", "Santa Paula", "Santa Rosa Valley", "Newbury Park",
+      "Santa Clarita", "North Los Angeles County"
     ]);
     expect(business().contactPoint.areaServed).toEqual(business().areaServed);
-    expect(business().serviceArea).toEqual({ "@type": "AdministrativeArea", name: "Ventura County" });
+    expect(business().serviceArea).toEqual(business().areaServed);
     expect(business()).not.toHaveProperty("address");
     expect(business().sameAs).toEqual(expect.arrayContaining([
       "https://www.facebook.com/805shutters", "https://www.instagram.com/805shutters",
       "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2", "https://maps.google.com/?cid=14597332202667384985"
     ]));
+  });
+
+  it("keeps only approved profiles and phone-verified directories", () => {
+    const original = localBusinessJsonLd();
+    original["@graph"][0].sameAs = [
+      "https://www.uahot.com/business-61358.html", "https://www.allbiz.com/",
+      "https://805shuttersandshades.com/",
+      "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378"
+    ];
+    expect(normalize(original)["@graph"][0].sameAs).toEqual([...approvedProfiles, ...verifiedDirectoryProfiles]);
+    expect(business().sameAs).toEqual([...approvedProfiles, ...verifiedDirectoryProfiles]);
+  });
+
+  it("preserves the confirmed hours, price range, founder, owner and free consultation", () => {
+    expect(business()).toMatchObject({
+      priceRange: "$$",
+      founder: { "@type": "Person", name: "Ken Hill" },
+      owner: { "@type": "Person", name: "Ken Hill" },
+      openingHoursSpecification: [{ "@type": "OpeningHoursSpecification",
+        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        opens: "08:00", closes: "18:00" }],
+      potentialAction: { name: "Book a free in-home window treatment consultation" }
+    });
+    expect(business().description).toContain("family-owned");
   });
 
   it("uses a reference to the shared business on the shades page", () => {

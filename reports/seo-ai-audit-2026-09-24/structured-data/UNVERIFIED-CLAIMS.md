@@ -1,3 +1,5 @@
+> Historical audit snapshot: final approved decisions are in [RELEASE-DECISIONS.md](RELEASE-DECISIONS.md). The outside-county wording is approved and unchanged; claims are confirmed; directory decisions are resolved there.
+
 # Unverified structured-data claims — unchanged pending confirmation
 
 All values below remain unchanged in PR #51. “All 152” means every URL in [the page ledger](unverified-claims-pages.csv), including /, /shades/ and /shutters/. This is the complete inventory of the requested schema claim categories, with additional price/experience claims found during review. FoundingDate 1995 is approved and is not listed as unverified. Descriptive text is shown in full; removing part of a description would need corresponding visible-copy review.

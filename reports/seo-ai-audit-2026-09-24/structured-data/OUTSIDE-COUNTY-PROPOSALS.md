@@ -1,3 +1,5 @@
+> Historical audit snapshot: final approved decisions are in [RELEASE-DECISIONS.md](RELEASE-DECISIONS.md). The outside-county wording is approved and unchanged; claims are confirmed; directory decisions are resolved there.
+
 # Outside-county wording proposals — no visible changes applied
 
 The earlier 11-page count described **JSON-LD**, not a complete count of visible geographic wording. The shared footer currently says “Ventura County, North Los Angeles County, and Santa Clarita” on all 152 pages. That remains unchanged. This table covers every distinct matching HTML text node and schema field on the 11 documented pages; HTML title nodes are labeled title. Links, URLs and imagery are not relabeled or changed.

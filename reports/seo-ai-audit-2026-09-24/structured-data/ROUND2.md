@@ -1,3 +1,5 @@
+> Historical audit snapshot: final approved decisions are in [RELEASE-DECISIONS.md](RELEASE-DECISIONS.md). The outside-county wording is approved and unchanged; claims are confirmed; directory decisions are resolved there.
+
 # PR #51 — second pass, schema only
 
 Source commit: `d9628cdfa2cc86823faf312007b402a39f85926b`. Preview: https://805-a00tj01an-805-shutters.vercel.app (Vercel `dpl_E5cdfVcdUJotWAeLwKttAQjJsfcM`, Ready). Production baseline remains `7f2f3022ff3f6d2045bdfd03e474aefbee4287c9`. No merge or production deployment.

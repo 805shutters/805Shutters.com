@@ -11,7 +11,8 @@ export const businessIdentity = {
 export const approvedServiceAreas = [
   "Oxnard", "Ventura", "Camarillo", "Ojai", "Simi Valley", "Port Hueneme",
   "Thousand Oaks", "Fillmore", "Moorpark", "Oak Park", "Westlake Village",
-  "Santa Paula", "Santa Rosa Valley", "Newbury Park"
+  "Santa Paula", "Santa Rosa Valley", "Newbury Park",
+  "Santa Clarita", "North Los Angeles County"
 ] as const;
 
 export const approvedProfiles = [
@@ -19,6 +20,15 @@ export const approvedProfiles = [
   "https://www.instagram.com/805shutters",
   "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
   "https://maps.google.com/?cid=14597332202667384985"
+] as const;
+
+// Public listings checked against the business website and approved phone on
+// 2026-09-25. Do not merge unverified legacy directory URLs into sameAs.
+export const verifiedDirectoryProfiles = [
+  "https://www.mapquest.com/us/california/805-shutters-378112738",
+  "https://local.yahoo.com/info-225163327-805-shutters/",
+  "https://www.chamberofcommerce.com/business-directory/california/santa-rosa-valley/window-treatment-store/2026058550-805-shutters-shades-blinds",
+  "https://www.2findlocal.com/b/15023840/805-shutters-shades-blinds-santa-rosa-valley-ca"
 ] as const;
 
 export function schemaPath(path: string) {
@@ -47,14 +57,10 @@ export function normalizeStructuredData(value: unknown): unknown {
     if (isBusiness) {
       Object.assign(node, businessIdentity);
       node.areaServed = serviceAreas();
-      node.serviceArea = { "@type": "AdministrativeArea", name: "Ventura County" };
+      node.serviceArea = serviceAreas();
       node.foundingDate = "1995";
       node.hasMap = approvedProfiles[3];
-      const existing = Array.isArray(node.sameAs) ? node.sameAs : [];
-      node.sameAs = [...new Set([
-        ...approvedProfiles,
-        ...existing.filter((url) => url !== "https://www.instagram.com/805shutters/" && url !== "https://www.google.com/maps?cid=14597332202667384985")
-      ])];
+      node.sameAs = [...approvedProfiles, ...verifiedDirectoryProfiles];
       if (node.contactPoint && typeof node.contactPoint === "object") {
         Object.assign(node.contactPoint, {
           telephone: businessIdentity.telephone, email: businessIdentity.email,
@@ -68,7 +74,7 @@ export function normalizeStructuredData(value: unknown): unknown {
       }
     }
     // Replace the old company-wide coverage, while retaining a service's
-    // specific city (including flagged Santa Clarita page content for review).
+    // specific city, including the approved Santa Clarita service pages.
     if (!isBusiness && (typeof source.areaServed === "string" && source.areaServed.includes("North Los Angeles County") || Array.isArray(source.areaServed) && source.areaServed.length > 1)) {
       node.areaServed = serviceAreas();
     }
