@@ -1028,6 +1028,12 @@ export function PageSections({ page }: { page: SitePage }) {
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
             <p>{section.body}</p>
+            {activePage.path === "/blinds/" && section.heading === "Practical Light Control" ? (
+              <p>
+                For tall or hard-to-reach windows, compare{" "}
+                <a href="/motorized-window-shades-ventura-county/">motorized shades</a> for convenient daily control.
+              </p>
+            ) : null}
             {section.bullets ? (
               <ul className="tag-list">
                 {section.bullets.map((item) => (
@@ -1129,7 +1135,8 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
           <p>
             A shutter order should be built around the room: the finish, the louver proportion, the frame detail, the
             way doors open, and any custom shape in the architecture. These are the decisions we review before final
-            measuring and ordering.
+            measuring and ordering. Explore <a href="/shutters/plantation/">plantation shutters</a> and see our{" "}
+            <a href="/recent-projects/">recent shutter projects</a> for examples in finished rooms.
           </p>
         </div>
       </section>
@@ -1184,6 +1191,10 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
               Before anything is built, 805 Shutters confirms opening size, frame depth, sill conditions, panel swing,
               handle clearance, divider rail placement, color direction, and how the shutters should perform when open,
               closed, or tilted.
+            </p>
+            <p>
+              If reaching the window is a concern, compare{" "}
+              <a href="/motorized-window-shades-ventura-county/">motorized shades</a> as another option for the room.
             </p>
           </div>
           <ul className="shutter-planning-list" aria-label="Shutter planning checklist">
