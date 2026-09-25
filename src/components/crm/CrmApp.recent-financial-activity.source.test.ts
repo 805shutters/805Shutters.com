@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
 const styles = readFileSync("src/app/globals.css", "utf8");
-const cron = readFileSync("src/app/api/cron/order-cogs/route.ts", "utf8");
+const cron = readFileSync("src/app/api/cron/order-cogs/handler.ts", "utf8");
 
 describe("CRM unified activity dashboard", () => {
   it("replaces the payment-only card with the live unified feed", () => {
