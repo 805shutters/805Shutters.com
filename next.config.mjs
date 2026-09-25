@@ -213,6 +213,33 @@ const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map
   permanent: true
 }));
 
+const shortUrlRedirects = [
+  ["/motorized", "/motorized-window-shades-ventura-county/"],
+  ["/curtains", "/drapery/"],
+  ["/drapes", "/drapery/"]
+].map(([source, destination]) => ({
+  source, // Next.js also matches the trailing-slash variant.
+  destination: `https://www.805shutters.com${destination}`,
+  statusCode: 301
+}));
+
+// Preserve Next.js's trailingSlash rules after the short URLs, so those URLs
+// reach their final destination without an intermediate slash redirect.
+const trailingSlashRedirects = [
+  {
+    source: "/:file((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/]+\\.\\w+)/",
+    destination: "/:file",
+    permanent: true,
+    missing: [{ type: "header", key: "x-nextjs-data" }]
+  },
+  {
+    // The end anchor prevents an already-slashed URL from matching again.
+    source: "/:notfile((?!\\.well-known(?:/.*)?)(?:[^/]+/)*[^/\\.]+$)",
+    destination: "/:notfile/",
+    permanent: true
+  }
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "pdf-parse", "@napi-rs/canvas"],
@@ -228,6 +255,7 @@ const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
   async headers() {
     return [
       {
@@ -261,7 +289,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
+    return [...shortUrlRedirects, ...trailingSlashRedirects, canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
   }
 };
 
