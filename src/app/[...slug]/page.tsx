@@ -102,7 +102,7 @@ export default async function DynamicPage({ params }: PageProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(normalizeStructuredData(pageJsonLd, page.path))
+            __html: JSON.stringify(normalizeStructuredData(pageJsonLd))
           }}
         />
       ) : null}

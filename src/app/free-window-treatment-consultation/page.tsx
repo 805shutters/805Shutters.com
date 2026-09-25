@@ -216,7 +216,7 @@ export default function FreeWindowTreatmentConsultationPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(normalizeStructuredData(consultationJsonLd, "/free-window-treatment-consultation/"))
+          __html: JSON.stringify(normalizeStructuredData(consultationJsonLd))
         }}
       />
 

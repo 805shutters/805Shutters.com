@@ -1,5 +1,5 @@
 // Schema-only facts approved for the September 2026 audit. Do not use these
-// overrides to change visible copy, metadata, or the protected routes.
+// overrides to change visible copy, metadata, or other page content.
 export const businessIdentity = {
   "@id": "https://www.805shutters.com#local-business",
   name: "805 Shutters",
@@ -25,10 +25,6 @@ export function schemaPath(path: string) {
   return path === "/" ? path : `${path.replace(/\/+$/, "")}/`;
 }
 
-export function isProtectedSchemaPath(path: string) {
-  return ["/", "/shades/"].includes(schemaPath(path));
-}
-
 function serviceAreas() {
   return [
     { "@type": "AdministrativeArea", name: "Ventura County" },
@@ -38,8 +34,7 @@ function serviceAreas() {
 
 // Keep the existing entity ID, including its established no-slash fragment.
 // Partial provider/mainEntity nodes reference the one complete layout entity.
-export function normalizeStructuredData(value: unknown, path: string): unknown {
-  if (isProtectedSchemaPath(path)) return value;
+export function normalizeStructuredData(value: unknown): unknown {
   function visit(input: unknown): unknown {
     if (Array.isArray(input)) return input.map(visit);
     if (!input || typeof input !== "object") return input;

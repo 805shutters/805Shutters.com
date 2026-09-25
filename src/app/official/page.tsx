@@ -58,7 +58,7 @@ export default function OfficialContactPage() {
     <div className="official-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(normalizeStructuredData(jsonLd, brandIdentity.officialPath)) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(normalizeStructuredData(jsonLd)) }}
       />
 
       <section className="official-hero" aria-labelledby="official-contact-title">

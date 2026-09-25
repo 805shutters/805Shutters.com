@@ -101,7 +101,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <CrmAuthRedirect />
         <BusinessStructuredData
           original={JSON.stringify(localBusinessJsonLd())}
-          corrected={JSON.stringify(normalizeStructuredData(localBusinessJsonLd(), "/official/"))}
+          corrected={JSON.stringify(normalizeStructuredData(localBusinessJsonLd()))}
           paths={buildSitemapEntries().map((entry) => new URL(entry.url).pathname)}
         />
         <ConditionalChrome>{children}</ConditionalChrome>

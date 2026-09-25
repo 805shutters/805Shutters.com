@@ -38,7 +38,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(normalizeStructuredData(answerPageJsonLd(page), page.path))
+          __html: JSON.stringify(normalizeStructuredData(answerPageJsonLd(page)))
         }}
       />
 

@@ -186,7 +186,7 @@ export default function WindowTreatmentComparisonGuidePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(normalizeStructuredData(guideJsonLd, "/window-treatment-comparison-guide/"))
+          __html: JSON.stringify(normalizeStructuredData(guideJsonLd))
         }}
       />
 

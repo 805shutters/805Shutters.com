@@ -154,7 +154,7 @@ export default function BookConsultationPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(normalizeStructuredData(bookingJsonLd, "/book-consultation/"))
+          __html: JSON.stringify(normalizeStructuredData(bookingJsonLd))
         }}
       />
 

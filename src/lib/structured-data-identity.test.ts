@@ -5,7 +5,7 @@ import { getAnswerPage } from "./llm-search-pages";
 import { normalizeStructuredData } from "./structured-data-identity";
 
 type Node = Record<string, any>;
-const normalize = (data: unknown, path = "/shutters/") => normalizeStructuredData(data, path) as Node;
+const normalize = (data: unknown) => normalizeStructuredData(data) as Node;
 const business = () => normalize(localBusinessJsonLd())["@graph"][0] as Node;
 
 describe("approved schema-only business identity", () => {
@@ -33,11 +33,10 @@ describe("approved schema-only business identity", () => {
     ]));
   });
 
-  it.each(["/", "/shades", "/shades/"])("preserves every schema field on protected %s", (path) => {
-    const global = localBusinessJsonLd();
-    const page = servicePageJsonLd(getPageByPath("/shades/")!);
-    expect(normalizeStructuredData(global, path)).toBe(global);
-    expect(normalizeStructuredData(page, path)).toBe(page);
+  it("uses a reference to the shared business on the shades page", () => {
+    const page = normalize(servicePageJsonLd(getPageByPath("/shades/")!));
+    expect(JSON.stringify(page)).toContain('"@id":"https://www.805shutters.com#local-business"');
+    expect(JSON.stringify(page)).not.toContain('"telephone":"805-806-9344"');
   });
 
   it("replaces duplicate business definitions with references and retains service city detail", () => {
