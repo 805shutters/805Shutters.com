@@ -8,6 +8,20 @@ import { allPages, site } from "@/lib/site-data";
 // every crawl trains Google to ignore the lastmod signal.
 export const CONTENT_LAST_UPDATED = new Date("2026-08-04");
 
+// Consolidated URLs remain routable via next.config.mjs but are not index targets.
+const consolidatedPaths = new Set([
+  "/shutters/fillmore/",
+  "/blinds/fillmore-ca/",
+  "/blinds/moorpark-ca/",
+  "/blinds/oak-park-ca/",
+  "/drapery/oak-park-ca/",
+  "/shutters/santa-paula/",
+  "/shades/santa-paula-ca/",
+  "/shades/simi-valley-ca/",
+  "/blinds/thousand-oaks-ca/",
+  "/custom-drapery-curtains-ventura-county/"
+]);
+
 const COMPARISON_GUIDE_PATH = "/window-treatment-comparison-guide/";
 
 function absoluteImageUrl(image: string) {
@@ -65,7 +79,8 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
     images: imageUrls([page.image])
   }));
 
-  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry];
+  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry]
+    .filter((entry) => !consolidatedPaths.has(new URL(entry.url).pathname));
 }
 
 function escapeXml(value: string): string {

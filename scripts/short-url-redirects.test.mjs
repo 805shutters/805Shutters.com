@@ -18,7 +18,17 @@ const baseline = compile((await loadCustomRoutes({
 for (const [source, target] of [
   ["motorized", "motorized-window-shades-ventura-county"],
   ["curtains", "drapery"],
-  ["drapes", "drapery"]
+  ["drapes", "drapery"],
+  ["shutters/fillmore", "shutters"],
+  ["blinds/fillmore-ca", "blinds"],
+  ["blinds/moorpark-ca", "blinds"],
+  ["blinds/oak-park-ca", "blinds"],
+  ["drapery/oak-park-ca", "drapery"],
+  ["shutters/santa-paula", "shutters"],
+  ["shades/santa-paula-ca", "shades"],
+  ["shades/simi-valley-ca", "shades"],
+  ["blinds/thousand-oaks-ca", "blinds"],
+  ["custom-drapery-curtains-ventura-county", "drapery"]
 ]) {
   for (const slash of ["", "/"]) {
     test(`/${source}${slash} goes straight to the final HTTPS www URL with 301`, () => {
