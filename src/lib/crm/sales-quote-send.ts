@@ -47,6 +47,8 @@ type CrmActor = { email: string; userId?: string };
 export type SendSalesQuoteOptions = {
   expectedRevision?: number;
   idempotencyKey?: string;
+  deliveryMode?: "resend";
+  previousDeliveryKey?: string;
   channels?: { email?: boolean; sms?: boolean };
   emails?: string[];
   phone?: string | null;

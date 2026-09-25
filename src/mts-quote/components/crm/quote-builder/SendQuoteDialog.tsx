@@ -38,12 +38,12 @@ import type { SalesQuote } from "@mts/types/quote";
 
 type Channel = "email" | "sms" | "both";
 type EmailType = "quote_only" | "sold_contract";
-type SendQuoteResult = { email?: boolean; sms?: boolean; errors: string[] };
+type SendQuoteResult = { email?: boolean; emailCount?: number; sms?: boolean; alreadySent: boolean; errors: string[] };
 type SendQuoteResponse = {
   url?: string;
   status?: string;
-  email?: { sent?: boolean; skipped?: string; error?: string };
-  sms?: { sent?: boolean; skipped?: string; error?: string };
+  email?: { sent?: boolean; acceptedCount?: number; alreadySent?: boolean; skipped?: string; error?: string };
+  sms?: { sent?: boolean; alreadySent?: boolean; skipped?: string; error?: string };
   message?: string;
   error?: string;
 };
@@ -57,6 +57,10 @@ interface SendQuoteDialogProps {
 export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) {
   const deliveryKey = useRef<string | null>(null);
   const queryClient = useQueryClient();
+  const deliveryOptions = useRef<{ deliveryMode?: "resend"; previousDeliveryKey?: string; measureDecision?: "needed" | "not_needed" }>({});
+  const [deliveryState, setDeliveryState] = useState<"loading" | "ready" | "resend" | "resume" | "blocked">(quote.quote_v2_backend ? "loading" : "ready");
+  const [deliveryNotice, setDeliveryNotice] = useState("");
+  const [deliveryError, setDeliveryError] = useState("");
 
   const [channel, setChannel] = useState<Channel>(() => getDefaultChannel(quote));
   const [emailType, setEmailType] = useState<EmailType>(() => getDefaultEmailType(quote));
@@ -69,6 +73,9 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
 
   useEffect(() => {
     if (!open) return;
+    let current = true;
+    deliveryKey.current = null;
+    deliveryOptions.current = {};
     setChannel(getDefaultChannel(quote));
     setEmailType(getDefaultEmailType(quote));
     setEmails([quote.customer_email ?? ""]);
@@ -76,28 +83,49 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     setCustomMessage(getQuoteEmailNote(quote));
     setBypassHours(false);
     setLinkCopied(false);
-  }, [open, quote]);
-
-  useEffect(() => {
-    if (!open || !quote.quote_v2_backend) return;
-    let current = true;
-    deliveryKey.current = null;
-    void supabase.auth.getSession().then(async ({ data }) => {
+    setDeliveryNotice("");
+    setDeliveryError("");
+    setDeliveryState(quote.quote_v2_backend ? "loading" : "ready");
+    if (!quote.quote_v2_backend) return;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
-      if (!token) return;
+      if (!token) throw new Error("CRM session is required. Reopen this quote after signing in.");
       const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/v2/delivery`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) return;
+      if (!response.ok) throw new Error("Delivery status could not be checked. Close and reopen this dialog before sending.");
       const capability = await response.json();
+      if (!current) return;
+      if (!capability.enabled || !capability.native || !capability.canSend) {
+        throw new Error(capability.reservation?.state === "uncertain"
+          ? "An earlier send has an unknown outcome. Its provider receipt must be checked before another send."
+          : "This quote cannot be sent in its current state. Reload the quote to review it.");
+      }
       const saved = capability.reservation;
-      if (!current || !saved?.requestKey || !Array.isArray(saved.request?.email) || !Array.isArray(saved.request?.sms)) return;
-      deliveryKey.current = saved.requestKey;
+      if (!saved) { setDeliveryState("ready"); return; }
+      if (!saved.requestKey || !Array.isArray(saved.request?.email) || !Array.isArray(saved.request?.sms)) throw new Error("The saved delivery could not be verified. Reload this quote.");
+      const fresh = saved.state === "sent" || saved.state === "failed";
+      if (fresh && !capability.supportsResend) throw new Error("Send again is not available yet. Reload after the update.");
+      deliveryKey.current = fresh ? `quote-resend:${crypto.randomUUID()}` : saved.requestKey;
+      deliveryOptions.current = {
+        deliveryMode: fresh || saved.resend ? "resend" : undefined,
+        previousDeliveryKey: saved.requestKey,
+        measureDecision: saved.request.measureDecision || undefined,
+      };
       setEmails(saved.request.email.length ? saved.request.email : [""]);
       setPhone(saved.request.sms[0] || "");
       setCustomMessage(saved.request.note || "");
       setChannel(saved.request.email.length ? saved.request.sms.length ? "both" : "email" : "sms");
-    }).catch(() => { /* Send endpoint still requires and verifies the frozen request. */ });
+      setDeliveryState(fresh ? "resend" : "resume");
+      setDeliveryNotice(fresh
+        ? "Send again creates a new message for the recipients below using this same quote. Review every email address before sending."
+        : "Resume the pending delivery below. Recipients are fixed for this request; completed recipients will not be sent another copy.");
+    })().catch(error => {
+      if (current) { setDeliveryState("blocked"); setDeliveryNotice(error instanceof Error ? error.message : "Delivery status could not be checked."); }
+    });
     return () => { current = false; };
-  }, [open, quote.id, quote.quote_v2_backend]);
+    // Keep the request key and reviewed recipients stable across background refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, quote.id]);
 
   const shareLink = `${window.location.origin}/quote/${quote.share_token}`;
   const needsEmail = channel === "email" || channel === "both";
@@ -109,6 +137,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
 
   const sendQuote = useMutation<SendQuoteResult, Error>({
     mutationFn: async (): Promise<SendQuoteResult> => {
+      if (deliveryState === "loading" || deliveryState === "blocked") throw new Error("Verify delivery status before sending.");
+      setDeliveryError("");
       // Validate channel-specific inputs
       if (needsEmail && cleanedEmails.length === 0) throw new Error("Customer email is required");
       if (needsPhone && !phone.trim()) throw new Error("Customer phone is required");
@@ -124,6 +154,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...deliveryOptions.current,
           expectedRevision: quote.quote_v2_revision,
           idempotencyKey: deliveryKey.current ?? (deliveryKey.current = `quote-delivery:${crypto.randomUUID()}`),
           channels: { email: needsEmail, sms: needsPhone },
@@ -138,16 +169,18 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       if (!response.ok) throw new Error(data.message || data.error || "Failed to send quote");
 
       const errors: string[] = [];
-      if (needsEmail && !data.email?.sent) {
+      if (needsEmail && !data.email?.sent && !data.email?.alreadySent) {
         errors.push(`Email ${data.email?.error || data.email?.skipped || "was not sent"}`);
       }
-      if (needsPhone && !data.sms?.sent) {
+      if (needsPhone && !data.sms?.sent && !data.sms?.alreadySent) {
         errors.push(`Text ${data.sms?.error || data.sms?.skipped || "was not sent"}`);
       }
 
       return {
         email: Boolean(data.email?.sent),
+        emailCount: data.email?.acceptedCount,
         sms: Boolean(data.sms?.sent),
+        alreadySent: Boolean(data.email?.alreadySent || data.sms?.alreadySent),
         errors,
       };
     },
@@ -156,19 +189,22 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       const parts: string[] = [];
       if (results.email) {
         parts.push(
-          cleanedEmails.length === 1
-            ? `email to ${primaryEmail}`
-            : `emails to ${cleanedEmails.length} recipients`
+          results.emailCount != null
+            ? `email to ${results.emailCount} recipient${results.emailCount === 1 ? "" : "s"}`
+            : cleanedEmails.length === 1 ? `email to ${primaryEmail}` : `emails to ${cleanedEmails.length} recipients`
         );
       }
       if (results.sms) parts.push(`text to ${phone}`);
-      if (parts.length > 0) toast.success(`Sent ${parts.join(" + ")}`);
+      if (parts.length > 0) toast.success(`Accepted for sending: ${parts.join(" + ")}`);
+      else if (results.alreadySent) toast.info("This request was already sent. No new message was sent.");
+      setDeliveryError(results.errors.join(" · "));
       if (results.errors.length > 0) {
         toast.warning(results.errors.join(" · "));
       }
-      onClose();
+      if (results.errors.length === 0) onClose();
     },
     onError: (err: Error) => {
+      setDeliveryError(err.message || "Failed to send quote");
       toast.error(err.message || "Failed to send quote");
     },
   });
@@ -202,12 +238,12 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && !sendQuote.isPending && onClose()}>
       <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[720px] grid-rows-[auto,minmax(0,1fr),auto] overflow-hidden p-0 sm:max-w-[720px]">
         <DialogHeader className="border-b border-slate-200 px-5 py-4 pr-12 sm:px-6">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Send className="h-5 w-5 text-[#0b0b0b]" />
-            Send quote
+            {deliveryState === "resend" ? "Send quote again" : "Send quote"}
           </DialogTitle>
           <DialogDescription className="leading-relaxed">
             Quote <span className="font-mono text-xs">#{quote.quote_number}</span> for{" "}
@@ -216,7 +252,10 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
         </DialogHeader>
 
         <div className="min-h-0 overflow-y-auto px-5 py-4 sm:px-6">
-          <div className="space-y-4">
+          {deliveryError && <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">{deliveryError}</p>}
+          {deliveryNotice && <p role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{deliveryNotice}</p>}
+          {deliveryState === "loading" && <p role="status" className="mb-4 text-sm">Checking previous delivery…</p>}
+          <fieldset disabled={sendQuote.isPending || deliveryState === "loading" || deliveryState === "resume" || deliveryState === "blocked"} className="m-0 min-w-0 space-y-4 border-0 p-0">
             <DialogSection title="Delivery" description="Choose the message channel and email format.">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -434,7 +473,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
                 </div>
               </DialogSection>
             </div>
-          </div>
+          </fieldset>
         </div>
 
         <DialogFooter className="!grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:!flex sm:gap-2 sm:px-6">
@@ -449,7 +488,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           <Button
             onClick={() => sendQuote.mutate()}
             disabled={
-              sendQuote.isPending ||
+              sendQuote.isPending || deliveryState === "loading" || deliveryState === "blocked" ||
               (needsEmail && cleanedEmails.length === 0) ||
               (needsPhone && !phone.trim()) ||
               contractEmailNeedsSignature
@@ -457,7 +496,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
             className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
           >
             <Send className="h-4 w-4 mr-2" />
-            {sendQuote.isPending ? "Sending…" : sendLabel}
+            {sendQuote.isPending ? "Sending…" : deliveryState === "resend" ? "Send again" : deliveryState === "resume" ? "Resume delivery" : sendLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

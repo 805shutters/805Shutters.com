@@ -68,6 +68,7 @@ beforeAll(async()=>{
  await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
  await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
  await db.exec(migration('20260923215906_native_delivery_customer_configuration_parity'));
+ await db.exec(migration('20260925141722_native_quote_explicit_resends'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -349,4 +350,68 @@ it('reserves and accepts manual pricing with no original grid or supplier cost',
  await accept(delivery,[id(133)+'#1'],129);
  expect((await db.query<any>('select materials_cost from crm_quotes where id=$1',[delivery.crm_quote_id])).rows[0].materials_cost).toBeNull();
  expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(333)])).rows[0].retail_snapshot).toEqual(snapshot);
+});
+
+async function finishDelivery(delivery:any, sent=true) {
+ const attempts=(await db.query<any>('select id from sales_quote_v2_delivery_attempts where delivery_id=$1 and send_key=$2',[delivery.id,delivery.send_key||'initial'])).rows;
+ for (const a of attempts) {
+  const claim=(await db.query<any>('select claim_native_quote_delivery_attempt($1,$2) as result',[a.id,id(50)])).rows[0].result;
+  expect(claim.claimed).toBe(true);
+  await db.query('select finish_native_quote_delivery_attempt($1,$2,$3,$4)',[a.id,id(50),claim.attempt.claim_token,{sent,providerId:sent?'synthetic-provider-'+a.id:undefined,error:sent?undefined:'Rejected address'}]);
+ }
+}
+async function resend(n:number,key:string,previous:string,request:object={email:['second@example.invalid'],sms:[],note:'Resending your quote',measureDecision:null}) {
+ return (await db.query<any>('select reserve_native_quote_resend($1,$2,1,$3,$4,$5) as result',[id(n),id(50),key,previous,request])).rows[0].result;
+}
+it('creates independent resend receipts, replays one key, rejects a concurrent stale request and preserves the frozen contract',async()=>{
+ await seed(70); const initial=await reserve(70); await finishDelivery(initial);
+ const original=(await db.query<any>('select to_jsonb(d) as data from sales_quote_v2_deliveries d where id=$1',[initial.id])).rows[0].data;
+ const second=await resend(70,'resend-test-70',initial.request_key);
+ expect(second.send_key).toBe('resend-test-70'); expect(second.customer_payload).toEqual(initial.customer_payload);
+ expect((await resend(70,'resend-test-70',initial.request_key)).send_key).toBe(second.send_key);
+ expect((await db.query<any>('select count(*)::int as n from sales_quote_v2_delivery_attempts where delivery_id=$1',[initial.id])).rows[0].n).toBe(2);
+ await expect(resend(70,'resend-concurrent-70',initial.request_key)).rejects.toMatchObject({code:'PT409'});
+ await expect(resend(70,'resend-changed-70',second.send_key)).rejects.toThrow(/pending/);
+ await finishDelivery(second);
+ await expect(resend(70,'resend-test-70',initial.request_key,{email:['changed@example.invalid'],sms:[],note:null,measureDecision:null})).rejects.toMatchObject({code:'PT409'});
+ const cap=(await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(70),id(50)])).rows[0].result;
+ expect(cap).toMatchObject({canSend:true,supportsResend:true,reservation:{state:'sent',requestKey:second.send_key,resend:true,request:{email:['second@example.invalid']}}});
+ expect((await db.query<any>('select to_jsonb(d) as data from sales_quote_v2_deliveries d where id=$1',[initial.id])).rows[0].data).toEqual(original);
+ expect((await db.query<any>('select count(*)::int as n from sales_quote_v2_delivery_events e join sales_quote_v2_delivery_attempts a on a.id=e.attempt_id where a.delivery_id=$1',[initial.id])).rows[0].n).toBe(6);
+});
+it('blocks new sends while a provider outcome is unknown and blocks unauthorized or signed resends',async()=>{
+ await seed(71); const initial=await reserve(71); await finishDelivery(initial);
+ await expect(db.query('select reserve_native_quote_resend($1,$2,1,$3,$4,$5)',[id(71),id(9999),'resend-unauthorized',initial.request_key,initial.request])).rejects.toMatchObject({code:'42501'});
+ const second=await resend(71,'resend-test-71',initial.request_key);
+ const a=(await db.query<any>('select id from sales_quote_v2_delivery_attempts where delivery_id=$1 and send_key=$2',[initial.id,second.send_key])).rows[0];
+ const claim=(await db.query<any>('select claim_native_quote_delivery_attempt($1,$2) as result',[a.id,id(50)])).rows[0].result;
+ await db.query('select finish_native_quote_delivery_attempt($1,$2,$3,$4)',[a.id,id(50),claim.attempt.claim_token,{sent:false,uncertain:true,error:'timeout'}]);
+ await expect(resend(71,'resend-unsafe-71',second.send_key)).rejects.toMatchObject({code:'PT409'});
+ expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(71),id(50)])).rows[0].result.canSend).toBe(false);
+ await seed(72); const signed=await reserve(72); await finishDelivery(signed); await accept(signed,[id(172)+'#1',id(172)+'#2',id(172)+'#3'],387);
+ await expect(resend(72,'resend-signed-72',signed.request_key)).rejects.toMatchObject({code:'PT409'});
+});
+it('lets staff correct rejected recipients without permitting old failed attempts to send afterward',async()=>{
+ await seed(73); const initial=await reserve(73); await finishDelivery(initial,false);
+ const old=(await db.query<any>('select id from sales_quote_v2_delivery_attempts where delivery_id=$1',[initial.id])).rows[0];
+ const second=await resend(73,'resend-corrected-73',initial.request_key);
+ await expect(db.query('select claim_native_quote_delivery_attempt($1,$2)',[old.id,id(50)])).rejects.toMatchObject({code:'PT409'});
+ await finishDelivery(second);
+});
+it('uses non-retrying errors for stale or changed initial delivery requests',async()=>{
+ await seed(74); const initial=await reserve(74);
+ await expect(db.query('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5)',[id(74),id(50),initial.request_key,{...initial.request,email:['different@example.invalid']},[]])).rejects.toMatchObject({code:'PT409'});
+ const functions=(await db.query<any>("select proname from pg_proc where pronamespace='public'::regnamespace and prosrc like '%40001%' and (proname like '%native_quote%' or proname like '%native%delivery%')")).rows;
+ expect(functions).toEqual([]);
+});
+it('resends a grouped quote from either alternative using the shared dispatch and protects accepted alternatives',async()=>{
+ await seed(80);await seed(81);
+ await db.query('update sales_quotes set quote_group_id=$1 where id in ($2,$3)',[id(8000),id(80),id(81)]);
+ const initial=(await db.query<any>('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5) as result',[id(80),id(50),'group-initial-80',{email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null},[{quoteId:id(80),revision:1,payload:payload(80)},{quoteId:id(81),revision:1,payload:payload(81)}]])).rows[0].result;
+ await finishDelivery(initial);
+ const second=await resend(81,'group-resend-81',initial.request_key);
+ expect(second.id).toBe(initial.id);await finishDelivery(second);
+ for(const n of [80,81]) expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(n),id(50)])).rows[0].result.reservation.requestKey).toBe(second.send_key);
+ await accept(initial,[id(180)+'#1',id(180)+'#2',id(180)+'#3'],387);
+ await expect(resend(81,'group-after-signing',second.send_key)).rejects.toMatchObject({code:'PT409'});
 });

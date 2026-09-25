@@ -47,6 +47,20 @@ describe("native customer delivery", () => {
   ready(); await deliverFrozenNativeQuote(db([state, state]).client, delivery, "actor");
   expect(mocks.email).not.toHaveBeenCalled(); expect(mocks.sms).not.toHaveBeenCalled();
  });
+ it("reports an old success as already sent, never as a fresh send", async () => {
+  ready(); const result = await deliverFrozenNativeQuote(db(["sent", "sent"]).client, delivery, "actor");
+  expect(result.email).toEqual({ sent: false, alreadySent: true, acceptedCount: 0 });
+  expect(result.sms).toEqual({ sent: false, alreadySent: true, acceptedCount: 0 });
+  expect(mocks.email).not.toHaveBeenCalled(); expect(mocks.sms).not.toHaveBeenCalled();
+ });
+ it("limits provider calls to the requested resend batch", async () => {
+  ready(); const test = db(); const filters: unknown[][] = [];
+  const query = { select: () => query, eq: (...args: unknown[]) => { filters.push(args); return query; }, order: async () => ({data:[{id:"attempt-0",channel:"email",recipient:"customer@example.invalid",state:"pending"}],error:null}) };
+  const result = await deliverFrozenNativeQuote({ from: () => query, rpc: test.rpc } as unknown as SupabaseClient, {...delivery,send_key:"resend-request"}, "actor");
+  expect(filters).toContainEqual(["send_key","resend-request"]);
+  expect(result.email).toMatchObject({sent:true,acceptedCount:1});
+  expect(mocks.email).toHaveBeenCalledTimes(1);
+ });
  it("does not repeat successful channels when a definite failure retries", async () => {
   ready(); await deliverFrozenNativeQuote(db(["sent", "failed"]).client, delivery, "actor");
   expect(mocks.email).not.toHaveBeenCalled(); expect(mocks.sms).toHaveBeenCalledTimes(1);
