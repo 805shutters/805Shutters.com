@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import {
   BadgeCheck,
@@ -57,7 +58,7 @@ export default function OfficialContactPage() {
     <div className="official-page">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(normalizeStructuredData(jsonLd, brandIdentity.officialPath)) }}
       />
 
       <section className="official-hero" aria-labelledby="official-contact-title">

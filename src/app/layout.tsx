@@ -7,6 +7,9 @@ import { PublicActivityTracking } from "@/components/PublicActivityTracking";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
 import { absoluteUrl, machineReadableFeeds } from "@/lib/ai-search-data";
 import { site } from "@/lib/site-data";
+import { BusinessStructuredData } from "@/components/BusinessStructuredData";
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
+import { buildSitemapEntries } from "@/lib/sitemap-xml";
 import { localBusinessJsonLd } from "@/lib/structured-data";
 
 const bodoniModa = Bodoni_Moda({
@@ -96,11 +99,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <PublicActivityTracking />
         <CrmAuthRedirect />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(localBusinessJsonLd())
-          }}
+        <BusinessStructuredData
+          original={JSON.stringify(localBusinessJsonLd())}
+          corrected={JSON.stringify(normalizeStructuredData(localBusinessJsonLd(), "/official/"))}
+          paths={buildSitemapEntries().map((entry) => new URL(entry.url).pathname)}
         />
         <ConditionalChrome>{children}</ConditionalChrome>
       </body>

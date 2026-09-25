@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
@@ -101,7 +102,7 @@ export default async function DynamicPage({ params }: PageProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(pageJsonLd)
+            __html: JSON.stringify(normalizeStructuredData(pageJsonLd, page.path))
           }}
         />
       ) : null}

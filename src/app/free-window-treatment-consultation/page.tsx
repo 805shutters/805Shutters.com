@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import { LeadForm } from "@/components/LeadForm";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
@@ -215,7 +216,7 @@ export default function FreeWindowTreatmentConsultationPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(consultationJsonLd)
+          __html: JSON.stringify(normalizeStructuredData(consultationJsonLd, "/free-window-treatment-consultation/"))
         }}
       />
 
