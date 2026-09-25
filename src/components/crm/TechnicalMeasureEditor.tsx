@@ -503,7 +503,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     );
     hydratedFormIdRef.current = nextForm.id;
     setOfflineMode(fromOffline);
-    lastSyncedPayloadRef.current = fromOffline ? "" : JSON.stringify(technicalMeasureDraftPayload(nextForm.lines));
+    // Hydration is a read, including a downloaded offline snapshot. An empty
+    // baseline makes autosave/pagehide upload that snapshot before the live
+    // response arrives, overwriting measurements saved on another device.
+    // Actual offline drafts are explicitly queued by load() and edit handlers.
+    lastSyncedPayloadRef.current = JSON.stringify(technicalMeasureDraftPayload(nextForm.lines));
     hydratedRef.current = true;
   }
 
@@ -891,6 +895,10 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       // Share the autosave pipeline so an older in-flight response cannot
       // overwrite this line or race the save that precedes navigation.
       const saved = await flushLatestDraft();
+      if (lineIssues.length) {
+        setMessage(`${compactTechnicalMeasureCompletionSummary(lineIssues)} Your measurements are saved; this opening is not complete yet.`);
+        return;
+      }
       if (index + 1 < linesRef.current.length) {
         setActiveLineIndex(index + 1);
         setMeasureView("line");

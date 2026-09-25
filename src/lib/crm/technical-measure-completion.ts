@@ -133,7 +133,37 @@ export function technicalMeasureCompletionIssues(
         instruction: "Choose inside or outside mount.",
       });
     }
-    for (const field of line.measure_schema?.fields.filter((item) => item.required) || []) {
+    // Onyx uses the dedicated shutter editor, not the generic packet fields.
+    // The packet schema's `required` list includes derived dimensions, nullable
+    // positions and order-only flags. Those are validated separately before
+    // manufacturer ordering; they must not block submitting a field measure.
+    const onyxShutter = productIsShutter(values.product_id)
+      && line.measure_schema?.manufacturer.toLowerCase() === "onyx";
+    if (onyxShutter) {
+      const fields = [
+        ["frame_type", "Frame type", ["frame_type", "frame_style"]],
+        ["panel_config", "Folding direction", ["panel_config", "panel_configuration", "folding_direction"]],
+        ["tilt_type", "Tilt type", ["tilt_type", "tilt", "tilt_rod"]],
+        ["material", "Material", ["material", "material_type"]],
+        ["color", "Color", ["color"]],
+        ["louver_size", "Louver size", ["louver_size", "louver_size_inches", "louver"]],
+        ["hinge_color", "Hinge color", ["hinge_color"]],
+        ["shutter_type", "Shutter type", ["shutter_type", "onyx_order_type"]],
+      ] as const;
+      for (const [field, label, aliases] of fields) {
+        if (detailAnswered(values.details, [...aliases]) || (field === "material" && answered(values.fabric))) continue;
+        issues.push({ ...base, field, label, instruction: `Select ${label}.` });
+      }
+      for (const [location, height, label] of [
+        ["split_tilt_location", "split_tilt_height", "Split tilt height"],
+        ["divider_rail_location", "divider_rail_height", "Divider rail height"],
+      ] as const) {
+        if (values.details[location] === "Custom" && !answered(values.details[height])) {
+          issues.push({ ...base, field: height, label, instruction: `Enter ${label}.` });
+        }
+      }
+    }
+    for (const field of onyxShutter ? [] : line.measure_schema?.fields.filter((item) => item.required) || []) {
       if (answered(values.details[field.key])) continue;
       issues.push({
         ...base,

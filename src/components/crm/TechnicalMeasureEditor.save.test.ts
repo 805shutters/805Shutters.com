@@ -11,12 +11,13 @@ const mocks = vi.hoisted(() => ({
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   } },
   cache: vi.fn(async () => undefined), queue: vi.fn(async () => undefined),
+  cachedForm: vi.fn<() => Promise<TechnicalMeasureForm | null>>(async () => null),
 }));
 vi.mock("@/lib/supabase-browser", () => ({ getSupabaseBrowserClient: () => mocks.client }));
 vi.mock("@/lib/crm/technical-measure-offline", async importOriginal => ({
   ...await importOriginal<object>(),
   cacheTechnicalMeasureDraft: mocks.cache, cacheTechnicalMeasureForm: vi.fn(async () => undefined),
-  readCachedTechnicalMeasureForm: vi.fn(async () => null), readCachedTechnicalMeasureDraft: vi.fn(async () => null),
+  readCachedTechnicalMeasureForm: mocks.cachedForm, readCachedTechnicalMeasureDraft: vi.fn(async () => null),
   queueTechnicalMeasureOperation: mocks.queue, flushTechnicalMeasureQueue: vi.fn(async () => []),
   queuedTechnicalMeasureOperations: vi.fn(async () => []),
   removeQueuedTechnicalMeasureOperation: vi.fn(async () => undefined), removeCachedTechnicalMeasureDraft: vi.fn(async () => undefined),
@@ -48,6 +49,7 @@ async function edit() {
 }
 beforeEach(() => {
   vi.clearAllMocks(); saved = fixture(); requests = []; deferSave = false; respond = undefined;
+  mocks.cachedForm.mockResolvedValue(null);
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
   HTMLElement.prototype.scrollTo = vi.fn();
   HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -64,7 +66,32 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("technical measurement save and close", () => {
+  it("does not upload an older downloaded form while loading newer measurements from another device", async () => {
+    const downloaded = fixture();
+    saved.lines[0].current_values = { ...saved.lines[0].current_values, width_in: 33.875, height_in: 57.875, width_confirmed: true, height_confirmed: true };
+    mocks.cachedForm.mockResolvedValue(downloaded);
+    let finishLoad: ((response: Response) => void) | undefined;
+    const onlineFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (url, options) => {
+      if (!options?.method || options.method === "GET") {
+        return new Promise<Response>(resolve => { finishLoad = resolve; });
+      }
+      return onlineFetch(url, options);
+    }));
+    await mount();
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(mocks.queue).not.toHaveBeenCalled();
+    expect(mocks.cache).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
+    await act(async () => finishLoad!(Response.json({ form: saved })));
+    await click("Open field measure for Bathroom · A");
+    expect(button("Select width").textContent).toContain("33 7/8");
+    expect(mocks.queue).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(0);
+  });
   it("saves both dimensions before closing, then allows the next line and retains sizes after reload", async () => {
+    saved.lines[0].measure_schema = { manufacturer: "norman", fields: [] } as unknown as NonNullable<TechnicalMeasureForm["lines"][number]["measure_schema"]>;
+    saved.lines[0].current_values.details = { size_type: "W - Window Size", frame_sides: "3" };
     await mount(); await edit(); deferSave = true;
     await click("Save size");
     expect(requests).toHaveLength(1);
@@ -77,6 +104,15 @@ describe("technical measurement save and close", () => {
     deferSave = false; await click("Next line item"); expect(document.body.textContent).toContain("Bedroom"); expect(button("Select width").textContent).toContain('13');
     await act(async () => root.unmount()); root = createRoot(host); await mount();
     await click("Open field measure for Bathroom · A"); expect(button("Select height").textContent).toContain('58 1/4');
+  });
+  it("keeps an incomplete opening visible and explains what is missing after saving", async () => {
+    await mount(); await click("Open field measure for Bathroom · A");
+    await click("Next line item");
+    expect(requests).toHaveLength(1);
+    expect(saved.lines[0].current_values.measure_complete).toBe(false);
+    expect(document.body.textContent).toContain("this opening is not complete yet");
+    expect(document.body.textContent).toContain("Width confirmation");
+    expect(button("Select width").textContent).toContain("13");
   });
   it("saves the screenshot's sub-ten-inch opening with every sixteenth directly available", async () => {
     await mount(); await click("Open field measure for Bathroom · A"); await click("Select width");

@@ -4,6 +4,19 @@ import {
   technicalMeasureCompletionIssues,
 } from "./technical-measure-completion";
 import type { TechnicalMeasureForm } from "./technical-measures";
+import { resolveManufacturerTechnicalMeasureSchema } from "./vendor-orders/manufacturer-technical-measure-schemas";
+
+function onyxForm() {
+  const values = {
+    room: "Office", opening_label: "A", width_in: 33.875, height_in: 57.875,
+    width_confirmed: true, height_confirmed: true, product_id: "norman_shutters",
+    fabric: "Poly Composite",
+    details: { supplier: "Onyx", material: "Poly Composite", size_type: "W - Window Size",
+      frame_sides: "3", frame_type: "VZ Fine FS", panel_config: "L", tilt_type: "H3 - Hidden Tiltrod In Stile",
+      color: "100_Pure White", louver_size: '3 1/2"', hinge_color: "Match", shutter_type: "Regular" },
+  };
+  return { lines: [{ id: "onyx-line", current_values: values, measure_schema: resolveManufacturerTechnicalMeasureSchema(values) }] } as unknown as TechnicalMeasureForm;
+}
 
 function line(id: string, room: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -24,6 +37,21 @@ function line(id: string, room: string, overrides: Record<string, unknown> = {})
 }
 
 describe("technical measure completion validation", () => {
+  it("accepts completed Onyx screen fields without demanding derived or order-only packet fields", () => {
+    const form = onyxForm();
+    expect(form.lines[0].measure_schema?.routingKey).toBe("onyx:poly_composite");
+    expect(technicalMeasureCompletionIssues(form)).toEqual([]);
+  });
+
+  it("still requires the Onyx opening, folding direction and custom rail position", () => {
+    const form = onyxForm();
+    form.lines[0].current_values.opening_label = "";
+    delete form.lines[0].current_values.details.panel_config;
+    form.lines[0].current_values.details.divider_rail_location = "Custom";
+    expect(technicalMeasureCompletionIssues(form).map(issue => issue.field)).toEqual([
+      "opening_label", "panel_config", "divider_rail_height",
+    ]);
+  });
   it("returns compact, line-specific product guidance", () => {
     const form = {
       lines: [
