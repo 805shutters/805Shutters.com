@@ -85,6 +85,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable} ${archivo.variable}`}>
       <head>
+        <meta name="google-site-verification" content="0osZlIomEHhR-GFHzdCGTyivi1s9UtccMHBe2E-LuSM" />
         {machineReadableFeeds.map((feed) => (
           <link
             key={feed.href}
