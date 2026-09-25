@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
+import { QuoteWorkspace } from "@mts/QuoteWorkspace";
 
 /** Dedicated full-page quote builder. Gets the Supabase session client-side
  *  (same as CrmApp), renders the builder full-screen (no CRM chrome). The X
  *  exits back to /crm. */
-export function QuoteBuilderStandalone({ quoteId }: { quoteId: string }) {
+export function QuoteBuilderStandalone({ quoteId, salesQuote = false }: { quoteId: string; salesQuote?: boolean }) {
   const router = useRouter();
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
@@ -36,6 +37,11 @@ export function QuoteBuilderStandalone({ quoteId }: { quoteId: string }) {
     return <div style={{ padding: 40, fontFamily: "system-ui, sans-serif" }}>Loading quote builder…</div>;
   }
   if (!session) return null;
+
+  // Mobile saves return the canonical sales quote ID, not a legacy CRM mirror ID.
+  if (salesQuote) return <QuoteWorkspace openRequest={{
+    quoteId, tab: "builder", requestId: 1, historicalPriceLock: null,
+  }} />;
 
   return (
     <QuoteBuilderPanel
