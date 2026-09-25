@@ -454,7 +454,7 @@ describe("Quote V2 structural persistence wrappers", () => {
         status: "draft",
         quoteV2Status: "stale",
         lineCount: 1,
-        selectedDesigns: { [LINE_ID]: null },
+        selectedDesigns: {},
         operations: [],
       },
       error: null,
@@ -472,4 +472,25 @@ describe("Quote V2 structural persistence wrappers", () => {
       message: expect.stringMatching(/incomplete selected-design map/i),
     });
   });
+});
+
+
+it("allows explicit unassigned product on creation but rejects invalid values and clearing a configured product", () => {
+  const parse = (productType: unknown, type = "line.create") => parseSalesQuoteV2StructureBody({
+    expectedRevision: 1, idempotencyKey: "measure:line:one",
+    operations: [{ type, lineItemId: LINE_ID, patch: { roomName: "Window 1", productType, widthWhole: 36, heightWhole: 48 } }],
+  });
+  expect(parse("").operations[0]).toMatchObject({ patch: { productType: "" } });
+  for (const value of [undefined, null, 42, {}, "x".repeat(201)]) expect(() => parse(value)).toThrow();
+  expect(() => parse("", "line.update")).toThrow();
+});
+
+
+it("returns an explicit unassigned selection after the authoritative RPC accepts the draft line", async () => {
+  const response = { backend: "authoritative_v2", quoteId: QUOTE_ID, revision: 2,
+    status: "draft", quoteV2Status: "stale", lineCount: 1,
+    selectedDesigns: { [LINE_ID]: null }, operations: [] };
+  const request = parseSalesQuoteV2StructureBody({ expectedRevision: 1, idempotencyKey: "measure:only",
+    operations: [{type: "line.create", lineItemId: LINE_ID, patch: { roomName: "Window 1", productType: "", widthWhole: 36, heightWhole: 60 }}] });
+  await expect(mutateSalesQuoteV2Structure(rpcClient({data: response, error: null}), QUOTE_ID, ACTOR_ID, request)).resolves.toEqual(response);
 });

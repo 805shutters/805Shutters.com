@@ -474,11 +474,14 @@ function linePatch(
     );
   }
   if (required || "productType" in patch) {
-    normalized.productType = requiredText(
+    normalized.productType = (required ? nullableText : requiredText)(
       patch.productType,
       `${label}.productType`,
       200,
-    );
+    ) ?? "";
+    if (typeof patch.productType !== "string") {
+      throw new CrmAuthError(400, `${label}.productType must be text.`);
+    }
   }
   for (const [field, minimum, maximum, fallback] of [
     ["widthWhole", 0, 1000, 0],
@@ -975,8 +978,7 @@ export async function mutateSalesQuoteV2Structure(
     "Quote V2 structural persistence",
   );
   if (
-    Object.keys(selectedDesigns).length !== lineCount ||
-    Object.values(selectedDesigns).some((designId) => designId === null)
+    Object.keys(selectedDesigns).length !== lineCount
   ) {
     throw new CrmAuthError(
       502,

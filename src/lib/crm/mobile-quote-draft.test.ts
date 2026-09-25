@@ -99,7 +99,7 @@ describe("mobile quote measure-first workflow", () => {
     measured(draft, 0, "Office");
     expect(validateMobileQuoteMeasurement(draft.windows[0])).toBeNull();
     expect(validateMobileQuoteWindow(draft.windows[0])).toBe("Choose a product.");
-    expect(validateMobileQuoteMeasurement({ ...draft.windows[0], room: "" })).toBe("Choose a room.");
+    expect(validateMobileQuoteMeasurement({ ...draft.windows[0], room: "" })).toBeNull();
     expect(validateMobileQuoteMeasurement({ ...draft.windows[0], widthWhole: 0 })).toMatch(/width and height/);
   });
 

@@ -561,3 +561,13 @@ describe("server-side historical quote V2 route resolver", () => {
     });
   });
 });
+
+
+it("opens a saved measurement-only authoritative draft with no design rows", () => {
+  expect(classifySalesQuoteV2Route({
+    crmQuote: {id: CRM_ID, meta: {sales_quote_id: SALES_ID}, quote_total: 0},
+    salesQuote: {id: SALES_ID, quote_v2_backend: true, quote_v2_status: "stale", status: "draft"},
+    lines: [{id: "window-1", quote_id: SALES_ID, selected_design_id: null, width_whole: 36, width_fraction: "1/16", height_whole: 60}],
+    designs: [],
+  })).toMatchObject({status: "ready", lineCount: 1, designCount: 0, historicalPriceLock: null});
+});

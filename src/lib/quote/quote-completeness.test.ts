@@ -54,3 +54,10 @@ it('uses the saved Norman grid result instead of obsolete browser pricing failur
  expect(incompleteQuoteLineIds(lines,[{...d,options_json:{...d.options_json,authoritative_price_status:'blocked',authoritative_price_error:'Grid cell unavailable'}}])).toEqual(['line']);
  expect(incompleteQuoteLineIds(lines,[{...d,options_json:{...d.options_json,norman_grid_pricing:false}}])).toEqual(['line']);
 });
+
+
+it('keeps a mixed quote incomplete until every window has a priced selected design',()=>{
+ const mixedLines=[{id:'unfinished'},...lines];
+ expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:278},projected,true)).toBe(true);
+ expect(incompleteQuoteLineIds(mixedLines,projected,true)).toContain('unfinished');
+});

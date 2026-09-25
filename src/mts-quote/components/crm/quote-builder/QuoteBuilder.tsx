@@ -1,9 +1,10 @@
+import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
+import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valance-only";
 import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { createDraftPricingRecovery, draftPricingRecoveryRequest } from "@mts/lib/quoteDraftPricingRecovery";
-import { shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -501,7 +502,9 @@ function StackedLineItemRow({
     : calculateLineItemDesignTotal(item, designs, {
         mode: authoritativeV2 ? "authoritative_v2" : "legacy",
       });
-  const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
+  const priceLabel = authoritativeV2 && !selectedPrice.fromHistoricalLock && incompleteQuoteLineIds([item], designs, true).length > 0
+    ? "Not priced" : formatStackMoney(total);
+  const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${priceLabel}.`;
 
   return (
     <button
@@ -539,7 +542,7 @@ function StackedLineItemRow({
       </span>
       <span className={cn("quote-stacked-product-badge", getStackedProductTypeClass(item.product_type))}>
         <span className="quote-stacked-product-badge__label">
-          {item.product_type}
+          {item.product_type || "Selections incomplete"}
           {item.quantity > 1 ? ` x${item.quantity}` : ""}
         </span>
       </span>
@@ -547,7 +550,7 @@ function StackedLineItemRow({
         {details}
       </span>
       <span className="justify-self-end font-mono text-xs font-black text-slate-950">
-        {formatStackMoney(total)}
+        {priceLabel}
       </span>
     </button>
   );
@@ -2679,8 +2682,12 @@ export function QuoteBuilder({
               const lineRange = lineNumberRanges.get(item.id);
 
               return (
+                <div key={item.id}>
+                  {serverOwnedV2 && <>
+                    {!useHistoricalPriceLock && shouldCheckQuoteCompleteness(quote, designs, true) && incompleteQuoteLineIds([item], designs, true).length > 0 && <p className="text-sm font-semibold text-amber-900">Selections incomplete · Not priced</p>}
+                    <QuoteWindowPhotos quoteId={activeQuoteId!} lineItemId={item.id} />
+                  </>}
                 <DesignCard
-                  key={item.id}
                   lineItem={item}
                   lineNumber={lineRange?.start ?? 0}
                   lineNumberLabel={lineRange?.label}
@@ -2747,6 +2754,7 @@ export function QuoteBuilder({
                     updateLineItem.mutate({ id: item.id, quantity })
                   }
                 />
+                </div>
               );
             })}
           </div>

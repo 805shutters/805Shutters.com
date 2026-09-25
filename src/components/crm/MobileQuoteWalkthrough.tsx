@@ -1,4 +1,5 @@
 "use client";
+import { saveMobileQuoteForLater } from "@/lib/crm/mobile-quote-save";
 import { setMobileQuoteLinePrice } from "@/lib/crm/mobile-quote-draft";
 
 import "@/mts-quote/mts-quote.css";
@@ -11,7 +12,7 @@ import type { CrmCalendarEvent } from "@/lib/crm/types";
 import { buildMobileQuoteAppointmentQuery, mobileQuoteLosAngelesDate } from "@/lib/crm/mobile-quote-appointments";
 import {
   appendMobileQuotePhoto, assignMobileQuoteProductBatch, beginMobileQuoteGridSelection, beginMobileQuoteMeasureMore, chooseMobileQuoteGridWhole, commitMobileQuoteGridSelection, createMobileQuoteDraft, emptyMobileQuoteDesign, isManualQuoteEditorHandoffReady,
-  isMobileQuoteDraftAccessible, isQuoteEditorHandoffReady, mobileQuoteFingerprint, mobileQuoteLine, mobileQuotePreflightOutcome, removeMobileQuoteWindow,
+  isMobileQuoteDraftAccessible, isQuoteEditorHandoffReady, mobileQuoteFingerprint, mobileQuoteLine, removeMobileQuoteWindow,
   mobileQuoteDesignsMixed, mobileQuoteWorkflowMode, omitTrailingUntouchedMobileQuoteWindow, saveMobileQuoteWindowAndAdvance, selectMobileQuoteBedroomNumber, selectMobileQuoteProduct, selectMobileQuoteRoom, selectMobileQuoteWindowLetter, setMobileQuoteWorkflow, setMobileQuoteWorkflowPhase, updateMobileQuoteCustomRoom, updateMobileQuoteDesign, updateMobileQuoteDesignBatch, validateMobileQuoteMeasurement, validateMobileQuoteWindow,
   validMobileQuoteSelectionIds, MOBILE_QUOTE_ACCOUNT_ID, MOBILE_QUOTE_FRACTIONS, type MobileQuoteCustomer, type MobileQuoteDraft, type MobileQuoteGridSelection, type MobileQuotePhoto, type MobileQuoteWindow,
 } from "@/lib/crm/mobile-quote-draft";
@@ -143,6 +144,9 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   const [saveState, setSaveState] = useState("Loading device drafts…");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const savingRef = useRef(false);
+  const preparingPhotos = useRef(0);
+  const [photosPreparing, setPhotosPreparing] = useState(false);
   const [newContact, setNewContact] = useState(false);
   const [soldStatus, setSoldStatus] = useState("all");
   const [contact, setContact] = useState({ name: "", phone: "", email: "", address: "" });
@@ -157,8 +161,12 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   const draftRef = useRef<MobileQuoteDraft | null>(null);
   const saveRevision = useRef(0);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function persistDraft(next: MobileQuoteDraft, revision: number) {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = null;
+    draftRef.current = next;
     const write = saveQueue.current.catch(() => undefined).then(() => saveMobileQuoteDraft(next));
     saveQueue.current = write;
     return write.then(() => {
@@ -209,8 +217,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     if (!draft) return;
     const revision = ++saveRevision.current;
     setSaveState("Saving…");
-    const timer = window.setTimeout(() => { void persistDraft(draft, revision).catch(() => undefined); }, 180);
-    return () => window.clearTimeout(timer);
+    autosaveTimer.current = setTimeout(() => { void persistDraft(draft, revision).catch(() => undefined); }, 180);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
   }, [draft]);
 
   useEffect(() => {
@@ -335,7 +343,9 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   }
 
   async function addPhoto(file: File | undefined) {
-    if (!file || !draft || !active) return;
+    if (!file || !draft || !active || savingRef.current || draft.submission.snapshot) return;
+    preparingPhotos.current += 1;
+    setPhotosPreparing(true);
     const draftId = draft.id;
     const windowId = active.id;
     try {
@@ -344,6 +354,9 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       setDraft((current) => current ? appendMobileQuotePhoto(current, draftId, windowId, photo) : current);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Photo could not be prepared.");
+    } finally {
+      preparingPhotos.current -= 1;
+      setPhotosPreparing(preparingPhotos.current > 0);
     }
   }
 
@@ -386,12 +399,18 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.updatedAt, online, screen]);
 
-  function saveAndNext() {
-    if (!draft || !active || draft.submission.snapshot || busy) return;
-    const issue = mobileQuoteWorkflowMode(draft) === "measure-first" ? validateMobileQuoteMeasurement(active) : validateMobileQuoteWindow(active);
+  async function saveAndNext() {
+    if (!draft || !active || draft.submission.snapshot || savingRef.current || preparingPhotos.current) return;
+    const issue = validateMobileQuoteMeasurement(active);
     if (issue) { setError(issue); return; }
-    const next = saveMobileQuoteWindowAndAdvance(draft, active.id);
-    setDraft(next); setError(""); void refreshPrice(next); window.scrollTo(0, 0);
+    savingRef.current = true; setBusy(true);
+    try {
+      const next = saveMobileQuoteWindowAndAdvance(draft, active.id);
+      await persistDraft(next, ++saveRevision.current);
+      setDraft(next); setError(""); void refreshPrice(next); window.scrollTo(0, 0);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Window could not be saved. Keep this page open and retry.");
+    } finally { savingRef.current = false; setBusy(false); }
   }
 
   function finishMeasuring() {
@@ -474,17 +493,16 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   }
 
   function review() {
-    if (!draft) return;
-    const issueIndex = draft.windows.findIndex(validateMobileQuoteWindow);
-    if (issueIndex >= 0) { setError(`Window ${issueIndex + 1}: ${validateMobileQuoteWindow(draft.windows[issueIndex])}`); return; }
-    setScreen("review"); setError(""); void refreshPrice(draft); window.scrollTo(0, 0);
+    if (!draft || savingRef.current || preparingPhotos.current) return;
+    const next = omitTrailingUntouchedMobileQuoteWindow(draft);
+    setDraft(next); setScreen("review"); setError(""); void refreshPrice(next); window.scrollTo(0, 0);
   }
 
   async function submit() {
-    if (!draft || !online || busy) return;
-    setBusy(true); setError("");
+    if (!draft || !online || savingRef.current || preparingPhotos.current) return;
+    savingRef.current = true; setBusy(true); setError("");
     let working = structuredClone(draft);
-    let requiresManualPricing = working.submission.snapshot?.requiresManualPricing ?? false;
+    const requiresManualPricing = working.submission.snapshot?.requiresManualPricing ?? false;
     const checkpoint = async () => {
       working.updatedAt = new Date().toISOString();
       const revision = ++saveRevision.current;
@@ -493,39 +511,34 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       setDraft(structuredClone(working));
     };
     try {
-      if (!working.submission.snapshot) {
-        const invalidIndex = working.windows.findIndex(validateMobileQuoteWindow);
-        if (invalidIndex >= 0) throw new Error(`Window ${invalidIndex + 1}: ${validateMobileQuoteWindow(working.windows[invalidIndex])}`);
-        const preflightLines = working.windows.map((window) => {
-          const line = mobileQuoteLine(working, window);
-          return {
-            line: quoteV2PreviewLine(line),
-            design: quoteV2PreviewDesign(window.families[window.activeProductId!].design),
-          };
+      if (!working.submission.snapshot || working.submission.snapshot.saveForLater) {
+        const saved = await saveMobileQuoteForLater(working, {
+          checkpoint: async (next) => { working = next; await checkpoint(); },
+          create: (next) => {
+            const customer = next.submission.snapshot!.customer;
+            return createQuoteV2Draft(supabase, {
+              customerName: customer.name, customerPhone: customer.phone || null,
+              customerEmail: customer.email || null, customerAddress: customer.address || null,
+              appointmentDate: customer.appointmentDate, createdJobId: customer.jobId,
+              installerNotes: next.submission.snapshot!.windows.map((window, index) => window.notes.trim() ? `${window.room || `Window ${index + 1}`}${window.position ? ` · ${window.position}` : ""}: ${window.notes.trim()}` : "").filter(Boolean).join("\n") || null,
+              idempotencyKey: next.submission.createKey,
+            });
+          },
+          structure: (quoteId, revision, operations, key) => mutateQuoteV2Structure(supabase, quoteId, revision, operations, { idempotencyKey: key }),
+          upload: (quoteId, lineId, photo) => {
+            const form = new FormData();
+            form.set("quoteId", quoteId); form.set("lineItemId", lineId);
+            form.set("photoId", photo.id); form.set("file", photo.blob, photo.name);
+            return api("/api/crm/mobile/quote-photos", { method: "POST", body: form });
+          },
+          saveManualPrice: (quoteId, lineId, designId, price, revision) => api(`/api/crm/sales-quotes/${quoteId}/line-price/`, {
+            method: "POST", body: JSON.stringify({ lineItemId: lineId, variant: "A", unitPrice: price, expectedRevision: revision, requestId: designId }),
+          }),
         });
-        const preflight = withMobileManualPrices(working, await api<PreviewResponse>("/api/crm/mobile/quote-preview", { method: "POST", body: JSON.stringify({ lines: preflightLines }) }));
-        const expectedWindowIds = working.windows.map((window) => window.id);
-        const preflightOutcome = mobileQuotePreflightOutcome(expectedWindowIds, preflight.lines);
-        const fullyAuthoritative =
-          preflightOutcome.allowed &&
-          !preflightOutcome.requiresManualPricing &&
-          preflight.status === "authoritative" &&
-          preflight.total !== null;
-        if (!fullyAuthoritative && !(preflightOutcome.allowed && preflightOutcome.requiresManualPricing)) {
-          const reason = preflight.lines.find((line) => line.status !== "authoritative")?.blockedReason;
-          throw new Error(reason || "Complete every product configuration until all standard products have an authoritative preview before creating the draft.");
-        }
-        requiresManualPricing = preflightOutcome.requiresManualPricing;
+        setDraft(saved); setSaveState("Saved to quote"); setScreen("success"); window.scrollTo(0, 0);
+        return;
       }
-      if (!working.submission.snapshot) {
-        working.submission.snapshot = {
-          customer: structuredClone(working.customer),
-          windows: structuredClone(working.windows),
-          createdAt: new Date().toISOString(),
-          requiresManualPricing,
-        };
-        await checkpoint();
-      }
+      // Resume frozen submissions created by the earlier pricing-first workflow.
       const snapshot = working.submission.snapshot;
       if (!working.submission.quoteId || !working.submission.createRevision) {
         const created = await createQuoteV2Draft(supabase, {
@@ -604,15 +617,17 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       await checkpoint();
       setScreen("success"); setSaveState("Submitted · source retained on device"); window.scrollTo(0, 0);
     } catch (reason) {
+      draftRef.current = working;
+      setDraft(structuredClone(working));
       const retention = working.submission.snapshot
-        ? "The immutable local submission is retained; retry continues from its last saved stage."
-        : "No server draft was created; correct the selections and try again.";
+        ? "Quote save is pending. Keep this page open if device storage failed; retry continues from the last confirmed stage."
+        : "No server draft was created; check the measurements and try again.";
       setError(`${reason instanceof Error ? reason.message : "Submission failed."} ${retention}`);
-    } finally { setBusy(false); }
+    } finally { savingRef.current = false; setBusy(false); }
   }
 
   async function home() {
-    if (busy) return;
+    if (savingRef.current || preparingPhotos.current) return;
     const latest = draftRef.current;
     if (latest) {
       const revision = ++saveRevision.current;
@@ -659,14 +674,14 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   );
 
   if (!draft || !active) return null;
-  if (screen === "success") return <main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy} onClick={home}><ArrowLeft /></button><div><small>805 SHUTTERS CRM</small><h1>Quote created</h1></div></header><section className={styles.success}><Check /><small>AUTHORITATIVE V2 DRAFT</small><h2>{draft.submission.quoteNumber}</h2><p>{draft.customer.name} · {draft.windows.length} windows</p><p>The local source remains on this device for recovery.</p>{draft.submission.quoteId && <a className={styles.primary} href={`/crm/quote/${encodeURIComponent(draft.submission.quoteId)}/`}>Open quote</a>}<button className={styles.primary} onClick={home}>Back to today’s quotes</button></section></main>;
+  if (screen === "success") return <main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy || photosPreparing} onClick={home}><ArrowLeft /></button><div><small>805 SHUTTERS CRM</small><h1>Quote saved</h1></div></header><section className={styles.success}><Check /><small>Saved to quote</small><h2>{draft.submission.quoteNumber}</h2><p>{draft.customer.name} · {draft.windows.length} windows</p><p>Your windows and photos are saved in the quote builder. You can finish selections and pricing later.</p><p>The local source remains on this device for recovery.</p>{draft.submission.quoteId && <a className={styles.primary} href={`/crm/quote/${encodeURIComponent(draft.submission.quoteId)}/`}>Open quote</a>}<button className={styles.primary} onClick={home}>Back to today’s quotes</button></section></main>;
 
   if (screen === "review") {
-    const firstIssueIndex = draft.windows.findIndex(validateMobileQuoteWindow);
+    const firstIssueIndex = draft.windows.findIndex(validateMobileQuoteMeasurement);
     const canSubmit = firstIssueIndex < 0;
     const editorHandoff = isQuoteEditorHandoffReady(draft);
     const manualRecovery = isManualQuoteEditorHandoffReady(draft);
-    return <main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy} onClick={() => { if (draft.submission.snapshot) void home(); else setScreen("build"); }}><ArrowLeft /></button><div><small>ONE LAST LOOK</small><h1>Review quote</h1></div></header><section className={styles.review}>{draft.windows.map((line, index) => { const family = line.activeProductId ? line.families[line.activeProductId] : null; const issue = validateMobileQuoteWindow(line); const product = family ? catalog.find((candidate) => candidate.id === family.productId) : null; return <article key={line.id}><div><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{line.room || `Window ${index + 1}`}{line.position ? ` · ${line.position}` : ""}</h3>{family ? <><p>{product?.name || family.productType} · {line.widthWhole} {line.widthFraction !== "0" ? line.widthFraction : ""}″ × {line.heightWhole} {line.heightFraction !== "0" ? line.heightFraction : ""}″</p><p>{[family.design.supplier, family.design.material, family.design.fabric].filter(Boolean).join(" · ") || "Product details not complete"}</p></> : <p>Product not selected</p>}{line.notes && <p>{line.notes}</p>}<p>{line.price?.status === "authoritative" && line.price.fingerprint === mobileQuoteFingerprint(line) ? `${money(line.price.amount)}${online ? " verified" : " last verified · stale"}` : line.price?.status === "blocked" ? "Pricing blocked" : line.price?.status === "unpriceable" ? "Pricing unavailable" : "Price unavailable"}</p>{issue && <p className={styles.error}>{issue}</p>}<div className={styles.reviewPhotos}>{line.photos.map((photo) => <PhotoThumbnail key={photo.id} photo={photo} />)}</div></div></div>{!draft.submission.snapshot && <div className={styles.windowActions}>{mobileQuoteWorkflowMode(draft) === "measure-first" ? <><button onClick={() => editMeasurements(line.id)}>Edit measurements</button>{line.activeProductId ? <button onClick={() => editDetails(line.id, line.activeProductId!)}>Edit details</button> : <button onClick={() => assignFromReview(line.id)}>Assign product</button>}</> : <button onClick={() => { setDraft({ ...draft, activeWindowId: line.id }); setScreen("build"); }}>Edit window</button>}{draft.windows.length > 1 && <button onClick={() => removeWindow(line.id)}>Remove window</button>}</div>}</article>; })}<div className={styles.total}><span>{draft.quotePrice?.status === "authoritative" ? online ? "Verified quote total" : "Last verified total · stale" : "Quote total"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Unavailable"}</strong></div>{!canSubmit && <p className={styles.notice}>Complete window {firstIssueIndex + 1} before creating the quote.</p>}{draft.submission.snapshot && <p className={styles.notice}>Submission snapshot locked{draft.submission.quoteNumber ? ` · ${draft.submission.quoteNumber}` : ""}.{draft.submission.priceStatus && draft.submission.priceStatus !== "authoritative" ? " Needs pricing; no total is confirmed." : ""}{editorHandoff ? " Pricing requires editor follow-up; all prerequisite server stages are complete." : " Retry safely continues with saved request keys, uploaded photos, and revisions."}</p>}{!online && <p className={styles.error}><CloudOff />Reconnect to submit. Your draft remains available offline.</p>}{error && <p className={styles.error}>{error}</p>}{editorHandoff ? <a className={styles.primary} href={`/crm/quote/${encodeURIComponent(draft.submission.quoteId!)}/`}>{manualRecovery ? "Open Needs pricing draft" : "Open quote in editor"}</a> : <button className={styles.primary} disabled={!online || busy || !canSubmit} onClick={() => void submit()}>{busy ? "Saving submission…" : draft.submission.snapshot ? "Retry submission" : "Create draft quote"}</button>}</section></main>;
+    return <main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy} onClick={() => { if (draft.submission.snapshot) void home(); else setScreen("build"); }}><ArrowLeft /></button><div><small>ONE LAST LOOK</small><h1>Review quote</h1></div></header><section className={styles.review} inert={busy}>{draft.windows.map((line, index) => { const family = line.activeProductId ? line.families[line.activeProductId] : null; const issue = validateMobileQuoteMeasurement(line); const product = family ? catalog.find((candidate) => candidate.id === family.productId) : null; return <article key={line.id}><div><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{line.room || `Window ${index + 1}`}{line.position ? ` · ${line.position}` : ""}</h3>{family ? <><p>{product?.name || family.productType} · {line.widthWhole} {line.widthFraction !== "0" ? line.widthFraction : ""}″ × {line.heightWhole} {line.heightFraction !== "0" ? line.heightFraction : ""}″</p><p>{[family.design.supplier, family.design.material, family.design.fabric].filter(Boolean).join(" · ") || "Product details not complete"}</p></> : <><p>{line.widthWhole} {line.widthFraction !== "0" ? line.widthFraction : ""}″ × {line.heightWhole} {line.heightFraction !== "0" ? line.heightFraction : ""}″</p><p>Selections incomplete</p></>}{line.notes && <p>{line.notes}</p>}<p>{line.price?.status === "authoritative" && line.price.fingerprint === mobileQuoteFingerprint(line) ? `${money(line.price.amount)}${online ? " verified" : " last verified · stale"}` : line.price?.status === "blocked" ? "Pricing blocked" : line.price?.status === "unpriceable" ? "Pricing unavailable" : "Not priced"}</p>{issue && <p className={styles.error}>{issue}</p>}<div className={styles.reviewPhotos}>{line.photos.map((photo) => <PhotoThumbnail key={photo.id} photo={photo} />)}</div></div></div>{!draft.submission.snapshot && <div className={styles.windowActions}>{mobileQuoteWorkflowMode(draft) === "measure-first" ? <><button onClick={() => editMeasurements(line.id)}>Edit measurements</button>{line.activeProductId ? <button onClick={() => editDetails(line.id, line.activeProductId!)}>Edit details</button> : <button onClick={() => assignFromReview(line.id)}>Assign product</button>}</> : <button onClick={() => { setDraft({ ...draft, activeWindowId: line.id }); setScreen("build"); }}>Edit window</button>}{draft.windows.length > 1 && <button onClick={() => removeWindow(line.id)}>Remove window</button>}</div>}</article>; })}<div className={styles.total}><span>{draft.quotePrice?.status === "authoritative" ? online ? "Verified quote total" : "Last verified total · stale" : "Quote total"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Not priced"}</strong></div>{!canSubmit && <p className={styles.notice}>Complete window {firstIssueIndex + 1} before creating the quote.</p>}{draft.submission.snapshot && <p className={styles.notice}>{editorHandoff ? "Saved to quote" : "Quote save pending"}{draft.submission.quoteNumber ? ` · ${draft.submission.quoteNumber}` : ""}.{editorHandoff ? " Continue selections and pricing in the quote builder." : " Your windows and photos are retained on this device. Retry to finish saving to the quote."}</p>}{!online && <p className={styles.error}><CloudOff />Reconnect to submit. Your draft remains available offline.</p>}{error && <p className={styles.error} role="alert">{error}</p>}{editorHandoff ? <a className={styles.primary} href={`/crm/quote/${encodeURIComponent(draft.submission.quoteId!)}/`}>{manualRecovery ? "Open Needs pricing draft" : "Open quote in editor"}</a> : <button className={styles.primary} disabled={!online || busy || !canSubmit} onClick={() => void submit()}>{busy ? "Saving quote and photos…" : draft.submission.snapshot ? "Retry submission" : "Save draft quote"}</button>}</section></main>;
   }
 
   const workflowMode = mobileQuoteWorkflowMode(draft);
@@ -687,14 +702,14 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   const confirmedWindows = draft.windows
     .map((line, index) => ({ line, index }))
-    .filter(({ line }) => line.id !== active.id && line.saved && !(workflowMode === "measure-first" ? validateMobileQuoteMeasurement(line) : validateMobileQuoteWindow(line)));
+    .filter(({ line }) => line.id !== active.id && line.saved && !validateMobileQuoteMeasurement(line));
   const confirmedStack = <div className={styles.confirmedStack} aria-label="Saved openings">
     {confirmedWindows.map(({ line, index }) => {
       const family = line.activeProductId ? line.families[line.activeProductId] : null;
       const product = line.activeProductId ? catalog.find((item) => item.id === line.activeProductId) : null;
       return <button type="button" className={styles.confirmedRow} key={line.id} onClick={() => { setDraft({ ...draft, activeWindowId: line.id }); setError(""); window.scrollTo(0, 0); }}>
         <span className={styles.confirmedNumber}>{index + 1}</span>
-        <strong>{line.room}{line.position ? ` · ${line.position}` : ""}</strong>
+        <strong>{line.room || `Window ${index + 1}`}{line.position ? ` · ${line.position}` : ""}</strong>
         <span>{line.widthWhole} {line.widthFraction !== "0" ? line.widthFraction : ""}″ × {line.heightWhole} {line.heightFraction !== "0" ? line.heightFraction : ""}″</span>
         <span>{product?.name || family?.productType || "Unassigned"}</span>
       </button>;
@@ -719,13 +734,13 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     onOpenGrid={openMeasurementGrid}
   /></div><div className={styles.photos}><Camera /><h3>Window photos</h3><p>Keep the frame, trim, and surroundings in view. Photos stay attached only to this opening.</p><div>{active.photos.map((photo) => <PhotoThumbnail key={photo.id} photo={photo} onRemove={() => updateWindow({ photos: active.photos.filter((item) => item.id !== photo.id) })} />)}</div><button type="button" onClick={() => camera.current?.click()}><Camera />Take photo</button><button type="button" onClick={() => library.current?.click()}><FileImage />Choose file</button><input ref={camera} hidden type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /><input ref={library} hidden type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void addPhoto(file); }} /></div>{workflowMode === "measure-first" && <label className={styles.notes}>Opening notes<textarea value={active.notes} onChange={(event) => updateWindow({ notes: event.target.value })} /></label>}</div>;
 
-  return <QueryClientProvider client={queryClient}><QuoteBuilderDatabaseProvider database={supabase} authoritativeV2><main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy} onClick={home}><ArrowLeft /></button><div><small>ADD QUOTE</small><h1>{draft.customer.name}</h1></div><span className={styles.save}>{online ? <Check /> : <CloudOff />}{saveState}</span></header>
-    <div className={styles.builderBar}><strong>{workflowMode === "measure-first" ? workflowPhase === "measure" ? `Opening ${draft.windows.findIndex((line) => line.id === active.id) + 1}` : workflowPhase === "assign" ? "Assign products" : "Shared details" : `Window ${draft.windows.findIndex((line) => line.id === active.id) + 1}`}{active.room && workflowPhase === "measure" ? ` · ${active.room}${active.position ? ` · ${active.position}` : ""}` : ""}</strong><button onClick={() => setScreen("review")}><List />All openings ({draft.windows.length})</button></div>
-    <div className={styles.workflowChooser} role="group" aria-label="Quote workflow">
+  return <QueryClientProvider client={queryClient}><QuoteBuilderDatabaseProvider database={supabase} authoritativeV2><main className={`mts-quote-scope ${styles.shell}`}><header className={styles.header}><button disabled={busy || photosPreparing} onClick={home}><ArrowLeft /></button><div><small>ADD QUOTE</small><h1>{draft.customer.name}</h1></div><span className={styles.save}>{online ? <Check /> : <CloudOff />}{photosPreparing ? "Preparing photo…" : saveState}</span></header>
+    <div className={styles.builderBar}><strong>{workflowMode === "measure-first" ? workflowPhase === "measure" ? `Opening ${draft.windows.findIndex((line) => line.id === active.id) + 1}` : workflowPhase === "assign" ? "Assign products" : "Shared details" : `Window ${draft.windows.findIndex((line) => line.id === active.id) + 1}`}{active.room && workflowPhase === "measure" ? ` · ${active.room}${active.position ? ` · ${active.position}` : ""}` : ""}</strong><button disabled={busy || photosPreparing} onClick={review}><List />All openings ({draft.windows.length})</button></div>
+    <div className={styles.workflowChooser} inert={busy || photosPreparing} role="group" aria-label="Quote workflow">
       <button type="button" aria-pressed={workflowMode === "measure-first"} onClick={() => { setDraft(setMobileQuoteWorkflow(draft, "measure-first", "measure")); setError(""); }}>Measure first, design later</button>
       <button type="button" aria-pressed={workflowMode === "full-design"} onClick={() => { setDraft(setMobileQuoteWorkflow(draft, "full-design")); setError(""); }}>Full design</button>
     </div>
-    <section className={styles.builder}>
+    <section className={styles.builder} inert={busy}>
       {workflowMode === "measure-first" && workflowPhase === "assign" ? <>
         <div className={styles.step}><ManufacturerProductButtons key={`${draft.id}:assignment`} products={catalog} selectedManufacturer={manufacturer} selectedProductId={assignmentProductId} onSelectManufacturer={setManufacturer} onSelectProduct={chooseAssignmentProduct} loading={!catalog.length} mobileProductFamily={productFamily} onSelectMobileProductFamily={setProductFamily} compactMobile /></div>
         <div className={styles.assignmentList}><div className={styles.assignmentActions}><button type="button" onClick={() => setAssignmentIds(draft.windows.map((line) => line.id))}>Select all</button><button type="button" onClick={() => setAssignmentIds([])}>Clear</button><strong>{validAssignmentIds.length} selected</strong></div>{draft.windows.map((line, index) => <label key={line.id} className={styles.assignmentRow}><input type="checkbox" checked={validAssignmentIds.includes(line.id)} onChange={(event) => setAssignmentIds((current) => event.target.checked ? [...current, line.id] : current.filter((id) => id !== line.id))} /><span><strong>{line.room || `Opening ${index + 1}`}{line.position ? ` · ${line.position}` : ""}</strong><small>{line.widthWhole} {line.widthFraction !== "0" ? line.widthFraction : ""}″ × {line.heightWhole} {line.heightFraction !== "0" ? line.heightFraction : ""}″ · {line.activeProductId ? catalog.find((item) => item.id === line.activeProductId)?.name || line.families[line.activeProductId]?.productType : "Unassigned"}</small></span></label>)}</div>
@@ -747,6 +762,6 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       </>}
       {error && <p className={styles.error} role="alert">{error}</p>}
     </section>
-    <footer className={styles.footer}><div><span>{workflowMode === "measure-first" && draft.windows.some((line) => !line.activeProductId) ? "Awaiting product / pricing" : online ? "Quote so far" : "Last verified · stale"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Price unavailable"}</strong></div>{workflowMode === "measure-first" && workflowPhase === "measure" ? <><button onClick={saveAndNext}><Plus />Save opening & next</button><button className={styles.primary} onClick={finishMeasuring}>Finish measuring</button></> : workflowMode === "measure-first" && workflowPhase === "assign" ? <><button onClick={() => setDraft(setMobileQuoteWorkflowPhase(draft, "measure"))}>Back to measure</button><button className={styles.primary} disabled={!assignmentProduct || validAssignmentIds.length === 0} onClick={applyAssignment}>Apply product to {validAssignmentIds.length} openings</button></> : <><button onClick={workflowMode === "full-design" ? saveAndNext : () => setDraft(setMobileQuoteWorkflowPhase(draft, "assign"))}>{workflowMode === "full-design" ? <><Plus />Save window & next</> : "Assign products"}</button><button className={styles.primary} onClick={review}>Review all<ChevronRight /></button></>}</footer>
+    <footer className={styles.footer}><div><span>{workflowMode === "measure-first" && draft.windows.some((line) => !line.activeProductId) ? "Awaiting product / pricing" : online ? "Quote so far" : "Last verified · stale"}</span><strong>{draft.quotePrice?.status === "authoritative" ? money(draft.quotePrice.amount) : "Not priced"}</strong></div>{workflowMode === "measure-first" && workflowPhase === "measure" ? <><button disabled={busy || photosPreparing} onClick={() => void saveAndNext()}><Plus />Save opening & next</button><button className={styles.primary} disabled={busy || photosPreparing} onClick={finishMeasuring}>Finish measuring</button></> : workflowMode === "measure-first" && workflowPhase === "assign" ? <><button onClick={() => setDraft(setMobileQuoteWorkflowPhase(draft, "measure"))}>Back to measure</button><button className={styles.primary} disabled={!assignmentProduct || validAssignmentIds.length === 0} onClick={applyAssignment}>Apply product to {validAssignmentIds.length} openings</button></> : <><button disabled={busy || photosPreparing} onClick={workflowMode === "full-design" ? saveAndNext : () => setDraft(setMobileQuoteWorkflowPhase(draft, "assign"))}>{workflowMode === "full-design" ? <><Plus />Save window & next</> : "Assign products"}</button><button className={styles.primary} disabled={busy || photosPreparing} onClick={review}>Review all<ChevronRight /></button></>}</footer>
   </main>{measurementGrid && <MobileMeasurementGrid selection={measurementGrid} onChooseWhole={(whole) => setMeasurementGrid((current) => current ? chooseMobileQuoteGridWhole(current, whole) : current)} onCommit={commitMeasurementGrid} onClose={() => setMeasurementGrid(null)} onCloseAutoFocus={() => measurementGridTrigger.current?.focus()} />}</QuoteBuilderDatabaseProvider></QueryClientProvider>;
 }

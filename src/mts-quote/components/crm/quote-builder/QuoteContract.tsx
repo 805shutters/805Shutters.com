@@ -1,3 +1,4 @@
+import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import { LineItemPriceInput } from "./LineItemPriceInput";
@@ -606,11 +607,28 @@ export function QuoteContract({
   const incompleteDraft = acceptedProjection.acceptedTotal == null && shouldCheckQuoteCompleteness(quote, effectiveActiveDesigns.designs, quote.quote_v2_backend === true) &&
     (lineItems.length === 0 || incompleteQuoteLineIds(lineItems, effectiveActiveDesigns.designs, quote.quote_v2_backend === true).length > 0);
   if (incompleteDraft) {
-    return <div role="alert" className="p-6 space-y-3">
-      <h2 className="font-bold">Pricing incomplete</h2>
-      <p>Complete pricing for every selected window before reviewing or sending the contract.</p>
-      <Button onClick={() => setActiveTab("builder")}>Return to quote builder</Button>
-    </div>;
+    const pending = new Set(incompleteQuoteLineIds(lineItems, effectiveActiveDesigns.designs, quote.quote_v2_backend === true));
+    return <section className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6" aria-label="Unfinished contract draft">
+      <header className="space-y-2">
+        <h2 className="text-xl font-bold">Contract draft · {quote.quote_number}</h2>
+        <p className="font-semibold">{quote.customer_name}</p>
+        <p>Selections incomplete. Your saved windows are ready to finish in the quote builder.</p>
+        <p>Complete pricing for every window before sending or signing.</p>
+        <Button onClick={() => setActiveTab("builder")}>Return to quote builder</Button>
+      </header>
+      {lineItems.map((line, index) => {
+        const lineTotal = calculateLineItemDesignTotal(line, effectiveActiveDesigns.designs.filter((row) => row.line_item_id === line.id), {
+          mode: quote.quote_v2_backend === true || effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy",
+        });
+        return <article key={line.id} className="rounded-xl border bg-white p-4 space-y-2">
+          <h3 className="font-bold">{line.room_name || `Window ${index + 1}`}</h3>
+          <p>{formatDimensionsOrNull(line) || "Measurements pending"}</p>
+          <p>{line.product_type || "Selections incomplete"}</p>
+          <p>{pending.has(line.id) ? "Not priced" : formatCurrency(lineTotal)}</p>
+          <QuoteWindowPhotos quoteId={quote.id} lineItemId={line.id} />
+        </article>;
+      })}
+    </section>;
   }
 
   return (

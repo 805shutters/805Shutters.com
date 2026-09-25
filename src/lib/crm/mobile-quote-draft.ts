@@ -80,6 +80,8 @@ export type MobileQuoteSubmissionSnapshot = {
   windows: MobileQuoteWindow[];
   createdAt: string;
   requiresManualPricing: boolean;
+  /** Saved without requiring finished product selections or pricing. */
+  saveForLater?: boolean;
 };
 
 export type MobileQuoteSubmission = {
@@ -194,6 +196,11 @@ export function normalizeMobileQuoteDraft(draft: MobileQuoteDraft): MobileQuoteD
 }
 
 export function isQuoteEditorHandoffReady(draft: Pick<MobileQuoteDraft, "submission">): boolean {
+  if (draft.submission.snapshot?.saveForLater) {
+    return Boolean(draft.submission.completedAt && draft.submission.quoteId &&
+      draft.submission.structureRevision && draft.submission.snapshot.windows.every((window) =>
+        window.photos.every((photo) => draft.submission.uploadedPhotoIds.includes(photo.id))));
+  }
   const { submission } = draft;
   const snapshot = submission.snapshot;
   if (
@@ -216,7 +223,7 @@ export function isManualQuoteEditorHandoffReady(draft: Pick<MobileQuoteDraft, "s
 }
 
 export function isMobileQuoteDraftAccessible(draft: MobileQuoteDraft): boolean {
-  return !draft.submission.completedAt || draft.submission.snapshot?.requiresManualPricing === true;
+  return !draft.submission.completedAt || draft.submission.snapshot?.requiresManualPricing === true || draft.submission.snapshot?.saveForLater === true;
 }
 
 export function emptyMobileQuoteDesign(lineItemId: string, productType: string): SalesQuoteDesign {
@@ -692,12 +699,12 @@ export function selectMobileQuoteWindowLetter(
 
 export function validateMobileQuoteWindow(window: MobileQuoteWindow) {
   if (!window.activeProductId || !window.families[window.activeProductId]) return "Choose a product.";
+  if (!window.room.trim()) return "Choose a room.";
+  if (window.roomChoice === "Bedroom" && !MOBILE_QUOTE_BEDROOM_PATTERN.test(window.room.trim())) return "Choose Bedroom 1 through Bedroom 5.";
   return validateMobileQuoteMeasurement(window);
 }
 
 export function validateMobileQuoteMeasurement(window: MobileQuoteWindow) {
-  if (!window.room.trim()) return "Choose a room.";
-  if (window.roomChoice === "Bedroom" && !MOBILE_QUOTE_BEDROOM_PATTERN.test(window.room.trim())) return "Choose Bedroom 1 through Bedroom 5.";
   if (!Number.isInteger(window.widthWhole) || !Number.isInteger(window.heightWhole)) return "Measurements must use whole inches plus a fraction.";
   if (!MOBILE_QUOTE_FRACTIONS.includes(window.widthFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number]) ||
       !MOBILE_QUOTE_FRACTIONS.includes(window.heightFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number])) {
@@ -721,7 +728,7 @@ export function isUntouchedMobileQuoteWindow(window: MobileQuoteWindow) {
 }
 
 export function omitTrailingUntouchedMobileQuoteWindow(draft: MobileQuoteDraft, updatedAt = new Date().toISOString()) {
-  if (draft.submission.snapshot || draft.windows.length < 2 || !isUntouchedMobileQuoteWindow(draft.windows.at(-1)!)) return draft;
+  if (draft.submission.snapshot || draft.windows.length < 2 || !isReusableMobileQuotePlaceholder(draft, draft.windows.at(-1)!)) return draft;
   const realWindows = draft.windows.slice(0, -1);
   if (!realWindows.some((window) => !isUntouchedMobileQuoteWindow(window))) return draft;
   const next = structuredClone(draft);

@@ -20,7 +20,7 @@ describe("mobile quote active editor identity", () => {
     expect(source).toContain("validateMobileQuoteMeasurement(line)");
     expect(source).toContain('family?.productType || "Unassigned"');
     expect(source).not.toContain("Unfinished opening");
-    expect(source).toContain('onClick={() => setScreen("review")}');
+    expect(source).toContain('onClick={review}');
   });
 
   it("uses the app container for readable two-row phone summaries", () => {

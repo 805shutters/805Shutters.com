@@ -3198,7 +3198,7 @@ function ProductTypeSwitcher({
           getLineProductTypeClass(productType)
         )}
       >
-        {productType}
+        {productType || "Choose product"}
       </span>
     );
   }
@@ -3211,7 +3211,7 @@ function ProductTypeSwitcher({
         className={cn("quote-line-product-type-badge", getLineProductTypeClass(productType))}
         title="Change product type for this line item"
       >
-        {productType}
+        {productType || "Choose product"}
       </button>
     );
   }
@@ -6019,14 +6019,14 @@ export function DesignCard({
               </div>
             )}
             <div className="quote-line-price-readout">
-              <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
+              {authoritativeV2 && !currentDesign ? <p className="text-lg font-bold text-amber-900">Not priced</p> : <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
                 unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal}
                 issue={authoritativeV2 || normanServerPricing ? authoritativePriceError :
                   !isPriceLocked && currentOptions.manual_price_override !== true && legacyPricingBlockReason
                     ? pricingBlockReasonMessage(legacyPricingBlockReason) : null}
                 roomName={lineItem.room_name}
                 manualPrice={currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
-                onSave={(price) => onSaveLinePrice(activeVariant, price)} />
+                onSave={(price) => onSaveLinePrice(activeVariant, price)} />}
               {!mobilePresentation && !authoritativeV2 && !normanServerPricing && isPriceLocked && (
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
                   className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">
