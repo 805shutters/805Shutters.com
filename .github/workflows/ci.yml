@@ -32,3 +32,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Public sitemap and internal links
+        run: node --test scripts/public-site-integrity.test.mjs
