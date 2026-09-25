@@ -1,7 +1,7 @@
 "use client";
 
 import { DeleteIcon, Grid3X3 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MOBILE_QUOTE_FRACTIONS } from "@/lib/crm/mobile-quote-draft";
 import styles from "./MobileMeasurementKeypad.module.css";
 
@@ -52,6 +52,39 @@ const KEYPAD_ROWS: Array<Array<number | "backspace" | "clear">> = [
   [7, 8, 9],
   ["backspace", 0, "clear"],
 ];
+
+function MeasurementKey({ label, onPress, children }: { label?: string; onPress: () => void; children: ReactNode }) {
+  const touch = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
+  const handledTouch = useRef(false);
+  return <button type="button" aria-label={label}
+    onPointerDown={(event) => {
+      handledTouch.current = event.pointerType !== "mouse";
+      if (event.pointerType === "mouse" || !event.isPrimary) return;
+      // Keep a focused numeric input (and its keyboard/viewport) from blurring
+      // between touch-down and release. The touch belongs to this exact key.
+      event.preventDefault();
+      touch.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }}
+    onPointerMove={(event) => {
+      const start = touch.current;
+      if (start?.id === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 12) start.moved = true;
+    }}
+    onPointerCancel={() => { touch.current = null; }}
+    onLostPointerCapture={() => { touch.current = null; }}
+    onPointerUp={(event) => {
+      const start = touch.current;
+      if (!start || start.id !== event.pointerId) return;
+      touch.current = null;
+      event.preventDefault();
+      if (!start.moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) <= 12) onPress();
+    }}
+    onClick={(event) => {
+      // Touch was handled above. Preserve keyboard and assistive activation.
+      if (!handledTouch.current || event.detail === 0) onPress();
+    }}
+  >{children}</button>;
+}
 
 export function MobileMeasurementKeypad({
   widthWhole,
@@ -167,9 +200,9 @@ export function MobileMeasurementKeypad({
         }}><Grid3X3 /><span>Grid<br /><small>0–150</small></span></button>}
       </div>
       <div className={styles.keypad} aria-label={`${activeSide} number keypad`}>
-        {KEYPAD_ROWS.flat().map((key) => <button type="button" key={key} aria-label={key === "backspace" ? "Backspace" : key === "clear" ? "Clear whole inches" : undefined} onClick={() => press(key === "backspace" ? { type: "backspace" } : key === "clear" ? { type: "clear" } : { type: "digit", digit: key })}>
+        {KEYPAD_ROWS.flat().map((key) => <MeasurementKey key={key} label={key === "backspace" ? "Backspace" : key === "clear" ? "Clear whole inches" : undefined} onPress={() => press(key === "backspace" ? { type: "backspace" } : key === "clear" ? { type: "clear" } : { type: "digit", digit: key })}>
           {key === "backspace" ? <DeleteIcon /> : key === "clear" ? "Clear" : key}
-        </button>)}
+        </MeasurementKey>)}
       </div>
       <div className={styles.allFractions} role="group" aria-label={`${activeSide} fractions`}>
         {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}

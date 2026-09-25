@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendEmail } from "@/lib/notify/email";
 import { loadTechnicalMeasureForm, type TechnicalMeasureForm } from "./technical-measures";
+import { technicalMeasureMissingInformation } from "./technical-measure-completion";
 
 export const TECHNICAL_MEASURE_OFFICE = "805@805shutters.com";
 
@@ -12,10 +13,14 @@ function escapeHtml(value: string) {
 export function buildTechnicalMeasureOfficeEmail(form: TechnicalMeasureForm) {
   const origin = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com").replace(/\/$/, "");
   const contract = form.contractUrl ? new URL(form.contractUrl, origin).href : "Unavailable";
-  const subject = `Technical measure ${form.status === "submitted" ? "completed" : "draft"} — ${form.customer_snapshot.name} — ${form.quote_snapshot.quoteNumber || form.id}`;
+  const progressSubmission = form.status !== "submitted" && Boolean(form.meta.incomplete_submission);
+  const missing = progressSubmission ? technicalMeasureMissingInformation(form, form.meta.installation_duration_minutes) : [];
+  const reportStatus = form.status === "submitted" ? "completed" : progressSubmission ? "submitted for review — needs information" : "draft";
+  const subject = `Technical measure ${reportStatus} — ${form.customer_snapshot.name} — ${form.quote_snapshot.quoteNumber || form.id}`;
   const text = [
     subject,
-    `Status: ${form.status}`,
+    `Status: ${reportStatus}`,
+    ...(progressSubmission ? ["Received by the office for follow-up. Not released to ordering or installation.", "Missing information:", ...missing.map((item) => `- ${item}`), ""] : []),
     `Contract: ${contract}`,
     `Measure: ${origin}/crm/technical-measures/${encodeURIComponent(form.id)}/`,
     `Contract total: $${form.baseline_total.toFixed(2)}`,

@@ -26,9 +26,9 @@ function detailAnswered(details: Record<string, unknown>, keys: string[]) {
 
 function validFieldDimension(value: number | null) {
   return value !== null
-    && Math.floor(value) >= 10
+    && value >= 1
     && Math.floor(value) <= 125
-    && Number.isInteger(value * 8);
+    && Number.isInteger(value * 16);
 }
 
 export function technicalMeasureCompletionIssues(
@@ -72,7 +72,7 @@ export function technicalMeasureCompletionIssues(
         ...base,
         field: "width_in",
         label: "Width",
-        instruction: "Choose a width from 10 to 125 inches in eighths.",
+        instruction: "Enter a measured width from 1 to 125 15/16 inches in sixteenths.",
       });
     } else if (!values.width_confirmed) {
       issues.push({
@@ -87,7 +87,7 @@ export function technicalMeasureCompletionIssues(
         ...base,
         field: "height_in",
         label: "Height",
-        instruction: "Choose a height from 10 to 125 inches in eighths.",
+        instruction: "Enter a measured height from 1 to 125 15/16 inches in sixteenths.",
       });
     } else if (!values.height_confirmed) {
       issues.push({
@@ -174,6 +174,23 @@ export function technicalMeasureCompletionIssues(
     }
     return issues;
   });
+}
+
+/** Missing field information is separate from saving or sending a progress report. */
+export function technicalMeasureMissingInformation(
+  form: Pick<TechnicalMeasureForm, "lines" | "requiresAddendum">,
+  duration: unknown,
+) {
+  const missing = technicalMeasureCompletionIssues(form).map((issue) =>
+    `Line ${issue.lineNumber} (${issue.room}): ${issue.label}`
+  );
+  if (!form.lines.length) missing.push("At least one opening");
+  const minutes = Number(duration);
+  if (!Number.isInteger(minutes) || minutes < 15 || minutes > 480 || minutes % 15 !== 0) {
+    missing.push("Installation duration");
+  }
+  if (form.requiresAddendum) missing.push("Customer acknowledgment of contract changes");
+  return missing;
 }
 
 export function compactTechnicalMeasureCompletionSummary(

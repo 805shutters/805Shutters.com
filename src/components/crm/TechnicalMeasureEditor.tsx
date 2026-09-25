@@ -38,8 +38,8 @@ import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
 import { ManufacturerTechnicalMeasureFields } from "@/components/crm/ManufacturerTechnicalMeasureFields";
 import {
-  compactTechnicalMeasureCompletionSummary,
   technicalMeasureCompletionIssues,
+  technicalMeasureMissingInformation,
 } from "@/lib/crm/technical-measure-completion";
 import {
   applyOfflineTechnicalMeasureDraft,
@@ -614,7 +614,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       const current = completed.filter(({ entry }) => entry.formId === formId).at(-1);
       if (current) {
         hydrate(current.form, false);
-        if (current.entry.operation === "submit") {
+        if (current.entry.operation === "submit" && current.form.status !== "submitted") {
+          setMeasureView("ledger");
+          setMessage(current.form.officeEmail?.sent === false
+            ? "Measure saved for review. Office email needs retry. Use Email saved measurements to 805."
+            : "Submitted to 805 for review. Missing information stays red; you can keep editing.");
+        } else if (current.entry.operation === "submit") {
           setMessage("Measure submitted");
           setSubmitSuccess(true);
           window.setTimeout(() => window.location.assign(workspaceHome), 1300);
@@ -895,19 +900,14 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       // Share the autosave pipeline so an older in-flight response cannot
       // overwrite this line or race the save that precedes navigation.
       const saved = await flushLatestDraft();
-      if (lineIssues.length) {
-        setMessage(`${compactTechnicalMeasureCompletionSummary(lineIssues)} Your measurements are saved; this opening is not complete yet.`);
-        return;
-      }
       if (index + 1 < linesRef.current.length) {
         setActiveLineIndex(index + 1);
         setMeasureView("line");
       } else {
         setMeasureView("ledger");
       }
-      setMessage(saved.queued
-        ? `Line item ${index + 1} saved on this device · waiting to upload.`
-        : `Line item ${index + 1} saved.`);
+      const location = saved.queued ? " on this device · waiting to upload" : "";
+      setMessage(`Opening ${index + 1} saved${location}.${lineIssues.length ? ` Missing: ${lineIssues.map(issue => issue.label).join(", ")}. You can finish these later.` : " Ready to submit."}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "This opening could not be saved.");
     } finally {
@@ -917,36 +917,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
 
   async function handleSubmit() {
     if (!form) return;
-    if (!linesRef.current.length || linesRef.current.some((line) => !line.current_values.measure_complete)) {
-      setMeasureView("ledger");
-      setMessage("Complete and save every opening before completing the order.");
-      return;
-    }
+    if (!linesRef.current.length) return;
     setBusy(true); setMessage(null);
     try {
       const saved = await flushLatestDraft();
-      const issues = technicalMeasureCompletionIssues(saved.form);
-      if (issues.length) {
-        setActiveLineIndex(issues[0].lineIndex);
-        setMeasureView("line");
-        setMessage(compactTechnicalMeasureCompletionSummary(issues));
-        return;
-      }
-      if (saved.form.requiresAddendum) {
-        setMessage("Review the changes with the customer and collect their signature below.");
-        setMeasureView("ledger");
-        setChangeOrderOpen(true);
-        window.setTimeout(() => document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" }), 0);
-        return;
-      }
+      const submission = { installationDurationMinutes, allowIncomplete: true };
       if (saved.queued || !navigator.onLine || !session) {
-        if (!installationDurationMinutes) {
-          setMessage("Choose the installation duration before completing the measure.");
-          return;
-        }
-        await queueTechnicalMeasureOperation(owner(), formId, "submit", {
-          installationDurationMinutes,
-        });
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", submission);
         setPendingSync(true);
         setOfflineMode(true);
         setMessage("Measure saved on this phone · it will submit automatically when service returns.");
@@ -954,23 +931,13 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       }
       let result: { form: TechnicalMeasureForm };
       try {
-        if (!installationDurationMinutes) {
-          setMessage("Choose the installation duration before completing the measure.");
-          return;
-        }
         result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, {
           method: "POST",
-          body: JSON.stringify({ installationDurationMinutes }),
+          body: JSON.stringify(submission),
         });
       } catch (error) {
         if (!shouldQueueCrmError(error)) throw error;
-        if (!installationDurationMinutes) {
-          setMessage("Choose the installation duration before completing the measure.");
-          return;
-        }
-        await queueTechnicalMeasureOperation(owner(), formId, "submit", {
-          installationDurationMinutes,
-        });
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", submission);
         setPendingSync(true);
         setOfflineMode(true);
         setMessage("Measure saved on this phone · it will submit automatically when service returns.");
@@ -978,9 +945,15 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       }
       hydrate(result.form, false);
       await cacheTechnicalMeasureForm(owner(), result.form);
+      const submittedForReview = result.form.status !== "submitted";
       if (result.form.officeEmail && !result.form.officeEmail.sent) {
         setMeasureView("ledger");
-        setMessage(`Measure submitted. Office email needs retry: ${result.form.officeEmail.error || result.form.officeEmail.skipped || "delivery unavailable"}. Use Email saved measurements to 805.`);
+        setMessage(`${submittedForReview ? "Measure saved for review" : "Measure submitted"}. Office email needs retry: ${result.form.officeEmail.error || result.form.officeEmail.skipped || "delivery unavailable"}. Use Email saved measurements to 805.`);
+        return;
+      }
+      if (submittedForReview) {
+        setMeasureView("ledger");
+        setMessage("Submitted to 805 for review. Missing information stays red; you can keep editing and submit again when ready.");
         return;
       }
       setMessage("Measure submitted");
@@ -1116,10 +1089,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       queuedLineCount !== lines.length
       || vendorOrderPreparations.some((preparation) => !preparation.orderPacketUrl)
     );
-  const completedLineCount = readOnly
-    ? lines.length
-    : lines.filter((line) => line.current_values.measure_complete).length;
-  const allLinesComplete = lines.length > 0 && completedLineCount === lines.length;
+  const completionIssues = technicalMeasureCompletionIssues({ lines });
+  const issuesForLine = (lineId: string) => completionIssues.filter(issue => issue.lineId === lineId);
+  const completedLineCount = lines.filter(line => issuesForLine(line.id).length === 0).length;
+  const missingInformation = technicalMeasureMissingInformation({ lines, requiresAddendum: form?.requiresAddendum || false }, installationDurationMinutes);
+  const submittedForReview = !readOnly && Boolean(form?.meta.incomplete_submission);
   const futureMeasures = form?.futureMeasures || [];
 
   function showLine(index: number) {
@@ -1144,7 +1118,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
             {form.customer_snapshot.phone ? <a href={`tel:${form.customer_snapshot.phone.replace(/[^+\d]/g, "")}`}>{form.customer_snapshot.phone}</a> : <span>Phone not provided</span>}
             {form.customer_snapshot.email ? <a href={`mailto:${form.customer_snapshot.email}`}>{form.customer_snapshot.email}</a> : <span>Email not provided</span>}
           </div>
-          <span className="tm805-status">{offlineMode ? "Offline" : pendingSync ? "Syncing…" : busy ? "Saving…" : form.status.replaceAll("_", " ")}</span>
+          <span className="tm805-status">{offlineMode ? "Offline" : pendingSync ? "Syncing…" : busy ? "Saving…" : submittedForReview ? "Submitted for review · needs information" : form.status.replaceAll("_", " ")}</span>
         </div>
       </header>
       <nav className="tm805-mobile-tabs" aria-label="Measure workspace view">
@@ -1175,13 +1149,14 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           <section className="technical-measure-ledger" aria-label="Technical measure line items">
             <header>
               <h2>Line items</h2>
-              <span>{completedLineCount} of {lines.length} complete</span>
+              <span>{completedLineCount} of {lines.length} ready</span>
             </header>
             {message ? <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div> : null}
             {!lines.length ? <p className="tm805-empty">No line items on this measure.</p> : null}
             <div className="technical-measure-ledger-list">
               {lines.map((line, index) => {
-                const complete = readOnly || line.current_values.measure_complete;
+                const lineIssues = issuesForLine(line.id);
+                const complete = lineIssues.length === 0;
                 const supplier = detailText(line.current_values.details, "supplier", "manufacturer");
                 return (
                   <article className="technical-measure-ledger-item" data-complete={complete} key={line.id}>
@@ -1192,8 +1167,9 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                         <small>{productLabel(line.current_values.product_id)}{supplier ? ` · ${supplier}` : ""}</small>
                       </span>
                       <span className="technical-measure-ledger-size"><small>Field size</small>{inches(line.current_values.width_in)} × {inches(line.current_values.height_in)}</span>
-                      <span className="technical-measure-ledger-status">{complete ? <><Check />Done</> : <>Needs measure<ChevronRight /></>}</span>
+                      <span className="technical-measure-ledger-status">{complete ? <><Check />Ready</> : <>Missing information<ChevronRight /></>}</span>
                     </button>
+                    {lineIssues.length > 0 ? <p className="technical-measure-missing">Missing: {lineIssues.map(issue => issue.label).join(", ")}</p> : null}
                     <details><summary>Original contract options</summary><ContractOptions baseline={line.baseline} contractUrl={form.contractUrl} lineId={line.id} inline /></details>
                   </article>
                 );
@@ -1203,6 +1179,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           </section>
         ) : null}
         {measureView === "line" ? lines.map((line, index) => {
+          const lineIssues = issuesForLine(line.id);
+          const fieldMissing = (...fields: string[]) => lineIssues.some(issue => fields.includes(issue.field));
           const baseline = line.baseline;
           const current = line.current_values;
           const isExpandedWindow = (line.source_quantity || 1) > 1;
@@ -1245,6 +1223,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
                   <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div>
                 ) : null}
               </div>
+              {lineIssues.length > 0 ? <div className="technical-measure-missing" role="status"><strong>Missing information</strong><p>{lineIssues.map(issue => issue.instruction).join(" ")}</p><span>You can save this opening now and finish it later.</span></div> : null}
               <button className="tm805-contract-jump" type="button" onClick={() => document.getElementById(`contract-options-${line.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}><FileText />View contract options<ChevronRight /></button>
               <div className="technical-measure-opening-row technical-measure-opening-row--priority">
                   <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
@@ -1277,8 +1256,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               </div></div>}
               <div className="technical-measure-section-label">3. Width &amp; height</div>
               <div className="technical-measure-dimensions">
-                <button type="button" aria-label="Select width" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
-                <button type="button" aria-label="Select height" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
+                <button type="button" aria-label="Select width" aria-invalid={fieldMissing("width_in", "width_confirmed")} disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
+                <button type="button" aria-label="Select height" aria-invalid={fieldMissing("height_in", "height_confirmed")} disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
               </div>
               <div className="technical-measure-dimension-confirmations">
                 <button type="button" disabled={readOnly || !current.width_in} data-confirmed={current.width_confirmed} onClick={() => updateLine(line.id, { width_confirmed: true })}>{current.width_confirmed ? <Check /> : null} Confirm width</button>
@@ -1384,8 +1363,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
               <ContractOptions baseline={baseline} contractUrl={form.contractUrl} lineId={line.id} />
               <div className="technical-measure-line-navigation technical-measure-line-submit">
                 <button type="button" onClick={() => setMeasureView("ledger")}><ArrowLeft />Back to line items</button>
-                <span>{current.measure_complete ? "Opening complete" : "Review every required field"}</span>
-                <button type="button" disabled={readOnly || busy} onClick={() => void handleNextLine(index)}>{busy ? "Saving…" : index + 1 < lines.length ? "Next line item" : "Save line item"}{busy ? <Loader2 className="spin" /> : <ArrowRight />}</button>
+                <span className={lineIssues.length ? "technical-measure-missing-label" : ""}>{lineIssues.length ? "Missing information · saving allowed" : "Ready to submit"}</span>
+                <button type="button" disabled={readOnly || busy} onClick={() => void handleNextLine(index)}>{busy ? "Saving…" : index + 1 < lines.length ? "Save & next" : "Save opening"}{busy ? <Loader2 className="spin" /> : <ArrowRight />}</button>
               </div>
             </article>
           );
@@ -1393,10 +1372,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       </section>
 
       {!readOnly && lines.length > 0 && measureView === "ledger" ? <footer className="technical-measure-actions">
-        <label className="technical-measure-install-duration">
+        <label className="technical-measure-install-duration" data-missing={!installationDurationMinutes}>
           <span>Installation duration</span>
           <select
             aria-label="Installation duration"
+            aria-invalid={!installationDurationMinutes}
             value={installationDurationMinutes || ""}
             onChange={(event) => setInstallationDurationMinutes(
               event.target.value ? Number(event.target.value) : null,
@@ -1409,7 +1389,8 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
           </select>
         </label>
         <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
-        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes || !allLinesComplete} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
+        {missingInformation.length > 0 ? <div className="technical-measure-missing technical-measure-submission-note" role="status"><strong>Missing information</strong><p>{missingInformation.join("; ")}</p><span>Submit now to send the saved measure to 805 for follow-up. It stays editable until the missing information is complete.</span></div> : null}
+        <button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Submit measure</button>
       </footer> : null}
 
       {measureView === "ledger" ? <div className="tm805-secondary-tools">

@@ -71,24 +71,10 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("technical-measure-submit-success");
     expect(component).toContain('desktopWorkspace ? "desktop CRM" : "mobile dashboard"');
     expect(component).toContain("technical-measure-alert--active");
-    expect(component).toContain("setChangeOrderOpen(true)");
     expect(styles).toContain(".technical-measure-submit-success");
     expect(styles).toContain(".technical-measure-alert--active");
   });
 
-  it("blocks order completion until every opening is validated and submitted", () => {
-    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
-    const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
-
-    expect(component).not.toContain("Complete this opening");
-    expect(component).not.toContain("Incomplete fields do not prevent submission.");
-    expect(component).not.toContain("You can still complete and submit this measure.");
-    expect(component).toContain("setMessage(compactTechnicalMeasureCompletionSummary(issues));\n        return;");
-    expect(component).toContain("Complete and save every opening before completing the order.");
-    expect(component).toContain("handleNextLine");
-    expect(service).not.toContain("validateNormanRollerMeasureForSubmission(form)");
-    expect(service).toContain("technicalMeasureCompletionIssues(form)");
-  });
 
   it("opens with line items and retains the one-line mobile workspace", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
@@ -228,9 +214,9 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain('useState<"ledger" | "line">("ledger")');
     expect(component).toContain('aria-label="Technical measure line items"');
-    expect(component).toContain("Needs measure");
+    expect(component).toContain("Missing information");
     expect(component).toContain("Back to line items");
-    expect(component).toContain("Next line item");
+    expect(component).toContain("Save & next");
     expect(component).toContain("Confirm width");
     expect(component).toContain("Confirm height");
     expect(component).toContain("fractions={FRACTIONS}");

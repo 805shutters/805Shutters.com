@@ -22,6 +22,15 @@ describe("saved technical measure office report", () => {
     expect(message.html).toContain("&lt;script&gt;");
     expect(message.html).not.toContain("<script>");
   });
+  it("labels an incomplete office submission and lists its missing information", () => {
+    const form = fixture();
+    form.meta.incomplete_submission = { received_at: "2026-09-25" };
+    const message = buildTechnicalMeasureOfficeEmail(form);
+    expect(message.subject).toContain("submitted for review — needs information");
+    expect(message.text).toContain("Installation duration");
+    expect(message.text).toContain("Not released to ordering or installation");
+    expect(message.to).toBe("805@805shutters.com");
+  });
   it("reloads the saved form and preserves delivery failure for an explicit retry", async () => {
     const form = fixture();
     mocks.load.mockResolvedValue(form);

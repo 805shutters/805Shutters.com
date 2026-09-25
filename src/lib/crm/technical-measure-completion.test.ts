@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   compactTechnicalMeasureCompletionSummary,
   technicalMeasureCompletionIssues,
+  technicalMeasureMissingInformation,
 } from "./technical-measure-completion";
 import type { TechnicalMeasureForm } from "./technical-measures";
 import { resolveManufacturerTechnicalMeasureSchema } from "./vendor-orders/manufacturer-technical-measure-schemas";
@@ -43,6 +44,20 @@ describe("technical measure completion validation", () => {
     expect(technicalMeasureCompletionIssues(form)).toEqual([]);
   });
 
+  it("accepts keypad-supported sub-ten-inch and sixteenth-inch dimensions", () => {
+    const form = onyxForm();
+    form.lines[0].current_values.width_in = 9.0625;
+    form.lines[0].current_values.height_in = 59.9375;
+    expect(technicalMeasureCompletionIssues(form)).toEqual([]);
+    form.lines[0].current_values.width_in = 0;
+    expect(technicalMeasureCompletionIssues(form).map(issue => issue.field)).toEqual(["width_in"]);
+  });
+  it("distinguishes missing information from a ready measure without requiring a save flag", () => {
+    const form = onyxForm();
+    expect(technicalMeasureMissingInformation(form, null)).toEqual(["Installation duration"]);
+    expect(technicalMeasureMissingInformation(form, 120)).toEqual([]);
+    expect(technicalMeasureMissingInformation({ ...form, requiresAddendum: true }, 120)).toEqual(["Customer acknowledgment of contract changes"]);
+  });
   it("still requires the Onyx opening, folding direction and custom rail position", () => {
     const form = onyxForm();
     form.lines[0].current_values.opening_label = "";
@@ -97,7 +112,7 @@ describe("technical measure completion validation", () => {
     );
   });
 
-  it("requires MTS-style room, opening, eighth-inch confirmation, and mount", () => {
+  it("requires room, opening, dimension confirmation, and mount", () => {
     const form = {
       lines: [{
         ...line("line-1", "Window", {
@@ -114,7 +129,7 @@ describe("technical measure completion validation", () => {
     expect(technicalMeasureCompletionIssues(form).map((issue) => issue.field)).toEqual([
       "room",
       "opening_label",
-      "width_in",
+      "width_confirmed",
       "height_confirmed",
       "mount_type",
     ]);

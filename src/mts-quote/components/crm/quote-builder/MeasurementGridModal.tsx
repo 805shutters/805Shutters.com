@@ -265,7 +265,6 @@ function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendin
   return <Dialog open onOpenChange={open => !open && !saving && onClose()}>
     <DialogContent onCloseAutoFocus={onCloseAutoFocus} className={cn(calculatorStyles.dialog, "max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[460px] overflow-y-auto p-4 sm:p-6")}>
       <DialogHeader><DialogTitle>{singleDimensionLabel ?? (measurementAxis === "width" ? "Headrail width" : measurementAxis === "height" ? "Vane length" : "Window size")}</DialogTitle></DialogHeader>
-      {(error || saveError) && <p role="alert" className="text-sm text-destructive">{error || saveError} Your measurements are kept here until saved.</p>}
       <fieldset disabled={saving} className="min-w-0">
         <MobileMeasurementKeypad widthWhole={width.whole} widthFraction={width.fraction}
           heightWhole={height.whole} heightFraction={height.fraction} measurementAxis={measurementAxis}
@@ -275,6 +274,7 @@ function QuoteMeasurementCalculator({ saving, saveError, measurementAxis, pendin
           onFractionChange={(side, fraction) => { setError(""); (side === "width" ? setWidth : setHeight)(previous => ({ ...previous, fraction })); }}
           onDone={save} doneLabel="Save size" />
       </fieldset>
+      {(error || saveError) && <p role="alert" className="text-sm text-destructive">{error || saveError} Your measurements are kept here until saved.</p>}
       {saving && <p role="status" className="text-sm">Saving measurements…</p>}
     </DialogContent>
   </Dialog>;

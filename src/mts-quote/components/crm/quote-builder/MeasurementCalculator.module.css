@@ -6,3 +6,6 @@
 .dialog fieldset { margin: 0; padding: 0; border: 0; }
 .dialog [aria-label="Choose dimension"] strong { color: inherit !important; }
 @media(max-height:760px){.dialog.dialog{padding:12px;gap:8px}}
+
+/* Pin the mobile keypad while validation text or the software keyboard changes. */
+@media(max-width:600px){.dialog.dialog{top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);animation:none;transition:none}}

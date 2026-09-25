@@ -7,7 +7,8 @@ export type OfflineMeasureDraftPayload = {
 };
 
 export type OfflineMeasureSubmitPayload = {
-  installationDurationMinutes: number;
+  installationDurationMinutes: number | null;
+  allowIncomplete?: boolean;
 };
 
 export type OfflineMeasureQueueEntry = {

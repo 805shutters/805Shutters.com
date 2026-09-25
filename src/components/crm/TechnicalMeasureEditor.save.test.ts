@@ -101,18 +101,49 @@ describe("technical measurement save and close", () => {
     await act(async () => respond!(Response.json({ form: saved })));
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(button("Select width").textContent).toContain('29 1/2');
-    deferSave = false; await click("Next line item"); expect(document.body.textContent).toContain("Bedroom"); expect(button("Select width").textContent).toContain('13');
+    deferSave = false; await click("Save & next"); expect(document.body.textContent).toContain("Bedroom"); expect(button("Select width").textContent).toContain('13');
     await act(async () => root.unmount()); root = createRoot(host); await mount();
     await click("Open field measure for Bathroom · A"); expect(button("Select height").textContent).toContain('58 1/4');
   });
-  it("keeps an incomplete opening visible and explains what is missing after saving", async () => {
+  it("saves incomplete openings, advances, and keeps missing information visible", async () => {
     await mount(); await click("Open field measure for Bathroom · A");
-    await click("Next line item");
+    await click("Save & next");
     expect(requests).toHaveLength(1);
     expect(saved.lines[0].current_values.measure_complete).toBe(false);
-    expect(document.body.textContent).toContain("this opening is not complete yet");
+    expect(document.body.textContent).toContain("Opening 1 saved.");
+    expect(document.body.textContent).toContain("You can finish these later");
+    expect(document.querySelector(".technical-measure-line--active")?.textContent).toContain("Bedroom");
     expect(document.body.textContent).toContain("Width confirmation");
     expect(button("Select width").textContent).toContain("13");
+  });
+  it("allows submission with missing fields and duration, then remains editable with an honest review status", async () => {
+    const baseFetch = globalThis.fetch;
+    const submitted: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url, options) => {
+      if (options?.method === "POST" && String(url).endsWith("/submit")) {
+        submitted.push(JSON.parse(options.body));
+        saved.meta.incomplete_submission = { received_at: "2026-09-25" };
+        return Response.json({ form: { ...saved, officeEmail: { sent: true, id: "receipt" } } });
+      }
+      return baseFetch(url, options);
+    }));
+    await mount();
+    expect(button("Submit measure").disabled).toBe(false);
+    expect(document.querySelector('[aria-label="Installation duration"]')?.getAttribute("aria-invalid")).toBe("true");
+    expect(document.querySelector('.technical-measure-ledger-item')?.getAttribute("data-complete")).toBe("false");
+    await click("Submit measure");
+    expect(requests).toHaveLength(1);
+    expect(submitted).toEqual([{ installationDurationMinutes: null, allowIncomplete: true }]);
+    expect(document.body.textContent).toContain("Submitted to 805 for review");
+    expect(document.querySelector(".technical-measure-submit-success")).toBeNull();
+    expect(button("Save Draft").disabled).toBe(false);
+  });
+  it("queues incomplete submissions after the draft when offline", async () => {
+    await mount();
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    await click("Submit measure");
+    expect(mocks.queue).toHaveBeenLastCalledWith("test@example.invalid", "test-measure", "submit", { installationDurationMinutes: null, allowIncomplete: true });
+    expect(document.body.textContent).toContain("submit automatically when service returns");
   });
   it("saves the screenshot's sub-ten-inch opening with every sixteenth directly available", async () => {
     await mount(); await click("Open field measure for Bathroom · A"); await click("Select width");

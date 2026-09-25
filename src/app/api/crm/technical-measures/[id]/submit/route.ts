@@ -10,6 +10,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     const { id } = await context.params;
     const body = await request.json().catch(() => ({})) as {
       installationDurationMinutes?: unknown;
+      allowIncomplete?: unknown;
     };
     const form = await submitTechnicalMeasureWithoutAddendum(
       supabase,

@@ -29,7 +29,7 @@ import {
 import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
 import { normalizeInstallationDurationMinutes } from "@/lib/crm/installation-handoff";
 import { preserveTechnicalMeasureNotes } from "@/lib/crm/technical-measure-edits";
-import { technicalMeasureCompletionIssues } from "@/lib/crm/technical-measure-completion";
+import { technicalMeasureCompletionIssues, technicalMeasureMissingInformation } from "@/lib/crm/technical-measure-completion";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -955,7 +955,6 @@ export async function saveTechnicalMeasureDraft(
     const current = incoming.has(line.id)
       ? normalizeTechnicalMeasureLineValues(incoming.get(line.id), line.current_values)
       : line.current_values;
-    if (!current.product_id) throw new CrmAuthError(400, `${current.room}: product is required.`);
     const changes = technicalMeasureLineChanges(line.id, line.baseline, current);
     const { error } = await supabase.from("crm_technical_measure_lines").update({
       current_values: current,
@@ -997,7 +996,7 @@ export async function submitTechnicalMeasureWithoutAddendum(
   supabase: SupabaseClient,
   formId: string,
   actor: CrmActor,
-  input: { installationDurationMinutes?: unknown } = {},
+  input: { installationDurationMinutes?: unknown; allowIncomplete?: unknown } = {},
 ) {
   const form = await loadTechnicalMeasureForm(supabase, formId);
   if (form.status === "submitted") {
@@ -1006,6 +1005,11 @@ export async function submitTechnicalMeasureWithoutAddendum(
     const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
     await createAndSendInstallerForm(supabase, form.quote_id);
     return { ...await loadTechnicalMeasureForm(supabase, formId), officeEmail };
+  }
+  const missingInformation = technicalMeasureMissingInformation(form, input.installationDurationMinutes);
+  if (input.allowIncomplete === true && missingInformation.length) {
+    const { submitTechnicalMeasureProgress } = await import("./technical-measure-progress-submission");
+    return submitTechnicalMeasureProgress(supabase, form, actor, missingInformation, input.installationDurationMinutes);
   }
   if (form.requiresAddendum) throw new CrmAuthError(409, "The customer must acknowledge and sign the listed contract changes.");
   return finalizeTechnicalMeasure(
@@ -1083,9 +1087,7 @@ async function finalizeTechnicalMeasure(
   actor: CrmActor,
   installationDurationMinutesInput: unknown,
 ) {
-  if (form.lines.some((line) => !line.current_values.measure_complete)) {
-    throw new CrmAuthError(409, "Every opening must be submitted before the technical measure can be completed.");
-  }
+  if (!form.lines.length) throw new CrmAuthError(409, "Add an opening before completing the technical measure.");
   const completionIssues = technicalMeasureCompletionIssues(form);
   if (completionIssues.length) {
     throw new CrmAuthError(409, completionIssues[0].instruction);
@@ -1103,6 +1105,7 @@ async function finalizeTechnicalMeasure(
     meta: {
       ...form.meta,
       installation_duration_minutes: installationDurationMinutes,
+      incomplete_submission: null,
       ...(actor.userId ? { submitted_by_source_profile_id: actor.userId } : {}),
     },
   }).eq("id", form.id);

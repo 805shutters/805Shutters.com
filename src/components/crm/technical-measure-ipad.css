@@ -266,3 +266,15 @@ body:has(.tm805-split) > .mobile-workspace-exit, body:has(.tm805-split) .mobile-
   .tm805-split .technical-measure-ledger-status { grid-column: 3; font-size: 10px; }
 }
 .tm805-split .tm805-field-scroll > .technical-measure-actions { margin-top: 16px; border: 1px solid var(--platinum-deep); border-radius: 7px; padding: 12px; }
+
+/* Saving incomplete work is allowed; readiness stays visible in both themes. */
+.technical-measure-shell .technical-measure-missing { margin: 10px 12px; padding: 10px 12px; border: 1px solid #b42318; border-radius: 7px; background: #fff1f0; color: #9f2018; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.technical-measure-missing p { margin: 5px 0; }
+.technical-measure-shell .technical-measure-missing-label { color: #b42318; }
+.technical-measure-submission-note { grid-column: 1 / -1; }
+.technical-measure-shell [aria-invalid="true"] { outline: 2px solid #b42318; outline-offset: -2px; }
+.technical-measure-install-duration[data-missing="true"] > span { color: #b42318; }
+.mobile-805-experience .technical-measure-shell .technical-measure-missing { background: #391f22 !important; color: #ffb4ad !important; border-color: #ee756d !important; }
+.mobile-805-experience .technical-measure-shell .technical-measure-ledger-item[data-complete="false"] { border-left: 4px solid #ee756d !important; }
+.mobile-805-experience .technical-measure-shell :is(.technical-measure-missing-label, .technical-measure-install-duration[data-missing="true"] > span, .technical-measure-ledger-item[data-complete="false"] .technical-measure-ledger-status) { color: #ffb4ad !important; }
+.mobile-805-experience .technical-measure-shell [aria-invalid="true"] { outline-color: #ee756d; }
