@@ -93,8 +93,9 @@ export function SignQuote({ token, customerName, total, selectedLineIds, done: d
       </label>
       <fieldset disabled={busy || disabled} style={{ border: 0, padding: 0, margin: "0 0 12px" }}>
         <legend style={{ fontSize: 13, marginBottom: 8 }}>Signature method</legend>
-        {(["type", "draw"] as const).map(mode => <label key={mode} style={{ display: "inline-flex", gap: 6, marginRight: 20, padding: "8px 0" }}>
+        {(["type", "draw"] as const).map(mode => <label key={mode} style={{ display: "inline-flex", alignItems: "center", gap: 8, marginRight: 20, padding: "8px 0", minHeight: 44, whiteSpace: "nowrap" }}>
           <input type="radio" name={`signature-method-${placement}`} checked={signatureMode === mode}
+            style={{ flex: "0 0 20px", width: 20, height: 20, padding: 0, margin: 0 }}
             onChange={() => { setSignatureMode(mode); setDrawnSignature(null); setAgree(false); }} />
           {mode === "type" ? "Type signature" : "Draw signature"}
         </label>)}
