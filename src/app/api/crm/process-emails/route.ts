@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
+import { COMMERCIAL_BID_PULLER_PAUSED } from "@/lib/crm/commercial-bid-pause";
 import {
   buildInstallationInvoiceGmailQuery,
   type InstallationInvoiceTarget,
@@ -107,13 +108,27 @@ export async function POST(request: NextRequest) {
         query: targetedInstallationQuery(target),
         allowTargetBlankAmountMatch: Boolean(target)
       }),
-      processCommercialBidOpportunityInbox(supabase, {
-        actorEmail: email,
-        maxResults
-      })
+      COMMERCIAL_BID_PULLER_PAUSED
+        ? Promise.resolve<ProcessCommercialBidOpportunityResult>({
+            mailbox: "",
+            query: "",
+            scanned: 0,
+            classified: 0,
+            leadsCreated: 0,
+            leadsUpdated: 0,
+            reviewsCreated: 0,
+            ignored: 0,
+            skipped: 0,
+            errors: 0
+          })
+        : processCommercialBidOpportunityInbox(supabase, {
+            actorEmail: email,
+            maxResults
+          })
     ]);
 
     const response = {
+      ...(COMMERCIAL_BID_PULLER_PAUSED ? { commercialBidIngestion: "paused" } : {}),
       installationInvoices: processorRun<ProcessInstallationInvoiceResult>(installationInvoices),
       commercialBids: processorRun<ProcessCommercialBidOpportunityResult>(commercialBids)
     };

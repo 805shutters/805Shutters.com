@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { processCommercialBidOpportunityInbox } from "@/lib/crm/commercial-bid-opportunities";
+import { COMMERCIAL_BID_PULLER_PAUSED, COMMERCIAL_BID_PAUSE_REASON } from "@/lib/crm/commercial-bid-pause";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
-
-// Paused 2026-09-25 pending revision under 805 Commercial Growth Plan v2.0 (chat-hub model).
-// Leads are tracked in the Commercial Growth chat; the CRM receives confirmed jobs only.
-// Do not re-enable without owner approval.
-const COMMERCIAL_BID_PULLER_PAUSED = true;
 
 function requireCronAccess(request: NextRequest) {
   const secret = process.env.COMMERCIAL_BID_CRON_SECRET || process.env.CRON_SECRET;
@@ -22,7 +18,7 @@ async function run(request: NextRequest) {
   if (COMMERCIAL_BID_PULLER_PAUSED) {
     return NextResponse.json({
       paused: true,
-      reason: "Paused pending revision under Plan v2.0 chat-hub model"
+      reason: COMMERCIAL_BID_PAUSE_REASON
     });
   }
 
