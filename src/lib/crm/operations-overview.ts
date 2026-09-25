@@ -276,9 +276,14 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
       cashCents: receipts.reduce((total, payment) => total + Math.round(payment.amount * 100), 0) };
   };
   const periods = { weekly: range(weekStart), monthly: range(monthStart), threeMonths: range(monthOffset(2)), sixMonths: range(monthOffset(5)) };
+  const grossWeeks = (data.closedSales?.weeks || []).map(week => ({
+    start: week.startDate, end: week.startDate === weekStart ? weekEnd : week.endDate,
+    grossCents: week.totalCents, sales: week.sales, isCurrent: week.startDate === weekStart,
+    status: week.totalCents >= WEEKLY_GROSS_SALES_GOAL_CENTS ? "met" : "below"
+  }));
   const grossCents = periods.weekly.grossCents;
   const grossStatus = grossCents === null ? "unavailable" : grossCents >= WEEKLY_GROSS_SALES_GOAL_CENTS ? "met" : "below";
-  return { today, weekStart, weekEnd, monthStart, periods, weekly: periods.weekly.cohort, monthly: periods.monthly.cohort,
+  return { today, weekStart, weekEnd, monthStart, periods, grossWeeks, weekly: periods.weekly.cohort, monthly: periods.monthly.cohort,
     grossCents, grossStatus, sales: periods.weekly.sales,
     cashCents: periods.weekly.cashCents, receipts: periods.weekly.receipts,
     missingQuoteDates, missingPaymentDates: payments.filter(payment => !businessDate(payment.paid_at, now)).length };

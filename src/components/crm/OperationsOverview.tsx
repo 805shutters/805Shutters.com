@@ -29,6 +29,7 @@ function Ring({ value }: { value: number | null }) {
 }
 export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onPayments }: Props) {
   const [period, setPeriod] = useState<PerformancePeriod>("weekly");
+  const [salesWeekStart, setSalesWeekStart] = useState<string | null>(null);
   const [step, setStep] = useState<WorkflowStep>("ordered");
   const [metric, setMetric] = useState<"close" | "quoted" | "gross" | "cash" | null>(null);
   const items = useMemo(() => data ? buildOperationsItems(data) : [], [data]);
@@ -36,11 +37,15 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
   if (!data || !metrics) return <section className={styles.workspace} role="status">{busy ? "Loading dashboard…" : "Dashboard records are unavailable. Refresh to try again."}</section>;
   const attention = items.filter(item => !item.archived && (["quote", "sold"].includes(step) || item.sold) && !stepComplete(item, step));
   const selected = metrics.periods[period];
+  const salesWeekIndex = Math.max(0, metrics.grossWeeks.findIndex(week => week.start === (salesWeekStart || metrics.weekStart)));
+  const salesWeek = metrics.grossWeeks[salesWeekIndex] || { start: metrics.weekStart, end: metrics.weekEnd, grossCents: null, status: "unavailable", sales: [], isCurrent: true };
+  const hasEarlierWeek = salesWeekIndex + 1 < metrics.grossWeeks.length;
+  const hasLaterWeek = salesWeekIndex > 0;
   const dateRange = `${displayDate(selected.start)} – ${displayDate(selected.end)}`;
   const definitions = {
     close: "Customers first sent a quote in this period who have a dated sale, divided by all customers first sent a quote in this period. Each customer counts once; quote alternatives do not inflate the rate.",
     quoted: "Unique customers first sent a quote in this period. Repeat quotes and quote alternatives count once per customer.",
-    gross: "Signed contract value so far this Monday–Sunday week in Los Angeles time. This card always shows the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately.",
+    gross: "Signed contract value for the selected Monday–Sunday week in Los Angeles time. Use the arrows to browse weeks; This week returns to the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately.",
     cash: "Recorded customer payments received in the selected period, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
   };
   const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
@@ -59,16 +64,23 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
     <div className={styles.metrics}>
       <button type="button" className={styles.metric} aria-expanded={metric === "close"} onClick={() => setMetric(metric === "close" ? null : "close")}><span>Close rate</span><div><strong>{selected.cohort.percent === null ? "—" : `${selected.cohort.percent.toFixed(1)}%`}</strong><Ring value={selected.cohort.percent} /></div><small>{selected.cohort.sold} sold / {selected.cohort.quoted} quoted customers</small><small>{dateRange}</small></button>
       <button type="button" className={styles.metric} aria-expanded={metric === "quoted"} onClick={() => setMetric(metric === "quoted" ? null : "quoted")}><span>Quoted customers</span><div><strong>{selected.cohort.quoted}</strong></div><small>Unique customers first quoted</small><small>{dateRange}</small></button>
-      <button type="button" className={styles.metric} data-sales-status={metrics.grossStatus} aria-expanded={metric === "gross"} onClick={() => setMetric(metric === "gross" ? null : "gross")}>
-        <span>Weekly gross sales status</span>
-        <div><strong>{metrics.grossCents === null ? "Unavailable" : currency(metrics.grossCents / 100)}</strong></div>
-        <small>{metrics.grossStatus === "unavailable" ? "Status unavailable" : metrics.grossStatus === "met" ? "Goal met" : "Below goal"} · Goal {currency(WEEKLY_GROSS_SALES_GOAL_CENTS / 100)}</small>
-        <small>Signed contract value · Week to date</small>
-        <small>{displayDate(metrics.weekStart)} – {displayDate(metrics.weekEnd)} · Mon–Sun</small>
-      </button>
+      <div className={`${styles.metric} ${styles.salesMetric}`} data-sales-status={salesWeek.status}>
+        <button type="button" className={styles.salesMetricDetails} aria-expanded={metric === "gross"} onClick={() => setMetric(metric === "gross" ? null : "gross")}>
+          <span>Weekly gross sales status</span>
+          <div><strong>{salesWeek.grossCents === null ? "Unavailable" : currency(salesWeek.grossCents / 100)}</strong></div>
+          <small>{salesWeek.status === "unavailable" ? "Status unavailable" : salesWeek.status === "met" ? "Goal met" : "Below goal"} · Goal {currency(WEEKLY_GROSS_SALES_GOAL_CENTS / 100)}</small>
+          <small>Signed contract value · {salesWeek.isCurrent ? "Week to date" : "Completed week"}</small>
+          <small>{displayDate(salesWeek.start)}{salesWeek.start.slice(0, 4) !== salesWeek.end.slice(0, 4) ? `, ${salesWeek.start.slice(0, 4)}` : ""} – {displayDate(salesWeek.end)}, {salesWeek.end.slice(0, 4)} · Mon–Sun</small>
+        </button>
+        <nav className={styles.salesWeekNavigation} aria-label="Weekly gross sales navigation">
+          <button type="button" aria-label="Previous sales week" title="Previous week" disabled={!hasEarlierWeek} onClick={() => setSalesWeekStart(metrics.grossWeeks[salesWeekIndex + 1].start)}><ArrowLeft size={18} aria-hidden="true" /></button>
+          <button type="button" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(null)}>This week</button>
+          <button type="button" aria-label="Next sales week" title="Next week" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(salesWeekIndex === 1 ? null : metrics.grossWeeks[salesWeekIndex - 1].start)}><ArrowRight size={18} aria-hidden="true" /></button>
+        </nav>
+      </div>
       <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Payments collected</span><div><strong>{currency(selected.cashCents / 100)}</strong></div><small>Deposits + balances, less refunds</small><small>{dateRange}</small></button>
     </div>
-    {metric && <section className={styles.explanation}><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <>{metrics.grossCents === null ? <p>Signed sales history is unavailable.</p> : metrics.sales.length ? <ul>{metrics.sales.map(sale => <li key={sale.id}>{sale.customerName} · {sale.reference} · {currency(sale.amountCents / 100)}</li>)}</ul> : <p>No signed sales this week.</p>}<button type="button" onClick={onSales}>Open signed sales history <ArrowRight size={14} /></button></>}{metric === "cash" && <><p>{selected.receipts.length} dated receipts in this period · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onPayments}>Open payment records <ArrowRight size={14} /></button></>}</section>}
+    {metric && <section className={styles.explanation}><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <>{salesWeek.grossCents === null ? <p>Signed sales history is unavailable.</p> : salesWeek.sales.length ? <ul>{salesWeek.sales.map(sale => <li key={sale.id}>{sale.customerName} · {sale.reference} · {currency(sale.amountCents / 100)}</li>)}</ul> : <p>No signed sales in this week.</p>}<button type="button" onClick={onSales}>Open signed sales history <ArrowRight size={14} /></button></>}{metric === "cash" && <><p>{selected.receipts.length} dated receipts in this period · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onPayments}>Open payment records <ArrowRight size={14} /></button></>}</section>}
     </div>
     <div className={styles.sectionHeading}><h2>Workflow completion</h2><span>Select a step to see what needs attention</span></div>
     <div className={styles.stages}>{workflowSteps.map(id => { const value = workflowSummary(items, id); return <button key={id} type="button" aria-pressed={step === id} className={styles.stage} onClick={() => setStep(id)}><div><span>{workflowLabels[id]}</span><CompletionMark done={value.total > 0 && value.done === value.total && value.unknown === 0} /></div><strong>{value.done}<small> / {value.total}</small></strong><small>{value.unit}</small><span>{value.total ? `${Math.round(value.done / value.total * 100)}% complete` : "No records"}</span>{value.unknown > 0 && <small>{value.unknown} jobs need product details</small>}</button>; })}</div>
