@@ -1,3 +1,4 @@
+import { buildClosedSalesReport } from "./dashboard-metrics";
 import { describe, expect, it } from "vitest";
 import { buildOperationsItems, buildPerformanceMetrics, formatOperationsDate, productCompletionSourceLinks, workflowSummary } from "./operations-overview";
 import type { CrmBookkeepingRow, CrmCustomerContract, CrmCustomerFile, CrmCustomerProduct, CrmDashboardData, CrmJob, CrmQuote } from "./types";
@@ -351,6 +352,7 @@ describe("operations overview source integrity", () => {
     const metrics = buildPerformanceMetrics(data({ quotes: [quote({ sent_at: null })] }), now);
     expect(metrics.weekly.percent).toBeNull();
     expect(metrics.grossCents).toBeNull();
+    expect(metrics.grossStatus).toBe("unavailable");
     expect(metrics.missingQuoteDates).toBe(1);
   });
 });
@@ -450,3 +452,19 @@ describe('installation prerequisite reconciliation', () => {
     expect(unavailable.products[0].shipped).toBe(false);
   });
 });
+
+  it.each([[0, "below"], [13999.99, "below"], [14000, "met"], [17718.55, "met"]])("compares signed weekly sales of $%s against the $14,000 goal", (total, status) => {
+    const closedSales = buildClosedSalesReport({ jobs: [], contracts: [], quotes: [quote({ signed_at: "2026-09-15T18:00:00Z", quote_total: total })], now, includeCurrentWeek: true });
+    const metrics = buildPerformanceMetrics(data({ closedSales }), now);
+    expect(metrics).toMatchObject({ weekStart: "2026-09-14", weekEnd: "2026-09-20", grossCents: Math.round(Number(total) * 100), grossStatus: status });
+  });
+  it.each([
+    ["2026-09-21T06:59:59Z", "2026-09-14", "2026-09-20", 1_400_000, "met"],
+    ["2026-09-21T07:00:00Z", "2026-09-21", "2026-09-27", 0, "below"],
+    ["2026-11-02T07:59:59Z", "2026-10-26", "2026-11-01", 0, "below"],
+    ["2026-11-02T08:00:00Z", "2026-11-02", "2026-11-08", 0, "below"]
+  ])("resets the weekly goal at Los Angeles Monday midnight (%s)", (timestamp, weekStart, weekEnd, grossCents, grossStatus) => {
+    const current = new Date(timestamp);
+    const closedSales = buildClosedSalesReport({ jobs: [], contracts: [], quotes: [quote({ signed_at: "2026-09-21T06:59:00Z", quote_total: 14000 })], now: current, includeCurrentWeek: true });
+    expect(buildPerformanceMetrics(data({ closedSales }), current)).toMatchObject({ weekStart, weekEnd, grossCents, grossStatus });
+  });

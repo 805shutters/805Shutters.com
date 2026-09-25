@@ -237,3 +237,8 @@
 .condensedContract { width:min(1200px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); overflow:auto; background:#202420; color:#fbfbfa; border:1px solid #465047; border-radius:14px; padding:12px; }
 .condensedContract::backdrop { background:#0009; }
 @media(pointer:coarse) { .condensedTable .customerLink, .workspace .condensedLink { height:44px; min-height:44px; } .condensedTable .completionButton { width:44px; height:44px; min-height:44px; } .condensedTable tbody th, .condensedTable tbody td { height:52px; } }
+
+.metric[data-sales-status=below] { background:#681f27; border-color:#f87171; }
+.metric[data-sales-status=met] { background:#145535; border-color:#4ade80; }
+.metric[data-sales-status=below] > span, .metric[data-sales-status=below] small { color:#ffe4e6; }
+.metric[data-sales-status=met] > span, .metric[data-sales-status=met] small { color:#dcfce7; }

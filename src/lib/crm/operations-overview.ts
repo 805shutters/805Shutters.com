@@ -221,6 +221,8 @@ function businessDate(value: string | null | undefined, now: Date): string | nul
 }
 export type CloseCohort = { quoted: number; sold: number; percent: number | null; customers: { id: string; name: string; sold: boolean }[] };
 
+export const WEEKLY_GROSS_SALES_GOAL_CENTS = 1_400_000;
+
 export const performancePeriods = [
   { id: "weekly", label: "Weekly", description: "Week to date" },
   { id: "monthly", label: "Monthly", description: "Month to date" },
@@ -234,6 +236,8 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
   const date = new Date(`${today}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
   const weekStart = date.toISOString().slice(0, 10), monthStart = today.slice(0, 7) + "-01";
+  date.setUTCDate(date.getUTCDate() + 6);
+  const weekEnd = date.toISOString().slice(0, 10);
   const identity = new Map<string, { id: string; name: string }>();
   for (const file of data.customerFiles) {
     const value = { id: file.customer?.id || file.id, name: file.customerName };
@@ -272,8 +276,10 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
       cashCents: receipts.reduce((total, payment) => total + Math.round(payment.amount * 100), 0) };
   };
   const periods = { weekly: range(weekStart), monthly: range(monthStart), threeMonths: range(monthOffset(2)), sixMonths: range(monthOffset(5)) };
-  return { today, weekStart, monthStart, periods, weekly: periods.weekly.cohort, monthly: periods.monthly.cohort,
-    grossCents: periods.weekly.grossCents, sales: periods.weekly.sales,
+  const grossCents = periods.weekly.grossCents;
+  const grossStatus = grossCents === null ? "unavailable" : grossCents >= WEEKLY_GROSS_SALES_GOAL_CENTS ? "met" : "below";
+  return { today, weekStart, weekEnd, monthStart, periods, weekly: periods.weekly.cohort, monthly: periods.monthly.cohort,
+    grossCents, grossStatus, sales: periods.weekly.sales,
     cashCents: periods.weekly.cashCents, receipts: periods.weekly.receipts,
     missingQuoteDates, missingPaymentDates: payments.filter(payment => !businessDate(payment.paid_at, now)).length };
 }
