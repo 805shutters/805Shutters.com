@@ -1,0 +1,823 @@
+[
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": [
+          "HomeAndConstructionBusiness",
+          "LocalBusiness"
+        ],
+        "@id": "https://www.805shutters.com#local-business",
+        "name": "805 Shutters",
+        "legalName": "805 Shutters",
+        "alternateName": "805 Shutters",
+        "url": "https://www.805shutters.com/",
+        "telephone": "+1-805-806-9344",
+        "email": "805@805shutters.com",
+        "image": "https://www.805shutters.com/images/805-hero-window-treatments.jpg",
+        "logo": "https://www.805shutters.com/brand/805-shutters-logo.png",
+        "hasMap": "https://maps.google.com/?cid=14597332202667384985",
+        "identifier": {
+          "@type": "PropertyValue",
+          "propertyID": "Google Maps CID",
+          "value": "14597332202667384985"
+        },
+        "sameAs": [
+          "https://www.facebook.com/805shutters",
+          "https://www.instagram.com/805shutters",
+          "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
+          "https://maps.google.com/?cid=14597332202667384985",
+          "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378",
+          "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738",
+          "https://local.yahoo.com/info-225163327-805-shutters",
+          "https://www.chamberofcommerce.com/business-directory/california/santa-rosa-valley/window-treatment-store/2026058550-805-shutters-shades-blinds",
+          "https://www.2findlocal.com/b/15023840/805-shutters-shades-blinds-santa-rosa-valley-ca"
+        ],
+        "description": "805 Shutters is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
+        "foundingDate": "1995",
+        "founder": {
+          "@type": "Person",
+          "name": "Ken Hill"
+        },
+        "owner": {
+          "@type": "Person",
+          "name": "Ken Hill"
+        },
+        "priceRange": "$$",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "+1-805-806-9344",
+          "email": "805@805shutters.com",
+          "contactType": "customer service",
+          "areaServed": [
+            {
+              "@type": "AdministrativeArea",
+              "name": "Ventura County"
+            },
+            {
+              "@type": "Place",
+              "name": "Oxnard"
+            },
+            {
+              "@type": "Place",
+              "name": "Ventura"
+            },
+            {
+              "@type": "Place",
+              "name": "Camarillo"
+            },
+            {
+              "@type": "Place",
+              "name": "Ojai"
+            },
+            {
+              "@type": "Place",
+              "name": "Simi Valley"
+            },
+            {
+              "@type": "Place",
+              "name": "Port Hueneme"
+            },
+            {
+              "@type": "Place",
+              "name": "Thousand Oaks"
+            },
+            {
+              "@type": "Place",
+              "name": "Fillmore"
+            },
+            {
+              "@type": "Place",
+              "name": "Moorpark"
+            },
+            {
+              "@type": "Place",
+              "name": "Oak Park"
+            },
+            {
+              "@type": "Place",
+              "name": "Westlake Village"
+            },
+            {
+              "@type": "Place",
+              "name": "Santa Paula"
+            },
+            {
+              "@type": "Place",
+              "name": "Santa Rosa Valley"
+            },
+            {
+              "@type": "Place",
+              "name": "Newbury Park"
+            }
+          ],
+          "availableLanguage": "English"
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ],
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "areaServed": [
+          {
+            "@type": "AdministrativeArea",
+            "name": "Ventura County"
+          },
+          {
+            "@type": "Place",
+            "name": "Oxnard"
+          },
+          {
+            "@type": "Place",
+            "name": "Ventura"
+          },
+          {
+            "@type": "Place",
+            "name": "Camarillo"
+          },
+          {
+            "@type": "Place",
+            "name": "Ojai"
+          },
+          {
+            "@type": "Place",
+            "name": "Simi Valley"
+          },
+          {
+            "@type": "Place",
+            "name": "Port Hueneme"
+          },
+          {
+            "@type": "Place",
+            "name": "Thousand Oaks"
+          },
+          {
+            "@type": "Place",
+            "name": "Fillmore"
+          },
+          {
+            "@type": "Place",
+            "name": "Moorpark"
+          },
+          {
+            "@type": "Place",
+            "name": "Oak Park"
+          },
+          {
+            "@type": "Place",
+            "name": "Westlake Village"
+          },
+          {
+            "@type": "Place",
+            "name": "Santa Paula"
+          },
+          {
+            "@type": "Place",
+            "name": "Santa Rosa Valley"
+          },
+          {
+            "@type": "Place",
+            "name": "Newbury Park"
+          }
+        ],
+        "serviceArea": {
+          "@type": "AdministrativeArea",
+          "name": "Ventura County"
+        },
+        "knowsAbout": [
+          "Plantation shutters",
+          "Custom shutters",
+          "Window shades",
+          "Custom blinds",
+          "Drapery",
+          "Custom curtains",
+          "Curtain and drapery panels",
+          "Exterior shades",
+          "Commercial roller shades",
+          "Window coverings",
+          "Motorized shades",
+          "Sliding door window treatments"
+        ],
+        "makesOffer": [
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Custom shutters"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Custom window shades"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Custom blinds"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Custom drapery and curtains"
+            }
+          },
+          {
+            "@type": "Offer",
+            "itemOffered": {
+              "@type": "Service",
+              "name": "Commercial window coverings"
+            }
+          }
+        ],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "@id": "https://www.805shutters.com#service-catalog",
+          "name": "805 Shutters window covering services",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Shutters",
+                "description": "Plantation shutters, wood shutters, specialty shapes, sliding door shutters, and whole-home shutter upgrades.",
+                "areaServed": [
+                  {
+                    "@type": "AdministrativeArea",
+                    "name": "Ventura County"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oxnard"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ventura"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Camarillo"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ojai"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Simi Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Port Hueneme"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Thousand Oaks"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Fillmore"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Moorpark"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oak Park"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Westlake Village"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Paula"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Rosa Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Newbury Park"
+                  }
+                ],
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/shutters/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Window Shades",
+                "description": "Roller shades, honeycomb shades, Roman shades, woven wood shades, layered shades, and motorized options.",
+                "areaServed": [
+                  {
+                    "@type": "AdministrativeArea",
+                    "name": "Ventura County"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oxnard"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ventura"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Camarillo"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ojai"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Simi Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Port Hueneme"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Thousand Oaks"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Fillmore"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Moorpark"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oak Park"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Westlake Village"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Paula"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Rosa Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Newbury Park"
+                  }
+                ],
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/shades/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Blinds",
+                "description": "Wood, faux wood, aluminum, vertical, and softwood blinds measured and installed for local homes and businesses.",
+                "areaServed": [
+                  {
+                    "@type": "AdministrativeArea",
+                    "name": "Ventura County"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oxnard"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ventura"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Camarillo"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ojai"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Simi Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Port Hueneme"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Thousand Oaks"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Fillmore"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Moorpark"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oak Park"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Westlake Village"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Paula"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Rosa Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Newbury Park"
+                  }
+                ],
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/blinds/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Drapery & Curtains",
+                "description": "Custom drapery, curtains, and fabric window treatment planning for rooms that need warmth, privacy, light control, and a finished designer look.",
+                "areaServed": [
+                  {
+                    "@type": "AdministrativeArea",
+                    "name": "Ventura County"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oxnard"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ventura"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Camarillo"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ojai"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Simi Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Port Hueneme"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Thousand Oaks"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Fillmore"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Moorpark"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oak Park"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Westlake Village"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Paula"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Rosa Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Newbury Park"
+                  }
+                ],
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/drapery/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Commercial Window Coverings",
+                "description": "Commercial roller shades and window treatments for offices, storefronts, schools, medical spaces, and shared workspaces.",
+                "areaServed": [
+                  {
+                    "@type": "AdministrativeArea",
+                    "name": "Ventura County"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oxnard"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ventura"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Camarillo"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Ojai"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Simi Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Port Hueneme"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Thousand Oaks"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Fillmore"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Moorpark"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Oak Park"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Westlake Village"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Paula"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Santa Rosa Valley"
+                  },
+                  {
+                    "@type": "Place",
+                    "name": "Newbury Park"
+                  }
+                ],
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/commercial-window-coverings/"
+              }
+            }
+          ]
+        },
+        "potentialAction": {
+          "@type": "ReserveAction",
+          "name": "Book a free in-home window treatment consultation",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.805shutters.com/free-window-treatment-consultation/",
+            "actionPlatform": [
+              "https://schema.org/DesktopWebPlatform",
+              "https://schema.org/MobileWebPlatform"
+            ]
+          },
+          "object": {
+            "@id": "https://www.805shutters.com#service"
+          }
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.805shutters.com#website",
+        "name": "805 Shutters",
+        "alternateName": "805 Shutters",
+        "url": "https://www.805shutters.com",
+        "inLanguage": "en-US",
+        "publisher": {
+          "@id": "https://www.805shutters.com#local-business"
+        },
+        "potentialAction": {
+          "@type": "ReserveAction",
+          "name": "Request a free in-home window treatment consultation",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.805shutters.com/free-window-treatment-consultation/",
+            "actionPlatform": [
+              "https://schema.org/DesktopWebPlatform",
+              "https://schema.org/MobileWebPlatform"
+            ]
+          },
+          "object": {
+            "@id": "https://www.805shutters.com#service"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://www.805shutters.com/shades/#webpage",
+        "url": "https://www.805shutters.com/shades/",
+        "name": "Custom Window Shades Ventura County | 805 Shutters",
+        "description": "Custom roller shades, honeycomb shades, woven wood shades, Roman shades, and motorized shades for Ventura County homes and businesses.",
+        "isPartOf": {
+          "@id": "https://www.805shutters.com#website"
+        },
+        "mainEntity": {
+          "@id": "https://www.805shutters.com/shades/#service"
+        },
+        "breadcrumb": {
+          "@id": "https://www.805shutters.com/shades/#breadcrumb"
+        },
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://www.805shutters.com/images/805-portfolio-shades-bedroom.jpg",
+          "contentUrl": "https://www.805shutters.com/images/805-portfolio-shades-bedroom.jpg",
+          "caption": "Relaxed Roman shades over a wide bedroom window in a Ventura County home"
+        }
+      },
+      {
+        "@type": "Service",
+        "@id": "https://www.805shutters.com/shades/#service",
+        "name": "Custom Window Shades in Ventura County",
+        "description": "Custom roller shades, honeycomb shades, woven wood shades, Roman shades, and motorized shades for Ventura County homes and businesses.",
+        "url": "https://www.805shutters.com/shades/",
+        "image": {
+          "@type": "ImageObject",
+          "url": "https://www.805shutters.com/images/805-portfolio-shades-bedroom.jpg",
+          "contentUrl": "https://www.805shutters.com/images/805-portfolio-shades-bedroom.jpg",
+          "caption": "Relaxed Roman shades over a wide bedroom window in a Ventura County home"
+        },
+        "serviceType": "Light control and privacy",
+        "provider": {
+          "@id": "https://www.805shutters.com#local-business"
+        },
+        "areaServed": [
+          {
+            "@type": "AdministrativeArea",
+            "name": "Ventura County"
+          },
+          {
+            "@type": "Place",
+            "name": "Oxnard"
+          },
+          {
+            "@type": "Place",
+            "name": "Ventura"
+          },
+          {
+            "@type": "Place",
+            "name": "Camarillo"
+          },
+          {
+            "@type": "Place",
+            "name": "Ojai"
+          },
+          {
+            "@type": "Place",
+            "name": "Simi Valley"
+          },
+          {
+            "@type": "Place",
+            "name": "Port Hueneme"
+          },
+          {
+            "@type": "Place",
+            "name": "Thousand Oaks"
+          },
+          {
+            "@type": "Place",
+            "name": "Fillmore"
+          },
+          {
+            "@type": "Place",
+            "name": "Moorpark"
+          },
+          {
+            "@type": "Place",
+            "name": "Oak Park"
+          },
+          {
+            "@type": "Place",
+            "name": "Westlake Village"
+          },
+          {
+            "@type": "Place",
+            "name": "Santa Paula"
+          },
+          {
+            "@type": "Place",
+            "name": "Santa Rosa Valley"
+          },
+          {
+            "@type": "Place",
+            "name": "Newbury Park"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://www.805shutters.com/shades/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Which custom shade is best for glare and privacy?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The best shade depends on the room. Roller and solar shades are strong for glare and large glass, honeycomb shades add softness and insulation, woven shades add texture, and room-darkening fabrics help bedrooms and media rooms."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do you offer motorized window shades?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Motorized shades can be discussed for tall windows, hard-to-reach openings, repeated windows, and rooms where grouped shade control would make daily use easier."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I compare roller, honeycomb, Roman, and woven shades in one visit?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. A consultation can compare shade styles, fabric opacity, color, privacy, view-through, control side, mounting depth, and room-darkening needs before a final recommendation is made."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://www.805shutters.com/shades/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.805shutters.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Custom Window Shades in Ventura County",
+            "item": "https://www.805shutters.com/shades/"
+          }
+        ]
+      }
+    ]
+  }
+]

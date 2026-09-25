@@ -2,6 +2,10 @@
 
 Scope: all 152 URLs in the live sitemap at production commit `7f2f3022ff3f6d2045bdfd03e474aefbee4287c9`. Direct HTTP GET captured initial HTML, without browser JavaScript. All pages returned 200. All 292 JSON-LD script blocks parsed. This is a source-backed audit and automated field validation, not a claimed Google Rich Results Test or Search Console result. No Google account was accessed.
 
+## Round 2 supersedes the protected-page exceptions below
+
+The user approved the same schema corrections on / and /shades/. All 152 sitemap pages now receive the corrected business entity. See [round 2 validation and before/after](ROUND2.md), [outside-county wording proposals](OUTSIDE-COUNTY-PROPOSALS.md), and [unchanged claims pending decisions](UNVERIFIED-CLAIMS.md). The original audit below is retained as baseline history; its 150-page scope and protected-page suggestions describe round 1, not the current PR.
+
 ## Evidence
 
 - [Schema types and every page containing them](schema-type-pages.csv): includes nested types, not just graph roots.
