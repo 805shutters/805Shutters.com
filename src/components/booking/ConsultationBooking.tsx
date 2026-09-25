@@ -46,6 +46,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [selection, setSelection] = useState<Selection>({ date: "", time: "" });
   const [contactStarted, setContactStarted] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(false);
   const [contact, setContact] = useState(emptyContact);
   const [address, setAddress] = useState("");
   const [checkAddress, setCheckAddress] = useState("");
@@ -77,12 +78,12 @@ export function ConsultationBooking({ active = true, className = "", heading,
       const element = target === "times" ? slotsRef.current : formRef.current;
       element?.focus({ preventScroll: true });
       element?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        behavior: target === "details" ? "instant" : window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
         block: "start",
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [selection]);
+  }, [selection, editingSchedule]);
 
   useEffect(() => {
     if (!complete) return;
@@ -141,6 +142,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
   const hasOpenings = availability?.days.some(day => day.available);
   const monthLabel = availability?.month === month ? availability.monthLabel
     : new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(`${month}-01T12:00:00`));
+  const showSchedule = !contactStarted || !selection.time || editingSchedule;
   const isPage = className.includes("booking-panel--page");
   const title = heading ?? "Book your free consultation";
 
@@ -157,10 +159,15 @@ export function ConsultationBooking({ active = true, className = "", heading,
       block: "start",
     });
   }
+  function editAppointment() {
+    pendingScroll.current = "times";
+    setEditingSchedule(true);
+  }
   function chooseTime(time: string) {
     pendingScroll.current = "details";
     setSelection({ date: selection.date, time });
     setContactStarted(true);
+    setEditingSchedule(false);
     setMessage("");
     trackBookingStep({ step: "time_select", ...trackingContext() });
   }
@@ -174,6 +181,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
     setComplete(false);
     setSelection({ date: "", time: "" });
     setContactStarted(false);
+    setEditingSchedule(false);
     setContact(emptyContact);
     setAddress("");
     setCheckAddress("");
@@ -240,7 +248,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
       <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
       <button type="button" onClick={reset}>{onDone ? "Done" : "Book another appointment"}</button>
     </section> : <>
-      <div className="consultation-booking__schedule">
+      {showSchedule && <div className="consultation-booking__schedule">
         <section className="consultation-booking__calendar" ref={calendarRef} tabIndex={-1} aria-label="Choose a consultation date" aria-busy={loading}>
           <div className="consultation-booking__month">
             <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} disabled={submitting || month <= losAngelesDateString().slice(0, 7)}>‹</button>
@@ -273,35 +281,45 @@ export function ConsultationBooking({ active = true, className = "", heading,
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}
           {loading && <p role="status">{checkAddress ? "Checking times for your address…" : "Loading available times…"}</p>}
         </div>}
-      </div>
+      </div>}
       {availabilityError && <div className="consultation-booking__notice" role="alert"><p>{availabilityError}</p><button type="button" disabled={loading} onClick={() => setRefresh(n => n + 1)}>Try again</button></div>}
       {message && <p className="consultation-booking__notice" role="alert">{message}</p>}
-      {contactStarted && <form className="consultation-booking__form" ref={formRef} tabIndex={-1} aria-label="Your details" onSubmit={submit}>
-        <h3>Your details</h3>
-        {selection.time ? <p className="consultation-booking__summary">{dateLabel(selection.date)} at {timeLabel(selection.time)} · 1 hour</p> : <p>Choose an available time above. Your details are kept here.</p>}
-        <fieldset disabled={submitting}>
-          <div className="consultation-booking__fields">
-            <label>Full name<input name="name" autoComplete="name" required value={contact.name} onChange={event => setContact({ ...contact, name: event.target.value })} /></label>
-            <label>Phone<input name="phone" type="tel" autoComplete="tel" required value={contact.phone} onChange={event => setContact({ ...contact, phone: event.target.value })} /></label>
-            <label className="consultation-booking__wide">Service address<AddressAutocomplete name="address" required value={address}
-              onChange={event => { setAddress(event.target.value); setCheckAddress(""); setVerifiedAddress(null); }}
-              onBlur={() => setCheckAddress(address.trim())}
-              onResolved={resolved => { setAddress(resolved.fullAddress); setCheckAddress(resolved.fullAddress.trim()); setVerifiedAddress(null); }} /></label>
-            <label className="consultation-booking__wide">Email (optional)<input name="email" type="email" autoComplete="email" value={contact.email} onChange={event => setContact({ ...contact, email: event.target.value })} /></label>
+      {contactStarted && <form className={`consultation-booking__form${!showSchedule ? " consultation-booking__form--active" : ""}`} ref={formRef} tabIndex={-1} aria-label="Your details" onSubmit={submit}>
+        <h3>Complete your booking</h3>
+        <p>Enter your details to book your free one-hour visit.</p>
+        {selection.time ? <div className="consultation-booking__appointment">
+          <p className="consultation-booking__summary">{dateLabel(selection.date)} at {timeLabel(selection.time)} · 1 hour</p>
+          {!showSchedule && <button type="button" className="consultation-booking__change-date" onClick={editAppointment} disabled={submitting}>Change date or time</button>}
+        </div> : <p>Choose an available time above. Your details are kept here.</p>}
+        <fieldset className="consultation-booking__details-layout" disabled={submitting}>
+          <div className="consultation-booking__contact">
+            <h4>Your information</h4>
+            <div className="consultation-booking__fields">
+              <label>Full name<input name="name" autoComplete="name" required value={contact.name} onChange={event => setContact({ ...contact, name: event.target.value })} /></label>
+              <label>Service address<AddressAutocomplete name="address" required value={address}
+                onChange={event => { setAddress(event.target.value); setCheckAddress(""); setVerifiedAddress(null); }}
+                onBlur={() => setCheckAddress(address.trim())}
+                onResolved={resolved => { setAddress(resolved.fullAddress); setCheckAddress(resolved.fullAddress.trim()); setVerifiedAddress(null); }} /></label>
+              <label>Phone number<input name="phone" type="tel" autoComplete="tel" required value={contact.phone} onChange={event => setContact({ ...contact, phone: event.target.value })} /></label>
+              <label>Email (optional)<input name="email" type="email" autoComplete="email" value={contact.email} onChange={event => setContact({ ...contact, email: event.target.value })} /></label>
+            </div>
           </div>
-          <details className="consultation-booking__optional">
-            <summary>Tell us about your project — optional</summary>
-            <fieldset className="consultation-booking__products"><legend>What window coverings interest you?</legend>
+          <section className="consultation-booking__optional" aria-label="Optional project questions">
+            <h4>Your project <span>Optional</span></h4>
+            <p className="consultation-booking__hint">Share what you know. You can skip these questions.</p>
+            <fieldset className="consultation-booking__products"><legend>What type of coverings are you interested in?</legend>
               {productInterestOptions.map(product => <label key={product}><input type="checkbox" checked={productTypes.includes(product)}
                 onChange={() => setProductTypes(current => current.includes(product) ? current.filter(value => value !== product) : [...current, product])} />{product}</label>)}
             </fieldset>
-            <label>Approximately how many windows?<select name="windowCount" value={windowCount} onChange={event => setWindowCount(event.target.value)}>
+            <label>How many windows will we be measuring?<select name="windowCount" value={windowCount} onChange={event => setWindowCount(event.target.value)}>
               <option value="">Not sure / skip</option>{countOptions.map((label, i) => <option value={countValues[i]} key={label}>{label}</option>)}
             </select></label>
-            <label>Anything else we should know?<textarea name="notes" rows={3} value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} /></label>
-          </details>
-          <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || !addressChecked || Boolean(availabilityError)}>{submitting ? "Booking your appointment…" : "Book appointment"}</button>
-          {address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
+            <label>Anything else we should know?<textarea name="notes" rows={2} value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} /></label>
+          </section>
+          <div className="consultation-booking__actions">
+            <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || !addressChecked || Boolean(availabilityError)}>{submitting ? "Booking your appointment…" : "Book appointment"}</button>
+            {address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
+          </div>
         </fieldset>
       </form>}
       <p className="consultation-booking__help">Need help? <a href={`sms:${brandIdentity.phoneHref.replace("tel:", "")}`}>Text {brandIdentity.phone}</a></p>

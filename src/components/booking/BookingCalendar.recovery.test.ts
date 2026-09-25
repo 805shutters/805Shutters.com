@@ -74,10 +74,12 @@ it("starts with only the calendar, then reveals and scrolls to the selected day'
   expect(Element.prototype.scrollIntoView).toHaveBeenCalledOnce();
   await click("10:30 AM");
   expect(document.activeElement).toBe(host.querySelector("form"));
+  expect(host.querySelector(".consultation-booking__schedule")).toBeNull();
+  await click("Change date or time");
   await click("Change date");
   expect(document.activeElement).toBe(host.querySelector(".consultation-booking__calendar"));
   expect(host.querySelector("form")).not.toBeNull();
-  expect(host.querySelector('.consultation-booking__slots [aria-pressed="true"] strong')?.textContent).toBe("10:30 AM");
+  expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
 });
 
 it("keeps empty-month guidance visible before a day is selected", async () => {
@@ -92,14 +94,19 @@ it("shows contact details only after time selection and preserves the time acros
   await click("28"); expect(host.querySelector("form")).toBeNull();
   await click("10:30 AM");
   expect(host.querySelector("form")).not.toBeNull();
-  expect(host.querySelector("details")?.open).toBe(false);
+  expect(host.querySelector(".consultation-booking__schedule")).toBeNull();
+  expect(host.textContent).toContain("Complete your booking");
+  expect(host.querySelector('[aria-label="Optional project questions"]')).not.toBeNull();
+  expect(host.querySelector("details")).toBeNull();
+  expect(host.querySelector<HTMLInputElement>('input[name="email"]')?.required).toBe(false);
+  expect([...host.querySelectorAll('.consultation-booking__contact input')].map(input => input.getAttribute('name'))).toEqual(['name', 'phone', 'email']);
   expect(host.querySelectorAll('button[type="submit"]')).toHaveLength(1);
   fetchMock.mockResolvedValue(ok(available({ revision: "101", addressChecked: true })));
   await click("Choose address");
-  expect(host.querySelector('.consultation-booking__slots [aria-pressed="true"] strong')?.textContent).toBe("10:30 AM");
+  expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
   await act(async () => window.dispatchEvent(new Event("focus")));
-  expect(host.querySelector('.consultation-booking__slots [aria-pressed="true"] strong')?.textContent).toBe("10:30 AM");
+  expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
 });
 
 it("retains the contact form and optional answers when address travel invalidates the chosen time", async () => {
@@ -127,6 +134,22 @@ it("does not refetch or change the time when optional window count changes", asy
   const count = host.querySelector<HTMLSelectElement>('select[name="windowCount"]')!;
   await act(async () => { count.value = "31"; count.dispatchEvent(new Event("change", { bubbles: true })); });
   expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(host.querySelector('.consultation-booking__slots [aria-pressed="true"] strong')?.textContent).toBe("10:30 AM");
+  expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
   expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain("1 hour");
+});
+
+
+it("keeps optional project answers when changing the selected appointment", async () => {
+  const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available())));
+  await click("28"); await click("10:30 AM");
+  const form = host.querySelector("form");
+  await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  await click("Change date or time");
+  expect(host.querySelector(".consultation-booking__times")).not.toBeNull();
+  await click("11:00 AM");
+  expect(host.querySelector(".consultation-booking__schedule")).toBeNull();
+  expect(host.querySelector("form")).toBe(form);
+  expect(host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(true);
+  expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("11:00 AM");
+  expect(document.activeElement).toBe(form);
 });

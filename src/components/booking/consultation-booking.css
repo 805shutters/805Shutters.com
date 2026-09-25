@@ -55,13 +55,21 @@
 .consultation-booking__notice { padding: 14px 16px; background: #fff7e7; border-radius: 0; color: #68481e; }
 .consultation-booking__form { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 24px; scroll-margin-top: 20px; }
 .consultation-booking fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.consultation-booking__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-.consultation-booking__wide { grid-column: 1 / -1; }
+.consultation-booking__fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 20px; }
+.consultation-booking__form--active { border-top: 0; margin-top: 0; padding-top: 0; scroll-margin-top: 60px; }
+.consultation-booking__form > h3 { font-family: var(--font-display); font-size: 30px; font-weight: 400; }
+.consultation-booking__appointment { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 24px; }
+.consultation-booking__appointment .consultation-booking__summary { margin: 0; }
+.consultation-booking fieldset.consultation-booking__details-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; grid-template-rows: min-content 1fr; align-items: start; }
+.consultation-booking__contact { grid-column: 1; grid-row: 1; }
+.consultation-booking__actions { grid-column: 1; grid-row: 2; align-self: start; }
+.consultation-booking__form h4 { margin: 0; font: inherit; font-weight: 600; font-size: 17px; }
+.consultation-booking__optional h4 { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.consultation-booking__optional h4 span { color: var(--muted); font-size: 12px; font-weight: 400; }
 .consultation-booking label { display: grid; gap: 6px; font-weight: 500; font-size: 14px; color: var(--ink); }
 .consultation-booking input, .consultation-booking select, .consultation-booking textarea { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 0; background: var(--white); padding: 10px 12px; color: var(--ink); font: inherit; font-size: 16px; box-shadow: none; }
 .consultation-booking__summary { padding: 10px 14px; background: var(--soft); color: var(--ink); border-radius: 0; font-weight: 500; }
-.consultation-booking__optional { margin-top: 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px 0; }
-.consultation-booking__optional summary { cursor: pointer; font-weight: 500; min-height: 24px; }
+.consultation-booking__optional { grid-column: 2; grid-row: 1 / span 2; border-left: 1px solid var(--line); padding-left: 28px; }
 .consultation-booking__optional > label { margin-top: 16px; }
 .consultation-booking fieldset.consultation-booking__products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 18px 0; }
 .consultation-booking__products legend { font-size: 14px; padding-bottom: 8px; }
@@ -75,6 +83,13 @@
 .booking-modal-dialog { padding: 0; width: min(880px, calc(100% - 32px)); max-width: 880px; max-height: calc(100dvh - 32px); border: 0; border-radius: 0; background: var(--white); overflow-y: auto; margin: auto; }
 .booking-modal-dialog::backdrop { background: rgb(11 11 11 / 50%); }
 .booking-modal-dialog .booking-panel { max-height: none; width: 100%; }
+@media (max-width: 700px) {
+  .consultation-booking fieldset.consultation-booking__details-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; gap: 24px; }
+  .consultation-booking__contact, .consultation-booking__optional, .consultation-booking__actions { grid-column: auto; grid-row: auto; }
+  .consultation-booking__optional { border-left: 0; border-top: 1px solid var(--line); padding: 20px 0 0; }
+  .consultation-booking__appointment { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .consultation-booking__actions .consultation-booking__submit { margin-top: 0; }
+}
 @media (max-width: 600px) {
   .consultation-page-head { padding: 18px 16px 16px; gap: 12px; align-items: flex-start; }
   .consultation-page-head img { width: 48px; }
@@ -94,7 +109,5 @@
   .consultation-booking__slots { margin-top: 12px; }
   .consultation-booking__slots button { padding: 12px; }
   .consultation-booking__fields { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .consultation-booking__optional summary { font-size: 14px; }
-  .consultation-booking fieldset.consultation-booking__products { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .consultation-booking { scroll-behavior: auto; } }

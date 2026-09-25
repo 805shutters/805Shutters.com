@@ -41,3 +41,10 @@ No production migration, push, or deployment has been performed. The preview use
 - Option 4 verified on desktop and mobile: solid-black available days, white outlined selected day, two-column large time controls, no initial time controls, and scroll/focus on date selection.
 - Completed another synthetic mobile booking with all optional answers blank: exactly one lead, one job, one 60-minute event, and eight queued local outbox effects; no external delivery. Confirmation came into view with the correct date, time, address, and duration.
 - Fixed the mobile Change date button width and made address suggestions open above the field when the visible viewport has insufficient room below; suggestions remain anchored during scrolling, keyboard viewport changes, and dialog use.
+
+## Contact-step follow-up, September 25
+
+- Time selection now immediately replaces the calendar/time chooser with Complete your booking and focuses the form. The selected appointment remains visible with Change date or time; changing the slot preserves customer and optional answers.
+- Desktop and iPad show name, address, phone, and optional email on the left, with visible optional covering choices, window count, and notes on the right. Mobile stacks the same sections.
+- Verified page and native popup at 1440×1000, 820×1180, and 390×844. The details heading is immediately visible after selection; no horizontal overflow. Keyboard order starts with name then address; Escape restores popup trigger focus.
+- Seven focused UI tests pass, including retained optional answers across slot changes. Another isolated mobile booking with all optional fields blank created one additional lead, job, 60-minute event, and eight local outbox effects. A travel conflict preserved information and an alternative time booked successfully. External delivery stayed suppressed.
