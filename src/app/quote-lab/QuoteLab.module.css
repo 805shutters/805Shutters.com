@@ -6,15 +6,6 @@
   background: #f4f4f2;
 }
 
-:global(body.quote-lab-active .site-header-shell),
-:global(body.quote-lab-active .site-footer),
-:global(body.quote-lab-active .financing-banner),
-:global(body.quote-lab-active .mobile-utility-bar),
-:global(body.quote-lab-active [data-public-activity-tracking]),
-:global(body.quote-lab-active .assistant-widget) {
-  display: none !important;
-}
-
 .builderPage *,
 .accessPage * {
   box-sizing: border-box;

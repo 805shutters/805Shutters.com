@@ -26,7 +26,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@mts/components/ui/accordion";
-import { SignaturePad } from "@mts/components/crm/SignaturePad";
+import { InPersonSigning } from "./InPersonSigning";
 import {
   FileText,
   CreditCard,
@@ -366,7 +366,7 @@ export function QuoteContract({
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ measureDecision }),
+          body: JSON.stringify({ measureDecision, expectedRevision: quote?.quote_v2_revision, acknowledgedTotal: totalAmount }),
         },
       );
       const result = (await response.json().catch(() => ({}))) as {
@@ -1306,36 +1306,18 @@ export function QuoteContract({
           <CardTitle>Customer Signature</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-1">
-            <Label>Signed By</Label>
-            <Input
-              defaultValue={quote.customer_printed_name || quote.customer_name || ""}
-              onBlur={(e) => updateQuote.mutate({ customer_printed_name: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            3 business days cancellation period per California law
-          </p>
-          <div className="p-3 bg-muted/30 rounded-lg text-sm">
-            By signing below, you confirm that the contact information shown above is accurate and
-            authorize {companyName} to contact you at these email/phone numbers regarding your
-            order.
-          </div>
-          <SignaturePad
-            label="Sign here"
-            onSignatureChange={(dataUrl) => updateQuote.mutate({ customer_signature: dataUrl })}
+          <InPersonSigning
+            key={quote.id}
+            quote={quote}
+            measureDecision={measureDecision}
+            disabled={designWritesPending || updateQuote.isPending || markAsSold.isPending}
           />
         </CardContent>
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setShowSendDialog(true)}>
             <Send className="h-4 w-4 mr-2" />
             Send Quote
@@ -1353,8 +1335,8 @@ export function QuoteContract({
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Label htmlFor="technical-measure-decision" className="sr-only">
+        <div className="flex flex-wrap items-center gap-2">
+          <Label htmlFor="technical-measure-decision">
             Technical measure decision
           </Label>
           <select
@@ -1371,12 +1353,13 @@ export function QuoteContract({
           <Button
             size="lg"
             onClick={() => markAsSold.mutate()}
-            disabled={markAsSold.isPending || !measureDecision}
+            disabled={markAsSold.isPending || !measureDecision || designWritesPending || updateQuote.isPending}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             <CheckCircle2 className="h-5 w-5 mr-2" />
             {quote.status === "sold" ? "Retry Sold Handoff" : "Mark as Sold"}
           </Button>
+          {!measureDecision && <p className="w-full text-sm text-muted-foreground">Choose “Measure needed” or “No measure needed” to enable Mark as Sold.</p>}
         </div>
       </div>
 

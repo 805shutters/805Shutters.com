@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getPageByPath, site } from "@/lib/site-data";
-import { pageJsonLdFor } from "./page";
+import { pageJsonLdFor } from "@/lib/page-json-ld";
 
 describe("location page structured data", () => {
   it("emits a service entity for the Santa Clarita location page", () => {

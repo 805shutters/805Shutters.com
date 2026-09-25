@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import {
   runLinkedInProfileFilingCron,
   type LinkedInProfileFilingCronDependencies,
-} from "./route";
+} from "./handler";
 import type { MtsCompletedReportGmailClient } from "@/lib/crm/mts-completed-report-filing";
 
 function request(secret?: string) {

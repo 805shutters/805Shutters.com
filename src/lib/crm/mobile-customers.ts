@@ -1,4 +1,4 @@
-import { toE164 } from "@/lib/notify/twilio";
+import { toE164 } from "@/lib/notify/phone";
 
 export type MobileCustomerScope = "active" | "archived";
 export type MobileCustomerResult = {

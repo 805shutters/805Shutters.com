@@ -13,9 +13,9 @@ describe("V4 contract handoff", () => {
   it("uses authenticated server routes for customer send and sold conversion", () => {
     expect(sendSource).toContain("/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/send");
     expect(contractSource).toContain("/api/crm/sales-quotes/${encodeURIComponent(activeQuoteId!)}/sold");
-    expect(contractSource).toContain("JSON.stringify({ measureDecision })");
+    expect(contractSource).toContain("JSON.stringify({ measureDecision, expectedRevision: quote?.quote_v2_revision, acknowledgedTotal: totalAmount })");
     expect(contractSource).toContain('quote.status === "sold" ? "Retry Sold Handoff"');
-    expect(contractSource).not.toContain('disabled={markAsSold.isPending || quote.status === "sold"');
+    expect(contractSource).toContain('to enable Mark as Sold');
     expect(contractSource).not.toMatch(/from\("sales_quotes"\)[\s\S]{0,200}update\(\{\s*status:\s*"sold"/);
   });
 

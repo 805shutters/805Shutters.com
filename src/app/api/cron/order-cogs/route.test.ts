@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { isOrderCogsRunTime, runOrderCogsCron, type OrderCogsCronDependencies } from "./route";
+import { isOrderCogsRunTime, runOrderCogsCron, type OrderCogsCronDependencies } from "./handler";
 
 function request() {
   return new NextRequest("https://www.805shutters.com/api/cron/order-cogs/", {

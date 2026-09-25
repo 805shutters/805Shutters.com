@@ -882,7 +882,11 @@ export async function advanceQuoteStatus(
     action: `status.${nextStatus}`,
     metadata: { from: quote.status, to: nextStatus },
   });
-  const updatedQuote = await recalcQuoteTotals(supabase, quoteId);
+  // Native acceptance already fixed the exact customer totals atomically.
+  // A lifecycle handoff must not reprice that contract through the legacy engine.
+  const updatedQuote = quote.meta?.native_delivery_id
+    ? await loadQuoteBuilder(supabase, quoteId)
+    : await recalcQuoteTotals(supabase, quoteId);
   if (!options.deferInstallerDelivery) {
     await ensureSoldQuoteInstallerDelivery(supabase, updatedQuote);
   }

@@ -18397,3 +18397,12 @@ body:has(.financing-banner) .site-header-shell {
 @media (pointer: coarse) {
   .crm-closed-sales-nav button { min-height: 44px; }
 }
+/* Quote Lab hides public site chrome while its body class is active. */
+body.quote-lab-active .site-header-shell,
+body.quote-lab-active .site-footer,
+body.quote-lab-active .financing-banner,
+body.quote-lab-active .mobile-utility-bar,
+body.quote-lab-active [data-public-activity-tracking],
+body.quote-lab-active .assistant-widget {
+  display: none !important;
+}

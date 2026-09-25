@@ -5,7 +5,7 @@ vi.mock("@/lib/notify/email", () => ({ sendEmail: mocks.email, buildQuoteEmail: 
 vi.mock("@/lib/notify/twilio", () => ({ sendSms: mocks.sms, toE164: (v: string) => /^\+1\d{10}$/.test(v) ? v : null }));
 vi.mock("./public-quote", () => ({ loadPublicQuoteByToken: mocks.pub, publicQuoteUrl: (t: string) => `https://805shutters.com/quote/${t}`, buildQuoteShareSms: (url: string) => url }));
 vi.mock("./sales-quote-v2-send", async (importOriginal) => ({ ...await importOriginal<typeof import("./sales-quote-v2-send")>(), prepareV2CustomerSendPayloadFromDatabase: mocks.prepare }));
-import { deliverFrozenNativeQuote, nativeDeliveryRequest, nativeQuoteDeliveryCapability, sendNativeSalesQuote } from "./native-quote-delivery";
+import { deliverFrozenNativeQuote, prepareNativeInPersonQuote, nativeDeliveryRequest, nativeQuoteDeliveryCapability, sendNativeSalesQuote } from "./native-quote-delivery";
 import { V2SendPreparationError } from "./sales-quote-v2-send";
 const delivery = { id: "delivery", quote_id: "source", crm_quote_id: "crm", share_token: "preserved", request_key: "request-1", quote_revision: 1, customer_payload: { total: 100.01 }, request: { email: ["customer@example.invalid"], sms: ["+18055550100"], note: null, measureDecision: null } };
 function db(states: string[] = ["pending", "pending"]) {
@@ -105,5 +105,29 @@ describe("native quote preparation errors", () => {
  it("does not disguise an unexpected preparation failure as a user error", async () => {
   ready(); const test=preparationDb(); const failure=new Error("unexpected database failure");mocks.prepare.mockRejectedValueOnce(failure);
   await expect(sendNativeSalesQuote(test.client,{id:"quote",status:"draft"},actor,options)).rejects.toBe(failure);
+ });
+});
+
+describe("in-person contract preparation",()=>{
+ const actor={userId:"10000000-0000-4000-8000-000000000001"};
+ function client(existing:unknown=delivery){
+  const rpc=vi.fn(async(name:string)=>({data:name==='native_quote_delivery_capability'?{schemaVersion:1,native:true,supportsInPerson:true}:delivery,error:null}));
+  const query={select:()=>query,eq:()=>query,maybeSingle:async()=>({data:existing,error:null})};
+  return {db:{rpc,from:()=>query} as unknown as SupabaseClient,rpc};
+ }
+ it('reuses a delivered contract without resending to any saved recipients',async()=>{
+  ready();const test=client();
+  expect(await prepareNativeInPersonQuote(test.db,{id:'source',status:'sent'},actor,{expectedRevision:1,idempotencyKey:'in-person-review'})).toEqual({path:'/quote/preserved',signed:false});
+  expect(test.rpc).toHaveBeenCalledTimes(1);expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
+ });
+ it('reserves a draft with an explicitly empty message request',async()=>{
+  ready();const test=client(null);mocks.prepare.mockResolvedValue({backend:'authoritative_v2',total:100.01,lines:[]});
+  await prepareNativeInPersonQuote(test.db,{id:'source',status:'draft',quote_v2_revision:1},actor,{expectedRevision:1,idempotencyKey:'in-person-review'});
+  expect(test.rpc).toHaveBeenCalledWith('reserve_native_quote_group_delivery',expect.objectContaining({p_request:{email:[],sms:[],note:null,measureDecision:null,purpose:'in_person'}}));
+  expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
+ });
+ it('rejects a stale browser revision before opening the signing page',async()=>{
+  ready();const test=client();
+  await expect(prepareNativeInPersonQuote(test.db,{id:'source',status:'sent'},actor,{expectedRevision:2,idempotencyKey:'in-person-review'})).rejects.toMatchObject({status:409});
  });
 });

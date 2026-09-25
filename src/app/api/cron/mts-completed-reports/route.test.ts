@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { runMtsCompletedReportsCron, type MtsCompletedReportsCronDependencies } from "./route";
+import { runMtsCompletedReportsCron, type MtsCompletedReportsCronDependencies } from "./handler";
 import type { MtsCompletedReportGmailClient } from "@/lib/crm/mts-completed-report-filing";
 
 function request(secret?: string) {

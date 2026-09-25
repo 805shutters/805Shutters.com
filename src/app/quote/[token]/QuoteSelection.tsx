@@ -117,7 +117,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   }, [mode, previewOnly, selected, quote.token, selectionKey, totalRetry]);
 
   const contractSigned = quote.signed || signedNow;
-  const allowSelection = !previewOnly && !quote.superseded && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
+  const allowSelection = quote.status !== "sold" && !previewOnly && !quote.superseded && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
   const totalPending = mode === "some" && !selectionEmpty && (computing || computedKey !== selectionKey);
   const actionBlocked = totalPending || Boolean(totalError) || signingBusy;

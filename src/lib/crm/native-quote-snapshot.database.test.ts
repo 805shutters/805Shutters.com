@@ -69,6 +69,8 @@ beforeAll(async()=>{
  await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
  await db.exec(migration('20260923215906_native_delivery_customer_configuration_parity'));
  await db.exec(migration('20260925141722_native_quote_explicit_resends'));
+ await db.exec(migration('20260925190000_native_in_person_signing'));
+ await db.exec(migration('20260925191000_native_staff_sold'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -414,4 +416,68 @@ it('resends a grouped quote from either alternative using the shared dispatch an
  for(const n of [80,81]) expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(n),id(50)])).rows[0].result.reservation.requestKey).toBe(second.send_key);
  await accept(initial,[id(180)+'#1',id(180)+'#2',id(180)+'#3'],387);
  await expect(resend(81,'group-after-signing',second.send_key)).rejects.toMatchObject({code:'PT409'});
+});
+
+const inPersonRequest = { email: [], sms: [], note: null, measureDecision: null, purpose: 'in_person' };
+async function reviewInPerson(n:number, revision=1) {
+ return (await db.query<any>('select reserve_native_quote_group_delivery($1,$2,$3,$4,$5,$6) as result',
+ [id(n),id(50),revision,`in-person-${n}`,inPersonRequest,[{quoteId:id(n),revision,payload:payload(n)}]])).rows[0].result;
+}
+it('opens an in-person contract without delivery attempts, retries safely, and atomically saves the signature and sale', async()=>{
+ await seed(1000);
+ const initial=await reviewInPerson(1000);
+ expect((await reviewInPerson(1000)).id).toBe(initial.id);
+ expect((await db.query<any>('select prepared_via from sales_quote_v2_customer_send_preparations where id=$1',[initial.preparation_id])).rows[0].prepared_via).toBe('in_person');
+ expect((await db.query<any>('select * from sales_quote_v2_delivery_attempts where delivery_id=$1',[initial.id])).rows).toHaveLength(0);
+ expect((await db.query<any>('select status,signed_at,sent_at from sales_quotes where id=$1',[id(1000)])).rows[0]).toMatchObject({status:'draft',signed_at:null,sent_at:null});
+ await expect(accept(initial,[id(1100)+'#1',id(1100)+'#2',id(1100)+'#3'],386)).rejects.toMatchObject({code:'PT409'});
+ const accepted=await accept(initial,[id(1100)+'#1',id(1100)+'#2',id(1100)+'#3'],387);
+ expect(accepted.already_signed).toBe(false);
+ expect((await accept(initial,[id(1100)+'#1',id(1100)+'#2',id(1100)+'#3'],387)).already_signed).toBe(true);
+ expect((await db.query<any>('select status,customer_signature,customer_printed_name from sales_quotes where id=$1',[id(1000)])).rows[0]).toMatchObject({status:'sold',customer_signature:'LOCAL TEST SIGNATURE',customer_printed_name:'Synthetic test'});
+});
+it('can send an unsigned in-person review later with the original frozen contract',async()=>{
+ await seed(1001);const review=await reviewInPerson(1001);
+ const cap=(await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(1001),id(50)])).rows[0].result;
+ expect(cap).toMatchObject({supportsInPerson:true,canSend:true,reserved:true,reservation:{requestKey:review.request_key,state:'failed'}});
+ const sent=await resend(1001,'send-after-review',cap.reservation.requestKey,{email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null});
+ expect(sent.id).toBe(review.id);expect(sent.share_token).toBe(review.share_token);
+ expect((await db.query<any>('select * from sales_quote_v2_delivery_attempts where delivery_id=$1',[review.id])).rows).toHaveLength(1);
+});
+it('rejects unsigned review with stale revision or unauthorized actor, and never allows hidden recipients',async()=>{
+ await seed(1002);
+ await expect(reviewInPerson(1002,2)).rejects.toMatchObject({code:'PT409'});
+ for(const [actor,request,code] of [
+  [id(9999),inPersonRequest,'42501'],
+  [id(50),{...inPersonRequest,email:['synthetic@example.invalid']},'22023'],
+  [id(50),{email:[],sms:[],note:null,measureDecision:null},'22023'],
+ ] as const) {
+  await expect(db.query('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5)',[id(1002),actor,'review-invalid',request,[{quoteId:id(1002),revision:1,payload:payload(1002)}]])).rejects.toMatchObject({code});
+ }
+ expect((await db.query<any>('select * from sales_quote_v2_deliveries where quote_id=$1',[id(1002)])).rows).toHaveLength(0);
+});
+
+it('records staff sale without a customer signature, retries, then adds the real signature to that same sale',async()=>{
+ await seed(1003);const review=await reviewInPerson(1003);
+ const sold=()=>db.query<any>('select record_native_quote_staff_sale($1,$2,1,387) as result',[id(1003),id(50)]);
+ expect((await sold()).rows[0].result).toBe(review.crm_quote_id);
+ expect((await sold()).rows[0].result).toBe(review.crm_quote_id);
+ expect((await db.query<any>('select status,signed_at,customer_signature from sales_quotes where id=$1',[id(1003)])).rows[0]).toEqual({status:'sold',signed_at:null,customer_signature:null});
+ const crm=(await db.query<any>('select * from crm_quotes where id=$1',[review.crm_quote_id])).rows[0];
+ expect(crm.sold_at).toBeTruthy();expect(crm.meta.native_staff_sale.actorId).toBe(id(50));expect(crm.signed_at).toBeNull();
+ await expect(accept(review,[id(1103)+'#1'],129)).rejects.toMatchObject({code:'PT409'});
+ await accept(review,[id(1103)+'#1',id(1103)+'#2',id(1103)+'#3'],387);
+ expect((await db.query<any>('select customer_signature,signed_at from sales_quotes where id=$1',[id(1003)])).rows[0]).toMatchObject({customer_signature:'LOCAL TEST SIGNATURE',signed_at:expect.anything()});
+ expect((await db.query<any>('select * from sales_quote_v2_acceptances where crm_quote_id=$1',[review.crm_quote_id])).rows).toHaveLength(1);
+});
+it('keeps grouped alternatives and prevents selling a second option after a staff sale',async()=>{
+ await seed(2000);await seed(2001);
+ await db.query('update sales_quotes set quote_group_id=$1 where id in ($2,$3)',[id(9000),id(2000),id(2001)]);
+ const args=[id(2000),id(50),1,'in-person-group',inPersonRequest,[{quoteId:id(2000),revision:1,payload:payload(2000)},{quoteId:id(2001),revision:1,payload:payload(2001)}]];
+ const review=(await db.query<any>('select reserve_native_quote_group_delivery($1,$2,$3,$4,$5,$6) as result',args)).rows[0].result;
+ expect((await db.query<any>('select reserve_native_quote_group_delivery($1,$2,$3,$4,$5,$6) as result',args)).rows[0].result.id).toBe(review.id);
+ await db.query('select record_native_quote_staff_sale($1,$2,1,387)',[id(2000),id(50)]);
+ await expect(db.query('select record_native_quote_staff_sale($1,$2,1,387)',[id(2001),id(50)])).rejects.toMatchObject({code:'PT409'});
+ const sibling=(await db.query<any>('select q.status,q.meta from crm_quotes q join sales_quote_v2_deliveries d on d.crm_quote_id=q.id where d.quote_id=$1',[id(2001)])).rows[0];
+ expect(sibling.status).toBe('draft');expect(sibling.meta.native_superseded_by_quote_id).toBe(review.crm_quote_id);
 });

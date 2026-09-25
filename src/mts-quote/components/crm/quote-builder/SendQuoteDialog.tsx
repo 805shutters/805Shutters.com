@@ -111,12 +111,14 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
         previousDeliveryKey: saved.requestKey,
         measureDecision: saved.request.measureDecision || undefined,
       };
-      setEmails(saved.request.email.length ? saved.request.email : [""]);
-      setPhone(saved.request.sms[0] || "");
+      setEmails(saved.request.email.length ? saved.request.email : [saved.request.purpose === "in_person" ? quote.customer_email || "" : ""]);
+      setPhone(saved.request.sms[0] || (saved.request.purpose === "in_person" ? quote.customer_phone || "" : ""));
       setCustomMessage(saved.request.note || "");
-      setChannel(saved.request.email.length ? saved.request.sms.length ? "both" : "email" : "sms");
-      setDeliveryState(fresh ? "resend" : "resume");
-      setDeliveryNotice(fresh
+      setChannel(saved.request.purpose === "in_person" ? "email" : saved.request.email.length ? saved.request.sms.length ? "both" : "email" : "sms");
+      setDeliveryState(saved.request.purpose === "in_person" ? "ready" : fresh ? "resend" : "resume");
+      setDeliveryNotice(saved.request.purpose === "in_person"
+        ? "This contract was opened for in-person review. Review the recipients below to send it now."
+        : fresh
         ? "Send again creates a new message for the recipients below using this same quote. Review every email address before sending."
         : "Resume the pending delivery below. Recipients are fixed for this request; completed recipients will not be sent another copy.");
     })().catch(error => {

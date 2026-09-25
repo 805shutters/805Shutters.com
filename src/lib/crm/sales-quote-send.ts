@@ -78,29 +78,30 @@ export async function markSalesQuoteSold(
   supabase: CrmSupabaseClient,
   salesQuoteId: string,
   actor: CrmActor,
-  options: { measureDecision?: unknown } = {},
+  options: { measureDecision?: unknown; expectedRevision?: number; acknowledgedTotal?: number } = {},
 ) {
   const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
-  await assertHistoricalSalesQuoteMutationAllowed(supabase, original);
-  await assertLegacyLotusDeliveryAllowed(supabase, original);
-  if (resolveSalesQuoteCustomerWorkflow(original) === "v2") {
-    await guardV2SalesQuoteBeforeLegacySend(supabase, original);
+  const native = await isNativeV2SalesQuote(supabase, original);
+  let crmQuoteId: string;
+  let soldSource: AnyRow;
+  if (native) {
+    const { markNativeSalesQuoteSold } = await import("./native-quote-delivery");
+    crmQuoteId = await markNativeSalesQuoteSold(supabase, original, actor, {
+      measureDecision, expectedRevision: options.expectedRevision, acknowledgedTotal: options.acknowledgedTotal,
+      idempotencyKey: `staff-sold:${salesQuoteId}:${options.expectedRevision}`,
+    });
+    soldSource = withTechnicalMeasureDecision(await loadSalesQuote(supabase, salesQuoteId), measureDecision, actor, "in_home_sold");
+  } else {
+    await assertHistoricalSalesQuoteMutationAllowed(supabase, original);
+    await assertLegacyLotusDeliveryAllowed(supabase, original);
+    if (resolveSalesQuoteCustomerWorkflow(original) === "v2") await guardV2SalesQuoteBeforeLegacySend(supabase, original);
+    const signedAt = original.signed_at || new Date().toISOString();
+    const { error } = await supabase.from("sales_quotes").update({ status: "sold", signed_at: signedAt }).eq("id", salesQuoteId);
+    if (error) throw new CrmAuthError(502, "The contract could not be marked sold.");
+    soldSource = withTechnicalMeasureDecision({ ...original, status: "sold", signed_at: signedAt }, measureDecision, actor, "in_home_sold");
+    crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
   }
-  const signedAt = original.signed_at || new Date().toISOString();
-  const { error } = await supabase
-    .from("sales_quotes")
-    .update({ status: "sold", signed_at: signedAt })
-    .eq("id", salesQuoteId);
-  if (error) throw new CrmAuthError(502, "The contract could not be marked sold.");
-
-  const soldSource: AnyRow = withTechnicalMeasureDecision(
-    { ...original, status: "sold", signed_at: signedAt },
-    measureDecision,
-    actor,
-    "in_home_sold"
-  );
-  const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
   // Defer delivery until the technical-measure decision is persisted below;
   // otherwise the same sold action could send once without the final handoff
   // package and again after that package is prepared.
@@ -291,6 +292,38 @@ export async function sendSalesQuoteToCustomer(
     });
   }
   return result;
+}
+
+/** Prepare the same customer contract used by link signing; never dispatch a message. */
+export async function prepareSalesQuoteInPerson(
+  supabase: CrmSupabaseClient, id: string, actor: CrmActor,
+  options: Pick<SendSalesQuoteOptions, "expectedRevision" | "idempotencyKey" | "measureDecision">,
+) {
+  const quote = await loadSalesQuote(supabase, id);
+  if (quote.deleted_at || quote.archived_at || ["archived", "lost"].includes(quote.status)) {
+    throw new CrmAuthError(409, "This quote is no longer available to sign.");
+  }
+  if (options.measureDecision != null && !isTechnicalMeasureDecision(options.measureDecision)) {
+    throw new CrmAuthError(400, "Choose whether a technical measure is needed.");
+  }
+  if (await isNativeV2SalesQuote(supabase, quote)) {
+    const { prepareNativeInPersonQuote } = await import("./native-quote-delivery");
+    return prepareNativeInPersonQuote(supabase, quote, actor, options);
+  }
+  const group = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
+  for (const member of group) {
+    await assertHistoricalSalesQuoteMutationAllowed(supabase, member);
+    await assertLegacyLotusDeliveryAllowed(supabase, member);
+  }
+  const source = options.measureDecision
+    ? withTechnicalMeasureDecision(quote, options.measureDecision, actor, "in_person_signing") : quote;
+  const crmId = await mirrorSalesQuoteGroupForCustomerSend(supabase, source, group);
+  const { ensureShareToken, loadPublicQuoteByToken } = await import("./public-quote");
+  const { token } = await ensureShareToken(supabase, crmId, actor);
+  const pub = await loadPublicQuoteByToken(supabase, token);
+  if (!pub || !pub.allPriced || pub.total <= 0) throw new CrmAuthError(409, "Finish pricing the contract before signing.");
+  await persistSalesQuotePublicLink(supabase, id, `https://805shutters.com/quote/${encodeURIComponent(token)}`);
+  return { path: `/quote/${encodeURIComponent(token)}`, signed: pub.signed };
 }
 
 export function publicQuoteTokenFromUrl(url: string): string | null {

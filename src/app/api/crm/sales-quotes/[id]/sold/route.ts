@@ -8,9 +8,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const body = (await request.json().catch(() => ({}))) as { measureDecision?: unknown };
+    const body = (await request.json().catch(() => ({}))) as { measureDecision?: unknown; expectedRevision?: number; acknowledgedTotal?: number };
     const result = await markSalesQuoteSold(supabase, id, { email, userId: user.id }, {
       measureDecision: body.measureDecision,
+      expectedRevision: body.expectedRevision, acknowledgedTotal: body.acknowledgedTotal,
     });
     return NextResponse.json(result);
   } catch (error) {

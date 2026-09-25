@@ -8,7 +8,7 @@ import type { SendSalesQuoteOptions } from "./sales-quote-send";
 
 type Row = Record<string, unknown>;
 export const nativeDeliveryRuntimeEnabled = () => process.env.QUOTE_V2_NATIVE_CUSTOMER_DELIVERY === "enabled-after-native-delivery-migration";
-export type NativeDeliveryRequest = { email: string[]; sms: string[]; note: string | null; measureDecision: string | null };
+export type NativeDeliveryRequest = { email: string[]; sms: string[]; note: string | null; measureDecision: string | null; purpose?: "in_person" };
 type Delivery = { id: string; quote_id: string | null; crm_quote_id: string; share_token: string; request_key: string; request: NativeDeliveryRequest; customer_payload: { total: number }; quote_revision: number; send_key?: string };
 type Attempt = { id: string; channel: "email" | "sms"; recipient: string; state: "pending" | "sending" | "sent" | "failed" | "uncertain"; claim_token: string; result?: Row };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -43,6 +43,37 @@ export async function nativeQuoteDeliveryCapability(db: SupabaseClient, quoteId:
 }
 
 export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { userId?: string }, options: SendSalesQuoteOptions) {
+  const delivery = await reserveNativeSalesQuote(db, quote, actor, options);
+  return deliverFrozenNativeQuote(db, delivery, actor.userId!);
+}
+
+/** Freeze the reviewed contract without creating or dispatching any messages. */
+export async function prepareNativeInPersonQuote(db: SupabaseClient, quote: Row, actor: { userId?: string }, options: SendSalesQuoteOptions) {
+  const delivery = await reserveNativeSalesQuote(db, quote, actor, options, true);
+  const { loadPublicQuoteByToken } = await import("./public-quote");
+  const pub = await loadPublicQuoteByToken(db, delivery.share_token);
+  if (!pub || !pub.allPriced || pub.total <= 0 || (!pub.signed && Math.round(pub.total * 100) !== Math.round(Number(delivery.customer_payload.total) * 100))) {
+    throw new CrmAuthError(409, "The customer contract could not be verified for signing.");
+  }
+  return { path: `/quote/${encodeURIComponent(delivery.share_token)}`, signed: pub.signed };
+}
+
+export async function markNativeSalesQuoteSold(db: SupabaseClient, quote: Row, actor: { userId?: string }, options: SendSalesQuoteOptions & { acknowledgedTotal?: number }) {
+  const delivery = await reserveNativeSalesQuote(db, quote, actor, options, true);
+  if (quote.signed_at) {
+    if (Math.round(Number(options.acknowledgedTotal) * 100) !== Math.round(Number(quote.total_amount) * 100)) throw new CrmAuthError(409, "Reload the accepted contract total.");
+    return delivery.crm_quote_id;
+  }
+  const { data, error } = await db.rpc("record_native_quote_staff_sale", {
+    p_quote_id: quote.id, p_actor_id: actor.userId, p_expected_revision: options.expectedRevision,
+    p_acknowledged_total: options.acknowledgedTotal,
+  });
+  rpcError(error, "The quote could not be marked sold.");
+  if (data !== delivery.crm_quote_id) throw new CrmAuthError(502, "The sold contract could not be confirmed.");
+  return delivery.crm_quote_id;
+}
+
+async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { userId?: string }, options: SendSalesQuoteOptions, inPerson = false): Promise<Delivery> {
   runtimeGuard();
   if (quote.status === "archived" || quote.archived_at) {
     throw new CrmAuthError(409, "This quote is archived. Restore the intended revision before sending it.");
@@ -54,7 +85,10 @@ export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor
   const capability = await nativeQuoteDeliveryCapability(db, String(quote.id), actor.userId);
   if (!capability.enabled) throw new CrmAuthError(409, "The complete native delivery migration is not active.");
   if (options.deliveryMode != null && options.deliveryMode !== "resend") throw new CrmAuthError(400, "Invalid delivery action.");
-  const request = nativeDeliveryRequest(quote, options);
+  if (inPerson && !capability.supportsInPerson) throw new CrmAuthError(409, "In-person signing is awaiting its database migration.");
+  const request: NativeDeliveryRequest = inPerson
+    ? { email: [], sms: [], note: null, measureDecision: options.measureDecision || null, purpose: "in_person" }
+    : nativeDeliveryRequest(quote, options);
   if (options.deliveryMode === "resend") {
     if (!capability.supportsResend) throw new CrmAuthError(409, "Send again is awaiting its database migration.");
     const { data: saved, error } = await db.rpc("reserve_native_quote_resend", {
@@ -63,10 +97,14 @@ export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor
     });
     rpcError(error, "The resend could not be reserved. No new email was confirmed; reload delivery status before retrying.");
     if (!saved?.id || !saved.share_token || !saved.send_key) throw new CrmAuthError(502, "Resend returned an inconsistent identity.");
-    return deliverFrozenNativeQuote(db, saved as Delivery, actor.userId);
+    return saved as Delivery;
   }
   const { data: existing, error: readError } = await db.from("sales_quote_v2_deliveries").select("*").eq("quote_id", quote.id).maybeSingle();
   rpcError(readError, "Native quote delivery could not be loaded.");
+  if (inPerson && existing) {
+    if (Number(existing.quote_revision) !== Number(options.expectedRevision)) throw new CrmAuthError(409, "This contract changed. Reload it before signing.");
+    return existing as Delivery;
+  }
   let group: Row[] = [quote];
   if (!existing && quote.quote_group_id) {
     const { data, error } = await db.from("sales_quotes").select("*").eq("quote_group_id", quote.quote_group_id).order("id");
@@ -96,7 +134,7 @@ export async function sendNativeSalesQuote(db: SupabaseClient, quote: Row, actor
   rpcError(error, "Native quote delivery could not be reserved.");
   const delivery = saved as Delivery;
   if (!delivery?.id || !delivery.share_token) throw new CrmAuthError(502, "Native delivery returned an inconsistent identity.");
-  return deliverFrozenNativeQuote(db, delivery, actor.userId);
+  return delivery;
 }
 
 /** Claims each recipient independently before the provider call. No automatic

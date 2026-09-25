@@ -4,49 +4,18 @@ import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
 import {
   allPages,
-  commercialCityName,
   getPageBySlug,
   ogDefaults,
   site,
-  slugForPath,
-  type SitePage
+  slugForPath
 } from "@/lib/site-data";
-import {
-  commercialSubPageJsonLd,
-  commercialWindowCoveringsJsonLd,
-  faqPageJsonLd,
-  servicePageJsonLd
-} from "@/lib/structured-data";
+import { pageJsonLdFor } from "@/lib/page-json-ld";
 
 type PageProps = {
   params: Promise<{
     slug: string[];
   }>;
 };
-
-function isLocalServicePage(path: string) {
-  return /^\/(shutters|shades|blinds|drapery|window-coverings|window-treatments)\/[^/]+\/$/.test(path);
-}
-
-export function pageJsonLdFor(page: SitePage) {
-  if (page.path === "/commercial-window-coverings/") {
-    return commercialWindowCoveringsJsonLd(page);
-  }
-
-  if (page.path.includes("commercial")) {
-    return commercialSubPageJsonLd(page, commercialCityName(page.path));
-  }
-
-  if (page.path === "/faq/") {
-    return faqPageJsonLd(page);
-  }
-
-  if (page.faqs?.length || isLocalServicePage(page.path)) {
-    return servicePageJsonLd(page);
-  }
-
-  return null;
-}
 
 export function generateStaticParams() {
   return allPages

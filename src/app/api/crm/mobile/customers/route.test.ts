@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskedPaymentRecipient, mobilePaymentRecipient, mobilePaymentReplay } from "./route";
+import { maskedPaymentRecipient, mobilePaymentRecipient, mobilePaymentReplay } from "./handler";
 
 describe("mobile payment-link governance", () => {
   it("selects exactly the matching text recipient and masks it for review", () => {
