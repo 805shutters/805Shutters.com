@@ -1,3 +1,4 @@
+import { currentCitationPath } from "@/lib/consolidated-pages";
 import { answerPages } from "@/lib/llm-search-pages";
 import { absoluteUrl, citationTargets, machineReadableFeeds, primaryServices } from "@/lib/ai-search-data";
 import { services, site } from "@/lib/site-data";
@@ -37,7 +38,7 @@ export function GET() {
     ...citationTargets.map((target) => `- ${target.intent}: [${site.baseUrl}${target.href}](${site.baseUrl}${target.href}) - ${target.note}`),
     "",
     "## Answer pages",
-    ...answerPages.map((page) => `- [${page.h1}](${site.baseUrl}${page.path}): ${page.description}`),
+    ...answerPages.map((page) => `- [${page.h1}](${site.baseUrl}${currentCitationPath(page.path)}): ${page.description}`),
     "",
     "## Service pages",
     ...services.map((service) => `- [${service.title}](${site.baseUrl}/${service.slug}/): ${service.description}`),

@@ -60,3 +60,7 @@ Tested source commit: f5395f711059494b698b33bfc26cb745de3516d4.
 ## Confirmed exclusions
 
 Mike explicitly excluded `/shades/thousand-oaks-ca/` and `/shades/ventura-ca/`. Both are HOLD, remain 200 and in the sitemap, and retain existing incoming links. `/shades/` remains untouched. Proceed with the other ten candidates only; do not merge this PR.
+
+## AI-feed review follow-up
+
+The subsequent review also removes consolidated URLs from AI feeds and changes the four updated HTML hrefs to relative hub paths. See [feed-review.md](feed-review.md) for the exact scope, homepage path-array source and local-build CI checks. Earlier preview details above describe the original f5395f71 verification; final preview and CI evidence are recorded in the PR description.

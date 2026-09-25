@@ -1,3 +1,4 @@
+import { currentCitationPath, isConsolidatedPage } from "./consolidated-pages";
 import { answerPages } from "./llm-search-pages";
 import { allPages, services, site } from "./site-data";
 
@@ -135,8 +136,8 @@ export function buildAnswerCitations() {
       question: canonicalAnswerQuestions[page.slug] ?? page.h1,
       answer: page.answer,
       answerType: "direct-answer",
-      citationUrl: absoluteUrl(page.path),
-      citationPath: page.path,
+      citationUrl: absoluteUrl(currentCitationPath(page.path)),
+      citationPath: currentCitationPath(page.path),
       pageTitle: page.title,
       pageDescription: page.description,
       intent: page.eyebrow,
@@ -147,8 +148,8 @@ export function buildAnswerCitations() {
       question: faq.question,
       answer: faq.answer,
       answerType: "faq",
-      citationUrl: absoluteUrl(page.path),
-      citationPath: page.path,
+      citationUrl: absoluteUrl(currentCitationPath(page.path)),
+      citationPath: currentCitationPath(page.path),
       pageTitle: page.title,
       pageDescription: page.description,
       intent: page.eyebrow,
@@ -182,7 +183,7 @@ export function buildAnswerCitationFeed() {
     sourcePages: answerPages.map((page) => ({
       slug: page.slug,
       title: page.title,
-      url: absoluteUrl(page.path),
+      url: absoluteUrl(currentCitationPath(page.path)),
       updated: page.updated
     })),
     answers
@@ -225,7 +226,7 @@ export function buildAiSiteIndexPages() {
       source: "site-data",
       pageType: pageTypeForPath(page.path),
       path: page.path,
-      url: absoluteUrl(page.path),
+      url: absoluteUrl(currentCitationPath(page.path)),
       title: page.title,
       h1: page.h1,
       description: page.description,
@@ -239,7 +240,7 @@ export function buildAiSiteIndexPages() {
     source: "answer-page",
     pageType: pageTypeForPath(page.path),
     path: page.path,
-    url: absoluteUrl(page.path),
+    url: absoluteUrl(currentCitationPath(page.path)),
     title: page.title,
     h1: page.h1,
     description: page.description,
@@ -285,7 +286,7 @@ export function buildAiSiteIndexPages() {
   return Array.from(
     new Map(
       [...sitePageRecords, ...answerPageRecords, ...standalonePageRecords]
-        .filter((page) => !isPrivateCitationPath(page.path))
+        .filter((page) => !isPrivateCitationPath(page.path) && !isConsolidatedPage(page.path))
         .map((page) => [page.path, page])
     ).values()
   ).sort((a, b) => a.path.localeCompare(b.path));
@@ -403,7 +404,7 @@ export function buildAiSearchFeed() {
     })),
     answerPages: answerPages.map((page) => ({
       slug: page.slug,
-      url: absoluteUrl(page.path),
+      url: absoluteUrl(currentCitationPath(page.path)),
       title: page.title,
       h1: page.h1,
       description: page.description,
