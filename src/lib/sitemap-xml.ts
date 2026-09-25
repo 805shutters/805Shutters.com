@@ -1,3 +1,4 @@
+import { isConsolidatedPage } from "@/lib/consolidated-pages";
 import type { MetadataRoute } from "next";
 import { answerPages } from "@/lib/llm-search-pages";
 import { allPages, site } from "@/lib/site-data";
@@ -65,7 +66,8 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
     images: imageUrls([page.image])
   }));
 
-  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry];
+  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry]
+    .filter((entry) => !isConsolidatedPage(new URL(entry.url).pathname));
 }
 
 function escapeXml(value: string): string {

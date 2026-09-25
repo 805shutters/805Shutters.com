@@ -2,6 +2,25 @@ import { Window } from "happy-dom";
 
 const publicOrigin = "https://www.805shutters.com";
 const internalHosts = new Set(["805shutters.com", "www.805shutters.com"]);
+export const machineFeedPaths = ["/llms.txt", "/ai-search-feed.json", "/answers.json", "/ai-site-index.json"];
+
+export function extractFeedUrls(body, json) {
+  const strings = [];
+  const visit = (value) => {
+    if (typeof value === "string") strings.push(value);
+    else if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === "object") Object.values(value).forEach(visit);
+  };
+  if (json) visit(JSON.parse(body));
+  else strings.push(body);
+  return [...new Set(strings.flatMap((value) => {
+    if (/^(?:https?:\/\/|\/)\S*$/.test(value)) return [value];
+    return [
+      ...value.matchAll(/https?:\/\/[^\s<>"()[\]]+/g),
+      ...value.matchAll(/(?:^|[\s("'])(\/(?!\/)[a-zA-Z0-9][^\s<>"()[\]']*)/g)
+    ].map((match) => match[1] ?? match[0]);
+  }))];
+}
 
 // This existing homepage sign-in action intentionally redirects into OAuth.
 // The homepage is protected from edits in this audit. Do not exempt /api/*,
@@ -19,6 +38,7 @@ export async function auditPublicSite(baseUrl, request = fetch) {
   const pages = [];
   const targets = new Map();
   const exceptions = [];
+  const feeds = [];
   const get = async (logicalUrl) => {
     const url = new URL(logicalUrl);
     const response = await request(new URL(url.pathname + url.search, base), {
@@ -70,7 +90,44 @@ export async function auditPublicSite(baseUrl, request = fetch) {
         if (result.status !== 200) issues.push({ source: url, href, reason: `HTTP ${result.status}`, location: result.location });
       }
     }
-    return { pages, targetCount: targets.size, exceptions, issues };
+    for (const path of machineFeedPaths) {
+      const source = `${publicOrigin}${path}`;
+      const response = await get(source);
+      const feed = { url: source, status: response.status, internalUrlCount: 0, externalUrlCount: 0 };
+      feeds.push(feed);
+      if (response.status !== 200) {
+        issues.push({ source, reason: `Feed HTTP ${response.status}`, location: response.headers.get("location") });
+        await response.body?.cancel();
+        continue;
+      }
+      let hrefs;
+      try {
+        hrefs = extractFeedUrls(await response.text(), path.endsWith(".json"));
+      } catch (error) {
+        issues.push({ source, reason: `Invalid JSON: ${error.message}` });
+        continue;
+      }
+      for (const href of hrefs) {
+        const target = new URL(href, source);
+        // Third-party profiles are not part of this local-build crawl. Never
+        // request production, preview, social networks, or directories from CI.
+        if (!internalHosts.has(target.hostname)) { feed.externalUrlCount++; continue; }
+        feed.internalUrlCount++;
+        target.hash = "";
+        if (target.origin !== publicOrigin) {
+          issues.push({ source, href, reason: "Feed URL uses HTTP or a non-www origin" });
+          continue;
+        }
+        if (!targets.has(target.href)) {
+          const result = await get(target.href);
+          targets.set(target.href, { status: result.status, location: result.headers.get("location") });
+          await result.body?.cancel();
+        }
+        const result = targets.get(target.href);
+        if (result.status !== 200) issues.push({ source, href, reason: `HTTP ${result.status}`, location: result.location });
+      }
+    }
+    return { pages, feeds, targetCount: targets.size, exceptions, issues };
   } finally {
     window.close();
   }

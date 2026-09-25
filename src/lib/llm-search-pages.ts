@@ -840,8 +840,8 @@ export const answerPages: AnswerPage[] = [
     ],
     relatedLinks: [
       { label: "Custom blinds", href: "/blinds/" },
-      { label: "Blinds in Moorpark", href: "/blinds/moorpark-ca/" },
-      { label: "Blinds in Thousand Oaks", href: "/blinds/thousand-oaks-ca/" },
+      { label: "Blinds in Moorpark", href: "/blinds/" },
+      { label: "Blinds in Thousand Oaks", href: "/blinds/" },
       { label: "Blinds in Camarillo", href: "/blinds/camarillo-ca/" },
       { label: "Free consultation", href: "/free-window-treatment-consultation/" },
       { label: "Book a consultation time", href: "/book-consultation/" }
@@ -975,7 +975,7 @@ export const answerPages: AnswerPage[] = [
       { label: "Shutters near me", href: "/shutters-near-me-ventura-county/" },
       { label: "Window shades near me", href: "/window-shades-near-me-ventura-county/" },
       { label: "Blinds near me", href: "/blinds-near-me-ventura-county/" },
-      { label: "Custom drapery and curtains", href: "/custom-drapery-curtains-ventura-county/" },
+      { label: "Custom drapery and curtains", href: "/drapery/" },
       { label: "Customer reviews", href: "/reviews/" },
       { label: "Free consultation", href: "/free-window-treatment-consultation/" },
       { label: "Book a consultation time", href: "/book-consultation/" }

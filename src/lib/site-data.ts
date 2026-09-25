@@ -792,7 +792,7 @@ const parentPages: SitePage[] = [
           "805 Shutters plans and installs custom drapery and curtains across Ventura County. Start with the page for your city for local service details and a free in-home consultation.",
         links: cityPages.map(([, caSlug, city]) => ({
           label: `Drapery and curtains in ${city}`,
-          href: `/drapery/${caSlug}/`
+          href: caSlug === "oak-park-ca" ? "/drapery/" : `/drapery/${caSlug}/`
         }))
       }
     ],

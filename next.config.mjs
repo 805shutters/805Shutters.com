@@ -223,6 +223,25 @@ const shortUrlRedirects = [
   statusCode: 301
 }));
 
+// Approved geographic-page consolidations. Keep these ahead of slash/host rules
+// so both source variants reach the final canonical hub in one 301.
+const geoConsolidationRedirects = [
+  ["/shutters/fillmore", "/shutters/"],
+  ["/blinds/fillmore-ca", "/blinds/"],
+  ["/blinds/moorpark-ca", "/blinds/"],
+  ["/blinds/oak-park-ca", "/blinds/"],
+  ["/drapery/oak-park-ca", "/drapery/"],
+  ["/shutters/santa-paula", "/shutters/"],
+  ["/shades/santa-paula-ca", "/shades/"],
+  ["/shades/simi-valley-ca", "/shades/"],
+  ["/blinds/thousand-oaks-ca", "/blinds/"],
+  ["/custom-drapery-curtains-ventura-county", "/drapery/"]
+].map(([source, destination]) => ({
+  source,
+  destination: `https://www.805shutters.com${destination}`,
+  statusCode: 301
+}));
+
 // Preserve Next.js's trailingSlash rules after the short URLs, so those URLs
 // reach their final destination without an intermediate slash redirect.
 const trailingSlashRedirects = [
@@ -289,7 +308,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [...shortUrlRedirects, ...trailingSlashRedirects, canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
+    return [...shortUrlRedirects, ...geoConsolidationRedirects, ...trailingSlashRedirects, canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
   }
 };
 

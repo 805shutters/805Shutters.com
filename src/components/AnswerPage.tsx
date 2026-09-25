@@ -127,7 +127,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
         </div>
         <div className={styles.relatedLinks}>
           {page.relatedLinks.map((link) => (
-            <Link href={link.href} key={link.href}>
+            <Link href={link.href} key={`${link.href}-${link.label}`}>
               {link.label}
             </Link>
           ))}
