@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import Link from "next/link";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { answerPageJsonLd } from "@/lib/structured-data";
@@ -37,7 +38,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(answerPageJsonLd(page))
+          __html: JSON.stringify(normalizeStructuredData(answerPageJsonLd(page)))
         }}
       />
 

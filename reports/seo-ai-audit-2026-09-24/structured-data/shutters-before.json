@@ -1,0 +1,491 @@
+[
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": [
+          "HomeAndConstructionBusiness",
+          "LocalBusiness"
+        ],
+        "@id": "https://www.805shutters.com#local-business",
+        "name": "805 Shutters",
+        "legalName": "805 Shutters",
+        "alternateName": "805 Shutters",
+        "url": "https://www.805shutters.com",
+        "telephone": "805-806-9344",
+        "email": "805@805shutters.com",
+        "image": "https://www.805shutters.com/images/805-hero-window-treatments.jpg",
+        "logo": "https://www.805shutters.com/brand/805-shutters-logo.png",
+        "hasMap": "https://www.google.com/maps?cid=14597332202667384985",
+        "identifier": {
+          "@type": "PropertyValue",
+          "propertyID": "Google Maps CID",
+          "value": "14597332202667384985"
+        },
+        "sameAs": [
+          "https://www.facebook.com/805shutters",
+          "https://www.instagram.com/805shutters/",
+          "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
+          "https://www.google.com/maps?cid=14597332202667384985",
+          "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378",
+          "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738",
+          "https://local.yahoo.com/info-225163327-805-shutters",
+          "https://www.chamberofcommerce.com/business-directory/california/santa-rosa-valley/window-treatment-store/2026058550-805-shutters-shades-blinds",
+          "https://www.2findlocal.com/b/15023840/805-shutters-shades-blinds-santa-rosa-valley-ca"
+        ],
+        "description": "805 Shutters is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
+        "foundingDate": "1995",
+        "founder": {
+          "@type": "Person",
+          "name": "Ken Hill"
+        },
+        "owner": {
+          "@type": "Person",
+          "name": "Ken Hill"
+        },
+        "priceRange": "$$",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "telephone": "805-806-9344",
+          "email": "805@805shutters.com",
+          "contactType": "customer service",
+          "areaServed": [
+            {
+              "@type": "City",
+              "name": "Camarillo"
+            },
+            {
+              "@type": "City",
+              "name": "Thousand Oaks"
+            },
+            {
+              "@type": "City",
+              "name": "Ventura"
+            },
+            {
+              "@type": "City",
+              "name": "Oxnard"
+            },
+            {
+              "@type": "City",
+              "name": "Simi Valley"
+            },
+            {
+              "@type": "City",
+              "name": "Moorpark"
+            },
+            {
+              "@type": "City",
+              "name": "Newbury Park"
+            },
+            {
+              "@type": "City",
+              "name": "Westlake Village"
+            },
+            {
+              "@type": "City",
+              "name": "Ojai"
+            },
+            {
+              "@type": "City",
+              "name": "Santa Rosa Valley"
+            },
+            {
+              "@type": "City",
+              "name": "Port Hueneme"
+            },
+            {
+              "@type": "City",
+              "name": "Santa Paula"
+            },
+            {
+              "@type": "City",
+              "name": "Oak Park"
+            },
+            {
+              "@type": "City",
+              "name": "Fillmore"
+            },
+            {
+              "@type": "City",
+              "name": "Santa Clarita"
+            }
+          ],
+          "availableLanguage": "English"
+        },
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ],
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": "Camarillo"
+          },
+          {
+            "@type": "City",
+            "name": "Thousand Oaks"
+          },
+          {
+            "@type": "City",
+            "name": "Ventura"
+          },
+          {
+            "@type": "City",
+            "name": "Oxnard"
+          },
+          {
+            "@type": "City",
+            "name": "Simi Valley"
+          },
+          {
+            "@type": "City",
+            "name": "Moorpark"
+          },
+          {
+            "@type": "City",
+            "name": "Newbury Park"
+          },
+          {
+            "@type": "City",
+            "name": "Westlake Village"
+          },
+          {
+            "@type": "City",
+            "name": "Ojai"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Rosa Valley"
+          },
+          {
+            "@type": "City",
+            "name": "Port Hueneme"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Paula"
+          },
+          {
+            "@type": "City",
+            "name": "Oak Park"
+          },
+          {
+            "@type": "City",
+            "name": "Fillmore"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Clarita"
+          }
+        ],
+        "serviceArea": {
+          "@type": "AdministrativeArea",
+          "name": "Ventura County, North Los Angeles County, and Santa Clarita"
+        },
+        "knowsAbout": [
+          "Plantation shutters",
+          "Custom shutters",
+          "Window shades",
+          "Custom blinds",
+          "Drapery",
+          "Custom curtains",
+          "Curtain and drapery panels",
+          "Exterior shades",
+          "Commercial roller shades",
+          "Window coverings",
+          "Motorized shades",
+          "Sliding door window treatments"
+        ],
+        "makesOffer": [
+          "Custom shutters",
+          "Custom window shades",
+          "Custom blinds",
+          "Custom drapery and curtains",
+          "Commercial window coverings"
+        ],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "@id": "https://www.805shutters.com#service-catalog",
+          "name": "805 Shutters window covering services",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Shutters",
+                "description": "Plantation shutters, wood shutters, specialty shapes, sliding door shutters, and whole-home shutter upgrades.",
+                "areaServed": "Ventura County, North Los Angeles County, and Santa Clarita",
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/shutters/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Window Shades",
+                "description": "Roller shades, honeycomb shades, Roman shades, woven wood shades, layered shades, and motorized options.",
+                "areaServed": "Ventura County, North Los Angeles County, and Santa Clarita",
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/shades/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Blinds",
+                "description": "Wood, faux wood, aluminum, vertical, and softwood blinds measured and installed for local homes and businesses.",
+                "areaServed": "Ventura County, North Los Angeles County, and Santa Clarita",
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/blinds/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Custom Drapery & Curtains",
+                "description": "Custom drapery, curtains, and fabric window treatment planning for rooms that need warmth, privacy, light control, and a finished designer look.",
+                "areaServed": "Ventura County, North Los Angeles County, and Santa Clarita",
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/drapery/"
+              }
+            },
+            {
+              "@type": "Offer",
+              "itemOffered": {
+                "@type": "Service",
+                "name": "Commercial Window Coverings",
+                "description": "Commercial roller shades and window treatments for offices, storefronts, schools, medical spaces, and shared workspaces.",
+                "areaServed": "Ventura County, North Los Angeles County, and Santa Clarita",
+                "provider": {
+                  "@id": "https://www.805shutters.com#local-business"
+                },
+                "url": "https://www.805shutters.com/commercial-window-coverings/"
+              }
+            }
+          ]
+        },
+        "potentialAction": {
+          "@type": "ReserveAction",
+          "name": "Book a free in-home window treatment consultation",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.805shutters.com/free-window-treatment-consultation/",
+            "actionPlatform": [
+              "https://schema.org/DesktopWebPlatform",
+              "https://schema.org/MobileWebPlatform"
+            ]
+          },
+          "object": {
+            "@id": "https://www.805shutters.com#service"
+          }
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://www.805shutters.com#website",
+        "name": "805 Shutters",
+        "alternateName": "805 Shutters",
+        "url": "https://www.805shutters.com",
+        "inLanguage": "en-US",
+        "publisher": {
+          "@id": "https://www.805shutters.com#local-business"
+        },
+        "potentialAction": {
+          "@type": "ReserveAction",
+          "name": "Request a free in-home window treatment consultation",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.805shutters.com/free-window-treatment-consultation/",
+            "actionPlatform": [
+              "https://schema.org/DesktopWebPlatform",
+              "https://schema.org/MobileWebPlatform"
+            ]
+          },
+          "object": {
+            "@id": "https://www.805shutters.com#service"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://www.805shutters.com/shutters/#webpage",
+        "url": "https://www.805shutters.com/shutters/",
+        "name": "Custom Shutters Ventura County | Plantation Shutters | 805 Shutters",
+        "description": "Custom shutters and plantation shutters for Ventura County homes. Local measuring, installation, and free in-home consultations from 805 Shutters.",
+        "isPartOf": {
+          "@id": "https://www.805shutters.com#website"
+        },
+        "mainEntity": {
+          "@id": "https://www.805shutters.com/shutters/#service"
+        },
+        "breadcrumb": {
+          "@id": "https://www.805shutters.com/shutters/#breadcrumb"
+        },
+        "primaryImageOfPage": {
+          "@type": "ImageObject",
+          "url": "https://www.805shutters.com/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+          "contentUrl": "https://www.805shutters.com/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+          "caption": "Stacked arched and rectangular shutters installed on tall living room windows"
+        }
+      },
+      {
+        "@type": "Service",
+        "@id": "https://www.805shutters.com/shutters/#service",
+        "name": "Custom Shutters in Ventura County",
+        "description": "Custom shutters and plantation shutters for Ventura County homes. Local measuring, installation, and free in-home consultations from 805 Shutters.",
+        "url": "https://www.805shutters.com/shutters/",
+        "image": {
+          "@type": "ImageObject",
+          "url": "https://www.805shutters.com/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+          "contentUrl": "https://www.805shutters.com/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+          "caption": "Stacked arched and rectangular shutters installed on tall living room windows"
+        },
+        "serviceType": "Plantation shutters",
+        "provider": {
+          "@id": "https://www.805shutters.com#local-business",
+          "name": "805 Shutters",
+          "telephone": "805-806-9344",
+          "url": "https://www.805shutters.com"
+        },
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": "Camarillo"
+          },
+          {
+            "@type": "City",
+            "name": "Thousand Oaks"
+          },
+          {
+            "@type": "City",
+            "name": "Ventura"
+          },
+          {
+            "@type": "City",
+            "name": "Oxnard"
+          },
+          {
+            "@type": "City",
+            "name": "Simi Valley"
+          },
+          {
+            "@type": "City",
+            "name": "Moorpark"
+          },
+          {
+            "@type": "City",
+            "name": "Newbury Park"
+          },
+          {
+            "@type": "City",
+            "name": "Westlake Village"
+          },
+          {
+            "@type": "City",
+            "name": "Ojai"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Rosa Valley"
+          },
+          {
+            "@type": "City",
+            "name": "Port Hueneme"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Paula"
+          },
+          {
+            "@type": "City",
+            "name": "Oak Park"
+          },
+          {
+            "@type": "City",
+            "name": "Fillmore"
+          },
+          {
+            "@type": "City",
+            "name": "Santa Clarita"
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://www.805shutters.com/shutters/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Are plantation shutters a good choice for Ventura County homes?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Plantation shutters are a strong fit for many Ventura County homes because they provide durable privacy, adjustable daylight, and a finished built-in look for living rooms, bedrooms, dining rooms, sliding doors, and specialty windows."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can shutters be made for arched windows or sliding doors?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Custom shutters can be planned for specialty shapes, arched windows, and many sliding door openings. The consultation checks the opening, frame depth, clearance, and daily access before an order is placed."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do you review before ordering custom shutters?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "We review window measurements, frame or mount style, material, louver size, color, divider rails, panel swing, handle clearance, privacy goals, light control, and how the shutters should work in the room."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": "https://www.805shutters.com/shutters/#breadcrumb",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://www.805shutters.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Custom Shutters in Ventura County",
+            "item": "https://www.805shutters.com/shutters/"
+          }
+        ]
+      }
+    ]
+  }
+]

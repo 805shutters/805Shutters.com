@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
@@ -185,7 +186,7 @@ export default function WindowTreatmentComparisonGuidePage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(guideJsonLd)
+          __html: JSON.stringify(normalizeStructuredData(guideJsonLd))
         }}
       />
 

@@ -1,3 +1,4 @@
+import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
@@ -153,7 +154,7 @@ export default function BookConsultationPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(bookingJsonLd)
+          __html: JSON.stringify(normalizeStructuredData(bookingJsonLd))
         }}
       />
 
