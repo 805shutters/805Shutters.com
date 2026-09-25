@@ -119,7 +119,7 @@ const publish = () =>
     "insert into crm_availability_slots(owner,start_at,end_at,status,source) values('Jessica','2035-10-01 15:00Z','2035-10-02 00:00Z','available','crm_working_ranges')",
   );
 describe("shared public / CRM booking APIs", () => {
-  it("fails closed without the database and without a service address", async () => {
+  it("fails closed without the database and still requires an address for commercial availability", async () => {
     state.client = null;
     expect(
       (
@@ -135,7 +135,7 @@ describe("shared public / CRM booking APIs", () => {
       (
         await publicGET(
           new NextRequest(
-            "http://localhost/api/booking/availability?month=2035-10&windowCount=5",
+            "http://localhost/api/booking/availability?month=2035-10&windowCount=5&variant=commercial",
           ),
         )
       ).status,
@@ -199,6 +199,56 @@ describe("shared public / CRM booking APIs", () => {
       ).rows[0].n,
     ).toBe(8);
   });
+  it("opens a one-hour residential calendar without collecting any details", async () => {
+    await publish();
+    const response = await publicGET(new NextRequest("http://localhost/api/booking/availability?month=2035-10"));
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.addressChecked).toBe(false);
+    expect(result.appointmentDurationMinutes).toBe(60);
+    expect(result.days.some((day: { available: boolean }) => day.available)).toBe(true);
+    const checked = await publicGET(new NextRequest("http://localhost/api/booking/availability?month=2035-10&address=123%20Main&windowCount=31"));
+    expect(await checked.json()).toMatchObject({ addressChecked: true, appointmentDurationMinutes: 60 });
+  });
+  it.each([undefined, null, "", 31, 500])("books a fixed hour with optional count %s across all records and outbox effects", async count => {
+    await publish();
+    const response = await submit({ ...base, windowCount: count, variant: "standard", idempotencyKey: randomUUID() });
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.notificationsQueued).toBe(true);
+    expect(result).not.toHaveProperty("smsConfirmationSent");
+    const savedCount = count || null;
+    const events = await db.query<{ minutes: number; meta: Record<string, unknown> }>("select extract(epoch from (end_at-start_at))/60 as minutes,meta from crm_calendar_events");
+    expect(Number(events.rows[0].minutes)).toBe(60);
+    expect(events.rows[0].meta).toMatchObject({ windowCount: savedCount, bookingDurationPolicy: "residential_fixed_60_v1", appointmentDurationMinutes: 60 });
+    const jobs = await db.query<{ minutes: number; meta: Record<string, unknown> }>("select extract(epoch from (appointment_end-appointment_start))/60 as minutes,meta from crm_jobs");
+    expect(Number(jobs.rows[0].minutes)).toBe(60);
+    expect(jobs.rows[0].meta.windowCount).toBe(savedCount);
+    const leads = await db.query<{ meta: Record<string, unknown> }>("select meta from leads");
+    expect(leads.rows[0].meta.windowCount).toBe(savedCount);
+    const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox");
+    expect(effects.rows).toHaveLength(8);
+    for (const { payload } of effects.rows) {
+      expect(payload.windowCount).toBe(savedCount);
+      expect(payload.appointmentDurationMinutes).toBe(60);
+      expect(Date.parse(String(payload.endAt)) - Date.parse(String(payload.startAt))).toBe(3600000);
+    }
+    // after() is intercepted: no messages, webhooks, or external calendar writes occur.
+    expect(state.after).toHaveBeenCalledTimes(1);
+  });
+  it("preserves commercial window-count duration and requires a count", async () => {
+    await publish();
+    expect((await submit({ ...base, variant: "commercial", windowCount: null, idempotencyKey: randomUUID() })).status).toBe(400);
+    expect((await submit({ ...base, variant: "commercial", windowCount: 31, idempotencyKey: randomUUID() })).status).toBe(200);
+    const events = await db.query<{ minutes: number; meta: Record<string, unknown> }>("select extract(epoch from (end_at-start_at))/60 as minutes,meta from crm_calendar_events");
+    expect(Number(events.rows[0].minutes)).toBe(180);
+    expect(events.rows[0].meta).not.toHaveProperty("bookingDurationPolicy");
+  });
+  it("never commits without the required address even when calendar openings are visible", async () => {
+    await publish();
+    expect((await submit({ ...base, address: "", windowCount: null, idempotencyKey: randomUUID() })).status).toBe(400);
+    expect(state.after).not.toHaveBeenCalled();
+  });
   it("rejects a stale time without writes or messages", async () => {
     const response = await submit({ ...base, idempotencyKey: randomUUID() });
     expect(response.status).toBe(409);
@@ -213,6 +263,9 @@ describe("shared public / CRM booking APIs", () => {
       { date: "2035-02-30" },
       { time: "10:15" },
       { windowCount: 0 },
+      { windowCount: "garbage" },
+      { windowCount: 1.5 },
+      { variant: "unknown" },
       { idempotencyKey: "bad" },
     ])
       expect(

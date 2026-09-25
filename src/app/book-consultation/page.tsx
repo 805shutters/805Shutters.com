@@ -2,7 +2,6 @@ import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
-import { brandIdentity } from "@/lib/brand-identity";
 import { ogDefaults, site } from "@/lib/site-data";
 
 const bookingTitle = "Book a Free In-Home Consultation | 805 Shutters";
@@ -51,7 +50,7 @@ const consultationFaqs = [
   {
     question: "How should I prepare for the appointment?",
     answer:
-      "Have a general window count, the service address, and any priorities like privacy, heat, glare, room darkening, child safety, motorization, or HOA requirements ready before choosing a time."
+      "Choose your time first, then provide your contact information and service address. You can optionally share your window count and priorities, or discuss them during your one-hour visit."
   }
 ];
 
@@ -158,28 +157,11 @@ export default function BookConsultationPage() {
         }}
       />
 
-      <header className="booking-page__masthead">
-        <Link className="booking-page__home-link" href="/" aria-label="Return to homepage">
-          ×
-        </Link>
-        <h1>Book a Free In-Home Consultation in Ventura County</h1>
-        <img
-          className="booking-page__masthead-logo"
-          src="/brand/805-shutters-logo-exact-transparent.png"
-          alt="805 Shutters"
-          width={262}
-          height={209}
-        />
-        <div className="booking-page__official-contact">
-          <strong>Official 805 Shutters</strong>
-          <a href={brandIdentity.website}>{brandIdentity.domain}</a>
-          <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
-        </div>
+      <header className="consultation-page-head">
+        <img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" width={80} height={64} />
+        <div><h1>Book your free consultation</h1><p>Choose a date and time for your one-hour in-home visit.</p></div>
+        <Link href="/" aria-label="Return to homepage">×</Link>
       </header>
-      <p className="booking-page__calendar-help">
-        Don't see a time that works? Text us at{" "}
-        <a href={`sms:${site.phoneHref.replace("tel:", "")}`}>{site.phone}</a> and we'll schedule directly with you.
-      </p>
       <BookingCalendar
         className="booking-panel booking-panel--page"
         deferDetailsUntilDate
@@ -207,9 +189,8 @@ export default function BookConsultationPage() {
           <p className="eyebrow">Before we arrive</p>
           <h2 id="booking-consultation-details">A better appointment starts with the right project details.</h2>
           <p>
-            The booking form asks for product interest, approximate window count, and service address so the calendar can
-            estimate appointment length and show available times. If you are not sure what you need yet, choose the
-            closest option and add notes at the end.
+            Choose a date and time, then enter your contact information and service address. Your free consultation
+            lasts one hour. Product interests, window count, and notes are optional; we can help you decide during the visit.
           </p>
         </div>
         <div className="booking-page__detail-grid">

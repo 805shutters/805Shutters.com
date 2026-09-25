@@ -74,7 +74,7 @@ export function AddressAutocomplete({
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [rect, setRect] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -88,7 +88,18 @@ export function AddressAutocomplete({
     const el = inputRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setRect({ top: r.bottom, left: r.left, width: r.width });
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+    const below = viewportBottom - r.bottom - 8;
+    const above = r.top - viewportTop - 8;
+    const openAbove = below < 160 && above > below;
+    setRect({
+      ...(openAbove ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+      left: r.left,
+      width: r.width,
+      maxHeight: Math.max(80, Math.min(272, openAbove ? above : below)),
+    });
   }, []);
 
   // Keep the dropdown anchored to the input while scrolling/resizing.
@@ -98,9 +109,13 @@ export function AddressAutocomplete({
     const handler = () => updateRect();
     window.addEventListener("scroll", handler, true);
     window.addEventListener("resize", handler);
+    window.visualViewport?.addEventListener("resize", handler);
+    window.visualViewport?.addEventListener("scroll", handler);
     return () => {
       window.removeEventListener("scroll", handler, true);
       window.removeEventListener("resize", handler);
+      window.visualViewport?.removeEventListener("resize", handler);
+      window.visualViewport?.removeEventListener("scroll", handler);
     };
   }, [open, updateRect]);
 
@@ -275,10 +290,11 @@ export function AddressAutocomplete({
               onMouseDown={(e) => e.preventDefault()}
               style={{
                 position: "fixed",
-                top: rect.top + 4,
+                top: rect.top,
+                bottom: rect.bottom,
                 left: rect.left,
                 width: rect.width,
-                maxHeight: 272,
+                maxHeight: rect.maxHeight,
                 overflowY: "auto",
                 margin: 0,
                 padding: 4,
@@ -327,7 +343,7 @@ export function AddressAutocomplete({
                 Powered by Google
               </li>
             </ul>,
-            document.body
+            inputRef.current?.closest("dialog") ?? document.body
           )
         : null}
     </>

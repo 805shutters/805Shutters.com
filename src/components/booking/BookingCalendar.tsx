@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ConsultationBooking } from "./ConsultationBooking";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
@@ -47,7 +48,7 @@ type AvailabilityResponse = {
   days: AvailabilityDay[];
 };
 
-type BookingCalendarProps = {
+export type BookingCalendarProps = {
   active?: boolean;
   className?: string;
   deferDetailsUntilDate?: boolean;
@@ -121,7 +122,13 @@ function isErrorMessage(message: string) {
   );
 }
 
-export function BookingCalendar({
+export function BookingCalendar(props: BookingCalendarProps) {
+  return props.variant === "commercial"
+    ? <CommercialBookingCalendar {...props} />
+    : <ConsultationBooking {...props} />;
+}
+
+function CommercialBookingCalendar({
   active = true,
   className = "booking-panel",
   deferDetailsUntilDate = false,
@@ -228,6 +235,7 @@ export function BookingCalendar({
     let current = true;
     const params = new URLSearchParams({
       month,
+      variant: "commercial",
       windowCount: selectedWindowCount,
       address: serviceAddress.trim(),
     });
@@ -458,6 +466,7 @@ export function BookingCalendar({
 
     try {
       const payload = {
+        variant: "commercial",
         date: selectedDate,
         time: selectedTime,
         name: String(formData.get("name") || ""),

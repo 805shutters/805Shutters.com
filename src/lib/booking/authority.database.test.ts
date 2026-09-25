@@ -782,3 +782,27 @@ describe("authenticated manual appointment creation", () => {
     }
   });
 });
+
+
+describe("fixed one-hour residential booking policy", () => {
+  it.each([null, 31])("accepts optional count %s without manufacturing a window estimate", async windowCount => {
+    await publish();
+    const event = candidateVisit(date, "10:00", "123 Main St", windowCount, undefined, 60);
+    event.meta = { windowCount, bookingDurationPolicy: "residential_fixed_60_v1" };
+    await commit("10:00", randomUUID(), { event });
+    const result = await db.query<{ meta: Record<string, unknown>; minutes: number }>("select meta,extract(epoch from (end_at-start_at))/60 as minutes from crm_calendar_events");
+    expect(result.rows[0].meta.windowCount).toBe(windowCount);
+    expect(Number(result.rows[0].minutes)).toBe(60);
+  });
+  it("rejects an incorrectly sized residential visit and preserves legacy validation", async () => {
+    await publish();
+    const event = candidateVisit(date, "10:00", "123 Main St", 31);
+    event.meta = { windowCount: 31, bookingDurationPolicy: "residential_fixed_60_v1" };
+    await expect(commit("10:00", randomUUID(), { event })).rejects.toThrow("Invalid public booking");
+    const unknown = candidateVisit(date, "10:00", "123 Main St", null);
+    await expect(commit("10:00", randomUUID(), { event: unknown })).rejects.toThrow("Invalid public booking");
+    await commit("10:00", randomUUID(), { event: candidateVisit(date, "10:00", "123 Main St", 31) });
+    const result = await db.query<{ minutes: number }>("select extract(epoch from (end_at-start_at))/60 as minutes from crm_calendar_events");
+    expect(Number(result.rows[0].minutes)).toBe(180);
+  });
+});

@@ -43,7 +43,7 @@ describe("approved public SEO surfaces", () => {
     const bookingSource = readFileSync("src/app/book-consultation/page.tsx", "utf8");
     const reviewLinks = pageLinks("/reviews/");
 
-    expect(bookingSource).toContain("<h1>Book a Free In-Home Consultation in Ventura County</h1>");
+    expect(bookingSource).toContain("<h1>Book your free consultation</h1>");
     expect(reviewLinks).toContainEqual({
       label: "805 Shutters on Google Maps",
       href: site.googleMaps.url

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trackBookingStep } from "@/lib/client-tracking";
 import { BookingCalendar, type BookingCalendarVariant } from "./BookingCalendar";
 
@@ -14,6 +14,15 @@ export function AppointmentBooking({
   bookingVariant?: BookingCalendarVariant;
 }) {
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const focused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.showModal();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = overflow; focused?.focus(); };
+  }, [open]);
 
   function closeBooking() {
     setOpen(false);
@@ -30,8 +39,9 @@ export function AppointmentBooking({
         {label}
       </button>
       {open ? (
-        <div className="booking-modal" role="dialog" aria-modal="true" aria-label="Book an appointment">
-          <div className="booking-modal__backdrop" onClick={closeBooking} />
+        <dialog ref={dialogRef} className="booking-modal-dialog" aria-label="Book an appointment"
+          onCancel={event => { event.preventDefault(); closeBooking(); }}
+          onClick={event => { if (event.target === event.currentTarget) closeBooking(); }}>
           <BookingCalendar
             active={open}
             onDone={closeBooking}
@@ -39,7 +49,7 @@ export function AppointmentBooking({
             showClose
             variant={bookingVariant}
           />
-        </div>
+        </dialog>
       ) : null}
     </>
   );

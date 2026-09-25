@@ -4,6 +4,7 @@ import {
   bookingEndIso,
   bookingDurationForWindowCount,
   bookingSlotTimes,
+  bookingSlotDurationMinutes,
   losAngelesDateString,
   zonedTimeToUtc,
 } from "@/lib/booking/availability";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/product-interest-options";
 export const runtime = "nodejs";
 type BookingPayload = {
+  variant?: "standard" | "commercial";
   idempotencyKey?: string;
   revision?: string;
   date?: string;
@@ -114,11 +116,17 @@ async function submit(request: NextRequest) {
   const address = clean(payload.address);
   const email = clean(payload.email);
   const notes = clean(payload.notes);
-  const parsedWindowCount = Number(payload.windowCount || 0);
-  const windowCount = Number.isFinite(parsedWindowCount)
-    ? Math.max(0, Math.ceil(parsedWindowCount))
-    : 0;
-  const appointmentDurationMinutes = bookingDurationForWindowCount(windowCount);
+  const variant = payload.variant || "standard";
+  if (variant !== "standard" && variant !== "commercial")
+    throw new BookingError(400, "Choose a valid appointment type.");
+  const isResidential = variant === "standard";
+  const missingCount = payload.windowCount == null || payload.windowCount === "";
+  const windowCount = missingCount ? null : Number(payload.windowCount);
+  if ((!isResidential && missingCount) || (windowCount !== null &&
+      (!Number.isInteger(windowCount) || windowCount < 1 || windowCount > 10000)))
+    throw new BookingError(400, "Enter a valid approximate number of windows, or leave it blank.");
+  const appointmentDurationMinutes = isResidential
+    ? bookingSlotDurationMinutes : bookingDurationForWindowCount(windowCount);
   const productTypes = normalizeProductTypes(payload.productTypes);
   const productInterest = productTypes.length
     ? productTypes.join(", ")
@@ -161,16 +169,6 @@ async function submit(request: NextRequest) {
     );
   }
 
-  if (windowCount <= 0 || windowCount > 10000) {
-    return NextResponse.json(
-      {
-        message:
-          "Choose the approximate number of window coverings before selecting an appointment.",
-      },
-      { status: 400 },
-    );
-  }
-
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return NextResponse.json(
@@ -205,6 +203,7 @@ async function submit(request: NextRequest) {
         windowCount,
         productTypes,
         followUpRequested,
+        ...(payload.variant ? { variant } : {}),
         pagePath,
         attribution,
       }),
@@ -234,7 +233,7 @@ async function submit(request: NextRequest) {
     `Self-booked appointment.`,
     followUpRequested
       ? `Customer requested a follow-up to confirm details.`
-      : `Customer indicated no follow-up needed.`,
+      : isResidential ? null : `Customer indicated no follow-up needed.`,
     windowCount ? `Windows: ${windowCount}` : null,
     `Estimated appointment length: ${formatDuration(appointmentDurationMinutes)}`,
     productTypes.length ? `Product interest: ${productInterest}` : null,
@@ -243,6 +242,7 @@ async function submit(request: NextRequest) {
     .filter(Boolean)
     .join("\n");
   const bookingGeoMeta = {
+    ...(isResidential ? { bookingDurationPolicy: "residential_fixed_60_v1" } : {}),
     appointmentDurationMinutes,
     appointmentDurationLabel: formatDuration(appointmentDurationMinutes),
     bookingGeo: geocodeResult.point,
@@ -309,7 +309,7 @@ async function submit(request: NextRequest) {
   });
   const eventId = randomUUID();
   const eventRecord = {
-    ...candidateVisit(date, time, address, windowCount, eventId),
+    ...candidateVisit(date, time, address, windowCount, eventId, appointmentDurationMinutes),
     title: `${name} consultation`,
     notes: bookingNotes,
     meta: { ...jobRecord.meta, windowCount, bookingAuthority: "jessica_v1" },

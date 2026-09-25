@@ -52,8 +52,9 @@ function parallelSql(query: string) {
     child.stdin!.end(query);
   });
 }
-function request(time: string, revision: string, key = randomUUID()) {
-  const event = candidateVisit("2035-10-01", time, "123 Main St", 5);
+function request(time: string, revision: string, key = randomUUID(), residential = false) {
+  const event = candidateVisit("2035-10-01", time, "123 Main St", residential ? null : 5);
+  if (residential) event.meta = { windowCount: null, bookingDurationPolicy: "residential_fixed_60_v1" };
   const proof = {
     eventId: event.id,
     signature: eventSignature(event),
@@ -109,6 +110,16 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     expect(sql("select count(*) from leads;")).toBe("1");
     expect(sql("select count(*) from booking_outbox;")).toBe("1");
+  });
+  it("serializes fixed-hour residential bookings without window counts", async () => {
+    const revision = sql("select revision from booking_schedule_state;");
+    const results = await Promise.allSettled([
+      parallelSql(request("10:00", revision, randomUUID(), true)),
+      parallelSql(request("10:30", revision, randomUUID(), true)),
+    ]);
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    expect(sql("select count(*) from crm_calendar_events;")).toBe("1");
+    expect(sql("select extract(epoch from (end_at-start_at))/60 from crm_calendar_events;")).toBe("60.0000000000000000");
   });
   it("replays simultaneous identical requests exactly once", async () => {
     const revision = sql("select revision from booking_schedule_state;"),

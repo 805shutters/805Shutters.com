@@ -12,7 +12,7 @@ type BookingAutomationDetails = {
   phone: string;
   email: string;
   address: string;
-  windowCount: number;
+  windowCount: number | null;
   appointmentDurationMinutes: number;
   productInterest: string;
   productTypes: string[];

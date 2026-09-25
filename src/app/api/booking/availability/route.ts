@@ -13,12 +13,17 @@ export async function GET(request: NextRequest) {
         "Scheduling is temporarily unavailable. Please call 805 Shutters.",
       );
     const q = request.nextUrl.searchParams;
+    const variant = q.get("variant") || "standard";
+    if (variant !== "standard" && variant !== "commercial")
+      throw new BookingError(400, "Choose a valid appointment type.");
     return NextResponse.json(
       await customerAvailability(
         supabase,
         q.get("month") || losAngelesDateString().slice(0, 7),
         q.get("address") || "",
         Number(q.get("windowCount")),
+        false,
+        variant === "standard",
       ),
       { headers: { "Cache-Control": "no-store" } },
     );

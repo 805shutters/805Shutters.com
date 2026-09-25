@@ -5,6 +5,7 @@ import {
   baseSlotReason,
   bookingDurationForWindowCount,
   bookingEndIso,
+  bookingSlotDurationMinutes,
   buildBookingAvailability,
   isCanceled,
   losAngelesDateString,
@@ -85,7 +86,7 @@ export async function validateServiceAddress(address: string) {
   if (!address.trim() || address.length > 512)
     throw new BookingError(
       400,
-      "Enter a complete street address before choosing an appointment.",
+      "Enter a complete street address to finish booking.",
     );
   try {
     const result = await geocodeBookingAddress(address);
@@ -112,8 +113,9 @@ export function candidateVisit(
   date: string,
   time: string,
   address: string,
-  windowCount: number,
+  windowCount: number | null,
   id: string = randomUUID(),
+  durationMinutes = bookingDurationForWindowCount(windowCount),
 ) {
   return {
     id,
@@ -126,7 +128,7 @@ export function candidateVisit(
     end_at: bookingEndIso(
       date,
       time,
-      bookingDurationForWindowCount(windowCount),
+      durationMinutes,
     ),
     assigned_to: "Jessica",
     event_type: "sales_consult",
@@ -199,22 +201,23 @@ export async function customerAvailability(
   address: string,
   windowCount: number,
   staff = false,
+  calendarFirst = false,
 ) {
   if (
     !validMonth(month) ||
-    !Number.isInteger(windowCount) ||
+    (!calendarFirst && (!Number.isInteger(windowCount) ||
     windowCount < 1 ||
-    windowCount > 10000
+    windowCount > 10000))
   )
     throw new BookingError(
       400,
       "Choose a month and the approximate number of windows.",
     );
-  const resolved = await validateServiceAddress(address);
+  const resolved = calendarFirst && !address.trim() ? null : await validateServiceAddress(address);
   const snapshot = await readSchedule(supabase, month);
   const now = new Date();
   const drive = googleDriveEstimator(now);
-  const duration = bookingDurationForWindowCount(windowCount);
+  const duration = calendarFirst ? bookingSlotDurationMinutes : bookingDurationForWindowCount(windowCount);
   const result = buildBookingAvailability(
     month,
     snapshot.events,
@@ -230,7 +233,7 @@ export async function customerAvailability(
     Array.from({ length: 4 }, async () => {
       while (cursor < work.length) {
         const { day, slot } = work[cursor++];
-        if (slot.available) {
+        if (slot.available && resolved) {
           const checked = await checkCandidate(
             snapshot,
             candidateVisit(
@@ -238,6 +241,8 @@ export async function customerAvailability(
               slot.time,
               resolved.formattedAddress || address,
               windowCount,
+              undefined,
+              duration,
             ),
             drive,
             now,
@@ -267,6 +272,7 @@ export async function customerAvailability(
       ),
     })),
     configured: true,
+    addressChecked: Boolean(resolved),
     revision: snapshot.revision,
     expiresAt: new Date(Date.now() + 30000).toISOString(),
     appointmentDurationMinutes: duration,
