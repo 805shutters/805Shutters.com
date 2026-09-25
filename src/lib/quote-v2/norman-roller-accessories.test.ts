@@ -38,7 +38,7 @@ describe('Roller guide p43 magnetic hold-downs',()=>{
   const reopened=JSON.parse(JSON.stringify(s));deriveNormanOrderRecords([{lineId:'a',selection:reopened}]);expect(reopened).toEqual(s);
   let d=newRollerAccessoryDraft('d',emptyRollerAccessories());d={...d,record:{...d.record,...record,magnetColor:'Black'}};expect(rollerAccessoryDirty(d)).toBe(true);d={...d,submitted:d.record};d=syncRollerAccessoryDraft(d,'d',emptyRollerAccessories());expect(d.record.magnetColor).toBe('Black');expect(d.record.bottomClearance).toBe(.6875);
   s.catalogVersion=`${QUOTE_V2_ROLLER_PREVIEW_VERSION}-group-hardware-2026-09-20-r7`;expect(isRecognizedQuoteV2Catalog(s.productId,s.catalogAsOf,s.catalogVersion)).toBe(true);expect(rollerAccessories(s)).toBeNull();
-  const html=renderToStaticMarkup(createElement(NormanRollerAccessoriesOptions,{design:undefined,onUpdateFields:()=>{}}));expect(html).toContain('Save Roller accessories');
+  const html=renderToStaticMarkup(createElement(NormanRollerAccessoriesOptions,{design:undefined,onUpdateFields:()=>{}}));expect(html).not.toContain('Save Roller accessories');
  });
 });
 

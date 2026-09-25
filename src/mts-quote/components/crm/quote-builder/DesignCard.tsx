@@ -1,10 +1,7 @@
+import { NormanRollerAdditionalOptions } from "@/components/crm/NormanRollerAdditionalOptions";
 import {normanBifold90Layouts} from '@/lib/quote/norman-shutter-bifold90';
 import { NormanSharedAutomateHubOptions } from "@/components/crm/NormanSharedAutomateHubOptions";
-import { NormanRollerLightGuardOptions } from "@/components/crm/NormanRollerLightGuardOptions";
-import { NormanRollerPoleOptions } from "@/components/crm/NormanRollerPoleOptions";
 import {SMARTFOLD_WAND_LENGTHS,SMARTFOLD_WAND_COLORS} from "@/lib/quote-v2/norman-smartfold-autowand";
-import { NormanRollerChainOptions } from "@/components/crm/NormanRollerChainOptions";
-import { NormanRollerAccessoriesOptions } from "@/components/crm/NormanRollerAccessoriesOptions";
 import { MAGNET_CLEARANCE_FIELDS, magneticHoldDownActive } from "@/lib/quote-v2/norman-magnet-clearance";
 import { NormanRollerValanceOptions } from "@/components/crm/NormanRollerValanceOptions";
 import { isRollerValance, rollerValanceUnitLabel, ROLLER_VALANCE_KEY } from "@/lib/quote/norman-roller-valance-only";
@@ -21,7 +18,6 @@ import { honeycombChargingClearance } from "@/lib/quote-v2/norman-honeycomb-char
 import { HONEYCOMB_MOUNT_FITS, validateHoneycombMounting } from "@/lib/quote-v2/norman-honeycomb-mounting";
 import { NormanRollerPanelOptions } from "@/components/crm/NormanRollerPanelOptions";
 import { NormanRollerCommonOptions } from "@/components/crm/NormanRollerCommonOptions";
-import { NormanRollerHardwareOptions } from "@/components/crm/NormanRollerHardwareOptions";
 import { ultimateSavedCommonForDisplay } from "@/lib/quote-v2/norman-ultimate-assemblies";
 import { NormanRomanAncillaryOptions } from "@/components/crm/NormanRomanAncillaryOptions";
 import { isRomanAncillary, romanAncillaryUnitLabel, ROMAN_ANCILLARY_RECORD } from "@/lib/quote/norman-roman-ancillary";
@@ -5851,6 +5847,7 @@ export function DesignCard({
       data-line-number={lineNumber}
       className={cn(
         "quote-line-card overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white text-foreground shadow-[0_24px_70px_rgba(15,35,70,0.10)] transition-all",
+        authoritativeV2 && "quote-line-card--details",
         isCopyTarget && "ring-2 ring-blue-300/30",
         isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50"
       )}
@@ -6145,7 +6142,6 @@ export function DesignCard({
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && ["roller","roman"].includes(manufacturerOptionsRoute.productId??"") && <NormanSharedAutomateHubOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <><NormanRollerHardwareOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerAccessoriesOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerChainOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} /><NormanRollerPoleOptions design={currentDesign} onUpdateFields={updateFields} /><NormanRollerLightGuardOptions design={currentDesign} onUpdateFields={updateFields} /></>}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "smartfold" && <NormanSmartfoldChargingOptions design={currentDesign} quantity={lineItem.quantity} onUpdateFields={updateFields} />}
 
         {/* Design options based on the exact persisted manufacturer route. */}
@@ -6248,6 +6244,10 @@ export function DesignCard({
                 : "The catalog identity is retained, but this manufacturer does not yet have an authoritative product-specific configuration panel. Customer pricing and send remain blocked."}
             </p>
           </div>
+        )}
+
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && (
+          <NormanRollerAdditionalOptions key={currentDesign?.id} design={currentDesign} onUpdateFields={updateFields} />
         )}
 
         {manufacturerSpecWarnings.length > 0 && (

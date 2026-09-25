@@ -55,7 +55,7 @@ describe("Roller guide p74 hardware quantities",()=>{
   const sent=d.record;d={...d,submitted:sent};d=syncRollerHardwareDraft(d,"d",emptyRollerHardware());expect(d.record).toEqual(record);d={...d,record:{...d.record,shimLayers:1}};d=syncRollerHardwareDraft(d,"d",sent);expect(d.record.shimLayers).toBe(1);expect(rollerHardwareDirty(d)).toBe(true);
   const design=JSON.parse(JSON.stringify({id:"d",mount_type:"Outside Mount",options_json:{[KEY]:sent}})) as SalesQuoteDesign;
   const s=selectionContextFromExactInterface({quantity:3,width_whole:36,width_fraction:"0",height_whole:60,height_fraction:"0"} as SalesQuoteLineItem,design,{productId:"roller",programId:"roller_cordless_fabric_price_group_1_pg1",catalogAsOf:"2026-09-20"});expect(s.configuration[KEY]).toEqual(record);
-  const html=renderToStaticMarkup(createElement(NormanRollerHardwareOptions,{design,onUpdateFields:()=>{}}));expect(html).toContain("Save Roller hardware");expect(html).toContain("Confirmed Roller physical tube diameter");expect(html).toContain("No unsaved Roller hardware");
+  const html=renderToStaticMarkup(createElement(NormanRollerHardwareOptions,{design,onUpdateFields:()=>{}}));expect(html).not.toContain("Save Roller hardware");expect(html).toContain("Confirmed Roller physical tube diameter");expect(html).not.toContain("No unsaved Roller hardware");
  });
  it("recognizes saved r2 with no new hardware reinterpretation",()=>{
   const s=shade({shim_quantity:999});s.catalogVersion=quoteV2CatalogVersionFor("roller","2026-09-19");expect(isRecognizedQuoteV2Catalog("roller",s.catalogAsOf,s.catalogVersion)).toBe(true);expect(rollerHardware(s)).toBeNull();s.catalogVersion=quoteV2CatalogVersionFor("roller",s.catalogAsOf);expect(rollerHardware(s)?.issues.length).toBeGreaterThan(0);

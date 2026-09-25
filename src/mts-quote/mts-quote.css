@@ -1915,3 +1915,32 @@
 .mts-quote-scope .quote-line-price-input-wrap input { width: 100%; min-width: 0; min-height: 40px; border: 0; background: transparent; color: #142d36; font-size: 16px; font-weight: 700; }
 .mts-quote-scope .quote-line-price-editor [role="alert"] { display: block; color: #b91c1c; font-size: 11px; max-width: 180px; }
 .mts-quote-scope .quote-line-price-editor [role="status"] { font-size: 11px; }
+
+/* Quote details stay readable without reserving an empty price column. */
+.mts-quote-scope .quote-line-card--details {
+  border-radius: 12px;
+  box-shadow: none;
+}
+.mts-quote-scope .quote-line-card--details .quote-line-card-header {
+  background: #fafaf8;
+}
+.mts-quote-scope .quote-line-card--details .quote-line-card-summary {
+  min-width: 0;
+  flex: 0 1 auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.mts-quote-scope .quote-line-card--details .quote-line-card-title-cluster {
+  flex-wrap: wrap;
+}
+.mts-quote-scope .quote-line-card--details .quote-line-card-room {
+  flex-shrink: 0;
+  max-width: 100%;
+  font-size: 20px;
+}
+.mts-quote-scope .quote-line-card--details .quote-line-card-room-button,
+.mts-quote-scope .quote-line-card--details .quote-line-card-size {
+  width: auto;
+}

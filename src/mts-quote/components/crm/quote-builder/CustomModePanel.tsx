@@ -21,8 +21,8 @@ export function CustomModePanel({ lineItem, design }: { lineItem: SalesQuoteLine
       setMessage("Custom override saved. Review the customer preview before requesting send approval.");
     }catch(error){setMessage(error instanceof Error?error.message:"Custom Mode could not be saved.");}finally{setBusy(false);}
   }
-  return <div className="mt-3 rounded-lg border border-violet-300 bg-violet-50 p-3" data-testid="quote-v2-custom-mode">
-    <button type="button" onClick={()=>setOpen(!open)} className="font-bold text-violet-950">{open?"Close Custom Mode":"Custom Mode — internal exception"}</button>
+  return <div className={open ? "mt-3 rounded-lg border border-violet-300 bg-violet-50 p-3" : "quote-custom-mode-closed"} data-testid="quote-v2-custom-mode">
+    <button type="button" aria-expanded={open} onClick={()=>setOpen(!open)} className="quote-more-options-button">{open?"Close Custom Mode":"Custom Mode — internal exception"}</button>
     {open&&<div className="mt-3 space-y-3"><p className="text-xs text-violet-900">Manufacturer cost resolves from the immutable grid snapshot. The original pricing and provenance remain immutable; costs and margin never appear in customer outputs.</p>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4"><div className="rounded border border-violet-200 bg-white px-2 py-1 text-xs font-semibold text-violet-950">Manufacturer cost<br/><span className="font-normal">Authoritative grid</span></div>{field("freightCost","Freight cost","number")}{field("otherCost","Other cost","number")}
         <label className="text-xs font-semibold text-slate-700">Profit method<select value={v.profitMode} onChange={e=>setV({...v,profitMode:e.target.value})} className="mt-1 h-8 w-full rounded border border-slate-300 bg-white px-2 text-sm"><option value="dollar">Profit dollars</option><option value="margin">Margin percent</option></select></label>
