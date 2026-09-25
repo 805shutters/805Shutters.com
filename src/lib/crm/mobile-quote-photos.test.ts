@@ -49,6 +49,9 @@ function database(options: Readonly<{
     });
     builder.not = vi.fn(() => builder);
     builder.is = vi.fn((key: string, value: unknown) => {
+      if (table === "sales_quotes" && key === "deleted_at") {
+        throw new Error("column sales_quotes.deleted_at does not exist");
+      }
       filters[key] = value;
       return builder;
     });
@@ -66,10 +69,10 @@ function database(options: Readonly<{
         const accessible =
           filters.id === QUOTE_ID &&
           filters.account_id &&
-          filters.deleted_at === null &&
-          !options.deleted &&
           (!filters.created_by || filters.created_by === owner);
-        return { data: accessible ? { id: QUOTE_ID, account_id: filters.account_id, created_by: owner, status: "draft", quote_v2_backend: true } : null, error: null };
+        return { data: accessible ? { id: QUOTE_ID, account_id: filters.account_id, created_by: owner, status: "draft", quote_v2_backend: true,
+          ...(options.deleted ? { deleted_at: "2026-09-24T00:00:00Z" } : {}),
+        } : null, error: null };
       }
       if (table === "sales_quote_line_items") {
         return { data: validLineIds.includes(String(filters.id)) && filters.quote_id === QUOTE_ID ? { id: filters.id } : null, error: null };
@@ -80,6 +83,10 @@ function database(options: Readonly<{
           const row = { ...inserted, uploaded_at: null, created_at: "2026-09-05T00:00:00.000Z" };
           photos.set(String(inserted.photo_id), row);
           return { data: row, error: null };
+        }
+        if (!filters.photo_id && filters.quote_id) {
+          return { data: [...photos.values()].filter(row =>
+            row.quote_id === filters.quote_id && row.account_id === filters.account_id && row.uploaded_at), error: null };
         }
         const row = photos.get(String(filters.photo_id));
         if (updated && row) {
@@ -107,6 +114,16 @@ function database(options: Readonly<{
 }
 
 describe("mobile quote private photos", () => {
+  it("uploads and reopens photos with the production schema that has no deleted_at column", async () => {
+    const db = database();
+    await expect(uploadMobileQuotePhoto(db.client, ACTOR_ID, {
+      quoteId: QUOTE_ID, lineItemId: LINE_ID, photoId: PHOTO_ID, file: photoFile(),
+    })).resolves.toMatchObject({ photo: { photoId: PHOTO_ID } });
+    expect(db.upload).toHaveBeenCalledOnce();
+    await expect(listMobileQuotePhotos(db.client, ACTOR_ID, { quoteId: QUOTE_ID }))
+      .resolves.toMatchObject([{ photoId: PHOTO_ID, lineItemId: LINE_ID }]);
+  });
+
   it("detects supported magic bytes and rejects declared MIME mismatches", async () => {
     expect(detectMobileQuotePhotoMime(png)).toBe("image/png");
     const db = database();

@@ -46,14 +46,16 @@ const databaseFailure = (message: string) => new CrmAuthError(502, message);
 async function requireQuote(supabase: SupabaseClient, quoteId: string, actorId: string, ownerOnly: boolean) {
   let query = supabase
     .from("sales_quotes")
-    .select("id,account_id,created_by,status,quote_v2_backend")
+    // Some installed quote schemas predate the optional soft-delete columns.
+    // Read the row without filtering on a column that may not exist, then
+    // enforce its tombstone when present (as the quote alternative API does).
+    .select("*")
     .eq("id", quoteId)
-    .eq("account_id", ACCOUNT_IDS.SHUTTERS_805)
-    .is("deleted_at", null);
+    .eq("account_id", ACCOUNT_IDS.SHUTTERS_805);
   if (ownerOnly) query = query.eq("created_by", actorId);
   const result = await query.maybeSingle();
   if (result.error) throw databaseFailure("The photo quote could not be verified.");
-  if (!result.data) throw new CrmAuthError(404, "The 805 quote was not found or is not accessible.");
+  if (!result.data || result.data.deleted_at) throw new CrmAuthError(404, "The 805 quote was not found or is not accessible.");
   if (ownerOnly && (result.data.status !== "draft" || result.data.quote_v2_backend !== true)) throw new CrmAuthError(409, "Photos can only be added to an owned authoritative V2 draft.");
 }
 
