@@ -1,0 +1,11 @@
+page,json_path,property,finding
+https://www.805shutters.com/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/shades/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/shades/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/shades/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/shades/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']
+https://www.805shutters.com/shades/,$[0].@graph[0],makesOffer,Text value; expected ['schema:Offer']

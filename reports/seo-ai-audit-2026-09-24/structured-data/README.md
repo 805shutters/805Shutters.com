@@ -98,4 +98,4 @@ Both / and /shades/ need the shared phone/URL/profile/coverage/makesOffer correc
 - [Google general structured-data policies](https://developers.google.com/search/docs/appearance/structured-data/sd-policies)
 - [Schema.org makesOffer range](https://schema.org/makesOffer), [servicePhone range](https://schema.org/servicePhone)
 
-Validation and preview evidence will be recorded in VALIDATION.md after the preview is available.
+See [completed preview validation and before/after example](VALIDATION.md). Remaining Santa Clarita/Los Angeles wording appears on 11 pages, including the protected pair, seven city pages and both consultation pages; see validation for the precise list.
