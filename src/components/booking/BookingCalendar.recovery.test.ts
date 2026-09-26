@@ -88,7 +88,7 @@ it("keeps empty-month guidance visible before a day is selected", async () => {
   expect(host.textContent).toContain("No appointments are available this month");
 });
 
-it("places available one-hour visits in a chronological day view and opens details immediately", async () => {
+it("lists available one-hour visits in full-width chronological rows and opens details immediately", async () => {
   const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
     { time: "11:30", label: "11:30 AM", available: true },
     { time: "12:00", label: "12:00 PM", available: true },
@@ -98,8 +98,9 @@ it("places available one-hour visits in a chronological day view and opens detai
   await click("28");
   const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
   expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(['11:30 AM', '12:00 PM', '1:00 PM']);
-  expect(events.map(button => button.style.top)).toEqual(['calc(0.5 * var(--day-hour-height))', 'calc(1 * var(--day-hour-height))', 'calc(2 * var(--day-hour-height))']);
-  expect(events.map(button => button.style.left)).toEqual(['0%', '50%', '0%']);
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(4);
+  expect(host.querySelectorAll('.consultation-booking__day-gap')).toHaveLength(1);
+  expect(events.every(button => button.closest('.consultation-booking__day-row'))).toBe(true);
   expect(events[0].getAttribute('aria-label')).toBe('11:30 AM to 12:30 PM, 1-hour visit');
   await click('12:00 PM');
   expect(document.activeElement).toBe(host.querySelector('form'));
@@ -234,9 +235,8 @@ it("uses the exact daypart boundaries without hiding exceptional published openi
   await click('28');
   const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
   expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(times);
-  // Three simultaneous alternatives stay in separate lanes, even for quarter-hour starts.
-  expect(events.find(button => button.querySelector('strong')?.textContent === '12:00')?.style.left).toBe('66.66666666666667%');
-  expect(host.querySelector('.consultation-booking__day-grid')?.getAttribute('style')).toContain('12 * var(--day-hour-height)');
+  expect(events.map(button => button.getAttribute('aria-label'))).toContain('11:45 to 12:45 PM, 1-hour visit');
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(times.length);
 
 });
 
@@ -270,19 +270,20 @@ it("retains appointment notes and optional choices across a failed booking and r
   expect(request()[1]).toEqual(request()[0]);
 });
 
-it("leaves unavailable gaps blank and disables stale openings on refresh failure", async () => {
+it("labels unavailable gaps and disables stale openings on refresh failure", async () => {
   const fetchMock = vi.fn().mockResolvedValue(ok(available({ days: [{ date: '2026-09-28', day: 28, available: true, slots: [
     { time: '10:00', label: '10:00 AM', available: true },
     { time: '11:00', label: '11:00 AM', available: false },
+    { time: '11:30', label: '11:30 AM', available: false },
     { time: '13:30', label: '1:30 PM', available: true },
   ] }] })));
   const { host, click } = await mount(fetchMock);
   await click('28');
   const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
   expect(events).toHaveLength(2);
-  expect(events[1].style.top).toBe('calc(3.5 * var(--day-hour-height))');
-  expect(events.every(button => button.style.left === '0%')).toBe(true);
-  expect(host.querySelector('.consultation-booking__day-grid')?.getAttribute('style')).toContain('5 * var(--day-hour-height)');
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(3);
+  expect(host.querySelector('.consultation-booking__day-gap')?.textContent).toBe('No openings');
+  expect(events[1].getAttribute('aria-label')).toBe('1:30 PM to 2:30 PM, 1-hour visit');
   fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: 'Please retry availability.' }) });
   await act(async () => window.dispatchEvent(new Event('focus')));
   expect([...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')].every(button => button.disabled)).toBe(true);

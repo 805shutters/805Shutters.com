@@ -62,3 +62,9 @@ No production migration, push, or deployment has been performed. The preview use
 - Overlapping alternative start times occupy separate lanes; all available starts remain selectable, including exceptional published hours. Selecting an opening immediately focuses the existing details form, preserving optional answers and notes when changing the appointment.
 - Focused tests cover chronological positions, one-hour end labels across noon, overlapping lanes including quarter-hour openings, unavailable gaps, failed-refresh disabling, and unchanged daypart badges on the month calendar.
 - Browser checks passed at 1440, 1024, 768, 390, and 320px, including keyboard selection and the mobile popup. Local QA used isolated availability fixtures, produced no browser runtime errors, and submitted no real appointment. Live verification is performed separately after deployment.
+
+## September 26: selected time-picker option 2
+
+- Applied the chosen full-width calendar rows: start-time axis, a sage button showing the complete one-hour range, and a desktop Select indicator. Consecutive unavailable start times use one quiet No openings row.
+- Removed the overlapping event-lane layout. Selection still immediately opens customer details, including the visible optional appointment notes.
+- Focused tests cover chronological rows, one-hour labels, exceptional quarter-hour openings, collapsed unavailable gaps, and disabled stale availability. Browser checks passed at 1440/1024/768/390/320px, including keyboard selection, note retention after a time change, and the mobile popup. No runtime errors or horizontal overflow; local availability was isolated and no real appointment was submitted.

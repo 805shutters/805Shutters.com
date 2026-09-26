@@ -155,20 +155,11 @@ export function ConsultationBooking({ active = true, className = "", heading,
   const daySlots = (selectedDay?.slots.filter(slot => slot.available) ?? []).sort((a, b) => a.time.localeCompare(b.time));
   const minuteOfDay = (time: string) => { const [h, m] = time.split(":").map(Number); return h * 60 + m; };
   const labelAtMinute = (minute: number) => timeLabel(`${Math.floor(minute / 60) % 24}:${String(minute % 60).padStart(2, "0")}`);
-  const dayStart = daySlots.length ? Math.floor(minuteOfDay(daySlots[0].time) / 60) * 60 : 8 * 60;
-  const dayEnd = daySlots.length ? Math.ceil((minuteOfDay(daySlots[daySlots.length - 1].time) + 60) / 60) * 60 : 18 * 60;
-  // One-hour alternatives can overlap (for example 10:00 and 10:30).
-  // Give each an unobstructed lane while keeping DOM and keyboard order chronological.
-  const laneEnds: number[] = [];
-  const dayEvents = daySlots.map(slot => {
-    const start = minuteOfDay(slot.time);
-    let lane = laneEnds.findIndex(end => end <= start);
-    if (lane < 0) lane = laneEnds.length;
-    laneEnds[lane] = start + 60;
-    return { ...slot, start, lane };
-  });
-  const laneCount = Math.max(1, laneEnds.length);
-  const dayTicks = Array.from({ length: (dayEnd - dayStart) / 30 + 1 }, (_, index) => dayStart + index * 30);
+  const dayRows = daySlots.length ? (selectedDay?.slots ?? [])
+    .filter(slot => slot.time >= daySlots[0].time && slot.time <= daySlots[daySlots.length - 1].time)
+    .sort((a, b) => a.time.localeCompare(b.time))
+    // Keep one quiet gap row for a run of unavailable start times.
+    .filter((slot, index, slots) => slot.available || index === 0 || slots[index - 1].available) : [];
   const addressChecked = Boolean(availability?.addressChecked && verifiedAddress === address.trim());
   const selectionAvailable = Boolean(selectedDay?.slots.some(slot => slot.time === selection.time && slot.available));
   const hasOpenings = availability?.days.some(day => day.available);
@@ -332,24 +323,18 @@ export function ConsultationBooking({ active = true, className = "", heading,
           </div>
           <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
           {daySlots.length > 0 && <>
-            <p className="consultation-booking__day-key"><span aria-hidden="true" /> Select a green opening · Each visit is 1 hour</p>
             <div className="consultation-booking__day-view" role="group" aria-label="Available one-hour appointments">
-              <div className="consultation-booking__day-grid" style={{ height: `calc(${(dayEnd - dayStart) / 60} * var(--day-hour-height))` }}>
-                {dayTicks.map(minute => <div key={minute} className={`consultation-booking__day-tick${minute % 60 ? " consultation-booking__day-tick--half" : ""}`}
-                  style={{ top: `calc(${(minute - dayStart) / 60} * var(--day-hour-height))` }} aria-hidden="true">
-                  <span>{labelAtMinute(minute)}</span>
-                </div>)}
-                <div className="consultation-booking__day-events">
-                  {dayEvents.map(slot => <button type="button" key={slot.time} className="consultation-booking__day-event"
-                    style={{ top: `calc(${(slot.start - dayStart) / 60} * var(--day-hour-height))`, left: `${slot.lane * 100 / laneCount}%`, width: `calc(${100 / laneCount}% - 6px)` }}
-                    aria-label={`${slot.label} to ${labelAtMinute(slot.start + 60)}, 1-hour visit`} aria-pressed={selection.time === slot.time}
-                    disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
-                    <strong>{slot.label}</strong><span>to {labelAtMinute(slot.start + 60)}</span>
-                  </button>)}
-                </div>
-              </div>
+              {dayRows.map(slot => <div className="consultation-booking__day-row" key={slot.time}>
+                <span className="consultation-booking__day-axis" aria-hidden="true">{slot.label}</span>
+                {slot.available ? <button type="button" className="consultation-booking__day-event"
+                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, 1-hour visit`} aria-pressed={selection.time === slot.time}
+                  disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
+                  <span className="consultation-booking__day-range"><strong>{slot.label}</strong><span>– {labelAtMinute(minuteOfDay(slot.time) + 60)}</span></span>
+                  <span className="consultation-booking__day-select" aria-hidden="true">Select →</span>
+                </button> : <span className="consultation-booking__day-gap">No openings</span>}
+              </div>)}
             </div>
-            <p className="consultation-booking__hint">Select an opening to enter your details. Blank times are unavailable.</p>
+            <p className="consultation-booking__hint">Select a time to enter your details.</p>
           </>}
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}
           {loading && <p role="status">{checkAddress ? "Checking times for your address…" : "Loading available times…"}</p>}
