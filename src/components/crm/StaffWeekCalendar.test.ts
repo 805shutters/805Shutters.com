@@ -24,11 +24,48 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("fetch", fetchHours);
   vi.clearAllMocks();
+  fetchHours.mockReset();
+  fetchHours.mockImplementation(async () => new Response(JSON.stringify({ revision: "test", ranges: [] })));
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe("full Sunday–Saturday staff calendar", () => {
+  it("publishes only 10 AM through the 3 PM half-hour, reflects saved hours, and blocks on the next click", async () => {
+    fetchHours.mockImplementation(async (_input, init) => {
+      const ranges = init?.method === "PUT" ? JSON.parse(String(init.body)).ranges.map((range: object, index: number) => ({
+        ...range, id: String(index), owner: "Jessica", status: "available", source: "crm_working_ranges",
+      })) : [];
+      return new Response(JSON.stringify({ revision: "saved", ranges }));
+    });
+    await render("2026-09-24");
+    await click("Make available day 2026-09-24");
+    const writes = () => fetchHours.mock.calls.filter(([, init]) => init?.method === "PUT");
+    expect(JSON.parse(String(writes()[0][1]?.body)).ranges).toEqual([
+      { start_at: "2026-09-24T17:00:00.000Z", end_at: "2026-09-24T22:30:00.000Z" },
+    ]);
+    const day = host.querySelector('article[data-date="2026-09-24"]')!;
+    expect(day.querySelector('[data-scope="day"]')?.getAttribute("aria-pressed")).toBe("true");
+    for (const time of ["09:30", "15:30", "17:00"]) expect(day.querySelector(`[data-time="${time}"]`)?.getAttribute("data-state")).toBe("blocked");
+    for (const time of ["10:00", "12:30", "15:00"]) expect(day.querySelector(`[data-time="${time}"]`)?.getAttribute("data-state")).toBe("available");
+    await click("Block day 2026-09-24");
+    expect(JSON.parse(String(writes()[1][1]?.body)).ranges).toEqual([]);
+    expect(day.querySelector('[data-scope="day"]')?.getAttribute("aria-pressed")).toBe("false");
+  });
+  it("skips appointments and keeps default hours when an early appointment expands the timeline", async () => {
+    const base = { event_type: "sales_consult", status: "scheduled", title: "Sample appointment" };
+    await render("2026-09-24", [
+      { ...base, id: "early", start_at: "2026-09-24T13:00:00Z", end_at: "2026-09-24T14:00:00Z" },
+      { ...base, id: "midday", start_at: "2026-09-24T19:00:00Z", end_at: "2026-09-24T20:00:00Z" },
+    ] as CrmCalendarEvent[]);
+    await click("Make available day 2026-09-24");
+    const write = fetchHours.mock.calls.find(([, init]) => init?.method === "PUT")!;
+    expect(JSON.parse(String(write[1]?.body)).ranges).toEqual([
+      { start_at: "2026-09-24T17:00:00.000Z", end_at: "2026-09-24T19:00:00.000Z" },
+      { start_at: "2026-09-24T20:00:00.000Z", end_at: "2026-09-24T22:30:00.000Z" },
+    ]);
+    expect(host.querySelectorAll('button[data-sale]')).toHaveLength(2);
+  });
   it("groups every timeline into one accessible scroll region", async () => {
     await render("2026-09-24");
     const regions = host.querySelectorAll('[role="region"]');

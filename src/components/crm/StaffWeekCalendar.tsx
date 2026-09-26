@@ -85,12 +85,12 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     inFlight.current = true; setSaving(true); setError(""); setNotice("");
     try {
       const ranges = minute === null
-        ? available ? changeCalendarDayHours(snapshot.ranges, events, date, slots, staffCalendarIntervalMinutes) : changeCalendarDay(snapshot.ranges, date, false, "", "")
+        ? available ? changeCalendarDayHours(snapshot.ranges, events, date, defaultDaySlots, staffCalendarIntervalMinutes) : changeCalendarDay(snapshot.ranges, date, false, "", "")
         : changeCalendarSlot(snapshot.ranges, date, minute, available);
       const body = await request("/api/crm/availability", { method: "PUT", body: JSON.stringify({ month, revision: snapshot.revision, ranges }) });
       if (activeWeek.current === week) {
         setSnapshots(current => ({ ...current, [month]: { ...body, month } }));
-        setNotice(`${date}${minute === null ? "" : ` ${calendarSlot(date, minute).time}`}: ${available ? minute === null ? "unbooked half-hours published for public booking" : "half-hour published for public booking" : minute === null ? "day blocked for new public bookings; existing appointments stay scheduled" : "half-hour blocked for new public bookings"}.`);
+        setNotice(`${date}${minute === null ? "" : ` ${calendarSlot(date, minute).time}`}: ${available ? minute === null ? "unbooked half-hours from 10:00 AM through 3:00 PM published for public booking" : "half-hour published for public booking" : minute === null ? "day blocked for new public bookings; existing appointments stay scheduled" : "half-hour blocked for new public bookings"}.`);
       }
     } catch (reason) {
       if (activeWeek.current === week) {
@@ -110,7 +110,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     const label = minute === null ? `${full ? "Block" : "Make available"} day ${date}` : `${full ? "Block" : "Make available"} ${date} ${calendarSlot(date, minute).time}`;
     return <button type="button" className={styles.availabilityToggle} data-scope={minute === null ? "day" : "slot"}
       disabled={!canChange || disabled} aria-label={label} aria-pressed={partial ? "mixed" : full}
-      title={minute === null ? `${full ? "Block public booking for this day" : "Publish all displayed unbooked half-hours"}. Existing appointments stay scheduled.` : `${full ? "Block this half-hour" : partial ? "Publish the rest of this half-hour" : "Make this half-hour available"} for public booking`}
+      title={minute === null ? `${full ? "Block public booking for this day" : "Publish unbooked half-hours from 10:00 AM through 3:00 PM"}. Existing appointments stay scheduled.` : `${full ? "Block this half-hour" : partial ? "Publish the rest of this half-hour" : "Make this half-hour available"} for public booking`}
       onClick={() => void updateAvailability(date, minute, !full)}>
       {full ? <Check aria-hidden="true" /> : partial ? <Minus aria-hidden="true" /> : null}
     </button>;
@@ -119,6 +119,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
   const weekLabel = `${labelDate(days[0])} – ${labelDate(days[days.length - 1])}, ${days[6].slice(0, 4)}`;
   const bounds = weekTimeBounds(events, days);
   const slots = Array.from({ length: (bounds.end - bounds.start) / staffCalendarIntervalMinutes }, (_, index) => bounds.start + index * staffCalendarIntervalMinutes);
+  const defaultDaySlots = slots.filter(minute => minute >= 10 * 60 && minute <= 15 * 60);
   const timeLabel = (minute: number) => `${Math.floor(minute / 60) % 12 || 12}:${String(minute % 60).padStart(2, "0")} ${minute < 720 ? "AM" : "PM"}`;
   return <section ref={section} className={styles.calendar} aria-label="Appointment calendar">
     <header className={styles.header}>
@@ -143,7 +144,7 @@ export function StaffWeekCalendar({ session, events, jobs, anchorDate, onDateCha
     <div className={styles.grid} style={{ "--day-count": days.length } as CSSProperties}>
       {days.map((date, index) => {
         const state = !ready ? "unknown" : "loaded";
-        const dayState = ready ? calendarDayState(published, events, date, slots, staffCalendarIntervalMinutes) : "unknown";
+        const dayState = ready ? calendarDayState(published, events, date, defaultDaySlots, staffCalendarIntervalMinutes) : "unknown";
         const layout = weekDayLayout(events, date, bounds);
         return <article key={date} className={styles.day} data-date={date} data-state={state} aria-label={`${date}, ${state}`}>
           <div className={styles.dayHead}>
