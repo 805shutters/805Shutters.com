@@ -88,6 +88,33 @@ it("keeps empty-month guidance visible before a day is selected", async () => {
   expect(host.textContent).toContain("No appointments are available this month");
 });
 
+it("groups available times into morning then afternoon and opens details immediately", async () => {
+  const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
+    { time: "11:30", label: "11:30 AM", available: true },
+    { time: "12:00", label: "12:00 PM", available: true },
+    { time: "12:30", label: "12:30 PM", available: false },
+    { time: "13:00", label: "1:00 PM", available: true },
+  ] }] }))));
+  await click("28");
+  const groups = [...host.querySelectorAll('.consultation-booking__time-group')];
+  expect(groups.map(group => group.getAttribute('aria-label'))).toEqual(['Morning appointments', 'Afternoon appointments']);
+  expect(groups.map(group => [...group.querySelectorAll('button')].map(button => button.textContent)))
+    .toEqual([['11:30 AM'], ['12:00 PM', '1:00 PM']]);
+  await click('12:00 PM');
+  expect(document.activeElement).toBe(host.querySelector('form'));
+  expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain('12:00 PM');
+});
+
+it.each(['morning', 'afternoon'])("omits empty time groups on a %s-only day", async period => {
+  const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
+    { time: "11:30", label: "11:30 AM", available: period === 'morning' },
+    { time: "12:00", label: "12:00 PM", available: period === 'afternoon' },
+  ] }] }))));
+  await click('28');
+  expect(host.querySelectorAll('.consultation-booking__time-group')).toHaveLength(1);
+  expect(host.querySelector('.consultation-booking__time-group')?.getAttribute('aria-label')).toBe(`${period === 'morning' ? 'Morning' : 'Afternoon'} appointments`);
+});
+
 it("shows daypart badges only for available slots, with noon counted as afternoon", async () => {
   const slots = (morning: boolean, afternoon: boolean) => [
     { time: "11:30", label: "11:30 AM", available: morning },

@@ -54,11 +54,14 @@
 .consultation-booking__times-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .consultation-booking button.consultation-booking__change-date { width: auto; min-width: 0; padding: 0; border: 0; background: transparent; text-decoration: underline; text-underline-offset: 3px; font-size: 12px; font-weight: 400; flex: none; }
 .consultation-booking__times { width: 100%; max-width: 650px; margin: 0 auto; border-top: 1px solid var(--line); padding-top: 24px; scroll-margin-top: 20px; }
-.consultation-booking__slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
-.consultation-booking__slots button { flex-direction: column; align-items: flex-start; gap: 7px; padding: 15px; border-color: var(--ink); text-align: left; }
-.consultation-booking__slots strong { font-family: var(--font-display); font-size: 24px; font-weight: 400; line-height: 1.1; }
-.consultation-booking__slots span { color: var(--muted); font-size: 12px; line-height: 1.4; font-weight: 400; }
-.consultation-booking__slots button[aria-pressed="true"] span { color: var(--white); }
+.consultation-booking__time-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin: 24px 0 20px; }
+.consultation-booking__time-group h4 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+.consultation-booking__time-group h4 span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.consultation-booking__slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.consultation-booking__slots button { min-width: 0; min-height: 66px; padding: 12px 8px; border-color: #9bb395; border-radius: 8px; background: #e4edde; color: #35513a; text-align: center; }
+.consultation-booking__slots button:hover:not(:disabled):not([aria-pressed="true"]) { background: #d5e4cd; border-color: #456448; }
+.consultation-booking__slots button[aria-pressed="true"] { background: #d5e4cd; color: #35513a; border-color: #456448; box-shadow: inset 0 0 0 1px #456448; }
+.consultation-booking__slots strong { font-size: 19px; font-weight: 400; line-height: 1.2; }
 .consultation-booking__notice { padding: 14px 16px; background: #fff7e7; border-radius: 0; color: #68481e; }
 .consultation-booking__form { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 24px; scroll-margin-top: 20px; }
 .consultation-booking fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }

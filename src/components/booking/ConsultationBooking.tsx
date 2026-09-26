@@ -137,6 +137,10 @@ export function ConsultationBooking({ active = true, className = "", heading,
   }, [active, complete, month, checkAddress, refresh]);
 
   const selectedDay = availability?.days.find(day => day.date === selection.date);
+  const availableTimeGroups = [
+    { label: "Morning", note: "Before noon", slots: selectedDay?.slots.filter(slot => slot.available && Number(slot.time.split(":")[0]) < 12) ?? [] },
+    { label: "Afternoon", note: "Noon onward", slots: selectedDay?.slots.filter(slot => slot.available && Number(slot.time.split(":")[0]) >= 12) ?? [] },
+  ].filter(group => group.slots.length > 0);
   const addressChecked = Boolean(availability?.addressChecked && verifiedAddress === address.trim());
   const selectionAvailable = Boolean(selectedDay?.slots.some(slot => slot.time === selection.time && slot.available));
   const hasOpenings = availability?.days.some(day => day.available);
@@ -292,13 +296,19 @@ export function ConsultationBooking({ active = true, className = "", heading,
             <h3>{dateLabel(selection.date)}</h3>
             <button type="button" className="consultation-booking__change-date" onClick={returnToCalendar} disabled={submitting}>Change date</button>
           </div>
-          <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour" : "Pick a time, then tell us where to meet you."}</p>
-          <div className="consultation-booking__slots">
-            {selectedDay?.slots.filter(slot => slot.available).map(slot => <button type="button" key={slot.time}
-              aria-label={`${slot.label}, 1-hour visit`} aria-pressed={selection.time === slot.time} disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
-              <strong>{slot.label}</strong><span>1-hour visit{selection.time === slot.time ? " · Selected" : ""}</span>
-            </button>)}
+          <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
+          <div className="consultation-booking__time-groups">
+            {availableTimeGroups.map(group => <section className="consultation-booking__time-group" aria-label={`${group.label} appointments`} key={group.label}>
+              <h4>{group.label} <span>{group.note}</span></h4>
+              <div className="consultation-booking__slots">
+                {group.slots.map(slot => <button type="button" key={slot.time}
+                  aria-label={`${slot.label}, 1-hour visit`} aria-pressed={selection.time === slot.time} disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
+                  <strong>{slot.label}</strong>
+                </button>)}
+              </div>
+            </section>)}
           </div>
+          {availableTimeGroups.length > 0 && <p className="consultation-booking__hint">Select a time to enter your details.</p>}
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}
           {loading && <p role="status">{checkAddress ? "Checking times for your address…" : "Loading available times…"}</p>}
         </div>}
