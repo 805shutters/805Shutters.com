@@ -159,7 +159,7 @@ it("shows contact details only after time selection and preserves the time acros
   expect(host.querySelector(".consultation-booking__schedule")).toBeNull();
   expect(host.textContent).toContain("Complete your booking");
   expect(host.querySelector('[aria-label="Optional project questions"]')).not.toBeNull();
-  expect(host.querySelector("details")).toBeNull();
+  expect(host.querySelector("details summary")?.textContent).toBe("More covering types");
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')?.required).toBe(false);
   expect([...host.querySelectorAll('.consultation-booking__contact input')].map(input => input.getAttribute('name'))).toEqual(['name', 'phone', 'email']);
   expect(host.querySelectorAll('button[type="submit"]')).toHaveLength(1);
@@ -193,8 +193,8 @@ it("does not refetch or change the time when optional window count changes", asy
   const fetchMock = vi.fn().mockResolvedValue(ok(available()));
   const { host, click } = await mount(fetchMock);
   await click("28"); await click("10:30 AM");
-  const count = host.querySelector<HTMLSelectElement>('select[name="windowCount"]')!;
-  await act(async () => { count.value = "31"; count.dispatchEvent(new Event("change", { bubbles: true })); });
+  const count = host.querySelector<HTMLInputElement>('input[name="windowCount"][value="31"]')!;
+  await act(async () => count.click());
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
   expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain("1 hour");
@@ -236,4 +236,34 @@ it("uses the exact daypart boundaries without hiding exceptional published openi
     .toEqual([['08:00', '11:30'], ['12:00', '17:00'], ['07:30', '11:45', '17:30']]);
   expect(groups[0].querySelector('h4')?.textContent).toContain('8:00–11:30 AM');
   expect(groups[1].querySelector('h4')?.textContent).toContain('12:00–5:00 PM');
+});
+
+it("retains appointment notes and optional choices across a failed booking and retry", async () => {
+  const fetchMock = vi.fn().mockImplementation(async (url: string) => url.includes('availability')
+    ? ok(available({ addressChecked: true }))
+    : { ok: false, status: 503, json: async () => ({ message: 'Please try again.' }) });
+  const { host, click } = await mount(fetchMock);
+  await click('28'); await click('10:30 AM'); await click('Choose address');
+  const notes = host.querySelector<HTMLTextAreaElement>('textarea[name="notes"]')!;
+  expect(notes.required).toBe(false);
+  expect(notes.closest('details')).toBeNull();
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!;
+    setter.call(notes, 'Gate code 1234. Please park in the driveway.');
+    notes.dispatchEvent(new Event('input', { bubbles: true }));
+    host.querySelector<HTMLInputElement>('input[name="productTypes"][value="Shutters"]')!.click();
+    host.querySelector<HTMLInputElement>('input[name="productTypes"][value="Roller Shades"]')!.click();
+    host.querySelector<HTMLInputElement>('input[name="windowCount"][value="5"]')!.click();
+    host.querySelector<HTMLInputElement>('input[name="windowCount"][value="31"]')!.click();
+  });
+  expect(host.querySelectorAll('input[name="windowCount"]:checked')).toHaveLength(1);
+  const form = host.querySelector('form')!;
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(host.textContent).toContain('Please try again.');
+  expect(notes.value).toContain('Gate code 1234');
+  const request = () => fetchMock.mock.calls.filter(([url]) => url === '/api/booking/').map(([, init]) => JSON.parse(init.body));
+  expect(request()[0]).toMatchObject({ notes: 'Gate code 1234. Please park in the driveway.', windowCount: '31', productTypes: ['Shutters', 'Roller Shades'] });
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(request()).toHaveLength(2);
+  expect(request()[1]).toEqual(request()[0]);
 });

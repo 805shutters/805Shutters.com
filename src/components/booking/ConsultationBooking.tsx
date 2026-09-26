@@ -22,6 +22,7 @@ type Availability = {
 type Selection = { date: string; time: string };
 const emptyContact = { name: "", phone: "", email: "", notes: "" };
 const countOptions = ["1–5", "6–10", "11–15", "16–20", "21–25", "26–30", "31+"];
+const primaryProducts = ["Shutters", "Roller Shades", "Honeycomb", "Motorized Shades", "Drapery", "Faux Wood/Wood Blinds"];
 const countValues = ["5", "10", "15", "20", "25", "30", "31"];
 
 function shiftMonth(month: string, delta: number) {
@@ -251,6 +252,14 @@ export function ConsultationBooking({ active = true, className = "", heading,
     }
   }
 
+  function renderProduct(product: string) {
+    return <label className="consultation-booking__choice" key={product}>
+      <input type="checkbox" name="productTypes" value={product} checked={productTypes.includes(product)}
+        onChange={() => setProductTypes(current => current.includes(product) ? current.filter(value => value !== product) : [...current, product])} />
+      <span><span className="consultation-booking__choice-check" aria-hidden="true">✓</span>{product === "Faux Wood/Wood Blinds" ? "Wood / faux wood" : product}</span>
+    </label>;
+  }
+
   return <div className={`consultation-booking${isPage ? " consultation-booking--page" : ""}${!complete ? " consultation-booking--bold" : ""}`}>
     {(title || showClose) && <header className="consultation-booking__head">
       {!isPage && <img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" width={80} height={64} />}
@@ -348,18 +357,39 @@ export function ConsultationBooking({ active = true, className = "", heading,
             </div>
           </div>
           <section className="consultation-booking__optional" aria-label="Optional project questions">
-            <h4>Your project <span>Optional</span></h4>
-            <p className="consultation-booking__hint">Share what you know. You can skip these questions.</p>
-            <fieldset className="consultation-booking__products"><legend>What type of coverings are you interested in?</legend>
-              {productInterestOptions.map(product => <label key={product}><input type="checkbox" checked={productTypes.includes(product)}
-                onChange={() => setProductTypes(current => current.includes(product) ? current.filter(value => value !== product) : [...current, product])} />{product}</label>)}
-            </fieldset>
-            <label>How many windows will we be measuring?<select name="windowCount" value={windowCount} onChange={event => setWindowCount(event.target.value)}>
-              <option value="">Not sure / skip</option>{countOptions.map((label, i) => <option value={countValues[i]} key={label}>{label}</option>)}
-            </select></label>
-            <label>Anything else we should know?<textarea name="notes" rows={2} value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} /></label>
+            <h4>Optional <span>Share what you know, or skip.</span></h4>
+            <div className="consultation-booking__project-sections">
+              <fieldset className="consultation-booking__coverings">
+                <legend>Covering types</legend>
+                <p className="consultation-booking__hint">Select all that interest you.</p>
+                <div className="consultation-booking__choices">
+                  {primaryProducts.map(product => renderProduct(product))}
+                </div>
+                <details className="consultation-booking__more-products">
+                  <summary>More covering types</summary>
+                  <div className="consultation-booking__choices">
+                    {productInterestOptions.filter(product => !primaryProducts.includes(product)).map(product => renderProduct(product))}
+                  </div>
+                </details>
+              </fieldset>
+              <fieldset className="consultation-booking__quantities">
+                <legend>Number of windows</legend>
+                <p className="consultation-booking__hint">Choose an approximate quantity.</p>
+                <div className="consultation-booking__quantity-choices">
+                  {[{ label: "Not sure", value: "" }, ...countOptions.map((label, i) => ({ label, value: countValues[i] }))].map(option =>
+                    <label className="consultation-booking__choice" key={option.value}>
+                      <input type="radio" name="windowCount" value={option.value} checked={windowCount === option.value} onChange={() => setWindowCount(option.value)} />
+                      <span><span className="consultation-booking__choice-check" aria-hidden="true">✓</span>{option.label}</span>
+                    </label>)}
+                </div>
+              </fieldset>
+            </div>
+            <label className="consultation-booking__notes">Appointment notes — optional
+              <textarea name="notes" rows={3} placeholder="Gate code, parking instructions, or anything else we should know before your visit." value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} />
+            </label>
           </section>
           <div className="consultation-booking__actions">
+            <p className="consultation-booking__hint">Free in-home consultation · 1 hour</p>
             <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || !addressChecked || Boolean(availabilityError)}>{submitting ? "Booking your appointment…" : "Book appointment"}</button>
             {address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
           </div>

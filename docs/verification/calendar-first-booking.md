@@ -48,3 +48,10 @@ No production migration, push, or deployment has been performed. The preview use
 - Desktop and iPad show name, address, phone, and optional email on the left, with visible optional covering choices, window count, and notes on the right. Mobile stacks the same sections.
 - Verified page and native popup at 1440×1000, 820×1180, and 390×844. The details heading is immediately visible after selection; no horizontal overflow. Keyboard order starts with name then address; Escape restores popup trigger focus.
 - Seven focused UI tests pass, including retained optional answers across slot changes. Another isolated mobile booking with all optional fields blank created one additional lead, job, 60-minute event, and eight local outbox effects. A travel conflict preserved information and an alternative time booked successfully. External delivery stayed suppressed.
+
+## September 26: customer details layout and appointment notes
+
+- Adopted the selected layout: contact details left, optional covering buttons and window quantity buttons side by side on the right, and a shared booking footer. Smaller screens stack the sections.
+- Added a visible, optional appointment-notes textarea with gate-code and parking guidance. Uses the existing notes payload and server processing; appointment duration and scheduling are unchanged.
+- Focused UI coverage verifies multi-select coverings, a single quantity, notes retained through a failed request, and identical payload/idempotency key on retry.
+- Browser checks covered desktop (1440), tablet (1024/768), mobile (390/320), the page and mobile popup, keyboard checkbox/radio controls, more-covering disclosure, and notes retained after changing time. No horizontal overflow or browser runtime errors. Local availability was supplied from a saved fixture because the isolated checkout has no scheduling credentials; live availability must be checked separately after release. No real booking was submitted.
