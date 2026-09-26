@@ -16,5 +16,5 @@ const data = {
   sync:{history_from:'2020-01-01T00:00:00Z',last_finished_at:new Date().toISOString(),state:{}},
   totals:{completedGrossCents:645319,assignedGrossCents:645319,knownFeeCents:18300,feesPending:0,completedRefundCents:0,pendingCount:0},webhook:{configured:false,url:null},
 };
-window.fetch = async () => new Response(JSON.stringify(data),{status:200});
+window.fetch = async (url) => new Response(JSON.stringify(String(url).includes("/mobile/customers") ? {results: [], asOf: new Date().toISOString()} : data),{status:200});
 createRoot(document.getElementById('root')!).render(<div className="crm-platinum-shell"><CrmNavigation activeTab="square" onNavigate={()=>{}} onRefresh={()=>{}} onSignOut={()=>{}} busy={false}/><main className="crm-platinum-main"><div className="crm-platinum-topbar">Workspace / Payment Hub · Local preview</div><div className="crm-platinum-content"><SquareFinanceWorkspace session={{access_token:'fixture'} as Session}/></div></main></div>);

@@ -1,3 +1,4 @@
+import { validPaymentAmount, type CustomerPaymentChoice } from "@/lib/crm/customer-payment-request";
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, CrmAuthError, requireCrmUser } from "@/lib/crm/auth";
 import { loadCrmDashboardData } from "@/lib/crm/backend";
@@ -77,11 +78,14 @@ export async function GET(request:NextRequest) {
 export async function POST(request:NextRequest) {
   try {
     const {supabase,email,user}=await requireCrmUser(request);
-    const body=await request.json() as {quoteId?:string;jobId?:string;paymentType?:"deposit"|"balance";channel?:"email"|"text";idempotencyKey?:string;expectedAmount?:number;expectedRecipient?:string;collectionMode?:"full"|"partial";customAmount?:number;expectedOutstanding?:number};
+    const body=await request.json() as {quoteId?:string;jobId?:string;paymentType?:"deposit"|"balance";channel?:"email"|"text";idempotencyKey?:string;expectedAmount?:number;expectedRecipient?:string;customAmount?:number;requestKind?:CustomerPaymentChoice;collectionMode?:"full"|"partial";expectedOutstanding?:number};
     if(!body.quoteId||!body.jobId||!["deposit","balance"].includes(String(body.paymentType))||!["email","text"].includes(String(body.channel))) throw new CrmAuthError(400,"Choose a valid customer, payment, and delivery method.");
     if (body.collectionMode !== undefined && !["full", "partial"].includes(body.collectionMode)) throw new CrmAuthError(400,"Choose full balance or partial payment.");
     if (body.collectionMode && body.paymentType !== "balance") throw new CrmAuthError(400,"Full and partial collections must use the order balance.");
-    if (body.customAmount !== undefined && body.collectionMode !== "partial") throw new CrmAuthError(400,"Custom amounts require partial payment mode.");
+    if (body.collectionMode !== undefined && body.requestKind !== undefined) throw new CrmAuthError(400,"Choose one payment amount mode.");
+    if (body.requestKind !== undefined && (!["deposit","balance","full","custom"].includes(body.requestKind) || (body.requestKind === "deposit" ? "deposit" : "balance") !== body.paymentType)) throw new CrmAuthError(400,"Choose a valid payment amount and type.");
+    if (body.customAmount !== undefined && ((body.requestKind !== "custom" && body.collectionMode !== "partial") || !validPaymentAmount(body.customAmount) || body.customAmount !== body.expectedAmount)) throw new CrmAuthError(400,"Review the specific payment amount before sending.");
+    if (body.requestKind === "custom" && body.customAmount === undefined) throw new CrmAuthError(400,"Enter a specific payment amount.");
     if(!body.idempotencyKey||!/^[0-9a-f]{8}-[0-9a-f-]{27,45}$/i.test(body.idempotencyKey)) throw new CrmAuthError(400,"A valid send request key is required.");
     const {data:quote}=await supabase.from("crm_quotes").select("id,job_id,customer_email,customer_phone").eq("id",body.quoteId).maybeSingle();
     if(!quote||quote.job_id!==body.jobId) throw new CrmAuthError(404,"The selected customer contract was not found.");
@@ -98,7 +102,7 @@ export async function POST(request:NextRequest) {
       preference=preferenceResult.data as ContactPreference;
     }
     const recipient=mobilePaymentRecipient({quote:{email:quote.customer_email,phone:quote.customer_phone},job,channel,preference});
-    if (typeof body.expectedRecipient !== "string" || !Number.isFinite(body.expectedAmount) || !(body.expectedAmount! > 0)) {
+    if (typeof body.expectedRecipient !== "string" || !validPaymentAmount(body.expectedAmount)) {
       throw new CrmAuthError(400,"Review the current amount and recipient before sending.");
     }
     const expectedRecipient = channel === "text" ? toE164(body.expectedRecipient) : body.expectedRecipient.trim().toLowerCase();
@@ -114,7 +118,7 @@ export async function POST(request:NextRequest) {
       return NextResponse.json({replayed:true,paymentType:body.paymentType,amount:replay.amount,channel,recipient:maskedRecipient,linkState:"created",deliveryState:"accepted",providerStatus:replay.providerStatus});
     }
     try{
-      const result=await sendSquareOrderPaymentLink(supabase,body.quoteId,body.paymentType!,{email,userId:user.id},recipient,{channel,idempotencyKey:body.idempotencyKey,phone:recipient},{expectedAmount:body.expectedAmount!,expectedRecipient:recipient,collectionMode:body.collectionMode,customAmount:body.customAmount,expectedOutstanding:body.expectedOutstanding});
+      const result=await sendSquareOrderPaymentLink(supabase,body.quoteId,body.paymentType!,{email,userId:user.id},recipient,{channel,idempotencyKey:body.idempotencyKey,phone:recipient},{expectedAmount:body.expectedAmount!,expectedRecipient:recipient,...(body.collectionMode ? {collectionMode:body.collectionMode,expectedOutstanding:body.expectedOutstanding} : {}),...(body.requestKind ? {requestKind:body.requestKind} : {}),...(body.customAmount !== undefined ? {customAmount:body.customAmount} : {})});
       const update=await supabase.from("crm_payment_link_send_requests").update({updated_at:new Date().toISOString(),amount:result.amount,square_payment_link_id:result.linkId,square_payment_link_url:result.url,status:"accepted",provider_message_id:result.providerMessageId||null,provider_status:result.providerStatus||"accepted",error_message:null}).eq("idempotency_key",body.idempotencyKey).eq("status","sending");
       if(update.error) throw new Error("Provider accepted the request, but its audit status could not be finalized. Do not retry.");
       return NextResponse.json({paymentType:result.paymentType,amount:result.amount,remainingAfterPayment:result.remainingAfterPayment,channel,recipient:maskedRecipient,linkState:"created",deliveryState:"accepted",providerStatus:result.providerStatus||"accepted"});
@@ -122,7 +126,7 @@ export async function POST(request:NextRequest) {
       const deliveryError=error instanceof SquarePaymentDeliveryError?error:null;
       const status=deliveryError?.deliveryState||(error instanceof CrmAuthError?"failed":"unknown");
       const details=deliveryError?.details;
-      await supabase.from("crm_payment_link_send_requests").update({updated_at:new Date().toISOString(),status,amount:details?.amount??body.expectedAmount,square_payment_link_id:details?.linkId||null,square_payment_link_url:details?.url||null,provider_message_id:details?.providerMessageId||null,provider_status:details?.providerStatus||null,error_message:error instanceof Error?error.message:"Payment link request failed."}).eq("idempotency_key",body.idempotencyKey).eq("status","sending");
+      await supabase.from("crm_payment_link_send_requests").update({updated_at:new Date().toISOString(),status,amount:details?.amount ?? body.expectedAmount,square_payment_link_id:details?.linkId||null,square_payment_link_url:details?.url||null,provider_message_id:details?.providerMessageId||null,provider_status:details?.providerStatus||null,error_message:error instanceof Error?error.message:"Payment link request failed."}).eq("idempotency_key",body.idempotencyKey).eq("status","sending");
       throw error;
     }
   } catch(error){return crmAuthErrorResponse(error);}

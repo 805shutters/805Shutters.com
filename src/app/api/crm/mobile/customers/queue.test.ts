@@ -24,7 +24,7 @@ beforeEach(() => {
   vi.mocked(buildMobilePaymentQueue).mockReturnValue([{ id: "row:q1", name: "Ada", priority: true, activePayment: true, archived: false }] as never);
   vi.mocked(sendSquareOrderPaymentLink).mockResolvedValue({ paymentType: "balance", amount: 500, url: "https://square.example.test/pay", linkId: "link", providerStatus: "queued" } as never);
 });
-const post = (data = body) => POST(new NextRequest("http://localhost/api/crm/mobile/customers", { method: "POST", body: JSON.stringify(data) }));
+const post = (data: Record<string, unknown> = body) => POST(new NextRequest("http://localhost/api/crm/mobile/customers", { method: "POST", body: JSON.stringify(data) }));
 describe("mobile payment API", () => {
   it("requires authentication and loads the shared queue even without a search", async () => {
     const response = await GET(new NextRequest("http://localhost/api/crm/mobile/customers"));
@@ -55,6 +55,29 @@ describe("mobile payment API", () => {
   });
   it("rejects an unreviewed request before sending", async () => {
     expect((await post({ ...body, expectedAmount: 0 })).status).toBe(400);
+    expect(sendSquareOrderPaymentLink).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("Payment Hub API requests", () => {
+  it("allows an authenticated all-customers view without changing the mobile default", async () => {
+    vi.mocked(buildMobilePaymentQueue).mockReturnValue([{ id: "paid", name: "Paid", activePayment: false, outstanding: 0 }] as never);
+    expect((await (await GET(new NextRequest("http://localhost/api/crm/mobile/customers?scope=all"))).json()).results).toHaveLength(1);
+  });
+  it.each(["full", "custom"])("passes %s amount choice through the governed sender", async requestKind => {
+    expect((await post({ ...body, requestKind, ...(requestKind === "custom" ? { customAmount: 500 } : {}) })).status).toBe(200);
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ amount: 500, status: "sending" }));
+    expect(sendSquareOrderPaymentLink).toHaveBeenCalledWith(expect.anything(), "q1", "balance", expect.anything(), "+18055551212", expect.anything(), expect.objectContaining({ requestKind, expectedAmount: 500 }));
+  });
+  it.each([
+    { requestKind: "custom" }, { requestKind: "full", customAmount: 500 },
+    { requestKind: "custom", customAmount: 200 }, { requestKind: "deposit", paymentType: "balance" },
+    { requestKind: "invalid" }, { expectedAmount: 2.222 },
+    { requestKind: "full", collectionMode: "full" },
+  ])("rejects malformed amount options before external effects: %j", async patch => {
+    expect((await post({ ...body, ...patch })).status).toBe(400);
+    expect(insert).not.toHaveBeenCalled();
     expect(sendSquareOrderPaymentLink).not.toHaveBeenCalled();
   });
 });

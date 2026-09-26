@@ -33,3 +33,10 @@ describe("mobile payment-link governance", () => {
     expect(()=>mobilePaymentReplay({...base,status:"sending"},{quoteId:"q1",jobId:"j1",paymentType:"balance",channel:"text",recipient:"+18055551212"})).toThrow("prior text attempt is unknown");
   });
 });
+
+
+it("rejects reuse of an accepted send key with a different custom amount", () => {
+  const prior = { quote_id: "q1", job_id: "j1", payment_type: "balance", channel: "email", recipient: "a@example.com", status: "accepted", amount: 123 };
+  expect(() => mobilePaymentReplay(prior, { quoteId: "q1", jobId: "j1", paymentType: "balance", channel: "email", recipient: "a@example.com", expectedAmount: 124 })).toThrow("different payment amount");
+  expect(mobilePaymentReplay(prior, { quoteId: "q1", jobId: "j1", paymentType: "balance", channel: "email", recipient: "a@example.com", expectedAmount: 123 })).toMatchObject({ amount: 123 });
+});

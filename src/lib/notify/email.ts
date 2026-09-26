@@ -1,3 +1,4 @@
+import { squarePaymentMessage } from "@/lib/crm/customer-payment-request";
 // Resend email helper. Env-gated and NEVER throws (same contract as Twilio).
 // Env: RESEND_API_KEY + optional RESEND_FROM / BOOKING_EMAIL_FROM.
 
@@ -134,6 +135,7 @@ export type SquareOrderPaymentEmailDetails = {
   paymentType: "deposit" | "balance";
   amount: number;
   customAmount?: boolean;
+  fullAmount?: boolean;
   quoteNumber?: string | null;
   logoUrl?: string;
 };
@@ -143,24 +145,8 @@ export function buildSquareOrderPaymentEmail(
   url: string,
   details: SquareOrderPaymentEmailDetails,
 ): { subject: string; html: string; text: string } {
-  const name = customerName && customerName !== "Valued customer" ? customerName : "there";
-  const isDeposit = details.paymentType === "deposit";
-  const isCustom = details.customAmount === true;
-  const label = isCustom ? "Payment" : isDeposit ? "Deposit" : "Balance";
-  const amount = money(details.amount);
-  const subject = isCustom
-    ? `Your 805 Shutters payment link - ${amount}`
-    : isDeposit
-    ? `Your 805 Shutters deposit link - ${amount}`
-    : `Your 805 Shutters balance link - ${amount}`;
-  const intro = isCustom
-    ? "Thank you for your order. Please use the secure Square link below to make your scheduled payment."
-    : isDeposit
-    ? "Here is your deposit information to start your order. Please use the secure Square link below to pay your deposit."
-    : "Thank you so much for your order. Please use the secure Square link below to pay your remaining balance.";
-  const action = isCustom ? "Make payment through Square" : isDeposit ? "Pay deposit through Square" : "Pay balance through Square";
+  const { name, isCustom, label, amount, subject, intro, action, text } = squarePaymentMessage(customerName, url, details);
   const quoteLabel = details.quoteNumber ? `Order ${details.quoteNumber}` : "805 Shutters order";
-  const text = `Hello ${name},\n\n${intro}\n\n${label} due: ${amount}\n\n${action}: ${url}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">

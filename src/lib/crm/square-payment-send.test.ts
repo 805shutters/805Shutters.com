@@ -313,3 +313,40 @@ describe("mobile full and partial balance collection", () => {
     expectNoExternalRequest();
   });
 });
+
+describe('Payment Hub full and custom requests', () => {
+  it('requests the entire remaining ledger balance including an unpaid deposit', async () => {
+    const db = ledger({ payments: [{ amount: 100 }], creditsIn: [{ amount: 25 }] });
+    const result = await sendCurrentSquareOrderPaymentLink(db.client, quoteId, 'balance', actor, undefined,
+      { channel: 'email', idempotencyKey: 'full-key' },
+      { requestKind: 'full', expectedAmount: 875, expectedRecipient: customerEmail });
+    expect(result.amount).toBe(875);
+    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 87500, paymentType: 'balance' }));
+    expect(buildSquareOrderPaymentEmail).toHaveBeenCalledWith(expect.anything(), link.url, expect.objectContaining({ fullAmount: true }));
+  });
+  it('permits a specific amount spanning both deposit and balance and texts only that amount', async () => {
+    vi.mocked(sendSms).mockResolvedValue({ sent: true, sid: 'SM-test', providerStatus: 'queued' });
+    const result = await sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, 'balance', actor, undefined,
+      { channel: 'text', phone: '+18055551212', idempotencyKey: 'custom-key' },
+      { requestKind: 'custom', customAmount: 750.25, expectedAmount: 750.25, expectedRecipient: '+18055551212' });
+    expect(result.amount).toBe(750.25);
+    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 75025 }));
+    expect(sendSms).toHaveBeenCalledWith(expect.objectContaining({ to: '+18055551212', body: expect.stringContaining('$750.25') }));
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('rejects a full amount when a payment was received after review', async () => {
+    await expect(sendCurrentSquareOrderPaymentLink(ledger({ payments: [{ amount: 100 }] }).client, quoteId, 'balance', actor,
+      undefined, undefined, { requestKind: 'full', expectedAmount: 1000, expectedRecipient: customerEmail })).rejects.toMatchObject({ status: 409 });
+    expectNoExternalRequest();
+  });
+  it.each([1000.01, 0, -1, 15.123, NaN])('rejects an invalid or excessive specific amount %s', async customAmount => {
+    await expect(sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, 'balance', actor, undefined, undefined,
+      { requestKind: 'custom', customAmount, expectedAmount: customAmount, expectedRecipient: customerEmail })).rejects.toBeInstanceOf(Error);
+    expectNoExternalRequest();
+  });
+  it('does not let a full request override the live total using a custom amount', async () => {
+    await expect(sendCurrentSquareOrderPaymentLink(ledger().client, quoteId, 'balance', actor, undefined, undefined,
+      { requestKind: 'full', customAmount: 750, expectedAmount: 750, expectedRecipient: customerEmail })).rejects.toMatchObject({ status: 400 });
+    expectNoExternalRequest();
+  });
+});

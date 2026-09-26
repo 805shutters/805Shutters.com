@@ -10,6 +10,7 @@ export type MobilePaymentCustomer = MobileCustomerResult & {
   amountDue: number;
   priority: boolean;
   activePayment: boolean;
+  sold: boolean;
   shipped: boolean;
   archived: boolean;
   closed: boolean;
@@ -44,7 +45,7 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
       address: [s.address, s.job?.city].filter(Boolean).join(", ") || null,
       deposit, balance, outstanding, contractTotal: s.total ?? 0,
       paid: s.row ? s.row.depositPaid + s.row.balancePaid : null,
-      dueType, amountDue, shipped, activePayment, priority: activePayment && shipped,
+      dueType, amountDue, shipped, activePayment, sold: item.sold, priority: activePayment && shipped,
       archived, closed: item.closed, paidInFull: item.paid, soldDate: s.soldDate,
       project: s.project, products: item.products.map(p => p.name), contractUrl: s.contractUrl,
     } satisfies MobilePaymentCustomer];
@@ -55,8 +56,8 @@ export function buildMobilePaymentQueue(data: CrmDashboardData): MobilePaymentCu
 
 export function filterMobilePaymentCustomers(rows: MobilePaymentCustomer[], query = "", letter = "", scope?: string) {
   const term = query.trim().toLowerCase();
-  return rows.filter(row => (term ? true : row.activePayment)
-    && (!scope || row.archived === (scope === "archived"))
+  return rows.filter(row => (scope === "all" || term ? true : row.activePayment)
+    && (!scope || scope === "all" || row.archived === (scope === "archived"))
     && (!letter || mobileCustomerMatchesLetter(row.name, letter))
     && (!term || [row.name, row.phone, row.email, row.address, row.project].some(value => value?.toLowerCase().includes(term))));
 }

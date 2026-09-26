@@ -6,7 +6,7 @@ import type { MobilePaymentCustomer } from '../../src/lib/crm/mobile-payment-que
 const row: MobilePaymentCustomer = {
   id: 'fixture', quoteId: 'fixture', jobId: 'fixture-job', name: 'Sample Customer', phone: '8055551212', email: 'customer@example.invalid', address: 'Sample address',
   project: 'TEST-0268', products: ['Shutters'], contractTotal: 1602.4, outstanding: 1001.2, paid: 601.2, deposit: 200, balance: 801.2,
-  dueType: 'deposit', amountDue: 200, priority: true, activePayment: true, shipped: true, archived: false, closed: false, paidInFull: false, soldDate: '2026-09-01', contractUrl: null,
+  dueType: 'deposit', amountDue: 200, priority: true, activePayment: true, sold: true, shipped: true, archived: false, closed: false, paidInFull: false, soldDate: '2026-09-01', contractUrl: null,
 };
 window.fetch = async (_url, init) => {
   if (init?.method === 'POST') {

@@ -19,7 +19,7 @@ let sync: () => Promise<Response>;
 const json = (body: unknown) => new Response(JSON.stringify(body), {status: 200});
 let fetchMock: ReturnType<typeof vi.fn>;
 const postCount = () => fetchMock.mock.calls.filter(call => call[1]?.method === 'POST').length;
-async function mount() { await act(() => root.render(React.createElement(SquareFinanceWorkspace, {session}))); }
+async function mount() { await act(() => root.render(React.createElement(SquareFinanceWorkspace, {session}))); await click("Payment History"); }
 async function tick(ms = 60_000) { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); }
 async function click(text: string) { await act(() => { [...container.querySelectorAll('button')].find(button => button.textContent === text)!.click(); }); }
 beforeEach(() => {
@@ -27,7 +27,7 @@ beforeEach(() => {
   vi.stubGlobal('React', React);
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
   data = baseline(); sync = async () => json({ status: 'synced' });
-  fetchMock = vi.fn(async (_url: string, options: RequestInit) => options.method === 'POST' ? sync() : json(data));
+  fetchMock = vi.fn(async (_url: string, options: RequestInit) => _url.includes("/mobile/customers") ? json({ results: [], asOf: "2026-09-25T12:00:00Z" }) : options.method === 'POST' ? sync() : json(data));
   vi.stubGlobal('fetch', fetchMock);
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
 });
@@ -35,10 +35,10 @@ afterEach(async () => { await act(() => root.unmount()); container.remove(); vi.
 describe('Square transaction home', () => {
   it('opens the newest-first transaction feed and checks Square immediately', async () => {
     await mount();
-    expect(container.querySelector('nav button[aria-pressed=true]')?.textContent).toBe('Transactions');
+    expect(container.querySelector('.square-finance nav button[aria-pressed=true]')?.textContent).toBe('Transactions');
     expect([...container.querySelectorAll('tbody button')].map(b => b.getAttribute('aria-label'))).toEqual(['View payment newer', 'View payment older']);
     expect(postCount()).toBe(1);
-    expect(container.querySelector('h1')).toBeNull();
+    expect(container.querySelector('h1')?.textContent).toBe('Payment Hub');
     expect(container.querySelector('.square-payment-toolbar input')).not.toBeNull();
     expect(container.querySelectorAll('.square-payment-toolbar button')).toHaveLength(3);
   });

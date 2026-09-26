@@ -6,6 +6,8 @@ import type { SquareObject } from '@/lib/finance/square-reporting';
 import './square-finance.css';
 import { buildPaymentHub, type HubLedger } from '@/lib/crm/payment-hub';
 import { PaymentHubFeed } from './PaymentHubFeed';
+import { CustomerPaymentsWorkspace } from './CustomerPaymentsWorkspace';
+import customerStyles from './CustomerPaymentsWorkspace.module.css';
 
 type ObjectRow = Omit<SquareObject, 'details'> & { details: Record<string, unknown> };
 type Allocation = { id: string; square_payment_id: string; amount_cents: number; ledger_payment_id: string; actor_email: string; evidence: string };
@@ -32,6 +34,19 @@ function csvCell(value: unknown) { const s = String(value ?? ''); return `"${(/^
 function receiptUrl(value: unknown) { try { const u = new URL(String(value)); return u.protocol === 'https:' && (u.hostname === 'squareup.com' || u.hostname.endsWith('.squareup.com')) ? u.href : null; } catch { return null; } }
 
 export function SquareFinanceWorkspace({ session }: { session: Session }) {
+  const [view, setView] = useState<'customers' | 'history'>('customers');
+  return <section className={customerStyles.hub} aria-label="Payment Hub">
+    <h1>Payment Hub</h1><p>Customer deposits, balances, and payment links.</p>
+    <nav className={customerStyles.tabs} aria-label="Payment Hub sections">
+      <button aria-pressed={view === 'customers'} onClick={() => setView('customers')}>Customer Payments</button>
+      <button aria-pressed={view === 'history'} onClick={() => setView('history')}>Payment History</button>
+    </nav>
+    <div hidden={view !== 'customers'}><CustomerPaymentsWorkspace session={session} /></div>
+    {view === 'history' && <SquareActivityWorkspace session={session} />}
+  </section>;
+}
+
+function SquareActivityWorkspace({ session }: { session: Session }) {
   const [data, setData] = useState<Data | null>(null), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false), [tab, setTab] = useState<Tab>('Transactions'), [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ObjectRow | null>(null);
@@ -135,7 +150,7 @@ export function SquareFinanceWorkspace({ session }: { session: Session }) {
       ['Pending customer payments', String(data.totals.pendingCount), 'No customer credit until completed', 'Transactions'],
     ].map(([label, value, note, view]) => <button className="square-metric" key={label} onClick={() => setTab(view as Tab)}><span>{label}</span><strong>{value}</strong><small>{note}</small></button>)}</div><p>Payouts move money already collected. They are not added to sales. Bank matches require your statement reference; Square payout status alone does not confirm receipt.</p><h2>Recent payments</h2>{paymentTable(payments.slice(0, 10))}</>}
     {tab === 'Job finances' && <><label>Find customer / job<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Customer name" /></label><p>Job balances use the existing CRM ledger, including other payment methods and transferred credits. Square fees are tracked separately and never reduce the customer's payment credit.</p><div className="square-table-scroll"><table><thead><tr><th>Customer / ledger</th><th>Job total</th><th>All payments</th><th>Square linked</th><th>Net credits transferred</th><th>Balance</th><th>Square activity</th></tr></thead><tbody>{targets.filter(t => t.customer_name.toLowerCase().includes(query.toLowerCase())).map(t => { const totals = ledgerTotals(t.key, Number(t.total)); return <tr key={t.key}><td>{t.customer_name}<small>{t.key.startsWith('quote:') ? 'Quote' : 'Standalone ledger'} · {t.id.slice(0, 8)}</small></td><td>{dollars(Number(t.total) * 100)}</td><td>{dollars(totals.collected)}</td><td>{dollars(totals.square)}</td><td>{dollars(totals.credit)}</td><td>{dollars(totals.balance)}</td><td><button onClick={() => { setQuery(t.customer_name); setTab('Transactions'); }}>View payments</button></td></tr>; })}</tbody></table></div></>}
-    {tab === 'Payment requests' && <><p>New requests keep their exact job, amount, and Square order. Create deposit, custom progress, and balance requests from the job's existing payment panel. Historical requests created before this release are not included.</p><div className="square-table-scroll"><table><thead><tr><th>Created / job</th><th>Requested</th><th>Square collected</th><th>Request status</th><th>Reference</th></tr></thead><tbody>{data.requests.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => {
+    {tab === 'Payment requests' && <><p>New requests keep their exact job, amount, and Square order. Create deposit, custom, full-amount, and balance requests from Customer Payments. Historical requests created before this release are not included.</p><div className="square-table-scroll"><table><thead><tr><th>Created / job</th><th>Requested</th><th>Square collected</th><th>Request status</th><th>Reference</th></tr></thead><tbody>{data.requests.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).map(r => {
       const target = targets.find(t => t.key === (r.quote_id ? `quote:${r.quote_id}` : `entry:${r.bookkeeping_entry_id}`));
       const related = payments.filter(p => r.order_id && p.details.order_id === r.order_id && p.status === 'COMPLETED');
       const collected = related.reduce((sum, p) => sum + Number(p.amount_cents), 0);

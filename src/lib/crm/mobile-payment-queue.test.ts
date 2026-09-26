@@ -45,6 +45,7 @@ describe("mobile next-payment queue", () => {
     for (const [label, data] of Object.entries({ paid, closed, archived, unsold })) {
       const rows = buildMobilePaymentQueue(data);
       expect(rows[0].activePayment, label).toBe(false);
+      if (label === "unsold") expect(rows[0].sold).toBe(false);
       expect(rows[0].priority).toBe(false);
       expect(filterMobilePaymentCustomers(rows, "  ")).toEqual([]);
       expect(filterMobilePaymentCustomers(rows, "Ada")).toHaveLength(1);

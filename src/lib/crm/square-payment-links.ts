@@ -1,3 +1,4 @@
+import { squarePaymentMessage, type CustomerPaymentChoice } from "./customer-payment-request";
 import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { collectCrmPages } from "@/lib/crm/pagination";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -17,7 +18,7 @@ import {
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 export type SquareOrderPaymentType = "deposit" | "balance";
-export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number; collectionMode?: "full" | "partial"; expectedOutstanding?: number };
+export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number; collectionMode?: "full" | "partial"; expectedOutstanding?: number; requestKind?: CustomerPaymentChoice };
 
 /** A partial request keeps its original deposit/balance ledger classification. */
 export function squarePaymentRequestAmount(amountDue: number, customAmount?: number) {
@@ -125,7 +126,13 @@ export async function sendSquareOrderPaymentLink(
     creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
     creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
   });
+  const kind = confirmation?.requestKind;
+  if (kind && !["deposit", "balance", "full", "custom"].includes(kind)) throw new CrmAuthError(400, "Choose a valid payment amount.");
+  if (kind && ((kind === "deposit" ? "deposit" : "balance") !== paymentType)) throw new CrmAuthError(400, "The payment type does not match the selected amount.");
+  if (kind === "custom" && confirmation?.customAmount === undefined) throw new CrmAuthError(400, "Enter a specific payment amount.");
+  if (kind && kind !== "custom" && confirmation?.customAmount !== undefined) throw new CrmAuthError(400, "Only specific amounts can override the requested amount.");
   const collectionMode = confirmation?.collectionMode;
+  if (collectionMode && kind) throw new CrmAuthError(400, "Choose one payment amount mode.");
   if (collectionMode && collectionMode !== "full" && collectionMode !== "partial") {
     throw new CrmAuthError(400, "Choose full balance or partial payment.");
   }
@@ -139,7 +146,7 @@ export async function sendSquareOrderPaymentLink(
   if (collectionMode === "partial" && confirmation?.customAmount === undefined) {
     throw new CrmAuthError(400, "Enter the partial payment amount.");
   }
-  const amount = squarePaymentRequestAmount(collectionMode ? amounts.outstanding : amounts[paymentType], confirmation?.customAmount);
+  const amount = squarePaymentRequestAmount(collectionMode || kind === "full" || kind === "custom" ? amounts.outstanding : amounts[paymentType], confirmation?.customAmount);
   if (collectionMode === "partial" && dollarsToCents(amount) >= dollarsToCents(amounts.outstanding)) {
     throw new CrmAuthError(400, "Use full balance to collect the entire remaining amount.");
   }
@@ -155,7 +162,7 @@ export async function sendSquareOrderPaymentLink(
 
   if (confirmation) verifySquarePaymentConfirmation(amount, delivery?.channel === "text" ? phone || "" : customerEmail || "", confirmation);
 
-  const label = collectionMode === "full" ? "Full balance" : confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
+  const label = kind === "full" || collectionMode === "full" ? "Full order payment" : confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
   const { data: quoteIdentity, error: quoteIdentityError } = await supabase
     .from("crm_quotes")
     .select("id,job_id")
@@ -187,6 +194,7 @@ export async function sendSquareOrderPaymentLink(
     amount,
     quoteNumber: publicQuote.quoteNumber,
     customAmount: Boolean(collectionMode) || confirmation?.customAmount !== undefined,
+    fullAmount: kind === "full" || collectionMode === "full",
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
   const email = delivery?.channel === "text" ? null : await sendEmail({
@@ -195,7 +203,7 @@ export async function sendSquareOrderPaymentLink(
     ...mail,
     idempotencyKey: delivery?.idempotencyKey ? `square-payment-link-${delivery.idempotencyKey}` : undefined,
   });
-  const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:`805 Shutters ${label.toLowerCase()} payment link (${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(amount)}): ${link.url}`}) : null;
+  const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:squarePaymentMessage(publicQuote.customerName, link.url, {paymentType, amount, customAmount: confirmation?.customAmount !== undefined, fullAmount: kind === "full" || collectionMode === "full"}).sms}) : null;
 
   let auditRecorded = false;
   try {
@@ -206,6 +214,7 @@ export async function sendSquareOrderPaymentLink(
     metadata: {
       amount,
       collectionMode: collectionMode || null,
+      requestKind: kind || (collectionMode === "full" ? "full" : collectionMode === "partial" ? "custom" : paymentType),
       outstandingBeforeRequest: amounts.outstanding,
       remainingAfterPayment,
       customAmount: confirmation?.customAmount !== undefined,
