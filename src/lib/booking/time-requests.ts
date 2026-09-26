@@ -22,7 +22,7 @@ export function requestSlotReason(date: string, time: string, events: CrmCalenda
 export async function requestAvailability(supabase: SupabaseClient, month: string) {
   const snapshot = await readSchedule(supabase, month);
   const now = new Date();
-  const calendar = buildBookingAvailability(month, [], [], { now });
+  const calendar = buildBookingAvailability(month, snapshot.events, snapshot.slots, { now, appointmentDurationMinutes: 60 });
   return {
     ...calendar, mode: "request", configured: true, addressChecked: false,
     appointmentDurationMinutes: 60, revision: snapshot.revision,
@@ -32,6 +32,8 @@ export async function requestAvailability(supabase: SupabaseClient, month: strin
         time,
         label: new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }).format(zonedTimeToUtc(day.date, time)),
         available: !requestSlotReason(day.date, time, snapshot.events, now),
+        // Match the regular picker; published openings still require address checks.
+        bookable: time >= "09:00" && time <= "16:00" && day.slots.some(slot => slot.time === time && slot.available),
       }));
       return { ...day, available: slots.some(slot => slot.available), slots };
     }),

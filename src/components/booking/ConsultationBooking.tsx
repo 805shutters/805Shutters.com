@@ -9,7 +9,7 @@ import { productInterestOptions } from "@/lib/product-interest-options";
 import type { BookingCalendarProps } from "./BookingCalendar";
 import "./consultation-booking.css";
 
-type Slot = { time: string; label: string; available: boolean };
+type Slot = { time: string; label: string; available: boolean; bookable?: boolean };
 type Availability = {
   month: string;
   monthLabel: string;
@@ -193,7 +193,15 @@ export function ConsultationBooking({ active = true, className = "", heading,
     pendingScroll.current = "times";
     setEditingSchedule(true);
   }
-  function chooseTime(time: string) {
+  function chooseTime(time: string, bookable = false) {
+    if (requestMode && bookable) {
+      setRequestMode(false);
+      setAvailability(null);
+      setVerifiedAddress(null);
+      setLoading(true);
+      setAvailabilityError("");
+      requestKey.current = null;
+    }
     pendingScroll.current = "details";
     setSelection({ date: selection.date, time });
     setContactStarted(true);
@@ -301,7 +309,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
     </section> : <>
       {showSchedule && <div className="consultation-booking__schedule">
         {requestMode && <div className="consultation-booking__request-banner" role="status">
-          <div><strong>Request a time · 8 AM–6 PM</strong><p>Choose an open time. We’ll review your request and contact you to confirm.</p></div>
+          <div><strong>Request a time · 8 AM–6 PM</strong><p>Green times are available to book. Yellow times need confirmation.</p></div>
           <button type="button" onClick={() => switchMode(false)} disabled={submitting}>Back to regular booking</button>
         </div>}
         <section className="consultation-booking__calendar" ref={calendarRef} tabIndex={-1} aria-label="Choose a consultation date" aria-busy={loading}>
@@ -345,19 +353,23 @@ export function ConsultationBooking({ active = true, className = "", heading,
             <h3>{dateLabel(selection.date)}</h3>
             <button type="button" className="consultation-booking__change-date" onClick={returnToCalendar} disabled={submitting}>Change date</button>
           </div>
-          <p className="consultation-booking__hint">{requestMode ? "Request a one-hour visit · Pacific time · Subject to confirmation" : addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
+          <p className="consultation-booking__hint">{requestMode ? "1-hour visit · Pacific time · Green: book now · Yellow: request a time" : addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
           {selectedDay && <>
             <div className="consultation-booking__day-view" role="group" aria-label={requestMode ? "Request times from 8 AM to 6 PM" : "Appointment times from 9 AM to 4 PM"}>
-              {dayRows.map(slot => <div className="consultation-booking__day-row" key={slot.time}>
-                <span className="consultation-booking__day-axis" aria-hidden="true">{slot.label}</span>
-                <button type="button" className="consultation-booking__day-event"
-                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, ${slot.available ? requestMode ? "request a 1-hour visit" : "1-hour visit" : "unavailable"}`} aria-pressed={selection.time === slot.time}
-                  disabled={!slot.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
-                  <span className="consultation-booking__day-range"><strong>{slot.label}</strong><span>– {labelAtMinute(minuteOfDay(slot.time) + 60)}</span></span>
-                  <span className={slot.available ? "consultation-booking__day-select" : "consultation-booking__day-status"} aria-hidden="true">{slot.available ? requestMode ? "Request →" : "Select →" : "Unavailable"}</span>
-                </button>
-              </div>)}
+              {dayRows.map(slot => {
+                const needsRequest = requestMode && !slot.bookable;
+                return <div className="consultation-booking__day-row" key={slot.time}>
+                  <span className="consultation-booking__day-axis" aria-hidden="true">{slot.label}</span>
+                  <button type="button" className={`consultation-booking__day-event${needsRequest ? " consultation-booking__day-event--request" : ""}`}
+                    aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, ${slot.available ? needsRequest ? "request a 1-hour visit" : "1-hour visit" : "unavailable"}`} aria-pressed={selection.time === slot.time}
+                    disabled={!slot.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time, slot.bookable)}>
+                    <span className="consultation-booking__day-range"><strong>{slot.label}</strong><span>– {labelAtMinute(minuteOfDay(slot.time) + 60)}</span>{slot.available && needsRequest && <span className="consultation-booking__request-label">(request this time)</span>}</span>
+                    <span className={slot.available ? "consultation-booking__day-select" : "consultation-booking__day-status"} aria-hidden="true">{slot.available ? needsRequest ? "Request →" : "Select →" : "Unavailable"}</span>
+                  </button>
+                </div>;
+              })}
             </div>
+            <p className="consultation-booking__hint consultation-booking__duration-note">Consultations usually take 30 minutes to an hour and a half, depending on how many window coverings you need.</p>
             <p className="consultation-booking__hint">Select a time to enter your details.</p>
           </>}
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}

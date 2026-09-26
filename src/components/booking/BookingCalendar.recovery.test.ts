@@ -353,3 +353,61 @@ it("can request a time when normal published availability is empty and return to
   expect(fetchMock.mock.calls.at(-1)?.[0]).not.toContain('mode=request');
   expect(host.querySelector('.consultation-booking--request')).toBeNull();
 });
+
+it("shows offered times as regular booking within the request picker and rechecks the address before booking", async () => {
+  const requestSlots = [
+    { time: '08:00', label: '8:00 AM', available: true, bookable: false },
+    { time: '10:30', label: '10:30 AM', available: true, bookable: true },
+    { time: '12:00', label: '12:00 PM', available: false, bookable: false },
+  ];
+  const fetchMock = vi.fn().mockImplementation(async (url: string) => url.includes('availability')
+    ? ok(available(url.includes('mode=request') ? { days: [{ date: '2026-09-28', day: 28, available: true, slots: requestSlots }] }
+      : { addressChecked: url.includes('address=') })) : ok({ leadId: 'test', jobId: 'test' }));
+  const { host, click } = await mount(fetchMock);
+  await click('28');
+  expect(host.querySelector('.consultation-booking__duration-note')?.textContent).toContain('30 minutes to an hour and a half');
+  await click('Request a different time →');
+  const rows = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  const offered = rows.find(row => row.querySelector('strong')?.textContent === '10:30 AM')!;
+  const requested = rows.find(row => row.querySelector('strong')?.textContent === '8:00 AM')!;
+  expect(offered.classList.contains('consultation-booking__day-event--request')).toBe(false);
+  expect(offered.textContent).not.toContain('(request this time)');
+  expect(offered.textContent).toContain('Select');
+  expect(requested.classList.contains('consultation-booking__day-event--request')).toBe(true);
+  expect(requested.textContent).toContain('(request this time)');
+  expect(rows.find(row => row.querySelector('strong')?.textContent === '12:00 PM')?.disabled).toBe(true);
+  expect(host.querySelector('.consultation-booking__duration-note')?.textContent).toContain('30 minutes to an hour and a half');
+  await click('8:00 AM'); await click('Choose address');
+  await click('Change date or time'); await click('10:30 AM');
+  expect(host.querySelector('.consultation-booking--request')).toBeNull();
+  expect(host.textContent).toContain('Complete your booking');
+  expect(host.textContent).not.toContain('Send time request');
+  expect(fetchMock.mock.calls.at(-1)?.[0]).toContain('address=');
+  expect(fetchMock.mock.calls.at(-1)?.[0]).not.toContain('mode=request');
+  await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/')).toHaveLength(1);
+  expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/time-request/')).toHaveLength(0);
+  expect(host.textContent).toContain('Your appointment is booked.');
+});
+
+it("retains notes and asks for another time if a green opening disappears during normal revalidation", async () => {
+  let changed = false;
+  const fetchMock = vi.fn().mockImplementation(async (url: string) => ok(available(url.includes('mode=request')
+    ? { days: [{ date: '2026-09-28', day: 28, available: true, slots: [{ time: '10:30', label: '10:30 AM', available: true, bookable: true }] }] }
+    : changed ? { days: [{ date: '2026-09-28', day: 28, available: true, slots: [{ time: '11:00', label: '11:00 AM', available: true }] }] } : {})));
+  const { host, click } = await mount(fetchMock);
+  await click('28'); await click('10:30 AM');
+  const notes = host.querySelector<HTMLTextAreaElement>('textarea[name="notes"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(notes, 'Use side gate');
+    notes.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await click('Change date or time'); await click('Request a different time →');
+  changed = true;
+  await click('10:30 AM');
+  expect(host.textContent).toContain('That time is no longer available.');
+  expect(notes.value).toBe('Use side gate');
+  expect(host.querySelector<HTMLButtonElement>('.consultation-booking__submit')?.disabled).toBe(true);
+  expect(host.querySelector('.consultation-booking__times')?.textContent).toContain('11:00 AM');
+  expect(fetchMock.mock.calls.every(([url]) => url.includes('availability'))).toBe(true);
+});
