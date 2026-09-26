@@ -656,9 +656,9 @@ function contextualizeMtsProductColorRow(
   if (row.productId.startsWith("sundance_")) return row;
   if(isOnyxHeldProduct(row.productId))return row;
   if (productType !== "Honeycomb Shades") return row;
-  const exactColor = isAuthoritativeV2(optionsJson)
-    ? exactHoneycombColor(row.colorCode)
-    : undefined;
+  // Both legacy Norman quotes and native V2 use the authoritative validator.
+  // Persist the workbook family in either mode, never an empty collection.
+  const exactColor = exactHoneycombColor(row.colorCode, row.collection);
   const selectedCellSize = stringOption(optionsJson, "cell_size");
   const vertical = isAuthoritativeV2(optionsJson) && stringOption(optionsJson, "honeycomb_application") === "Patio Door Vertical";
   const programId = vertical ? expectedVerticalHoneycombProgramId(exactColor?.family ?? row.collection, row.colorCode, selectedCellSize) : getHoneycombContextProgram(row, selectedCellSize);

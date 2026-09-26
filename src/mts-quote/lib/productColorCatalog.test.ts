@@ -126,7 +126,7 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(
       searchMtsProductColors("Honeycomb Shades", { cell_size: '3/4" Single Cell' }, "F1527")[0]
     ).toMatchObject({
-      collection: "Windsong",
+      collection: "Windsong AB0632",
       programId: "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
     });
     expect(

@@ -108,6 +108,11 @@ const NORMAN_FRAMES: readonly FrameDefinition[] = [
 ];
 
 const ONYX_FRAMES: readonly FrameDefinition[] = [
+  // Binder p9: inside L profiles stay within the opening. No outside overlap
+  // or factory fitting deduction is added to their pricing footprint.
+  frame("Inside L Frame Series", 0, ["inside"], [
+    "l inside", "l bullnose inside", "vl inside",
+  ]),
   frame("L Frame Series", 1.75, ["outside"], [
     "l frame",
     "l outside",

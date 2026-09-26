@@ -34,6 +34,7 @@ function selection(
 describe("Onyx inside-mount window-size pricing", () => {
   it("pins the named pricing rows and profile-derived additions", () => {
     expect(ONYX_INSIDE_MOUNT_PRICING_ADDITIONS).toEqual({
+      "L Frame": { widthAdditionInches: 0, fourSidedHeightAdditionInches: 0, threeSidedHeightAdditionInches: 0 },
       "Z Frame Trim": {
         widthAdditionInches: 0.75,
         fourSidedHeightAdditionInches: 0.75,

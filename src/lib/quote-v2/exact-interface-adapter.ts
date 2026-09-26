@@ -11,7 +11,7 @@ import type {
   SelectionRecord,
   SelectionValue,
 } from "./core";
-import { quoteV2CatalogVersionFor } from "./catalog";
+import { findHoneycombColor, quoteV2CatalogVersionFor } from "./catalog";
 import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "./quote-pricing-policy";
 
 const INTERNAL_OPTION_KEYS = new Set([
@@ -429,6 +429,28 @@ export function selectionContextFromExactInterface(
       : firstString(sourceOptions, "cell_size"),
   );
   alias(configuration, "application", firstString(sourceOptions, "honeycomb_application", "application"));
+  if (input.productId === "honeycomb" || input.productId === "vertical_honeycomb") {
+    // Older color pickers saved the family as fabric_color_type and left
+    // fabric_color_collection empty. Recover only an exact workbook identity;
+    // never replace an explicitly selected collection or accept an unknown code.
+    if (!firstString(sourceOptions, "fabric_color_collection", "fabric_collection")) {
+      const family = firstString(sourceOptions, "fabric_color_type");
+      const code = firstString(sourceOptions, "fabric_color_code");
+      const color = findHoneycombColor(family, code);
+      if (color) configuration.fabric_collection = color.family;
+    }
+    // "Single" is the legacy builder's standard horizontal application. Do not
+    // invent an application for specialty, vertical or unconfigured shades.
+    if (!configuration.application && input.productId === "honeycomb" &&
+        design.shade_type === "Single" && [
+          "SmartRise Cordless", "Cordless TDBU", "Cordless Day & Night",
+          "Cord Loop", "SmartRelease", "Cord Loop TD", "Cord Loop Day & Night",
+          "Motorized", "Motorized TD", "Motorized TDBU", "Motorized Day & Night",
+          "Woven Cordless", "Woven Cordless TDBU",
+        ].includes(design.lift_system ?? "")) {
+      configuration.application = "Standard";
+    }
+  }
   alias(configuration, "honeycomb_operating_system", design.lift_system);
   alias(
     configuration,

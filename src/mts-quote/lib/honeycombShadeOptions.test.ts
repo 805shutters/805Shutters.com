@@ -317,11 +317,11 @@ describe("Honeycomb Shades dealer fabric availability", () => {
     const rows12 = getMtsProductColorRows("Honeycomb Shades", {
       cell_size: '1/2" Double Cell',
     });
-    expect(rows12.some((row) => row.collection === "Windsong")).toBe(false);
+    expect(rows12.some((row) => row.collection === "Windsong AB0632")).toBe(false);
     const rows34 = getMtsProductColorRows("Honeycomb Shades", {
       cell_size: '3/4" Single Cell',
     });
-    expect(rows34.some((row) => row.collection === "Windsong")).toBe(true);
+    expect(rows34.some((row) => row.collection === "Windsong AB0632")).toBe(true);
 
     // Legacy bare stored cell sizes still resolve.
     const legacy = getMtsProductColorRows("Honeycomb Shades", { cell_size: '3/4"' });

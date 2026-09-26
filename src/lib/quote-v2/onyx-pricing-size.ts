@@ -12,6 +12,12 @@ const ONYX_PRICING_SIZE_SOURCE = sourceProvenance(
  * not per-edge face widths.
  */
 export const ONYX_INSIDE_MOUNT_PRICING_ADDITIONS = Object.freeze({
+  // Binder p9: inside L frames have no outside overlap or factory deduction.
+  "L Frame": Object.freeze({
+    widthAdditionInches: 0,
+    fourSidedHeightAdditionInches: 0,
+    threeSidedHeightAdditionInches: 0,
+  }),
   "Z Frame Trim": Object.freeze({
     widthAdditionInches: 0.75,
     fourSidedHeightAdditionInches: 0.75,
@@ -70,6 +76,15 @@ export const ONYX_OUTSIDE_MOUNT_PRICING_ADDITIONS = Object.freeze({
 const INSIDE_FRAME_ALIASES: Readonly<
   Record<string, keyof typeof ONYX_INSIDE_MOUNT_PRICING_ADDITIONS>
 > = {
+  "L Frame": "L Frame",
+  "L Inside": "L Frame",
+  "L Inside FS": "L Frame",
+  "L Frame Bullnose": "L Frame",
+  "L Bullnose Inside": "L Frame",
+  "L Bullnose Inside FS": "L Frame",
+  "Vinyl L Frame": "L Frame",
+  "VL Inside": "L Frame",
+  "VL Inside FS": "L Frame",
   "Z Frame Trim": "Z Frame Trim",
   "Z Trim": "Z Frame Trim",
   "Z Frame Fine": "Z Frame Fine",
