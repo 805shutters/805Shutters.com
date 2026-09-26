@@ -168,70 +168,75 @@ export default function BookConsultationPage() {
         eyebrow=""
         heading=""
       />
-      <section className="booking-page__overview" aria-labelledby="booking-consultation-overview">
-        <div>
-          <p className="eyebrow">What this appointment covers</p>
-          <h2 id="booking-consultation-overview">Measured advice for shutters, shades, blinds, and window coverings.</h2>
-          <p>
-            Use this booking page when you want a direct appointment time instead of a callback. The consultation is
-            built for homeowners, property managers, offices, storefronts, and commercial spaces that need practical
-            guidance on privacy, light control, heat, glare, design, motorization, and installation details.
-          </p>
+      <details className="booking-page__about">
+        <summary>About your consultation</summary>
+        <div className="booking-page__about-content">
+          <section className="booking-page__overview" aria-labelledby="booking-consultation-overview">
+            <div>
+              <p className="eyebrow">What this appointment covers</p>
+              <h2 id="booking-consultation-overview">Measured advice for shutters, shades, blinds, and window coverings.</h2>
+              <p>
+                Use this booking page when you want a direct appointment time instead of a callback. The consultation is
+                built for homeowners, property managers, offices, storefronts, and commercial spaces that need practical
+                guidance on privacy, light control, heat, glare, design, motorization, and installation details.
+              </p>
+            </div>
+            <ul className="booking-page__proof-list" aria-label="Consultation proof points">
+              {bookingProofPoints.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="booking-page__details" aria-labelledby="booking-consultation-details">
+            <div className="booking-page__section-head">
+              <p className="eyebrow">Before we arrive</p>
+              <h2 id="booking-consultation-details">A better appointment starts with the right project details.</h2>
+              <p>
+                Choose a date and time, then enter your contact information and service address. Your free consultation
+                lasts one hour. Product interests, window count, and notes are optional; we can help you decide during the visit.
+              </p>
+            </div>
+            <div className="booking-page__detail-grid">
+              {consultationTopics.map((topic) => (
+                <article key={topic.title}>
+                  <h3>{topic.title}</h3>
+                  <p>{topic.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="booking-page__service-area" aria-labelledby="booking-service-area">
+            <div>
+              <p className="eyebrow">Local service area</p>
+              <h2 id="booking-service-area">Book in-home window treatment help across Ventura County.</h2>
+              <p>
+                805 Shutters serves local homes and businesses throughout {site.serviceArea}. Appointments are commonly
+                booked for {site.areas.slice(0, 6).join(", ")}, and nearby communities for custom shutters, shades, blinds,
+                drapery, exterior shades, and commercial window coverings.
+              </p>
+            </div>
+            <ul>
+              {site.areas.map((area) => (
+                <li key={area}>{area}</li>
+              ))}
+            </ul>
+          </section>
+          <section className="booking-page__faq" aria-labelledby="booking-consultation-faq">
+            <div className="booking-page__section-head">
+              <p className="eyebrow">Consultation questions</p>
+              <h2 id="booking-consultation-faq">Common questions before you book.</h2>
+            </div>
+            <div className="booking-page__faq-grid">
+              {consultationFaqs.map((item) => (
+                <article key={item.question}>
+                  <h3>{item.question}</h3>
+                  <p>{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
-        <ul className="booking-page__proof-list" aria-label="Consultation proof points">
-          {bookingProofPoints.map((point) => (
-            <li key={point}>{point}</li>
-          ))}
-        </ul>
-      </section>
-      <section className="booking-page__details" aria-labelledby="booking-consultation-details">
-        <div className="booking-page__section-head">
-          <p className="eyebrow">Before we arrive</p>
-          <h2 id="booking-consultation-details">A better appointment starts with the right project details.</h2>
-          <p>
-            Choose a date and time, then enter your contact information and service address. Your free consultation
-            lasts one hour. Product interests, window count, and notes are optional; we can help you decide during the visit.
-          </p>
-        </div>
-        <div className="booking-page__detail-grid">
-          {consultationTopics.map((topic) => (
-            <article key={topic.title}>
-              <h3>{topic.title}</h3>
-              <p>{topic.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="booking-page__service-area" aria-labelledby="booking-service-area">
-        <div>
-          <p className="eyebrow">Local service area</p>
-          <h2 id="booking-service-area">Book in-home window treatment help across Ventura County.</h2>
-          <p>
-            805 Shutters serves local homes and businesses throughout {site.serviceArea}. Appointments are commonly
-            booked for {site.areas.slice(0, 6).join(", ")}, and nearby communities for custom shutters, shades, blinds,
-            drapery, exterior shades, and commercial window coverings.
-          </p>
-        </div>
-        <ul>
-          {site.areas.map((area) => (
-            <li key={area}>{area}</li>
-          ))}
-        </ul>
-      </section>
-      <section className="booking-page__faq" aria-labelledby="booking-consultation-faq">
-        <div className="booking-page__section-head">
-          <p className="eyebrow">Consultation questions</p>
-          <h2 id="booking-consultation-faq">Common questions before you book.</h2>
-        </div>
-        <div className="booking-page__faq-grid">
-          {consultationFaqs.map((item) => (
-            <article key={item.question}>
-              <h3>{item.question}</h3>
-              <p>{item.answer}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      </details>
     </section>
   );
 }

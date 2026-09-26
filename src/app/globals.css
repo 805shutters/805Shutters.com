@@ -10651,6 +10651,38 @@ body:has(.booking-page--focused) .assistant-widget {
   letter-spacing: 0.02em;
 }
 
+.booking-page__about {
+  width: min(1040px, calc(100% - 32px));
+  margin: 20px auto 32px;
+  border-top: 1px solid #deded8;
+  color: #555a51;
+}
+
+.booking-page__about > summary {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 12px 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.booking-page__about > summary:hover {
+  color: #34533b;
+}
+
+.booking-page__about > summary:focus-visible {
+  outline: 2px solid #48694d;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.booking-page__about-content > section {
+  width: 100%;
+  margin-top: 24px;
+}
+
 .booking-page__overview,
 .booking-page__details,
 .booking-page__service-area,
