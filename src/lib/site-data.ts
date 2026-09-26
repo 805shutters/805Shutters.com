@@ -315,10 +315,6 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
     imageAlt: "Custom arched plantation shutters in a Ventura County living room"
   },
   {
-    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
-    imageAlt: "Dark wood plantation shutters across living room windows in Ventura County"
-  },
-  {
     image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
     imageAlt: "Dark wood plantation shutters in a Ventura County reading room"
   },
@@ -1825,10 +1821,6 @@ const recentProjectPages: SitePage[] = [
       {
         image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
         imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters."
-      },
-      {
-        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
-        imageAlt: "Dark wood plantation shutters across living room windows in Ventura County by 805 Shutters."
       }
     ],
     sections: [
@@ -2005,8 +1997,8 @@ function mixedWindowTreatmentGallery(city: string): NonNullable<SitePage["galler
 function windowCoveringCityGallery(city: string): NonNullable<SitePage["gallery"]> {
   return [
     {
-      image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
-      imageAlt: `Dark wood plantation shutters for a ${city} living room`
+      image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
+      imageAlt: `Dark wood plantation shutters for a ${city} reading room`
     },
     {
       image: "/images/portfolio-enhanced/uploaded-full-height-cellular-shades-card.jpg",

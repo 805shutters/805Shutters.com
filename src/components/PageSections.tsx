@@ -760,7 +760,7 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     heading: "Choose the shutter material around finish, durability, and room use.",
     body:
       "The material decision affects the final look, weight, cleaning routine, and how the shutter handles daily use. The consultation compares painted, stained, and composite options against the room, light exposure, trim, and budget.",
-    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
+    image: "/images/shutters-portfolio/material-stained-wood.jpg",
     imageAlt: "Dark stained wood plantation shutters installed across living room windows",
     options: [
       {

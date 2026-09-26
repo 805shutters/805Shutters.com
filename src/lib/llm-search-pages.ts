@@ -171,8 +171,8 @@ export const answerPages: AnswerPage[] = [
     eyebrow: "Camarillo window coverings",
     answer:
       "Camarillo homeowners usually get the best result by comparing shutters, shades, and blinds around sun exposure, privacy, room use, and style. Plantation shutters are strong for front rooms and long-term durability. Roller, honeycomb, woven, and Roman shades are strong for glare, softness, and motorization. Wood, faux wood, aluminum, and vertical blinds are practical for everyday adjustable light control.",
-    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
-    imageAlt: "Dark wood plantation shutters installed in a Ventura County living room",
+    image: "/images/shutters-portfolio/material-stained-wood.jpg",
+    imageAlt: "Dark stained wood plantation shutters in a warm living room",
     updated: "2026-06-18",
     serviceTypes: ["Custom blinds", "Custom shades", "Plantation shutters", "Window coverings in Camarillo"],
     sections: [

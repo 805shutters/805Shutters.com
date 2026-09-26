@@ -272,15 +272,6 @@ const photos = [
     grade: "editorial"
   },
   {
-    base: "dark-wood-plantation-shutters-living-room",
-    source: "ventura-county-dark-wood-plantation-shutters-living-room-jpg.jpg",
-    category: "Shutters",
-    title: "Dark Wood Living Room Shutters",
-    alt: "Dark wood plantation shutters across living room windows in Ventura County",
-    position: "attention",
-    grade: "warmWood"
-  },
-  {
     base: "dark-wood-plantation-shutters-reading-room",
     source: "ventura-county-dark-wood-plantation-shutters-reading-room-jpg.jpg",
     category: "Shutters",
