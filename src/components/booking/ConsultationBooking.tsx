@@ -152,14 +152,19 @@ export function ConsultationBooking({ active = true, className = "", heading,
   }, [active, complete, month, checkAddress, refresh]);
 
   const selectedDay = availability?.days.find(day => day.date === selection.date);
-  const daySlots = (selectedDay?.slots.filter(slot => slot.available) ?? []).sort((a, b) => a.time.localeCompare(b.time));
   const minuteOfDay = (time: string) => { const [h, m] = time.split(":").map(Number); return h * 60 + m; };
   const labelAtMinute = (minute: number) => timeLabel(`${Math.floor(minute / 60) % 24}:${String(minute % 60).padStart(2, "0")}`);
-  const dayRows = daySlots.length ? (selectedDay?.slots ?? [])
-    .filter(slot => slot.time >= daySlots[0].time && slot.time <= daySlots[daySlots.length - 1].time)
-    .sort((a, b) => a.time.localeCompare(b.time))
-    // Keep one quiet gap row for a run of unavailable start times.
-    .filter((slot, index, slots) => slot.available || index === 0 || slots[index - 1].available) : [];
+  // Show every half-hour start, including times omitted from the availability response.
+  const slotsByTime = new Map(selectedDay?.slots.map(slot => [slot.time, slot]));
+  const dayTimes = new Set(Array.from({ length: 15 }, (_, index) => {
+    const minute = 9 * 60 + index * 30;
+    return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+  }));
+  selectedDay?.slots.forEach(slot => {
+    if (slot.time >= "09:00" && slot.time <= "16:00") dayTimes.add(slot.time);
+  });
+  const dayRows = [...dayTimes].sort().map(time => slotsByTime.get(time)
+    ?? { time, label: timeLabel(time), available: false });
   const addressChecked = Boolean(availability?.addressChecked && verifiedAddress === address.trim());
   const selectionAvailable = Boolean(selectedDay?.slots.some(slot => slot.time === selection.time && slot.available));
   const hasOpenings = availability?.days.some(day => day.available);
@@ -322,16 +327,16 @@ export function ConsultationBooking({ active = true, className = "", heading,
             <button type="button" className="consultation-booking__change-date" onClick={returnToCalendar} disabled={submitting}>Change date</button>
           </div>
           <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
-          {daySlots.length > 0 && <>
-            <div className="consultation-booking__day-view" role="group" aria-label="Available one-hour appointments">
+          {selectedDay && <>
+            <div className="consultation-booking__day-view" role="group" aria-label="Appointment times from 9 AM to 4 PM">
               {dayRows.map(slot => <div className="consultation-booking__day-row" key={slot.time}>
                 <span className="consultation-booking__day-axis" aria-hidden="true">{slot.label}</span>
-                {slot.available ? <button type="button" className="consultation-booking__day-event"
-                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, 1-hour visit`} aria-pressed={selection.time === slot.time}
-                  disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
+                <button type="button" className="consultation-booking__day-event"
+                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, ${slot.available ? "1-hour visit" : "unavailable"}`} aria-pressed={selection.time === slot.time}
+                  disabled={!slot.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
                   <span className="consultation-booking__day-range"><strong>{slot.label}</strong><span>– {labelAtMinute(minuteOfDay(slot.time) + 60)}</span></span>
-                  <span className="consultation-booking__day-select" aria-hidden="true">Select →</span>
-                </button> : <span className="consultation-booking__day-gap">No openings</span>}
+                  <span className={slot.available ? "consultation-booking__day-select" : "consultation-booking__day-status"} aria-hidden="true">{slot.available ? "Select →" : "Unavailable"}</span>
+                </button>
               </div>)}
             </div>
             <p className="consultation-booking__hint">Select a time to enter your details.</p>

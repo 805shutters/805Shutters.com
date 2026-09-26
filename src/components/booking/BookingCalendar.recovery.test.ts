@@ -96,10 +96,10 @@ it("lists available one-hour visits in full-width chronological rows and opens d
     { time: "13:00", label: "1:00 PM", available: true },
   ] }] }))));
   await click("28");
-  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event:not(:disabled)')];
   expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(['11:30 AM', '12:00 PM', '1:00 PM']);
-  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(4);
-  expect(host.querySelectorAll('.consultation-booking__day-gap')).toHaveLength(1);
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(15);
+  expect(host.querySelectorAll('.consultation-booking__day-event:disabled')).toHaveLength(12);
   expect(events.every(button => button.closest('.consultation-booking__day-row'))).toBe(true);
   expect(events[0].getAttribute('aria-label')).toBe('11:30 AM to 12:30 PM, 1-hour visit');
   await click('12:00 PM');
@@ -107,14 +107,14 @@ it("lists available one-hour visits in full-width chronological rows and opens d
   expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain('12:00 PM');
 });
 
-it.each(['morning', 'afternoon'])("shows only available openings on a %s-only day", async period => {
+it.each(['morning', 'afternoon'])("enables only available openings on a %s-only day", async period => {
   const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
     { time: "11:30", label: "11:30 AM", available: period === 'morning' },
     { time: "12:00", label: "12:00 PM", available: period === 'afternoon' },
   ] }] }))));
   await click('28');
-  expect(host.querySelectorAll('.consultation-booking__day-event')).toHaveLength(1);
-  expect(host.querySelector('.consultation-booking__day-event strong')?.textContent).toBe(period === 'morning' ? '11:30 AM' : '12:00 PM');
+  expect(host.querySelectorAll('.consultation-booking__day-event:not(:disabled)')).toHaveLength(1);
+  expect(host.querySelector('.consultation-booking__day-event:not(:disabled) strong')?.textContent).toBe(period === 'morning' ? '11:30 AM' : '12:00 PM');
 });
 
 it("shows daypart badges only for available slots, with noon counted as afternoon", async () => {
@@ -219,7 +219,7 @@ it("keeps optional project answers when changing the selected appointment", asyn
 });
 
 
-it("uses the exact daypart boundaries without hiding exceptional published openings", async () => {
+it("uses the exact daypart boundaries and preserves quarter-hour starts within the displayed day", async () => {
   const times = ["07:30", "08:00", "11:30", "11:45", "12:00", "17:00", "17:30"];
   const slots = times.map(time => ({ time, label: time, available: true }));
   const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [
@@ -233,10 +233,10 @@ it("uses the exact daypart boundaries without hiding exceptional published openi
   expect(days[1].getAttribute('aria-label')).not.toContain('Afternoon');
   expect(host.querySelector('.consultation-booking__legend')?.textContent).toContain('Morning: 8:00–11:30 AM · Afternoon: 12:00–5:00 PM');
   await click('28');
-  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
-  expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(times);
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event:not(:disabled)')];
+  expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(['11:30', '11:45', '12:00']);
   expect(events.map(button => button.getAttribute('aria-label'))).toContain('11:45 to 12:45 PM, 1-hour visit');
-  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(times.length);
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(16);
 
 });
 
@@ -270,7 +270,7 @@ it("retains appointment notes and optional choices across a failed booking and r
   expect(request()[1]).toEqual(request()[0]);
 });
 
-it("labels unavailable gaps and disables stale openings on refresh failure", async () => {
+it("shows every unavailable half hour and disables stale openings on refresh failure", async () => {
   const fetchMock = vi.fn().mockResolvedValue(ok(available({ days: [{ date: '2026-09-28', day: 28, available: true, slots: [
     { time: '10:00', label: '10:00 AM', available: true },
     { time: '11:00', label: '11:00 AM', available: false },
@@ -279,12 +279,34 @@ it("labels unavailable gaps and disables stale openings on refresh failure", asy
   ] }] })));
   const { host, click } = await mount(fetchMock);
   await click('28');
-  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event:not(:disabled)')];
   expect(events).toHaveLength(2);
-  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(3);
-  expect(host.querySelector('.consultation-booking__day-gap')?.textContent).toBe('No openings');
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(15);
+  const disabled = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event:disabled')];
+  expect(disabled).toHaveLength(13);
+  expect(disabled[0].textContent).toContain('9:00 AM');
+  expect(disabled.at(-1)?.textContent).toContain('4:00 PM');
+  expect(disabled.every(button => button.textContent?.includes('Unavailable'))).toBe(true);
+  await click('9:00 AM');
+  expect(host.querySelector('form')).toBeNull();
   expect(events[1].getAttribute('aria-label')).toBe('1:30 PM to 2:30 PM, 1-hour visit');
   fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: 'Please retry availability.' }) });
   await act(async () => window.dispatchEvent(new Event('focus')));
-  expect([...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')].every(button => button.disabled)).toBe(true);
+  expect(host.querySelectorAll('.consultation-booking__day-event:not(:disabled)')).toHaveLength(0);
+  expect(host.querySelectorAll('.consultation-booking__day-event:disabled')).toHaveLength(15);
+});
+
+it("renders the full 9 AM through 4 PM range and allows the final published start", async () => {
+  const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: '2026-09-28', day: 28, available: true, slots: [
+    { time: '08:30', label: '8:30 AM', available: true },
+    { time: '16:00', label: '4:00 PM', available: true },
+    { time: '16:30', label: '4:30 PM', available: true },
+  ] }] }))));
+  await click('28');
+  const rows = [...host.querySelectorAll('.consultation-booking__day-axis')].map(row => row.textContent);
+  expect(rows).toEqual(['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM']);
+  const last = host.querySelector<HTMLButtonElement>('.consultation-booking__day-event:not(:disabled)')!;
+  expect(last.getAttribute('aria-label')).toBe('4:00 PM to 5:00 PM, 1-hour visit');
+  await click('4:00 PM');
+  expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain('4:00 PM');
 });

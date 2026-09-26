@@ -68,3 +68,9 @@ No production migration, push, or deployment has been performed. The preview use
 - Applied the chosen full-width calendar rows: start-time axis, a sage button showing the complete one-hour range, and a desktop Select indicator. Consecutive unavailable start times use one quiet No openings row.
 - Removed the overlapping event-lane layout. Selection still immediately opens customer details, including the visible optional appointment notes.
 - Focused tests cover chronological rows, one-hour labels, exceptional quarter-hour openings, collapsed unavailable gaps, and disabled stale availability. Browser checks passed at 1440/1024/768/390/320px, including keyboard selection, note retention after a time change, and the mobile popup. No runtime errors or horizontal overflow; local availability was isolated and no real appointment was submitted.
+
+## September 26: full-day unavailable rows
+
+- Time selection now shows every half-hour start from 9 AM through 4 PM, including starts omitted by the availability response. Unavailable starts are gray disabled buttons with an Unavailable label; available starts remain sage. The final 4 PM start still represents a one-hour visit ending at 5 PM.
+- Uses existing availability decisions without changing published working hours or scheduling validation. Unavailability is not labeled Booked because the API does not distinguish appointment conflicts from other restrictions. Quarter-hour starts within the displayed range remain selectable when published.
+- Focused coverage checks the complete range, disabled interaction, partial-day openings, failed refresh, and 4 PM selection. Local browser checks cover desktop, tablet, 390/320px mobile, popup, keyboard selection, and notes retained through a time change. No horizontal overflow or runtime errors; no real booking submitted. Availability was supplied from an isolated fixture.
