@@ -6154,6 +6154,7 @@ export function DesignCard({
             {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
+          hasSundanceConfiguration(manufacturerOptionsRoute.productId) ? (<SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />) :
           manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isNormanValanceOnly(manufacturerOptionsRoute.productId) ? (<NormanValanceOnlyOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} />) :

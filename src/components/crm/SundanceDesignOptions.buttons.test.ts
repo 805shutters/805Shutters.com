@@ -68,3 +68,13 @@ it('searches fabric buttons and saves the exact catalog route', async () => {
   expect(saved.options_json).toMatchObject({ fabric_color_id: 'sundance_cellular:PU42SS-765', fabric_color_code: 'PU42SS-765', fabric_color_name: 'Ivory', untouched: 'keep' });
   expect(saved.options_json!.catalog_program_id).toBeTruthy();
 });
+
+it('defaults SheerView to single and exposes a persisted two-on-one upgrade',async()=>{
+  let patch:Partial<SalesQuoteDesign>|undefined;
+  await act(()=>root.render(React.createElement(SundanceDesignOptions,{productId:'sundance_sheerview',design:{options_json:{catalog_program_id:'sundance_sheerview_p23_t1',untouched:'keep'}},widthInches:60,heightInches:60,onUpdateFields:fields=>{patch=fields;}})));
+  const select=host.querySelector<HTMLSelectElement>('select[aria-label="Sundance SheerView assembly"]')!;
+  expect(select.value).toBe('Single');
+  expect(host.textContent).toContain('two-on-one is a priced upgrade');
+  await act(()=>{select.value='Two on one';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(patch?.options_json).toMatchObject({sundance_sheerview_assembly:'Two on one',untouched:'keep'});
+});

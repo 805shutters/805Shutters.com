@@ -1,4 +1,5 @@
 "use client";
+import { SUNDANCE_RETAIL_PRODUCTS } from "@/lib/quote/sundance/retail-policy";
 import { QuoteChoiceButtons } from "./QuoteChoiceButtons";
 import { SundanceSharedAccessories } from "./SundanceSharedAccessories";
 import { SundanceAssemblyOptions } from "./SundanceAssemblyOptions";
@@ -30,7 +31,7 @@ export function SundanceDesignOptions({ design, productId, onUpdateFields, width
   const filter = (field: "cell_size" | "light_control", value: string) =>
     onUpdateFields({fabric: null, options_json: sundanceCellularFilterPatch(options, field, value)});
   return <section className="space-y-3 rounded-lg border border-slate-200 p-3" data-testid="sundance-design-options">
-    <p className="text-sm text-amber-900">Save these Sundance selections with a dealer-confirmed manual price. Configuration compatibility, accessory charges and freight still require confirmation.</p>
+    <p className="text-sm text-amber-900">{SUNDANCE_RETAIL_PRODUCTS.has(productId) ? "Published retail pricing includes your selected options and installation/shipping charges. Single shade is standard; two-on-one is a priced upgrade." : "Save these Sundance selections with a dealer-confirmed manual price. Configuration compatibility, accessory charges and freight still require confirmation."}</p>
     {cellular ? <>
       <div className="block text-sm">Cell size<QuoteChoiceButtons aria-label="Sundance cell size" value={String(options.cell_size ?? "")} onChange={value => filter("cell_size", value)}>
         <option value="">All cell sizes</option>{[...new Set(sundanceCellularColors.map(row => row.automaticDetails.cell_size))].map(value => <option key={value} value={value}>{value}</option>)}
