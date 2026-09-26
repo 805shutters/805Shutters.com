@@ -162,3 +162,45 @@
   .consultation-booking fieldset.consultation-booking__quantities { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
 }
 @media (prefers-reduced-motion: reduce) { .consultation-booking { scroll-behavior: auto; } }
+
+/* A request is a separate, explicitly unconfirmed path. */
+.consultation-booking__request-entry {
+  padding: 1.5rem 1rem;
+  margin: 1rem 0;
+  border-top: 1px solid #d9d8d1;
+  text-align: center;
+}
+.consultation-booking__request-entry > p:first-child { margin: 0 0 .75rem; font-weight: 600; }
+.consultation-booking__request-entry button,
+.consultation-booking__request-banner button {
+  min-height: 48px;
+  padding: .8rem 1.25rem;
+  border: 1px solid #a39069;
+  background: #f7efde;
+  color: #544324;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.consultation-booking__request-banner {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  background: #f7efde;
+  color: #544324;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid #d4c39e;
+}
+.consultation-booking__request-banner p { margin: .35rem 0 0; }
+.consultation-booking--request button.consultation-booking__day-event:not(:disabled) {
+  background: #f7efde;
+  border-color: #bca779;
+  color: #544324;
+}
+.consultation-booking--request button.consultation-booking__day-event:not(:disabled):hover { background: #eee0c3; }
+@media (max-width: 640px) {
+  .consultation-booking__request-banner { flex-direction: column; align-items: stretch; }
+  .consultation-booking__request-entry button { width: 100%; }
+}

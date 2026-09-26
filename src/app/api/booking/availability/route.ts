@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { BookingError, customerAvailability } from "@/lib/booking/scheduling";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { requestAvailability } from "@/lib/booking/time-requests";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -16,6 +17,11 @@ export async function GET(request: NextRequest) {
     const variant = q.get("variant") || "standard";
     if (variant !== "standard" && variant !== "commercial")
       throw new BookingError(400, "Choose a valid appointment type.");
+    if (q.get("mode") === "request") {
+      if (variant !== "standard") throw new BookingError(400, "Time requests are for residential consultations.");
+      return NextResponse.json(await requestAvailability(supabase, q.get("month") || losAngelesDateString().slice(0, 7)),
+        { headers: { "Cache-Control": "no-store" } });
+    }
     return NextResponse.json(
       await customerAvailability(
         supabase,

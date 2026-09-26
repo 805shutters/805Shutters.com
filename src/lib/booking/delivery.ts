@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
-import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
+import { sendSms } from "@/lib/notify/twilio";
+import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
 import { isBookingDeliveryEnabled } from "./delivery-config";
@@ -396,6 +397,26 @@ async function sendStaffBookingEmail(details: BookingAutomationDetails) {
   });
 }
 
+export async function sendTimeRequestSms(details: Pick<BookingAutomationDetails, "name" | "phone" | "email" | "address" | "notes" | "startAt" | "productInterest" | "windowCount">) {
+  const to = salesRepSmsNumberForName("Mike");
+  if (!to) throw new Error("Mike SMS destination is not configured");
+  const body = [
+    "805 Shutters — consultation time REQUEST (not booked)",
+    `${details.name}: ${formatAppointmentForSms(details.startAt)} Pacific · 1 hour`,
+    `Customer phone: ${details.phone}`,
+    details.email ? `Email: ${details.email}` : null,
+    `Address: ${details.address}`,
+    details.productInterest !== "consultation" ? `Coverings: ${details.productInterest}` : null,
+    details.windowCount ? `Approx. windows: ${details.windowCount}` : null,
+    details.notes ? `Notes: ${details.notes}` : null,
+    "Customer is awaiting confirmation. Contact the customer at the number above.",
+  ].filter(Boolean).join("\n");
+  // Leave room for the Twilio message limit, while preserving contact/time/address.
+  const result = await sendSms({ to, body: body.length > 1550 ? body.slice(0, 1460) + "\nFull notes in CRM. Customer awaiting confirmation." : body });
+  if (!result.sent || !result.sid) throw new Error("Owner SMS not confirmed by provider");
+  return { sid: result.sid, status: result.providerStatus || "accepted" };
+}
+
 export const bookingEffectKinds = [
   "customer_sms",
   "customer_email",
@@ -547,14 +568,16 @@ export async function processBookingOutbox(
           continue;
         }
       }
-      const status = await deliverBookingEffect(
-        supabase,
-        effect.kind,
-        effect.payload,
-      );
+      if (effect.kind === "owner_time_request_sms" && Date.parse(effect.payload.startAt) <= Date.now()) {
+        const { error: expiredError } = await supabase.from("booking_outbox").update({ status: "skipped", completed_at: new Date().toISOString(), last_error: "Requested time has passed; follow up in CRM" }).eq("id", item.id).eq("status", "processing");
+        if (expiredError) throw expiredError;
+        continue;
+      }
+      const provider = effect.kind === "owner_time_request_sms" ? await sendTimeRequestSms(effect.payload) : null;
+      const status = provider ? "sent" : await deliverBookingEffect(supabase, effect.kind, effect.payload);
       const { error: saveError } = await supabase
         .from("booking_outbox")
-        .update({ status, completed_at: new Date().toISOString() })
+        .update({ status, completed_at: new Date().toISOString(), ...(provider ? { payload: { ...effect.payload, smsProvider: provider } } : {}) })
         .eq("id", item.id)
         .eq("status", "processing");
       if (saveError) throw saveError;

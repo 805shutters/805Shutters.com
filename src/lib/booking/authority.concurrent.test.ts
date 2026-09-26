@@ -101,6 +101,18 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
   afterAll(() => {
     if (started) execFileSync("docker", ["stop", container], { stdio: "pipe" });
   }, 15000);
+  it("replays concurrent pending requests once without reserving a time", async () => {
+    const revision = sql("select revision from booking_schedule_state;"), key = randomUUID();
+    const query = `select booking_request_time(${literal(key)},${literal("a".repeat(64))},${literal(revision)},'2035-10-02 01:00Z','{"meta":{}}',
+      '{"name":"Isolated Request","phone":"+18055550100","address":"123 Main St","productInterest":"consultation","bookingNotes":"Request only"}');`;
+    const results = await Promise.all([parallelSql(query), parallelSql(query)]);
+    expect(JSON.parse(results[0])).toEqual(JSON.parse(results[1]));
+    expect(sql("select count(*) from leads;")).toBe("1");
+    expect(sql("select count(*) from booking_outbox;")).toBe("1");
+    expect(sql("select count(*) from crm_calendar_events;")).toBe("0");
+    expect(sql("select count(*) from crm_jobs where status='follow_up' and appointment_start is null;")).toBe("1");
+    expect(sql("select has_function_privilege('anon','booking_request_time(uuid,text,text,timestamptz,jsonb,jsonb)','EXECUTE');")).toBe("f");
+  });
   it("serializes different-start overlapping bookings", async () => {
     const revision = sql("select revision from booking_schedule_state;");
     const results = await Promise.allSettled([

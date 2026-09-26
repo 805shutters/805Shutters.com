@@ -310,3 +310,46 @@ it("renders the full 9 AM through 4 PM range and allows the final published star
   await click('4:00 PM');
   expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain('4:00 PM');
 });
+
+it("opens option 1 extended request times and preserves notes on failed request and retry", async () => {
+  let fail = true;
+  const requestSlots = [{ time: '08:00', label: '8:00 AM', available: true }, { time: '18:00', label: '6:00 PM', available: true }];
+  const fetchMock = vi.fn().mockImplementation(async (url: string) => url.includes('availability')
+    ? ok(available(url.includes('mode=request') ? { mode: 'request', days: [{ date: '2026-09-28', day: 28, available: true, slots: requestSlots }] } : {}))
+    : fail ? { ok: false, status: 503, json: async () => ({ message: 'Please try again.' }) } : ok({ status: 'pending' }));
+  const { host, click } = await mount(fetchMock);
+  await click('28');
+  expect(host.querySelector('.consultation-booking__request-entry')?.compareDocumentPosition(host.querySelector('.consultation-booking__day-view')!)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+  await click('Request a different time →');
+  expect(host.querySelectorAll('.consultation-booking__day-row')).toHaveLength(21);
+  expect(host.querySelectorAll('.consultation-booking__day-event:disabled')).toHaveLength(19);
+  await click('6:00 PM'); await click('Choose address');
+  const notes = host.querySelector<HTMLTextAreaElement>('textarea[name="notes"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(notes, 'Gate code 4321');
+    notes.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(host.textContent).toContain('subject to confirmation');
+  const form = host.querySelector('form')!;
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(notes.value).toBe('Gate code 4321');
+  fail = false;
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  const posts = fetchMock.mock.calls.filter(([url]) => url === '/api/booking/time-request/');
+  expect(posts).toHaveLength(2);
+  expect(JSON.parse(posts[0][1].body)).toMatchObject({ time:'18:00', notes:'Gate code 4321', windowCount:null });
+  expect(posts[0][1].body).toEqual(posts[1][1].body);
+  expect(host.textContent).toContain('Your request is received.');
+  expect(host.textContent).toContain('Your appointment is not booked yet.');
+  expect(fetchMock.mock.calls.some(([url]) => url === '/api/booking/')).toBe(false);
+});
+
+it("can request a time when normal published availability is empty and return to regular booking", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(ok(available({ days: [] })));
+  const { host, click } = await mount(fetchMock);
+  await click('Request a different time →');
+  expect(fetchMock.mock.calls.at(-1)?.[0]).toContain('mode=request');
+  await click('Back to regular booking');
+  expect(fetchMock.mock.calls.at(-1)?.[0]).not.toContain('mode=request');
+  expect(host.querySelector('.consultation-booking--request')).toBeNull();
+});

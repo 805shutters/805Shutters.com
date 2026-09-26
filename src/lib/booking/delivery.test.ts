@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const mocks = vi.hoisted(() => ({ assignment: vi.fn() }));
 vi.mock("@/lib/crm/calendar-notifications", () => ({
   sendCalendarAssignmentSms: mocks.assignment,
+  salesRepSmsNumberForName: () => process.env.MIKE_805_SALES_SMS_NUMBER || null,
 }));
 import { deliverBookingEffect, processBookingOutbox } from "./delivery";
 const client = {} as SupabaseClient;
@@ -135,4 +136,44 @@ it("skips optional absent email rather than claiming delivery", async () => {
   expect(await deliverBookingEffect(client, "customer_email", details)).toBe(
     "skipped",
   );
+});
+
+it("sends the request only to Mike and records the provider message ID", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550199");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account"); vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token"); vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sid: "SMrequest", status: "queued" }), { status: 201 }));
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, updates, from } = outboxClient("owner_time_request_sms", null);
+  await processBookingOutbox(supabase);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  const body = new URLSearchParams(fetch.mock.calls[0][1].body);
+  expect(body.get("To")).toBe("+18055550199");
+  expect(body.get("Body")).toContain("not booked");
+  expect(body.get("Body")).toContain(details.phone);
+  expect(body.get("Body")).toContain(details.address);
+  expect(from).not.toHaveBeenCalledWith("crm_calendar_events");
+  expect(updates).toContainEqual(expect.objectContaining({ status: "sent", payload: expect.objectContaining({ smsProvider: { sid: "SMrequest", status: "queued" } }) }));
+});
+it("preserves a failed owner SMS for review without pretending it was sent", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", undefined);
+  const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
+  const { supabase, updates } = outboxClient("owner_time_request_sms", null);
+  await processBookingOutbox(supabase);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(updates.some(update => update.status === "sent")).toBe(false);
+  expect(updates).toContainEqual(expect.objectContaining({ status: "uncertain" }));
+});
+it("does not resend an ambiguous owner SMS and keeps its outcome uncertain", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true"); vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550199");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account"); vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token"); vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  const fetch = vi.fn().mockRejectedValue(new Error("Provider timeout")); vi.stubGlobal("fetch", fetch);
+  const { supabase, updates, rpc } = outboxClient("owner_time_request_sms", null);
+  await processBookingOutbox(supabase);
+  expect(updates).toContainEqual(expect.objectContaining({status:"uncertain"}));
+  rpc.mockResolvedValue({ data: null, error: null });
+  await processBookingOutbox(supabase);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(updates.some(u => u.status === "sent")).toBe(false);
 });

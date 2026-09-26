@@ -57,6 +57,7 @@ function trackingContext() {
 
 export function ConsultationBooking({ active = true, className = "", heading,
   showClose = false, onClose, onDone }: BookingCalendarProps) {
+  const [requestMode, setRequestMode] = useState(false);
   const [month, setMonth] = useState(() => losAngelesDateString().slice(0, 7));
   const [availability, setAvailability] = useState<Availability | null>(null);
   const [selection, setSelection] = useState<Selection>({ date: "", time: "" });
@@ -124,7 +125,8 @@ export function ConsultationBooking({ active = true, className = "", heading,
     busyRef.current = true;
     setLoading(true);
     const params = new URLSearchParams({ month, variant: "standard" });
-    if (checkAddress) params.set("address", checkAddress);
+    if (requestMode) params.set("mode", "request");
+    else if (checkAddress) params.set("address", checkAddress);
     fetch(`/api/booking/availability/?${params}`, { signal: controller.signal, cache: "no-store" })
       .then(async response => {
         const body = await response.json();
@@ -137,7 +139,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
         if (chosen.time && !body.days.some((day: Availability["days"][number]) =>
           day.date === chosen.date && day.slots.some(slot => slot.time === chosen.time && slot.available))) {
           setSelection({ ...chosen, time: "" });
-          setMessage(checkAddress
+          setMessage(checkAddress && !requestMode
             ? "That time doesn’t fit the travel time to your address. Please choose another time; your details are saved below."
             : "That time is no longer available. Please choose another; your details are saved below.");
         }
@@ -149,19 +151,19 @@ export function ConsultationBooking({ active = true, className = "", heading,
       })
       .finally(() => { if (current) { busyRef.current = false; setLoading(false); } });
     return () => { current = false; controller.abort(); busyRef.current = false; };
-  }, [active, complete, month, checkAddress, refresh]);
+  }, [active, complete, month, checkAddress, refresh, requestMode]);
 
   const selectedDay = availability?.days.find(day => day.date === selection.date);
   const minuteOfDay = (time: string) => { const [h, m] = time.split(":").map(Number); return h * 60 + m; };
   const labelAtMinute = (minute: number) => timeLabel(`${Math.floor(minute / 60) % 24}:${String(minute % 60).padStart(2, "0")}`);
   // Show every half-hour start, including times omitted from the availability response.
   const slotsByTime = new Map(selectedDay?.slots.map(slot => [slot.time, slot]));
-  const dayTimes = new Set(Array.from({ length: 15 }, (_, index) => {
-    const minute = 9 * 60 + index * 30;
+  const dayTimes = new Set(Array.from({ length: requestMode ? 21 : 15 }, (_, index) => {
+    const minute = (requestMode ? 8 : 9) * 60 + index * 30;
     return `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
   }));
   selectedDay?.slots.forEach(slot => {
-    if (slot.time >= "09:00" && slot.time <= "16:00") dayTimes.add(slot.time);
+    if (slot.time >= (requestMode ? "08:00" : "09:00") && slot.time <= (requestMode ? "18:00" : "16:00")) dayTimes.add(slot.time);
   });
   const dayRows = [...dayTimes].sort().map(time => slotsByTime.get(time)
     ?? { time, label: timeLabel(time), available: false });
@@ -205,7 +207,20 @@ export function ConsultationBooking({ active = true, className = "", heading,
     setSelection({ date: "", time: "" });
     setMessage("");
   }
+  function switchMode(next: boolean) {
+    setRequestMode(next);
+    setAvailability(null);
+    setLoading(true);
+    setAvailabilityError("");
+    setSelection(current => ({ ...current, time: "" }));
+    setEditingSchedule(true);
+    setMessage("");
+    requestKey.current = null;
+    pendingScroll.current = selection.date ? "times" : null;
+    if (!selection.date) returnToCalendar();
+  }
   function reset() {
+    setRequestMode(false);
     setComplete(false);
     setSelection({ date: "", time: "" });
     setContactStarted(false);
@@ -224,13 +239,13 @@ export function ConsultationBooking({ active = true, className = "", heading,
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submittingRef.current) return;
-    if (!selectionAvailable || !addressChecked || loading || !availability || availabilityError) {
+    if (!selectionAvailable || (!requestMode && !addressChecked) || loading || !availability || availabilityError) {
       setCheckAddress(address.trim());
       setRefresh(n => n + 1);
       return;
     }
     if (Date.parse(availability.expiresAt) <= Date.now()) {
-      setMessage("Refreshing your time. Your details are saved; please book when the check finishes.");
+      setMessage("Refreshing your time. Your details are saved; please submit when the check finishes.");
       setRefresh(n => n + 1);
       return;
     }
@@ -239,10 +254,10 @@ export function ConsultationBooking({ active = true, className = "", heading,
     setMessage("");
     const payload = { ...selection, ...contact, address: address.trim(), windowCount: windowCount || null,
       productTypes, variant: "standard", followUpRequested: false, ...trackingContext() };
-    const bodyKey = JSON.stringify(payload);
+    const bodyKey = JSON.stringify({ requestMode, ...payload });
     if (requestKey.current?.body !== bodyKey) requestKey.current = { body: bodyKey, key: crypto.randomUUID() };
     try {
-      const response = await fetch("/api/booking/", { method: "POST", headers: { "Content-Type": "application/json" },
+      const response = await fetch(requestMode ? "/api/booking/time-request/" : "/api/booking/", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, revision: availability.revision, idempotencyKey: requestKey.current.key }) });
       const result = await response.json();
       if (!response.ok) {
@@ -251,7 +266,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
       }
       setComplete(true);
       // The outbox is asynchronous. Queued or provider-accepted messages are not delivery proof.
-      trackBookingEvent({ eventId: result.leadId, jobId: result.jobId, productTypes, windowCount,
+      if (!requestMode) trackBookingEvent({ eventId: result.leadId, jobId: result.jobId, productTypes, windowCount,
         followUpRequested: false, ...trackingContext() });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "We couldn’t finish booking. Please try again.");
@@ -269,22 +284,26 @@ export function ConsultationBooking({ active = true, className = "", heading,
     </label>;
   }
 
-  return <div className={`consultation-booking${isPage ? " consultation-booking--page" : ""}${!complete ? " consultation-booking--bold" : ""}`}>
+  return <div className={`consultation-booking${requestMode ? " consultation-booking--request" : ""}${isPage ? " consultation-booking--page" : ""}${!complete ? " consultation-booking--bold" : ""}`}>
     {(title || showClose) && <header className="consultation-booking__head">
       {!isPage && <img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" width={80} height={64} />}
       <div>{title && <h2>{title}</h2>}<p>Free in-home visit · 1 hour</p></div>
       {showClose && <button type="button" className="consultation-booking__close" onClick={onClose} aria-label="Close booking">×</button>}
     </header>}
-    {complete ? <section className="consultation-booking__complete" role="status" ref={completeRef} tabIndex={-1} aria-label="Appointment confirmation">
+    {complete ? <section className="consultation-booking__complete" role="status" ref={completeRef} tabIndex={-1} aria-label={requestMode ? "Request received" : "Appointment confirmation"}>
       <span className="consultation-booking__check" aria-hidden="true">✓</span>
-      <h2>Your appointment is booked.</h2>
+      <h2>{requestMode ? "Your request is received." : "Your appointment is booked."}</h2>
       <p><strong>{dateLabel(selection.date)} at {timeLabel(selection.time)}</strong><br />1 hour · Pacific time</p>
       <p>{address}</p>
-      <p>We look forward to meeting you, {contact.name.split(" ")[0]}.</p>
+      <p>{requestMode ? "Your appointment is not booked yet. We’ll contact you to confirm your requested time." : `We look forward to meeting you, ${contact.name.split(" ")[0]}.`}</p>
       <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
-      <button type="button" onClick={reset}>{onDone ? "Done" : "Book another appointment"}</button>
+      <button type="button" onClick={reset}>{onDone ? "Done" : requestMode ? "Back to calendar" : "Book another appointment"}</button>
     </section> : <>
       {showSchedule && <div className="consultation-booking__schedule">
+        {requestMode && <div className="consultation-booking__request-banner" role="status">
+          <div><strong>Request a time · 8 AM–6 PM</strong><p>Choose an open time. We’ll review your request and contact you to confirm.</p></div>
+          <button type="button" onClick={() => switchMode(false)} disabled={submitting}>Back to regular booking</button>
+        </div>}
         <section className="consultation-booking__calendar" ref={calendarRef} tabIndex={-1} aria-label="Choose a consultation date" aria-busy={loading}>
           <div className="consultation-booking__month">
             <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} disabled={submitting || month <= losAngelesDateString().slice(0, 7)}>←</button>
@@ -326,30 +345,35 @@ export function ConsultationBooking({ active = true, className = "", heading,
             <h3>{dateLabel(selection.date)}</h3>
             <button type="button" className="consultation-booking__change-date" onClick={returnToCalendar} disabled={submitting}>Change date</button>
           </div>
-          <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
+          <p className="consultation-booking__hint">{requestMode ? "Request a one-hour visit · Pacific time · Subject to confirmation" : addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
           {selectedDay && <>
-            <div className="consultation-booking__day-view" role="group" aria-label="Appointment times from 9 AM to 4 PM">
+            <div className="consultation-booking__day-view" role="group" aria-label={requestMode ? "Request times from 8 AM to 6 PM" : "Appointment times from 9 AM to 4 PM"}>
               {dayRows.map(slot => <div className="consultation-booking__day-row" key={slot.time}>
                 <span className="consultation-booking__day-axis" aria-hidden="true">{slot.label}</span>
                 <button type="button" className="consultation-booking__day-event"
-                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, ${slot.available ? "1-hour visit" : "unavailable"}`} aria-pressed={selection.time === slot.time}
+                  aria-label={`${slot.label} to ${labelAtMinute(minuteOfDay(slot.time) + 60)}, ${slot.available ? requestMode ? "request a 1-hour visit" : "1-hour visit" : "unavailable"}`} aria-pressed={selection.time === slot.time}
                   disabled={!slot.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
                   <span className="consultation-booking__day-range"><strong>{slot.label}</strong><span>– {labelAtMinute(minuteOfDay(slot.time) + 60)}</span></span>
-                  <span className={slot.available ? "consultation-booking__day-select" : "consultation-booking__day-status"} aria-hidden="true">{slot.available ? "Select →" : "Unavailable"}</span>
+                  <span className={slot.available ? "consultation-booking__day-select" : "consultation-booking__day-status"} aria-hidden="true">{slot.available ? requestMode ? "Request →" : "Select →" : "Unavailable"}</span>
                 </button>
               </div>)}
             </div>
             <p className="consultation-booking__hint">Select a time to enter your details.</p>
           </>}
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}
-          {loading && <p role="status">{checkAddress ? "Checking times for your address…" : "Loading available times…"}</p>}
+          {loading && <p role="status">{checkAddress && !requestMode ? "Checking times for your address…" : "Loading available times…"}</p>}
+        </div>}
+        {!requestMode && (selection.date || (!loading && !hasOpenings)) && <div className="consultation-booking__request-entry">
+          <p>Need an early morning or late afternoon?</p>
+          <button type="button" onClick={() => switchMode(true)} disabled={submitting}>Request a different time →</button>
+          <p className="consultation-booking__hint">View times from 8 AM–6 PM. Requests need confirmation.</p>
         </div>}
       </div>}
       {availabilityError && <div className="consultation-booking__notice" role="alert"><p>{availabilityError}</p><button type="button" disabled={loading} onClick={() => setRefresh(n => n + 1)}>Try again</button></div>}
       {message && <p className="consultation-booking__notice" role="alert">{message}</p>}
       {contactStarted && <form className={`consultation-booking__form${!showSchedule ? " consultation-booking__form--active" : ""}`} ref={formRef} tabIndex={-1} aria-label="Your details" onSubmit={submit}>
-        <h3>Complete your booking</h3>
-        <p>Enter your details to book your free one-hour visit.</p>
+        <h3>{requestMode ? "Request your consultation" : "Complete your booking"}</h3>
+        <p>{requestMode ? "Enter your details so we can contact you. Your time is subject to confirmation." : "Enter your details to book your free one-hour visit."}</p>
         {selection.time ? <div className="consultation-booking__appointment">
           <p className="consultation-booking__summary">{dateLabel(selection.date)} at {timeLabel(selection.time)} · 1 hour</p>
           {!showSchedule && <button type="button" className="consultation-booking__change-date" onClick={editAppointment} disabled={submitting}>Change date or time</button>}
@@ -401,8 +425,8 @@ export function ConsultationBooking({ active = true, className = "", heading,
           </section>
           <div className="consultation-booking__actions">
             <p className="consultation-booking__hint">Free in-home consultation · 1 hour</p>
-            <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || !addressChecked || Boolean(availabilityError)}>{submitting ? "Booking your appointment…" : "Book appointment"}</button>
-            {address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
+            <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || (!requestMode && !addressChecked) || Boolean(availabilityError)}>{submitting ? requestMode ? "Sending your request…" : "Booking your appointment…" : requestMode ? "Send time request" : "Book appointment"}</button>
+            {!requestMode && address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
           </div>
         </fieldset>
       </form>}

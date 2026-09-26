@@ -38,6 +38,7 @@ vi.mock("@/lib/booking/travel", async (original) => ({
   ...(await original<typeof import("./travel")>()),
   googleDriveEstimator: () => async () => 15 * 60,
 }));
+import { POST as requestPOST } from "@/app/api/booking/time-request/route";
 import { POST } from "@/app/api/booking/route";
 import { GET as publicGET } from "@/app/api/booking/availability/route";
 import { GET as staffGET } from "@/app/api/crm/availability/route";
@@ -286,5 +287,76 @@ describe("shared public / CRM booking APIs", () => {
       (await db.query<{ n: number }>("select count(*)::int n from leads"))
         .rows[0].n,
     ).toBe(0);
+  });
+});
+
+const requestTime = async (overrides: Record<string, unknown> = {}, headers = {}) => {
+  const revision = (await db.query<{ revision: string }>("select revision::text from booking_schedule_state")).rows[0].revision;
+  return requestPOST(new NextRequest("http://localhost/api/booking/time-request/", {
+    method: "POST", headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ ...base, time: "18:00", windowCount: null, idempotencyKey: randomUUID(), revision, ...overrides }),
+  }));
+};
+describe("pending consultation time requests", () => {
+  it("offers 8 AM–6 PM request starts outside published hours, with conflicts gray", async () => {
+    await db.exec("insert into crm_calendar_events(title,assigned_to,start_at,end_at) values('Busy','Jessica','2035-10-01 16:00Z','2035-10-01 17:00Z')");
+    const response = await publicGET(new NextRequest("http://localhost/api/booking/availability?month=2035-10&mode=request"));
+    const body = await response.json();
+    expect(body.mode).toBe("request");
+    expect(body.addressChecked).toBe(false);
+    const day = body.days[0];
+    expect(day.slots).toHaveLength(21);
+    expect(day.slots[0]).toMatchObject({ time: "08:00", available: true });
+    expect(day.slots.at(-1)).toMatchObject({ time: "18:00", available: true });
+    expect(day.slots.find((s: {time:string}) => s.time === "09:00").available).toBe(false);
+    expect(day.slots.find((s: {time:string}) => s.time === "08:30").available).toBe(false);
+    expect(day.slots[0]).not.toHaveProperty("reason");
+  });
+  it("saves an unknown-count pending request atomically, with owner-only notification and no appointment", async () => {
+    const key = randomUUID();
+    const response = await requestTime({ idempotencyKey: key, notes: "Gate code 1234", productTypes: ["Shutters"] });
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.status).toBe("pending");
+    const retry = await requestTime({ idempotencyKey: key, notes: "Gate code 1234", productTypes: ["Shutters"], revision: "obsolete" });
+    expect(await retry.json()).toEqual(result);
+    const job = (await db.query("select status,sales_owner,appointment_start,appointment_end,meta from crm_jobs")).rows[0];
+    expect(job).toMatchObject({ status: "follow_up", sales_owner: "Mike", appointment_start: null, appointment_end: null,
+      meta: { requestStatus: "pending", windowCount: null, notes: "Gate code 1234", appointmentDurationMinutes: 60 } });
+    const counts = (await db.query("select (select count(*) from leads)::int leads,(select count(*) from crm_calendar_events)::int events,(select count(*) from crm_quotes)::int quotes,(select count(*) from booking_outbox)::int effects")).rows[0];
+    expect(counts).toEqual({ leads: 1, events: 0, quotes: 0, effects: 1 });
+    const outbox = (await db.query<{kind:string;payload:{startAt:string}}>("select kind,payload from booking_outbox")).rows[0];
+    expect(outbox).toMatchObject({ kind: "owner_time_request_sms", payload: { notes: "Gate code 1234" } });
+    expect(new Date((outbox.payload as { startAt:string }).startAt).toISOString()).toBe("2035-10-02T01:00:00.000Z");
+    expect((await requestTime({ idempotencyKey: key, notes: "Changed" })).status).toBe(409);
+  });
+  it("rejects changed schedules and occupied requests without partial records", async () => {
+    expect((await requestTime({ revision: "old" })).status).toBe(409);
+    await db.exec("insert into crm_calendar_events(title,assigned_to,start_at,end_at) values('Busy','Jessica','2035-10-02 01:00Z','2035-10-02 02:00Z')");
+    expect((await requestTime()).status).toBe(409);
+    expect((await db.query<{n:number}>("select count(*)::int n from leads")).rows[0].n).toBe(0);
+  });
+  it("preserves normal commercial rules and rejects malformed/foreign-origin submissions", async () => {
+    expect((await requestTime({ variant: "commercial" })).status).toBe(400);
+    expect((await publicGET(new NextRequest("http://localhost/api/booking/availability?month=2035-10&mode=request&variant=commercial"))).status).toBe(400);
+    for (const overrides of [{time:"18:30"},{time:"07:30"},{date:"2035-02-30"},{phone:"nope"},{email:"nope"},{windowCount:-1}])
+      expect((await requestTime(overrides)).status).toBe(400);
+    expect((await requestTime({}, { origin: "https://foreign.invalid" })).status).toBe(403);
+  });
+  it("fails before saving if production SMS configuration is missing", async () => {
+    vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+    vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", undefined);
+    try {
+      expect((await requestTime()).status).toBe(503);
+      expect((await db.query<{n:number}>("select count(*)::int n from leads")).rows[0].n).toBe(0);
+    } finally { vi.unstubAllEnvs(); }
+  });
+  it("bounds repeated owner alerts while permitting replay", async () => {
+    const key = randomUUID();
+    expect((await requestTime({ idempotencyKey: key })).status).toBe(200);
+    expect((await requestTime({ time: "17:30" })).status).toBe(200);
+    expect((await requestTime({ time: "17:00" })).status).toBe(200);
+    expect((await requestTime({ time: "16:30" })).status).toBe(429);
+    expect((await requestTime({ idempotencyKey: key })).status).toBe(200);
   });
 });
