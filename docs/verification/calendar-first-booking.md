@@ -55,3 +55,10 @@ No production migration, push, or deployment has been performed. The preview use
 - Added a visible, optional appointment-notes textarea with gate-code and parking guidance. Uses the existing notes payload and server processing; appointment duration and scheduling are unchanged.
 - Focused UI coverage verifies multi-select coverings, a single quantity, notes retained through a failed request, and identical payload/idempotency key on retry.
 - Browser checks covered desktop (1440), tablet (1024/768), mobile (390/320), the page and mobile popup, keyboard checkbox/radio controls, more-covering disclosure, and notes retained after changing time. No horizontal overflow or browser runtime errors. Local availability was supplied from a saved fixture because the isolated checkout has no scheduling credentials; live availability must be checked separately after release. No real booking was submitted.
+
+## September 26: calendar-style day view
+
+- Replaced the morning/afternoon time-button groups with a chronological day timeline, labeled hour/half-hour grid lines, and sage one-hour appointment blocks. The timeline covers the day's available openings, with blank gaps for unavailable times.
+- Overlapping alternative start times occupy separate lanes; all available starts remain selectable, including exceptional published hours. Selecting an opening immediately focuses the existing details form, preserving optional answers and notes when changing the appointment.
+- Focused tests cover chronological positions, one-hour end labels across noon, overlapping lanes including quarter-hour openings, unavailable gaps, failed-refresh disabling, and unchanged daypart badges on the month calendar.
+- Browser checks passed at 1440, 1024, 768, 390, and 320px, including keyboard selection and the mobile popup. Local QA used isolated availability fixtures, produced no browser runtime errors, and submitted no real appointment. Live verification is performed separately after deployment.

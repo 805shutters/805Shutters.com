@@ -152,10 +152,23 @@ export function ConsultationBooking({ active = true, className = "", heading,
   }, [active, complete, month, checkAddress, refresh]);
 
   const selectedDay = availability?.days.find(day => day.date === selection.date);
-  const availableTimeGroups = timePeriods.map(period => ({
-    ...period,
-    slots: selectedDay?.slots.filter(slot => slot.available && slotPeriod(slot.time) === period.label) ?? [],
-  })).filter(group => group.slots.length > 0);
+  const daySlots = (selectedDay?.slots.filter(slot => slot.available) ?? []).sort((a, b) => a.time.localeCompare(b.time));
+  const minuteOfDay = (time: string) => { const [h, m] = time.split(":").map(Number); return h * 60 + m; };
+  const labelAtMinute = (minute: number) => timeLabel(`${Math.floor(minute / 60) % 24}:${String(minute % 60).padStart(2, "0")}`);
+  const dayStart = daySlots.length ? Math.floor(minuteOfDay(daySlots[0].time) / 60) * 60 : 8 * 60;
+  const dayEnd = daySlots.length ? Math.ceil((minuteOfDay(daySlots[daySlots.length - 1].time) + 60) / 60) * 60 : 18 * 60;
+  // One-hour alternatives can overlap (for example 10:00 and 10:30).
+  // Give each an unobstructed lane while keeping DOM and keyboard order chronological.
+  const laneEnds: number[] = [];
+  const dayEvents = daySlots.map(slot => {
+    const start = minuteOfDay(slot.time);
+    let lane = laneEnds.findIndex(end => end <= start);
+    if (lane < 0) lane = laneEnds.length;
+    laneEnds[lane] = start + 60;
+    return { ...slot, start, lane };
+  });
+  const laneCount = Math.max(1, laneEnds.length);
+  const dayTicks = Array.from({ length: (dayEnd - dayStart) / 30 + 1 }, (_, index) => dayStart + index * 30);
   const addressChecked = Boolean(availability?.addressChecked && verifiedAddress === address.trim());
   const selectionAvailable = Boolean(selectedDay?.slots.some(slot => slot.time === selection.time && slot.available));
   const hasOpenings = availability?.days.some(day => day.available);
@@ -318,18 +331,26 @@ export function ConsultationBooking({ active = true, className = "", heading,
             <button type="button" className="consultation-booking__change-date" onClick={returnToCalendar} disabled={submitting}>Change date</button>
           </div>
           <p className="consultation-booking__hint">{addressChecked ? "Available for your address · 1 hour · Pacific time" : "Choose a time · Free one-hour visit · Pacific time"}</p>
-          <div className="consultation-booking__time-groups">
-            {availableTimeGroups.map(group => <section className="consultation-booking__time-group" aria-label={`${group.label} appointments`} key={group.label}>
-              <h4>{group.label} <span>{group.note}</span></h4>
-              <div className="consultation-booking__slots">
-                {group.slots.map(slot => <button type="button" key={slot.time}
-                  aria-label={`${slot.label}, 1-hour visit`} aria-pressed={selection.time === slot.time} disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
-                  <strong>{slot.label}</strong>
-                </button>)}
+          {daySlots.length > 0 && <>
+            <p className="consultation-booking__day-key"><span aria-hidden="true" /> Select a green opening · Each visit is 1 hour</p>
+            <div className="consultation-booking__day-view" role="group" aria-label="Available one-hour appointments">
+              <div className="consultation-booking__day-grid" style={{ height: `calc(${(dayEnd - dayStart) / 60} * var(--day-hour-height))` }}>
+                {dayTicks.map(minute => <div key={minute} className={`consultation-booking__day-tick${minute % 60 ? " consultation-booking__day-tick--half" : ""}`}
+                  style={{ top: `calc(${(minute - dayStart) / 60} * var(--day-hour-height))` }} aria-hidden="true">
+                  <span>{labelAtMinute(minute)}</span>
+                </div>)}
+                <div className="consultation-booking__day-events">
+                  {dayEvents.map(slot => <button type="button" key={slot.time} className="consultation-booking__day-event"
+                    style={{ top: `calc(${(slot.start - dayStart) / 60} * var(--day-hour-height))`, left: `${slot.lane * 100 / laneCount}%`, width: `calc(${100 / laneCount}% - 6px)` }}
+                    aria-label={`${slot.label} to ${labelAtMinute(slot.start + 60)}, 1-hour visit`} aria-pressed={selection.time === slot.time}
+                    disabled={loading || submitting || Boolean(availabilityError)} onClick={() => chooseTime(slot.time)}>
+                    <strong>{slot.label}</strong><span>to {labelAtMinute(slot.start + 60)}</span>
+                  </button>)}
+                </div>
               </div>
-            </section>)}
-          </div>
-          {availableTimeGroups.length > 0 && <p className="consultation-booking__hint">Select a time to enter your details.</p>}
+            </div>
+            <p className="consultation-booking__hint">Select an opening to enter your details. Blank times are unavailable.</p>
+          </>}
           {!loading && selectedDay && !selectedDay.available && hasOpenings && <p>Please choose another date for available times.</p>}
           {loading && <p role="status">{checkAddress ? "Checking times for your address…" : "Loading available times…"}</p>}
         </div>}

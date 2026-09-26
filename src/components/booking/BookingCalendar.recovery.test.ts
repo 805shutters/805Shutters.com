@@ -88,7 +88,7 @@ it("keeps empty-month guidance visible before a day is selected", async () => {
   expect(host.textContent).toContain("No appointments are available this month");
 });
 
-it("groups available times into morning then afternoon and opens details immediately", async () => {
+it("places available one-hour visits in a chronological day view and opens details immediately", async () => {
   const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
     { time: "11:30", label: "11:30 AM", available: true },
     { time: "12:00", label: "12:00 PM", available: true },
@@ -96,23 +96,24 @@ it("groups available times into morning then afternoon and opens details immedia
     { time: "13:00", label: "1:00 PM", available: true },
   ] }] }))));
   await click("28");
-  const groups = [...host.querySelectorAll('.consultation-booking__time-group')];
-  expect(groups.map(group => group.getAttribute('aria-label'))).toEqual(['Morning appointments', 'Afternoon appointments']);
-  expect(groups.map(group => [...group.querySelectorAll('button')].map(button => button.textContent)))
-    .toEqual([['11:30 AM'], ['12:00 PM', '1:00 PM']]);
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(['11:30 AM', '12:00 PM', '1:00 PM']);
+  expect(events.map(button => button.style.top)).toEqual(['calc(0.5 * var(--day-hour-height))', 'calc(1 * var(--day-hour-height))', 'calc(2 * var(--day-hour-height))']);
+  expect(events.map(button => button.style.left)).toEqual(['0%', '50%', '0%']);
+  expect(events[0].getAttribute('aria-label')).toBe('11:30 AM to 12:30 PM, 1-hour visit');
   await click('12:00 PM');
   expect(document.activeElement).toBe(host.querySelector('form'));
   expect(host.querySelector('.consultation-booking__summary')?.textContent).toContain('12:00 PM');
 });
 
-it.each(['morning', 'afternoon'])("omits empty time groups on a %s-only day", async period => {
+it.each(['morning', 'afternoon'])("shows only available openings on a %s-only day", async period => {
   const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
     { time: "11:30", label: "11:30 AM", available: period === 'morning' },
     { time: "12:00", label: "12:00 PM", available: period === 'afternoon' },
   ] }] }))));
   await click('28');
-  expect(host.querySelectorAll('.consultation-booking__time-group')).toHaveLength(1);
-  expect(host.querySelector('.consultation-booking__time-group')?.getAttribute('aria-label')).toBe(`${period === 'morning' ? 'Morning' : 'Afternoon'} appointments`);
+  expect(host.querySelectorAll('.consultation-booking__day-event')).toHaveLength(1);
+  expect(host.querySelector('.consultation-booking__day-event strong')?.textContent).toBe(period === 'morning' ? '11:30 AM' : '12:00 PM');
 });
 
 it("shows daypart badges only for available slots, with noon counted as afternoon", async () => {
@@ -231,11 +232,12 @@ it("uses the exact daypart boundaries without hiding exceptional published openi
   expect(days[1].getAttribute('aria-label')).not.toContain('Afternoon');
   expect(host.querySelector('.consultation-booking__legend')?.textContent).toContain('Morning: 8:00–11:30 AM · Afternoon: 12:00–5:00 PM');
   await click('28');
-  const groups = [...host.querySelectorAll('.consultation-booking__time-group')];
-  expect(groups.map(group => [...group.querySelectorAll('button')].map(button => button.textContent)))
-    .toEqual([['08:00', '11:30'], ['12:00', '17:00'], ['07:30', '11:45', '17:30']]);
-  expect(groups[0].querySelector('h4')?.textContent).toContain('8:00–11:30 AM');
-  expect(groups[1].querySelector('h4')?.textContent).toContain('12:00–5:00 PM');
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  expect(events.map(button => button.querySelector('strong')?.textContent)).toEqual(times);
+  // Three simultaneous alternatives stay in separate lanes, even for quarter-hour starts.
+  expect(events.find(button => button.querySelector('strong')?.textContent === '12:00')?.style.left).toBe('66.66666666666667%');
+  expect(host.querySelector('.consultation-booking__day-grid')?.getAttribute('style')).toContain('12 * var(--day-hour-height)');
+
 });
 
 it("retains appointment notes and optional choices across a failed booking and retry", async () => {
@@ -266,4 +268,22 @@ it("retains appointment notes and optional choices across a failed booking and r
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(request()).toHaveLength(2);
   expect(request()[1]).toEqual(request()[0]);
+});
+
+it("leaves unavailable gaps blank and disables stale openings on refresh failure", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(ok(available({ days: [{ date: '2026-09-28', day: 28, available: true, slots: [
+    { time: '10:00', label: '10:00 AM', available: true },
+    { time: '11:00', label: '11:00 AM', available: false },
+    { time: '13:30', label: '1:30 PM', available: true },
+  ] }] })));
+  const { host, click } = await mount(fetchMock);
+  await click('28');
+  const events = [...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')];
+  expect(events).toHaveLength(2);
+  expect(events[1].style.top).toBe('calc(3.5 * var(--day-hour-height))');
+  expect(events.every(button => button.style.left === '0%')).toBe(true);
+  expect(host.querySelector('.consultation-booking__day-grid')?.getAttribute('style')).toContain('5 * var(--day-hour-height)');
+  fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: 'Please retry availability.' }) });
+  await act(async () => window.dispatchEvent(new Event('focus')));
+  expect([...host.querySelectorAll<HTMLButtonElement>('.consultation-booking__day-event')].every(button => button.disabled)).toBe(true);
 });
