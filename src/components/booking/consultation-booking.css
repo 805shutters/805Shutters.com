@@ -1,10 +1,11 @@
 .consultation-page-head {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 1040px; text-align: center;
+  position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: center; gap: 4px 16px; max-width: 1040px; text-align: center;
   margin: 0 auto; padding: 16px 24px 12px; color: var(--ink);
 }
-.consultation-page-head img { width: 48px; height: auto; flex: none; }
-.consultation-page-head h1 { margin: 0; font-family: var(--font-display); font-size: clamp(23px, 3vw, 32px); line-height: 1.15; letter-spacing: -.02em; }
-.consultation-page-head p { margin: 8px 0 0; font-size: 15px; line-height: 1.4; color: var(--muted); }
+.consultation-page-head > div { display: contents; }
+.consultation-page-head img { grid-column: 1; grid-row: 1; justify-self: start; align-self: start; width: 48px; height: auto; flex: none; }
+.consultation-page-head h1 { grid-column: 2; grid-row: 1; justify-self: center; width: 100%; margin: 0; font-family: var(--font-display); font-size: clamp(23px, 3vw, 32px); line-height: 1.15; letter-spacing: -.02em; }
+.consultation-page-head p { grid-column: 1 / -1; justify-self: center; width: 100%; margin: 0; font-size: 15px; line-height: 1.4; color: var(--muted); }
 .consultation-page-head > a { position: absolute; top: 16px; right: 16px; display: grid; place-items: center; width: 44px; height: 44px; font-size: 28px; text-decoration: none; color: inherit; }
 .consultation-booking {
   position: relative; width: 100%; max-width: 1040px; margin: 0 auto;
@@ -25,11 +26,11 @@
 .consultation-booking button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--white); }
 .consultation-booking button:disabled { cursor: default; color: var(--muted); background: var(--paper); border-color: transparent; }
 .consultation-booking :focus-visible, .consultation-page-head :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-.consultation-booking__head { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; margin-bottom: 16px; text-align: center; }
-.consultation-booking__head > div { width: 100%; }
-.consultation-booking__head img { width: 48px; height: auto; flex: none; }
-.consultation-booking__head h2 { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.15; }
-.consultation-booking__head p { color: var(--muted); margin-bottom: 0; }
+.consultation-booking__head { position: relative; display: grid; grid-template-columns: 64px minmax(0, 1fr) 64px; align-items: center; gap: 4px 16px; margin-bottom: 16px; text-align: center; }
+.consultation-booking__head > div { display: contents; }
+.consultation-booking__head img { grid-column: 1; grid-row: 1; justify-self: start; align-self: start; width: 48px; height: auto; flex: none; }
+.consultation-booking__head h2 { grid-column: 2; grid-row: 1; justify-self: center; width: 100%; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.15; }
+.consultation-booking__head p { grid-column: 1 / -1; justify-self: center; width: 100%; color: var(--muted); margin: 0; }
 .consultation-booking button.consultation-booking__close { position: absolute; top: -12px; right: -12px; width: 44px; height: 44px; padding: 0; font-size: 28px; border: 0; background: transparent; }
 .consultation-booking__schedule { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin: 0 auto; }
 .consultation-booking__calendar { scroll-margin-top: 60px; }
@@ -103,7 +104,7 @@
   .consultation-booking__actions .consultation-booking__submit { margin-top: 0; }
 }
 @media (max-width: 600px) {
-  .consultation-page-head { padding: 10px 16px 12px; gap: 12px; }
+  .consultation-page-head { padding: 10px 16px 12px; grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 4px 8px; }
   .consultation-page-head img { width: 40px; }
   .consultation-page-head h1 { font-size: 23px; }
   .consultation-page-head p { font-size: 13px; }
@@ -122,7 +123,7 @@
   .consultation-booking__period-short { display: inline; }
   .consultation-booking__times { padding-top: 18px; }
   .consultation-booking__times h3 { font-size: 25px; }
-  .consultation-booking__head { gap: 12px; }
+  .consultation-booking__head { grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 4px 8px; }
   .consultation-booking button.consultation-booking__close { top: -4px; right: 0; }
   .consultation-booking__head img { width: 40px; }
   .consultation-booking__head h2 { font-size: 25px; }
