@@ -66,7 +66,8 @@ describe("customer payments C", () => {
   });
   it("reviews email without sending, then posts one exact confirmed request and leaves balance due", async () => {
     await act(async () => root.render(createElement(MobileCustomersApp)));
-    await click("Email payment link");
+    await click("Collect full balance");
+    await click("Email");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(host.querySelector("dialog")?.open).toBe(true);
     expect(host.querySelector("dialog")?.textContent).toContain("805@805shutters.com");
@@ -81,13 +82,50 @@ describe("customer payments C", () => {
   });
   it("retains the same request identity for a retry and never silently changes the channel", async () => {
     await act(async () => root.render(createElement(MobileCustomersApp)));
-    await click("Text payment link");
+    await click("Collect full balance");
     fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: "Unknown attempt. Review audit." }) });
     await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
     const sends = fetchMock.mock.calls.filter(call => call[1]?.method === "POST");
     expect(JSON.parse(sends[0][1].body).idempotencyKey).toBe(JSON.parse(sends[1][1].body).idempotencyKey);
     expect([...host.querySelectorAll("dialog button")].filter(b => b.getAttribute("aria-pressed") !== null).every(b => (b as HTMLButtonElement).disabled)).toBe(true);
+  });
+  it("collects the full 1001.20 even when the next deposit is only 200", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ results: [{ ...row, contractTotal: 1602.4, paid: 601.2, outstanding: 1001.2, deposit: 200, balance: 801.2, dueType: "deposit", amountDue: 200 }] }) });
+    await act(async () => root.render(createElement(MobileCustomersApp)));
+    await click("Collect full balance");
+    expect(host.querySelector("dialog")?.textContent).toContain("$1,001.20");
+    await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+    const body = JSON.parse(fetchMock.mock.calls.find(call => call[1]?.method === "POST")![1].body);
+    expect(body).toMatchObject({ paymentType: "balance", collectionMode: "full", expectedAmount: 1001.2, expectedOutstanding: 1001.2 });
+    expect(body.customAmount).toBeUndefined();
+  });
+  it("splits a partial amount into collect-now and collect-later and sends only the first", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ results: [{ ...row, outstanding: 1001.2, deposit: 200, balance: 801.2 }] }) });
+    await act(async () => root.render(createElement(MobileCustomersApp)));
+    await click("Collect partial amount");
+    const input = host.querySelector('dialog input') as HTMLInputElement;
+    const submit = host.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    for (const value of ["0", "-1", "1001.20", "1002", "1.001", "abc"]) {
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      expect(submit.disabled).toBe(true);
+    }
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "400");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(submit.disabled).toBe(false);
+    expect(host.querySelector("dialog")?.textContent).toContain("$601.20");
+    expect(host.querySelector("dialog")?.textContent).toContain("Payment 2 · Collect later");
+    await act(async () => host.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+    const sends = fetchMock.mock.calls.filter(call => call[1]?.method === "POST");
+    expect(sends).toHaveLength(1);
+    expect(JSON.parse(sends[0][1].body)).toMatchObject({ collectionMode: "partial", customAmount: 400, expectedAmount: 400, expectedOutstanding: 1001.2 });
+    expect(input.disabled).toBe(true);
   });
   it("includes the reviewed amount and recipient in both channels", () => {
     expect(mobilePaymentSendRequest({ row, type: "balance", key: "same" }, "text")).toMatchObject({ expectedAmount: 500, expectedRecipient: row.phone, idempotencyKey: "same" });

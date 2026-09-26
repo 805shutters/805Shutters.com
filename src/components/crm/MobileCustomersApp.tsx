@@ -18,12 +18,20 @@ async function api(path: string, init?: RequestInit) {
   return body;
 }
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
-type PaymentAction = { row: MobilePaymentCustomer; type: "deposit" | "balance"; key: string };
+type PaymentAction = { row: MobilePaymentCustomer; type: "deposit" | "balance"; key: string; mode?: "full" | "partial"; partial?: string };
 type PaymentChannel = "text" | "email";
+
+export function mobilePaymentAmount(action: PaymentAction) {
+  if (action.mode === "full") return action.row.outstanding || 0;
+  if (action.mode === "partial") return /^\d+(?:\.\d{1,2})?$/.test(action.partial || "") ? Number(action.partial) : 0;
+  return action.type === "deposit" ? action.row.deposit : action.row.balance;
+}
 
 export function mobilePaymentSendRequest(action: PaymentAction, channel: PaymentChannel) {
   return { quoteId: action.row.quoteId, jobId: action.row.jobId, paymentType: action.type, channel, idempotencyKey: action.key,
-    expectedAmount: action.type === "deposit" ? action.row.deposit : action.row.balance,
+    expectedAmount: mobilePaymentAmount(action),
+    ...(action.mode ? { collectionMode: action.mode, expectedOutstanding: action.row.outstanding,
+      ...(action.mode === "partial" ? { customAmount: mobilePaymentAmount(action) } : {}) } : {}),
     expectedRecipient: channel === "text" ? action.row.phone : action.row.email };
 }
 
@@ -81,14 +89,18 @@ export function MobileCustomersApp() {
   const ready = !loading && !error && query.trim() === lookup;
 
   function open(row: MobilePaymentCustomer) { setSelected(row.id); setDetailTab("payments"); }
-  function beginSend(row: MobilePaymentCustomer, method: PaymentChannel) {
-    if (!row.dueType || !ready) return;
+  const requestedAmount = action ? mobilePaymentAmount(action) : 0;
+  const remainingAfterPayment = action ? Math.round(((action.row.outstanding || 0) - requestedAmount) * 100) / 100 : 0;
+  const validAmount = requestedAmount > 0 && (action?.mode !== "partial" || remainingAfterPayment > 0);
+  function beginSend(row: MobilePaymentCustomer, mode: "full" | "partial") {
+    if (!(row.outstanding && row.outstanding > 0) || !ready) return;
+    const method = mobilePhoneTarget(row.phone) ? "text" : "email";
     setNotice(""); setSendError(""); setAttempted(false); setChannel(method);
-    setAction({ row, type: row.dueType, key: crypto.randomUUID() });
+    setAction({ row, type: "balance", mode, partial: "", key: crypto.randomUUID() });
   }
   async function send(event: FormEvent) {
     event.preventDefault();
-    if (!action || sendingRef.current) return;
+    if (!action || !validAmount || !ready || sendingRef.current) return;
     sendingRef.current = true; setSending(true); setAttempted(true); setSendError("");
     try {
       const result = await api("/api/crm/mobile/customers", { method: "POST", body: JSON.stringify(mobilePaymentSendRequest(action, channel)) });
@@ -100,13 +112,14 @@ export function MobileCustomersApp() {
   }
   function actions(row: MobilePaymentCustomer) {
     if (!(row.outstanding !== null && row.outstanding > 0)) return null;
-    const eligible = Boolean(row.quoteId && row.jobId && row.dueType && row.amountDue > 0);
+    const eligible = Boolean(row.quoteId && row.jobId && (mobilePhoneTarget(row.phone) || row.email));
     return <div className={styles.paymentActions}>
       <small><CreditCard size={15} /> Credit card payment · Square</small>
       <div className={styles.twoColumns}>
-        <button className={styles.primary} disabled={!ready || !eligible || !mobilePhoneTarget(row.phone)} onClick={() => beginSend(row, "text")}><MessageSquare size={18} /> Text payment link</button>
-        <button className={styles.primary} disabled={!ready || !eligible || !row.email} onClick={() => beginSend(row, "email")}><Mail size={18} /> Email payment link</button>
+        <button className={styles.primary} disabled={!ready || !eligible} onClick={() => beginSend(row, "full")}>Collect full balance</button>
+        <button className={styles.primary} disabled={!ready || !eligible} onClick={() => beginSend(row, "partial")}>Collect partial amount</button>
       </div>
+      <small>Choose an amount, then send by text or email.</small>
       {!eligible && <small>A linked quote with a verified amount due is needed to send a Square link.</small>}
     </div>;
   }
@@ -171,12 +184,21 @@ export function MobileCustomersApp() {
       {action && <form onSubmit={send}>
         <div className={styles.sectionHeading}><h2 id="payment-review-title">Review payment link</h2><button type="button" aria-label="Close payment review" disabled={sending} onClick={() => setAction(null)}><X size={20}/></button></div>
         <p className={styles.muted}>SQUARE CREDIT CARD PAYMENT</p><h3>{action.row.name}</h3><p>{action.row.project}</p>
-        <div className={styles.amount}>{money(action.type === "deposit" ? action.row.deposit : action.row.balance)}</div><p>{action.type === "deposit" ? "Deposit" : "Balance"} payment</p>
+        <p className={styles.muted}>Remaining balance: {money(action.row.outstanding || 0)}</p>
+        <div className={styles.tabs} role="group" aria-label="Payment amount">
+          <button type="button" aria-pressed={action.mode === "full"} disabled={attempted} onClick={() => setAction({ ...action, mode: "full" })}>Full balance</button>
+          <button type="button" aria-pressed={action.mode === "partial"} disabled={attempted} onClick={() => setAction({ ...action, mode: "partial" })}>Partial amount</button>
+        </div>
+        {action.mode === "partial" && <label className={styles.amountInput}>Amount to collect now ($)<input autoFocus inputMode="decimal" type="text" value={action.partial || ""} disabled={attempted} aria-describedby="partial-payment-help" onChange={event => setAction({ ...action, partial: event.target.value.trim() })}/><small id="partial-payment-help">Enter an amount less than {money(action.row.outstanding || 0)}.</small></label>}
+        {validAmount ? <div className={styles.review} aria-live="polite">
+          <small>{action.mode === "partial" ? "Payment 1 · Collect now" : "Collect full balance"}</small><strong className={styles.collectAmount}>{money(requestedAmount)}</strong>
+          {action.mode === "partial" && <><small>Payment 2 · Collect later</small><strong>{money(remainingAfterPayment)}</strong><p>After the first payment is recorded, collect the remainder from this screen. The later payment is not charged automatically.</p></>}
+        </div> : <p className={styles.muted} role="status">Enter a positive amount with up to two decimal places, below the remaining balance.</p>}
         <div className={styles.tabs} role="group" aria-label="Delivery method"><button type="button" aria-pressed={channel === "text"} disabled={attempted || !mobilePhoneTarget(action.row.phone)} onClick={() => setChannel("text")}><MessageSquare size={16}/> Text</button><button type="button" aria-pressed={channel === "email"} disabled={attempted || !action.row.email} onClick={() => setChannel("email")}><Mail size={16}/> Email</button></div>
         <div className={styles.review}><small>To {channel === "text" ? "mobile" : "email"}</small><strong>{channel === "text" ? action.row.phone : action.row.email}</strong>{channel === "email" && <small>From: 805@805shutters.com</small>}<p>The customer receives the secure Square checkout link for this amount.</p></div>
         <p className={styles.muted}>Sending a link does not record a payment. Provider acceptance does not mean delivery.</p>
         {sendError && <p role="alert" className={styles.error}>{sendError}</p>}
-        <button className={styles.primary} disabled={sending || !ready} type="submit">{sending ? "Sending once…" : attempted ? "Check same request" : `Confirm & send ${channel === "text" ? "text" : "email"}`}</button>
+        <button className={styles.primary} disabled={sending || !ready || !validAmount} type="submit">{sending ? "Sending once…" : attempted ? "Check same request" : `Confirm & send ${channel === "text" ? "text" : "email"}`}</button>
         <button className={styles.cancel} type="button" disabled={sending} onClick={() => setAction(null)}>Cancel</button>
       </form>}
     </dialog>

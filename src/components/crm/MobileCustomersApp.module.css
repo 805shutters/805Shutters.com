@@ -6,3 +6,5 @@
 .page h1,.page h2,.page h3{font-family:inherit;font-weight:700}
 :global(body):has(.page){background:#000}
 :global(body):has(.page) :global(.mobile-workspace-exit){background:#191e20;border-color:#30383a;color:#fff}
+
+.amountInput{display:flex;flex-direction:column;gap:9px;font-size:14px;margin-bottom:18px}.amountInput input{background:#0d1213;border:1px solid var(--line);border-radius:9px;padding:13px;color:#fff;width:100%;font-size:20px}.collectAmount{font-size:28px}.paymentActions>.twoColumns{margin-bottom:10px}

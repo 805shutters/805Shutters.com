@@ -23,6 +23,7 @@ describe("mobile payment-link governance", () => {
   it("replays an accepted exact request without another provider send", () => {
     const prior={quote_id:"q1",job_id:"j1",payment_type:"balance",channel:"email",recipient:"a@example.com",status:"accepted",amount:123,provider_status:"accepted"};
     expect(mobilePaymentReplay(prior,{quoteId:"q1",jobId:"j1",paymentType:"balance",channel:"email",recipient:"a@example.com"})).toEqual({amount:123,providerStatus:"accepted"});
+    expect(()=>mobilePaymentReplay(prior,{quoteId:"q1",jobId:"j1",paymentType:"balance",channel:"email",recipient:"a@example.com",expectedAmount:124})).toThrow("different payment amount");
     expect(()=>mobilePaymentReplay(prior,{quoteId:"q2",jobId:"j1",paymentType:"balance",channel:"email",recipient:"a@example.com"})).toThrow("different customer");
   });
 

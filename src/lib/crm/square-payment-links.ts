@@ -17,7 +17,7 @@ import {
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 export type SquareOrderPaymentType = "deposit" | "balance";
-export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number };
+export type SquarePaymentConfirmation = { expectedAmount: number; expectedRecipient: string; customAmount?: number; collectionMode?: "full" | "partial"; expectedOutstanding?: number };
 
 /** A partial request keeps its original deposit/balance ledger classification. */
 export function squarePaymentRequestAmount(amountDue: number, customAmount?: number) {
@@ -125,7 +125,25 @@ export async function sendSquareOrderPaymentLink(
     creditsIn: (creditsInResult.data || []) as QuoteLedgerCredit[],
     creditsOut: (creditsOutResult.data || []) as QuoteLedgerCredit[],
   });
-  const amount = squarePaymentRequestAmount(amounts[paymentType], confirmation?.customAmount);
+  const collectionMode = confirmation?.collectionMode;
+  if (collectionMode && collectionMode !== "full" && collectionMode !== "partial") {
+    throw new CrmAuthError(400, "Choose full balance or partial payment.");
+  }
+  if (collectionMode && (!Number.isFinite(confirmation?.expectedOutstanding) ||
+      dollarsToCents(confirmation!.expectedOutstanding!) !== dollarsToCents(amounts.outstanding))) {
+    throw new CrmAuthError(409, "The remaining balance changed. Refresh and review both payment amounts again.");
+  }
+  if (collectionMode === "full" && confirmation?.customAmount !== undefined) {
+    throw new CrmAuthError(400, "A full balance request cannot include a custom amount.");
+  }
+  if (collectionMode === "partial" && confirmation?.customAmount === undefined) {
+    throw new CrmAuthError(400, "Enter the partial payment amount.");
+  }
+  const amount = squarePaymentRequestAmount(collectionMode ? amounts.outstanding : amounts[paymentType], confirmation?.customAmount);
+  if (collectionMode === "partial" && dollarsToCents(amount) >= dollarsToCents(amounts.outstanding)) {
+    throw new CrmAuthError(400, "Use full balance to collect the entire remaining amount.");
+  }
+  const remainingAfterPayment = (dollarsToCents(amounts.outstanding) - dollarsToCents(amount)) / 100;
   if (!(amount > 0)) {
     throw new CrmAuthError(400, paymentType === "deposit" ? "No deposit is currently due." : "No remaining balance is currently due.");
   }
@@ -137,7 +155,7 @@ export async function sendSquareOrderPaymentLink(
 
   if (confirmation) verifySquarePaymentConfirmation(amount, delivery?.channel === "text" ? phone || "" : customerEmail || "", confirmation);
 
-  const label = confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
+  const label = collectionMode === "full" ? "Full balance" : confirmation?.customAmount !== undefined ? "Order payment" : paymentType === "deposit" ? "Deposit" : "Order balance";
   const { data: quoteIdentity, error: quoteIdentityError } = await supabase
     .from("crm_quotes")
     .select("id,job_id")
@@ -168,7 +186,7 @@ export async function sendSquareOrderPaymentLink(
     paymentType,
     amount,
     quoteNumber: publicQuote.quoteNumber,
-    customAmount: confirmation?.customAmount !== undefined,
+    customAmount: Boolean(collectionMode) || confirmation?.customAmount !== undefined,
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
   const email = delivery?.channel === "text" ? null : await sendEmail({
@@ -187,6 +205,9 @@ export async function sendSquareOrderPaymentLink(
     action: `square_${paymentType}_link.send`,
     metadata: {
       amount,
+      collectionMode: collectionMode || null,
+      outstandingBeforeRequest: amounts.outstanding,
+      remainingAfterPayment,
       customAmount: confirmation?.customAmount !== undefined,
       recipient: delivery?.channel === "text" ? phone : customerEmail,
       channel: delivery?.channel || "email",
@@ -228,6 +249,7 @@ export async function sendSquareOrderPaymentLink(
   return {
     paymentType,
     amount,
+    remainingAfterPayment,
     recipient: delivery?.channel === "text" ? phone : customerEmail,
     url: link.url,
     linkId: link.id,

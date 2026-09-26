@@ -5,7 +5,7 @@ import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/li
 import { createSquarePaymentLink, isSquareConfigured } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
 import { sendSms } from "@/lib/notify/twilio";
-import { sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
+import { type SquarePaymentConfirmation, sendSquareOrderPaymentLink as sendCurrentSquareOrderPaymentLink } from "./square-payment-links";
 
 vi.mock("@/lib/crm/square-payment-requests", () => ({ trackSquarePaymentRequest: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/lib/crm/backend", () => ({ recordCrmActivity: vi.fn() }));
@@ -16,7 +16,7 @@ vi.mock("@/lib/finance/square", () => ({
 vi.mock("@/lib/notify/twilio", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/notify/twilio")>(), sendSms: vi.fn() }));
 vi.mock("@/lib/notify/email", () => ({ buildSquareOrderPaymentEmail: vi.fn(), sendEmail: vi.fn() }));
 
-const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "deposit" | "balance", actor: { email: string; userId?: string }, confirmation?: { expectedAmount: number; expectedRecipient: string; customAmount?: number }) => sendCurrentSquareOrderPaymentLink(client, id, type, actor, undefined, undefined, confirmation);
+const sendSquareOrderPaymentLink = (client: SupabaseClient, id: string, type: "deposit" | "balance", actor: { email: string; userId?: string }, confirmation?: SquarePaymentConfirmation) => sendCurrentSquareOrderPaymentLink(client, id, type, actor, undefined, undefined, confirmation);
 
 const quoteId = "22222222-2222-4222-8222-222222222222";
 const actor = { email: "staff@example.test", userId: "11111111-1111-4111-8111-111111111111" };
@@ -267,5 +267,49 @@ describe("mobile text confirmation", () => {
       { channel: "text", phone: "+18055551212" }, confirmation)).rejects.toMatchObject({ status: 409 });
     expect(createSquarePaymentLink).not.toHaveBeenCalled();
     expect(sendSms).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("mobile full and partial balance collection", () => {
+  beforeEach(() => vi.mocked(loadPublicQuoteByToken).mockResolvedValue(quote({ total: 1602.4, depositDue: 801.2 })));
+  const originalPayments = [{ amount: 601.2, payment_label: "Deposit" }];
+  it("includes the unpaid 200 deposit in the full 1001.20 collection", async () => {
+    const result = await sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
+      collectionMode: "full", expectedOutstanding: 1001.2, expectedAmount: 1001.2, expectedRecipient: customerEmail,
+    });
+    expect(result).toMatchObject({ amount: 1001.2, remainingAfterPayment: 0 });
+    expect(createSquarePaymentLink).toHaveBeenCalledWith(expect.objectContaining({ amountCents: 100120, paymentType: "balance" }));
+  });
+  it("collects 400 now and can collect the exact 601.20 remainder after recording the first payment", async () => {
+    const first = await sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
+      collectionMode: "partial", customAmount: 400, expectedOutstanding: 1001.2, expectedAmount: 400, expectedRecipient: customerEmail,
+    });
+    expect(first).toMatchObject({ amount: 400, remainingAfterPayment: 601.2 });
+    expect(createSquarePaymentLink).toHaveBeenCalledTimes(1);
+    expect(recordCrmActivity).toHaveBeenCalledWith(expect.anything(), actor, expect.objectContaining({ metadata: expect.objectContaining({ collectionMode: "partial", outstandingBeforeRequest: 1001.2, remainingAfterPayment: 601.2 }) }));
+    const second = await sendSquareOrderPaymentLink(ledger({ payments: [...originalPayments, { amount: 400, payment_label: "Balance payment" }] }).client, quoteId, "balance", actor, {
+      collectionMode: "full", expectedOutstanding: 601.2, expectedAmount: 601.2, expectedRecipient: customerEmail,
+    });
+    expect(second).toMatchObject({ amount: 601.2, remainingAfterPayment: 0 });
+    expect(createSquarePaymentLink).toHaveBeenLastCalledWith(expect.objectContaining({ amountCents: 60120 }));
+  });
+  it("allows a partial collection larger than the old balance-only portion", async () => {
+    const result = await sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
+      collectionMode: "partial", customAmount: 900, expectedOutstanding: 1001.2, expectedAmount: 900, expectedRecipient: customerEmail,
+    });
+    expect(result).toMatchObject({ amount: 900, remainingAfterPayment: 101.2 });
+  });
+  it.each([0, -1, 1001.2, 1002, 0.001, NaN, Infinity])("rejects invalid partial amount %s", async customAmount => {
+    await expect(sendSquareOrderPaymentLink(ledger({ payments: originalPayments }).client, quoteId, "balance", actor, {
+      collectionMode: "partial", customAmount, expectedOutstanding: 1001.2, expectedAmount: customAmount, expectedRecipient: customerEmail,
+    })).rejects.toBeInstanceOf(Error);
+    expectNoExternalRequest();
+  });
+  it.each(["full", "partial"] as const)("rejects stale %s review even if the chosen amount still fits", async collectionMode => {
+    await expect(sendSquareOrderPaymentLink(ledger({ payments: [...originalPayments, { amount: 10 }] }).client, quoteId, "balance", actor, {
+      collectionMode, ...(collectionMode === "partial" ? { customAmount: 400 } : {}), expectedOutstanding: 1001.2, expectedAmount: collectionMode === "full" ? 1001.2 : 400, expectedRecipient: customerEmail,
+    })).rejects.toMatchObject({ status: 409 });
+    expectNoExternalRequest();
   });
 });
