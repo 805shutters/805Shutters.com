@@ -169,7 +169,7 @@ it("shows contact details only after time selection and preserves the time acros
   }
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')?.required).toBe(false);
   expect([...host.querySelectorAll('.consultation-booking__contact input')].map(input => input.getAttribute('name'))).toEqual(['name', 'phone', 'email']);
-  expect(host.querySelectorAll('button[type="submit"]')).toHaveLength(1);
+  expect(host.querySelectorAll('button[type="submit"]')).toHaveLength(2);
   fetchMock.mockResolvedValue(ok(available({ revision: "101", addressChecked: true })));
   await click("Choose address");
   expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("10:30 AM");
@@ -415,4 +415,30 @@ it("retains notes and asks for another time if a green opening disappears during
   expect(host.querySelector<HTMLButtonElement>('.consultation-booking__submit')?.disabled).toBe(true);
   expect(host.querySelector('.consultation-booking__times')?.textContent).toContain('11:00 AM');
   expect(fetchMock.mock.calls.every(([url]) => url.includes('availability'))).toBe(true);
+});
+
+
+it.each([true, false])("submits and retains follow-up choice %s across a failed booking retry", async followUpRequested => {
+  const fetchMock = vi.fn().mockImplementation(async (url: string) => url.includes('availability')
+    ? ok(available({ addressChecked: true }))
+    : { ok: false, status: 503, json: async () => ({ message: 'Please try again.' }) });
+  const { host, click } = await mount(fetchMock);
+  await click('28'); await click('10:30 AM'); await click('Choose address');
+  const value = followUpRequested ? 'follow-up' : 'no-follow-up';
+  const button = host.querySelector<HTMLButtonElement>(`button[name="followUp"][value="${value}"]`)!;
+  expect(button.disabled).toBe(false);
+  const send = () => act(async () => {
+    host.querySelector('form')!.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+  });
+  await send();
+  expect(host.textContent).toContain('Please try again.');
+  await send();
+  const requests = fetchMock.mock.calls.filter(([url]) => url === '/api/booking/').map(([, init]) => JSON.parse(init.body));
+  expect(requests).toHaveLength(2);
+  expect(requests[0]).toMatchObject({ followUpRequested });
+  expect(requests[1]).toEqual(requests[0]);
+  fetchMock.mockResolvedValue(ok({ leadId: 'test', jobId: 'test' }));
+  await send();
+  expect(host.textContent).toContain('Your appointment is booked.');
+  expect(host.textContent).toContain(followUpRequested ? 'Follow-up from 805 requested.' : 'No follow-up necessary.');
 });

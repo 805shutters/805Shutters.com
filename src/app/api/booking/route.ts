@@ -233,7 +233,7 @@ async function submit(request: NextRequest) {
     `Self-booked appointment.`,
     followUpRequested
       ? `Customer requested a follow-up to confirm details.`
-      : isResidential ? null : `Customer indicated no follow-up needed.`,
+      : !isResidential || payload.followUpRequested === false ? `Customer indicated no follow-up needed.` : null,
     windowCount ? `Windows: ${windowCount}` : null,
     `Estimated appointment length: ${formatDuration(appointmentDurationMinutes)}`,
     productTypes.length ? `Product interest: ${productInterest}` : null,
@@ -292,7 +292,9 @@ async function submit(request: NextRequest) {
     address,
     product_interest: productInterest,
     sales_owner: assignedRep,
-    next_action: "Review self-booking and prepare appointment",
+    next_action: isResidential && followUpRequested
+      ? "Follow up with customer to confirm appointment details"
+      : "Review self-booking and prepare appointment",
     next_action_due: date,
     appointment_start: startAt,
     appointment_end: endAt,

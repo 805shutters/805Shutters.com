@@ -78,6 +78,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
   const [availabilityError, setAvailabilityError] = useState("");
   const [message, setMessage] = useState("");
   const [complete, setComplete] = useState(false);
+  const [bookedFollowUp, setBookedFollowUp] = useState(false);
   const selectionRef = useRef(selection);
   const busyRef = useRef(false);
   const submittingRef = useRef(false);
@@ -233,6 +234,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
   function reset() {
     setRequestMode(false);
     setComplete(false);
+    setBookedFollowUp(false);
     setSelection({ date: "", time: "" });
     setContactStarted(false);
     setEditingSchedule(false);
@@ -260,11 +262,13 @@ export function ConsultationBooking({ active = true, className = "", heading,
       setRefresh(n => n + 1);
       return;
     }
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const followUpRequested = !requestMode && submitter?.value === "follow-up";
     submittingRef.current = true;
     setSubmitting(true);
     setMessage("");
     const payload = { ...selection, ...contact, address: address.trim(), windowCount: windowCount || null,
-      productTypes, variant: "standard", followUpRequested: false, ...trackingContext() };
+      productTypes, variant: "standard", followUpRequested, ...trackingContext() };
     const bodyKey = JSON.stringify({ requestMode, ...payload });
     if (requestKey.current?.body !== bodyKey) requestKey.current = { body: bodyKey, key: crypto.randomUUID() };
     try {
@@ -275,10 +279,11 @@ export function ConsultationBooking({ active = true, className = "", heading,
         if (response.status === 409) setRefresh(n => n + 1);
         throw new Error(result.message || "We couldn’t finish booking. Please try again.");
       }
+      setBookedFollowUp(followUpRequested);
       setComplete(true);
       // The outbox is asynchronous. Queued or provider-accepted messages are not delivery proof.
       if (!requestMode) trackBookingEvent({ eventId: result.leadId, jobId: result.jobId, productTypes, windowCount,
-        followUpRequested: false, ...trackingContext() });
+        followUpRequested, ...trackingContext() });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "We couldn’t finish booking. Please try again.");
     } finally {
@@ -307,6 +312,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
       <p><strong>{dateLabel(selection.date)} at {timeLabel(selection.time)}</strong><br />1 hour · Pacific time</p>
       <p>{address}</p>
       <p>{requestMode ? "Your appointment is not booked yet. We’ll contact you to confirm your requested time." : `We look forward to meeting you, ${contact.name.split(" ")[0]}.`}</p>
+      {!requestMode && <p>{bookedFollowUp ? "Follow-up from 805 requested." : "No follow-up necessary."}</p>}
       <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
       <button type="button" onClick={reset}>{onDone ? "Done" : requestMode ? "Back to calendar" : "Book another appointment"}</button>
     </section> : <>
@@ -438,7 +444,15 @@ export function ConsultationBooking({ active = true, className = "", heading,
           </label>
           <div className="consultation-booking__actions">
             <p className="consultation-booking__hint">Free in-home consultation · 1 hour</p>
-            <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || (!requestMode && !addressChecked) || Boolean(availabilityError)}>{submitting ? requestMode ? "Sending your request…" : "Booking your appointment…" : requestMode ? "Send time request" : "Book appointment"}</button>
+            <div className="consultation-booking__submit-options">
+              {requestMode ? <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || Boolean(availabilityError)}>{submitting ? "Sending your request…" : "Send time request"}</button> :
+                [{ value: "follow-up", label: "Follow-up from 805" }, { value: "no-follow-up", label: "No follow-up necessary" }].map(option =>
+                  <button className="consultation-booking__submit" type="submit" name="followUp" value={option.value} key={option.value}
+                    disabled={loading || submitting || !selectionAvailable || !addressChecked || Boolean(availabilityError)}>
+                    <strong>{submitting ? "Booking your appointment…" : "Book appointment"}</strong>
+                    <span>{option.label}</span>
+                  </button>)}
+            </div>
             {!requestMode && address.trim() && !addressChecked && !loading && !availabilityError && <p className="consultation-booking__hint">Finish entering your service address to check your time.</p>}
           </div>
         </fieldset>

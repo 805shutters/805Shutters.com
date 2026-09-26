@@ -107,7 +107,12 @@
 .consultation-booking__appointment .consultation-booking__summary { background: transparent; padding: 0; }
 
 .consultation-booking button.consultation-booking__submit, .consultation-booking__complete button { width: 100%; background: var(--ink); color: var(--white); border-color: var(--ink); margin-top: 22px; min-height: 50px; }
+.consultation-booking__submit-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.consultation-booking__submit-options > :only-child { grid-column: 1 / -1; }
+.consultation-booking__submit-options button { flex-direction: column; gap: 4px; }
+.consultation-booking__submit-options button span { font-size: 13px; font-weight: 400; }
 .consultation-booking__actions button.consultation-booking__submit { margin-top: 0; border-radius: 6px; background: #e4edde; color: #35513a; border-color: #9bb395; }
+.consultation-booking__submit-options button[value="no-follow-up"] { background: var(--white); }
 .consultation-booking button.consultation-booking__submit:disabled { background: var(--soft); border-color: var(--soft); color: var(--muted); }
 .consultation-booking__help { text-align: center; color: var(--muted); font-size: 13px; padding-top: 4px; }
 .consultation-booking__complete { max-width: 460px; margin: 16px auto; text-align: center; scroll-margin-top: 60px; }
@@ -126,6 +131,7 @@
   .consultation-booking__actions .consultation-booking__submit { margin-top: 0; }
 }
 @media (max-width: 600px) {
+  .consultation-booking__submit-options { grid-template-columns: 1fr; }
   .consultation-page-head { padding: 10px 16px 12px; grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 4px 8px; }
   .consultation-page-head img { width: 40px; }
   .consultation-page-head h1 { font-size: 23px; }

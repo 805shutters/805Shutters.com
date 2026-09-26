@@ -372,3 +372,22 @@ it.each(["booking", "request"])("persists the full covering list for a %s withou
   expect(saved.meta.productTypes).toHaveLength(productTypes.length);
   expect(saved.meta.productTypes).toEqual(expect.arrayContaining(productTypes));
 });
+
+
+it.each([true, false])("stores follow-up choice %s in CRM, calendar, and notification data without duplicating retries", async followUpRequested => {
+  await publish();
+  const payload = { ...base, followUpRequested, idempotencyKey: randomUUID() };
+  expect((await submit(payload)).status).toBe(200);
+  expect((await submit(payload)).status).toBe(200);
+  for (const table of ['leads', 'crm_jobs', 'crm_calendar_events']) {
+    const records = (await db.query<{ meta: { followUpRequested: boolean }; notes: string }>(`select meta, notes from ${table}`)).rows;
+    expect(records).toHaveLength(1);
+    expect(records[0].meta.followUpRequested).toBe(followUpRequested);
+    expect(records[0].notes).toContain(followUpRequested ? 'Customer requested a follow-up' : 'Customer indicated no follow-up needed.');
+  }
+  const effects = (await db.query<{ payload: { followUpRequested: boolean } }>('select payload from booking_outbox')).rows;
+  expect(effects.length).toBeGreaterThan(0);
+  expect(effects.every(effect => effect.payload.followUpRequested === followUpRequested)).toBe(true);
+  const job = (await db.query<{ next_action: string }>('select next_action from crm_jobs')).rows[0];
+  expect(job.next_action).toBe(followUpRequested ? 'Follow up with customer to confirm appointment details' : 'Review self-booking and prepare appointment');
+});
