@@ -69,30 +69,30 @@
 .consultation-booking__notice { padding: 14px 16px; background: #fff7e7; border-radius: 0; color: #68481e; }
 .consultation-booking__form { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 24px; scroll-margin-top: 20px; }
 .consultation-booking fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.consultation-booking__fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 20px; }
+.consultation-booking__fields { display: grid; align-content: start; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 0; }
 .consultation-booking__form--active { border-top: 0; margin-top: 0; padding-top: 0; scroll-margin-top: 60px; }
 .consultation-booking__form > h3 { font-family: var(--font-display); font-size: 30px; font-weight: 400; }
 .consultation-booking__appointment { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0 24px; }
 .consultation-booking__appointment .consultation-booking__summary { margin: 0; }
-.consultation-booking fieldset.consultation-booking__details-layout { display: grid; grid-template-columns: minmax(0, .38fr) minmax(0, .62fr); gap: 28px; align-items: start; }
-.consultation-booking__contact { grid-column: 1; grid-row: 1; }
-.consultation-booking__actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 12px 24px; border-top: 1px solid var(--line); padding-top: 20px; }
+.consultation-booking fieldset.consultation-booking__details-layout { display: grid; grid-template-columns: minmax(0, .34fr) minmax(0, .66fr); gap: 20px 24px; align-items: start; }
+.consultation-booking__contact { grid-column: 1; grid-row: 1 / 3; display: grid; grid-template-rows: subgrid; }
+.consultation-booking__actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, .34fr) minmax(0, .66fr); align-items: center; gap: 12px 24px; border-top: 1px solid var(--line); padding-top: 20px; }
 .consultation-booking__actions > .consultation-booking__hint:last-child:not(:first-child) { grid-column: 1 / -1; }
 .consultation-booking__form h4 { margin: 0; font: inherit; font-weight: 600; font-size: 17px; }
-.consultation-booking__optional h4 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-.consultation-booking__optional h4 span { color: var(--muted); font-size: 12px; font-weight: 400; }
-.consultation-booking label { display: grid; gap: 6px; font-weight: 500; font-size: 14px; color: var(--ink); }
-.consultation-booking input, .consultation-booking select, .consultation-booking textarea { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 0; background: var(--white); padding: 10px 12px; color: var(--ink); font: inherit; font-size: 16px; box-shadow: none; }
+.consultation-booking__details-layout h4 { display: grid; align-content: start; gap: 4px; }
+.consultation-booking__details-layout h4 span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.consultation-booking label { display: grid; gap: 6px; font-weight: 500; font-size: 14px; line-height: 21px; color: var(--ink); }
+.consultation-booking input, .consultation-booking select, .consultation-booking textarea { width: 100%; min-height: 52px; border: 1px solid var(--line); border-radius: 6px; background: var(--white); padding: 10px 12px; color: var(--ink); font: inherit; font-size: 16px; box-shadow: none; }
 .consultation-booking__summary { padding: 10px 14px; background: var(--soft); color: var(--ink); border-radius: 0; font-weight: 500; }
-.consultation-booking__optional { grid-column: 2; grid-row: 1; min-width: 0; }
-.consultation-booking__project-sections { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
-.consultation-booking__project-sections legend { font-size: 15px; font-weight: 600; padding: 0; }
-.consultation-booking fieldset.consultation-booking__quantities { border-left: 1px solid var(--line); padding-left: 20px; }
-.consultation-booking__choices { display: grid; gap: 8px; }
+.consultation-booking__optional { grid-column: 2; grid-row: 1 / 3; min-width: 0; display: grid; grid-template-rows: subgrid; }
+.consultation-booking__project-sections { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.consultation-booking__project-sections legend { font-size: 14px; line-height: 21px; font-weight: 500; padding: 0; margin-bottom: 6px; }
+.consultation-booking fieldset.consultation-booking__quantities { border-left: 1px solid var(--line); padding-left: 16px; }
+.consultation-booking__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .consultation-booking__quantity-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .consultation-booking label.consultation-booking__choice { position: relative; display: block; min-width: 0; cursor: pointer; }
 .consultation-booking__choice input { position: absolute; opacity: 0; width: 1px; height: 1px; min-height: 0; padding: 0; }
-.consultation-booking__choice > span { display: flex; justify-content: center; align-items: center; gap: 5px; min-height: 46px; padding: 10px 6px; border: 1px solid #9bb395; border-radius: 6px; background: var(--white); text-align: center; font-size: 13px; line-height: 1.3; }
+.consultation-booking__choice > span { display: flex; justify-content: center; align-items: center; gap: 5px; min-height: 52px; height: 100%; padding: 8px 6px; border: 1px solid #9bb395; border-radius: 6px; background: var(--white); text-align: center; font-size: 13px; line-height: 1.3; }
 .consultation-booking__choice input:checked + span { background: #e4edde; border-color: #456448; color: #35513a; }
 .consultation-booking__choice:hover > span { border-color: #456448; }
 .consultation-booking__choice input:focus-visible + span { outline: 3px solid #456448; outline-offset: 3px; }
@@ -101,7 +101,7 @@
 .consultation-booking__choice input:checked + span .consultation-booking__choice-check { display: inline; }
 .consultation-booking__more-products { margin-top: 12px; }
 .consultation-booking__more-products summary { cursor: pointer; color: var(--muted); font-size: 13px; min-height: 44px; padding: 10px 0; }
-.consultation-booking label.consultation-booking__notes { margin-top: 22px; }
+.consultation-booking label.consultation-booking__notes { grid-column: 1 / -1; margin-top: 0; }
 .consultation-booking__notes textarea { min-height: 100px; resize: vertical; border-radius: 6px; }
 .consultation-booking__appointment { padding: 14px 0; border-block: 1px solid var(--line); }
 .consultation-booking__appointment .consultation-booking__summary { background: transparent; padding: 0; }
@@ -116,9 +116,10 @@
 .booking-modal-dialog:has(.consultation-booking) { width: min(1040px, calc(100% - 32px)); max-width: 1040px; }
 .booking-modal-dialog::backdrop { background: rgb(11 11 11 / 50%); }
 .booking-modal-dialog .booking-panel { max-height: none; width: 100%; }
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .consultation-booking fieldset.consultation-booking__details-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; gap: 24px; }
   .consultation-booking__contact, .consultation-booking__optional, .consultation-booking__actions { grid-column: auto; grid-row: auto; }
+  .consultation-booking__contact, .consultation-booking__optional { grid-template-rows: auto auto; gap: 16px; }
   .consultation-booking__optional { border-left: 0; border-top: 1px solid var(--line); padding: 20px 0 0; }
   .consultation-booking__appointment { flex-direction: column; align-items: flex-start; gap: 4px; }
   .consultation-booking__actions { grid-template-columns: 1fr; }
@@ -157,7 +158,7 @@
   .consultation-booking button.consultation-booking__day-event:disabled { flex-wrap: wrap; gap: 4px; }
   .consultation-booking__fields { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
-@media (max-width: 400px) {
+@media (max-width: 600px) {
   .consultation-booking__project-sections { grid-template-columns: 1fr; }
   .consultation-booking fieldset.consultation-booking__quantities { border-left: 0; border-top: 1px solid var(--line); padding: 16px 0 0; }
 }

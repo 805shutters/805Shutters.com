@@ -395,7 +395,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
         </div> : <p>Choose an available time above. Your details are kept here.</p>}
         <fieldset className="consultation-booking__details-layout" disabled={submitting}>
           <div className="consultation-booking__contact">
-            <h4>Your information</h4>
+            <h4>Your information <span>Your contact details and service address.</span></h4>
             <div className="consultation-booking__fields">
               <label>Full name<input name="name" autoComplete="name" required value={contact.name} onChange={event => setContact({ ...contact, name: event.target.value })} /></label>
               <label>Service address<AddressAutocomplete name="address" required value={address}
@@ -407,11 +407,10 @@ export function ConsultationBooking({ active = true, className = "", heading,
             </div>
           </div>
           <section className="consultation-booking__optional" aria-label="Optional project questions">
-            <h4>Optional <span>Share what you know, or skip.</span></h4>
+            <h4>Optional <span>Select any covering types and an approximate quantity, or skip.</span></h4>
             <div className="consultation-booking__project-sections">
               <fieldset className="consultation-booking__coverings">
                 <legend>Covering types</legend>
-                <p className="consultation-booking__hint">Select all that interest you.</p>
                 <div className="consultation-booking__choices">
                   {primaryProducts.map(product => renderProduct(product))}
                 </div>
@@ -424,7 +423,6 @@ export function ConsultationBooking({ active = true, className = "", heading,
               </fieldset>
               <fieldset className="consultation-booking__quantities">
                 <legend>Number of windows</legend>
-                <p className="consultation-booking__hint">Choose an approximate quantity.</p>
                 <div className="consultation-booking__quantity-choices">
                   {[{ label: "Not sure", value: "" }, ...countOptions.map((label, i) => ({ label, value: countValues[i] }))].map(option =>
                     <label className="consultation-booking__choice" key={option.value}>
@@ -434,10 +432,10 @@ export function ConsultationBooking({ active = true, className = "", heading,
                 </div>
               </fieldset>
             </div>
-            <label className="consultation-booking__notes">Appointment notes — optional
-              <textarea name="notes" rows={3} placeholder="Gate code, parking instructions, or anything else we should know before your visit." value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} />
-            </label>
           </section>
+          <label className="consultation-booking__notes">Appointment notes — optional
+            <textarea name="notes" rows={3} placeholder="Gate code, parking instructions, or anything else we should know before your visit." value={contact.notes} onChange={event => setContact({ ...contact, notes: event.target.value })} />
+          </label>
           <div className="consultation-booking__actions">
             <p className="consultation-booking__hint">Free in-home consultation · 1 hour</p>
             <button className="consultation-booking__submit" type="submit" disabled={loading || submitting || !selectionAvailable || (!requestMode && !addressChecked) || Boolean(availabilityError)}>{submitting ? requestMode ? "Sending your request…" : "Booking your appointment…" : requestMode ? "Send time request" : "Book appointment"}</button>
