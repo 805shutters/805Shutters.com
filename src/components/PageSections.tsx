@@ -587,12 +587,6 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   },
   {
     category: "Shutters",
-    title: "Bedroom Sliding Door Shutters",
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
-  },
-  {
-    category: "Shutters",
     title: "Arched Shutter Detail",
     image: "/images/portfolio-enhanced/uploaded-arched-shutter-detail-card.jpg",
     imageAlt: "Custom arched shutter installed in a Ventura County room"
@@ -870,8 +864,8 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     heading: "Plan shutter operation around the way the door is used every day.",
     body:
       "Sliding doors, French doors, and wide openings need a shutter plan that keeps access comfortable. We compare bypass, bifold, and French door layouts around handle clearance, furniture, traffic flow, and panel swing.",
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door",
+    image: "/images/shutters-portfolio/door-bypass.jpg",
+    imageAlt: "Bypass plantation shutters on a wide sliding glass door",
     options: [
       {
         label: "Bypass",

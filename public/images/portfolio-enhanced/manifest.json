@@ -1,17 +1,5 @@
 [
   {
-    "base": "bedroom-sliding-door-shutters",
-    "source": "ventura-county-bedroom-sliding-door-shutters-jpg.jpg",
-    "category": "Shutters",
-    "title": "Bedroom Sliding Door Shutters",
-    "alt": "Custom shutters installed on a Ventura County bedroom sliding door",
-    "position": "attention",
-    "grade": "bright",
-    "wide": "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-    "card": "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-    "natural": "/images/portfolio-enhanced/bedroom-sliding-door-shutters-natural.jpg"
-  },
-  {
     "base": "roller-shade-large-window",
     "source": "ventura-county-roller-shade-large-window-jpg.jpg",
     "category": "Shades",

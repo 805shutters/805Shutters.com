@@ -295,8 +295,8 @@ export const answerPages: AnswerPage[] = [
     eyebrow: "Sliding door guide",
     answer:
       "The best window treatment for a sliding door depends on access, privacy, glare, door handle clearance, room style, and how often the door is used. Sliding door shutters can create a built-in look when the opening allows it. Vertical blinds are practical for wide openings. Roller, solar, honeycomb, or panel-style shades can work well when the goal is softness, glare control, or a cleaner modern profile.",
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door",
+    image: "/images/shutters-portfolio/door-bypass.jpg",
+    imageAlt: "Bypass plantation shutters on a wide sliding glass door",
     updated: "2026-06-30",
     serviceTypes: ["Sliding door shutters", "Vertical blinds", "Window shades", "Custom window coverings"],
     sections: [

@@ -38,15 +38,6 @@ const photos = [
     fullFrame: true
   },
   {
-    base: "bedroom-sliding-door-shutters",
-    source: "ventura-county-bedroom-sliding-door-shutters-jpg.jpg",
-    category: "Shutters",
-    title: "Bedroom Sliding Door Shutters",
-    alt: "Custom shutters installed on a Ventura County bedroom sliding door",
-    position: "attention",
-    grade: "bright"
-  },
-  {
     base: "roller-shade-large-window",
     source: "ventura-county-roller-shade-large-window-jpg.jpg",
     category: "Shades",

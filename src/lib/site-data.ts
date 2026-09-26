@@ -299,10 +299,6 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
     imageAlt: "Custom plantation shutter detail on tall angled Ventura County windows"
   },
   {
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
-  },
-  {
     image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
     imageAlt: "Roller shade covering a large Ventura County window"
   },
@@ -1575,10 +1571,6 @@ const supportPages: SitePage[] = [
       {
         image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
         imageAlt: "Roller shade covering a large Ventura County window"
-      },
-      {
-        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-        imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
       }
     ],
     sections: [
@@ -1602,25 +1594,25 @@ const recentProjectPages: SitePage[] = [
     path: "/recent-projects/sliding-door-shutters-ventura-county/",
     title: "Sliding Door Shutters in Ventura County | 805 Shutters",
     description:
-      "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
+      "A recent local shutter project showing plantation shutters around patio doors for privacy, light control, and everyday access.",
     h1: "Sliding Door Shutters in Ventura County",
     eyebrow: "Recent project",
     intro:
-      "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-    imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters.",
+      "A recent local shutter project showing plantation shutters around patio doors for privacy, light control, and everyday access.",
+    image: "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg",
+    imageAlt: "Plantation shutters installed around patio doors.",
     gallery: [
       {
-        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-        imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters."
+        image: "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg",
+        imageAlt: "Plantation shutters installed around patio doors."
       }
     ],
     sections: [
       {
         heading: "Project details",
         body:
-          "This project used shutters for a bedroom sliding door opening. The main goals were privacy, light control, easy access, and a clean built-in look.",
-        bullets: ["Product: shutters for sliding doors", "Application: bedroom sliding door opening", "Benefits: privacy, light control, easy access, and a clean built-in look"]
+          "This project used plantation shutters around patio doors. The main goals were privacy, light control, easy access, and a clean built-in look.",
+        bullets: ["Product: shutters for sliding doors", "Application: patio door opening", "Benefits: privacy, light control, easy access, and a clean built-in look"]
       },
       {
         heading: "Why this window treatment worked",
@@ -1941,8 +1933,8 @@ function shutterCityGallery(city: string): NonNullable<SitePage["gallery"]> {
       imageAlt: `Custom arched plantation shutters planned for a ${city} living room`
     },
     {
-      image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-      imageAlt: `Sliding door shutters for a ${city} bedroom opening`
+      image: "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg",
+      imageAlt: `Plantation shutters for a ${city} patio door opening`
     }
   ];
 }
