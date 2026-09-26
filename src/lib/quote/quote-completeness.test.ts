@@ -13,8 +13,8 @@ it('loads a persisted alternative and bills only that alternative in V1',()=>{
  expect(v1Subtotal(lines,projected)).toBe(278);
  expect(v1Subtotal(lines,rows)).toBe(478); // Untouched history without a persisted selection.
 });
-it('checks new and edited drafts while preserving historical opens and sent records',()=>{
- expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:478},rows)).toBe(false);
+it('checks all editable drafts while preserving sent records',()=>{
+ expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:478},rows)).toBe(true);
  expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:478},projected)).toBe(true);
  expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:0},[])).toBe(true);
  expect(shouldCheckQuoteCompleteness({status:'sent',total_amount:478},projected,true)).toBe(false);
@@ -60,4 +60,10 @@ it('keeps a mixed quote incomplete until every window has a priced selected desi
  const mixedLines=[{id:'unfinished'},...lines];
  expect(shouldCheckQuoteCompleteness({status:'draft',total_amount:278},projected,true)).toBe(true);
  expect(incompleteQuoteLineIds(mixedLines,projected,true)).toContain('unfinished');
+});
+
+it('checks all billed legacy options when there is no selected alternative',()=>{
+ const options=[{...rows[0],unit_price:100},{...rows[1],unit_price:0}];
+ expect(incompleteQuoteLineIds([{id:'line'}],options)).toEqual(['line']);
+ expect(incompleteQuoteLineIds([{id:'line'}],[{...options[0],[selected]:true},options[1]])).toEqual([]);
 });

@@ -99,10 +99,10 @@ describe("calculateSalesQuoteMirrorPricing", () => {
     expect(pricing.shouldSyncSourceTotal).toBe(false);
   });
 
-  it("honors a selected Norman manual zero instead of restoring the previous quote total", () => {
+  it.each(["Norman", "Onyx", "Lotus", "Polar"])("honors a selected %s manual zero instead of restoring the previous quote total", supplier => {
     const lines = [{ id: "line", quantity: 3, selected_design_id: "manual" }];
     const designs = new Map([["line", [
-      { id: "manual", supplier: "Norman", unit_price: 0, options_json: { manual_price_override: true, norman_grid_pricing: true, authoritative_once_total: 50 } },
+      { id: "manual", supplier, unit_price: 0, options_json: { manual_price_override: true, norman_grid_pricing: true, authoritative_once_total: 50 } },
       { id: "inactive", supplier: "Norman", unit_price: 100 },
     ]]]);
     expect(calculateSalesQuoteMirrorPricing({ status: "draft", total_amount: 1234 }, lines, designs)).toEqual({ subtotal: 0, total: 0, shouldSyncSourceTotal: true });
@@ -131,10 +131,10 @@ describe("calculateSalesQuoteMirrorPricing", () => {
     expect(calculateSalesQuoteMirrorPricing(quote, lines, designs)).toEqual({ subtotal: 39, total: 39, shouldSyncSourceTotal: true });
   });
 
-  it.each(["other manufacturer", "frozen", "sent", "signed", "v2", "inactive override"])("preserves prior fallback for %s", kind => {
+  it.each(["frozen", "sent", "signed", "v2"])("preserves prior fallback for %s", kind => {
     const quote: Record<string, unknown> = { status: "draft", total_amount: 1234 };
     const options: Record<string, unknown> = { manual_price_override: true };
-    const design = { id: "manual", supplier: kind === "other manufacturer" ? "Onyx" : "Norman", unit_price: 0, options_json: options };
+    const design = { id: "manual", supplier: "Norman", unit_price: 0, options_json: options };
     const lines = [{ id: "line", quantity: 1, selected_design_id: kind === "inactive override" ? "selected" : "manual" }];
     if (kind === "frozen") options.sent_price_snapshot = { unit_price: 0 };
     if (kind === "sent") quote.sent_at = "2026-09-22";
@@ -573,5 +573,18 @@ describe("Norman missing-price server send guard", () => {
     const design={id:"design",unit_price:0,options_json:{norman_grid_pricing:true,manual_price_override:true,
       authoritative_price_status:'blocked',authoritative_once_total:50}};
     expect(calculateSalesQuoteMirrorPricing({total_amount:0},[line],new Map([[line.id,[design]]])).total).toBe(0);
+  });
+});
+
+
+describe("complete editable legacy pricing before delivery", () => {
+  it.each(["Onyx", "Lotus", "Polar"])("rejects a missing %s price and accepts a saved custom amount", supplier => {
+    const line = { id: "line", room_name: "Kitchen", quantity: 2, selected_design_id: "design" };
+    const draft = { status: "draft", total_amount: 900 };
+    const design = { id: "design", supplier, unit_price: 0, options_json: {} };
+    expect(() => calculateSalesQuoteMirrorPricing(draft, [line], new Map([[line.id, [design]]]))).toThrow("Kitchen: Finish pricing");
+    expect(() => calculateSalesQuoteMirrorPricing(draft, [line], new Map())).toThrow("Finish pricing");
+    const saved = { ...design, unit_price: 550, options_json: { manual_price_override: true, authoritative_price_status: "blocked" } };
+    expect(calculateSalesQuoteMirrorPricing(draft, [line], new Map([[line.id, [saved]]])).total).toBe(1100);
   });
 });

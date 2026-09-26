@@ -36,10 +36,10 @@ describe("persisted selected-line pricing in quote lists", () => {
     row.selected_design_id = "removed";
     expect(isSavedQuotePricingIncomplete((await loadSavedQuoteCompleteness([quote], reader([row])))[0])).toBe(true);
   });
-  it("preserves untouched legacy totals with no modern selection evidence", async () => {
+  it("flags an unpriced legacy draft even without modern selection evidence", async () => {
     const row = line("legacy", 0);
     delete row.selected_design_id;
-    expect(isSavedQuotePricingIncomplete((await loadSavedQuoteCompleteness([quote], reader([row])))[0])).toBe(false);
+    expect(isSavedQuotePricingIncomplete((await loadSavedQuoteCompleteness([quote], reader([row])))[0])).toBe(true);
   });
   it.each([
     { status: "sent" as const }, { sent_at: "2026-09-01" },

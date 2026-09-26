@@ -17,6 +17,7 @@ function formatCurrency(value: number): string {
 }
 
 export function FloatingQuoteTotalBadge({
+  onResolvePricing,
   lineItems,
   designs,
   storedTotal,
@@ -27,6 +28,7 @@ export function FloatingQuoteTotalBadge({
   adminControls,
   checkPricingCompleteness = authoritativeV2,
 }: {
+  onResolvePricing?: () => void;
   lineItems: QuoteTotalLineItem[];
   designs: QuoteTotalDesign[];
   storedTotal?: number | null;
@@ -67,6 +69,7 @@ export function FloatingQuoteTotalBadge({
       {incomplete && <p className="mt-1 text-xs font-semibold text-amber-800">
         {missingPrices ? <>{missingPrices} quote {missingPrices === 1 ? "line" : "lines"}: {incompleteQuantityLabel(lineItems, designs, incompleteIds)}</> : "Add a window to price this quote"}
       </p>}
+      {missingPrices > 0 && onResolvePricing && <button type="button" className="mt-2 rounded border border-amber-700 px-3 py-1 text-xs font-semibold text-amber-900" onClick={onResolvePricing}>Finish pricing</button>}
     </aside>
   );
 }

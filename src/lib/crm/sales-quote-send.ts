@@ -1,3 +1,4 @@
+import { incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
 import { assertCurrentNormanLegacyPricing, type NormanQuotePricingState } from "./sales-quote-norman-price";
@@ -968,6 +969,13 @@ export function calculateSalesQuoteMirrorPricing(
   for (const line of quoteLineItems) {
     const designs = designsByLineItemId.get(line.id) ?? [];
     const selected = designs.find(design => design.id === line.selected_design_id);
+    if (quote.status === "draft" && !isQuotePriceLocked(quote as SalesQuote) && !line.archived_at) {
+      const billed = selected ? [selected] : designs;
+      if (!billed.length || (line.selected_design_id && !selected) || billed.some(design =>
+        incompleteQuoteLineIds([{ id: line.id }], [{ ...design, line_item_id: line.id }], false).length > 0)) {
+        throw new CrmAuthError(409, `${textOrNull(line.room_name) || "Quote line"}: Finish pricing by completing the selections or saving an explicit custom price before sending.`);
+      }
+    }
     for (const design of selected ? [selected] : designs) {
       if (design.options_json?.norman_grid_pricing !== true || design.options_json?.manual_price_override === true ||
         design.options_json?.sent_price_snapshot || design.options_json?.custom_mode === true || design.options_json?.custom_pricing_mode === true ||
@@ -986,20 +994,19 @@ export function calculateSalesQuoteMirrorPricing(
   }, 0);
   const calculatedTotal = computeLegacyTotal(subtotal, adjustments, fixedCharges);
   const storedTotal = money(quote.total_amount);
-  // Zero is an intentional manual selling price. An editable Norman quote
+  // Zero is an intentional manual selling price. An editable quote
   // containing that override must not resurrect its previous nonzero total.
-  // Keep historical/V2 and unrelated legacy fallback behavior unchanged.
-  const hasNormanManualZero = quote.status === "draft" && quote.quote_v2_backend !== true &&
+  // Keep historical/V2 fallback behavior unchanged.
+  const hasManualZero = quote.status === "draft" && quote.quote_v2_backend !== true &&
     !isQuotePriceLocked(quote as SalesQuote) && quoteLineItems.some(line => {
       if (line.archived_at) return false;
       const designs = designsByLineItemId.get(line.id) ?? [];
       const selected = designs.find(design => design.id === line.selected_design_id);
       return (selected ? [selected] : designs).some(design =>
-        String(design.supplier ?? "").trim().toLowerCase() === "norman" &&
         design.options_json?.manual_price_override === true && !design.options_json?.sent_price_snapshot &&
         design.unit_price !== null && design.unit_price !== undefined && design.unit_price !== "" && Number(design.unit_price) === 0);
     });
-  const hasLineItemTotal = quoteLineItems.length > 0 && (subtotal > 0 || hasNormanManualZero);
+  const hasLineItemTotal = quoteLineItems.length > 0 && (subtotal > 0 || hasManualZero);
   const total = hasLineItemTotal ? calculatedTotal : storedTotal;
 
   return {

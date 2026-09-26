@@ -16,7 +16,7 @@ describe("quote line calculation and custom entry", () => {
     expect(html).not.toContain("$0.00");
     expect(html).not.toContain('value="0.00"');
     expect(html).not.toContain("Enter your price");
-    expect(html).toContain("Edit price");
+    expect(html).toContain("Set custom price");
   });
   it("shows calculated amounts and accepts a genuine authoritative zero", () => {
     const paid = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, unitPrice: 623.45, lineTotal: 2493.8, issue: null }));
@@ -31,7 +31,7 @@ describe("quote line calculation and custom entry", () => {
     const root = createRoot(host); const save = vi.fn().mockResolvedValue(undefined);
     try {
       await act(() => root.render(React.createElement(QuoteLinePriceReadout, { ...props, issue: "Grid unavailable", onSave: save })));
-      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Edit price for Bedroom 1"]')!.click());
+      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Set custom price for Bedroom 1"]')!.click());
       const input = host.querySelector("input")!;
       expect(input.value).toBe("");
       expect(input.getAttribute("aria-label")).toBe("Custom merchandise price each for Bedroom 1");

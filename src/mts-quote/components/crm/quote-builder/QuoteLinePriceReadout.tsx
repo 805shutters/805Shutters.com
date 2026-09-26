@@ -20,13 +20,14 @@ export function QuoteLinePriceReadout({ unitPrice, lineTotal, issue, roomName, m
       <p className="font-bold">Price unavailable</p>
       <p>{issue}</p>
     </div> : <div aria-label={`Price for ${roomName}`}>
+      {manualPrice !== null && <p className="text-xs font-semibold text-slate-600">Custom price</p>}
       <div className="text-lg font-bold tabular-nums">{money(unitPrice)} each</div>
       <div className="text-[11px] text-muted-foreground">{money(lineTotal)} line total · excl. tax</div>
     </div>}
     {!showEditor && <button type="button"
       className="mt-1 rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold"
-      aria-label={`Edit price for ${roomName}`} aria-expanded={showEditor} aria-controls={editorId}
-      onClick={() => setEditing(true)}>Edit price</button>}
+      aria-label={`${issue ? "Set custom price" : "Edit price"} for ${roomName}`} aria-expanded={showEditor} aria-controls={editorId}
+      onClick={() => setEditing(true)}>{issue ? "Set custom price" : "Edit price"}</button>}
     {showEditor && <div id={editorId} className="mt-1 text-xs">
       <LineItemPriceInput value={manualPrice} roomName={roomName} onSave={onSave} label="Custom merchandise price each" />
       <p className="my-1 max-w-48 text-muted-foreground">Installation and shipping are added separately when applicable.</p>

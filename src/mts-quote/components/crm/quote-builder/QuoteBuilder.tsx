@@ -56,6 +56,7 @@ import { SendQuoteDialog } from "./SendQuoteDialog";
 import { SendPaymentLinkDialog } from "./SendPaymentLinkDialog";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { CollectPaymentDialog } from "./CollectPaymentDialog";
+import { QuotePricingReviewDialog } from "./QuotePricingReviewDialog";
 import { FloatingQuoteTotalBadge } from "./FloatingQuoteTotalBadge";
 import { toast } from "sonner";
 import { cn } from "@mts/lib/utils";
@@ -635,6 +636,8 @@ export function QuoteBuilder({
   const measurementSavePendingRef = useRef(false);
   const [measurementSavePending, setMeasurementSavePending] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showPricingReview, setShowPricingReview] = useState(false);
+  const [pricingLineToFocus, setPricingLineToFocus] = useState<string | null>(null);
   const [showPaymentLinkDialog, setShowPaymentLinkDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState<"deposit" | "balance" | null>(null);
   const [copiedCopyTargets, setCopiedCopyTargets] = useState<string[]>([]);
@@ -771,7 +774,6 @@ export function QuoteBuilder({
     deliveryCapability.data.enabled === true &&
     deliveryCapability.data.native === true &&
     deliveryCapability.data.canSend === true;
-  const sendDisabled = isolated || (authoritativeV2 && !canSendNativeQuote);
 
   const useHistoricalPriceLock = shouldUseHistoricalQuotePriceLock({
     quoteV2Backend: authoritativeV2,
@@ -833,6 +835,20 @@ export function QuoteBuilder({
     select: (rows) => projectPersistedDesignSelections(rows, lineItems),
     enabled: lineItemIds.length > 0,
   });
+
+  const incompletePricingIds = !useHistoricalPriceLock && shouldCheckQuoteCompleteness(quote, designs, authoritativeV2)
+    ? incompleteQuoteLineIds(lineItems, designs, authoritativeV2) : [];
+  const hasIncompletePricing = incompletePricingIds.length > 0;
+  const sendDisabled = isolated || (authoritativeV2 && !canSendNativeQuote && !hasIncompletePricing);
+  useEffect(() => {
+    if (!pricingLineToFocus || showPricingReview) return;
+    const element = document.getElementById(`quote-line-${pricingLineToFocus}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.focus({ preventScroll: true });
+      setPricingLineToFocus(null);
+    }
+  }, [pricingLineToFocus, showPricingReview, stackedLineItemIds]);
 
   const refreshServerOwnedV2Rows = async () => {
     await refreshQuoteV2Rows(queryClient, quoteQueryKey, lineItemsQueryKey, designsQueryKey);
@@ -2106,7 +2122,7 @@ export function QuoteBuilder({
       typeof design.options_json?.catalog_product_id === "string"
         ? design.options_json.catalog_product_id
         : null;
-    return isPolarQuoteOnlyProductId(productId);
+    return isPolarQuoteOnlyProductId(productId) && design.options_json?.manual_price_override !== true;
   });
   const stackedLineItemIdSet = new Set(stackedLineItemIds);
   const stackedLineItems = lineItems.filter((item) => stackedLineItemIdSet.has(item.id));
@@ -2387,6 +2403,8 @@ export function QuoteBuilder({
                     onClick={() =>
                       isolated
                         ? toast.info("Testing mode: sending is safely disabled.")
+                        : hasIncompletePricing
+                          ? setShowPricingReview(true)
                         : authoritativeV2 && !canSendNativeQuote
                           ? toast.info("Customer delivery is not available for this quote yet.")
                         : setShowSendDialog(true)
@@ -2396,6 +2414,8 @@ export function QuoteBuilder({
                     title={
                       isolated
                         ? "Disabled in isolated Quote Lab"
+                        : hasIncompletePricing
+                          ? "Finish pricing before sending"
                         : authoritativeV2 && !canSendNativeQuote
                           ? "Customer delivery is not available for this quote yet"
                           : "Email or text the quote link to the customer"
@@ -2613,8 +2633,7 @@ export function QuoteBuilder({
               <div>
                 <p className="font-black uppercase tracking-[0.12em]">QUOTE ONLY · Polar</p>
                 <p className="mt-1 text-sm font-semibold">
-                  Internal task: obtain and review a manual Polar quote. Pricing, customer send,
-                  status advance, order preparation, and manufacturer action are blocked.
+                  Obtain and review a manual Polar quote, then use Set custom price to save the agreed customer price. Manufacturer ordering still requires verified product details.
                 </p>
               </div>
             </div>
@@ -2682,7 +2701,7 @@ export function QuoteBuilder({
               const lineRange = lineNumberRanges.get(item.id);
 
               return (
-                <div key={item.id}>
+                <div key={item.id} id={`quote-line-${item.id}`} tabIndex={-1}>
                   {serverOwnedV2 && <>
                     {!useHistoricalPriceLock && shouldCheckQuoteCompleteness(quote, designs, true) && incompleteQuoteLineIds([item], designs, true).length > 0 && <p className="text-sm font-semibold text-amber-900">Selections incomplete · Not priced</p>}
                     <QuoteWindowPhotos quoteId={activeQuoteId!} lineItemId={item.id} />
@@ -2783,6 +2802,14 @@ export function QuoteBuilder({
         pendingHeight={pendingHeight}
       />
 
+      <QuotePricingReviewDialog authoritativeV2={authoritativeV2} open={showPricingReview} onClose={() => setShowPricingReview(false)}
+        lines={lineItems.filter(line => incompletePricingIds.includes(line.id))} designs={designs}
+        onSave={saveLinePrice} onEdit={lineId => {
+          if (stackedLineItemIds.includes(lineId)) handleUnstackLineItem(lineId);
+          setShowPricingReview(false);
+          setPricingLineToFocus(lineId);
+        }} />
+
       {/* Send Quote Dialog (email now; SMS later) */}
       {quote && (
         <SendQuoteDialog
@@ -2812,6 +2839,7 @@ export function QuoteBuilder({
 
       {quote && (
         <FloatingQuoteTotalBadge
+          onResolvePricing={() => setShowPricingReview(true)}
           lineItems={lineItems}
           designs={designs}
           storedTotal={quote.total_amount}

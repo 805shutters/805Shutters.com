@@ -1,3 +1,4 @@
+import { calculateCustomerCharges, CUSTOMER_CHARGE_POLICY_VERSION } from "@/lib/quote/customer-charges";
 import { describe, expect, it, vi } from "vitest";
 import { assertLegacyLotusDeliveryAllowed, lotusLegacyDeliveryBlock } from "./lotus-legacy-delivery";
 
@@ -33,5 +34,37 @@ describe("Lotus source authority at the legacy customer delivery boundary", () =
     expect(from.mock.calls.map(call => call[0])).toEqual(["sales_quote_line_items", "sales_quote_designs"]);
     const broken = { from: () => ({ select: () => ({ is() { return this; }, eq: async () => ({ data: null, error: {} }) }) }) };
     await expect(assertLegacyLotusDeliveryAllowed(broken as never, { id: "quote" })).rejects.toThrow("could not be verified");
+  });
+});
+
+describe("audited staff pricing for legacy catalog conflicts", () => {
+  function client(designs: Record<string, unknown>[], overrides: Record<string, unknown>[], error: unknown = null) {
+    return { from: (table: string) => ({ select() { return this; }, is() { return this; },
+      eq: () => table === "sales_quote_line_items" ? Promise.resolve({ data: [{ id: "line", selected_design_id: "chosen" }], error: null })
+        : { in: async () => ({ data: overrides, error }) },
+      in: async () => ({ data: designs, error: null }),
+    }) } as never;
+  }
+  const design = { ...mlx, id: "chosen", line_item_id: "line", unit_price: 500, options_json: { ...mlx.options_json, manual_price_override: true } };
+  const override = { design_id: "chosen", unit_price: 500, customer_charge_policy: null };
+  it("allows a saved audited staff price while rejecting missing or mismatched proof", async () => {
+    await expect(assertLegacyLotusDeliveryAllowed(client([design], [override]), { id: "quote" })).resolves.toBeUndefined();
+    for (const proof of [[], [{ ...override, unit_price: 499 }], [{ ...override, design_id: "other" }]]) {
+      await expect(assertLegacyLotusDeliveryAllowed(client([design], proof), { id: "quote" })).rejects.toThrow("save an explicit custom price");
+    }
+  });
+  it("allows merchandise plus fixed service charges and an explicit line discount", async () => {
+    const charges = calculateCustomerCharges({ product: "blind", physicalUnitsPerWindow: 1, quantity: 2 });
+    const priced = { ...design, unit_price: 439, options_json: { ...design.options_json,
+      manual_customer_charge_policy: CUSTOMER_CHARGE_POLICY_VERSION, manual_merchandise_unit_price: 500,
+      customer_charges: charges, discount_percent: 20, discount_source_price: 539,
+    } };
+    const proof = { ...override, customer_charge_policy: CUSTOMER_CHARGE_POLICY_VERSION };
+    await expect(assertLegacyLotusDeliveryAllowed(client([priced], [proof]), { id: "quote" })).resolves.toBeUndefined();
+    await expect(assertLegacyLotusDeliveryAllowed(client([{ ...priced, unit_price: 400 }], [proof]), { id: "quote" })).rejects.toThrow("custom price");
+  });
+  it("ignores an unselected alternative and fails closed on an audit read error", async () => {
+    await expect(assertLegacyLotusDeliveryAllowed(client([{ ...mlx, id: "unused", line_item_id: "line" }], []), { id: "quote" })).resolves.toBeUndefined();
+    await expect(assertLegacyLotusDeliveryAllowed(client([design], [], {}), { id: "quote" })).rejects.toThrow("Saved staff prices could not be verified");
   });
 });
