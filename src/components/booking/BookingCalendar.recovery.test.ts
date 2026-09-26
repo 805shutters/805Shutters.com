@@ -30,7 +30,7 @@ async function mount(fetchMock: ReturnType<typeof vi.fn>) {
   cleanup = async () => { await act(async () => root.unmount()); host.remove(); };
   await act(async () => root.render(createElement(BookingCalendar)));
   const click = async (text: string) => act(async () => {
-    const button = [...host.querySelectorAll("button")].find(item => item.textContent === text || item.querySelector("strong")?.textContent === text);
+    const button = [...host.querySelectorAll("button")].find(item => item.textContent === text || item.querySelector("strong")?.textContent === text || item.querySelector(".consultation-booking__date-number")?.textContent === text);
     expect(button).toBeDefined(); button!.click();
   });
   return { host, click };
@@ -49,7 +49,7 @@ it("loads the calendar immediately and clears a failed request after automatic r
   expect(host.textContent).toContain(failure);
   await act(async () => window.dispatchEvent(new Event("focus")));
   expect(host.textContent).not.toContain(failure);
-  expect(host.querySelector<HTMLButtonElement>('[aria-label="Monday, September 28"]')?.disabled).toBe(false);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label^="Monday, September 28"]')?.disabled).toBe(false);
 });
 
 it("starts with only the calendar, then reveals and scrolls to the selected day's times", async () => {
@@ -86,6 +86,41 @@ it("keeps empty-month guidance visible before a day is selected", async () => {
   const { host } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [] }))));
   expect(host.querySelector(".consultation-booking__times")).toBeNull();
   expect(host.textContent).toContain("No appointments are available this month");
+});
+
+it("shows daypart badges only for available slots, with noon counted as afternoon", async () => {
+  const slots = (morning: boolean, afternoon: boolean) => [
+    { time: "11:30", label: "11:30 AM", available: morning },
+    { time: "12:00", label: "12:00 PM", available: afternoon },
+  ];
+  const { host } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [
+    { date: "2026-09-27", day: 27, available: false, slots: slots(false, false) },
+    { date: "2026-09-28", day: 28, available: true, slots: slots(true, true) },
+    { date: "2026-09-29", day: 29, available: true, slots: slots(true, false) },
+    { date: "2026-09-30", day: 30, available: true, slots: slots(false, true) },
+  ] }))));
+  const days = [...host.querySelectorAll('.consultation-booking__days button')];
+  expect(days.map(day => [...day.querySelectorAll('.consultation-booking__period-full')].map(badge => badge.textContent)))
+    .toEqual([[], ["Morning", "Afternoon"], ["Morning"], ["Afternoon"]]);
+  expect(days[1].getAttribute('aria-label')).toContain('Morning and Afternoon available');
+  expect(days[3].getAttribute('aria-label')).toContain('Afternoon available');
+});
+
+it("refreshes daypart badges and removes stale badges after an availability failure", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(ok(available()));
+  const { host } = await mount(fetchMock);
+  const badges = () => [...host.querySelectorAll('.consultation-booking__periods .consultation-booking__period-full')].map(badge => badge.textContent);
+  expect(badges()).toEqual(["Morning"]);
+  fetchMock.mockResolvedValue(ok(available({ days: [{ date: "2026-09-28", day: 28, available: true, slots: [
+    { time: "10:30", label: "10:30 AM", available: false },
+    { time: "12:00", label: "12:00 PM", available: true },
+  ] }] })));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(badges()).toEqual(["Afternoon"]);
+  fetchMock.mockResolvedValue({ ok: false, json: async () => ({ message: "Availability is temporarily unavailable." }) });
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  expect(badges()).toEqual([]);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label^="Monday, September 28"]')?.disabled).toBe(true);
 });
 
 it("shows contact details only after time selection and preserves the time across revision and address checks", async () => {

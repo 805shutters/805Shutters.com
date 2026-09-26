@@ -251,18 +251,39 @@ export function ConsultationBooking({ active = true, className = "", heading,
       {showSchedule && <div className="consultation-booking__schedule">
         <section className="consultation-booking__calendar" ref={calendarRef} tabIndex={-1} aria-label="Choose a consultation date" aria-busy={loading}>
           <div className="consultation-booking__month">
-            <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} disabled={submitting || month <= losAngelesDateString().slice(0, 7)}>‹</button>
+            <button type="button" aria-label="Previous month" onClick={() => changeMonth(-1)} disabled={submitting || month <= losAngelesDateString().slice(0, 7)}>←</button>
             <h2>{monthLabel}</h2>
-            <button type="button" aria-label="Next month" disabled={submitting} onClick={() => changeMonth(1)}>›</button>
+            <button type="button" aria-label="Next month" disabled={submitting} onClick={() => changeMonth(1)}>→</button>
           </div>
-          <div className="consultation-booking__weekdays" aria-hidden="true">{["S", "M", "T", "W", "T", "F", "S"].map((day, i) => <span key={i}>{day}</span>)}</div>
+          <div className="consultation-booking__weekdays" aria-hidden="true">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => <span key={day}>{day}</span>)}</div>
           <div className="consultation-booking__days">
             {Array.from({ length: availability?.startsOn ?? new Date(`${month}-01T12:00:00`).getDay() }, (_, i) => <span key={`empty-${i}`} />)}
-            {(availability?.days ?? Array.from({ length: new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate() }, (_, i) => ({ date: `${month}-${String(i + 1).padStart(2, "0")}`, day: i + 1, available: false, slots: [] }))).map(day =>
-              <button type="button" key={day.date} aria-label={dateLabel(day.date)} aria-pressed={selection.date === day.date}
-                disabled={!day.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseDate(day.date)}>{day.day}</button>)}
+            {(availability?.days ?? Array.from({ length: new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate() }, (_, i) => ({ date: `${month}-${String(i + 1).padStart(2, "0")}`, day: i + 1, available: false, slots: [] }))).map(day => {
+              // Slot times are already local Pacific HH:mm values from the availability API.
+              const openSlots = day.available && !loading && !availabilityError ? day.slots.filter(slot => slot.available) : [];
+              const periods = [
+                ...(openSlots.some(slot => Number(slot.time.split(":")[0]) < 12) ? ["Morning"] : []),
+                ...(openSlots.some(slot => Number(slot.time.split(":")[0]) >= 12) ? ["Afternoon"] : []),
+              ];
+              return <button type="button" key={day.date}
+                aria-label={`${dateLabel(day.date)}${periods.length ? `. ${periods.join(" and ")} available` : ""}`}
+                aria-pressed={selection.date === day.date}
+                disabled={!day.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseDate(day.date)}>
+                <span className="consultation-booking__date-number">{day.day}</span>
+                {periods.length > 0 && <span className="consultation-booking__periods" aria-hidden="true">
+                  {periods.map(period => <span className="consultation-booking__period" key={period}>
+                    <span className="consultation-booking__period-full">{period}</span>
+                    <span className="consultation-booking__period-short">{period === "Morning" ? "AM" : "PM"}</span>
+                  </span>)}
+                </span>}
+              </button>;
+            })}
           </div>
-          <p className="consultation-booking__hint">Black dates are available · Pacific time</p>
+          <p className="consultation-booking__hint consultation-booking__legend">
+            <span className="consultation-booking__period-full">Morning: before noon · Afternoon: noon onward</span>
+            <span className="consultation-booking__period-short">AM: before noon · PM: noon onward</span>
+          </p>
+          <p className="consultation-booking__hint">Choose a highlighted day to see exact times · Pacific time</p>
           {!loading && !availabilityError && availability && !hasOpenings && <p>No appointments are available this month. Try the next month or <a href={`sms:${brandIdentity.phoneHref.replace("tel:", "")}`}>text us</a> for help.</p>}
           {loading && !selection.date && <p role="status">Loading available dates…</p>}
         </section>
