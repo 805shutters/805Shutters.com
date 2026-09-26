@@ -215,3 +215,25 @@ it("keeps optional project answers when changing the selected appointment", asyn
   expect(host.querySelector(".consultation-booking__summary")?.textContent).toContain("11:00 AM");
   expect(document.activeElement).toBe(form);
 });
+
+
+it("uses the exact daypart boundaries without hiding exceptional published openings", async () => {
+  const times = ["07:30", "08:00", "11:30", "11:45", "12:00", "17:00", "17:30"];
+  const slots = times.map(time => ({ time, label: time, available: true }));
+  const { host, click } = await mount(vi.fn().mockResolvedValue(ok(available({ days: [
+    { date: "2026-09-28", day: 28, available: true, slots },
+    { date: "2026-09-29", day: 29, available: true, slots: [slots[0], slots[6]] },
+  ] }))));
+  const days = [...host.querySelectorAll('.consultation-booking__days button')];
+  expect(days[0].getAttribute('aria-label')).toContain('Morning and Afternoon available');
+  expect(days[1].getAttribute('aria-label')).toContain('Other times available');
+  expect(days[1].getAttribute('aria-label')).not.toContain('Morning');
+  expect(days[1].getAttribute('aria-label')).not.toContain('Afternoon');
+  expect(host.querySelector('.consultation-booking__legend')?.textContent).toContain('Morning: 8:00–11:30 AM · Afternoon: 12:00–5:00 PM');
+  await click('28');
+  const groups = [...host.querySelectorAll('.consultation-booking__time-group')];
+  expect(groups.map(group => [...group.querySelectorAll('button')].map(button => button.textContent)))
+    .toEqual([['08:00', '11:30'], ['12:00', '17:00'], ['07:30', '11:45', '17:30']]);
+  expect(groups[0].querySelector('h4')?.textContent).toContain('8:00–11:30 AM');
+  expect(groups[1].querySelector('h4')?.textContent).toContain('12:00–5:00 PM');
+});

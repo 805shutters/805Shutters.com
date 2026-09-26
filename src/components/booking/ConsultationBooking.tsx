@@ -36,6 +36,20 @@ function timeLabel(time: string) {
   const [hour, minute] = time.split(":").map(Number);
   return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
 }
+// Published slots use local Pacific HH:mm start times. Keep exceptional published
+// hours bookable without labeling them as part of the standard daypart ranges.
+const timePeriods = [
+  { label: "Morning", short: "AM", note: "8:00–11:30 AM" },
+  { label: "Afternoon", short: "PM", note: "12:00–5:00 PM" },
+  { label: "Other times", short: "Other", note: "Additional published openings" },
+];
+function slotPeriod(time: string) {
+  const [hour, minute] = time.split(":").map(Number);
+  const minutes = hour * 60 + minute;
+  if (minutes >= 8 * 60 && minutes <= 11 * 60 + 30) return "Morning";
+  if (minutes >= 12 * 60 && minutes <= 17 * 60) return "Afternoon";
+  return "Other times";
+}
 function trackingContext() {
   return { ...getLeadAttribution(), pagePath: window.location.pathname };
 }
@@ -137,10 +151,10 @@ export function ConsultationBooking({ active = true, className = "", heading,
   }, [active, complete, month, checkAddress, refresh]);
 
   const selectedDay = availability?.days.find(day => day.date === selection.date);
-  const availableTimeGroups = [
-    { label: "Morning", note: "Before noon", slots: selectedDay?.slots.filter(slot => slot.available && Number(slot.time.split(":")[0]) < 12) ?? [] },
-    { label: "Afternoon", note: "Noon onward", slots: selectedDay?.slots.filter(slot => slot.available && Number(slot.time.split(":")[0]) >= 12) ?? [] },
-  ].filter(group => group.slots.length > 0);
+  const availableTimeGroups = timePeriods.map(period => ({
+    ...period,
+    slots: selectedDay?.slots.filter(slot => slot.available && slotPeriod(slot.time) === period.label) ?? [],
+  })).filter(group => group.slots.length > 0);
   const addressChecked = Boolean(availability?.addressChecked && verifiedAddress === address.trim());
   const selectionAvailable = Boolean(selectedDay?.slots.some(slot => slot.time === selection.time && slot.available));
   const hasOpenings = availability?.days.some(day => day.available);
@@ -265,29 +279,27 @@ export function ConsultationBooking({ active = true, className = "", heading,
             {(availability?.days ?? Array.from({ length: new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate() }, (_, i) => ({ date: `${month}-${String(i + 1).padStart(2, "0")}`, day: i + 1, available: false, slots: [] }))).map(day => {
               // Slot times are already local Pacific HH:mm values from the availability API.
               const openSlots = day.available && !loading && !availabilityError ? day.slots.filter(slot => slot.available) : [];
-              const periods = [
-                ...(openSlots.some(slot => Number(slot.time.split(":")[0]) < 12) ? ["Morning"] : []),
-                ...(openSlots.some(slot => Number(slot.time.split(":")[0]) >= 12) ? ["Afternoon"] : []),
-              ];
+              const availablePeriods = timePeriods.filter(period => openSlots.some(slot => slotPeriod(slot.time) === period.label));
+              const periods = availablePeriods.filter(period => period.label !== "Other times" || availablePeriods.length === 1);
               return <button type="button" key={day.date}
-                aria-label={`${dateLabel(day.date)}${periods.length ? `. ${periods.join(" and ")} available` : ""}`}
+                aria-label={`${dateLabel(day.date)}${periods.length ? `. ${periods.map(period => period.label).join(" and ")} available` : ""}`}
                 aria-pressed={selection.date === day.date}
                 disabled={!day.available || loading || submitting || Boolean(availabilityError)} onClick={() => chooseDate(day.date)}>
                 <span className="consultation-booking__date-number">{day.day}</span>
                 {periods.length > 0 && <span className="consultation-booking__periods" aria-hidden="true">
-                  {periods.map(period => <span className="consultation-booking__period" key={period}>
-                    <span className="consultation-booking__period-full">{period}</span>
-                    <span className="consultation-booking__period-short">{period === "Morning" ? "AM" : "PM"}</span>
+                  {periods.map(period => <span className="consultation-booking__period" key={period.label} title={period.note}>
+                    <span className="consultation-booking__period-full">{period.label}</span>
+                    <span className="consultation-booking__period-short">{period.short}</span>
                   </span>)}
                 </span>}
               </button>;
             })}
           </div>
           <p className="consultation-booking__hint consultation-booking__legend">
-            <span className="consultation-booking__period-full">Morning: before noon · Afternoon: noon onward</span>
-            <span className="consultation-booking__period-short">AM: before noon · PM: noon onward</span>
+            <span className="consultation-booking__period-full">Morning: 8:00–11:30 AM · Afternoon: 12:00–5:00 PM</span>
+            <span className="consultation-booking__period-short">AM: 8–11:30 · PM: 12–5</span>
           </p>
-          <p className="consultation-booking__hint">Choose a highlighted day to see exact times · Pacific time</p>
+          <p className="consultation-booking__hint">Select a highlighted day · Pacific time</p>
           {!loading && !availabilityError && availability && !hasOpenings && <p>No appointments are available this month. Try the next month or <a href={`sms:${brandIdentity.phoneHref.replace("tel:", "")}`}>text us</a> for help.</p>}
           {loading && !selection.date && <p role="status">Loading available dates…</p>}
         </section>
