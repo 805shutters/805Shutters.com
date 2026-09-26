@@ -140,7 +140,7 @@ export function SiteHeader() {
           {!isCommercialMode && (
             <img
               className="brand-logo brand-logo-exact"
-              src="/brand/805-shutters-logo-vector.svg"
+              src="/brand/805-shutters-logo-crisp.svg"
               alt="805 Shutters"
               width={286}
               height={270}
