@@ -8,11 +8,12 @@ for (const width of [1600, 820, 390]) {
     await page.goto("/e2e/fixtures/weekly-sales-average.html");
     const average = page.getByRole("region", { name: "Average weekly gross sales" });
     await expect(average).toContainText("$1,000.00");
-    await expect(average).toContainText("2026 calendar year · 38 completed weeks");
+    await expect(average).toContainText("2026 calendar year · 21 completed weeks");
     await page.getByRole("button", { name: "Previous sales week" }).click();
     await expect(average).toContainText("$1,000.00");
-    for (let i = 0; i < 37; i++) await page.getByRole("button", { name: "Previous sales week" }).click();
-    await expect(average).toContainText("2025 calendar year · 53 weeks");
+    for (let i = 0; i < 20; i++) await page.getByRole("button", { name: "Previous sales week" }).click();
+    await expect(average).toContainText("Apr 28 – Sep 20");
+    await expect(page.getByRole("button", { name: "Previous sales week" })).toBeDisabled();
     await expect(average).toContainText("$1,000.00");
     await page.getByRole("button", { name: "This week", exact: true }).click();
     await expect(average).toContainText("2026 calendar year");
@@ -21,7 +22,7 @@ for (const width of [1600, 820, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `/tmp/805-average-${width}.png` });
     await page.getByRole("button", { name: /Weekly gross sales status/ }).click();
-    await expect(page.getByText(/The average uses all recorded signed gross sales/)).toBeVisible();
+    await expect(page.getByText(/The average uses actual recorded signed gross sales/)).toBeVisible();
     await page.reload();
     await expect(average).toContainText("$1,000.00");
     await page.goto("/e2e/fixtures/weekly-sales-average.html?unavailable");
