@@ -69,6 +69,18 @@ describe('Norman prices do not require fabrication measurements',()=>{
   const r=price(s);expect(r.ok).toBe(false);if(!r.ok)expect(r.validationIssues).toEqual(expect.arrayContaining([expect.objectContaining({ruleId:'honeycomb.vertical.mounting',severity:'hard_block'})]));
  });
  it('still rejects sizes outside actual available grid cells',()=>{const s=fixture('wood_blinds','ND001',{slat_size:'2\"'});s.widthInches=10000;expect(price(s).ok).toBe(false);});
+ it.each(['fabric_orientation','seaming'])('Roman %s remains an order requirement without blocking a grid quote',key=>{
+  const s=fixture(...rows[0]);const baseline=price(s);const c={...s.configuration};delete c[key];s.configuration=c;
+  const quoted=price(s);expect(baseline.ok).toBe(true);expect(quoted.ok,JSON.stringify(quoted)).toBe(true);
+  if(baseline.ok&&quoted.ok)expect(quoted.unitPrice).toBe(baseline.unitPrice);
+  expect(validateSelection(s).some(i=>i.ruleId===`roman.required.${key}`&&i.severity==='hard_block')).toBe(true);
+ });
+ it('defers vertical stacking only when it cannot change a purchased shim charge',()=>{
+  const s=fixture(...rows.find(r=>r[0]==='vertical_honeycomb')!);const c={...s.configuration};delete c.stacking_configuration;s.configuration=c;
+  expect(price(s).ok).toBe(true);
+  s.configuration={...s.configuration,vertical_shim_layers:1};
+  expect(price(s).ok).toBe(false);
+ });
  it('keeps unknown prices and identities hard while preserving order validation',()=>{
   for(const id of ['honeycomb.program.fabric_cell_mismatch','roller.program.fabric_mismatch','norman.shutter.frame_pricing.unsupported_frame','norman.shutter.dividers.custom_charge','norman.ultimate_faux.keystone_price_basis','roman.common_valance.two_panel_widths_required','norman.motorization.shared_panel_capacity','norman.shutter.french_door.source_missing','unknown.new_price_rule']) {
    const issue={severity:'hard_block' as const,ruleId:id,source:sourceProvenance('norman-retail-guide-2026-09'),selectedValues:{},explanation:'Actual unresolved price input'};

@@ -38,6 +38,9 @@ const ORDER_ONLY_RULES = new Set([
   'roman.day_night.rear_fabric.max_width',
   'roman.day_night.max_ratio',
   'roman.fabric.not_joinable',
+  // Fabric construction has no separate retail charge; retain order checks.
+  'roman.required.fabric_orientation',
+  'roman.required.seaming',
   'roman.f0031.railroad.max_height',
   'roman.side_by_side.configuration_exclusion',
   'roman.common_valance.max_total_width',
@@ -439,7 +442,7 @@ const ORDER_ONLY_RULES = new Set([
 
 export function isOrderingOnlyIssue(issue: ValidationIssue): boolean {
   // Without purchased shims, this attachment changes only included mounting hardware.
-  const unpricedVerticalAttachment = issue.ruleId === 'honeycomb.vertical.mounting' &&
+  const unpricedVerticalAttachment = ['honeycomb.vertical.mounting', 'honeycomb.matrix.vertical.stacking_required'].includes(issue.ruleId) &&
     Number(issue.selectedValues?.vertical_shim_layers ?? 0) === 0;
   const values = issue.selectedValues ?? {};
   const missing = (value: unknown) => value == null || value === '';

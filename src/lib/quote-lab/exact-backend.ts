@@ -1,3 +1,4 @@
+import { honeycombSavedFamily } from "@/lib/quote-v2/catalog";
 import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from '@/lib/quote-v2/quote-pricing-policy';
 import { currentRollerPanel, rollerMotorizationForSelection } from "@/lib/quote-v2/norman-roller-panel";
 import { findRomanFrontColor } from '@/lib/quote-v2/catalog';
@@ -1090,7 +1091,7 @@ function repriceExactQuoteBuilderV2(
     if (catalogAsOf >= "2026-09-19" && ["honeycomb", "vertical_honeycomb"].includes(productId) &&
         (productId === "vertical_honeycomb" || honeycombOptions.honeycomb_application === "Patio Door Vertical")) {
       productId = "vertical_honeycomb";
-      programId = expectedVerticalHoneycombProgramId(String(honeycombOptions.fabric_color_collection ?? design.fabric ?? ""), String(honeycombOptions.fabric_color_code ?? ""), String(honeycombOptions.cell_size ?? ""));
+      programId = expectedVerticalHoneycombProgramId(honeycombSavedFamily(honeycombOptions, design.fabric ?? ""), String(honeycombOptions.fabric_color_code ?? ""), String(honeycombOptions.cell_size ?? ""));
     }
     let selection = adaptExactInterfaceSelection(line, design, {
       productId,

@@ -1,3 +1,4 @@
+import { SUNDANCE_RETAIL_PRODUCTS, priceSundanceRetail, sundanceRetailComponentInputs } from "./sundance-retail";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { priceSmartdrapeReplacement } from "./norman-smartdrape-replacement";
 import { isRomanAncillary } from "../quote/norman-roman-ancillary";
@@ -1804,7 +1805,10 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   const quoteMode = request.validationPurpose === 'quote';
   const smartfoldPriceBranch = quoteMode && smartfoldHasDocumentedQuotePricingBranch(selection);
   const issues = quoteMode
-    ? quotePricingValidationIssues(validationIssues).map(issue => smartfoldPriceBranch && issue.ruleId === 'norman.smartfold.branch_verification'
+    ? quotePricingValidationIssues(validationIssues).map(issue => selection.productId === 'sundance_sheerview' && selection.configuration.sundance_sheerview_assembly === 'Two on one' &&
+      ['sundance.assembly.records','sundance.sheerview.assembly_components'].includes(issue.ruleId)
+      ? {...issue,severity:'warning' as const,explanation:`Before ordering: ${issue.explanation}`}
+      : smartfoldPriceBranch && issue.ruleId === 'norman.smartfold.branch_verification'
       ? {...issue, explanation: issue.explanation.replace('Automatic pricing remains held for this configuration:', 'Before ordering:')}
       : issue) : validationIssues;
   const orderStatus = productRuleStatusForSelection(selection);
@@ -1839,7 +1843,9 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
       )
     : undefined;
   const effectivePriceBasis = selectedProgram?.priceBasis ?? product?.priceBasis;
-  const sourceResult = isRomanAncillary(selection.productId)
+  const sourceResult = SUNDANCE_RETAIL_PRODUCTS.has(selection.productId)
+    ? priceSundanceRetail(selection, authoritativePriceInput)
+    : isRomanAncillary(selection.productId)
     ? priceRomanAncillary(selection, authoritativePriceInput, quoteMode)
     : selection.productId === SMARTDRAPE_REPLACEMENT
       ? priceSmartdrapeReplacement(selection, authoritativePriceInput)
@@ -1876,7 +1882,8 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   const pricedProgram = getProgram(product, result.programId);
-  const componentInput = priceComponentInputs(selection, product, sourceResult);
+  const componentInput = SUNDANCE_RETAIL_PRODUCTS.has(selection.productId)
+    ? sundanceRetailComponentInputs(selection) : priceComponentInputs(selection, product, sourceResult);
   const componentResult = buildAuthoritativePriceComponents({
     selection,
     sourceResult,

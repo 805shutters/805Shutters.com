@@ -30,10 +30,10 @@ it('retains explicit component hold and clears incompatible control/headrail sel
  expect(sundanceSheerviewHeadrailPatch(options,'Flat Square')).toMatchObject({catalog_sundance_sheerview_valance_id:'sundance_sheerview_valance_p24_t3'});
  expect(sundanceSheerviewHeadrailPatch({catalog_sundance_sheerview_valance_id:'old'},'Curved')).toMatchObject({catalog_sundance_sheerview_valance_id:null});
 });
-it('applies the same rules at the authoritative selection boundary without opening price eligibility',()=>{
+it('applies the same rules at the authoritative selection boundary with source retail eligibility',()=>{
  const c=context({},116.0625,60);
  expect(validateSelection(c).map(i=>i.ruleId)).toContain('sundance.sheerview.size');
- expect(productRuleStatusForSelection(context())).toBe('manual_quote_required');
+ expect(productRuleStatusForSelection(context())).toBe('documented_limited');
 });
 it('offers No Drill only for cordless and shows saved dimension errors',()=>{
  const render=(control:string)=>renderToStaticMarkup(createElement(SundanceSheerviewOptions,{options:{...options,sundance_sheerview_control:control},widthInches:100,heightInches:60,onUpdateFields:()=>{}}));

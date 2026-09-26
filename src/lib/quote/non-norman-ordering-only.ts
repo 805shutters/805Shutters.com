@@ -13,6 +13,7 @@ const ORDERING_ONLY_RULES = new Set([
   'sundance.sheerview.mount_depth',
   'sundance.sheerview.flush_depth',
   'sundance.sheerview.recess_review',
+  'sundance.sheerview.assembly_components',
   'sundance.portfolio.mount_depth',
   'sundance.cellular.mount_depth',
   'sundance.cellular.recess',

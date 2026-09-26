@@ -24,7 +24,8 @@ export function validateSundanceSheerviewConfiguration(s:Pick<SelectionContext,'
  if(!sundanceSheerviewControls.includes(control as never))add('control',25,'Choose the documented continuous cord loop, cordless, or rechargeable motor with wand system. Other motors need separate compatibility evidence.');
  if(!sundanceSheerviewHeadrails.includes(headrail as never))add('headrail',11,'Choose a documented curved, flat square, or cordless No Drill headrail.');
  const cordless=control==='Cordless';const motor=control==='Rechargeable Motor with Wand';const noDrill=headrail==='No Drill';
- const minWidth=noDrill?29:cordless?20:motor?22:8,maxWidth=noDrill?79:cordless?96:116;
+ const pair=c.sundance_sheerview_assembly==='Two on one';
+ const minWidth=Math.max(noDrill?29:0,pair?(cordless?40:motor?44:16):(cordless?20:motor?22:8)),maxWidth=noDrill?79:cordless?96:116;
  let maxHeight=cordless?96:144;
  if(headrail==='Flat Square')maxHeight=Math.min(maxHeight,row?.privacy==='Room Darkening'?84:96);
  if(!Number.isFinite(s.widthInches)||!Number.isFinite(s.heightInches)||s.widthInches<minWidth||s.widthInches>maxWidth||s.heightInches<11||s.heightInches>maxHeight)add('size',cordless?26:motor?27:25,`This documented control/headrail requires width ${minWidth}–${maxWidth} inches and height 11–${maxHeight} inches.`);
@@ -32,7 +33,7 @@ export function validateSundanceSheerviewConfiguration(s:Pick<SelectionContext,'
  if(control==='Continuous Cord Loop'&&!sundanceSheerviewCordOptions.includes(String(c.sundance_sheerview_cord_option) as never))add('cord_option',25,'Choose cord, metal chain, plastic chain, or Safe Wand for continuous cord loop.');
  if(control!=='Continuous Cord Loop'&&c.sundance_sheerview_cord_option)add('stale_cord',25,'Clear the cord-loop choice when changing to cordless or motorized control.');
  if(c.sundance_sheerview_assembly==='Two on one')add('assembly_components',25,'Two-on-one requires both shade measurements and the complete control/charge assembly; total width alone is not sufficient.');
- else if(c.sundance_sheerview_assembly!=='Single')add('assembly',25,'Choose single shade or identify a two-on-one assembly requiring manual component verification.');
+ else if(c.sundance_sheerview_assembly!=null&&c.sundance_sheerview_assembly!==''&&c.sundance_sheerview_assembly!=='Single')add('assembly',25,'Choose single shade or identify a two-on-one assembly requiring manual component verification.');
  if(headrail==='Flat Square'&&!sundanceSheerviewFlatFinishes.some(([code])=>code===c.sundance_sheerview_headrail_finish))add('flat_finish',10,'Select the exact painted flat-headrail finish.');
  if(headrail!=='Flat Square'&&c.sundance_sheerview_headrail_finish)add('stale_flat_finish',10,'Flat square painted finishes cannot be assigned to another headrail.');
  if(!['Inside','Outside'].includes(String(c.mount_type)))add('mount',28,'Choose inside or outside mount; factory inside width deductions must not be subtracted twice.');

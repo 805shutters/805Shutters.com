@@ -1,3 +1,4 @@
+import { SUNDANCE_RETAIL_PRODUCTS } from "./sundance-retail";
 import { rollerLightGuard } from "./norman-roller-light-guard";
 import { rollerPoles } from "./norman-roller-poles";
 import { rollerChain } from "./norman-roller-chain";
@@ -2431,7 +2432,7 @@ export function productRuleStatusForSelection(context: SelectionContext): Produc
   // The September shelf guide is fully normalized, including linked-product
   // eligibility and quantity checks in the order assembly validator.
   if (context.productId === "palladian_shelf" && context.catalogAsOf >= "2026-09-19") return "documented_limited";
-  if (context.productId.startsWith("sundance_")) return "manual_quote_required";
+  if (context.productId.startsWith("sundance_")) return SUNDANCE_RETAIL_PRODUCTS.has(context.productId) ? "documented_limited" : "manual_quote_required";
   if (context.productId === "vertical_honeycomb") return context.catalogAsOf >= "2026-09-19" ? "documented_limited" : "manual_quote_required";
   // The pinned July 2026 Motorization Guide now supplies exact motor-family,
   // power, control, accessory, and size rules. Unsupported or incomplete

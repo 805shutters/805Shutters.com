@@ -9,6 +9,8 @@ describe('Norman automatic grid request inputs',()=>{
  it('requests an initial unpriced or existing automatic draft without requiring mounting measurements',()=>{
   expect(signature()).not.toBeNull();expect(signature(quote,[line],[{...design,unit_price:500}])).toBe(signature());
   expect(isNormanGridDesign({...design,supplier:'Onyx'})).toBe(false);
+  expect(isNormanGridDesign({...design,supplier:'Sundance'})).toBe(true);
+  expect(signature(quote,[line],[{...design,supplier:'Sundance'}])).not.toBeNull();
   expect(isNormanGridDesign({...design,supplier:null})).toBe(false);
  });
  it('never prices protected quotes or owner-priced and historical selections',()=>{

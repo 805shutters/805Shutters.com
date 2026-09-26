@@ -37,6 +37,7 @@ beforeAll(async () => {
   const unknownCost = readFileSync('supabase/migrations/20260921214000_allow_explicit_unknown_quote_cost.sql','utf8');
   await db.exec(unknownCost.slice(0, unknownCost.indexOf('alter table')));
   await db.exec(readFileSync('supabase/migrations/20260923022748_norman_legacy_grid_pricing.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260926024004_legacy_sundance_retail_pricing.sql','utf8'));
 }, 30000);
 afterAll(() => db.close());
 beforeEach(async () => {
@@ -61,6 +62,20 @@ function result() {
     internalCostSnapshot:{productCostTotal:20,freightAllocated:5,oversizeAllocated:0,processingFeeAllocated:0,landedCostTotal:25},
     validationSnapshot:[],provenanceSnapshot:{catalogVersion:catalog,sources:['norman-guide']}};
 }
+it('saves source-priced Sundance through the same protected writer', async () => {
+  await db.query("update sales_quote_designs set supplier='Sundance' where id=$1",[id(12)]);
+  const expected=await state();
+  const priced=result();priced.selection.manufacturerId='sundance';priced.selection.productId='sundance_sheerview';
+  expect(await save(expected,[priced])).toMatchObject({pricedDesignCount:1,blockedDesignCount:0,total:944.01});
+  const after=await state();
+  expect(after.designs.filter((d:any)=>d.id!==id(12))).toEqual(expected.designs.filter((d:any)=>d.id!==id(12)));
+});
+it('rejects a source manufacturer that differs from the saved Sundance supplier',async()=>{
+  await db.query("update sales_quote_designs set supplier='Sundance' where id=$1",[id(12)]);
+  const expected=await state();
+  await expect(save(expected,[result()])).rejects.toThrow(/identity or provenance/);
+  expect(await state()).toEqual(expected);
+});
 it('saves only Norman automatic pricing, preserves cents and mixed manual/other lines, keeps legacy mode',async()=>{
   const before=await state();
   expect(await save(before,[result()])).toMatchObject({pricedDesignCount:1,blockedDesignCount:0,total:944.01});
@@ -199,5 +214,6 @@ it('refuses a changed manual total implementation before applying its independen
 it('can safely repeat its migration without changing pricing state',async()=>{
   const before=await state();
   await db.exec(readFileSync('supabase/migrations/20260923022748_norman_legacy_grid_pricing.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260926024004_legacy_sundance_retail_pricing.sql','utf8'));
   expect(await state()).toEqual(before);
 });

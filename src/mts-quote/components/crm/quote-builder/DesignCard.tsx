@@ -30,6 +30,7 @@ import { OnyxHeldDesignOptions } from "@/components/crm/OnyxHeldDesignOptions";
 import { onyxPortalAssortment, onyxPortalFrameSides, onyxPortalHingeColors, onyxPortalColors, onyxPortalLouverLabels, onyxPortalTiltLabels } from "@/lib/quote/onyx-current-assortment";
 import { romanFabricConstructionChoices } from "@/lib/quote-v2/norman-roman-fabric-limits";
 import { romanCurrentRearCollections, romanCurrentRearCodes, quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
+import { SUNDANCE_RETAIL_PRODUCTS } from "@/lib/quote/sundance/retail-policy";
 import { SundanceDesignOptions } from "@/components/crm/SundanceDesignOptions";
 import { hasSundanceConfiguration } from "@/lib/quote/sundance/configuration";
 import { romanHardware, romanFabricPatternOptions, romanReturnOptions } from "@/lib/quote-v2/norman-roman-hardware";
@@ -1627,7 +1628,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: "Polar",
     };
   }
-  if (product.priceBasis === "manual_required" && product.id !== SMARTDRAPE_REPLACEMENT && !isNormanValanceOnly(product.id) && !isRollerValance(product.id) && !isRomanAncillary(product.id) && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
+  if (product.priceBasis === "manual_required" && !SUNDANCE_RETAIL_PRODUCTS.has(product.id) && product.id !== SMARTDRAPE_REPLACEMENT && !isNormanValanceOnly(product.id) && !isRollerValance(product.id) && !isRomanAncillary(product.id) && !isSanClementeProduct(product.id) && !isNormanContractProduct(product.id) && !isOnyxHeldProduct(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -1636,7 +1637,7 @@ export function resolveManufacturerOptionsUiRoute(
     };
   }
 
-  const supported = isOnyxHeldProduct(product.id) ||
+  const supported = SUNDANCE_RETAIL_PRODUCTS.has(product.id) || isOnyxHeldProduct(product.id) ||
     productSupplierKey === "norman" ||
     (productSupplierKey === "polar" &&
       (POLAR_EXTERIOR_UI_PRODUCT_IDS.has(product.id) ||
@@ -9731,7 +9732,7 @@ export function ShadesAndBlindsOptions({
         nextJson.specialty_right_leg_height = null;
         nextJson.non_operable = null;
       }
-      if (authoritativeV2 && application === "Patio Door Vertical") {
+      if (application === "Patio Door Vertical") {
         patch.lift_system = "Patio Door Vertical";
         patch.motor_type = null; patch.remote_type = null; patch.shade_type = null;
         nextJson = withoutBackFabricColorDetails(nextJson);
@@ -9824,7 +9825,7 @@ export function ShadesAndBlindsOptions({
       }
 
       // Frame (SmartFit/Decoflex) sizes only take the SmartFit systems.
-      const allowedSystems = authoritativeV2 && nextJson.honeycomb_application === "Patio Door Vertical" ? ["Patio Door Vertical", "Patio Door Vertical Day & Night"] : getHoneycombOperatingSystemsFor(nextSize);
+      const allowedSystems = nextJson.honeycomb_application === "Patio Door Vertical" ? ["Patio Door Vertical", "Patio Door Vertical Day & Night"] : getHoneycombOperatingSystemsFor(nextSize);
       if (design?.lift_system && !allowedSystems.includes(design.lift_system)) {
         patch.lift_system = null;
         patch.motor_type = null;
@@ -11263,7 +11264,7 @@ export function ShadesAndBlindsOptions({
         const mountType = getFieldValue(design, "mount_type");
         const honeycombOptions = (design?.options_json as Record<string, unknown>) || {};
         const application = String(honeycombOptions.honeycomb_application || "");
-        const verticalApplication = authoritativeV2 && application === "Patio Door Vertical";
+        const verticalApplication = application === "Patio Door Vertical";
         const specialtyShapeApplication = authoritativeV2 && application === "Specialty Shapes";
         const slopedFrameApplication =
           authoritativeV2 && application === "SmartFit for Sloped Windows with Frame";
@@ -11665,7 +11666,7 @@ export function ShadesAndBlindsOptions({
           }
         }
 
-        if (authoritativeV2 && application === "Patio Door Vertical") {
+        if (application === "Patio Door Vertical") {
           if (operatingSystem === "Patio Door Vertical") options.push({key: "vertical_pair_mode", label: "Vertical Shade Arrangement", field: "json:vertical_pair_mode", type: "select", options: ["Single Shade", "Butt Together"]});
           if (operatingSystem === "Patio Door Vertical" && honeycombOptions.vertical_pair_mode === "Butt Together") options.push(
             {key: "vertical_pair_group", label: "Butt Together Group", field: "json:vertical_pair_group", type: "select", options: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]},

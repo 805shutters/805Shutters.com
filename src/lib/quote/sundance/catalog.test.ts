@@ -127,9 +127,9 @@ describe("Sundance source catalog isolation", () => {
   it("does not mistake source grids or historical factors for complete automatic quote authority", () => {
     for (const product of sundanceCatalog.products) {
       expect(product.dealerFactor).toBeUndefined();
-      expect(productRuleStatusForSelection({ productId: product.id } as SelectionContext)).toBe("manual_quote_required");
+      expect(productRuleStatusForSelection({ productId: product.id } as SelectionContext)).toBe(product.id === "sundance_sheerview" ? "documented_limited" : "manual_quote_required");
       expect(priceDesign({ productId: product.id, widthInches: 24, heightInches: 48 })).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
-      expect(buildUiCatalog().products.find((p) => p.id === product.id)?.priceBasis).toBe("manual_required");
+      expect(buildUiCatalog().products.find((p) => p.id === product.id)?.priceBasis).toBe(product.id === "sundance_sheerview" ? "suggested_retail" : "manual_required");
     }
   });
 

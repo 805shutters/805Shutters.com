@@ -11,7 +11,7 @@ import type {
   SelectionRecord,
   SelectionValue,
 } from "./core";
-import { findHoneycombColor, quoteV2CatalogVersionFor } from "./catalog";
+import { honeycombSavedFamily, quoteV2CatalogVersionFor } from "./catalog";
 import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from "./quote-pricing-policy";
 
 const INTERNAL_OPTION_KEYS = new Set([
@@ -415,6 +415,12 @@ export function selectionContextFromExactInterface(
       "fabric_group",
     ) ?? design.fabric,
   );
+  // Owner policy: single is the standard quote assembly unless an upgrade is selected.
+  if (input.productId.startsWith("sundance_")) {
+    for (const key of ["sundance_sheerview_assembly", "sundance_portfolio_assembly", "sundance_cellular_assembly", "sundance_blind_assembly", "sundance_walden_assembly", "sundance_zebra_assembly", "sundance_shade_assembly"]) {
+      if (configuration[key] == null || configuration[key] === "") configuration[key] = "Single";
+    }
+  }
   alias(configuration, "fabric_color_code", firstString(sourceOptions, "fabric_color_code"));
   alias(
     configuration,
@@ -433,12 +439,7 @@ export function selectionContextFromExactInterface(
     // Older color pickers saved the family as fabric_color_type and left
     // fabric_color_collection empty. Recover only an exact workbook identity;
     // never replace an explicitly selected collection or accept an unknown code.
-    if (!firstString(sourceOptions, "fabric_color_collection", "fabric_collection")) {
-      const family = firstString(sourceOptions, "fabric_color_type");
-      const code = firstString(sourceOptions, "fabric_color_code");
-      const color = findHoneycombColor(family, code);
-      if (color) configuration.fabric_collection = color.family;
-    }
+    configuration.fabric_collection = honeycombSavedFamily(sourceOptions, String(configuration.fabric_collection ?? ""));
     // "Single" is the legacy builder's standard horizontal application. Do not
     // invent an application for specialty, vertical or unconfigured shades.
     if (!configuration.application && input.productId === "honeycomb" &&
@@ -451,7 +452,13 @@ export function selectionContextFromExactInterface(
       configuration.application = "Standard";
     }
   }
-  alias(configuration, "honeycomb_operating_system", design.lift_system);
+  // The old legacy picker left its horizontal lift behind when selecting the
+  // vertical product. Only that known single-shade legacy state is recoverable.
+  if (input.productId === "vertical_honeycomb" && configuration.application === "Patio Door Vertical" &&
+      design.shade_type === "Single" && ["Cord Loop", "SmartRise Cordless", "Cordless"].includes(design.lift_system ?? "")) {
+    configuration.lift_system = "Patio Door Vertical";
+  }
+  alias(configuration, "honeycomb_operating_system", configuration.lift_system);
   alias(
     configuration,
     "roller_application",

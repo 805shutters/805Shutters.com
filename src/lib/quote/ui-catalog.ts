@@ -1,3 +1,4 @@
+import { SUNDANCE_RETAIL_PRODUCTS } from './sundance/retail-policy';
 // UI-facing projection of the pricing catalog. The builder UI needs flat,
 // selectable option lists (products -> programs / fabrics / surcharges /
 // motorization) without shipping the full price grids to the browser.
@@ -249,7 +250,7 @@ export function buildUiCatalog(): UiCatalog {
     productType: p.productType,
     manufacturer: p.manufacturer ?? (p.id.startsWith("polar_") ? "Polar" : "Norman"),
     system: p.system ?? null,
-    priceBasis: quoteOnly ? "manual_required" : p.priceBasis ?? "suggested_retail",
+    priceBasis: SUNDANCE_RETAIL_PRODUCTS.has(p.id) ? "suggested_retail" : quoteOnly ? "manual_required" : p.priceBasis ?? "suggested_retail",
     provisional: p.provisional === true,
     source: p.source ?? null,
     sourcePages: [...p.pages],
@@ -260,7 +261,7 @@ export function buildUiCatalog(): UiCatalog {
       name: pr.name,
       priceGroup: pr.priceGroup,
       priceAxis: pr.priceAxis,
-      priceBasis: quoteOnly ? "manual_required" : pr.priceBasis ?? null,
+      priceBasis: SUNDANCE_RETAIL_PRODUCTS.has(p.id) ? "suggested_retail" : quoteOnly ? "manual_required" : pr.priceBasis ?? null,
     })),
     fabrics: !quoteOnly && p.fabricRouting
       ? Object.entries(p.fabricRouting)

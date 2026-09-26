@@ -6,7 +6,7 @@ import { isQuotePriceLocked } from './quotePriceLock';
 /** Norman quotes use the server grid path without enabling additional ordering controls. */
 export function isNormanGridDesign(design: Pick<SalesQuoteDesign,'supplier'|'options_json'> | undefined): boolean {
   const supplier=String(design?.supplier??'').trim().toLowerCase();
-  return supplier==='norman';
+  return supplier==='norman'||supplier==='sundance';
 }
 
 /** Price refreshes must not retrigger themselves; only persisted pricing selections belong here. */

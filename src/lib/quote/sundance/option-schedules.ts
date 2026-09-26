@@ -41,7 +41,7 @@ export function sundanceOptionEvidence(product:'sheerview'|'portfolio',c:Record<
  const control=String(c[`sundance_${product}_control`]??'');
  if(product==='sheerview'){
   if(control==='Cordless')add('cordless','Cordless control',111,26);
-  if(control==='Rechargeable Motor with Wand')add('motor','Rechargeable motor with wand',365,27);
+  if(control==='Rechargeable Motor with Wand')add('motor','Rechargeable motor with wand',365,27,c.sundance_sheerview_assembly==='Two on one'?2:1);
   if(c.sundance_sheerview_headrail==='No Drill')add('no_drill','No Drill',40,26);
   if(c.sundance_sheerview_cord_option==='Safe Wand')add('safe_wand','Safe Wand',63,25);
   if(width>93)add('oversize','Width over 93-inch freight charge',110,27);
@@ -49,7 +49,7 @@ export function sundanceOptionEvidence(product:'sheerview'|'portfolio',c:Record<
    const v=lookupSundanceValanceSource('sundance_sheerview_valance_p24_t3',width);
    if(v)add('flat_valance','Flat square valance',v.sourceRetail,24);else unresolved.push('Flat valance width outside source schedule');
   }
-  if(c.sundance_sheerview_assembly==='Two on one')unresolved.push('Two-on-one component controls and charges require assembly verification');
+  if(c.sundance_sheerview_assembly==='Two on one')add('two_on_one','Two on one headrail',80,25);
  }else if(c.roman_style!=='Valance Only'){
   const motors:Record<string,number>={'Standard LI Motor':350,'Power Lift':406,'Somfy Sonesse Ultra 30':556};
   if(motors[control])add('motor',control,motors[control],control==='Somfy Sonesse Ultra 30'?26:25);

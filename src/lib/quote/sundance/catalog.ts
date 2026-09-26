@@ -49,6 +49,7 @@ export const sundanceCatalog: Catalog = {
   }).map(product => product.id !== "sundance_sheerview" ? product : ({
     ...product, fabricRouting:Object.fromEntries(sundanceSheerviewSource.rows.map(row=>[row.code,row.programId])),
     programs:product.programs.map(program=>({...program,
+      pricingFamilyId:program.id,baselineProgramId:program.id,
       priceGroup:sundanceSheerviewSource.rows.find(row=>row.programId===program.id)?.priceGroup ?? null,
       fabricCollections:[{category:"Exact SheerView color/vane codes",fabrics:sundanceSheerviewSource.rows.filter(row=>row.programId===program.id).map(row=>row.code)}],
     })),
@@ -60,7 +61,7 @@ export const sundanceCatalog: Catalog = {
     programs:product.programs.map(program=>({...program, fabricCollections:[{category:"Exact custom vertical pattern/color", fabrics:sundanceVerticalSource.rows.filter(row=>row.programId===program.id).map(row=>`${row.pattern} ${row.color}`)}]})),
   })), sundanceDraperyTrack],
 };
-export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-20-r14";
+export const SUNDANCE_CATALOG_VERSION = "sundance-assortment-2026-09-26-r15";
 
 export function isSundanceProductId(productId: string) {
   return sundanceCatalog.products.some((product) => product.id === productId);

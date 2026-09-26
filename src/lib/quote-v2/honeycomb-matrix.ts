@@ -2189,6 +2189,7 @@ function validateVertical(
         {
           stacking_configuration:
             stringConfig(context, "stacking_configuration") || null,
+          vertical_shim_layers: context.configuration.vertical_shim_layers ?? null,
         },
         "Select one documented Patio Door Vertical stacking configuration.",
       ),

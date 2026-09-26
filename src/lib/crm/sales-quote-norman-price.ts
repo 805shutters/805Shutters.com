@@ -18,12 +18,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 /** Only identities are accepted over HTTP; all price inputs come from saved rows. */
 export function parseNormanPriceRequest(body: unknown): void {
   if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length) {
-    throw new CrmAuthError(400, "Norman pricing accepts an empty object; prices and selections are read from the saved quote.");
+    throw new CrmAuthError(400, "Catalog pricing accepts an empty object; prices and selections are read from the saved quote.");
   }
 }
 
-function isNorman(design: SalesQuoteDesign): boolean {
-  return design.supplier?.trim().toLowerCase() === "norman";
+function isServerCatalogDesign(design: SalesQuoteDesign): boolean {
+  return ["norman", "sundance"].includes(design.supplier?.trim().toLowerCase() ?? "");
 }
 
 function isAutomatic(design: SalesQuoteDesign): boolean {
@@ -61,12 +61,12 @@ export function assertCurrentNormanLegacyPricing(
     const design = line.selected_design_id
       ? candidates.find(candidate => candidate.id === line.selected_design_id)
       : candidates.find(candidate => candidate.variant === "A") ?? candidates[0];
-    return design && isNorman(design) && isAutomatic(design) && design.options_json?.norman_grid_pricing === true
+    return design && isServerCatalogDesign(design) && isAutomatic(design) && design.options_json?.norman_grid_pricing === true
       ? [{ line, design }] : [];
   });
   if (!selected.length) return;
   const stale = (room?: string | null): never => {
-    throw new CrmAuthError(409, `${room || "Norman line"}: Norman pricing is missing or stale. Refresh pricing for the current selections before sending.`);
+    throw new CrmAuthError(409, `${room || "Quote line"}: Catalog pricing is missing or stale. Refresh pricing for the current selections before sending.`);
   };
   let prepared: ReturnType<typeof prepareNormanLegacyPricing>;
   try {
@@ -119,7 +119,7 @@ export function prepareNormanLegacyPricing(state: NormanQuotePricingState, serve
     const selected = line.selected_design_id
       ? candidates.find(design => design.id === line.selected_design_id)
       : candidates.find(design => design.variant === "A") ?? candidates[0];
-    if (!selected || !isNorman(selected)) continue;
+    if (!selected || !isServerCatalogDesign(selected)) continue;
     // Older drafts can have null measurement fields. Zero means unmeasured to
     // the calculator; keep the original saved rows untouched for the CAS save.
     lines.push({
@@ -146,10 +146,10 @@ export async function saveNormanLegacyPricing(
 ): Promise<{ quoteId: string; pricedDesignCount: number; blockedDesignCount: number; total: number }> {
   if (!UUID.test(input.quoteId) || !UUID.test(input.actorId)) throw new CrmAuthError(400, "Invalid quote or actor identity.");
   const { data, error } = await supabase.rpc("read_norman_quote_pricing_state", { p_quote_id: input.quoteId });
-  if (error) throw new CrmAuthError(502, "The saved Norman pricing state could not be loaded.");
+  if (error) throw new CrmAuthError(502, "The saved catalog pricing state could not be loaded.");
   const state = data as NormanQuotePricingState;
   if (data === null) throw new CrmAuthError(404, "Quote not found.");
-  if (!state || !Array.isArray(state.lines) || !Array.isArray(state.designs)) throw new CrmAuthError(502, "The saved Norman pricing state is invalid.");
+  if (!state || !Array.isArray(state.lines) || !Array.isArray(state.designs)) throw new CrmAuthError(502, "The saved catalog pricing state is invalid.");
   if (state.quote && state.quote.id !== input.quoteId) throw new CrmAuthError(502, "The saved quote identity does not match.");
   const prepared = prepareNormanLegacyPricing(state, input.serverDate ?? quoteV2ServerCatalogDate());
   if (!prepared.length) return { quoteId: input.quoteId, pricedDesignCount: 0, blockedDesignCount: 0, total: Number(state.quote?.total_amount ?? 0) };
@@ -161,12 +161,12 @@ export async function saveNormanLegacyPricing(
   });
   if (saved.error) {
     if (saved.error.code === "40001" || /changed|conflict|locked|revision/i.test(saved.error.message)) {
-      throw new CrmAuthError(409, "The quote changed while Norman pricing was calculated. Reload the current selections and try again.");
+      throw new CrmAuthError(409, "The quote changed while catalog pricing was calculated. Reload the current selections and try again.");
     }
-    throw new CrmAuthError(502, "Norman pricing could not be saved. Your selections have been preserved.");
+    throw new CrmAuthError(502, "Catalog pricing could not be saved. Your selections have been preserved.");
   }
   const result = saved.data as JsonRecord;
-  if (!result || result.quoteId !== input.quoteId || !Number.isFinite(Number(result.total))) throw new CrmAuthError(502, "Norman pricing returned an invalid saved result.");
+  if (!result || result.quoteId !== input.quoteId || !Number.isFinite(Number(result.total))) throw new CrmAuthError(502, "Catalog pricing returned an invalid saved result.");
   return {
     quoteId: input.quoteId,
     pricedDesignCount: Number(result.pricedDesignCount),

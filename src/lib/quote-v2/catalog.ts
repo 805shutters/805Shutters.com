@@ -443,3 +443,12 @@ export function normalizeIdentity(value: unknown): string {
     ? value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
     : "";
 }
+
+/** Resolve old picker records without replacing an explicit family selection. */
+export function honeycombSavedFamily(options: Record<string, unknown>, fallback = ""): string {
+  for (const key of ["fabric_color_collection", "fabric_collection"]) {
+    const value = options[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return findHoneycombColor(String(options.fabric_color_type ?? ""), String(options.fabric_color_code ?? ""))?.family ?? fallback;
+}
