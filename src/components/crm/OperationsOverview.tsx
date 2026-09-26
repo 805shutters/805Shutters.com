@@ -6,6 +6,7 @@ import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search, Trash2 } from "lucide-react";
 import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
+import { weeklySalesAverage } from "@/lib/crm/weekly-sales-average";
 import type { CrmCustomerFile, CrmDashboardData } from "@/lib/crm/types";
 import { WEEKLY_GROSS_SALES_GOAL_CENTS, performancePeriods, type PerformancePeriod, attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
@@ -41,11 +42,12 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
   const salesWeek = metrics.grossWeeks[salesWeekIndex] || { start: metrics.weekStart, end: metrics.weekEnd, grossCents: null, status: "unavailable", sales: [], isCurrent: true };
   const hasEarlierWeek = salesWeekIndex + 1 < metrics.grossWeeks.length;
   const hasLaterWeek = salesWeekIndex > 0;
+  const average = weeklySalesAverage(data.closedSales, Number((salesWeek.isCurrent ? metrics.today : salesWeek.start).slice(0, 4)), metrics.weekStart);
   const dateRange = `${displayDate(selected.start)} – ${displayDate(selected.end)}`;
   const definitions = {
     close: "Customers first sent a quote in this period who have a dated sale, divided by all customers first sent a quote in this period. Each customer counts once; quote alternatives do not inflate the rate.",
     quoted: "Unique customers first sent a quote in this period. Repeat quotes and quote alternatives count once per customer.",
-    gross: "Signed contract value for the selected Monday–Sunday week in Los Angeles time. Use the arrows to browse weeks; This week returns to the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately.",
+    gross: "Signed contract value for the selected Monday–Sunday week in Los Angeles time. Use the arrows to browse weeks; This week returns to the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately. The average uses all recorded signed gross sales in the displayed calendar year divided by its Monday–Sunday weeks, including zero-sales weeks. The current year stops at the last completed Sunday. Weeks crossing January 1 count in each year using only that year’s sales.",
     cash: "Recorded customer payments received in the selected period, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
   };
   const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
@@ -77,6 +79,12 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
           <button type="button" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(null)}>This week</button>
           <button type="button" aria-label="Next sales week" title="Next week" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(salesWeekIndex === 1 ? null : metrics.grossWeeks[salesWeekIndex - 1].start)}><ArrowRight size={18} aria-hidden="true" /></button>
         </nav>
+        <section className={styles.salesAverage} aria-label="Average weekly gross sales">
+          <span>Average weekly gross sales</span>
+          <strong>{average.averageCents === null ? "—" : currency(average.averageCents / 100)}</strong>
+          <small>{average.year} calendar year · {average.weekCount} {average.year === Number(metrics.today.slice(0, 4)) ? "completed " : ""}weeks</small>
+          <small>{!data.closedSales ? "Sales history unavailable" : average.weekCount === 0 ? "No completed weeks yet" : `${displayDate(average.start)} – ${displayDate(average.end)} · Includes zero-sales weeks`}</small>
+        </section>
       </div>
       <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Payments collected</span><div><strong>{currency(selected.cashCents / 100)}</strong></div><small>Deposits + balances, less refunds</small><small>{dateRange}</small></button>
     </div>

@@ -250,3 +250,7 @@
 .salesWeekNavigation button:disabled { opacity:.4; cursor:default; }
 .salesWeekNavigation button:not(:disabled):hover { background:#ffffff22; }
 .salesWeekNavigation button:focus-visible, .salesMetricDetails:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+
+.salesAverage { margin-top:16px; padding-top:14px; border-top:1px solid #ffffff40; }
+.salesAverage > span { display:block; font-size:12px; line-height:1.5; }
+.salesAverage > strong { display:block; margin:5px 0; font-size:24px; letter-spacing:-.5px; }
