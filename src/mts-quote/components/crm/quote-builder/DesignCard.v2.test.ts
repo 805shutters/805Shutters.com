@@ -22,6 +22,7 @@ import {
   buildLegacyRomanLiftSystemUpdate,
   buildLegacyShutterRouteUpdate,
   canonicalRollerMotorizationSelections,
+  setRollerPowerConfiguration,
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
   getShutterProgramPricing,
@@ -1855,4 +1856,21 @@ describe("A7 legacy Norman required pricing inputs", () => {
     expect(render("Honeycomb Shades", "Norman", "SmartRise Cordless")).toContain('data-option-field="json:honeycomb_application"');
     expect(render("Honeycomb Shades", "Other", "SmartRise Cordless")).not.toContain('data-option-field="json:honeycomb_application"');
   });
+});
+
+
+it("clears both legacy All Tubes placeholders when a canonical roller motor is selected", () => {
+  const options: Record<string, unknown> = { roller_application: "Single", roller_tube: "All Tubes", tube_class: "All Tubes" };
+  expect(setRollerPowerConfiguration(options, "Norman Smart Rechargeable Battery with AC Adapter Charger")).toBe("Motor");
+  expect(options).toMatchObject({ roller_tube: null, tube_class: null,
+    motorization_selections: [{ groupId: "smart_motorization", optionId: "motor", role: "base_motor", units: 1 }] });
+  setRollerPowerConfiguration(options, null);
+  expect(options).toMatchObject({ power_configuration: null, motorization_selections: [] });
+});
+
+it("preserves real technical tubes when selecting a motor", () => {
+  const options = { roller_tube: '2" (52mm) Tube', tube_class: '2" (52mm) Tube' };
+  setRollerPowerConfiguration(options, "Automate ARC Motor");
+  expect(options.roller_tube).toBe('2" (52mm) Tube');
+  expect(options.tube_class).toBe('2" (52mm) Tube');
 });

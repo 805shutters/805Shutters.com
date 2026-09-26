@@ -2006,7 +2006,7 @@ export function canonicalRollerMotorizationSelections(
     : [];
 }
 
-function setRollerPowerConfiguration(
+export function setRollerPowerConfiguration(
   options: Record<string, unknown>,
   powerConfiguration: unknown,
 ): string | null {
@@ -2014,6 +2014,14 @@ function setRollerPowerConfiguration(
     typeof powerConfiguration === "string" && powerConfiguration.trim()
       ? powerConfiguration
       : null;
+  // Older saved lines may retain the non-motorized tube alias. The matrix
+  // reads roller_tube before tube_class, so clear both placeholders when a
+  // motor is selected, while preserving any actual technical tube choice.
+  if (selectedPower) {
+    for (const key of ["roller_tube", "tube_class"]) {
+      if (options[key] === "All Tubes") options[key] = null;
+    }
+  }
   options.power_configuration = selectedPower;
   options[ROLLER_MOTORIZATION_SELECTIONS_KEY] = canonicalRollerMotorizationSelections(
     selectedPower,
@@ -10684,7 +10692,7 @@ export function ShadesAndBlindsOptions({
                 ?.lightguard_360_shade_count
             : (design?.options_json as Record<string, unknown> | null)?.coupled_shade_count,
         );
-        const rollerFacets = authoritativeV2
+        const rollerFacets = collectsV2PricingFields
           ? getRollerV2UiFacets({
               application,
               couplingArrangement: getFieldValue(design, "json:coupling_arrangement"),
