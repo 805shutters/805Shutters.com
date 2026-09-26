@@ -1824,3 +1824,35 @@ describe("Basic Norman roller quote flow", () => {
     expect(defaults.roller_top_treatment).toBe("No Top Treatment");
   });
 });
+
+
+describe("A7 legacy Norman required pricing inputs", () => {
+  const render = (productType: string, supplier: string, lift: string) => renderToStaticMarkup(createElement(ShadesAndBlindsOptions, {
+    design: { supplier, lift_system: lift, shade_type: "Single Shade", valance: "No Valance", options_json: { cell_size: '3/4" Single Cell' } } as unknown as SalesQuoteDesign,
+    productType, authoritativeV2: false,
+    lineItem: { id: "a7", quantity: 1, width_whole: 36, width_fraction: "0", height_whole: 60, height_fraction: "0" } as SalesQuoteLineItem,
+    onUpdate() {}, onUpdateFields() {}, sideBySideLineOptions: [], onSideBySidePairChange() {}, onClearSideBySidePartner() {},
+  }));
+
+  it.each(["Norman", " norman "])("collects canonical motor power on older-style %s rollers", supplier => {
+    const html = render("Roller Shades", supplier, "Motorized");
+    expect(html).toContain('data-option-field="json:power_configuration"');
+    expect(html).toContain("Motor / Power System");
+    expect(html).not.toContain('data-option-field="motor_type"');
+  });
+
+  it("does not ask for power on a cordless Norman roller", () => {
+    expect(render("Roller Shades", "Norman", "Cordless")).not.toContain('data-option-field="json:power_configuration"');
+  });
+
+  it("preserves other suppliers' legacy motor controls", () => {
+    const html = render("Roller Shades", "Other", "Motorized");
+    expect(html).toContain('data-option-field="motor_type"');
+    expect(html).not.toContain('data-option-field="json:power_configuration"');
+  });
+
+  it("collects Application for older-style Norman honeycomb", () => {
+    expect(render("Honeycomb Shades", "Norman", "SmartRise Cordless")).toContain('data-option-field="json:honeycomb_application"');
+    expect(render("Honeycomb Shades", "Other", "SmartRise Cordless")).not.toContain('data-option-field="json:honeycomb_application"');
+  });
+});

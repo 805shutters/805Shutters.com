@@ -8823,6 +8823,9 @@ export function ShadesAndBlindsOptions({
   const lotusFauxWood =
     productType === "Faux Wood Blinds" &&
     selectedCatalogProductId === LOTUS_FAUX_WOOD_PRODUCT_ID;
+  // Legacy Norman lines also use the server-side V2 pricing engine.
+  const collectsV2PricingFields =
+    authoritativeV2 || String(design?.supplier ?? "").trim().toLowerCase() === "norman";
 
   const handleUpdate = (field: string, value: unknown) => {
     requestedOpenOptionFieldRef.current = undefined;
@@ -9086,7 +9089,7 @@ export function ShadesAndBlindsOptions({
     }
 
     if (productType === "Roller Shades" && field === "lift_system") {
-      if (!authoritativeV2) {
+      if (!collectsV2PricingFields) {
         onUpdateFields(
           buildLegacyRollerLiftSystemUpdate(currentJson, design, value),
         );
@@ -9219,7 +9222,7 @@ export function ShadesAndBlindsOptions({
       return;
     }
 
-    if (productType === "Roller Shades" && authoritativeV2 && field === "motor_type") {
+    if (productType === "Roller Shades" && collectsV2PricingFields && field === "motor_type") {
       // The exact motor is derived from the documented operating-system row.
       // It is not an independently editable price choice in V2.
       const expectedMotor = expectedRollerMotorForPowerConfiguration(currentJson.power_configuration);
@@ -9229,7 +9232,7 @@ export function ShadesAndBlindsOptions({
 
     if (
       productType === "Roller Shades" &&
-      authoritativeV2 &&
+      collectsV2PricingFields &&
       field === "json:power_configuration"
     ) {
       const powerConfiguration = typeof value === "string" ? value : null;
@@ -10877,7 +10880,7 @@ export function ShadesAndBlindsOptions({
         }
 
         if (liftSystem === "Motorized") {
-          if (authoritativeV2) {
+          if (collectsV2PricingFields) {
             options.push({
               key: "power_configuration",
               label: "Motor / Power System",
@@ -11319,7 +11322,7 @@ export function ShadesAndBlindsOptions({
           },
         ];
 
-        if (authoritativeV2) {
+        if (collectsV2PricingFields) {
           options.splice(1, 0, {
             key: "honeycomb_application",
             label: "Application",

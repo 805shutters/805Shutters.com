@@ -1650,12 +1650,17 @@ export function getHoneycombOperatingSystemsFor(
 ): readonly string[] {
   const size = canonicalizeHoneycombCellSize(cellSize);
   if (isHoneycombFrameCellSize(size)) return HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS;
+  // V2 smartfit_sloped supports only the 3/8-inch single cell (frames above
+  // have their own application rules). Keep unknown sizes permissive.
+  const common = size && size !== '3/8" Single Cell'
+    ? HONEYCOMB_OPERATING_SYSTEMS.filter((system) => system !== "SmartFit for Sloped Windows")
+    : HONEYCOMB_OPERATING_SYSTEMS;
   // The source has separate Woven Cordless profiles for these single cells.
   // Expose their exact identities so V2 never treats a woven shade as SmartRise.
   if (size === '3/4" Single Cell' || size === '1 1/4" Single Cell') {
-    return [...HONEYCOMB_OPERATING_SYSTEMS, "Woven Cordless", "Woven Cordless TDBU"];
+    return [...common, "Woven Cordless", "Woven Cordless TDBU"];
   }
-  return HONEYCOMB_OPERATING_SYSTEMS;
+  return common;
 }
 
 export function isHoneycombChainOperatingSystem(os: string | null | undefined): boolean {

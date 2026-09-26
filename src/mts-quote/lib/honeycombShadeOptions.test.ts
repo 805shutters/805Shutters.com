@@ -88,6 +88,17 @@ describe("Honeycomb Shades Norman-mirroring options", () => {
     expect(getHoneycombOperatingSystemsFor(null)).toEqual(HONEYCOMB_OPERATING_SYSTEMS);
   });
 
+  it.each(['9/16" Single Cell', '3/4" Single Cell', '1 1/4" Single Cell', '1/2" Double Cell', '3/4" Double Cell'])("excludes Sloped for incompatible %s cells", (cell) => {
+    const systems = getHoneycombOperatingSystemsFor(cell);
+    expect(systems).not.toContain("SmartFit for Sloped Windows");
+    expect(systems).toContain("SmartFit");
+    expect(systems).toContain("SmartRise Cordless");
+    if (cell === '3/4" Single Cell' || cell === '1 1/4" Single Cell') {
+      expect(systems).toContain("Woven Cordless");
+      expect(systems).toContain("Woven Cordless TDBU");
+    }
+  });
+
   it("classifies operating systems like the Norman form cascades", () => {
     for (const os of ["Cord Loop", "SmartRelease", "Cord Loop TD", "Cord Loop Day & Night"]) {
       expect(isHoneycombChainOperatingSystem(os), os).toBe(true);
