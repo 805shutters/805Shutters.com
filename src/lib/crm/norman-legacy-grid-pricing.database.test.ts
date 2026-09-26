@@ -3,6 +3,7 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { prepareNormanLegacyPricing, type NormanQuotePricingState } from './sales-quote-norman-price';
 import fixtures from './sales-quote-norman-price.fixtures.json';
+import sundanceFixture from './sundance-pricing.fixture.json';
 import { quoteLabProductType } from '@/lib/quote-lab/builder';
 const db = new PGlite();
 const id = (n: number) => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -38,6 +39,7 @@ beforeAll(async () => {
   await db.exec(unknownCost.slice(0, unknownCost.indexOf('alter table')));
   await db.exec(readFileSync('supabase/migrations/20260923022748_norman_legacy_grid_pricing.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20260926024004_legacy_sundance_retail_pricing.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260926024837_legacy_manual_quantity_charges.sql','utf8'));
 }, 30000);
 afterAll(() => db.close());
 beforeEach(async () => {
@@ -215,5 +217,25 @@ it('can safely repeat its migration without changing pricing state',async()=>{
   const before=await state();
   await db.exec(readFileSync('supabase/migrations/20260923022748_norman_legacy_grid_pricing.sql','utf8'));
   await db.exec(readFileSync('supabase/migrations/20260926024004_legacy_sundance_retail_pricing.sql','utf8'));
+  await db.exec(readFileSync('supabase/migrations/20260926024837_legacy_manual_quantity_charges.sql','utf8'));
   expect(await state()).toEqual(before);
+});
+
+it('persists an actual Sundance engine snapshot with explicitly unknown dealer cost', async()=>{
+  const f=structuredClone(sundanceFixture) as unknown as NormanQuotePricingState;
+  const [priced]=prepareNormanLegacyPricing(f,'2026-09-26');
+  const r={...priced.rpcResult,lineItemId:id(2),designId:id(12)};
+  await db.query("update sales_quote_designs set supplier='Sundance' where id=$1",[id(12)]);
+  await db.query('update sales_quote_line_items set quantity=1 where id=$1',[id(2)]);
+  await save(await state(),[r]);
+});
+
+it('preserves manual unit prices when a changed quantity leaves an older charge total', async()=>{
+  const charges={version:'blind-shade-install-ship-v1',quantity:1,eligibleUnitsPerWindow:1,eligibleUnitCount:1,installationPerUnit:25,shippingPerUnit:14,installationTotal:25,shippingTotal:14,perWindowTotal:39,total:39};
+  await db.query("update sales_quote_designs set options_json=$1 where id=$2",[{manual_price_override:true,manual_customer_charge_policy:'blind-shade-install-ship-v1',customer_charges:charges},id(13)]);
+  await db.query("update sales_quotes set installer_notes=$1 where id=$2",[JSON.stringify({__adminControls:{showDiscount:true,discountPercent:10}}),id(1)]);
+  const before=await state();
+  const saved=await save(before,[result()]);
+  expect(saved).toMatchObject({pricedDesignCount:1,total:857.41});
+  expect((await state()).designs.find((d:any)=>d.id===id(13))).toEqual(before.designs.find((d:any)=>d.id===id(13)));
 });
