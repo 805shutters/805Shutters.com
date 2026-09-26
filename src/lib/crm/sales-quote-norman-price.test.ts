@@ -41,7 +41,7 @@ function persistPreparedPricing(state: NormanQuotePricingState): NormanQuotePric
   const [prepared] = prepareNormanLegacyPricing(state, "2026-09-22");
   expect(prepared.priceStatus).toBe("authoritative");
   const rpc = prepared.rpcResult;
-  const snapshot = rpc.authoritativeSnapshot as { retail: Record<string, unknown> };
+  const snapshot = rpc.authoritativeSnapshot as { catalogAsOf: string; retail: Record<string, unknown> };
   Object.assign(state.designs[0], {
     unit_price: snapshot.retail.unitPrice,
     quote_v2_price_status: "authoritative",
@@ -55,6 +55,7 @@ function persistPreparedPricing(state: NormanQuotePricingState): NormanQuotePric
     priced_selection_fingerprint: rpc.selectionFingerprint,
     priced_catalog_version: rpc.catalogVersion,
     quote_v2_catalog_version: rpc.catalogVersion,
+    quote_v2_catalog_as_of: snapshot.catalogAsOf,
     authoritative_price_breakdown: structuredClone(snapshot.retail),
     authoritative_v2_snapshot: structuredClone(snapshot),
     authoritative_once_total: snapshot.retail.onceTotal,
@@ -68,6 +69,49 @@ describe("Norman saved-price guard before customer mirroring", () => {
     const before = structuredClone(state);
     expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-22")).not.toThrow();
     expect(state).toEqual(before);
+  });
+
+  it.each(fixtures.map(f => f.selection.productId))("accepts unchanged saved %s pricing the next day without mutation", productId => {
+    const state = pricedState(productId);
+    const before = structuredClone(state);
+    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).not.toThrow();
+    expect(state).toEqual(before);
+  });
+
+  it.each(fixtures.flatMap(f => ["width", "quantity"].map(field => [f.selection.productId, field] as const)))("rejects %s after its saved %s changes the next day", (productId, field) => {
+    const state = pricedState(productId);
+    if (field === "width") state.lines[0].width_whole += 1;
+    else state.lines[0].quantity = 2;
+    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).toThrow(/Refresh pricing/);
+    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).toThrow(expect.objectContaining({ status: 409 }));
+  });
+
+  it.each(["unit", "once", "retail-total", "breakdown-total", "retail-charges", "breakdown-charges", "catalog", "future-date", "changed-date", "missing-date", "fingerprint"])("rejects changed %s the next day", change => {
+    const state = pricedState("roman");
+    const design = state.designs[0];
+    const options = design.options_json;
+    const snapshot = options.authoritative_v2_snapshot as Record<string, unknown>;
+    const retail = snapshot.retail as Record<string, unknown>;
+    const breakdown = options.authoritative_price_breakdown as Record<string, unknown>;
+    if (change === "unit") design.unit_price = 1;
+    if (change === "once") options.authoritative_once_total = 1;
+    if (change === "retail-total") retail.total = Number(retail.total) + 1;
+    if (change === "breakdown-total") breakdown.total = Number(breakdown.total) + 1;
+    if (change === "retail-charges" || change === "breakdown-charges") {
+      const charges = (change === "retail-charges" ? retail : breakdown).customerCharges as Record<string, number>;
+      charges.total += 1;
+    }
+    if (change === "catalog") {
+      design.quote_v2_priced_catalog_version = "old-catalog";
+      options.priced_catalog_version = "old-catalog";
+      snapshot.catalogVersion = "old-catalog";
+    }
+    if (change === "future-date") snapshot.catalogAsOf = "2026-09-24";
+    if (change === "changed-date") snapshot.catalogAsOf = "2026-09-21";
+    if (change === "missing-date") delete snapshot.catalogAsOf;
+    if (change === "fingerprint") options.priced_selection_fingerprint = "different";
+    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).toThrow(/Refresh pricing/);
+    expect(() => assertCurrentNormanLegacyPricing(state, "2026-09-23")).toThrow(expect.objectContaining({ status: 409 }));
   });
 
   it.each(fixtures.flatMap(f => ["width", "quantity"].map(field => [f.selection.productId, field] as const)))("rejects %s after its saved %s changes", (productId, field) => {

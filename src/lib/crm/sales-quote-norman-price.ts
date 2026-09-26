@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SalesQuote, SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
+import { matchesSavedSelectionFingerprint, type SelectionContext } from "@/lib/quote-v2/core";
 import {
   prepareSalesQuoteV2PricingBatch,
   quoteV2ServerCatalogDate,
@@ -87,10 +88,16 @@ export function assertCurrentNormanLegacyPricing(
     const breakdown = record(options.authoritative_price_breakdown);
     const fingerprint = current?.rpcResult.selectionFingerprint;
     const catalogVersion = current?.rpcResult.catalogVersion;
+    // The batch supplies the current selection; restore only its saved date for
+    // identity comparison. Today's catalog and financial checks still apply below.
+    const currentSelection = current?.rpcResult.selection as SelectionContext | undefined;
+    const savedFingerprint = design.quote_v2_selection_fingerprint;
+    const unchangedSelection = typeof fingerprint === "string" && typeof savedFingerprint === "string" &&
+      options.priced_selection_fingerprint === savedFingerprint && snapshot.selectionFingerprint === savedFingerprint &&
+      !!currentSelection && matchesSavedSelectionFingerprint(currentSelection, savedFingerprint, snapshot.catalogAsOf);
     if (current?.priceStatus !== "authoritative" || !fingerprint || !catalogVersion ||
       design.quote_v2_price_status !== "authoritative" || options.authoritative_price_status !== "authoritative" ||
-      design.quote_v2_selection_fingerprint !== fingerprint || options.priced_selection_fingerprint !== fingerprint ||
-      snapshot.selectionFingerprint !== fingerprint ||
+      !unchangedSelection ||
       design.quote_v2_priced_catalog_version !== catalogVersion || options.priced_catalog_version !== catalogVersion ||
       snapshot.catalogVersion !== catalogVersion ||
       !sameMoney(design.unit_price, expected.unitPrice) || !sameMoney(options.authoritative_once_total, expected.onceTotal) ||
