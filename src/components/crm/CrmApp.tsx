@@ -1,6 +1,7 @@
 "use client";
 
 import { readCrmResponse } from "@/lib/crm/client-response";
+import { createInFlightRequests } from "@/lib/crm/in-flight-requests";
 import type { ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 
 import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
@@ -906,6 +907,7 @@ export function CrmApp({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const dashboardRequestVersion = useRef(0);
+  const dashboardReads = useRef(createInFlightRequests());
   const quoteOpenRequestVersion = useRef(0);
   useEffect(() => () => { quoteOpenRequestVersion.current += 1; }, []);
   const activityPollAbortRef = useRef<AbortController | null>(null);
@@ -1393,13 +1395,21 @@ export function CrmApp({
 
   async function refresh() {
     if (!session) return null;
+    // Every explicit/post-save refresh starts a new generation. Never reuse a
+    // background read that began before a save, even when it is still pending.
     const requestVersion = ++dashboardRequestVersion.current;
-    const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
+    const dashboardResult = await readDashboard<CrmDashboardData>(session, "/api/crm/jobs", requestVersion);
     if (requestVersion === dashboardRequestVersion.current) {
       dashboardDataRef.current = dashboardResult;
       setData(dashboardResult); setDashboardRefreshError(null);
     }
     return dashboardResult;
+  }
+
+  function readDashboard<T>(activeSession: Session, path: string, requestVersion: number) {
+    // Session, scope, and generation must all match to share an in-flight read.
+    const key = JSON.stringify([activeSession.user.id, activeSession.access_token, path, requestVersion]);
+    return dashboardReads.current(key, () => crmFetch<T>(activeSession, path));
   }
 
   function ensureFullDashboard(): Promise<CrmDashboardData> {
@@ -1409,7 +1419,7 @@ export function CrmApp({
     setFullDashboardError(null);
     // Invalidate an active-only poll before upgrading to the full workspace.
     const requestVersion = ++dashboardRequestVersion.current;
-    fullDashboardRequest.current = crmFetch<CrmDashboardData>(session, "/api/crm/jobs")
+    fullDashboardRequest.current = readDashboard<CrmDashboardData>(session, "/api/crm/jobs", requestVersion)
       .then(dashboard => {
         if (requestVersion !== dashboardRequestVersion.current) throw new Error("Jobs changed while loading. Try again.");
         dashboardDataRef.current = dashboard;
@@ -1722,15 +1732,17 @@ export function CrmApp({
     const sync = async () => {
       if (cancelled || busyRef.current || fullDashboardRequest.current) return;
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      const requestVersion = ++dashboardRequestVersion.current;
+      // Focus, visibility, and interval events share the current generation.
+      // Only foreground changes invalidate it; duplicate polls must not do so.
+      const requestVersion = dashboardRequestVersion.current;
       try {
         if (dashboardDataRef.current) {
-          const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
+          const dashboardResult = await readDashboard<CrmDashboardData>(session, "/api/crm/jobs", requestVersion);
           if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
           dashboardDataRef.current = dashboardResult;
           setData(dashboardResult);
         } else {
-          const snapshot = await crmFetch<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active");
+          const snapshot = await readDashboard<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active", requestVersion);
           if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
           setActiveJobsSnapshot(snapshot);
         }
