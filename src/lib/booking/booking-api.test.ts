@@ -360,3 +360,15 @@ describe("pending consultation time requests", () => {
     expect((await requestTime({ idempotencyKey: key })).status).toBe(200);
   });
 });
+
+it.each(["booking", "request"])("persists the full covering list for a %s without dropping newly offered types", async mode => {
+  const productTypes = ["Woven Shades", "Bamboo Shades", "Layered Shades", "Mini Blinds", "Exterior Shades", "Roman Shades"];
+  await publish();
+  const response = mode === "booking"
+    ? await submit({ ...base, productTypes, idempotencyKey: randomUUID() })
+    : await requestTime({ productTypes });
+  expect(response.status).toBe(200);
+  const saved = (await db.query<{ meta: { productTypes: string[] } }>("select meta from leads")).rows[0];
+  expect(saved.meta.productTypes).toHaveLength(productTypes.length);
+  expect(saved.meta.productTypes).toEqual(expect.arrayContaining(productTypes));
+});

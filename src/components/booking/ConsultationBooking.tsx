@@ -22,7 +22,10 @@ type Availability = {
 type Selection = { date: string; time: string };
 const emptyContact = { name: "", phone: "", email: "", notes: "" };
 const countOptions = ["1–5", "6–10", "11–15", "16–20", "21–25", "26–30", "31+"];
-const primaryProducts = ["Shutters", "Roller Shades", "Honeycomb", "Motorized Shades", "Drapery", "Faux Wood/Wood Blinds"];
+const primaryProducts: readonly (typeof productInterestOptions)[number][] = [
+  "Shutters", "Roller Shades", "Honeycomb", "Motorized Shades", "Drapery", "Faux Wood/Wood Blinds",
+  "Woven Shades", "Bamboo Shades", "Layered Shades", "Mini Blinds", "Exterior Shades", "Roman Shades",
+];
 const countValues = ["5", "10", "15", "20", "25", "30", "31"];
 
 function shiftMonth(month: string, delta: number) {

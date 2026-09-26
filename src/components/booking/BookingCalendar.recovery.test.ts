@@ -162,6 +162,11 @@ it("shows contact details only after time selection and preserves the time acros
   expect(host.textContent).toContain("Complete your booking");
   expect(host.querySelector('[aria-label="Optional project questions"]')).not.toBeNull();
   expect(host.querySelector("details summary")?.textContent).toBe("More covering types");
+  for (const product of ['Woven Shades', 'Bamboo Shades', 'Layered Shades', 'Mini Blinds', 'Exterior Shades', 'Roman Shades']) {
+    const choices = host.querySelectorAll<HTMLInputElement>(`input[name="productTypes"][value="${product}"]`);
+    expect(choices).toHaveLength(1);
+    expect(choices[0].closest('details')).toBeNull();
+  }
   expect(host.querySelector<HTMLInputElement>('input[name="email"]')?.required).toBe(false);
   expect([...host.querySelectorAll('.consultation-booking__contact input')].map(input => input.getAttribute('name'))).toEqual(['name', 'phone', 'email']);
   expect(host.querySelectorAll('button[type="submit"]')).toHaveLength(1);

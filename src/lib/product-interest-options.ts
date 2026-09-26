@@ -12,7 +12,10 @@ export const productInterestOptions = [
   "Sheer Shades",
   "Sliding Panel Shades",
   "Vertical Honeycomb",
-  "Layered Shades"
+  "Layered Shades",
+  "Woven Shades",
+  "Bamboo Shades",
+  "Roman Shades"
 ] as const;
 
 export const commercialProjectTypeOptions = [
