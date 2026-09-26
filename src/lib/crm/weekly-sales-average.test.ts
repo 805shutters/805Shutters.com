@@ -9,18 +9,18 @@ function report(sales: [string, number][], now = "2026-09-26T19:00:00Z") {
 }
 
 describe("calendar year weekly gross sales average", () => {
-  it("starts at actual CRM sales history, includes subsequent zero weeks, and excludes this partial week", () => {
-    const history = report([["2026-04-28T12:00:00Z", 814], ["2026-09-20T20:00:00Z", 20186], ["2026-09-21T07:00:00Z", 99999]]);
-    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-04-28", end: "2026-09-20", weekCount: 21, totalCents: 2100000, averageCents: 100000 });
+  it("starts June 1, excludes earlier sales and weeks, includes subsequent zero weeks, and excludes this partial week", () => {
+    const history = report([["2026-04-28T12:00:00Z", 814], ["2026-05-31T20:00:00Z", 99999], ["2026-06-01T07:00:00Z", 14000], ["2026-09-20T20:00:00Z", 2000], ["2026-09-21T07:00:00Z", 99999]]);
+    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-06-01", end: "2026-09-20", weekCount: 16, totalCents: 1600000, averageCents: 100000 });
   });
-  it("uses the first actual sale date rather than assuming May 1 or a rolling four-month window", () => {
-    const history = report([["2026-05-18T07:00:00Z", 18000]]);
-    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-05-18", weekCount: 18, averageCents: 100000 });
+  it("does not add weeks before CRM history if its first sale is later than June 1", () => {
+    const history = report([["2026-06-15T07:00:00Z", 14000]]);
+    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-06-15", weekCount: 14, averageCents: 100000 });
   });
   it("uses Los Angeles boundaries and deduplicates sales across loaded weeks", () => {
-    const history = report([["2026-05-04T06:59:59Z", 210], ["2026-09-21T06:59:59Z", 210], ["2026-09-21T07:00:00Z", 999]]);
+    const history = report([["2026-06-01T06:59:59Z", 999], ["2026-06-01T07:00:00Z", 160], ["2026-09-21T06:59:59Z", 160], ["2026-09-21T07:00:00Z", 999]]);
     history.weeks.push(history.weeks[1]);
-    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-05-03", weekCount: 21, totalCents: 42000, averageCents: 2000 });
+    expect(weeklySalesAverage(history, 2026, "2026-09-21")).toMatchObject({ start: "2026-06-01", weekCount: 16, totalCents: 32000, averageCents: 2000 });
   });
   it("starts subsequent calendar years on January 1 and includes zero-sales weeks before that year's first sale", () => {
     const history = report([["2026-05-01T20:00:00Z", 999], ["2027-01-20T20:00:00Z", 400]], "2027-01-25T20:00:00Z");
@@ -34,8 +34,8 @@ describe("calendar year weekly gross sales average", () => {
     expect(weeklySalesAverage(report([["2026-05-01T20:00:00Z", 100]], "2027-01-11T20:00:00Z"), 2027, "2027-01-11")).toMatchObject({ weekCount: 2, averageCents: 0 });
   });
   it("handles leap years, DST and cent rounding", () => {
-    const history = report([["2024-02-29T20:00:00Z", 100.01]], "2024-03-11T07:00:00Z");
-    expect(weeklySalesAverage(history, 2024, "2024-03-11")).toMatchObject({ weekCount: 2, averageCents: 5001 });
+    const history = report([["2026-05-01T20:00:00Z", 999], ["2028-02-29T20:00:00Z", 100.01]], "2028-03-13T07:00:00Z");
+    expect(weeklySalesAverage(history, 2028, "2028-03-13")).toMatchObject({ weekCount: 11, averageCents: 909 });
     const fall = report([["2026-10-26T07:00:00Z", 220], ["2026-11-02T07:59:59Z", 220]], "2026-11-02T08:00:00Z");
     expect(weeklySalesAverage(fall, 2026, "2026-11-02")).toMatchObject({ weekCount: 1, totalCents: 44000, averageCents: 44000 });
   });

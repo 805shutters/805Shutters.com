@@ -3,7 +3,7 @@ import "@/app/globals.css";
 import "@/components/crm/crm-platinum.css";
 import { OperationsDashboard } from "@/components/crm/OperationsOverview";
 import type { CrmDashboardData, CrmQuote } from "@/lib/crm/types";
-const amounts = [1000, 18000, 2000, 21416.73];
+const amounts = [1000, 18000, 16000, 21416.73];
 const quotes = ["2026-04-28", "2026-05-01", "2026-09-20", "2026-09-25"].map((day, i) => ({id:`sample-${i}`,job_id:`job-${i}`,customer_name:`Sample ${i}`,status:"sold",signed_at:`${day}T18:00:00Z`,quote_total:amounts[i],meta:{}} as CrmQuote));
 const weeks = Array.from({length:22}, (_, i) => {
   const start = new Date(new Date("2026-09-21T12:00:00Z").getTime() - i * 7 * 86400000);
