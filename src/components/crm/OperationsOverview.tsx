@@ -80,10 +80,8 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
           <button type="button" aria-label="Next sales week" title="Next week" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(salesWeekIndex === 1 ? null : metrics.grossWeeks[salesWeekIndex - 1].start)}><ArrowRight size={18} aria-hidden="true" /></button>
         </nav>
         <section className={styles.salesAverage} aria-label="Average weekly gross sales">
-          <span>Average weekly gross sales</span>
+          <span>AVG</span>
           <strong>{average.averageCents === null ? "—" : currency(average.averageCents / 100)}</strong>
-          <small>{average.year} calendar year · {average.weekCount} {average.year === Number(metrics.today.slice(0, 4)) ? "completed " : ""}weeks</small>
-          <small>{!data.closedSales ? "Sales history unavailable" : !average.firstRecordedDate ? "No signed sales recorded" : average.weekCount === 0 ? "No completed weeks yet" : `${displayDate(average.start)} – ${displayDate(average.end)} · Includes zero-sales weeks`}</small>
         </section>
       </div>
       <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Payments collected</span><div><strong>{currency(selected.cashCents / 100)}</strong></div><small>Deposits + balances, less refunds</small><small>{dateRange}</small></button>
