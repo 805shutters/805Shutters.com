@@ -7,6 +7,7 @@ import { brandIdentity } from "@/lib/brand-identity";
 import { getLeadAttribution, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import type { BookingCalendarProps } from "./BookingCalendar";
+import { ConsultationConfirmation } from "./ConsultationConfirmation";
 import "./consultation-booking.css";
 
 type Slot = { time: string; label: string; available: boolean; bookable?: boolean };
@@ -306,7 +307,11 @@ export function ConsultationBooking({ active = true, className = "", heading,
       <div>{title && <h2>{title}</h2>}<p>Free in-home visit · 1 hour</p></div>
       {showClose && <button type="button" className="consultation-booking__close" onClick={onClose} aria-label="Close booking">×</button>}
     </header>}
-    {complete ? <section className="consultation-booking__complete" role="status" ref={completeRef} tabIndex={-1} aria-label={requestMode ? "Request received" : "Appointment confirmation"}>
+    {complete ? <section className={`consultation-booking__complete${requestMode ? "" : " consultation-booking__complete--confirmed"}`} role="status" ref={completeRef} tabIndex={-1} aria-label={requestMode ? "Request received" : "Appointment confirmation"}>
+      {!requestMode ? <ConsultationConfirmation
+        dateLabel={dateLabel(selection.date)} timeLabel={timeLabel(selection.time)} address={address}
+        followUpRequested={bookedFollowUp} onDone={reset} doneLabel={onDone ? "Done" : "Book another appointment"}
+      /> : <>
       <span className="consultation-booking__check" aria-hidden="true">✓</span>
       <h2>{requestMode ? "Your request is received." : "Your appointment is booked."}</h2>
       <p><strong>{dateLabel(selection.date)} at {timeLabel(selection.time)}</strong><br />1 hour · Pacific time</p>
@@ -315,6 +320,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
       {!requestMode && <p>{bookedFollowUp ? "Follow-up from 805 requested." : "No follow-up necessary."}</p>}
       <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
       <button type="button" onClick={reset}>{onDone ? "Done" : requestMode ? "Back to calendar" : "Book another appointment"}</button>
+      </>}
     </section> : <>
       {showSchedule && <div className="consultation-booking__schedule">
         {requestMode && <div className="consultation-booking__request-banner" role="status">

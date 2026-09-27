@@ -346,6 +346,7 @@ it("opens option 1 extended request times and preserves notes on failed request 
   expect(posts[0][1].body).toEqual(posts[1][1].body);
   expect(host.textContent).toContain('Your request is received.');
   expect(host.textContent).toContain('Your appointment is not booked yet.');
+  expect(host.textContent).not.toContain('Jessica will be there.');
   expect(fetchMock.mock.calls.some(([url]) => url === '/api/booking/')).toBe(false);
 });
 
@@ -392,7 +393,7 @@ it("shows offered times as regular booking within the request picker and recheck
   await act(async () => host.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/')).toHaveLength(1);
   expect(fetchMock.mock.calls.filter(([url]) => url === '/api/booking/time-request/')).toHaveLength(0);
-  expect(host.textContent).toContain('Your appointment is booked.');
+  expect(host.textContent).toContain('Appointment confirmed');
 });
 
 it("retains notes and asks for another time if a green opening disappears during normal revalidation", async () => {
@@ -439,6 +440,16 @@ it.each([true, false])("submits and retains follow-up choice %s across a failed 
   expect(requests[1]).toEqual(requests[0]);
   fetchMock.mockResolvedValue(ok({ leadId: 'test', jobId: 'test' }));
   await send();
-  expect(host.textContent).toContain('Your appointment is booked.');
+  expect(host.textContent).toContain('Appointment confirmed');
+  expect(host.textContent).toContain('Jessica will be there.');
+  expect(host.textContent).toContain('Monday, September 28');
+  expect(host.textContent).toContain('10:30 AM · 1 hour · Pacific time');
+  expect(host.textContent).toContain('601 Carmen Drive, Camarillo, CA');
   expect(host.textContent).toContain(followUpRequested ? 'Follow-up from 805 requested.' : 'No follow-up necessary.');
+  expect(host.querySelector('.consultation-booking__complete img')).toBeNull();
+  expect(document.activeElement).toBe(host.querySelector('.consultation-booking__complete'));
+  fetchMock.mockResolvedValue(ok(available()));
+  await click('Book another appointment');
+  expect(host.querySelector('.consultation-booking__complete')).toBeNull();
+  expect(host.querySelector('.consultation-booking__calendar')).not.toBeNull();
 });
