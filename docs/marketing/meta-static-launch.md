@@ -1,6 +1,6 @@
 # 805 Shutters Meta launch preparation
 
-Status: assets exported and browser/booking changes tested locally. CAPI implementation and full preview booking verification remain blocked. No production release, migration, ad publication, or spend.
+Status: assets exported; browser/booking changes locally tested and deployed to preview. PageView verified on preview. CAPI implementation and successful preview booking verification remain blocked. No production release, migration, ad publication, or spend.
 
 ## Creative exports
 
@@ -46,3 +46,26 @@ Load `/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm
 5. Same-key replay returning the same lead ID after an interrupted response.
 
 Local automated tests are not a substitute for this hosted verification.
+
+## Verification results — September 27, 2026
+
+Preview deployment: https://805-qt1d57lb4-805-shutters.vercel.app
+
+Booking URL tested: https://805-qt1d57lb4-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview
+
+Deployed commit: 10ea167c (`codex/meta-static-launch`). Vercel deployment dpl_4mKapdo9zNdH66oT4CmGS1DXMAcY is READY, target preview. No push/merge to main and no production deployment or remote migration.
+
+| Required check | Result | Evidence |
+|---|---|---|
+| Booking PageView | PASS | Browser request to www.facebook.com/tr/ with ev=PageView, id=117872572252906; HTTP 200. |
+| Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI matching-payload approval and secure Meta configuration pending. |
+| Saved Supabase lead with UTMs | BLOCKED / NOT VERIFIED | Form submitted all four expected UTMs, but preview is still configured for production Supabase. The preview guard returned 503 before any database write. |
+| 24-hour duplicate protection on preview | BLOCKED / NOT VERIFIED | No completed preview booking exists to replay. Local transaction and real Postgres race tests passed. |
+
+Actual browser walkthrough: selected September 30 at 1 PM, entered synthetic test contact details and a public test address, selected Roman Shades, clicked Book appointment / No follow-up necessary. The visible result was “Preview booking requires an isolated preview database.” No success or conversion is claimed.
+
+Local verification: 160 booking/tracking tests passed across 13 files; 8 opt-in concurrent tests ran separately and all passed in a temporary Postgres container. TypeScript check and local/Vercel builds passed. The shared SQL transaction, rollback on failed lead write, UTM persistence, same-key replay, different-key 24-hour protection, and simultaneous submissions were exercised locally.
+
+Remaining intervention: approve the listed CAPI matching payload; configure META_CAPI_ACCESS_TOKEN and META_CAPI_TEST_EVENT_CODE in Vercel Preview; provide authorized isolated Supabase branch access and configure its URL/keys securely in Vercel Preview. Then apply the prepared migration to that branch, implement/verify CAPI, redeploy preview and repeat the real booking checks. Supabase branches isolate the schema from production data: https://supabase.com/docs/guides/deployment
+
+Automatic approval review rejected both pulling production secrets into a local environment file and adding a CAPI payload containing hashed contact details, IP/user-agent, and tracking cookies without specific approval. Neither rejection was bypassed.

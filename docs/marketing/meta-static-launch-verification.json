@@ -1,0 +1,27 @@
+{
+  "previewUrl": "https://805-qt1d57lb4-805-shutters.vercel.app",
+  "deployedCommit": "10ea167c",
+  "pageView": {
+    "status": "pass",
+    "dataset": "117872572252906",
+    "event": "PageView",
+    "httpStatus": 200
+  },
+  "bookingAttempt": {
+    "httpStatus": 503,
+    "message": "Preview booking requires an isolated preview database.",
+    "utm_source": "test",
+    "utm_medium": "cpc",
+    "utm_campaign": "verify",
+    "utm_content": "meta-preview"
+  },
+  "scheduleBrowserAndCapi": "blocked_not_verified",
+  "supabaseLead": "blocked_not_verified",
+  "previewDuplicate": "blocked_not_verified",
+  "localTests": {
+    "bookingAndTrackingPassed": 160,
+    "concurrentPostgresPassed": 8
+  },
+  "productionDeployed": false,
+  "remoteMigrationApplied": false
+}
