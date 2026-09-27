@@ -39,7 +39,7 @@ const finiteMoney = (value: unknown): number | null => value === null || value =
 const validDate = (value: unknown): string | null => typeof value === "string" && value && Number.isFinite(Date.parse(value)) ? value : null;
 const unique = <T extends { id: string }>(items: T[]): T[] => [...new Map(items.map((item) => [item.id, item])).values()];
 const isDeleted = (meta: unknown) => Boolean(objectMeta(meta).deleted_at || objectMeta(meta).bookkeeping_deleted_at);
-export const quoteIsTrackingSale = (quote: CrmQuote) => SOLD_STATUSES.has(quote.live_status || quote.status) || Boolean(quote.sold_at || quote.signed_at || quote.customer_signature);
+export const quoteIsTrackingSale = (quote: CrmQuote) => SOLD_STATUSES.has(quote.status) || Boolean(quote.sold_at || quote.signed_at || quote.customer_signature);
 
 /** Never turn a javascript/data URL from a source record into an actionable link. */
 export function trackingSafeUrl(value: string | null | undefined): string | null {
@@ -128,8 +128,16 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
     const quoteSoldAt = quoteExtra && Object.hasOwn(quoteExtra, "source_sold_at") ? quoteExtra.source_sold_at : quote?.sold_at;
     const signedAt = validDate(contractMarker.signed_at) || (quoteExtra && Object.hasOwn(quoteExtra, "source_signed_at") ? validDate(quoteSignedAt) : validDate(quoteSignedAt) || validDate(contracts.find((contract) => contract.signed_at)?.signed_at));
     const explicitRowDate = rowExtra && Object.hasOwn(rowExtra, "sourceSoldDate");
-    const soldDate = explicitRowDate ? validDate(rowExtra.sourceSoldDate) : quote ? validDate(quoteSoldAt) || validDate(quoteSignedAt) || validDate(quote.approved_at) : row ? (row.source === "crm_quote" ? null : validDate(row.soldDate)) : validDate(objectMeta(job?.meta).sold_at);
-    const isSale = Boolean(row || (quote && quoteIsTrackingSale(quote)) || (!quote && job && SOLD_STATUSES.has(job.status)));
+    // A missing ledger date must not suppress dated acceptance evidence. Never
+    // fall back to a projected quote/ledger creation date or a payment date.
+    const soldDate = (explicitRowDate ? validDate(rowExtra.sourceSoldDate) : null)
+      || validDate(quoteSoldAt) || signedAt || validDate(quote?.approved_at)
+      || (!explicitRowDate && row && row.source !== "crm_quote" ? validDate(row.soldDate) : null)
+      || (!quote && !row ? validDate(objectMeta(job?.meta).sold_at) : null);
+    // Payments create quote-backed ledger rows before acceptance. Their existence
+    // (and payment-derived live_status) is not evidence that the quote sold.
+    const isSale = Boolean((row && row.source !== "crm_quote") || signedAt
+      || (quote && quoteIsTrackingSale(quote)) || (!quote && !row && job && SOLD_STATUSES.has(job.status)));
     const total = finiteMoney(row?.total ?? quote?.quote_total ?? job?.estimated_total);
     const depositRequired = finiteMoney(row?.depositDue ?? quote?.deposit_required);
     const depositReceived = finiteMoney(row?.depositPaid ?? (unambiguousJob ? job?.deposit_paid : null));

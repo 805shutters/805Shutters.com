@@ -200,7 +200,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
           return <tr key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
             <th scope="row"><button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button></th>
             <td>{formatOperationsDate(item.source.soldDate) || "Sale date needed"}</td>
-            <td>{mark(item, "quote")}</td><td>{mark(item, "sold")}</td><td>{mark(item, "deposit")}</td>
+            <td>{mark(item, "quote")}</td><td>{mark(item, "sold")}{!item.sold && !item.source.signatureRecorded && (item.source.depositReceived ?? 0) > 0 && <small>Payment received · Signature needed</small>}</td><td>{mark(item, "deposit")}</td>
             {(["ordered", "shipped"] as const).map(step => <td key={step}><div className={styles.condensedProducts}>{products.map((product, index) => <span key={product.id}><CompletionButton done={product[step]} label={`${product[step] ? "Review" : "Mark"} ${product.wholeJob ? "whole job" : [product.name, product.manufacturer].filter(Boolean).join(" · ")} ${step} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:${product.id}`} onClick={() => void act(item, step, product)} />{products.length > 1 && <span>P{index + 1}</span>}</span>)}</div></td>)}
             <td>{mark(item, "installed")}</td><td>{mark(item, "paid")}</td>
             {jobFinancialValues(item).map(([label, value, note]) => <td key={label} className={styles.condensedNumber}><span className={label === "Profit" ? styles.completeText : undefined}>{value}</span>{label === "Installation cost" && note && <span className={styles.condensedNote}> · {note}</span>}</td>)}
@@ -249,7 +249,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       <JobFinancialStrip item={item} />
       <table className={styles.statusTable}><caption className={styles.srOnly}>Job completion by product type for {item.source.customerName}.</caption><thead><tr>{statusColumns.map(label => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody><tr>
       <td data-label="Quote">{mark(item, "quote")}<small>{item.source.quote?.quote_number || (item.quote ? "Quote recorded" : "Not recorded")}</small></td>
-      <td data-label="Sold">{mark(item, "sold")}</td>
+      <td data-label="Sold">{mark(item, "sold")}{!item.sold && !item.source.signatureRecorded && (item.source.depositReceived ?? 0) > 0 && <small>Payment received · Signature needed</small>}</td>
       <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "—" : currency(item.source.depositRequired)}</small></td>
       <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
       <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>

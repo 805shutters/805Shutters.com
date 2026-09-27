@@ -93,3 +93,34 @@ describe('search across all job statuses', () => {
     expect(cards()).toEqual(['Job status for John Charamonte']);
   });
 });
+
+
+it('shows paid unsigned work accurately and signed jobs in sale-date order in both views', async () => {
+  const fixture = {
+    ...data,
+    quotes: [
+      { ...data.quotes[1], id: 'older', job_id: 'older-job', customer_name: 'Earlier sale', sold_at: '2026-09-22' },
+      { ...data.quotes[1], id: 'signed', job_id: 'signed-job', customer_name: 'Signed sale', status: 'sent', sold_at: null, signed_at: '2026-09-23T18:00:00Z', source_signed_at: '2026-09-23T18:00:00Z', source_sold_at: null },
+      { ...data.quotes[1], id: 'unsigned', job_id: 'unsigned-job', customer_name: 'Paid unsigned', status: 'sent', live_status: 'sold', sold_at: null, signed_at: null, source_signed_at: null, source_sold_at: null },
+    ],
+    bookkeepingRows: [
+      { id: 'signed', source: 'crm_quote', quoteId: 'signed', jobId: 'signed-job', sourceSoldDate: null, total: 1000, balance: 500, depositDue: 500, depositPaid: 500 },
+      { id: 'unsigned', source: 'crm_quote', quoteId: 'unsigned', jobId: 'unsigned-job', sourceSoldDate: null, total: 1000, balance: 500, depositDue: 500, depositPaid: 500 },
+    ],
+  } as unknown as CrmDashboardData;
+  await render(fixture);
+  expect(cards()).toEqual(['Job status for Signed sale', 'Job status for Earlier sale', 'Job status for Paid unsigned']);
+  const verify = () => {
+    expect(host.querySelector('[aria-label="Review Sold for Signed sale"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('[aria-label="Record Sold for Paid unsigned"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(host.textContent).toContain('Payment received · Signature needed');
+    expect(host.textContent).toContain('Sep 23, 2026');
+  };
+  verify();
+  await act(async () => [...host.querySelectorAll('label')].find(label => label.textContent === 'List view')!.querySelector('input')!.click());
+  verify();
+  expect([...host.querySelectorAll('tr[aria-label]')].map(el => el.getAttribute('aria-label'))).toEqual(['Job status for Signed sale', 'Job status for Earlier sale', 'Job status for Paid unsigned']);
+  await filter('Sold');
+  expect(host.textContent).not.toContain('Paid unsigned');
+  expect(action).not.toHaveBeenCalled();
+});

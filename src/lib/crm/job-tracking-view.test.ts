@@ -84,6 +84,25 @@ describe("job tracking projection", () => {
     expect(view({ quotes: [rawQuote] })[0]).toMatchObject({ soldDate: null, signedAt: null });
   });
 
+  it("keeps a paid unsigned quote visible without inventing a sale or signing date", () => {
+    const unsigned = quote({ status: "sent", live_status: "sold", sold_at: null, signed_at: null, source_sold_at: null, source_signed_at: null });
+    const item = view({ jobs: [job({ status: "quoted" })], quotes: [unsigned], rows: [row({ sourceSoldDate: null, depositPaid: 500, balance: 500 })] })[0];
+    expect(item).toMatchObject({ isSale: false, signedAt: null, soldDate: null, signatureRecorded: false, depositReceived: 500, balanceOutstanding: 500 });
+    expect(item.progress.active).toBe(true);
+  });
+
+  it("sorts signed quotes by real acceptance dates even when their ledger dates are blank", () => {
+    const signed = quote({ id: "signed", status: "sent", sold_at: null, signed_at: "2026-09-23T18:00:00Z", source_sold_at: null, source_signed_at: "2026-09-23T18:00:00Z" });
+    const items = view({ quotes: [quote({ id: "older", job_id: "older-job" }), signed], rows: [row({ quoteId: "signed", sourceSoldDate: null, soldDate: "2026-08-01" })] });
+    expect(items.map(item => item.quote?.id)).toEqual(["signed", "older"]);
+    expect(items[0]).toMatchObject({ isSale: true, soldDate: signed.signed_at, signedAt: signed.signed_at });
+  });
+
+  it("retains a recorded ledger sale date ahead of the signing fallback", () => {
+    const item = view({ quotes: [quote({ signed_at: "2026-09-23" })], rows: [row({ sourceSoldDate: "2026-09-22" })] })[0];
+    expect(item.soldDate).toBe("2026-09-22");
+  });
+
   it("accepts the explicit standalone source sold date without a quote", () => {
     const items = view({ rows: [{ ...row({ id: "legacy-1", source: "legacy_sheet", quoteId: null, jobId: null, soldDate: "2026-09-03" }), sourceSoldDate: "2026-08-01" } as CrmBookkeepingRow] });
     expect(items[0].soldDate).toBe("2026-08-01");
