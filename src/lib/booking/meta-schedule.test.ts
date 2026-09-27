@@ -12,12 +12,14 @@ it("sends only approved matching fields, fixed source URL, and stable deduplicat
   vi.stubEnv("META_CAPI_ACCESS_TOKEN", "unit-test-token");
   vi.stubEnv("META_CAPI_TEST_EVENT_CODE", "unit-test-code");
   vi.stubEnv("VERCEL_ENV", "preview");
+  vi.stubEnv("META_PIXEL_ID", "117872572252906");
+  vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "117872572252906");
   const fetch = vi.fn().mockResolvedValue(new Response('{"events_received":1}'));
   vi.stubGlobal("fetch", fetch);
   const data = { ...payload(), name: "Never send", matching: { ...payload().matching, client_ip_address: "192.0.2.1", fbp: "never send" } };
   const receipt = await sendMetaScheduleEvent(data);
   const [url, request] = fetch.mock.calls[0];
-  expect(url).toBe("https://graph.facebook.com/v23.0/117872572252906/events");
+  expect(url).toBe("https://graph.facebook.com/v23.0/549342503537516/events");
   expect(request.headers.Authorization).toBe("Bearer unit-test-token");
   expect(JSON.parse(request.body)).toEqual({ test_event_code: "unit-test-code", data: [{
     event_name: "Schedule", event_id: data.eventId, event_time: data.eventTime,

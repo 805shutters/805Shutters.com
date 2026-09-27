@@ -1,3 +1,5 @@
+> Correction (2026-09-27): the confirmed launch dataset is **549342503537516 (805 pixel)**. References to 117872572252906 below describe historical setup and are not the launch target.
+
 # Meta Ads Launch Plan — 805 Shutters
 
 Built from the verified 2025-2026 window-treatment playbook (WTMP "Rule of 3",

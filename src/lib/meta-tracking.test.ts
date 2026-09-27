@@ -7,10 +7,11 @@ vi.mock("next/navigation", () => ({ usePathname: () => state.pathname }));
 vi.mock("@vercel/analytics", () => ({ track: vi.fn() }));
 import { RouteTracking } from "@/components/RouteTracking";
 import { captureFirstTouchAttribution, getLeadAttribution, trackBookingEvent } from "./client-tracking";
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); window.sessionStorage.clear(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); window.sessionStorage.clear(); });
 
 it("queues one PageView per public route even before the Meta script loads, then a deduplicatable Schedule", async () => {
   (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+  vi.stubEnv("NEXT_PUBLIC_META_PIXEL_ID", "117872572252906"); // Legacy override must not win.
   delete window.fbq;
   vi.spyOn(document.head, "appendChild").mockImplementation(node => node);
   const host = document.createElement("div"); document.body.append(host);
@@ -18,7 +19,7 @@ it("queues one PageView per public route even before the Meta script loads, then
   const render = () => act(async () => root.render(createElement(StrictMode, null, createElement(RouteTracking))));
   await render();
   const queue = (window.fbq as unknown as { queue: unknown[][] }).queue;
-  expect(queue).toEqual([["init", "117872572252906"], ["track", "PageView"]]);
+  expect(queue).toEqual([["init", "549342503537516"], ["track", "PageView"]]);
   state.pathname = "/shutters/";
   await render();
   expect(queue.filter(args => args[1] === "PageView")).toHaveLength(2);

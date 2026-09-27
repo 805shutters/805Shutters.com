@@ -2,10 +2,9 @@
   "previewUrl": "https://805-qt1d57lb4-805-shutters.vercel.app",
   "deployedCommit": "10ea167c",
   "pageView": {
-    "status": "pass",
-    "dataset": "117872572252906",
-    "event": "PageView",
-    "httpStatus": 200
+    "status": "not_verified_corrected_dataset",
+    "dataset": "549342503537516",
+    "event": "PageView"
   },
   "bookingAttempt": {
     "httpStatus": 503,
@@ -28,7 +27,8 @@
     "fullSuiteTimeoutFailures": 2,
     "timeoutFilesSerialRerunPassed": 110,
     "finalTypecheck": "pass",
-    "localBuild": "pass"
+    "localBuild": "pass",
+    "datasetCorrectionFocusedPassed": 34
   },
   "productionDeployed": false,
   "remoteMigrationApplied": false,
@@ -46,7 +46,8 @@
       "address",
       "query_parameters"
     ],
-    "providerAcceptance": "not_verified"
+    "providerAcceptance": "not_verified",
+    "dataset": "549342503537516"
   },
   "configurationCheck": {
     "project": "805-shutters/805",
@@ -54,5 +55,16 @@
     "branchScopedMetaVariablesVisible": false,
     "stagingCredentialsReceived": false,
     "browserEvidence": "Meta token is Production only; Meta test event code not listed"
-  }
+  },
+  "previousDatasetPageView": {
+    "status": "superseded_wrong_dataset",
+    "dataset": "117872572252906",
+    "event": "PageView",
+    "httpStatus": 200
+  },
+  "expectedDataset": {
+    "id": "549342503537516",
+    "name": "805 pixel"
+  },
+  "datasetCorrectionDeployed": false
 }

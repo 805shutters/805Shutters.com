@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { NextRequest } from "next/server";
+import { META_DATASET_ID } from "./tracking-config";
 
 type MetaLeadEvent = {
   eventId: string;
@@ -37,7 +38,7 @@ function eventSourceUrl(request: NextRequest, pagePath?: string | null) {
 
 export async function sendMetaLeadEvent(request: NextRequest, lead: MetaLeadEvent) {
   const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
-  const pixelId = process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const pixelId = META_DATASET_ID;
 
   if (!accessToken || !pixelId) {
     return;

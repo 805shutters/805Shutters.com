@@ -22,6 +22,10 @@ export function getGoogleAdsId() {
   return process.env.NEXT_PUBLIC_GOOGLE_ADS_ID?.trim() || undefined;
 }
 
+// The confirmed 805 pixel is shared by browser and server events.
+// Do not let legacy environment overrides split them across datasets.
+export const META_DATASET_ID = "549342503537516";
+
 export function getMetaPixelId() {
-  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "117872572252906";
+  return META_DATASET_ID;
 }

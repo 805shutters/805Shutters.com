@@ -1,6 +1,6 @@
 # 805 Shutters Meta launch preparation
 
-Status: assets exported; browser/booking changes locally tested and deployed to preview. PageView verified on preview. Hashed-email/phone-only CAPI is now implemented locally; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
+Status: assets exported; browser/booking changes locally tested and deployed to preview. Previous PageView evidence targeted the wrong dataset and is superseded. Corrected-dataset PageView remains unverified on preview. Hashed-email/phone-only CAPI is now implemented locally; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
 
 ## Creative exports
 
@@ -25,6 +25,10 @@ The same asset pair supports both Meta button variants. Book Now goes to `/book-
 
 ## Implementation and release gates
 
+Dataset correction is implemented locally, not deployed. The existing hosted preview still uses the earlier dataset and is not launch verification.
+
+Confirmed dataset: **549342503537516 (805 pixel)**. Browser pixel, Schedule CAPI and existing Lead CAPI share the same constant. Legacy META_PIXEL_ID / NEXT_PUBLIC_META_PIXEL_ID values cannot override it. The Meta token and test code must belong to this corrected dataset.
+
 - Browser event: Schedule, eventID = saved CRM lead ID. Public PageView uses a synchronous queue, including the booking route. Private CRM/API paths are excluded.
 - Booking UTM parameters take precedence over older session attribution.
 - Existing atomic booking_commit writes the lead, job, calendar entry, quote, request result, and notification outbox together. Missing lead ID fails closed; transaction failures emit sanitized codes.
@@ -40,7 +44,7 @@ The same asset pair supports both Meta button variants. Book Now goes to `/book-
 
 Load `/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview`, complete an unmistakably labeled test booking on an isolated preview database with all notifications disabled, and retain:
 
-1. Browser PageView network evidence for dataset 117872572252906.
+1. Browser PageView network evidence for dataset 549342503537516 (805 pixel).
 2. Browser Schedule eventID and accepted CAPI Schedule event_id, both equal to the saved lead ID.
 3. Supabase lead row with four expected UTM values.
 4. Duplicate request within 24 hours returning 409 and unchanged lead/job/calendar counts.
@@ -58,7 +62,7 @@ Deployed commit: 10ea167c (`codex/meta-static-launch`). Vercel deployment dpl_4m
 
 | Required check | Result | Evidence |
 |---|---|---|
-| Booking PageView | PASS | Browser request to www.facebook.com/tr/ with ev=PageView, id=117872572252906; HTTP 200. |
+| Booking PageView | NOT VERIFIED FOR CORRECTED DATASET | Prior HTTP 200 targeted 117872572252906; this evidence is superseded. Repeat against 549342503537516. |
 | Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI fields are now approved and implemented locally; staging credentials and visible Meta Preview configuration remain pending. |
 | Saved Supabase lead with UTMs | BLOCKED / NOT VERIFIED | Form submitted all four expected UTMs, but preview is still configured for production Supabase. The preview guard returned 503 before any database write. |
 | 24-hour duplicate protection on preview | BLOCKED / NOT VERIFIED | No completed preview booking exists to replay. Local transaction and real Postgres race tests passed. |
@@ -72,3 +76,5 @@ Remaining intervention: provide the isolated Supabase preview project reference 
 The earlier CAPI approval rejection is resolved by explicit user approval for hashed email/phone only; the broader rejected payload was not implemented. Production-secret export remains prohibited and was not retried.
 
 Latest local checks: focused booking/tracking suite 148 passed; eight real PostgreSQL concurrency tests passed separately; typecheck/build passed. The central preview guard passed its four tests. The full repository run passed 9,431 tests with two quote-pricing timeouts; both affected files then passed all 110 tests with one worker. Final typecheck passed. These do not establish a successful hosted booking.
+
+Dataset correction checks: 34 focused browser/CAPI/delivery/isolation tests passed, including stale environment override tests; typecheck passed. Corrected-dataset hosted checks remain unverified pending staging configuration and preview deployment.

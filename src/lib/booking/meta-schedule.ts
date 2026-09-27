@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-const datasetId = "117872572252906";
+import { META_DATASET_ID } from "@/lib/tracking-config";
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /** Only these two approved customer fields may leave the server for Schedule. */
@@ -38,7 +38,7 @@ export async function sendMetaScheduleEvent(payload: SchedulePayload) {
   if (!userData.em && !userData.ph) throw new Error("META_MATCHING_INVALID");
   let response: Response;
   try {
-    response = await fetch(`https://graph.facebook.com/v23.0/${datasetId}/events`, {
+    response = await fetch(`https://graph.facebook.com/v23.0/${META_DATASET_ID}/events`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
