@@ -1991,6 +1991,18 @@ function getRollerTopTreatmentForValance(valance: string | null): string | null 
   return null;
 }
 
+/** Carry forward explicit legacy choices before updating canonical pricing fields. */
+export function rollerPricingOptions(design: SalesQuoteDesign | undefined): Record<string, unknown> {
+  const options = { ...design?.options_json };
+  if (!stringOption(options, "roller_application")) {
+    options.roller_application = getRollerApplicationForShadeType(design?.shade_type ?? null);
+  }
+  if (!stringOption(options, "top_treatment_class")) {
+    options.top_treatment_class = getRollerTopTreatmentForValance(design?.valance ?? null);
+  }
+  return options;
+}
+
 export function canonicalRollerMotorizationSelections(
   powerConfiguration: unknown,
   configuration: {
@@ -8837,7 +8849,9 @@ export function ShadesAndBlindsOptions({
 
   const handleUpdate = (field: string, value: unknown) => {
     requestedOpenOptionFieldRef.current = undefined;
-    const currentJson = (design?.options_json as Record<string, unknown>) || {};
+    const currentJson = productType === "Roller Shades" && collectsV2PricingFields
+      ? rollerPricingOptions(design)
+      : (design?.options_json as Record<string, unknown>) || {};
     const emptyValue = value === null || value === undefined || value === "";
 
     if (authoritativeV2 && ((productType === "Wood Blinds" && /^json:wood_cutout_(left|right)_type$/.test(field)) || (productType === "Faux Wood Blinds" && currentJson.product_line === "Ultimate" && /^json:ultimate_cutout_(left|right)_type$/.test(field)))) {
@@ -8951,7 +8965,7 @@ export function ShadesAndBlindsOptions({
         nextJson.top_treatment_class = null;
         nextJson.roller_top_treatment = null;
       }
-      const pruned = authoritativeV2
+      const pruned = collectsV2PricingFields
         ? pruneRollerV2UiSelection({
             application,
             couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
@@ -8998,7 +9012,7 @@ export function ShadesAndBlindsOptions({
         coupling_arrangement: value,
         roller_application: nextApplication,
       };
-      const pruned = authoritativeV2
+      const pruned = collectsV2PricingFields
         ? pruneRollerV2UiSelection({
             application: nextApplication,
             couplingArrangement: typeof value === "string" ? value : null,
@@ -9041,7 +9055,7 @@ export function ShadesAndBlindsOptions({
       for (let componentIndex = count + 1; componentIndex <= 4; componentIndex += 1) {
         nextJson[`roller_component_width_${componentIndex}`] = null;
       }
-      const pruned = authoritativeV2
+      const pruned = collectsV2PricingFields
         ? pruneRollerV2UiSelection({
             application: stringOption(nextJson, "roller_application"),
             couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
@@ -9070,7 +9084,7 @@ export function ShadesAndBlindsOptions({
 
     if (productType === "Roller Shades" && field === "json:top_treatment_class") {
       const topTreatment = typeof value === "string" ? value : null;
-      if (!authoritativeV2) {
+      if (!collectsV2PricingFields) {
         onUpdateFields(
           buildLegacyRollerTopTreatmentUpdate(currentJson, topTreatment),
         );
@@ -9153,7 +9167,7 @@ export function ShadesAndBlindsOptions({
       return;
     }
 
-    if (productType === "Roller Shades" && authoritativeV2 && field === "shade_type") {
+    if (productType === "Roller Shades" && collectsV2PricingFields && field === "shade_type") {
       const shadeType = typeof value === "string" ? value : null;
       const nextJson: Record<string, unknown> = {
         ...currentJson,
@@ -9201,7 +9215,7 @@ export function ShadesAndBlindsOptions({
       return;
     }
 
-    if (productType === "Roller Shades" && !authoritativeV2 && isNormanGridDesign(design) && field === "valance") {
+    if (productType === "Roller Shades" && !collectsV2PricingFields && isNormanGridDesign(design) && field === "valance") {
       const valance = typeof value === "string" ? value : null;
       const topTreatment = getRollerTopTreatmentForValance(valance);
       onUpdateFields({valance, options_json: {...currentJson, valance,
@@ -9209,7 +9223,7 @@ export function ShadesAndBlindsOptions({
       return;
     }
 
-    if (productType === "Roller Shades" && authoritativeV2 && field === "valance") {
+    if (productType === "Roller Shades" && collectsV2PricingFields && field === "valance") {
       const valance = typeof value === "string" ? value : null;
       const application = stringOption(currentJson, "roller_application");
       const topTreatment = application?.startsWith("LightGuard 360")
@@ -10684,7 +10698,8 @@ export function ShadesAndBlindsOptions({
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
         const shadeType = getFieldValue(design, "shade_type");
-        const application = getFieldValue(design, "json:roller_application");
+        const pricingOptions = rollerPricingOptions(design);
+        const application = stringOption(pricingOptions, "roller_application");
         const premiumHardware = getFieldValue(design, "json:premium_hardware");
         const rollerComponentCount = Number(
           application === "LightGuard 360 with T-Post"
@@ -10697,7 +10712,7 @@ export function ShadesAndBlindsOptions({
               application,
               couplingArrangement: getFieldValue(design, "json:coupling_arrangement"),
               componentCount: rollerComponentCount,
-              topTreatment: getFieldValue(design, "json:top_treatment_class"),
+              topTreatment: stringOption(pricingOptions, "top_treatment_class"),
             })
           : null;
         const options: GridOption[] = [
@@ -11285,9 +11300,10 @@ export function ShadesAndBlindsOptions({
         const operatingSystem = getFieldValue(design, "lift_system");
         const powerSource = getFieldValue(design, "motor_type");
 
-        // Keep legacy stored values selectable so old quotes still render.
+        // Preserve stored values on the record, but do not offer unsupported
+        // combinations to the catalog pricing engine as selectable choices.
         const withStoredValue = (choices: readonly string[], stored: string | null) =>
-          stored && !choices.includes(stored)
+          !collectsV2PricingFields && stored && !choices.includes(stored)
             ? ([...choices, stored] as readonly string[])
             : choices;
 
@@ -12936,7 +12952,7 @@ export function ShadesAndBlindsOptions({
         Boolean(selectedSideBySidePosition) &&
         selectedSideBySidePosition !== "Not Side-by-Side"));
   const rollerMotorized =
-    authoritativeV2 &&
+    collectsV2PricingFields &&
     productType === "Roller Shades" &&
     motorizationEligibility.eligible &&
     design?.lift_system === "Motorized";

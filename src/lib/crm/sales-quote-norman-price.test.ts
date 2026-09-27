@@ -337,3 +337,31 @@ describe("Norman calculation in ordinary legacy quotes", () => {
     expect(rpc.mock.calls[1][1].p_results[0].selection.manufacturerId.toLowerCase()).toBe("norman");
   });
 });
+
+
+it("sends a mixed legacy quote with custom prices on blocked motor and honeycomb selections", () => {
+  const state = pricedState("roller");
+  const automaticPrice = state.designs[0].unit_price;
+  for (const [index, productId] of ["roller", "honeycomb"].entries()) {
+    const blocked = stateFor(productId, index + 1);
+    const lineId = `manual-line-${index}`;
+    const designId = `manual-design-${index}`;
+    Object.assign(blocked.lines[0], { id: lineId, selected_design_id: designId });
+    Object.assign(blocked.designs[0], { id: designId, line_item_id: lineId, unit_price: 539,
+      lift_system: index === 0 ? "Motorized" : "SmartFit for Sloped Windows",
+      motor_type: index === 0 ? "Single Motor (Battery)" : null,
+      quote_v2_price_status: "blocked",
+      options_json: { ...blocked.designs[0].options_json, manual_price_override: true,
+        power_configuration: null, motorization_selections: [], honeycomb_application: null,
+        cell_size: '3/4" Single Cell', authoritative_price_status: "blocked",
+        authoritative_price_error: "Saved catalog selection is incomplete" },
+    });
+    state.lines.push(blocked.lines[0]); state.designs.push(blocked.designs[0]);
+  }
+  const before = structuredClone(state);
+  const prices = calculateSalesQuoteMirrorPricing(state.quote!, state.lines,
+    new Map(state.lines.map(line => [line.id, state.designs.filter(design => design.line_item_id === line.id)])));
+  expect(prices.subtotal).toBe(Number(automaticPrice) + 539 * 3);
+  expect(state).toEqual(before);
+  expect(state.designs[0].unit_price).toBe(automaticPrice);
+});

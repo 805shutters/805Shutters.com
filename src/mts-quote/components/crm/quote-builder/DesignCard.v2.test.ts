@@ -23,6 +23,7 @@ import {
   buildLegacyShutterRouteUpdate,
   canonicalRollerMotorizationSelections,
   setRollerPowerConfiguration,
+  rollerPricingOptions,
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
   getShutterProgramPricing,
@@ -1873,4 +1874,38 @@ it("preserves real technical tubes when selecting a motor", () => {
   setRollerPowerConfiguration(options, "Automate ARC Motor");
   expect(options.roller_tube).toBe('2" (52mm) Tube');
   expect(options.tube_class).toBe('2" (52mm) Tube');
+});
+
+
+describe("legacy roller canonical pricing transitions", () => {
+  it("derives motor quantity from the saved shade type before saving a power choice", () => {
+    const design = { supplier: "Norman", shade_type: "Single Shade", valance: '4 1/2" Fabric Valance*',
+      motor_type: "Single Motor (Battery)", options_json: { fabric_color_code: "F2099", roller_tube: "All Tubes" },
+    } as unknown as SalesQuoteDesign;
+    const before = structuredClone(design);
+    const options = rollerPricingOptions(design);
+    setRollerPowerConfiguration(options, "Norman Smart Rechargeable Battery with AC Adapter Charger");
+    expect(options).toMatchObject({ roller_application: "Single Shade", top_treatment_class: "Fabric Valance",
+      fabric_color_code: "F2099", roller_tube: null,
+      motorization_selections: [{ groupId: "smart_motorization", optionId: "motor", role: "base_motor", units: 1 }] });
+    expect(design).toEqual(before);
+  });
+
+  it("preserves explicit assembly identities and never invents a power choice", () => {
+    const design = { shade_type: "Coupled Shades", valance: "No Valance", options_json: {
+      roller_application: "Independently Operated Coupled Shades", coupled_shade_count: 2,
+      coupling_arrangement: "Independently Operated", top_treatment_class: "Square Fascia",
+    }} as unknown as SalesQuoteDesign;
+    const options = rollerPricingOptions(design);
+    expect(options).toEqual(design.options_json);
+    expect(options.power_configuration).toBeUndefined();
+    setRollerPowerConfiguration(options, "Automate ARC Motor");
+    expect((options.motorization_selections as {units:number}[])[0].units).toBe(2);
+  });
+
+  it("leaves unknown applications unresolved instead of assuming a single motor", () => {
+    const options = rollerPricingOptions({ options_json: {} } as SalesQuoteDesign);
+    setRollerPowerConfiguration(options, "Automate ARC Motor");
+    expect(options.motorization_selections).toEqual([]);
+  });
 });
