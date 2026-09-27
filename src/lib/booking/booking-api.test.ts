@@ -198,7 +198,7 @@ describe("shared public / CRM booking APIs", () => {
           "select count(*)::int n from booking_outbox",
         )
       ).rows[0].n,
-    ).toBe(8);
+    ).toBe(9);
   });
   it("opens a one-hour residential calendar without collecting any details", async () => {
     await publish();
@@ -227,7 +227,7 @@ describe("shared public / CRM booking APIs", () => {
     expect(jobs.rows[0].meta.windowCount).toBe(savedCount);
     const leads = await db.query<{ meta: Record<string, unknown> }>("select meta from leads");
     expect(leads.rows[0].meta.windowCount).toBe(savedCount);
-    const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox");
+    const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox where kind <> 'meta_schedule'");
     expect(effects.rows).toHaveLength(8);
     for (const { payload } of effects.rows) {
       expect(payload.windowCount).toBe(savedCount);
@@ -385,9 +385,58 @@ it.each([true, false])("stores follow-up choice %s in CRM, calendar, and notific
     expect(records[0].meta.followUpRequested).toBe(followUpRequested);
     expect(records[0].notes).toContain(followUpRequested ? 'Customer requested a follow-up' : 'Customer indicated no follow-up needed.');
   }
-  const effects = (await db.query<{ payload: { followUpRequested: boolean } }>('select payload from booking_outbox')).rows;
+  const effects = (await db.query<{ payload: { followUpRequested: boolean } }>("select payload from booking_outbox where kind <> 'meta_schedule'")).rows;
   expect(effects.length).toBeGreaterThan(0);
   expect(effects.every(effect => effect.payload.followUpRequested === followUpRequested)).toBe(true);
   const job = (await db.query<{ next_action: string }>('select next_action from crm_jobs')).rows[0];
   expect(job.next_action).toBe(followUpRequested ? 'Follow up with customer to confirm appointment details' : 'Review self-booking and prepare appointment');
+});
+
+it("persists ad UTMs and exposes the saved lead ID as the Schedule event ID", async () => {
+  await publish();
+  const utms = { utm_source: "test", utm_medium: "cpc", utm_campaign: "verify", utm_content: "roman-book-now" };
+  const response = await submit({ ...base, ...utms, idempotencyKey: randomUUID() });
+  expect(response.status).toBe(200);
+  const result = await response.json();
+  expect(result.eventId).toBe(result.leadId);
+  const lead = (await db.query("select id,utm_source,utm_medium,utm_campaign,utm_content from leads where id=$1", [result.leadId])).rows[0];
+  expect(lead).toEqual({ id: result.leadId, ...utms });
+  const meta = (await db.query<{payload: Record<string, unknown>}>("select payload from booking_outbox where kind='meta_schedule'")).rows;
+  expect(meta).toHaveLength(1);
+  expect(meta[0].payload).toMatchObject({ eventId: result.eventId, eventTime: expect.any(Number), matching: { ph: [expect.stringMatching(/^[a-f0-9]{64}$/)] } });
+  for (const field of ["name", "phone", "email", "address", "userAgent", "referrer", "fbp", "fbc"])
+    expect(meta[0].payload).not.toHaveProperty(field);
+});
+
+it("blocks a refreshed booking with a new key for 24 hours, including formatted phone/address variants", async () => {
+  await publish();
+  expect((await submit({ ...base, idempotencyKey: randomUUID() })).status).toBe(200);
+  const duplicate = await submit({ ...base, time: "13:00", name: "  LOCAL   TEST  ", phone: "+1 (805) 555-0100", address: "123 Main St.", idempotencyKey: randomUUID() });
+  expect(duplicate.status).toBe(409);
+  expect((await duplicate.json()).message).toContain("already booked");
+  expect((await db.query<{n:number}>("select count(*)::int n from leads")).rows[0].n).toBe(1);
+  await db.exec("update leads set created_at=now()-interval '24 hours 1 second'");
+  expect((await submit({ ...base, time: "13:00", idempotencyKey: randomUUID() })).status).toBe(200);
+});
+
+it("rolls back every booking record when the CRM lead write fails", async () => {
+  await publish();
+  await db.exec("create function reject_test_lead() returns trigger language plpgsql as $$begin raise exception 'TEST_CRM_WRITE_FAILURE';end$$; create trigger reject_test_lead before insert on leads for each row execute function reject_test_lead();");
+  try {
+    expect((await submit({ ...base, idempotencyKey: randomUUID() })).status).toBe(503);
+    for (const table of ["leads","crm_jobs","crm_calendar_events","booking_requests","booking_outbox"])
+      expect((await db.query<{n:number}>(`select count(*)::int n from ${table}`)).rows[0].n).toBe(0);
+    expect(state.after).not.toHaveBeenCalled();
+  } finally { await db.exec("drop trigger reject_test_lead on leads; drop function reject_test_lead();"); }
+});
+
+it("refuses a preview booking against the production Supabase project", async () => {
+  vi.stubEnv("VERCEL_ENV", "preview");
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://evuxqsaucmvgyuvjpqlo.supabase.co");
+  try {
+    const response = await submit({ ...base, idempotencyKey: randomUUID() });
+    expect(response.status).toBe(503);
+    expect((await response.json()).message).toContain("isolated preview database");
+    expect(state.after).not.toHaveBeenCalled();
+  } finally { vi.unstubAllEnvs(); }
 });

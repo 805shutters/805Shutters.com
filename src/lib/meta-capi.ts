@@ -1,5 +1,6 @@
-import { createHash } from "crypto";
 import { NextRequest } from "next/server";
+import { META_DATASET_ID } from "./tracking-config";
+import { scheduleMatchingData } from "./booking/meta-schedule";
 
 type MetaLeadEvent = {
   eventId: string;
@@ -10,85 +11,24 @@ type MetaLeadEvent = {
   pagePath?: string | null;
 };
 
-function hashValue(value?: string | null) {
-  const normalized = value?.trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-  return createHash("sha256").update(normalized).digest("hex");
-}
-
-function clientIp(request: NextRequest) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    return forwardedFor.split(",")[0]?.trim();
-  }
-  return request.headers.get("x-real-ip") || undefined;
-}
-
-function eventSourceUrl(request: NextRequest, pagePath?: string | null) {
-  const referrer = request.headers.get("referer");
-  if (referrer) {
-    return referrer;
-  }
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com";
-  return `${baseUrl}${pagePath || "/free-window-treatment-consultation/"}`;
-}
-
-export async function sendMetaLeadEvent(request: NextRequest, lead: MetaLeadEvent) {
-  const accessToken = process.env.META_CAPI_ACCESS_TOKEN;
-  const pixelId = process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID;
-
-  if (!accessToken || !pixelId) {
-    return;
-  }
-
-  const endpoint = new URL(`https://graph.facebook.com/v20.0/${pixelId}/events`);
-  endpoint.searchParams.set("access_token", accessToken);
-
-  const testEventCode = process.env.META_CAPI_TEST_EVENT_CODE;
-  const payload: Record<string, unknown> = {
-    data: [
-      {
-        event_name: "Lead",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: lead.eventId,
-        action_source: "website",
-        event_source_url: eventSourceUrl(request, lead.pagePath),
-        user_data: {
-          client_ip_address: clientIp(request),
-          client_user_agent: request.headers.get("user-agent") || undefined,
-          em: hashValue(lead.email),
-          ph: hashValue(lead.phone),
-          fbp: request.cookies.get("_fbp")?.value,
-          fbc: request.cookies.get("_fbc")?.value
-        },
-        custom_data: {
-          content_name: "Free Window Treatment Consultation",
-          content_category: "window_treatments",
-          currency: "USD",
-          value: 1,
-          city: lead.city || undefined,
-          interest: lead.interest || undefined
-        }
-      }
-    ]
-  };
-
-  if (testEventCode) {
-    payload.test_event_code = testEventCode;
-  }
-
-  const response = await fetch(endpoint, {
+export async function sendMetaLeadEvent(_request: NextRequest, lead: MetaLeadEvent) {
+  const token = process.env.META_CAPI_ACCESS_TOKEN;
+  if (!token) return;
+  const matching = scheduleMatchingData(lead.email || "", lead.phone || "");
+  if (!matching.em && !matching.ph) return;
+  const testCode = process.env.VERCEL_ENV === "preview"
+    ? process.env.META_CAPI_TEST_EVENT_CODE : undefined;
+  const response = await fetch(`https://graph.facebook.com/v23.0/${META_DATASET_ID}/events`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Meta CAPI Lead event failed: ${response.status} ${body}`);
-  }
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      data: [{ event_name: "Lead", event_time: Math.floor(Date.now() / 1000),
+        event_id: lead.eventId, action_source: "website",
+        event_source_url: "https://www.805shutters.com/free-window-treatment-consultation/",
+        user_data: matching }],
+      ...(testCode ? { test_event_code: testCode } : {}),
+    }),
+    signal: AbortSignal.timeout(10000),
+  }).catch(() => { throw new Error("META_NETWORK_FAILURE"); });
+  if (!response.ok) throw new Error(`META_HTTP_${response.status}`);
 }

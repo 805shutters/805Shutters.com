@@ -32,17 +32,19 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function outboxClient(kind: string, event: Record<string, unknown> | null, eventError: unknown = null) {
+function outboxClient(kind: string, event: Record<string, unknown> | null, eventError: unknown = null, payload: unknown = details) {
   const updates: Record<string, unknown>[] = [];
   const from = vi.fn((table: string) => {
     const chain: Record<string, unknown> = {};
-    for (const method of ["select", "eq", "lt", "order", "limit"]) chain[method] = vi.fn(() => chain);
+    let selectedKind: string | null = null;
+    for (const method of ["select", "eq", "neq", "lt", "order", "limit"]) chain[method] = vi.fn(() => chain);
+    chain.eq = vi.fn((key: string, value: string) => { if (key === "kind") selectedKind = value; return chain; });
     chain.update = vi.fn((value: Record<string, unknown>) => { updates.push(value); return chain; });
     chain.maybeSingle = vi.fn().mockResolvedValue({ data: event, error: eventError });
-    chain.then = (resolve: (value: unknown) => void) => resolve({ data: table === "booking_outbox" ? [{ id: "effect-1" }] : null, error: null });
+    chain.then = (resolve: (value: unknown) => void) => resolve({ data: table === "booking_outbox" && (!selectedKind || selectedKind === kind) ? [{ id: "effect-1" }] : null, error: null });
     return chain;
   });
-  const rpc = vi.fn().mockResolvedValue({ data: { kind, payload: details }, error: null });
+  const rpc = vi.fn().mockResolvedValue({ data: { kind, payload }, error: null });
   return { supabase: { from, rpc } as unknown as SupabaseClient, updates, from, rpc };
 }
 
@@ -107,9 +109,11 @@ it("does not send when the current appointment cannot be verified", async () => 
   expect(fetch).not.toHaveBeenCalled();
   expect(updates).toContainEqual(expect.objectContaining({ status: "uncertain", last_error: expect.stringContaining("not confirmed") }));
 });
-it("staging never claims or sends queued effects", async () => {
+it("staging never claims customer effects while CAPI remains enabled", async () => {
   vi.stubEnv("BOOKING_DELIVERY_ENABLED", "false");
-  expect(await processBookingOutbox(client)).toEqual({ paused: true });
+  const { supabase, rpc } = outboxClient("customer_email", null);
+  expect(await processBookingOutbox(supabase)).toEqual({ processed: 0 });
+  expect(rpc).not.toHaveBeenCalled();
 });
 it("does not report a failed webhook as delivered", async () => {
   vi.stubEnv(
@@ -176,4 +180,31 @@ it("does not resend an ambiguous owner SMS and keeps its outcome uncertain", asy
   await processBookingOutbox(supabase);
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(updates.some(u => u.status === "sent")).toBe(false);
+});
+
+const metaPayload = { eventId: "saved-lead-id", eventTime: 1790528400, matching: { ph: ["a".repeat(64)] } };
+it("records CAPI acceptance with the saved event ID while customer delivery is paused", async () => {
+  vi.stubEnv("VERCEL_ENV", "preview");
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "false");
+  vi.stubEnv("META_CAPI_ACCESS_TOKEN", "test-only-token");
+  vi.stubEnv("META_CAPI_TEST_EVENT_CODE", "test-only-code");
+  const fetch = vi.fn().mockResolvedValue(new Response('{"events_received":1}'));
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, updates } = outboxClient("meta_schedule", null, null, metaPayload);
+  await processBookingOutbox(supabase);
+  expect(JSON.parse(fetch.mock.calls[0][1].body).data[0].event_id).toBe(metaPayload.eventId);
+  expect(updates).toContainEqual(expect.objectContaining({ status: "sent", payload: expect.objectContaining({ metaReceipt: expect.objectContaining({ eventId: metaPayload.eventId, eventsReceived: 1 }) }) }));
+});
+it("retries CAPI provider failures with the original ID/time and retains a sanitized error", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "false");
+  vi.stubEnv("META_CAPI_ACCESS_TOKEN", "test-only-token");
+  const fetch = vi.fn().mockResolvedValueOnce(new Response('private provider detail', { status: 503 })).mockResolvedValueOnce(new Response('{"events_received":1}'));
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, updates } = outboxClient("meta_schedule", null, null, metaPayload);
+  await processBookingOutbox(supabase);
+  expect(updates).toContainEqual({ status: "pending", last_error: "META_HTTP_503" });
+  await processBookingOutbox(supabase);
+  const events = fetch.mock.calls.map(call => JSON.parse(call[1].body).data[0]);
+  expect(events[1]).toEqual(events[0]);
+  expect(JSON.stringify(updates)).not.toContain("private provider detail");
 });

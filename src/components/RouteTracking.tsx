@@ -5,12 +5,18 @@ import { useEffect, useRef } from "react";
 import { isPublicFacingPath } from "@/lib/public-activity";
 import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
 
+import { metaPixel } from "@/lib/meta-pixel";
+
 export function RouteTracking() {
   const pathname = usePathname();
   const didMount = useRef(false);
+  const previousPath = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isPublicFacingPath(pathname)) return;
+    if (previousPath.current === pathname) return;
+    previousPath.current = pathname;
+    metaPixel("track", "PageView");
 
     if (!didMount.current) {
       didMount.current = true;
@@ -31,7 +37,7 @@ export function RouteTracking() {
         page_path: pathname
       });
     }
-    window.fbq?.("track", "PageView");
+
   }, [pathname]);
 
   return null;

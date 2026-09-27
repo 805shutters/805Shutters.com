@@ -38,6 +38,8 @@ export type ScheduleSnapshot = {
   bufferExceptions: BufferException[];
 };
 export function scheduleError(error: { message?: string } | null): never {
+  if (error?.message?.includes("BOOKING_DUPLICATE"))
+    throw new BookingError(409, "You already booked a consultation within the last 24 hours. Please call 805-806-9344 if you need to change it.");
   if (/BOOKING_/.test(error?.message || ""))
     throw new BookingError(
       409,

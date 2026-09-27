@@ -8,6 +8,13 @@ export function getSupabaseServiceClient() {
     return null;
   }
 
+  // Preview must never read or mutate the production CRM, including cron jobs.
+  if (process.env.VERCEL_ENV === "preview") {
+    try {
+      if (new URL(url).hostname === "evuxqsaucmvgyuvjpqlo.supabase.co") return null;
+    } catch { return null; }
+  }
+
   return createClient(url, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
