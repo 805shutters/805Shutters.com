@@ -5,6 +5,19 @@ const quote = (id: string, name: string, extra = {}) => ({ id, customer_name: na
 const contract = (id: string, extra = {}) => ({ id, title: "Signed contract", meta: {}, ...extra } as CrmCustomerContract);
 const data = (extra: Partial<CrmDashboardData> = {}) => ({ quotes: [], customerContracts: [], customerFiles: [], customers: [], jobs: [], bookkeepingRows: [], ...extra } as unknown as CrmDashboardData);
 describe("contract-only customer search", () => {
+  it("omits manufacturer packets while retaining the exact customer contract", () => {
+    const entries = buildContractLibrary(data({
+      quotes: [quote("805-0258", "Ruth Sample")],
+      customerContracts: [
+        contract("manifest", { quote_id: "805-0258", title: "Agentic Order Packet", contract_url: "/api/crm/vendor-order-packets/805-0258", signed_at: "2026-09-22", meta: { source: "manufacturer_order_manifest" } }),
+        contract("onyx", { quote_id: "805-0258", contract_url: "/api/crm/vendor-order-packets/onyx/805-0258", meta: { source: "manufacturer_order_packet" } }),
+        contract("missing-meta", { quote_id: "805-0258", contract_url: "https://www.805shutters.com/api/crm/vendor-order-packets/805-0258?format=html" }),
+        contract("source-only", { quote_id: "805-0258", contract_url: "https://docs.test/internal.pdf", meta: { source: "manufacturer_order_manifest" } }),
+      ],
+    }));
+    expect(entries).toMatchObject([{ id: "quote:805-0258", customerName: "Ruth Sample", url: "/quote/token-805-0258?crmContract=1" }]);
+    expect(entries).toHaveLength(1);
+  });
   it("searches names only, ignoring case, accents and word order", () => {
     const entries = buildContractLibrary(data({ quotes: [quote("805-1234", "José Smith"), quote("other", "Jane Doe")] }));
     expect(searchContracts(entries, " SMITH jose ").map(entry => entry.customerName)).toEqual(["José Smith"]);

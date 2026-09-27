@@ -2,6 +2,7 @@ import type { CrmDashboardData } from "./types";
 import { jobContractPreviewUrl } from "./job-contract-preview";
 import { objectMeta } from "./measure-needed-state";
 import { trackingSafeUrl } from "./job-tracking-view";
+import { isCustomerContractDocument } from "./customer-contract-document";
 
 export type ContractLibraryEntry = { id: string; customerName: string; title: string; signedAt: string | null; url: string | null };
 
@@ -13,7 +14,7 @@ export function buildContractLibrary(data: CrmDashboardData): ContractLibraryEnt
   const quotes = new Map([...data.customerFiles.flatMap(file => file.quotes), ...data.quotes].map(quote => [quote.id, quote]));
   const contracts = new Map([...data.customerFiles.flatMap(file => file.contracts), ...data.customerContracts].map(contract => [contract.id, contract]));
   for (const contract of contracts.values()) {
-    if (contract.meta?.deleted_at || contract.meta?.source === "bookkeeping_row") continue;
+    if (contract.meta?.deleted_at || !isCustomerContractDocument(contract)) continue;
     const quote = contract.quote_id ? quotes.get(contract.quote_id) : undefined;
     if (quote?.meta?.deleted_at || quote?.meta?.bookkeeping_deleted_at) continue;
     const row = data.bookkeepingRows.find(row => row.id === contract.bookkeeping_entry_id);
