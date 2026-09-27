@@ -1,5 +1,6 @@
 "use client";
 
+import { metaPixel } from "@/lib/meta-pixel";
 import { track } from "@vercel/analytics";
 import { getGoogleAdsId } from "@/lib/tracking-config";
 
@@ -134,7 +135,7 @@ export function getLeadAttribution(): LeadAttribution {
   try {
     const stored = window.sessionStorage.getItem(firstTouchStorageKey);
     const firstTouch = stored ? (JSON.parse(stored) as LeadAttribution) : {};
-    return { ...current, ...firstTouch };
+    return { ...firstTouch, ...current };
   } catch {
     return current;
   }
@@ -241,6 +242,7 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
   }
 
   const eventId = params.eventId;
+  if (!eventId) return; // Only a confirmed, saved booking is a conversion.
   const pagePath = params.pagePath || window.location.pathname;
   const productTypes = productInterestLabel(params.productTypes);
   const eventParams = {
@@ -260,9 +262,9 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
     send_to: googleAdsSendTo(process.env.NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL)
   });
 
-  window.fbq?.(
+  metaPixel(
     "track",
-    "Lead",
+    "Schedule",
     {
       content_name: "Self-Booked Consultation",
       content_category: "window_treatments",

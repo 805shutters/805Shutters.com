@@ -52,7 +52,7 @@ function parallelSql(query: string) {
     child.stdin!.end(query);
   });
 }
-function request(time: string, revision: string, key = randomUUID(), residential = false) {
+function request(time: string, revision: string, key = randomUUID(), residential = false, matchIdentity = false) {
   const event = candidateVisit("2035-10-01", time, "123 Main St", residential ? null : 5);
   if (residential) event.meta = { windowCount: null, bookingDurationPolicy: "residential_fixed_60_v1" };
   const proof = {
@@ -62,7 +62,7 @@ function request(time: string, revision: string, key = randomUUID(), residential
     previous: null,
     next: null,
   };
-  return `select booking_commit(${literal(key)},'hash',${literal(revision)},${literal({ source: "self_booking", status: "booked", name: "Test", phone: "8055550100", meta: {} })},${literal({ customer_name: "Test", phone: "8055550100", address: "123 Main St", product_interest: "shutters", meta: {} })},${literal(event)},${literal([proof])},'[{"kind":"customer_sms","payload":{}}]');`;
+  return `select booking_commit(${literal(key)},'hash',${literal(revision)},${literal({ source: "self_booking", status: "booked", name: "Test", phone: "8055550100", meta: matchIdentity ? { address: "123 Main St" } : {} })},${literal({ customer_name: "Test", phone: "8055550100", address: "123 Main St", product_interest: "shutters", meta: {} })},${literal(event)},${literal([proof])},'[{"kind":"customer_sms","payload":{}}]');`;
 }
 let started = false;
 describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
@@ -132,6 +132,20 @@ describe.skipIf(!enabled)("real Postgres concurrent schedule writes", () => {
     expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
     expect(sql("select count(*) from crm_calendar_events;")).toBe("1");
     expect(sql("select extract(epoch from (end_at-start_at))/60 from crm_calendar_events;")).toBe("60.0000000000000000");
+  });
+  it("blocks two different-key submissions for the same person even at non-overlapping times", async () => {
+    const revision = sql("select revision from booking_schedule_state;");
+    const results = await Promise.allSettled([
+      parallelSql(request("10:00", revision, randomUUID(), true, true)),
+      parallelSql(request("13:00", revision, randomUUID(), true, true)),
+    ]);
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    const rejected = results.find(result => result.status === "rejected") as PromiseRejectedResult;
+    expect(rejected.reason.message).toContain("BOOKING_DUPLICATE");
+    expect(sql("select count(*) from leads;")).toBe("1");
+    expect(sql("select count(*) from crm_jobs;")).toBe("1");
+    expect(sql("select count(*) from crm_calendar_events;")).toBe("1");
+    expect(sql("select has_function_privilege('anon','booking_recent_duplicate(text,text,text)','EXECUTE');")).toBe("f");
   });
   it("replays simultaneous identical requests exactly once", async () => {
     const revision = sql("select revision from booking_schedule_state;"),

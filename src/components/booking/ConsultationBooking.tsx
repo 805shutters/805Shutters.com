@@ -282,7 +282,7 @@ export function ConsultationBooking({ active = true, className = "", heading,
       setBookedFollowUp(followUpRequested);
       setComplete(true);
       // The outbox is asynchronous. Queued or provider-accepted messages are not delivery proof.
-      if (!requestMode) trackBookingEvent({ eventId: result.leadId, jobId: result.jobId, productTypes, windowCount,
+      if (!requestMode) trackBookingEvent({ eventId: result.eventId || result.leadId, jobId: result.jobId, productTypes, windowCount,
         followUpRequested, ...trackingContext() });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "We couldn’t finish booking. Please try again.");

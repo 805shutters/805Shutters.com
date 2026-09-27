@@ -194,6 +194,7 @@ function CommercialBookingCalendar({
   const loadingRef = useRef(false);
   const availabilityErrorRef = useRef<string | null>(null);
   const revisionRef = useRef<string | null>(null);
+  const submittingRef = useRef(false);
   const requestKey = useRef<{ body: string; key: string } | null>(null);
   const [contact, setContact] = useState({
     name: "",
@@ -443,6 +444,7 @@ function CommercialBookingCalendar({
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submittingRef.current) return;
     if (
       !selectedDate ||
       !selectedTime ||
@@ -461,6 +463,7 @@ function CommercialBookingCalendar({
 
     const formData = new FormData(event.currentTarget);
     const trackingContext = bookingTrackingContext();
+    submittingRef.current = true;
     setSubmitting(true);
     setMessage(null);
 
@@ -501,7 +504,7 @@ function CommercialBookingCalendar({
         throw new Error(body.message || "Appointment could not be booked.");
       }
       trackBookingEvent({
-        eventId: typeof body.leadId === "string" ? body.leadId : undefined,
+        eventId: typeof body.eventId === "string" ? body.eventId : body.leadId,
         jobId: typeof body.jobId === "string" ? body.jobId : undefined,
         productTypes: selectedProductTypes,
         windowCount: selectedWindowCount,
@@ -517,6 +520,7 @@ function CommercialBookingCalendar({
           : "Appointment could not be booked.",
       );
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }

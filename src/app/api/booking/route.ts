@@ -108,6 +108,9 @@ function formatDuration(minutes: number) {
 }
 
 async function submit(request: NextRequest) {
+  if (process.env.VERCEL_ENV === "preview" &&
+      (!process.env.NEXT_PUBLIC_SUPABASE_URL || new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname === "evuxqsaucmvgyuvjpqlo.supabase.co"))
+    throw new BookingError(503, "Preview booking requires an isolated preview database.");
   const payload = (await request.json()) as BookingPayload;
   const date = clean(payload.date);
   const time = clean(payload.time);
@@ -225,6 +228,11 @@ async function submit(request: NextRequest) {
       headers: { "Cache-Control": "no-store" },
     });
   }
+  const { data: duplicate, error: duplicateError } = await supabase.rpc("booking_recent_duplicate", {
+    p_name: name, p_phone: phone, p_address: address,
+  });
+  if (duplicateError) scheduleError(duplicateError);
+  if (duplicate) scheduleError({ message: "BOOKING_DUPLICATE" });
   const geocodeResult = await validateServiceAddress(address);
   const assignedRep = "Jessica";
   const startAt = zonedTimeToUtc(date, time).toISOString();
@@ -404,7 +412,14 @@ async function submit(request: NextRequest) {
       })),
     });
     if (error?.message?.includes("BOOKING_STALE") && attempt === 0) continue;
-    if (error) scheduleError(error);
+    if (error) {
+      console.error("Booking transaction failed", { requestId: idempotencyKey, code: error.code || "DB_ERROR" });
+      scheduleError(error);
+    }
+    if (!data?.leadId || data.eventId !== data.leadId) {
+      console.error("Booking transaction returned no verified lead", { requestId: idempotencyKey });
+      throw new BookingError(503, "Booking could not be verified. Please call 805 Shutters before trying again.");
+    }
     after(async () => {
       try {
         await processBookingOutbox(supabase, idempotencyKey);
@@ -426,6 +441,8 @@ export async function POST(request: NextRequest) {
   try {
     return await submit(request);
   } catch (error) {
+    if (!(error instanceof BookingError) || error.status >= 500)
+      console.error("Booking submission failed", { code: error instanceof BookingError ? `HTTP_${error.status}` : "UNEXPECTED_ERROR" });
     return NextResponse.json(
       {
         message:

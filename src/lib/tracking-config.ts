@@ -13,7 +13,7 @@ export function getGa4Ids() {
   return Array.from(
     new Set([
       ...splitTrackingIds(process.env.NEXT_PUBLIC_GA4_IDS),
-      ...splitTrackingIds(process.env.NEXT_PUBLIC_GA4_ID)
+      ...splitTrackingIds(process.env.NEXT_PUBLIC_GA4_ID || "G-CJEBNQJY81")
     ])
   );
 }
@@ -23,5 +23,5 @@ export function getGoogleAdsId() {
 }
 
 export function getMetaPixelId() {
-  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || undefined;
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || "117872572252906";
 }
