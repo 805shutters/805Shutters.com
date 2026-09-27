@@ -1,6 +1,6 @@
 # 805 Shutters Meta launch preparation
 
-Status: assets exported; browser/booking changes locally tested and deployed to preview. Previous PageView evidence targeted the wrong dataset and is superseded. Corrected-dataset PageView remains unverified on preview. Hashed-email/phone-only CAPI is now implemented locally; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
+Status: assets exported; browser/booking changes locally tested and deployed to preview. Corrected-dataset PageView is verified on the latest preview (HTTP 200). Hashed-email/phone-only CAPI is deployed but not provider-verified; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
 
 ## Creative exports
 
@@ -25,7 +25,7 @@ The same asset pair supports both Meta button variants. Book Now goes to `/book-
 
 ## Implementation and release gates
 
-Dataset correction is implemented locally, not deployed. The existing hosted preview still uses the earlier dataset and is not launch verification.
+Dataset correction is deployed to the latest preview. PageView passed for 549342503537516; the earlier dataset evidence remains superseded.
 
 Confirmed dataset: **549342503537516 (805 pixel)**. Browser pixel, Schedule CAPI and existing Lead CAPI share the same constant. Legacy META_PIXEL_ID / NEXT_PUBLIC_META_PIXEL_ID values cannot override it. The Meta token and test code must belong to this corrected dataset.
 
@@ -54,20 +54,20 @@ Local automated tests are not a substitute for this hosted verification.
 
 ## Verification results — September 27, 2026
 
-Preview deployment: https://805-qt1d57lb4-805-shutters.vercel.app
+Preview deployment: https://805-p1lah6ktm-805-shutters.vercel.app
 
-Booking URL tested: https://805-qt1d57lb4-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview
+Booking URL tested: https://805-p1lah6ktm-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview
 
-Deployed commit: 10ea167c (`codex/meta-static-launch`). Vercel deployment dpl_4mKapdo9zNdH66oT4CmGS1DXMAcY is READY, target preview. No push/merge to main and no production deployment or remote migration.
+Deployed commit: f059680b (`codex/meta-static-launch`). Vercel deployment dpl_7gCCbT1eMBAkXPuhZbeGquCio9Tr is READY, target preview. No push/merge to main and no production deployment or remote migration.
 
 | Required check | Result | Evidence |
 |---|---|---|
-| Booking PageView | NOT VERIFIED FOR CORRECTED DATASET | Prior HTTP 200 targeted 117872572252906; this evidence is superseded. Repeat against 549342503537516. |
+| Booking PageView | PASS | Actual browser request ev=PageView, id=549342503537516; Meta returned HTTP 200. |
 | Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI fields are now approved and implemented locally; staging credentials and visible Meta Preview configuration remain pending. |
 | Saved Supabase lead with UTMs | BLOCKED / NOT VERIFIED | Form submitted all four expected UTMs, but preview is still configured for production Supabase. The preview guard returned 503 before any database write. |
 | 24-hour duplicate protection on preview | BLOCKED / NOT VERIFIED | No completed preview booking exists to replay. Local transaction and real Postgres race tests passed. |
 
-Actual browser walkthrough: selected September 30 at 1 PM, entered synthetic test contact details and a public test address, selected Roman Shades, clicked Book appointment / No follow-up necessary. The visible result was “Preview booking requires an isolated preview database.” No success or conversion is claimed.
+Earlier browser walkthrough (old preview): selected September 30 at 1 PM, entered synthetic test contact details and a public test address, selected Roman Shades, clicked Book appointment / No follow-up necessary. The visible result was “Preview booking requires an isolated preview database.” No success or conversion is claimed.
 
 Local verification: 160 booking/tracking tests passed across 13 files; 8 opt-in concurrent tests ran separately and all passed in a temporary Postgres container. TypeScript check and local/Vercel builds passed. The shared SQL transaction, rollback on failed lead write, UTM persistence, same-key replay, different-key 24-hour protection, and simultaneous submissions were exercised locally.
 
@@ -77,4 +77,8 @@ The earlier CAPI approval rejection is resolved by explicit user approval for ha
 
 Latest local checks: focused booking/tracking suite 148 passed; eight real PostgreSQL concurrency tests passed separately; typecheck/build passed. The central preview guard passed its four tests. The full repository run passed 9,431 tests with two quote-pricing timeouts; both affected files then passed all 110 tests with one worker. Final typecheck passed. These do not establish a successful hosted booking.
 
-Dataset correction checks: 34 focused browser/CAPI/delivery/isolation tests passed, including stale environment override tests; typecheck passed. Corrected-dataset hosted checks remain unverified pending staging configuration and preview deployment.
+Dataset correction checks: 34 focused browser/CAPI/delivery/isolation tests passed, including stale environment override tests; typecheck passed. Corrected-dataset PageView passed on the new preview; successful booking checks remain blocked.
+
+Latest hosted test: loaded `/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify`. Correct-dataset PageView returned HTTP 200. Availability returned HTTP 503 with “Scheduling is temporarily unavailable. Please call 805 Shutters.” The preview service-client guard blocks the production database; staging has not been supplied.
+
+Meta portal inspection verified dataset 549342503537516 named “805 pixel”, owned by 805 Shutters (owner ID 316738593873654). Its Test Events page exposes a test code; Settings exposes Generate access token, rather than an existing visible token. Neither value has been transferred into Vercel Preview. On continuation, the Chrome control connection returned “User unavailable”; reconnect Chrome before resuming. No secret value is retained in this report.

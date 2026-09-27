@@ -1,18 +1,11 @@
 {
-  "previewUrl": "https://805-qt1d57lb4-805-shutters.vercel.app",
-  "deployedCommit": "10ea167c",
+  "previewUrl": "https://805-p1lah6ktm-805-shutters.vercel.app",
+  "deployedCommit": "f059680b",
   "pageView": {
-    "status": "not_verified_corrected_dataset",
+    "status": "pass",
     "dataset": "549342503537516",
-    "event": "PageView"
-  },
-  "bookingAttempt": {
-    "httpStatus": 503,
-    "message": "Preview booking requires an isolated preview database.",
-    "utm_source": "test",
-    "utm_medium": "cpc",
-    "utm_campaign": "verify",
-    "utm_content": "meta-preview"
+    "event": "PageView",
+    "httpStatus": 200
   },
   "scheduleBrowserAndCapi": "blocked_not_verified",
   "supabaseLead": "blocked_not_verified",
@@ -33,7 +26,7 @@
   "productionDeployed": false,
   "remoteMigrationApplied": false,
   "capiImplementation": {
-    "status": "implemented_locally",
+    "status": "deployed_not_provider_verified",
     "approvedCustomerFields": [
       "sha256_email",
       "sha256_phone"
@@ -54,7 +47,14 @@
     "metaPreviewVariableNamesVisible": false,
     "branchScopedMetaVariablesVisible": false,
     "stagingCredentialsReceived": false,
-    "browserEvidence": "Meta token is Production only; Meta test event code not listed"
+    "browserEvidence": "Meta token is Production only; Meta test event code not listed",
+    "metaPortal": {
+      "datasetConfirmed": true,
+      "testCodeLocated": true,
+      "testCodeSavedToVercel": false,
+      "accessTokenRetrieved": false,
+      "browserControl": "unavailable_on_resume"
+    }
   },
   "previousDatasetPageView": {
     "status": "superseded_wrong_dataset",
@@ -66,5 +66,19 @@
     "id": "549342503537516",
     "name": "805 pixel"
   },
-  "datasetCorrectionDeployed": false
+  "datasetCorrectionDeployed": true,
+  "deploymentId": "dpl_7gCCbT1eMBAkXPuhZbeGquCio9Tr",
+  "previousBookingAttempt": {
+    "httpStatus": 503,
+    "message": "Preview booking requires an isolated preview database.",
+    "utm_source": "test",
+    "utm_medium": "cpc",
+    "utm_campaign": "verify",
+    "utm_content": "meta-preview"
+  },
+  "bookingAvailability": {
+    "httpStatus": 503,
+    "message": "Scheduling is temporarily unavailable. Please call 805 Shutters.",
+    "reason": "No isolated staging configuration supplied; preview service client blocks production"
+  }
 }
