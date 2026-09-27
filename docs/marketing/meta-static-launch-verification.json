@@ -44,17 +44,32 @@
   },
   "configurationCheck": {
     "project": "805-shutters/805",
-    "metaPreviewVariableNamesVisible": false,
+    "metaPreviewVariableNamesVisible": [
+      "META_CAPI_TEST_EVENT_CODE"
+    ],
     "branchScopedMetaVariablesVisible": false,
     "stagingCredentialsReceived": false,
-    "browserEvidence": "Meta token is Production only; Meta test event code not listed",
+    "browserEvidence": "META_CAPI_TEST_EVENT_CODE saved as Secret, Preview only; verified in UI and vercel env ls preview. META_CAPI_ACCESS_TOKEN remains absent from Preview.",
     "metaPortal": {
       "datasetConfirmed": true,
       "testCodeLocated": true,
-      "testCodeSavedToVercel": false,
+      "testCodeSavedToVercel": true,
       "accessTokenRetrieved": false,
-      "browserControl": "unavailable_on_resume"
-    }
+      "browserControl": "native_chrome_working",
+      "accessTokenGeneration": "awaiting_action_time_confirmation"
+    },
+    "testCodeRuntimePresence": "not_verified_requires_redeploy",
+    "stagingBranchesVisible": [
+      {
+        "name": "contact-idempotency-preview",
+        "ref": "bsmuismqwzloiurzacry"
+      },
+      {
+        "name": "lead-stage-events-preview",
+        "ref": "uivuqlrrgyjjbvcuhstr"
+      }
+    ],
+    "stagingSelection": "awaiting_user_identification_no_branch_modified"
   },
   "previousDatasetPageView": {
     "status": "superseded_wrong_dataset",
