@@ -8,10 +8,11 @@ export function parseLineItemPrice(value: string): number | null {
 }
 
 /** Keep the draft intact while typing; persist only on Save, blur, or Enter. */
-export function LineItemPriceInput({ value, roomName, onSave, label = "Price each" }: {
+export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, label = "Price each" }: {
   value: number | null;
   roomName: string;
   onSave: (price: number) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
   label?: string;
 }) {
   const formattedValue = value == null ? "" : value.toFixed(2);
@@ -44,6 +45,7 @@ export function LineItemPriceInput({ value, roomName, onSave, label = "Price eac
     try {
       await onSave(price);
       changed.current = false;
+      onDirtyChange?.(false);
       setSaved(true);
     } catch (cause) {
       editing.current = true;
@@ -60,12 +62,13 @@ export function LineItemPriceInput({ value, roomName, onSave, label = "Price eac
         <input aria-label={`${label} for ${roomName}`} type="text" inputMode="decimal"
           value={draft} disabled={saving} aria-invalid={Boolean(error)}
           onFocus={() => { editing.current = true; }}
-          onChange={event => { changed.current = true; setDraft(event.target.value); setError(""); setSaved(false); }}
+          onChange={event => { changed.current = true; onDirtyChange?.(true); setDraft(event.target.value); setError(""); setSaved(false); }}
           onBlur={() => { void save(); }}
           onKeyDown={event => {
             if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
             if (event.key === "Escape") {
               editing.current = false; changed.current = false;
+              onDirtyChange?.(false);
               setDraft(formattedValue); setError(""); setSaved(false);
               event.preventDefault();
             }

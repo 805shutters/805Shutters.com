@@ -41,6 +41,18 @@ async function render() { state.quote.quote_v2_backend = state.native; await act
 function button(text: string) { const found = [...container.querySelectorAll("button")].find((button) => button.textContent?.trim() === text); expect(found).toBeDefined(); return found!; }
 
 describe("actual builder native delivery gate", () => {
+  it("exposes all saved prices directly and continues to delivery without closing and reopening", async () => {
+    state.native = false;
+    state.lines = [{ id: "line", room_name: "Office", product_type: "Roller Shades", quantity: 1, width_whole: 36, height_whole: 60 }];
+    state.designs = [{ id: "design", line_item_id: "line", variant: "A", unit_price: 827.45, options_json: { manual_price_override: true } }];
+    await render();
+    await act(() => button("Custom prices").click());
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Custom merchandise price each for Office"]')!.value).toBe("827.45");
+    const next = [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Continue to Send Quote")!;
+    expect(next.disabled).toBe(false);
+    await act(() => next.click());
+    expect(container.textContent).toContain("Send dialog opened");
+  });
   it.each([true, false])("routes unpriced lines to custom pricing before delivery, native=%s", async native => {
     state.native = native;
     state.lines = [{ id: "line", room_name: "Office", product_type: "Roller Shades", quantity: 1, width_whole: 36, width_fraction: "", height_whole: 60, height_fraction: "" }];

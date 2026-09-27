@@ -2397,6 +2397,12 @@ export function QuoteBuilder({
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Fresh Start
                 </Button>
+                {quote && !isActiveQuotePriceLocked && !useHistoricalPriceLock && (
+                  <Button size="sm" variant="outline" onClick={() => setShowPricingReview(true)}
+                    className="rounded-xl border-slate-200 bg-white shadow-sm">
+                    Custom prices
+                  </Button>
+                )}
                 {quote && (
                   <Button
                     size="sm"
@@ -2803,7 +2809,9 @@ export function QuoteBuilder({
       />
 
       <QuotePricingReviewDialog authoritativeV2={authoritativeV2} open={showPricingReview} onClose={() => setShowPricingReview(false)}
-        lines={lineItems.filter(line => incompletePricingIds.includes(line.id))} designs={designs}
+        lines={lineItems} designs={designs}
+        deliveryDisabled={sendDisabled || (authoritativeV2 && !canSendNativeQuote)}
+        onContinue={() => { setShowPricingReview(false); setShowSendDialog(true); }}
         onSave={saveLinePrice} onEdit={lineId => {
           if (stackedLineItemIds.includes(lineId)) handleUnstackLineItem(lineId);
           setShowPricingReview(false);
