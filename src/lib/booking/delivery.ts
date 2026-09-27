@@ -5,6 +5,7 @@ import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/c
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
 import { isBookingDeliveryEnabled } from "./delivery-config";
+import { sendMetaScheduleEvent } from "./meta-schedule";
 type BookingAutomationDetails = {
   leadId: string;
   jobId: string;
@@ -517,15 +518,22 @@ export async function processBookingOutbox(
   supabase: SupabaseClient,
   bookingKey?: string,
 ) {
-  if (!isBookingDeliveryEnabled()) return { paused: true };
+  const customerDeliveryEnabled = isBookingDeliveryEnabled();
+  // CAPI retries use the same event ID/time and are safe to deduplicate.
+  const { error: recoveryError } = await supabase.from("booking_outbox")
+    .update({ status: "pending", last_error: "META_WORKER_INTERRUPTED" })
+    .eq("kind", "meta_schedule").eq("status", "processing")
+    .lt("claimed_at", new Date(Date.now() - 15 * 60000).toISOString());
+  if (recoveryError) throw recoveryError;
   // Ambiguous in-flight deliveries are not automatically replayed: staff must
   // verify the provider before any retry that could contact a customer twice.
-  await supabase
+  if (customerDeliveryEnabled) await supabase
     .from("booking_outbox")
     .update({
       status: "uncertain",
       last_error: "Worker interrupted; verify provider before retry",
     })
+    .neq("kind", "meta_schedule")
     .eq("status", "processing")
     .lt("claimed_at", new Date(Date.now() - 15 * 60000).toISOString());
   let query = supabase
@@ -534,6 +542,7 @@ export async function processBookingOutbox(
     .eq("status", "pending")
     .order("id")
     .limit(40);
+  if (!customerDeliveryEnabled) query = query.eq("kind", "meta_schedule");
   if (bookingKey) query = query.eq("booking_key", bookingKey);
   const { data, error } = await query;
   if (error) throw error;
@@ -545,6 +554,25 @@ export async function processBookingOutbox(
     if (claimError) throw claimError;
     if (!effect) continue;
     try {
+      if (effect.kind === "meta_schedule") {
+        try {
+          const receipt = await sendMetaScheduleEvent(effect.payload);
+          const { error: receiptError } = await supabase.from("booking_outbox")
+            .update({ status: "sent", completed_at: receipt.acceptedAt, last_error: null,
+              payload: { ...effect.payload, metaReceipt: receipt } })
+            .eq("id", item.id).eq("status", "processing");
+          if (receiptError) throw new Error("META_RECEIPT_SAVE_FAILED");
+          console.info("Booking Schedule CAPI accepted", { eventId: receipt.eventId });
+        } catch (error) {
+          const code = error instanceof Error && /^META_[A-Z0-9_]+$/.test(error.message)
+            ? error.message : "META_DELIVERY_FAILURE";
+          console.error("Booking Schedule CAPI pending", { eventId: effect.payload.eventId, code });
+          const { error: retryError } = await supabase.from("booking_outbox")
+            .update({ status: "pending", last_error: code }).eq("id", item.id).eq("status", "processing");
+          if (retryError) throw retryError;
+        }
+        continue;
+      }
       // A paused worker may have accumulated confirmations for visits that
       // have since happened, moved, or been canceled. Never send those to a
       // customer or recreate an obsolete calendar entry during recovery.
@@ -582,6 +610,7 @@ export async function processBookingOutbox(
         .eq("status", "processing");
       if (saveError) throw saveError;
     } catch {
+      if (effect.kind === "meta_schedule") throw new Error("META_RETRY_SAVE_FAILED");
       await supabase
         .from("booking_outbox")
         .update({

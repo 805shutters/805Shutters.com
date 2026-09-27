@@ -27,6 +27,7 @@ import {
   commercialProjectTypeOptions,
   productInterestOptions,
 } from "@/lib/product-interest-options";
+import { scheduleMatchingData } from "@/lib/booking/meta-schedule";
 export const runtime = "nodejs";
 type BookingPayload = {
   variant?: "standard" | "commercial";
@@ -339,6 +340,7 @@ async function submit(request: NextRequest) {
     startAt,
     endAt,
   };
+  const metaSchedule = { eventTime: Math.floor(Date.now() / 1000), matching: scheduleMatchingData(email, phone) };
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: replay, error: replayError } = await supabase
       .from("booking_requests")
@@ -406,10 +408,10 @@ async function submit(request: NextRequest) {
       p_job: jobRecord,
       p_event: eventRecord,
       p_proofs: checked.proofs,
-      p_effects: bookingEffectKinds.map((kind) => ({
+      p_effects: [...bookingEffectKinds.map((kind) => ({
         kind,
         payload: effectDetails,
-      })),
+      })), { kind: "meta_schedule", payload: metaSchedule }],
     });
     if (error?.message?.includes("BOOKING_STALE") && attempt === 0) continue;
     if (error) {

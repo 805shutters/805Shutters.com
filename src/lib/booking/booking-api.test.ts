@@ -198,7 +198,7 @@ describe("shared public / CRM booking APIs", () => {
           "select count(*)::int n from booking_outbox",
         )
       ).rows[0].n,
-    ).toBe(8);
+    ).toBe(9);
   });
   it("opens a one-hour residential calendar without collecting any details", async () => {
     await publish();
@@ -227,7 +227,7 @@ describe("shared public / CRM booking APIs", () => {
     expect(jobs.rows[0].meta.windowCount).toBe(savedCount);
     const leads = await db.query<{ meta: Record<string, unknown> }>("select meta from leads");
     expect(leads.rows[0].meta.windowCount).toBe(savedCount);
-    const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox");
+    const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox where kind <> 'meta_schedule'");
     expect(effects.rows).toHaveLength(8);
     for (const { payload } of effects.rows) {
       expect(payload.windowCount).toBe(savedCount);
@@ -385,7 +385,7 @@ it.each([true, false])("stores follow-up choice %s in CRM, calendar, and notific
     expect(records[0].meta.followUpRequested).toBe(followUpRequested);
     expect(records[0].notes).toContain(followUpRequested ? 'Customer requested a follow-up' : 'Customer indicated no follow-up needed.');
   }
-  const effects = (await db.query<{ payload: { followUpRequested: boolean } }>('select payload from booking_outbox')).rows;
+  const effects = (await db.query<{ payload: { followUpRequested: boolean } }>("select payload from booking_outbox where kind <> 'meta_schedule'")).rows;
   expect(effects.length).toBeGreaterThan(0);
   expect(effects.every(effect => effect.payload.followUpRequested === followUpRequested)).toBe(true);
   const job = (await db.query<{ next_action: string }>('select next_action from crm_jobs')).rows[0];
@@ -401,6 +401,11 @@ it("persists ad UTMs and exposes the saved lead ID as the Schedule event ID", as
   expect(result.eventId).toBe(result.leadId);
   const lead = (await db.query("select id,utm_source,utm_medium,utm_campaign,utm_content from leads where id=$1", [result.leadId])).rows[0];
   expect(lead).toEqual({ id: result.leadId, ...utms });
+  const meta = (await db.query<{payload: Record<string, unknown>}>("select payload from booking_outbox where kind='meta_schedule'")).rows;
+  expect(meta).toHaveLength(1);
+  expect(meta[0].payload).toMatchObject({ eventId: result.eventId, eventTime: expect.any(Number), matching: { ph: [expect.stringMatching(/^[a-f0-9]{64}$/)] } });
+  for (const field of ["name", "phone", "email", "address", "userAgent", "referrer", "fbp", "fbc"])
+    expect(meta[0].payload).not.toHaveProperty(field);
 });
 
 it("blocks a refreshed booking with a new key for 24 hours, including formatted phone/address variants", async () => {

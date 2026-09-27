@@ -20,8 +20,39 @@
   "previewDuplicate": "blocked_not_verified",
   "localTests": {
     "bookingAndTrackingPassed": 160,
-    "concurrentPostgresPassed": 8
+    "concurrentPostgresPassed": 8,
+    "latestFocusedPassed": 148,
+    "latestConcurrentPostgresPassed": 8,
+    "previewIsolationPassed": 4,
+    "fullSuitePassed": 9431,
+    "fullSuiteTimeoutFailures": 2,
+    "timeoutFilesSerialRerunPassed": 110,
+    "finalTypecheck": "pass",
+    "localBuild": "pass"
   },
   "productionDeployed": false,
-  "remoteMigrationApplied": false
+  "remoteMigrationApplied": false,
+  "capiImplementation": {
+    "status": "implemented_locally",
+    "approvedCustomerFields": [
+      "sha256_email",
+      "sha256_phone"
+    ],
+    "excluded": [
+      "ip",
+      "user_agent",
+      "cookies",
+      "name",
+      "address",
+      "query_parameters"
+    ],
+    "providerAcceptance": "not_verified"
+  },
+  "configurationCheck": {
+    "project": "805-shutters/805",
+    "metaPreviewVariableNamesVisible": false,
+    "branchScopedMetaVariablesVisible": false,
+    "stagingCredentialsReceived": false,
+    "browserEvidence": "Meta token is Production only; Meta test event code not listed"
+  }
 }

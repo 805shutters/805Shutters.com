@@ -1,6 +1,6 @@
 # 805 Shutters Meta launch preparation
 
-Status: assets exported; browser/booking changes locally tested and deployed to preview. PageView verified on preview. CAPI implementation and successful preview booking verification remain blocked. No production release, migration, ad publication, or spend.
+Status: assets exported; browser/booking changes locally tested and deployed to preview. PageView verified on preview. Hashed-email/phone-only CAPI is now implemented locally; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
 
 ## Creative exports
 
@@ -31,7 +31,8 @@ The same asset pair supports both Meta button variants. Book Now goes to `/book-
 - 24-hour duplicate guard compares normalized name + phone + address under the existing schedule row lock. Same-key retries return the original booking; new-key refreshes cannot create another lead.
 - Apply `20260927194921_meta_booking_launch.sql` only to an isolated preview database. It has been exercised locally, not applied remotely.
 - Preview requests targeting production Supabase evuxqsaucmvgyuvjpqlo are blocked.
-- CAPI is pending explicit approval of its matching fields following automatic approval review rejection. The existing non-booking Lead helper has not been repurposed.
+- The user approved SHA-256 hashed email and phone only. Schedule CAPI sends only em/ph in user_data, a fixed clean booking URL, event name/time/ID and test code. It excludes IP, user agent, cookies, names, addresses and query strings. The existing non-booking Lead helper has not been repurposed.
+- Schedule is saved in the atomic booking outbox with the same saved lead ID used by the browser. Provider acceptance is persisted; failures remain pending with sanitized errors and retry the original event ID/time. Preview requires a Meta test event code. Customer notifications remain paused.
 - Configure META_CAPI_ACCESS_TOKEN and META_CAPI_TEST_EVENT_CODE securely in Vercel Preview; do not put secret values in this document or source files.
 - Connected Supabase branch access returns 403. An authorized account must provide the isolated preview branch and its Vercel preview configuration.
 
@@ -58,7 +59,7 @@ Deployed commit: 10ea167c (`codex/meta-static-launch`). Vercel deployment dpl_4m
 | Required check | Result | Evidence |
 |---|---|---|
 | Booking PageView | PASS | Browser request to www.facebook.com/tr/ with ev=PageView, id=117872572252906; HTTP 200. |
-| Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI matching-payload approval and secure Meta configuration pending. |
+| Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI fields are now approved and implemented locally; staging credentials and visible Meta Preview configuration remain pending. |
 | Saved Supabase lead with UTMs | BLOCKED / NOT VERIFIED | Form submitted all four expected UTMs, but preview is still configured for production Supabase. The preview guard returned 503 before any database write. |
 | 24-hour duplicate protection on preview | BLOCKED / NOT VERIFIED | No completed preview booking exists to replay. Local transaction and real Postgres race tests passed. |
 
@@ -66,6 +67,8 @@ Actual browser walkthrough: selected September 30 at 1 PM, entered synthetic tes
 
 Local verification: 160 booking/tracking tests passed across 13 files; 8 opt-in concurrent tests ran separately and all passed in a temporary Postgres container. TypeScript check and local/Vercel builds passed. The shared SQL transaction, rollback on failed lead write, UTM persistence, same-key replay, different-key 24-hour protection, and simultaneous submissions were exercised locally.
 
-Remaining intervention: approve the listed CAPI matching payload; configure META_CAPI_ACCESS_TOKEN and META_CAPI_TEST_EVENT_CODE in Vercel Preview; provide authorized isolated Supabase branch access and configure its URL/keys securely in Vercel Preview. Then apply the prepared migration to that branch, implement/verify CAPI, redeploy preview and repeat the real booking checks. Supabase branches isolate the schema from production data: https://supabase.com/docs/guides/deployment
+Remaining intervention: provide the isolated Supabase preview project reference and securely configured staging URL/keys, with authorized staging migration/read access. The user reports that META_CAPI_ACCESS_TOKEN and META_CAPI_TEST_EVENT_CODE are configured, but fresh Vercel CLI listings for 805-shutters/805 Preview and codex/meta-static-launch do not expose either variable name. The logged-in Vercel settings UI confirms META_CAPI_ACCESS_TOKEN is Production only and no META_CAPI_TEST_EVENT_CODE is listed. Correct Preview scope before hosted booking verification. No secret values were read or stored.
 
-Automatic approval review rejected both pulling production secrets into a local environment file and adding a CAPI payload containing hashed contact details, IP/user-agent, and tracking cookies without specific approval. Neither rejection was bypassed.
+The earlier CAPI approval rejection is resolved by explicit user approval for hashed email/phone only; the broader rejected payload was not implemented. Production-secret export remains prohibited and was not retried.
+
+Latest local checks: focused booking/tracking suite 148 passed; eight real PostgreSQL concurrency tests passed separately; typecheck/build passed. The central preview guard passed its four tests. The full repository run passed 9,431 tests with two quote-pricing timeouts; both affected files then passed all 110 tests with one worker. Final typecheck passed. These do not establish a successful hosted booking.
