@@ -113,6 +113,7 @@ it('shows paid unsigned work accurately and signed jobs in sale-date order in bo
   const verify = () => {
     expect(host.querySelector('[aria-label="Review Sold for Signed sale"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(host.querySelector('[aria-label="Record Sold for Paid unsigned"]')?.getAttribute('aria-pressed')).toBe('false');
+    expect(host.querySelector('[aria-label="Review Deposit for Paid unsigned"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(host.textContent).toContain('Payment received · Signature needed');
     expect(host.textContent).toContain('Sep 23, 2026');
   };
@@ -122,5 +123,7 @@ it('shows paid unsigned work accurately and signed jobs in sale-date order in bo
   expect([...host.querySelectorAll('tr[aria-label]')].map(el => el.getAttribute('aria-label'))).toEqual(['Job status for Signed sale', 'Job status for Earlier sale', 'Job status for Paid unsigned']);
   await filter('Sold');
   expect(host.textContent).not.toContain('Paid unsigned');
+  await filter('Deposit');
+  expect(host.textContent).toContain('Paid unsigned');
   expect(action).not.toHaveBeenCalled();
 });

@@ -144,7 +144,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   const [loadingAll, setLoadingAll] = useState(false);
   const disabled = busy || pending !== null || loadingAll;
   const mark = (item: OperationsItem, step: WorkflowActionStep) => {
-    const done = step === "deposit" ? item.sold && item.source.depositOutstanding !== null && item.source.depositOutstanding <= 0.005 : stepComplete(item, step);
+    const done = step === "deposit" ? (item.sold || (item.source.depositReceived ?? 0) > 0) && item.source.depositOutstanding !== null && item.source.depositOutstanding <= 0.005 : stepComplete(item, step);
     const label = step === "deposit" ? "Deposit" : workflowLabels[step];
     return <CompletionButton done={done} label={`${done ? "Review" : step === "quote" ? "Open" : ["sold", "paid", "deposit"].includes(step) ? "Record" : "Mark"} ${label} for ${item.source.customerName}`} disabled={disabled} saving={pending === `${item.source.id}:${step}:`} onClick={() => void act(item, step)} />;
   };

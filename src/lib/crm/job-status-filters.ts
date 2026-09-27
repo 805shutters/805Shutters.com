@@ -4,7 +4,7 @@ import { stepComplete, type OperationsItem } from './operations-overview';
 export const jobStatusFilters = [
   { id: 'quote', label: 'Quote', description: 'Jobs with a quote on file' },
   { id: 'sold', label: 'Sold', description: 'All sold jobs' },
-  { id: 'deposit_paid', label: 'Deposit', description: 'Sold jobs with their deposit requirement satisfied' },
+  { id: 'deposit_paid', label: 'Deposit', description: 'Jobs with their deposit requirement satisfied' },
   { id: 'order_complete', label: 'Ordered', description: 'Sold jobs with every product marked ordered' },
   { id: 'shipment_complete', label: 'Shipped', description: 'Sold jobs with every product marked shipped' },
   { id: 'installed', label: 'Installed', description: 'Jobs with installation confirmed complete' },
@@ -31,7 +31,7 @@ export function matchesJobStatusFilter(item: OperationsItem, filter: JobStatusFi
   switch (filter) {
     case 'quote': return item.quote;
     case 'deposit_needed': return item.sold && deposit !== null && deposit > 0.005;
-    case 'deposit_paid': return item.sold && deposit !== null && deposit <= 0.005;
+    case 'deposit_paid': return (item.sold || (item.source.depositReceived ?? 0) > 0) && deposit !== null && deposit <= 0.005;
     case 'ordered': case 'shipped': return item.sold && !stepComplete(item, filter);
     case 'order_complete': return item.sold && stepComplete(item, 'ordered');
     case 'shipment_complete': return item.sold && stepComplete(item, 'shipped');
