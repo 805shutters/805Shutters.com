@@ -72,7 +72,8 @@ export function QuoteLineItemCard({
       {groups.length > 0 ? <div id={detailsId} className={styles.specifications} hidden={!expanded}>
         {groups.map((group) => {
           const Icon = groupIcons[group.id];
-          return <section key={group.id} className={group.id === "additional" ? styles.additional : styles.group}>
+          const compact = group.id === "construction" || group.id === "additional";
+          return <section key={group.id} className={compact ? `${styles.compactGroup} ${group.id === "construction" ? styles.construction : styles.additional}` : styles.group}>
             <h4 className={styles.groupTitle}><Icon size={14} aria-hidden="true" />{group.title}</h4>
             <dl className={styles.detailList}>{group.details.map((detail) => <div key={`${detail.label}:${detail.value}`} className={styles.detail}><dt>{detail.label}</dt><dd>{detail.value}</dd></div>)}</dl>
           </section>;
