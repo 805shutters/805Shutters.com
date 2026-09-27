@@ -30,7 +30,7 @@ let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 const enabled = { schemaVersion: 1, enabled: true, native: true, canSend: true, reserved: false };
 beforeEach(() => {
-  state.lines = []; state.designs = [];
+  state.lines = []; state.designs = []; state.quote.status = "draft";
   state.native = true; state.isolated = false; state.capabilityQueries = [];
   state.capability = { data: undefined, isError: false, isFetching: false };
   useQuoteBuilderStore.getState().setActiveQuote("quote-c");
@@ -52,6 +52,12 @@ describe("actual builder native delivery gate", () => {
     expect(next.disabled).toBe(false);
     await act(() => next.click());
     expect(container.textContent).toContain("Send dialog opened");
+  });
+  it.each([true, false])("makes custom pricing accessible on finalized quotes, native=%s", async native => {
+    state.native = native; state.quote.status = "sent";
+    await render();
+    await act(() => button("Custom prices").click());
+    expect(document.body.textContent).toContain("Saving a price creates an editable draft revision");
   });
   it.each([true, false])("routes unpriced lines to custom pricing before delivery, native=%s", async native => {
     state.native = native;

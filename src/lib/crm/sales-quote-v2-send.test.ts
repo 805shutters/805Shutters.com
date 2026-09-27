@@ -694,6 +694,39 @@ describe("staff manual prices retaining a Norman catalog", () => {
     expect(input).toEqual(before);
   });
 
+  it.each([[false, false], [true, false], [false, true], [true, true]])("sends a manual line with no catalog selection, sendAsIs=%s mixed=%s", (sendAsIs, mixed) => {
+    const input: Parameters<typeof prepareV2CustomerSendPayload>[0] = manualFixture(123.45);
+    input.quote.quote_v2_catalog_version = "custom-override-v1";
+    const design = input.designs[0];
+    delete design.quote_v2_selection;
+    design.quote_v2_priced_catalog_version = "custom-override-v1";
+    design.options_json = { manual_price_override: true } as typeof design.options_json;
+    input.lineItems[0].product_type = "Custom treatment";
+    design.product_type = "Custom treatment";
+    const snapshot = input.snapshots[0];
+    snapshot.catalog_version = "custom-override-v1";
+    const retailSnapshot = snapshot.retail_snapshot as { catalogVersion: string; retail: Record<string, unknown> };
+    retailSnapshot.catalogVersion = "custom-override-v1";
+    for (const key of ["ok", "productId", "programId", "programName", "matchedWidth", "matchedHeight"]) {
+      delete retailSnapshot.retail[key];
+    }
+    let expected = 246.9;
+    if (mixed) {
+      const automatic = authoritativeRollerFixture();
+      const line = { ...automatic.line, id: "automatic-line", selected_design_id: "automatic-design", sort_order: 1 };
+      const design = { ...automatic.design, id: "automatic-design", line_item_id: line.id, current_v2_snapshot_id: "automatic-snapshot" };
+      input.lineItems.push(line); input.designs.push(design);
+      input.snapshots.push({ ...automatic.storedSnapshot, id: "automatic-snapshot", line_item_id: line.id, design_id: design.id });
+      expected += automatic.total;
+      input.quote.total_amount = expected;
+      input.quote.quote_v2_catalog_version = [QUOTE_V2_ROLLER_PREVIEW_VERSION, "custom-override-v1"].sort().join(",");
+    }
+    const payload = prepareV2CustomerSendPayload({ ...input, sendAsIs });
+    expect(payload.total).toBe(expected);
+    expect(payload.lines[0].productType).toBe("Custom treatment");
+    expect(payload.lines[0].configuration.manufacturerId).toBe("Norman");
+  });
+
   it("does not treat an editable manual flag as immutable authorization", () => {
     const input = manualFixture(1002);
     input.snapshots[0].provenance_snapshot.internalOnly = false;

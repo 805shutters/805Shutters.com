@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { prepareV2CustomerSendPayload } from './sales-quote-v2-send';
 const db = new PGlite();
 const id = (n:number) => `10000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 let request=100;
@@ -187,4 +188,22 @@ it('Custom Mode persists and validates fixed charges while preserving original s
  expect((await apply(retail,'good')).rows[0].r).toMatchObject({unitPrice:139,total:278});
  expect((await db.query<any>('select total_amount from sales_quotes where id=$1',[id(7)])).rows[0].total_amount).toBe('258.00');
  expect((await db.query<any>('select retail_snapshot from sales_quote_v2_price_snapshots where id=$1',[id(42)])).rows[0].retail_snapshot).toEqual(original);
+});
+
+// Exercise the actual database-generated snapshot, not a catalog-shaped fixture.
+it('prepares an uncatalogued manual price for delivery after the production RPC saves it', async () => {
+ await db.query('insert into sales_quotes(id,quote_v2_backend) values($1,true)',[id(901)]);
+ await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,width_whole,height_whole) values($1,$2,'Custom treatment',2,36,60)",[id(902),id(901)]);
+ await save(901,902,123.45,1);
+ const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(901)])).rows[0];
+ const lines=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(901)])).rows;
+ const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(902)])).rows;
+ const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(901)])).rows;
+ for (const sendAsIs of [false,true]) {
+   const payload=prepareV2CustomerSendPayload({quote,lineItems:lines,designs,snapshots,sendAsIs});
+   expect(payload.total).toBe(246.9);
+   expect(payload.lines[0].price).toMatchObject({unitPrice:123.45,quantity:2,total:246.9});
+   expect(payload.lines[0].productType).toBe('Custom treatment');
+   expect(JSON.stringify(payload)).not.toMatch(/costResolution|internalCost|landedCost/);
+ }
 });

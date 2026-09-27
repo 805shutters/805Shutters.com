@@ -1,4 +1,5 @@
 import { computeQuoteMoney, parseAdjustments } from './quote-money';
+import { prepareV2CustomerSendPayload } from './sales-quote-v2-send';
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
@@ -72,6 +73,7 @@ beforeAll(async()=>{
  await db.exec(migration('20260925190000_native_in_person_signing'));
  await db.exec(migration('20260925191000_native_staff_sold'));
  await db.exec(migration('20260927182921_explicit_quote_delivery_selection'));
+ await db.exec(migration('20260927234452_native_manual_selection_projection'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -513,4 +515,21 @@ it('refuses to claim a multi-quote message after one selected quote is archived'
  await db.query('update sales_quotes set archived_at=now() where id=$1',[id(4001)]);
  const attempt=(await db.query<any>('select id from sales_quote_v2_delivery_attempts where delivery_id=$1',[receipt.id])).rows[0];
  await expect(db.query('select claim_native_quote_delivery_attempt($1,$2)',[attempt.id,id(50)])).rejects.toMatchObject({code:'PT409'});
+});
+
+it('reserves a staff custom price even when no catalog selection ever existed',async()=>{
+ await seed(3600);
+ await db.query("update sales_quote_designs set quote_v2_selection=null,current_v2_snapshot_id=null,options_json='{}' where id=$1",[id(3800)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,$4,$5,$6,$7)',[id(3600),id(3700),'A',123.45,id(50),1,id(4600)]);
+ const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(3600)])).rows[0];
+ const lineItems=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(3600)])).rows;
+ const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(3700)])).rows;
+ const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(3600)])).rows;
+ const p=prepareV2CustomerSendPayload({quote,lineItems,designs,snapshots});
+ const delivery=await reserve(3600,p,2);
+ expect(delivery.customer_payload.total).toBe(p.total);
+ expect((await db.query<any>('select status from sales_quotes where id=$1',[id(3600)])).rows[0].status).toBe('draft');
+ await finishDelivery(delivery);
+ expect((await db.query<any>('select status from sales_quotes where id=$1',[id(3600)])).rows[0].status).toBe('sent');
+ expect((await db.query<any>('select quote_v2_selection from sales_quote_designs where id=$1',[id(3800)])).rows[0].quote_v2_selection).toBeNull();
 });

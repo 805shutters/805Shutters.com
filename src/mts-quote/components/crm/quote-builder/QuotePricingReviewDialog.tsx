@@ -6,7 +6,7 @@ import { authoritativeDesignPriceIssue, quoteMerchandisePriceForEditor } from "@
 import { formatDimensions, type SalesQuoteDesign, type SalesQuoteLineItem } from "@mts/types/quote";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 
-export function QuotePricingReviewDialog({ open, onClose, lines, designs, authoritativeV2 = false, onSave, onEdit, onContinue, deliveryDisabled = false }: {
+export function QuotePricingReviewDialog({ open, onClose, lines, designs, authoritativeV2 = false, onSave, onEdit, onContinue, deliveryDisabled = false, createsRevision = false }: {
   open: boolean;
   onClose: () => void;
   lines: SalesQuoteLineItem[];
@@ -16,6 +16,7 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
   onEdit: (lineId: string) => void;
   onContinue?: () => void;
   deliveryDisabled?: boolean;
+  createsRevision?: boolean;
 }) {
   const [dirtyPrices, setDirtyPrices] = useState<Set<string>>(new Set());
   useEffect(() => { if (!open) setDirtyPrices(new Set()); }, [open]);
@@ -27,6 +28,7 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
         <DialogTitle>Custom prices</DialogTitle>
         <DialogDescription>Enter a custom merchandise price for any line, even when catalog pricing is unavailable. Save each changed price, then continue to review delivery. Installation and shipping are added separately when applicable.</DialogDescription>
       </DialogHeader>
+      {createsRevision && <p className="text-sm">Saving a price creates an editable draft revision and preserves the original quote.</p>}
       <p role="status">{incomplete.length > 0 ? `${incomplete.length} ${incomplete.length === 1 ? "line still needs" : "lines still need"} a price.` : lines.length === 0 ? "Add a line before entering prices." : dirtyPrices.size > 0 ? "Save your changed prices before continuing." : "Every line has a saved price. Ready to review delivery."}</p>
       {lines.flatMap(line => {
         const billable = billableQuoteDesigns(designs.filter(row => row.line_item_id === line.id), authoritativeV2);

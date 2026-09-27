@@ -350,6 +350,50 @@ function isStoredPriceOverride(stored: ReturnType<typeof requireStoredSnapshot>)
  * filtering/pricing, then create a customer-only payload from immutable retail
  * snapshots. This function is write-free.
  */
+function manualCustomerLine(
+  line: V2PersistedLine,
+  design: V2PersistedDesign,
+  stored: ReturnType<typeof requireStoredSnapshot>,
+): PreparedV2CustomerQuote["lines"][number] {
+  const provenance = record(stored.snapshotRow.provenance_snapshot);
+  if (provenance?.mode !== "custom_override" || provenance.internalOnly !== true) {
+    return fail(`Custom price ${design.id} is missing internal provenance.`);
+  }
+  const retail = record(stored.snapshot.retail);
+  const selection = record(design.quote_v2_selection);
+  const price = projectV2CustomerRetailPrice({
+    ...retail,
+    ok: true,
+    productId: text(retail?.productId) || text(selection?.productId) || "custom",
+    programId: text(retail?.programId) || text(selection?.programId) || "custom",
+    programName: text(retail?.programName) || "Custom pricing",
+    matchedWidth: retail?.matchedWidth ?? decimalMeasurement(line.width_whole, line.width_fraction),
+    matchedHeight: retail?.matchedHeight ?? decimalMeasurement(line.height_whole, line.height_fraction),
+  });
+  if (price.quantity !== Number(line.quantity) ||
+      !sameMoney(price.total, stored.snapshotRow.retail_total) ||
+      !sameMoney(design.unit_price, price.unitPrice)) {
+    return fail(`Custom price ${design.id} does not match its immutable quantity or retail snapshot.`);
+  }
+  // A manual price may be saved before a catalog selection exists. Descriptions
+  // still pass through the same customer field allow-list; money comes only
+  // from the immutable server snapshot, never editable options.
+  const descriptiveSelection = {
+    manufacturerId: text(selection?.manufacturerId) || text(design.supplier) || "custom",
+    configuration: record(selection?.configuration) ?? { ...design, ...record(design.options_json) },
+    options: record(selection?.options) ?? {},
+  } as unknown as SelectionContext;
+  return {
+    lineItemId: line.id, selectedDesignId: design.id, selectedVariant: design.variant.trim(),
+    room: text(line.room_name), productType: text(line.product_type),
+    widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
+    heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
+    quantity: Number(line.quantity),
+    configuration: customerConfigurationFromSelection(descriptiveSelection), price,
+  };
+}
+
+/** Validate saved manual snapshots and reprice automatic lines before delivery. */
 export function prepareV2CustomerSendPayload(
   input: PrepareV2CustomerSendInput,
 ): PreparedV2CustomerQuote {
@@ -398,8 +442,15 @@ export function prepareV2CustomerSendPayload(
     fail("The quote catalog identity does not match its selected current snapshots.");
   }
 
-  if (input.sendAsIs) {
+  const manualLines = new Map(input.lineItems.flatMap(line => {
+    const design = selectedDesigns.find(row => row.id === line.selected_design_id)!;
+    const stored = storedByDesignId.get(design.id)!;
+    return isStoredPriceOverride(stored) ? [[line.id, manualCustomerLine(line, design, stored)] as const] : [];
+  }));
+  if (input.sendAsIs || manualLines.size === input.lineItems.length) {
     const customerLines: PreparedV2CustomerQuote["lines"] = input.lineItems.map((line) => {
+      const manual = manualLines.get(line.id);
+      if (manual) return manual;
       const selectedDesignId = text(line.selected_design_id);
       if (!selectedDesignId) return fail(`Line item ${line.id} is missing selected_design_id.`);
       const design = selectedDesigns.find((entry) => entry.id === selectedDesignId);
@@ -464,8 +515,18 @@ export function prepareV2CustomerSendPayload(
   try {
     repriced = repriceExactQuoteBuilderForServerDate(
       {
-        lines: input.lineItems,
-        designs: structuredClone(selectedDesigns),
+        lines: input.lineItems.filter(line => !manualLines.has(line.id)),
+        designs: structuredClone(selectedDesigns.filter(design => !manualLines.has(design.line_item_id))),
+        // Preserve shared hardware/relationship context without asking the
+        // catalog to price a line whose retail price was explicitly supplied.
+        pricingContext: input.lineItems.flatMap(line => {
+          if (!manualLines.has(line.id)) return [];
+          const design = selectedDesigns.find(row => row.id === line.selected_design_id)!;
+          const selection = record(design.quote_v2_selection);
+          if (!selection || !text(selection.productId) || !record(selection.configuration) || !record(selection.options)) return [];
+          return [{ lineId: line.id, roomName: line.room_name, sortOrder: line.sort_order,
+            selection: structuredClone(selection) as unknown as SelectionContext }];
+        }),
         selectedVariantByLine,
         applyCustomerCharges: [...storedByDesignId.entries()].filter(([, stored]) =>
           Boolean(parseCustomerCharges(record(stored.snapshot.retail)?.customerCharges))
@@ -511,44 +572,8 @@ export function prepareV2CustomerSendPayload(
     const priced = repriced.designs.find(
       (entry) => entry.lineItemId === line.id && entry.designId === selectedDesignId,
     );
-    if (isStoredPriceOverride(stored)) {
-      const provenance = record(stored.snapshotRow.provenance_snapshot);
-      if (provenance?.mode !== "custom_override" || provenance.internalOnly !== true) {
-        return fail(`Custom Mode snapshot ${selectedDesignId} is missing internal provenance.`);
-      }
-      const retail = record(stored.snapshot.retail);
-      const selection = record(design.quote_v2_selection);
-      // Manual line-price snapshots contain monetary fields; their saved
-      // selection supplies descriptive identity without inventing a grid price.
-      const customerPrice = projectV2CustomerRetailPrice({
-        ...retail,
-        ok: true,
-        productId: text(retail?.productId) || text(selection?.productId),
-        programId: text(retail?.programId) || text(selection?.programId) || "custom",
-        programName: text(retail?.programName) || "Custom pricing",
-        matchedWidth: retail?.matchedWidth ?? decimalMeasurement(line.width_whole, line.width_fraction),
-        matchedHeight: retail?.matchedHeight ?? decimalMeasurement(line.height_whole, line.height_fraction),
-      });
-      if (customerPrice.quantity !== Number(line.quantity) || !sameMoney(customerPrice.total, stored.snapshotRow.retail_total)) {
-        return fail(`Custom Mode design ${selectedDesignId} does not match its immutable quantity or total.`);
-      }
-      if (!sameMoney(design.unit_price, customerPrice.unitPrice)) {
-        return fail(`Custom Mode design ${selectedDesignId} does not match its immutable retail snapshot.`);
-      }
-      if (!priced) return fail(`Custom Mode design ${selectedDesignId} no longer resolves to its original V2 selection.`);
-      return {
-        lineItemId: line.id,
-        selectedDesignId,
-        selectedVariant: design.variant.trim(),
-        room: text(line.room_name),
-        productType: text(line.product_type),
-        widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
-        heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
-        quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
-        configuration: customerConfigurationFromSelection(design.quote_v2_selection as unknown as SelectionContext),
-        price: customerPrice,
-      };
-    }
+    const manual = manualLines.get(line.id);
+    if (manual) return manual;
     if (!priced?.result.ok || priced.result.validationStatus !== "valid") {
       return fail(`Selected design ${selectedDesignId} did not reprice authoritatively.`);
     }

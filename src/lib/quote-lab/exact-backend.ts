@@ -952,6 +952,8 @@ function graduatedAllocation(
 }
 
 export type ExactQuoteBuilderRepriceInput = {
+  /** Saved manual lines participate in shared order rules but are not repriced. */
+  pricingContext?: readonly { lineId: string; roomName?: string | null; sortOrder: number; selection: SelectionContext }[];
   applyCustomerCharges?: boolean | readonly string[];
   lines: SalesQuoteLineItem[];
   designs: SalesQuoteDesign[];
@@ -1071,11 +1073,11 @@ function repriceExactQuoteBuilderV2(
   });
 
   const lineById = new Map(input.lines.map((line) => [line.id, line]));
-  const allSeasonsOrderChargeLineId =
-    explicitSelections.find(
-      ({ line, design }) =>
-        resolveV2ProductId(line, design) === POLAR_ALL_SEASONS_PRODUCT_ID,
-    )?.line.id ?? null;
+  const orderProducts = [
+    ...(input.pricingContext ?? []).map(entry => ({ lineId: entry.lineId, sortOrder: entry.sortOrder, productId: entry.selection.productId })),
+    ...explicitSelections.map(({ line, design }) => ({ lineId: line.id, sortOrder: line.sort_order, productId: resolveV2ProductId(line, design) })),
+  ].sort((a, b) => a.sortOrder - b.sortOrder);
+  const allSeasonsOrderChargeLineId = orderProducts.find(entry => entry.productId === POLAR_ALL_SEASONS_PRODUCT_ID)?.lineId ?? null;
   const preparedDesigns = input.designs.map((design) => {
     const line = lineById.get(design.line_item_id);
     if (!line) {
@@ -1257,7 +1259,10 @@ function repriceExactQuoteBuilderV2(
     }
     return { ...entry, prepared };
   });
-  const selectedOrderLines = selectedPrepared.map(entry => ({ lineId: entry.line.id, roomName: entry.line.room_name, selection: entry.prepared.selection }));
+  const selectedOrderLines = [
+    ...structuredClone(input.pricingContext ?? []),
+    ...selectedPrepared.map(entry => ({ lineId: entry.line.id, roomName: entry.line.room_name, sortOrder: entry.line.sort_order, selection: entry.prepared.selection })),
+  ].sort((a, b) => a.sortOrder - b.sortOrder);
   const assemblyIssues = [...deriveNormanOrderRecords(selectedOrderLines), ...deriveSundanceOrderPower(selectedOrderLines), ...deriveSundanceOrderAccessories(selectedOrderLines), ...deriveSundanceOrderAlignment(selectedOrderLines)];
   // Rebuild exact motor components on the server from the validated scalar
   // selections. Persist the result in the price snapshot; never trust a browser
@@ -1279,10 +1284,7 @@ function repriceExactQuoteBuilderV2(
     }
   }
   const relationshipIssues = [...assemblyIssues, ...validateQuoteSelectionRelationships(
-    selectedPrepared.map((entry) => ({
-      lineId: entry.line.id,
-      selectedDesign: entry.prepared.selection,
-    })),
+    selectedOrderLines.map(entry => ({ lineId: entry.lineId, selectedDesign: entry.selection })),
   )];
   const relationshipIssuesByLine = new Map<string, typeof relationshipIssues>();
   const selectedLineIds = new Set(selectedPrepared.map(entry => entry.line.id));

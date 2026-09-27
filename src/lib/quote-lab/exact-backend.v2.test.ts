@@ -294,6 +294,19 @@ describe("exact-interface V2 integration", () => {
       ),
     ).not.toContain("honeycomb.matrix.side_by_side.exact_match_required");
 
+    const manualPartner = valid.designs.find(entry => entry.lineItemId === first.id)!.selection;
+    const context = [{ lineId: first.id, roomName: first.room_name, sortOrder: first.sort_order, selection: structuredClone(manualPartner) }];
+    const beforeContext = structuredClone(context);
+    const mixed = requireV2(repriceExactQuoteBuilder({
+      lines: [second], designs: [honeycombDesign(second.id, first.id, "Right Shade")],
+      selectedVariantByLine: { [second.id]: "A" }, pricingContext: context,
+    }));
+    expect(mixed.designs).toHaveLength(1);
+    const { internalCost: _mixedCost, ...mixedRetail } = mixed.designs[0].result;
+    const { internalCost: _fullCost, ...fullRetail } = valid.designs.find(entry => entry.lineItemId === second.id)!.result;
+    expect(mixedRetail).toEqual(fullRetail);
+    expect(context).toEqual(beforeContext);
+
     const nonreciprocal = requireV2(
       repriceExactQuoteBuilder({
         lines: [first, second],
