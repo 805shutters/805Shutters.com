@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { supabase } from "@mts/integrations/supabase/client";
 import { toast } from "sonner";
@@ -57,6 +57,18 @@ interface SendQuoteDialogProps {
 export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) {
   const deliveryKey = useRef<string | null>(null);
   const queryClient = useQueryClient();
+  const [multipleQuotes, setMultipleQuotes] = useState(false);
+  const [selectedQuoteIds, setSelectedQuoteIds] = useState<string[]>([quote.id]);
+  const alternatives = useQuery({
+    queryKey: [...queryKeys.salesQuotes.all, "send-options", quote.quote_group_id],
+    enabled: open && Boolean(quote.quote_group_id),
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sales_quotes").select("id,quote_letter,quote_number,total_amount,status,archived_at,quote_v2_revision").eq("quote_group_id", quote.quote_group_id!).order("quote_letter");
+      if (error) throw error;
+      return ((data || []) as unknown as SalesQuote[]).filter(member => !member.archived_at && !["archived", "lost"].includes(member.status));
+    },
+  });
+  const sendOptions = alternatives.data || [quote];
   const deliveryOptions = useRef<{ deliveryMode?: "resend"; previousDeliveryKey?: string; measureDecision?: "needed" | "not_needed" }>({});
   const [deliveryState, setDeliveryState] = useState<"loading" | "ready" | "resend" | "resume" | "blocked">(quote.quote_v2_backend ? "loading" : "ready");
   const [deliveryNotice, setDeliveryNotice] = useState("");
@@ -75,6 +87,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     if (!open) return;
     let current = true;
     deliveryKey.current = null;
+    setMultipleQuotes(false);
+    setSelectedQuoteIds([quote.id]);
     deliveryOptions.current = {};
     setChannel(getDefaultChannel(quote));
     setEmailType(getDefaultEmailType(quote));
@@ -95,7 +109,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       if (!response.ok) throw new Error("Delivery status could not be checked. Close and reopen this dialog before sending.");
       const capability = await response.json();
       if (!current) return;
-      if (!capability.enabled || !capability.native || !capability.canSend) {
+      if (!capability.enabled || !capability.native || !capability.canSend || !capability.supportsQuoteSelection) {
         throw new Error(capability.reservation?.state === "uncertain"
           ? "An earlier send has an unknown outcome. Its provider receipt must be checked before another send."
           : "This quote cannot be sent in its current state. Reload the quote to review it.");
@@ -105,6 +119,10 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       if (!saved.requestKey || !Array.isArray(saved.request?.email) || !Array.isArray(saved.request?.sms)) throw new Error("The saved delivery could not be verified. Reload this quote.");
       const fresh = saved.state === "sent" || saved.state === "failed";
       if (fresh && !capability.supportsResend) throw new Error("Send again is not available yet. Reload after the update.");
+      if (!fresh && Array.isArray(saved.request.selectedQuoteIds)) {
+        setSelectedQuoteIds(saved.request.selectedQuoteIds);
+        setMultipleQuotes(saved.request.selectedQuoteIds.length > 1);
+      }
       deliveryKey.current = fresh ? `quote-resend:${crypto.randomUUID()}` : saved.requestKey;
       deliveryOptions.current = {
         deliveryMode: fresh || saved.resend ? "resend" : undefined,
@@ -162,6 +180,9 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
         },
         body: JSON.stringify({
           ...deliveryOptions.current,
+          selectedQuoteIds,
+          multipleQuotesApproved: multipleQuotes,
+          selectedQuoteRevisions: Object.fromEntries(sendOptions.filter(member => selectedQuoteIds.includes(member.id)).map(member => [member.id, member.quote_v2_revision])),
           expectedRevision: quote.quote_v2_revision,
           idempotencyKey: deliveryKey.current ?? (deliveryKey.current = `quote-delivery:${crypto.randomUUID()}`),
           channels: { email: needsEmail, sms: needsPhone },
@@ -254,7 +275,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           </DialogTitle>
           <DialogDescription className="leading-relaxed">
             Quote <span className="font-mono text-xs">#{quote.quote_number}</span> for{" "}
-            {quote.customer_name}. Attach the quote PDF and include the secure review link.
+            {quote.customer_name}. Choose which quotes to include in the customer message.
           </DialogDescription>
         </DialogHeader>
 
@@ -263,6 +284,22 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           {deliveryNotice && <p role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{deliveryNotice}</p>}
           {deliveryState === "loading" && <p role="status" className="mb-4 text-sm">Checking previous delivery…</p>}
           <fieldset disabled={sendQuote.isPending || deliveryState === "loading" || deliveryState === "resume" || deliveryState === "blocked"} className="m-0 min-w-0 space-y-4 border-0 p-0">
+            <DialogSection title="Quotes to send" description="Send this quote by default. Every selected quote keeps its own items, total, and customer link.">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Checkbox style={{ width: 16, height: 16, minHeight: 16, padding: 0 }} checked={multipleQuotes} onCheckedChange={checked => { setMultipleQuotes(checked === true); setSelectedQuoteIds([quote.id]); deliveryKey.current = null; }} />
+                Choose multiple quotes to send
+              </label>
+              {multipleQuotes && alternatives.isPending && <p role="status" className="mt-3 text-sm">Loading quote choices…</p>}
+              {multipleQuotes && alternatives.isError && <p role="alert" className="mt-3 text-sm text-red-700">Quote choices could not be loaded. Close and reopen Send.</p>}
+              <div className="mt-3 space-y-2">
+                {(multipleQuotes ? sendOptions : [quote]).map(member => <label key={member.id} className="flex items-center gap-3 rounded-md border border-slate-200 p-3 text-sm">
+                  <Checkbox style={{ width: 16, height: 16, minHeight: 16, padding: 0 }} checked={selectedQuoteIds.includes(member.id)} disabled={member.id === quote.id} onCheckedChange={checked => { setSelectedQuoteIds(ids => checked === true ? [...ids, member.id] : ids.filter(id => id !== member.id)); deliveryKey.current = null; }} />
+                  <span className="min-w-0 flex-1"><strong>Quote {member.quote_letter || "A"}</strong><span className="block truncate text-xs text-slate-500">#{member.quote_number}</span>{member.id === quote.id && <span className="ml-2 text-xs">Current quote</span>}</span>
+                  <strong className="shrink-0 whitespace-nowrap">{new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(member.total_amount) || 0)}</strong>
+                </label>)}
+              </div>
+              <p className="mt-3 text-xs text-slate-600">{selectedQuoteIds.length === 1 ? "Only this quote will be sent." : `You are approving ${selectedQuoteIds.length} separate quotes in one message per selected channel.`}</p>
+            </DialogSection>
             <DialogSection title="Delivery" description="Choose the message channel and email format.">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -502,7 +539,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           <Button
             onClick={() => sendQuote.mutate()}
             disabled={
-              sendQuote.isPending || deliveryState === "loading" || deliveryState === "blocked" ||
+              sendQuote.isPending ||
+              (multipleQuotes && (alternatives.isPending || alternatives.isError)) || deliveryState === "loading" || deliveryState === "blocked" ||
               (needsEmail && cleanedEmails.length === 0) ||
               (needsPhone && !phone.trim()) ||
               contractEmailNeedsSignature
@@ -510,7 +548,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
             className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
           >
             <Send className="h-4 w-4 mr-2" />
-            {sendQuote.isPending ? "Sending…" : deliveryState === "resend" ? "Send again" : deliveryState === "resume" ? "Resume delivery" : sendLabel}
+            {sendQuote.isPending ? "Sending…" : deliveryState === "resume" ? "Resume delivery" : selectedQuoteIds.length > 1 ? `Send ${selectedQuoteIds.length} Quotes` : deliveryState === "resend" ? "Send again" : sendLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -108,13 +108,10 @@ describe("native V2 provenance before historical contract mutation", () => {
     expect(f.writes).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["restore", (db: SupabaseClient) => restoreSalesQuoteMirrorForPublicLink(db, "historical-a")],
-    ["send with contact changes", (db: SupabaseClient) => sendSalesQuoteToCustomer(db, "historical-a", actor, { emails: ["new@example.com"] })],
-  ] as const)("checks a native sibling before any historical group %s writes", async (_name, run) => {
-    const historical = { id: "historical-a", quote_group_id: "group", quote_letter: "A" };
-    const f = fixture({ quote: historical, group: [historical, { ...nativeQuote, quote_letter: "B" }] });
-    await expect(run(f.db)).rejects.toMatchObject({ status: 409 });
+  it("checks every explicitly selected native sibling before historical send writes", async () => {
+    const historical = { id: "historical-a", account_id: accountId, quote_group_id: "group", quote_letter: "A" };
+    const f = fixture({ quote: historical, group: [historical, { ...nativeQuote, quote_group_id: "group", quote_letter: "B" }] });
+    await expect(sendSalesQuoteToCustomer(f.db, "historical-a", actor, { emails: ["new@example.com"], selectedQuoteIds: ["historical-a",quoteId], multipleQuotesApproved: true })).rejects.toMatchObject({ status: 409 });
     expect(f.calls).toEqual(["sales_quotes", "sales_quotes", "sales_quote_v2_draft_requests"]);
     expect(f.writes).not.toHaveBeenCalled();
   });

@@ -1,3 +1,5 @@
+import { selectedDeliveryQuoteIds } from "./quote-delivery-selection";
+import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
 import { customerChargeLabels } from "@/lib/quote/customer-charges";
 import { designCustomerCharges } from "./quote-money";
 import { valanceIllustration } from "@/lib/quote/valance-illustrations";
@@ -1102,13 +1104,8 @@ async function projectPublicQuote(
     customerEmail ||= customer?.email || null;
   }
 
-  let versions: PublicQuote["versions"] = [];
-  if (quote.quote_group_id) {
-    const siblings = await listQuoteVersions(supabase, quote.id);
-    versions = siblings
-      .filter((s) => s.share_token && (!nativeContract || s.status !== "archived" && (!siblings.some(version => version.signed) || s.signed)))
-      .map((s, index) => ({ token: s.share_token as string, label: customerQuoteText(s.label) || String(index + 1), total: s.quote_total, signed: s.signed, current: s.share_token === token }));
-  }
+  // A quote URL never exposes sibling drafts or expands after another send.
+  const versions: PublicQuote["versions"] = [];
 
   return {
     token,
@@ -2227,6 +2224,8 @@ export async function sendQuoteToCustomer(
   quoteId: string,
   actor: CrmActor,
   options: {
+    selectedQuoteIds?: string[];
+    multipleQuotesApproved?: boolean;
     email?: boolean;
     sms?: boolean;
     emailRecipients?: string[];
@@ -2253,14 +2252,15 @@ export async function sendQuoteToCustomer(
   const wantSms = options.sms !== false;
   const wantEmail = options.email !== false;
   const { token, url } = await ensureShareToken(supabase, quoteId, actor);
-  // A grouped contract is one customer deliverable. Do not send a partial link
-  // if any sibling cannot be made public, otherwise the page silently shows
-  // only the active quote even though the designer built A/B/C.
-  const versions = await listQuoteVersions(supabase, quoteId);
-  for (const version of versions) {
-    if (!version.share_token && version.id !== quoteId) {
-      await ensureShareToken(supabase, version.id, actor);
-    }
+  const selectedIds = selectedDeliveryQuoteIds(quoteId, options);
+  const selectedQuotes: { label: string; url: string; total: number }[] = [];
+  const siblings = selectedIds.length > 1 ? await listQuoteVersions(supabase, quoteId) : [];
+  for (const id of selectedIds.length > 1 ? selectedIds : []) {
+    if (id !== quoteId && !siblings.some(sibling => sibling.id === id && sibling.status !== "archived")) throw new CrmAuthError(409, "Selected quote does not belong to this project.");
+    const link = id === quoteId ? { token, url } : await ensureShareToken(supabase, id, actor);
+    const selected = await loadPublicQuoteByToken(supabase, link.token);
+    if (!selected || !selected.allPriced) throw new CrmAuthError(409, "Finish pricing every selected quote before sending.");
+    selectedQuotes.push({ label: siblings.find(sibling => sibling.id === id)?.label || selected.quoteNumber || "Quote", url: link.url, total: selected.total });
   }
   const { data: quote } = await supabase
     .from("crm_quotes")
@@ -2307,11 +2307,11 @@ export async function sendQuoteToCustomer(
     throw new CrmAuthError(409, "The contract recipient changed. Reopen the contract and review the recipient before sending.");
   }
   const note = options.note?.trim();
-  const smsBody = buildQuoteShareSms(url);
+  const smsBody = selectedQuotes.length > 1 ? buildSeparateQuotesSms(selectedQuotes) : buildQuoteShareSms(url);
   const sms = wantSms
     ? await sendSms({ to: requestedPhone, body: smsBody })
     : { sent: false, skipped: "text message not selected" };
-  const mail = buildQuoteEmail(customerName, url, total, {
+  const mail = selectedQuotes.length > 1 ? buildSeparateQuotesEmail(customerName, selectedQuotes, note) : buildQuoteEmail(customerName, url, total, {
     quoteNumber: publicQuote?.quoteNumber,
     lines: publicQuote?.lines,
     subtotal: publicQuote?.subtotal,
@@ -2347,6 +2347,12 @@ export async function sendQuoteToCustomer(
     await supabase.from("crm_quotes").update({ sent_via: sentVia }).eq("id", quoteId);
   }
 
+  if (sentVia && selectedIds.length > 1) {
+    const siblingIds = selectedIds.filter(id => id !== quoteId);
+    const { error } = await supabase.from("crm_quotes").update({ status: "sent", sent_at: new Date().toISOString(), sent_via: sentVia }).in("id", siblingIds).eq("status", "draft");
+    if (error) throw new CrmAuthError(502, "Quotes were sent, but a selected quote status could not be updated.");
+  }
+
   // The job is a forward-only projection of the quote: sending it advances the
   // job to "quoted" (never downgrades a job already further along).
   if (quote.job_id) {
@@ -2362,7 +2368,7 @@ export async function sendQuoteToCustomer(
     entityType: "quote",
     entityId: quoteId,
     action: "send_to_customer",
-    metadata: { url, sms: sms.sent, email: emailRes.sent },
+    metadata: { url, sms: sms.sent, email: emailRes.sent, selectedQuoteIds: selectedIds, multipleQuotesApproved: selectedIds.length > 1 },
   });
 
   return { url, sms, email: emailRes, status };

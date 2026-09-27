@@ -1,3 +1,4 @@
+import { selectedDeliveryQuoteIds, selectDeliveryQuotes } from "./quote-delivery-selection";
 import { incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { authoritativeDesignPriceIssue } from "@mts/lib/quotePricingDisplay";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
@@ -46,6 +47,9 @@ type AnyRow = Record<string, any>;
 type CrmActor = { email: string; userId?: string };
 
 export type SendSalesQuoteOptions = {
+  selectedQuoteIds?: string[];
+  selectedQuoteRevisions?: Record<string, number>;
+  multipleQuotesApproved?: boolean;
   expectedRevision?: number;
   idempotencyKey?: string;
   deliveryMode?: "resend";
@@ -218,7 +222,8 @@ export async function sendSalesQuoteToCustomer(
     const { sendNativeSalesQuote } = await import("./native-quote-delivery");
     return sendNativeSalesQuote(supabase, quote, actor, options);
   }
-  const groupQuotes = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
+  const selectedIds = selectedDeliveryQuoteIds(salesQuoteId, options);
+  const groupQuotes = selectDeliveryQuotes(quote, selectedIds.length > 1 ? await loadSalesQuoteGroupForCustomerMirror(supabase, quote) : [], selectedIds);
   for (const groupQuote of groupQuotes) {
     await assertHistoricalSalesQuoteMutationAllowed(supabase, groupQuote);
   }
@@ -265,9 +270,10 @@ export async function sendSalesQuoteToCustomer(
     if (error) throw new CrmAuthError(502, "Customer contact could not be saved before sending.");
   }
 
+  const mirroredIds = new Map<string, string>();
   const crmQuoteId = preparedV2
     ? await mirrorSalesQuoteV2ForCustomerSend(supabase, quoteForMirror, preparedV2)
-    : await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror, groupQuotes);
+    : await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror, groupQuotes, mirroredIds);
   const result = await sendQuoteToCustomer(supabase, crmQuoteId, actor, {
     email: options.channels?.email,
     sms: options.channels?.sms,
@@ -275,9 +281,11 @@ export async function sendSalesQuoteToCustomer(
     phone: requestedPhone,
     note: options.note,
     measureDecision,
+    selectedQuoteIds: groupQuotes.length > 1 ? [...mirroredIds.values()] : [crmQuoteId],
+    multipleQuotesApproved: options.multipleQuotesApproved,
   });
 
-  await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options, result);
+  for (const member of groupQuotes) await markSalesQuoteSent(supabase, String(member.id), member, options, result);
   await persistSalesQuotePublicLink(supabase, salesQuoteId, result.url);
   if (sendAsIs && preparedV2) {
     await recordCrmActivity(supabase, actor, {
@@ -311,7 +319,7 @@ export async function prepareSalesQuoteInPerson(
     const { prepareNativeInPersonQuote } = await import("./native-quote-delivery");
     return prepareNativeInPersonQuote(supabase, quote, actor, options);
   }
-  const group = await loadSalesQuoteGroupForCustomerMirror(supabase, quote);
+  const group = [quote];
   for (const member of group) {
     await assertHistoricalSalesQuoteMutationAllowed(supabase, member);
     await assertLegacyLotusDeliveryAllowed(supabase, member);
@@ -541,8 +549,9 @@ async function mirrorSalesQuoteGroupForCustomerSend(
   supabase: CrmSupabaseClient,
   activeQuote: AnyRow,
   loadedGroup?: AnyRow[],
+  mirroredIds?: Map<string, string>,
 ): Promise<string> {
-  const groupQuotes = loadedGroup ?? await loadSalesQuoteGroupForCustomerMirror(supabase, activeQuote);
+  const groupQuotes = loadedGroup ?? [activeQuote];
   const decision = technicalMeasureDecisionFromSource(activeQuote);
   const quotes = salesQuotesToMirror(activeQuote, groupQuotes).map((quote) =>
     decision
@@ -562,6 +571,7 @@ async function mirrorSalesQuoteGroupForCustomerSend(
   let activeCrmQuoteId = "";
   for (const quote of quotes) {
     const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quote);
+    mirroredIds?.set(String(quote.id), crmQuoteId);
     if (quote.id === activeQuote.id) activeCrmQuoteId = crmQuoteId;
   }
   if (!activeCrmQuoteId) throw new CrmAuthError(502, "The selected quote option could not be prepared for sending.");

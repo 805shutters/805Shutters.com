@@ -71,6 +71,7 @@ beforeAll(async()=>{
  await db.exec(migration('20260925141722_native_quote_explicit_resends'));
  await db.exec(migration('20260925190000_native_in_person_signing'));
  await db.exec(migration('20260925191000_native_staff_sold'));
+ await db.exec(migration('20260927182921_explicit_quote_delivery_selection'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -406,14 +407,16 @@ it('uses non-retrying errors for stale or changed initial delivery requests',asy
  const functions=(await db.query<any>("select proname from pg_proc where pronamespace='public'::regnamespace and prosrc like '%40001%' and (proname like '%native_quote%' or proname like '%native%delivery%')")).rows;
  expect(functions).toEqual([]);
 });
-it('resends a grouped quote from either alternative using the shared dispatch and protects accepted alternatives',async()=>{
+it('resends selected alternatives through their own dispatch and protects accepted alternatives',async()=>{
  await seed(80);await seed(81);
  await db.query('update sales_quotes set quote_group_id=$1 where id in ($2,$3)',[id(8000),id(80),id(81)]);
- const initial=(await db.query<any>('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5) as result',[id(80),id(50),'group-initial-80',{email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null},[{quoteId:id(80),revision:1,payload:payload(80)},{quoteId:id(81),revision:1,payload:payload(81)}]])).rows[0].result;
+ const request={email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null,selectedQuoteIds:[id(80),id(81)],multipleQuotesApproved:true};
+ const initial=(await db.query<any>('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5) as result',[id(80),id(50),'group-initial-80',request,[{quoteId:id(80),revision:1,payload:payload(80)},{quoteId:id(81),revision:1,payload:payload(81)}]])).rows[0].result;
  await finishDelivery(initial);
  const second=await resend(81,'group-resend-81',initial.request_key);
- expect(second.id).toBe(initial.id);await finishDelivery(second);
- for(const n of [80,81]) expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(n),id(50)])).rows[0].result.reservation.requestKey).toBe(second.send_key);
+ expect(second.id).not.toBe(initial.id);await finishDelivery(second);
+ expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(80),id(50)])).rows[0].result.reservation.requestKey).toBe(initial.request_key);
+ expect((await db.query<any>('select native_quote_delivery_capability($1,$2) as result',[id(81),id(50)])).rows[0].result.reservation.requestKey).toBe(second.send_key);
  await accept(initial,[id(180)+'#1',id(180)+'#2',id(180)+'#3'],387);
  await expect(resend(81,'group-after-signing',second.send_key)).rejects.toMatchObject({code:'PT409'});
 });
@@ -479,5 +482,35 @@ it('keeps grouped alternatives and prevents selling a second option after a staf
  await db.query('select record_native_quote_staff_sale($1,$2,1,387)',[id(2000),id(50)]);
  await expect(db.query('select record_native_quote_staff_sale($1,$2,1,387)',[id(2001),id(50)])).rejects.toMatchObject({code:'PT409'});
  const sibling=(await db.query<any>('select q.status,q.meta from crm_quotes q join sales_quote_v2_deliveries d on d.crm_quote_id=q.id where d.quote_id=$1',[id(2001)])).rows[0];
- expect(sibling.status).toBe('draft');expect(sibling.meta.native_superseded_by_quote_id).toBe(review.crm_quote_id);
+ expect(sibling).toBeUndefined();
+ expect((await db.query<any>('select status,quote_v2_delivery_id from sales_quotes where id=$1',[id(2001)])).rows[0]).toMatchObject({status:'draft',quote_v2_delivery_id:null});
+});
+
+it('defaults A alone and freezes only an explicitly approved A/C selection among four quotes',async()=>{
+ for(const n of [3000,3001,3002,3003])await seed(n);
+ await db.query('update sales_quotes set quote_group_id=$1 where id=any($2::uuid[])',[id(13000),[3000,3001,3002,3003].map(id)]);
+ const request={email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null};
+ const payloads=[3000,3001,3002,3003].map(n=>({quoteId:id(n),revision:1,payload:payload(n)}));
+ const first=(await db.query<any>('select reserve_native_quote_group_delivery($1,$2,1,$3,$4,$5) as result',[id(3000),id(50),'only-a-3000',request,payloads])).rows[0].result;
+ await finishDelivery(first);
+ for(const n of [3001,3002,3003])expect((await db.query<any>('select status,quote_v2_delivery_id from sales_quotes where id=$1',[id(n)])).rows[0]).toMatchObject({status:'draft',quote_v2_delivery_id:null});
+ const chosen={...request,selectedQuoteIds:[id(3000),id(3002)],multipleQuotesApproved:true};
+ const selected=[payloads[0],payloads[2]];
+ await expect(db.query('select reserve_native_quote_selection_delivery($1,$2,1,$3,$4,$5,$6,$7)',[id(3000),id(50),'without-approval',{...chosen,multipleQuotesApproved:false},selected,'resend',first.request_key])).rejects.toMatchObject({code:'22023'});
+ await expect(db.query('select reserve_native_quote_selection_delivery($1,$2,1,$3,$4,$5,$6,$7)',[id(3000),id(50),'stale-selection',chosen,[selected[0],{...selected[1],revision:2}],'resend',first.request_key])).rejects.toMatchObject({code:'PT409'});
+ expect((await db.query<any>('select count(*)::int as n from sales_quote_v2_resend_requests where delivery_id=$1',[first.id])).rows[0].n).toBe(0);
+ const next=(await db.query<any>('select reserve_native_quote_selection_delivery($1,$2,1,$3,$4,$5,$6,$7) as result',[id(3000),id(50),'approved-a-and-c',chosen,selected,'resend',first.request_key])).rows[0].result;
+ await finishDelivery(next);
+ for(const n of [3000,3002])expect((await db.query<any>('select status from sales_quotes where id=$1',[id(n)])).rows[0].status).toBe('sent');
+ for(const n of [3001,3003])expect((await db.query<any>('select status,quote_v2_delivery_id from sales_quotes where id=$1',[id(n)])).rows[0]).toMatchObject({status:'draft',quote_v2_delivery_id:null});
+});
+
+it('refuses to claim a multi-quote message after one selected quote is archived',async()=>{
+ await seed(4000);await seed(4001);
+ await db.query('update sales_quotes set quote_group_id=$1 where id=any($2::uuid[])',[id(14000),[id(4000),id(4001)]]);
+ const request={email:['synthetic@example.invalid'],sms:[],note:null,measureDecision:null,selectedQuoteIds:[id(4000),id(4001)],multipleQuotesApproved:true};
+ const receipt=(await db.query<any>('select reserve_native_quote_selection_delivery($1,$2,1,$3,$4,$5) as result',[id(4000),id(50),'archive-selected-test',request,[4000,4001].map(n=>({quoteId:id(n),revision:1,payload:payload(n)}))])).rows[0].result;
+ await db.query('update sales_quotes set archived_at=now() where id=$1',[id(4001)]);
+ const attempt=(await db.query<any>('select id from sales_quote_v2_delivery_attempts where delivery_id=$1',[receipt.id])).rows[0];
+ await expect(db.query('select claim_native_quote_delivery_attempt($1,$2)',[attempt.id,id(50)])).rejects.toMatchObject({code:'PT409'});
 });

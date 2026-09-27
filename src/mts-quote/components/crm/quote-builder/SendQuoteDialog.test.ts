@@ -12,7 +12,7 @@ Object.assign(globalThis,{IS_REACT_ACT_ENVIRONMENT:true});
 let root:ReturnType<typeof createRoot>, container:HTMLDivElement, client:QueryClient;
 const quote={id:'quote-fixture',quote_number:'TEST',customer_name:'Synthetic',customer_email:'first@example.invalid',quote_v2_backend:true,quote_v2_revision:1,status:'sent',share_token:'test'} as SalesQuote;
 const request={email:['first@example.invalid','second@example.invalid'],sms:[],note:'Saved note',measureDecision:'needed'};
-const capability={enabled:true,native:true,canSend:true,supportsResend:true,reservation:{requestKey:'original-request',state:'sent',request,resend:false}};
+const capability={enabled:true,native:true,canSend:true,supportsResend:true,supportsQuoteSelection:true,reservation:{requestKey:'original-request',state:'sent',request,resend:false}};
 const fetchMock=vi.fn();
 beforeEach(()=>{vi.clearAllMocks();vi.stubGlobal('fetch',fetchMock);client=new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}});container=document.createElement('div');document.body.append(container);root=createRoot(container);});
 afterEach(async()=>{await act(()=>root.unmount());container.remove();client.clear();vi.unstubAllGlobals();});

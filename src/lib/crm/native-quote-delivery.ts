@@ -1,3 +1,5 @@
+import { selectedDeliveryQuoteIds, selectDeliveryQuotes } from "./quote-delivery-selection";
+import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "./auth";
 import { prepareV2CustomerSendPayloadFromDatabase, V2SendPreparationError } from "./sales-quote-v2-send";
@@ -8,7 +10,7 @@ import type { SendSalesQuoteOptions } from "./sales-quote-send";
 
 type Row = Record<string, unknown>;
 export const nativeDeliveryRuntimeEnabled = () => process.env.QUOTE_V2_NATIVE_CUSTOMER_DELIVERY === "enabled-after-native-delivery-migration";
-export type NativeDeliveryRequest = { email: string[]; sms: string[]; note: string | null; measureDecision: string | null; purpose?: "in_person" };
+export type NativeDeliveryRequest = { email: string[]; sms: string[]; note: string | null; measureDecision: string | null; purpose?: "in_person"; selectedQuoteIds?: string[]; multipleQuotesApproved?: boolean };
 type Delivery = { id: string; quote_id: string | null; crm_quote_id: string; share_token: string; request_key: string; request: NativeDeliveryRequest; customer_payload: { total: number }; quote_revision: number; send_key?: string };
 type Attempt = { id: string; channel: "email" | "sms"; recipient: string; state: "pending" | "sending" | "sent" | "failed" | "uncertain"; claim_token: string; result?: Row };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -86,19 +88,11 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
   if (!capability.enabled) throw new CrmAuthError(409, "The complete native delivery migration is not active.");
   if (options.deliveryMode != null && options.deliveryMode !== "resend") throw new CrmAuthError(400, "Invalid delivery action.");
   if (inPerson && !capability.supportsInPerson) throw new CrmAuthError(409, "In-person signing is awaiting its database migration.");
+  const selectedIds = selectedDeliveryQuoteIds(String(quote.id), options);
+  if (!capability.supportsQuoteSelection) throw new CrmAuthError(409, "Separate quote sending is awaiting its database migration.");
   const request: NativeDeliveryRequest = inPerson
     ? { email: [], sms: [], note: null, measureDecision: options.measureDecision || null, purpose: "in_person" }
-    : nativeDeliveryRequest(quote, options);
-  if (options.deliveryMode === "resend") {
-    if (!capability.supportsResend) throw new CrmAuthError(409, "Send again is awaiting its database migration.");
-    const { data: saved, error } = await db.rpc("reserve_native_quote_resend", {
-      p_quote_id: quote.id, p_actor_id: actor.userId, p_expected_revision: options.expectedRevision,
-      p_request_key: options.idempotencyKey, p_previous_request_key: options.previousDeliveryKey || null, p_request: request,
-    });
-    rpcError(error, "The resend could not be reserved. No new email was confirmed; reload delivery status before retrying.");
-    if (!saved?.id || !saved.share_token || !saved.send_key) throw new CrmAuthError(502, "Resend returned an inconsistent identity.");
-    return saved as Delivery;
-  }
+    : { ...nativeDeliveryRequest(quote, options), selectedQuoteIds: selectedIds, multipleQuotesApproved: selectedIds.length > 1 };
   const { data: existing, error: readError } = await db.from("sales_quote_v2_deliveries").select("*").eq("quote_id", quote.id).maybeSingle();
   rpcError(readError, "Native quote delivery could not be loaded.");
   if (inPerson && existing) {
@@ -106,14 +100,16 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
     return existing as Delivery;
   }
   let group: Row[] = [quote];
-  if (!existing && quote.quote_group_id) {
+  if (selectedIds.length > 1 && quote.quote_group_id) {
     const { data, error } = await db.from("sales_quotes").select("*").eq("quote_group_id", quote.quote_group_id).order("id");
     rpcError(error, "Quote alternatives could not be loaded.");
-    group = (data || []).filter(member => !member.deleted_at && member.status !== "archived");
+    group = selectDeliveryQuotes(quote, data || [], selectedIds);
   }
   const payloads: Row[] = [];
-  if (!existing) {
+  {
     for (const member of group) {
+      if (selectedIds.length > 1 && options.selectedQuoteRevisions?.[String(member.id)] !== member.quote_v2_revision) throw new CrmAuthError(409, "A selected quote changed. Reopen Send and review its current total.");
+      if (member.quote_v2_delivery_id || (member.id === quote.id && existing)) { payloads.push({ quoteId: member.id, revision: member.quote_v2_revision, payload: null }); continue; }
       let payload;
       try {
         payload = await prepareV2CustomerSendPayloadFromDatabase(db, member, { sendAsIs: options.sendAsIs === true });
@@ -127,7 +123,8 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
       payloads.push({ quoteId: member.id, revision: member.quote_v2_revision, payload });
     }
   }
-  const { data: saved, error } = await db.rpc("reserve_native_quote_group_delivery", {
+  const { data: saved, error } = await db.rpc("reserve_native_quote_selection_delivery", {
+    p_delivery_mode: options.deliveryMode || null, p_previous_request_key: options.previousDeliveryKey || null,
     p_quote_id: quote.id, p_actor_id: actor.userId, p_expected_revision: options.expectedRevision,
     p_request_key: options.idempotencyKey, p_request: request, p_payloads: payloads,
   });
@@ -148,7 +145,16 @@ export async function deliverFrozenNativeQuote(db: SupabaseClient, delivery: Del
     throw new CrmAuthError(409, "The frozen customer contract could not be verified before delivery.");
   }
   const url = publicQuoteUrl(delivery.share_token);
-  const mail = buildQuoteEmail(pub.customerName, url, pub.total, {
+  const ids = delivery.request.selectedQuoteIds || [delivery.quote_id];
+  const separate = [{ label: pub.quoteNumber || "Quote", url, total: pub.total }];
+  for (const id of ids.filter(id => id !== delivery.quote_id)) {
+    const { data: sibling, error } = await db.from("sales_quote_v2_deliveries").select("share_token,customer_payload").eq("quote_id", id).single();
+    rpcError(error, "Selected quote snapshot could not be loaded.");
+    const selected = sibling && await loadPublicQuoteByToken(db, sibling.share_token);
+    if (!selected || selected.signed || !selected.allPriced || Math.round(selected.total * 100) !== Math.round(Number(sibling.customer_payload.total) * 100)) throw new CrmAuthError(409, "A selected quote changed. Review the quotes before sending.");
+    separate.push({ label: selected.quoteNumber || "Quote", url: publicQuoteUrl(sibling.share_token), total: selected.total });
+  }
+  const mail = separate.length > 1 ? buildSeparateQuotesEmail(pub.customerName, separate, delivery.request.note) : buildQuoteEmail(pub.customerName, url, pub.total, {
     quoteNumber: pub.quoteNumber, lines: pub.lines, subtotal: pub.subtotal, depositDue: pub.depositDue,
     balanceDue: pub.balanceDue, versions: pub.versions, personalNote: delivery.request.note || undefined,
   });
@@ -167,7 +173,7 @@ export async function deliverFrozenNativeQuote(db: SupabaseClient, delivery: Del
         const sent = await sendEmail({ to: attempt.recipient, ...mail, from: "805 Shutters <805@805shutters.com>", idempotencyKey: `native-quote:${attempt.id}` });
         result = { sent: sent.sent, skipped: sent.skipped, error: sent.error, uncertain: sent.uncertain, providerId: sent.id };
       } else {
-        const sent = await sendSms({ to: attempt.recipient, body: buildQuoteShareSms(url) });
+        const sent = await sendSms({ to: attempt.recipient, body: separate.length > 1 ? buildSeparateQuotesSms(separate) : buildQuoteShareSms(url) });
         result = { sent: sent.sent, skipped: sent.skipped, error: sent.error, uncertain: sent.uncertain, providerId: sent.sid };
       }
     } catch (error) {

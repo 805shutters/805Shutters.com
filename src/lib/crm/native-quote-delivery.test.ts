@@ -88,7 +88,7 @@ describe("native quote preparation errors", () => {
  const options = { expectedRevision: 8, idempotencyKey: "test-delivery-8", channels: { email: true, sms: false }, emails: ["customer@example.invalid"] };
  function preparationDb() {
   const query = { select: () => query, eq: () => query, maybeSingle: async () => ({data:null,error:null}) };
-  const rpc = vi.fn().mockResolvedValue({data:{enabled:true,schemaVersion:1,native:true,canSend:true},error:null});
+  const rpc = vi.fn().mockResolvedValue({data:{enabled:true,schemaVersion:1,supportsQuoteSelection:true,native:true,canSend:true},error:null});
   return {client:{from:()=>query,rpc} as unknown as SupabaseClient,rpc};
  }
  it.each([{status:"archived"},{status:"draft",archived_at:"2026-09-23T00:00:00Z"}])("blocks an archived quote before preparation or provider calls", async (quote) => {
@@ -100,7 +100,7 @@ describe("native quote preparation errors", () => {
   ready(); const test=preparationDb();
   mocks.prepare.mockRejectedValueOnce(new V2SendPreparationError("This quote has unfinished pricing. Save and price all selected designs before sending."));
   await expect(sendNativeSalesQuote(test.client,{id:"quote",quote_number:"805-TEST",status:"draft"},actor,options)).rejects.toMatchObject({status:409,message:expect.stringContaining("Quote 805-TEST cannot be sent: This quote has unfinished pricing")});
-  expect(test.rpc).not.toHaveBeenCalledWith("reserve_native_quote_group_delivery",expect.anything());expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
+  expect(test.rpc).not.toHaveBeenCalledWith("reserve_native_quote_selection_delivery",expect.anything());expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
  });
  it("does not disguise an unexpected preparation failure as a user error", async () => {
   ready(); const test=preparationDb(); const failure=new Error("unexpected database failure");mocks.prepare.mockRejectedValueOnce(failure);
@@ -111,7 +111,7 @@ describe("native quote preparation errors", () => {
 describe("in-person contract preparation",()=>{
  const actor={userId:"10000000-0000-4000-8000-000000000001"};
  function client(existing:unknown=delivery){
-  const rpc=vi.fn(async(name:string)=>({data:name==='native_quote_delivery_capability'?{schemaVersion:1,native:true,supportsInPerson:true}:delivery,error:null}));
+  const rpc=vi.fn(async(name:string)=>({data:name==='native_quote_delivery_capability'?{schemaVersion:1,supportsQuoteSelection:true,native:true,supportsInPerson:true}:delivery,error:null}));
   const query={select:()=>query,eq:()=>query,maybeSingle:async()=>({data:existing,error:null})};
   return {db:{rpc,from:()=>query} as unknown as SupabaseClient,rpc};
  }
@@ -123,7 +123,7 @@ describe("in-person contract preparation",()=>{
  it('reserves a draft with an explicitly empty message request',async()=>{
   ready();const test=client(null);mocks.prepare.mockResolvedValue({backend:'authoritative_v2',total:100.01,lines:[]});
   await prepareNativeInPersonQuote(test.db,{id:'source',status:'draft',quote_v2_revision:1},actor,{expectedRevision:1,idempotencyKey:'in-person-review'});
-  expect(test.rpc).toHaveBeenCalledWith('reserve_native_quote_group_delivery',expect.objectContaining({p_request:{email:[],sms:[],note:null,measureDecision:null,purpose:'in_person'}}));
+  expect(test.rpc).toHaveBeenCalledWith('reserve_native_quote_selection_delivery',expect.objectContaining({p_request:{email:[],sms:[],note:null,measureDecision:null,purpose:'in_person'}}));
   expect(mocks.email).not.toHaveBeenCalled();expect(mocks.sms).not.toHaveBeenCalled();
  });
  it('rejects a stale browser revision before opening the signing page',async()=>{
