@@ -1,15 +1,117 @@
 {
-  "previewUrl": "https://805-p1lah6ktm-805-shutters.vercel.app",
-  "deployedCommit": "f059680b",
+  "verifiedAt": "2026-09-27T21:39:00Z",
+  "status": "preview_end_to_end_pass",
+  "previewUrl": "https://805-lixbqrwgh-805-shutters.vercel.app",
+  "bookingUrl": "https://805-lixbqrwgh-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify",
+  "deployedCommit": "c6ca2ec8",
+  "deploymentId": "dpl_EhmDydHTqJSScqr62PiLbN6mWyfo",
+  "dataset": "549342503537516",
+  "branch": "codex/meta-static-launch",
+  "stagingProject": "uivuqlrrgyjjbvcuhstr",
+  "stagingBranch": "lead-stage-events-preview",
+  "productionDeployed": false,
+  "productionDatabaseModified": false,
+  "adsLaunched": false,
+  "runtimeConfiguration": {
+    "status": "pass",
+    "capiTokenPresent": true,
+    "testEventCodePresent": true,
+    "isolatedDatabase": true,
+    "databaseKeysPresent": true,
+    "customerNotificationsEnabled": false
+  },
+  "previewEnvironment": {
+    "metaSecrets": "Preview only",
+    "databaseOverrides": "Preview, codex/meta-static-launch branch only",
+    "deliveryEnabled": false,
+    "telegramVisitorAlertsEnabled": false
+  },
+  "stagingMigration": {
+    "version": "20260927194921",
+    "applied": true,
+    "ledgerVerified": true,
+    "productionApplied": false
+  },
   "pageView": {
     "status": "pass",
     "dataset": "549342503537516",
     "event": "PageView",
-    "httpStatus": 200
+    "evidence": "Browser resource timing recorded the booking-page pixel request. Earlier corrected preview independently returned HTTP 200.",
+    "eventsManagerStatus": "Processed",
+    "receivedFrom": "Browser",
+    "receivedAtLocal": "2026-09-27 14:18:24 America/Los_Angeles"
   },
-  "scheduleBrowserAndCapi": "blocked_not_verified",
-  "supabaseLead": "blocked_not_verified",
-  "previewDuplicate": "blocked_not_verified",
+  "scheduleBrowserAndCapi": {
+    "transportStatus": "pass",
+    "event": "Schedule",
+    "eventId": "529ac641-7fde-4368-9339-e4c8a1c156d4",
+    "browser": {
+      "automaticAfterRealFormBooking": true,
+      "requestMethod": "POST",
+      "httpStatus": 200,
+      "payloadDataset": "549342503537516",
+      "payloadEvent": "Schedule",
+      "payloadEid": "529ac641-7fde-4368-9339-e4c8a1c156d4"
+    },
+    "capi": {
+      "outboxStatus": "sent",
+      "eventsReceived": 1,
+      "acceptedAt": "2026-09-27T21:32:08.910Z",
+      "testEvent": true,
+      "approvedCustomerFields": [
+        "sha256_email",
+        "sha256_phone"
+      ]
+    },
+    "eventsManagerConfirmation": {
+      "status": "pass",
+      "dataset": "549342503537516",
+      "event": "Schedule",
+      "browserStatus": "Processed",
+      "serverStatus": "Processed",
+      "browserEventId": "a0200beb-d347-4521-afc8-f9ad702bbc8f",
+      "serverEventId": "a0200beb-d347-4521-afc8-f9ad702bbc8f",
+      "browserReceivedAtLocal": "2026-09-27 14:19:33 America/Los_Angeles",
+      "serverReceivedAtLocal": "2026-09-27 14:19:32 America/Los_Angeles",
+      "serverUserDataKeys": [
+        "Email",
+        "Phone"
+      ],
+      "note": "Events Manager showed the matching pair after reopening Test Events in a fresh Chrome tab. No aggregate deduplication-rate claim is made."
+    },
+    "status": "pass"
+  },
+  "supabaseLead": {
+    "status": "pass",
+    "id": "529ac641-7fde-4368-9339-e4c8a1c156d4",
+    "utm_source": "test",
+    "utm_medium": "cpc",
+    "utm_campaign": "verify",
+    "utm_content": null,
+    "note": "utm_content was not present in the requested test URL."
+  },
+  "previewDuplicate": {
+    "status": "pass",
+    "originalLeadId": "a0200beb-d347-4521-afc8-f9ad702bbc8f",
+    "freshSubmissionDifferentTime": true,
+    "httpStatus": 409,
+    "message": "You already booked a consultation within the last 24 hours. Please call 805-806-9344 if you need to change it.",
+    "leadCountAfter": 1,
+    "metaOutboxCountAfter": 1,
+    "submitLockObserved": true
+  },
+  "syntheticTestLeadIds": [
+    "a0200beb-d347-4521-afc8-f9ad702bbc8f",
+    "39158f59-9c70-40e3-bcfa-841fe4570673",
+    "529ac641-7fde-4368-9339-e4c8a1c156d4"
+  ],
+  "testNotes": [
+    "Three labeled synthetic bookings were created in staging only while collecting browser network evidence.",
+    "The second conversion was manually retried once with its existing event ID for diagnosis; it is not used as automatic browser transport proof.",
+    "The third booking automatically produced the captured HTTP 200 browser Schedule request and matching accepted CAPI receipt.",
+    "No customer notifications were enabled.",
+    "Initial Meta dashboard HTTP 500/stale view was resolved by a fresh Test Events tab; both original conversion sources and PageView are visibly Processed."
+  ],
   "localTests": {
     "bookingAndTrackingPassed": 160,
     "concurrentPostgresPassed": 8,
@@ -21,79 +123,20 @@
     "timeoutFilesSerialRerunPassed": 110,
     "finalTypecheck": "pass",
     "localBuild": "pass",
-    "datasetCorrectionFocusedPassed": 34
+    "datasetCorrectionFocusedPassed": 34,
+    "previewPresenceRoutePassed": 2,
+    "latestTypecheck": "pass",
+    "latestVercelBuild": "pass"
   },
-  "productionDeployed": false,
-  "remoteMigrationApplied": false,
-  "capiImplementation": {
-    "status": "deployed_not_provider_verified",
-    "approvedCustomerFields": [
-      "sha256_email",
-      "sha256_phone"
-    ],
-    "excluded": [
-      "ip",
-      "user_agent",
-      "cookies",
-      "name",
-      "address",
-      "query_parameters"
-    ],
-    "providerAcceptance": "not_verified",
-    "dataset": "549342503537516"
-  },
-  "configurationCheck": {
-    "project": "805-shutters/805",
-    "metaPreviewVariableNamesVisible": [
-      "META_CAPI_TEST_EVENT_CODE"
-    ],
-    "branchScopedMetaVariablesVisible": false,
-    "stagingCredentialsReceived": false,
-    "browserEvidence": "META_CAPI_TEST_EVENT_CODE saved as Secret, Preview only; verified in UI and vercel env ls preview. META_CAPI_ACCESS_TOKEN remains absent from Preview.",
-    "metaPortal": {
-      "datasetConfirmed": true,
-      "testCodeLocated": true,
-      "testCodeSavedToVercel": true,
-      "accessTokenRetrieved": false,
-      "browserControl": "native_chrome_working",
-      "accessTokenGeneration": "awaiting_action_time_confirmation"
-    },
-    "testCodeRuntimePresence": "not_verified_requires_redeploy",
-    "stagingBranchesVisible": [
-      {
-        "name": "contact-idempotency-preview",
-        "ref": "bsmuismqwzloiurzacry"
-      },
-      {
-        "name": "lead-stage-events-preview",
-        "ref": "uivuqlrrgyjjbvcuhstr"
-      }
-    ],
-    "stagingSelection": "awaiting_user_identification_no_branch_modified"
-  },
-  "previousDatasetPageView": {
-    "status": "superseded_wrong_dataset",
-    "dataset": "117872572252906",
-    "event": "PageView",
-    "httpStatus": 200
-  },
-  "expectedDataset": {
-    "id": "549342503537516",
-    "name": "805 pixel"
-  },
-  "datasetCorrectionDeployed": true,
-  "deploymentId": "dpl_7gCCbT1eMBAkXPuhZbeGquCio9Tr",
-  "previousBookingAttempt": {
-    "httpStatus": 503,
-    "message": "Preview booking requires an isolated preview database.",
+  "eventsManagerVerifiedLead": {
+    "id": "a0200beb-d347-4521-afc8-f9ad702bbc8f",
     "utm_source": "test",
     "utm_medium": "cpc",
     "utm_campaign": "verify",
-    "utm_content": "meta-preview"
-  },
-  "bookingAvailability": {
-    "httpStatus": 503,
-    "message": "Scheduling is temporarily unavailable. Please call 805 Shutters.",
-    "reason": "No isolated staging configuration supplied; preview service client blocks production"
+    "utm_content": null,
+    "capiStatus": "sent",
+    "eventsReceived": 1,
+    "acceptedAt": "2026-09-27T21:19:34.491Z",
+    "testEvent": true
   }
 }

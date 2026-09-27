@@ -1,6 +1,6 @@
 # 805 Shutters Meta launch preparation
 
-Status: assets exported; browser/booking changes locally tested and deployed to preview. Corrected-dataset PageView is verified on the latest preview (HTTP 200). Hashed-email/phone-only CAPI is deployed but not provider-verified; successful preview booking verification remains blocked by environment configuration. No production release, migration, ad publication, or spend.
+Status: creative exports prepared, tracking implemented and deployed to isolated Preview, real bookings completed. Browser/CAPI transport, matching event IDs, staging UTMs, and 24-hour duplicate protection pass. Meta Events Manager confirms processed PageView plus Browser and Server Schedule with matching event IDs. Preview verification is complete; production and ads remain unchanged.
 
 ## Creative exports
 
@@ -23,64 +23,38 @@ Six selected originals are unchanged. JPG quality 85, embedded sRGB. Flattened s
 
 The same asset pair supports both Meta button variants. Book Now goes to `/book-consultation/` with UTMs. Call Now uses +1 805-806-9344 and does not produce a website Schedule conversion until a booking is actually completed.
 
-## Implementation and release gates
+## Preview verification — September 27, 2026
 
-Dataset correction is deployed to the latest preview. PageView passed for 549342503537516; the earlier dataset evidence remains superseded.
+Tested Preview: https://805-lixbqrwgh-805-shutters.vercel.app
 
-Confirmed dataset: **549342503537516 (805 pixel)**. Browser pixel, Schedule CAPI and existing Lead CAPI share the same constant. Legacy META_PIXEL_ID / NEXT_PUBLIC_META_PIXEL_ID values cannot override it. The Meta token and test code must belong to this corrected dataset.
+Booking URL: https://805-lixbqrwgh-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify
 
-- Browser event: Schedule, eventID = saved CRM lead ID. Public PageView uses a synchronous queue, including the booking route. Private CRM/API paths are excluded.
-- Booking UTM parameters take precedence over older session attribution.
-- Existing atomic booking_commit writes the lead, job, calendar entry, quote, request result, and notification outbox together. Missing lead ID fails closed; transaction failures emit sanitized codes.
-- 24-hour duplicate guard compares normalized name + phone + address under the existing schedule row lock. Same-key retries return the original booking; new-key refreshes cannot create another lead.
-- Apply `20260927194921_meta_booking_launch.sql` only to an isolated preview database. It has been exercised locally, not applied remotely.
-- Preview requests targeting production Supabase evuxqsaucmvgyuvjpqlo are blocked.
-- The user approved SHA-256 hashed email and phone only. Schedule CAPI sends only em/ph in user_data, a fixed clean booking URL, event name/time/ID and test code. It excludes IP, user agent, cookies, names, addresses and query strings. The existing non-booking Lead helper has not been repurposed.
-- Schedule is saved in the atomic booking outbox with the same saved lead ID used by the browser. Provider acceptance is persisted; failures remain pending with sanitized errors and retry the original event ID/time. Preview requires a Meta test event code. Customer notifications remain paused.
-- Configure META_CAPI_ACCESS_TOKEN and META_CAPI_TEST_EVENT_CODE securely in Vercel Preview; do not put secret values in this document or source files.
-- Connected Supabase branch access returns 403. An authorized account must provide the isolated preview branch and its Vercel preview configuration.
+Deployed code: `c6ca2ec8`, branch `codex/meta-static-launch`, deployment `dpl_EhmDydHTqJSScqr62PiLbN6mWyfo` (Ready, Preview). Production and main remain untouched; no ads launched.
 
-## Required hosted verification (not yet completed)
-
-Load `/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview`, complete an unmistakably labeled test booking on an isolated preview database with all notifications disabled, and retain:
-
-1. Browser PageView network evidence for dataset 549342503537516 (805 pixel).
-2. Browser Schedule eventID and accepted CAPI Schedule event_id, both equal to the saved lead ID.
-3. Supabase lead row with four expected UTM values.
-4. Duplicate request within 24 hours returning 409 and unchanged lead/job/calendar counts.
-5. Same-key replay returning the same lead ID after an interrupted response.
-
-Local automated tests are not a substitute for this hosted verification.
-
-## Verification results — September 27, 2026
-
-Preview deployment: https://805-p1lah6ktm-805-shutters.vercel.app
-
-Booking URL tested: https://805-p1lah6ktm-805-shutters.vercel.app/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify&utm_content=meta-preview
-
-Deployed commit: f059680b (`codex/meta-static-launch`). Vercel deployment dpl_7gCCbT1eMBAkXPuhZbeGquCio9Tr is READY, target preview. No push/merge to main and no production deployment or remote migration.
-
-| Required check | Result | Evidence |
+| Check | Result | Evidence |
 |---|---|---|
-| Booking PageView | PASS | Actual browser request ev=PageView, id=549342503537516; Meta returned HTTP 200. |
-| Browser + CAPI Schedule, matching IDs | BLOCKED / NOT VERIFIED | No successful booking. CAPI fields are now approved and implemented locally; staging credentials and visible Meta Preview configuration remain pending. |
-| Saved Supabase lead with UTMs | BLOCKED / NOT VERIFIED | Form submitted all four expected UTMs, but preview is still configured for production Supabase. The preview guard returned 503 before any database write. |
-| 24-hour duplicate protection on preview | BLOCKED / NOT VERIFIED | No completed preview booking exists to replay. Local transaction and real Postgres race tests passed. |
+| Runtime configuration | PASS | Dataset 549342503537516; both Meta secrets and database keys present; isolated database; customer notifications disabled. Presence-only endpoint exposes no credentials. |
+| Booking PageView | PASS | Correct-dataset request recorded in browser resource timing. |
+| Automatic browser Schedule | PASS | Real form booking produced POST to facebook.com/tr/, HTTP 200; payload ev=Schedule, id=549342503537516, eid=529ac641-7fde-4368-9339-e4c8a1c156d4. |
+| CAPI Schedule and matching ID | PASS | Staging outbox sent, eventsReceived=1, testEvent=true, accepted 2026-09-27T21:32:08.910Z; same event ID as browser and CRM lead. |
+| Staging lead and UTMs | PASS | Lead 529ac641-7fde-4368-9339-e4c8a1c156d4 has utm_source=test, utm_medium=cpc, utm_campaign=verify. utm_content is null because the requested URL omitted it. |
+| 24-hour duplicate protection | PASS | Fresh second submission for the original contact at a different available time returned HTTP 409 and the 24-hour warning. Original lead and CAPI outbox counts both remained 1. Form controls locked while submitting. |
+| Events Manager receipt verification | PASS | Dataset 549342503537516 displays PageView Processed, Browser Schedule Processed and Server Schedule Processed. Both Schedule IDs are a0200beb-d347-4521-afc8-f9ad702bbc8f; server user-data keys are Email and Phone only. |
 
-Earlier browser walkthrough (old preview): selected September 30 at 1 PM, entered synthetic test contact details and a public test address, selected Roman Shades, clicked Book appointment / No follow-up necessary. The visible result was “Preview booking requires an isolated preview database.” No success or conversion is claimed.
+## Configuration and safeguards
 
-Local verification: 160 booking/tracking tests passed across 13 files; 8 opt-in concurrent tests ran separately and all passed in a temporary Postgres container. TypeScript check and local/Vercel builds passed. The shared SQL transaction, rollback on failed lead write, UTM persistence, same-key replay, different-key 24-hour protection, and simultaneous submissions were exercised locally.
+- Correct dataset is **549342503537516 (805 pixel)**. Legacy environment IDs cannot override it.
+- CAPI-only token generated with the user's approval, without Dataset Quality API permissions. Token and test code saved only as Vercel Preview secrets; values excluded from files and reports.
+- Existing isolated Supabase branch `lead-stage-events-preview` (`uivuqlrrgyjjbvcuhstr`) supplies branch-specific Preview overrides. Production project `evuxqsaucmvgyuvjpqlo` is blocked by Preview guards.
+- Migration `20260927194921_meta_booking_launch.sql` applied to staging only; installed guard and migration ledger verified.
+- `BOOKING_DELIVERY_ENABLED=false` and `NEXT_PUBLIC_TELEGRAM_VISITOR_ALERTS_ENABLED=false` in this Preview branch. CAPI delivery remains independent of paused customer notifications.
+- CAPI customer matching includes SHA-256 email and phone only. No IP, user agent, cookies, name, address, or URL query parameters in its customer payload.
+- Atomic booking transaction writes lead, job, calendar, quote, idempotency result, and outbox. Failure logging uses sanitized identifiers/codes.
+- Three clearly labeled synthetic bookings remain in staging for review. One diagnostic retry used the second booking's existing event ID; final proof uses the third booking's automatic browser event.
+- Existing staging rows were preserved. Supabase dashboard labels the pre-existing branch Unhealthy, but SQL, REST, migration, and real booking writes worked; this does not certify unrelated branch services.
 
-Remaining intervention: identify the isolated Supabase staging project/branch and provide authorized staging migration/read access. META_CAPI_TEST_EVENT_CODE is now saved as a Secret scoped only to Preview, verified in the Vercel UI and CLI listing. META_CAPI_ACCESS_TOKEN is still absent from Preview. Meta Settings is prepared to generate a CAPI-only token without Dataset Quality API permissions, awaiting the computer-control tool's action-time credential confirmation. No production secret export was attempted.
+## Validation and release state
 
-The earlier CAPI approval rejection is resolved by explicit user approval for hashed email/phone only; the broader rejected payload was not implemented. Production-secret export remains prohibited and was not retried.
+Focused dataset suite: 34 passed. Earlier focused booking/tracking suite: 148 passed. Real PostgreSQL concurrency suite: 8 passed. Preview isolation: 4 passed. New Preview presence route: 2 passed. Typecheck and Vercel build passed. Full-suite history and detailed hosted evidence are in `meta-static-launch-verification.json`.
 
-Latest local checks: focused booking/tracking suite 148 passed; eight real PostgreSQL concurrency tests passed separately; typecheck/build passed. The central preview guard passed its four tests. The full repository run passed 9,431 tests with two quote-pricing timeouts; both affected files then passed all 110 tests with one worker. Final typecheck passed. These do not establish a successful hosted booking.
-
-Dataset correction checks: 34 focused browser/CAPI/delivery/isolation tests passed, including stale environment override tests; typecheck passed. Corrected-dataset PageView passed on the new preview; successful booking checks remain blocked.
-
-Latest hosted test: loaded `/book-consultation/?utm_source=test&utm_medium=cpc&utm_campaign=verify`. Correct-dataset PageView returned HTTP 200. Availability returned HTTP 503 with “Scheduling is temporarily unavailable. Please call 805 Shutters.” The preview service-client guard blocks the production database; staging has not been supplied.
-
-Meta portal inspection verified dataset 549342503537516 named “805 pixel”, owned by 805 Shutters (owner ID 316738593873654). Native Chrome control recovered access despite the unavailable extension connection. The Test Events code was transferred directly to Vercel Preview without printing its value. Runtime presence is not yet verified because a new deployment has not run. Settings offers Generate access token rather than an existing visible token.
-
-Read-only Supabase dashboard inspection found two existing preview branches: contact-idempotency-preview (bsmuismqwzloiurzacry) and lead-stage-events-preview (uivuqlrrgyjjbvcuhstr). Neither has been identified by the user as this launch's staging target. Neither branch was modified. Production stays untouched.
+All requested Preview checks passed with real browser bookings. The initial Meta dashboard HTTP 500/stale test view resolved after opening a fresh Test Events tab. The original booking shown in Events Manager was independently verified in staging with the expected UTMs and one accepted CAPI outbox row. Matching IDs were verified; no aggregate deduplication-rate claim is made. Production deployment and paid-ad launch remain separate, unauthorized actions.
