@@ -65,3 +65,16 @@ it('reports only newly accepted recipients when a retry skips an earlier success
  await render();await click('Send again');
  expect(mocks.success).toHaveBeenCalledWith('Accepted for sending: email to 1 recipient');
 });
+
+it('offers an authenticated preview instead of a dead customer link for an unsent draft', async () => {
+ await render({...quote,quote_v2_backend:false,status:'draft',sent_at:null,signed_at:null});
+ expect(document.body.textContent).toContain('customer link becomes available when the quote is sent');
+ const preview=document.querySelector('a[href="/crm/quote/quote-fixture/contract-preview/"]');
+ expect(preview?.textContent).toContain('Preview quote');
+ expect(document.querySelector('a[aria-label="Open quote link in new tab"]')).toBeNull();
+ expect(document.body.textContent).not.toContain('/quote/test');
+});
+it('preserves the customer link for a quote already sent', async () => {
+ await render({...quote,quote_v2_backend:false});
+ expect(document.querySelector('a[aria-label="Open quote link in new tab"]')?.getAttribute('href')).toContain('/quote/test');
+});

@@ -130,6 +130,11 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   }, [open, quote.id]);
 
   const shareLink = `${window.location.origin}/quote/${quote.share_token}`;
+  // Draft tokens are allocated before the customer contract is materialized.
+  // Staff can review the authenticated preview until a contract has been sent.
+  const hasCustomerLink = Boolean(quote.share_token && (
+    quote.sent_at || quote.signed_at || quote.status === "sent" || quote.status === "sold"
+  ));
   const needsEmail = channel === "email" || channel === "both";
   const needsPhone = channel === "sms" || channel === "both";
   const cleanedEmails = emails.map((value) => value.trim()).filter(Boolean);
@@ -438,8 +443,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
             </DialogSection>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
-              <DialogSection title="Share link" description="Customer review page for this quote.">
-                <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+              <DialogSection title={hasCustomerLink ? "Share link" : "Review before sending"} description={hasCustomerLink ? "Customer review page for this quote." : "Preview the saved quote before sending it to the customer."}>
+                {hasCustomerLink ? <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
                   <code className="min-w-0 flex-1 truncate font-mono text-xs text-slate-700">
                     {shareLink}
                   </code>
@@ -465,7 +470,14 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </Button>
-                </div>
+                </div> : <div className="space-y-3 text-sm text-slate-600">
+                  <p>The customer link becomes available when the quote is sent.</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`/crm/quote/${encodeURIComponent(quote.id)}/contract-preview/`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3.5 w-3.5" /> Preview quote
+                    </a>
+                  </Button>
+                </div>}
               </DialogSection>
 
               <DialogSection title="Payment options" description="Included in the customer message.">

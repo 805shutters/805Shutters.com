@@ -204,7 +204,7 @@ export function QuoteContract({
   });
 
   // Fetch quote
-  const { data: quote } = useQuery({
+  const { data: quote, isPending: quotePending, isError: quoteError } = useQuery({
     queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -236,7 +236,7 @@ export function QuoteContract({
 
   // Fetch designs
   const lineItemIds = lineItems.map((i) => i.id);
-  const { data: designs = [] } = useQuery({
+  const { data: designs = [], isPending: designsPending, isError: designsError } = useQuery({
     queryKey: contractDesignQueryKey(activeQuoteId || "", lineItemIds),
     queryFn: async () => {
       if (lineItemIds.length === 0) return [];
@@ -252,7 +252,7 @@ export function QuoteContract({
 
   // Fetch all quotes in the same group for multi-quote display
   const groupId = quote?.quote_group_id;
-  const { data: groupQuotes = [] } = useQuery({
+  const { data: groupQuotes = [], isPending: groupQuotesPending, isError: groupQuotesError } = useQuery({
     queryKey: [...queryKeys.salesQuotes.all, "group", groupId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -285,7 +285,7 @@ export function QuoteContract({
   });
 
   const allGroupLineItemIds = allGroupLineItems.map((i) => i.id);
-  const { data: allGroupDesigns = [] } = useQuery({
+  const { data: allGroupDesigns = [], isPending: groupDesignsPending, isError: groupDesignsError } = useQuery({
     queryKey: groupQueryKeys.designs(allGroupLineItemIds),
     queryFn: async () => {
       if (allGroupLineItemIds.length === 0) return [];
@@ -581,6 +581,12 @@ export function QuoteContract({
   const claimsNumber = serviceFeesNumber + 1;
   const exclusionsNumber = claimsNumber + 1;
 
+  if (activeQuoteId && quotePending) {
+    return <p role="status" className="p-6">Loading saved quote pricing...</p>;
+  }
+  if (activeQuoteId && quoteError) {
+    return <p role="alert" className="p-6">The saved quote could not be loaded. Reload the quote to try again.</p>;
+  }
   if (!activeQuoteId || !quote) {
     return (
       <div className="p-6 text-center text-muted-foreground">
@@ -589,11 +595,20 @@ export function QuoteContract({
     );
   }
 
-  if (hasAcceptedQuote && (linesPending || (hasMultipleQuotes && groupLinesPending))) {
-    return <p className="p-6">Loading accepted windows...</p>;
+  // Missing query data is not evidence that saved windows are unpriced.
+  // Disabled empty-line design queries remain pending, so only wait for them
+  // when there are actual lines to load.
+  if (linesError || designsError || (groupId && groupQuotesError) ||
+    (hasMultipleQuotes && (groupLinesError || groupDesignsError))) {
+    return <p role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">Saved quote pricing could not be loaded. Reload the quote to try again. Your saved prices have not changed.</p>;
   }
-  if (acceptanceError || (hasAcceptedQuote && (linesError || (hasMultipleQuotes && groupLinesError)))) {
-    return <p role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">{acceptanceError || "Accepted window selection could not be verified. The original quote has been preserved."}</p>;
+  if (linesPending || (lineItems.length > 0 && designsPending) ||
+    (groupId && groupQuotesPending) ||
+    (hasMultipleQuotes && (groupLinesPending || (allGroupLineItems.length > 0 && groupDesignsPending)))) {
+    return <p role="status" className="p-6">Loading saved quote pricing...</p>;
+  }
+  if (acceptanceError) {
+    return <p role="alert" className="m-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-950">{acceptanceError}</p>;
   }
 
   if (designWritesPending) {
