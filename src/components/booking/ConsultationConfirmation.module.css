@@ -37,8 +37,9 @@
 .footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--confirmation-line); font-size: 13px; }
 .confirmation .footer p { color: var(--confirmation-muted); }
 .confirmation .footer a { color: var(--confirmation-text); text-decoration: underline; text-underline-offset: 4px; min-height: 44px; display: inline-flex; align-items: center; }
-.confirmation button.done { width: 100%; min-height: 48px; margin-top: 18px; padding: 12px 18px; border: 1px solid #9bb395; border-radius: 8px; background: var(--confirmation-soft); color: var(--confirmation-accent); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
-.confirmation button.done:hover { background: #d5e4cd; border-color: var(--confirmation-accent); }
+.confirmation a.calendar { display: flex; justify-content: center; align-items: center; gap: 10px; text-decoration: none; text-align: center; width: 100%; min-height: 48px; margin-top: 18px; padding: 12px 18px; border: 1px solid #9bb395; border-radius: 8px; background: var(--confirmation-soft); color: var(--confirmation-accent); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.confirmation a.calendar:hover { background: #d5e4cd; border-color: var(--confirmation-accent); }
+.confirmation .calendarHint { margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--confirmation-muted); text-align: center; }
 .confirmation :focus-visible { outline: 3px solid var(--confirmation-accent); outline-offset: 3px; }
 
 @media (max-width: 560px) {

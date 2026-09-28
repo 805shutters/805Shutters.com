@@ -309,8 +309,9 @@ export function ConsultationBooking({ active = true, className = "", heading,
     </header>}
     {complete ? <section className={`consultation-booking__complete${requestMode ? "" : " consultation-booking__complete--confirmed"}`} role="status" ref={completeRef} tabIndex={-1} aria-label={requestMode ? "Request received" : "Appointment confirmation"}>
       {!requestMode ? <ConsultationConfirmation
+        date={selection.date} time={selection.time}
         dateLabel={dateLabel(selection.date)} timeLabel={timeLabel(selection.time)} address={address}
-        followUpRequested={bookedFollowUp} onDone={reset} doneLabel={onDone ? "Done" : "Book another appointment"}
+        followUpRequested={bookedFollowUp}
       /> : <>
       <span className="consultation-booking__check" aria-hidden="true">✓</span>
       <h2>{requestMode ? "Your request is received." : "Your appointment is booked."}</h2>

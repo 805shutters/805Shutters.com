@@ -347,6 +347,7 @@ it("opens option 1 extended request times and preserves notes on failed request 
   expect(host.textContent).toContain('Your request is received.');
   expect(host.textContent).toContain('Your appointment is not booked yet.');
   expect(host.textContent).not.toContain('Jessica will be there.');
+  expect(host.textContent).not.toContain('Add to Google Calendar');
   expect(fetchMock.mock.calls.some(([url]) => url === '/api/booking/')).toBe(false);
 });
 
@@ -448,8 +449,10 @@ it.each([true, false])("submits and retains follow-up choice %s across a failed 
   expect(host.textContent).toContain(followUpRequested ? 'Follow-up from 805 requested.' : 'No follow-up necessary.');
   expect(host.querySelector('.consultation-booking__complete img')).toBeNull();
   expect(document.activeElement).toBe(host.querySelector('.consultation-booking__complete'));
-  fetchMock.mockResolvedValue(ok(available()));
-  await click('Book another appointment');
-  expect(host.querySelector('.consultation-booking__complete')).toBeNull();
-  expect(host.querySelector('.consultation-booking__calendar')).not.toBeNull();
+  const calendar = host.querySelector<HTMLAnchorElement>('.consultation-booking__complete a[target="_blank"]')!;
+  expect(calendar.textContent).toContain('Add to Google Calendar');
+  const params = new URL(calendar.href).searchParams;
+  expect(params.get('dates')).toBe('20260928T173000Z/20260928T183000Z');
+  expect(params.get('location')).toBe('601 Carmen Drive, Camarillo, CA');
+  expect(host.textContent).not.toContain('Book another appointment');
 });

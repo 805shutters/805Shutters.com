@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarDays, CircleCheck, MapPin } from "lucide-react";
 import { brandIdentity } from "@/lib/brand-identity";
+import { googleCalendarUrl } from "@/lib/booking/google-calendar";
 import styles from "./ConsultationConfirmation.module.css";
 
 export const bookingConsultant = {
@@ -24,17 +25,17 @@ function ConsultantPortrait({ src }: { src: string | null }) {
 }
 
 type Props = {
+  date: string;
+  time: string;
   dateLabel: string;
   timeLabel: string;
   address: string;
   followUpRequested: boolean;
-  onDone: () => void;
-  doneLabel: string;
   photoSrc?: string | null;
 };
 
-export function ConsultationConfirmation({ dateLabel, timeLabel, address, followUpRequested,
-  onDone, doneLabel, photoSrc = bookingConsultant.photoSrc }: Props) {
+export function ConsultationConfirmation({ date, time, dateLabel, timeLabel, address, followUpRequested,
+  photoSrc = bookingConsultant.photoSrc }: Props) {
   return <div className={styles.confirmation}>
     <div className={styles.status}>
       <CircleCheck className={styles.statusIcon} size={56} aria-hidden="true" />
@@ -65,6 +66,9 @@ export function ConsultationConfirmation({ dateLabel, timeLabel, address, follow
       <p>{followUpRequested ? "Follow-up from 805 requested." : "No follow-up necessary."}</p>
       <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
     </footer>
-    <button className={styles.done} type="button" onClick={onDone}>{doneLabel}</button>
+    <a className={styles.calendar} href={googleCalendarUrl(date, time, address)} target="_blank" rel="noopener noreferrer">
+      <CalendarDays size={20} aria-hidden="true" /> Add to Google Calendar
+    </a>
+    <p className={styles.calendarHint}>Opens Google Calendar. Tap Save to add your appointment.</p>
   </div>;
 }
