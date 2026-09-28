@@ -1,11 +1,11 @@
 .confirmation {
-  color-scheme: light dark;
-  --confirmation-bg: light-dark(#fff, #202522);
-  --confirmation-text: light-dark(#17201d, #f3f5f3);
-  --confirmation-muted: light-dark(#606962, #bbc5be);
-  --confirmation-accent: light-dark(#315342, #b5d2bd);
-  --confirmation-soft: light-dark(#f0f4ee, #2c362f);
-  --confirmation-line: light-dark(#dce3dc, #424c45);
+  color-scheme: light;
+  --confirmation-bg: #ffffff;
+  --confirmation-text: #0b0b0b;
+  --confirmation-muted: #5b5b58;
+  --confirmation-accent: #35513a;
+  --confirmation-soft: #e4edde;
+  --confirmation-line: #d8d8d2;
   width: 100%;
   padding: 32px;
   border-radius: 18px;
@@ -37,8 +37,8 @@
 .footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding-top: 20px; border-top: 1px solid var(--confirmation-line); font-size: 13px; }
 .confirmation .footer p { color: var(--confirmation-muted); }
 .confirmation .footer a { color: var(--confirmation-text); text-decoration: underline; text-underline-offset: 4px; min-height: 44px; display: inline-flex; align-items: center; }
-.confirmation button.done { width: 100%; min-height: 48px; margin-top: 18px; padding: 12px 18px; border: 1px solid var(--confirmation-line); border-radius: 8px; background: var(--confirmation-bg); color: var(--confirmation-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
-.confirmation button.done:hover { background: var(--confirmation-soft); border-color: var(--confirmation-accent); }
+.confirmation button.done { width: 100%; min-height: 48px; margin-top: 18px; padding: 12px 18px; border: 1px solid #9bb395; border-radius: 8px; background: var(--confirmation-soft); color: var(--confirmation-accent); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.confirmation button.done:hover { background: #d5e4cd; border-color: var(--confirmation-accent); }
 .confirmation :focus-visible { outline: 3px solid var(--confirmation-accent); outline-offset: 3px; }
 
 @media (max-width: 560px) {
