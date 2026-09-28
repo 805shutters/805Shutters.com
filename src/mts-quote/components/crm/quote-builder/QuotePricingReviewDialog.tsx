@@ -4,6 +4,7 @@ import { Button } from "@mts/components/ui/button";
 import { billableQuoteDesigns, incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { authoritativeDesignPriceIssue, quoteMerchandisePriceForEditor } from "@mts/lib/quotePricingDisplay";
 import { formatDimensions, type SalesQuoteDesign, type SalesQuoteLineItem } from "@mts/types/quote";
+import { AutomaticPricingNotice } from "./AutomaticPricingNotice";
 import { LineItemPriceInput, type LineItemPriceInputHandle } from "./LineItemPriceInput";
 
 export function QuotePricingReviewDialog({ open, onClose, lines, designs, authoritativeV2 = false, onSave, onEdit, onContinue, deliveryDisabled = false, createsRevision = false }: {
@@ -66,10 +67,7 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
           return <section key={`${line.id}-${design?.variant ?? "A"}`} aria-label={`Pricing for ${room}`} className="space-y-3 rounded-lg border p-4">
             <div><h3 className="font-semibold">{room} · {line.product_type}</h3>
               <p className="text-sm text-muted-foreground">{formatDimensions(line)} · Quantity {line.quantity}</p></div>
-            {issue && <div className="text-sm">
-              <p>Automatic pricing is unavailable. Your custom price can still be saved and sent.</p>
-              <details className="mt-1 text-muted-foreground"><summary>Catalog details</summary><p>{issue}</p></details>
-            </div>}
+            {issue && <AutomaticPricingNotice issue={issue} />}
             <Button variant="outline" onClick={() => onEdit(line.id)}>Edit selections for {room}</Button>
             {billable.length > 1 && <p className="text-sm text-muted-foreground">Saving a custom price selects this option for this line.</p>}
           <LineItemPriceInput ref={editor => { if (editor) editors.current.set(priceKey, editor); else editors.current.delete(priceKey); }} value={needsPrice || !design ? null : quoteMerchandisePriceForEditor(design)} roomName={room} label="Custom merchandise price each"

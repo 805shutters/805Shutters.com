@@ -881,7 +881,8 @@ describe("V2 exact-interface contract", () => {
     expect(source).not.toContain('aria-label="Authoritative price"');
     expect(source).toContain("if (authoritativeV2 || normanServerPricing) return;");
     expect(source).toContain("<QuoteLinePriceReadout");
-    expect(source).toContain("Price unavailable");
+    expect(source).not.toContain('<span>Price unavailable</span>');
+    expect(source).not.toContain("Customer pricing and send remain blocked.");
     expect(source).not.toContain("Enter your price");
     expect(source).toContain("if (designs.some((design) => design.variant === variant))");
     expect(source).toContain("{!authoritativeV2 && (\n            <SurchargePicker");

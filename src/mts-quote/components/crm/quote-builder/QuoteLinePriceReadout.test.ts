@@ -8,15 +8,18 @@ import { QuoteLinePriceReadout } from "./QuoteLinePriceReadout";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const props = { unitPrice: 0, lineTotal: 0, roomName: "Bedroom 1", manualPrice: null, onSave: async () => {} };
 describe("quote line calculation and custom entry", () => {
-  it.each(["blocked", "stale", "unpriceable"])("does not turn a %s calculation into a zero price or custom-price instruction", state => {
+  it.each(["blocked", "stale", "unpriceable"])("makes a %s calculation directly editable without manufacturing a zero", state => {
     const issue = state === "stale" ? "Requested catalog identity is not the server-selected catalog." : "Lakeside F0183: no price at 91 × 48.";
     const html = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, issue }));
     expect(html).toContain(issue);
-    expect(html).toContain("Price unavailable");
+    expect(html).toContain("Your custom price can still be saved and sent.");
+    expect(html).toContain('aria-label="Custom merchandise price each for Bedroom 1"');
+    expect(html).toContain("<details");
+    expect(html).not.toContain("<details open");
     expect(html).not.toContain("$0.00");
     expect(html).not.toContain('value="0.00"');
     expect(html).not.toContain("Enter your price");
-    expect(html).toContain("Set custom price");
+    expect(html).not.toContain("Set custom price");
   });
   it("shows calculated amounts and accepts a genuine authoritative zero", () => {
     const paid = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, unitPrice: 623.45, lineTotal: 2493.8, issue: null }));
@@ -31,7 +34,6 @@ describe("quote line calculation and custom entry", () => {
     const root = createRoot(host); const save = vi.fn().mockResolvedValue(undefined);
     try {
       await act(() => root.render(React.createElement(QuoteLinePriceReadout, { ...props, issue: "Grid unavailable", onSave: save })));
-      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Set custom price for Bedroom 1"]')!.click());
       const input = host.querySelector("input")!;
       expect(input.value).toBe("");
       expect(input.getAttribute("aria-label")).toBe("Custom merchandise price each for Bedroom 1");
@@ -44,6 +46,34 @@ describe("quote line calculation and custom entry", () => {
       });
       await act(async () => host.querySelector("button")!.click());
       expect(save).toHaveBeenCalledExactlyOnceWith(900);
+    } finally { await act(() => root.unmount()); host.remove(); }
+  });
+  it("lets Harwood's catalog-blocked line save zero and retry a failed custom-price write", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    const save = vi.fn().mockRejectedValueOnce(new Error("Connection lost. Try again.")).mockResolvedValueOnce(undefined);
+    try {
+      await act(() => root.render(React.createElement(QuoteLinePriceReadout, {
+        ...props, issue: "Application is required before this configuration can be priced or sent. The selected cell size is not offered for this Honeycomb operating system/application.", onSave: save,
+      })));
+      expect(host.querySelector("details")!.open).toBe(false);
+      expect(host.querySelector("details")!.textContent).toContain("Application is required");
+      expect(host.textContent).toContain("Your custom price can still be saved and sent.");
+      const input = host.querySelector("input")!;
+      expect(input.value).toBe("");
+      await act(() => {
+        input.focus();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "0");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Save price for Bedroom 1"]')!.click());
+      expect(host.querySelector('[role="alert"]')!.textContent).toBe("Connection lost. Try again.");
+      expect(input.value).toBe("0.00");
+      await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Save price for Bedroom 1"]')!.click());
+      expect(save).toHaveBeenNthCalledWith(1, 0);
+      expect(save).toHaveBeenNthCalledWith(2, 0);
+      expect(host.querySelector('[role="alert"]')).toBeNull();
+      expect(host.textContent).toContain("Price saved");
     } finally { await act(() => root.unmount()); host.remove(); }
   });
   it("shows an existing manual amount immediately and saves the edited merchandise amount", async () => {

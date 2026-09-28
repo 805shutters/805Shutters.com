@@ -1,9 +1,10 @@
 import { useId, useState } from "react";
+import { AutomaticPricingNotice } from "./AutomaticPricingNotice";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-/** A failed calculation is not a zero-dollar price or a request for a manual override. */
+/** Keep a failed calculation unpriced until staff explicitly saves a custom amount. */
 export function QuoteLinePriceReadout({ unitPrice, lineTotal, issue, roomName, manualPrice, onSave }: {
   unitPrice: number;
   lineTotal: number;
@@ -14,12 +15,9 @@ export function QuoteLinePriceReadout({ unitPrice, lineTotal, issue, roomName, m
 }) {
   const [editing, setEditing] = useState(false);
   const editorId = useId();
-  const showEditor = editing || manualPrice !== null;
+  const showEditor = editing || manualPrice !== null || Boolean(issue);
   return <>
-    {issue ? <div role="status" className="max-w-sm text-sm text-amber-900">
-      <p className="font-bold">Price unavailable</p>
-      <p>{issue}</p>
-    </div> : <div aria-label={`Price for ${roomName}`}>
+    {issue ? <AutomaticPricingNotice issue={issue} /> : <div aria-label={`Price for ${roomName}`}>
       {manualPrice !== null && <p className="text-xs font-semibold text-slate-600">Custom price</p>}
       <div className="text-lg font-bold tabular-nums">{money(unitPrice)} each</div>
       <div className="text-[11px] text-muted-foreground">{money(lineTotal)} line total · excl. tax</div>

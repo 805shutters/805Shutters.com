@@ -6263,7 +6263,7 @@ export function DesignCard({
             <p className="mt-1">
               {manufacturerOptionsRoute.status === "selection_required"
                 ? "Select an eligible catalog route above before product options can be configured or repriced. Imported legacy values are preserved as evidence but are not treated as a current manufacturer selection."
-                : "The catalog identity is retained, but this manufacturer does not yet have an authoritative product-specific configuration panel. Customer pricing and send remain blocked."}
+                : "The catalog identity is retained, but this manufacturer does not yet have an authoritative product-specific configuration panel. You can enter a custom price and send the quote."}
             </p>
           </div>
         )}
@@ -6288,34 +6288,6 @@ export function DesignCard({
                 </li>
               ))}
             </ul>
-          </div>
-        )}
-
-        {authoritativePriceError && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
-          >
-            <div className="flex items-center gap-2 font-bold">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Price unavailable</span>
-            </div>
-            <p className="mt-1">{authoritativePriceError}</p>
-          </div>
-        )}
-
-        {legacyPricingBlockReason && (
-          <div
-            role="alert"
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
-          >
-            <div className="flex items-center gap-2 font-bold">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Pricing blocked</span>
-            </div>
-            <p className="mt-1">
-              {pricingBlockReasonMessage(legacyPricingBlockReason)}
-            </p>
           </div>
         )}
 
@@ -12993,9 +12965,9 @@ export function ShadesAndBlindsOptions({
           role="alert"
         >
           <strong>Motorization needs manufacturer re-selection.</strong>{" "}
-          The saved motor choice is preserved, but it cannot be repriced or sent
-          until the selected manufacturer and product expose a supported,
-          source-backed motor configuration.
+          The saved motor choice is preserved. Automatic pricing requires a
+          supported motor configuration for the selected manufacturer and product.
+          You can still save a custom price and send the quote.
         </div>
       ) : null}
 
