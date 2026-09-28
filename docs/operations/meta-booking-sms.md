@@ -1,16 +1,16 @@
-# Meta booking-page owner SMS
+# Meta completed-booking owner SMS
 
-`MetaBookingAlertTracking` posts a visible booking-page visit to `/api/meta-booking-alerts/` when the current link has Meta attribution, a Meta referrer, or a Meta in-app browser user agent. Current campaign links use `utm_source=facebook` for both placements, so ambiguous visits are labeled Facebook/Instagram. This measures a loaded booking page, not every ad click; blocked scripts, stripped attribution, or a page that never loads may not alert.
+Only a successfully committed appointment attributed to Facebook, Instagram, or Meta queues `meta_booking_sms` in the existing `booking_outbox`. Page views, clicks, and rejected booking attempts do not send this alert. The former public `/api/meta-booking-alerts/` endpoint is retired with HTTP 410 and no send, including calls from cached old clients. The click-tracking component has been removed.
 
-The SMS says: `805 Shutters: Someone opened the booking page from Facebook/Instagram. No appointment has been submitted yet.` It goes only to `MIKE_805_SALES_SMS_NUMBER` using the existing Twilio configuration. It does not create a lead or appointment. General Telegram visitor digests and completed-booking notifications remain separate.
+The message begins `805 Shutters: New appointment booked via Facebook/Instagram.` and includes the customer name, appointment date/time in Los Angeles time, phone, and address. It goes to `MIKE_805_SALES_SMS_NUMBER` using existing Twilio configuration. The general staff booking text excludes that number for Meta bookings to prevent duplicate owner alerts. Customer confirmations and other staff delivery remain intact.
 
-Production only (`VERCEL_ENV=production`). Set `META_BOOKING_SMS_ENABLED=false` and redeploy to disable. Missing owner/SMS/database configuration fails closed. No new database schema or production credentials are needed.
+Campaign UTMs, external referrer, Meta click ID, and in-app browser signals qualify the source. First-touch attribution carries through internal navigation. Current campaign links hardcode `utm_source=facebook` for both placements: without a more specific signal, the source is honestly labeled Facebook/Instagram. Attribution stripped by browsers cannot be recovered.
 
-A browser session lasts 30 minutes. A deterministic, keyed UUID claim in `crm_activity_events` prevents retries and refreshes from sending twice across server instances. A shared IP/minute claim and atomic numbered hourly claims cap sends at one per IP/minute and 120/hour. These limits may suppress separate visitors sharing an IP or exceptionally busy hours. IPs and click IDs are not stored. Failed/uncertain sends keep their claim and are never automatically retried.
+The booking transaction queues the effect atomically with the saved appointment. Booking idempotency and a durable appointment-specific claim prevent duplicate SMS on retries. The worker verifies that the appointment still exists with matching times, is future, and is not canceled before attempting SMS. Synthetic verification bookings suppress normal delivery effects. Failed or ambiguous provider calls are retained for review and never automatically resent.
 
-Audit action: `meta_booking_sms`. `metadata` holds attribution and owner phone suffix. `after_data` records initial provider acceptance/failure and SID. Signed callbacks to `/api/webhooks/meta-booking-sms/` record intermediate delivery state in `metadata` and terminal state in `before_data`, separate from acceptance so late callbacks cannot erase delivery evidence. A reserved record without acceptance indicates suppression, interruption, or a pre-send database failure; it is not delivery proof.
+Production only (`VERCEL_ENV=production`); existing booking delivery must be enabled. `META_BOOKING_SMS_ENABLED=false` disables this owner notification. No database migration or credential change is needed.
 
-Read-only verification:
+Audit action: `meta_booking_sms`. New `metadata.trigger=appointment_booked` distinguishes completed-booking notifications from historical click alerts; it also contains calendarEventId, source and owner phone suffix. `after_data` records initial provider acceptance and SID. Signed callbacks to `/api/webhooks/meta-booking-sms/` record terminal delivery in `before_data`. Provider acceptance is not proof of delivery.
 
 ```sql
 select created_at, id, metadata, after_data, before_data
@@ -19,6 +19,6 @@ where action = 'meta_booking_sms'
 order by created_at desc limit 10;
 ```
 
-An accepted/queued SID is not delivery confirmation. Confirm `before_data.delivery_status = 'delivered'` (carrier report), or inspect the exact Twilio Message resource. Only the recipient can confirm seeing it.
+# Daily Telegram report
 
-Implementation references: [Vercel IP headers](https://vercel.com/docs/headers/request-headers), [Twilio delivery callbacks](https://www.twilio.com/docs/messaging/guides/track-outbound-message-status).
+The existing `.github/workflows/visitor-digest.yml` schedule remains daily at 02:00 UTC. Visits are queued, never texted. The digest lists Facebook, Instagram, and Facebook/Instagram (placement unknown), including zero counts. New visit records retain `utm_source` and classified source along with the existing sanitized referrer. Historical records are classified from their saved referrer; previously discarded campaign tags cannot be reconstructed. Existing Google, Yelp, and other sources remain in the report.

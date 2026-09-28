@@ -3,6 +3,9 @@ import { sendTelegramMessage } from "@/lib/notify/telegram";
 import { isPublicFacingPath } from "@/lib/public-activity";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
+import { metaAttributionSource } from "@/lib/meta-booking-alert";
+import { buildDailyVisitorDigest } from "@/lib/visitor-digest";
+
 export const runtime = "nodejs";
 
 type VisitorAlertPayload = {
@@ -70,19 +73,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sent: false, skipped: "bot" });
   }
 
-  // A visit is recorded once, when it starts. The hourly cron produces the
+  // A visit is recorded once, when it starts. The daily cron produces the
   // compact Telegram digest instead of sending a message for every event.
   if (event !== "start") return NextResponse.json({ sent: false, queued: false, skipped: "not_start" });
 
   const supabase = getSupabaseServiceClient();
   if (!supabase) return NextResponse.json({ sent: false, queued: false, skipped: "database_not_configured" });
 
+  let fbclid: string | null = null;
+  try { fbclid = new URL(cleanString(payload.href, 4096)).searchParams.get("fbclid"); } catch { /* Optional. */ }
+  const utmSource = cleanString(payload.utm?.source, 64);
+  const source = metaAttributionSource({ utmSource, referrer: cleanString(payload.referrer, 240), fbclid, userAgent });
   const { error } = await supabase.from("crm_activity_events").insert({
     created_at: parseViewedAt(payload.startedAt),
     entity_type: "system",
     action: "visitor_alert_queued",
     metadata: {
       referrer: cleanReferrer(payload.referrer) || null,
+      utm_source: utmSource || null,
+      source,
     },
   });
   if (error) {
@@ -117,11 +126,7 @@ export async function GET(request: NextRequest) {
   if (!events?.length) return NextResponse.json({ sent: false, count: 0 });
 
   const result = await sendTelegramMessage({
-    text: buildHourlyDigest(
-      events.map((event) => ({
-        referrer: referrerFromMetadata(event.metadata),
-      })),
-    ),
+    text: buildDailyVisitorDigest(events),
   });
   if (!result.sent) return NextResponse.json({ ...result, count: events.length }, { status: 503 });
 
@@ -150,36 +155,6 @@ async function readPayload(request: NextRequest): Promise<VisitorAlertPayload | 
 function normalizeEvent(value: unknown): keyof typeof eventLabels | null {
   if (value === "start" || value === "end" || value === "update") return value;
   return null;
-}
-
-function buildHourlyDigest(events: Array<{ referrer: string | null }>) {
-  const counts = new Map<string, number>();
-  for (const event of events) {
-    const source = referrerSource(event.referrer);
-    counts.set(source, (counts.get(source) || 0) + 1);
-  }
-  const referrers = [...counts.entries()]
-    .sort(([leftSource, leftCount], [rightSource, rightCount]) => rightCount - leftCount || leftSource.localeCompare(rightSource));
-  return [
-    "805 daily site visit summary",
-    `Total visits: ${events.length}`,
-    "Referrers:",
-    ...referrers.map(([source, count]) => `${source}: ${count}`),
-  ].join("\n");
-}
-
-function referrerSource(referrer: string | null) {
-  if (!referrer) return "Unknown";
-  const host = referrer.split("/")[0]?.toLowerCase() || "";
-  if (host.includes("google.")) return "Google";
-  if (host.includes("yelp.")) return "Yelp";
-  return host.replace(/^www\./, "") || "Unknown";
-}
-
-function referrerFromMetadata(metadata: unknown) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-  const referrer = (metadata as { referrer?: unknown }).referrer;
-  return typeof referrer === "string" ? referrer : null;
 }
 
 function parseViewedAt(value: unknown) {

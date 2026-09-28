@@ -1,10 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-const mocks = vi.hoisted(() => ({ assignment: vi.fn() }));
+const mocks = vi.hoisted(() => ({ assignment: vi.fn(), metaBooking: vi.fn() }));
 vi.mock("@/lib/crm/calendar-notifications", () => ({
   sendCalendarAssignmentSms: mocks.assignment,
   salesRepSmsNumberForName: () => process.env.MIKE_805_SALES_SMS_NUMBER || null,
 }));
+vi.mock("@/lib/notify/meta-booking-sms", () => ({ sendMetaBookingSms: mocks.metaBooking }));
 import { deliverBookingEffect, processBookingOutbox } from "./delivery";
 const client = {} as SupabaseClient;
 const details = {
@@ -48,7 +49,7 @@ function outboxClient(kind: string, event: Record<string, unknown> | null, event
   return { supabase: { from, rpc } as unknown as SupabaseClient, updates, from, rpc };
 }
 
-it.each(["customer_sms", "customer_email", "google_calendar", "webhook", "customer_snapshot"])("skips past %s during backlog recovery", async (kind) => {
+it.each(["customer_sms", "customer_email", "google_calendar", "webhook", "customer_snapshot", "meta_booking_sms"])("skips past %s during backlog recovery", async (kind) => {
   vi.stubEnv("VERCEL_ENV", "production");
   vi.stubEnv("BOOKING_DELIVERY_ENABLED", undefined);
   vi.useFakeTimers();
@@ -207,4 +208,21 @@ it("retries CAPI provider failures with the original ID/time and retains a sanit
   const events = fetch.mock.calls.map(call => JSON.parse(call[1].body).data[0]);
   expect(events[1]).toEqual(events[0]);
   expect(JSON.stringify(updates)).not.toContain("private provider detail");
+});
+
+it("sends an owner Meta alert only after verifying the persisted appointment", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  mocks.metaBooking.mockResolvedValue({ sent: true });
+  const payload = { ...details, metaSource: "Instagram" };
+  const { supabase, updates } = outboxClient("meta_booking_sms", { start_at: details.startAt, end_at: details.endAt, status: "scheduled" }, null, payload);
+  await processBookingOutbox(supabase);
+  expect(mocks.metaBooking).toHaveBeenCalledWith(supabase, payload);
+  expect(updates).toContainEqual(expect.objectContaining({ status: "sent" }));
+});
+it.each([null, { start_at: details.startAt, end_at: details.endAt, status: "canceled" }])("never alerts for a missing or canceled Meta appointment", async event => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  const { supabase, updates } = outboxClient("meta_booking_sms", event, null, { ...details, metaSource: "Instagram" });
+  await processBookingOutbox(supabase);
+  expect(mocks.metaBooking).not.toHaveBeenCalled();
+  expect(updates).toContainEqual(expect.objectContaining({ status: "skipped" }));
 });

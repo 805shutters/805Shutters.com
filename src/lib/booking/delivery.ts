@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
+import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
+import type { MetaSource } from "@/lib/meta-booking-alert";
 import { sendSms } from "@/lib/notify/twilio";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
@@ -7,6 +9,7 @@ import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
 import { isBookingDeliveryEnabled } from "./delivery-config";
 import { sendMetaScheduleEvent } from "./meta-schedule";
 type BookingAutomationDetails = {
+  metaSource?: MetaSource | null;
   leadId: string;
   jobId: string;
   calendarEventId: string;
@@ -163,8 +166,9 @@ async function sendSmsConfirmation({
 }
 
 async function sendStaffSmsAlerts(details: BookingAutomationDetails) {
-  const recipients = staffSmsRecipients();
-  if (!recipients.length) return 0;
+  const owner = normalizeSmsPhone(process.env.MIKE_805_SALES_SMS_NUMBER || "");
+  const recipients = staffSmsRecipients().filter(to => !details.metaSource || to !== owner);
+  if (!recipients.length) return true;
 
   const body = [
     `New 805 booking: ${details.name}`,
@@ -435,6 +439,13 @@ export async function deliverBookingEffect(
 ) {
   let result: unknown = true;
   switch (kind) {
+    case "meta_booking_sms": {
+      if (!details.metaSource) return "skipped";
+      const sms = await sendMetaBookingSms(supabase, { ...details, metaSource: details.metaSource });
+      if (sms.skipped === "disabled") return "skipped";
+      result = sms;
+      break;
+    }
     case "customer_sms":
       result = await sendSmsConfirmation(details);
       break;
@@ -576,7 +587,7 @@ export async function processBookingOutbox(
       // A paused worker may have accumulated confirmations for visits that
       // have since happened, moved, or been canceled. Never send those to a
       // customer or recreate an obsolete calendar entry during recovery.
-      if (["customer_sms", "customer_email", "google_calendar", "webhook", "customer_snapshot"].includes(effect.kind)) {
+      if (["customer_sms", "customer_email", "google_calendar", "webhook", "customer_snapshot", "meta_booking_sms"].includes(effect.kind)) {
         const { data: event, error: eventError } = await supabase
           .from("crm_calendar_events")
           .select("start_at,end_at,status")

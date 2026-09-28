@@ -86,6 +86,7 @@ export function getCurrentAttributionParams(): AttributionParams {
 
 type LeadAttribution = AttributionParams & {
   gclid?: string;
+  fbclid?: string;
   referrer?: string;
   landingPath?: string;
 };
@@ -115,6 +116,8 @@ export function captureFirstTouchAttribution() {
     };
     const gclid = urlParams.get("gclid");
     if (gclid) firstTouch.gclid = gclid;
+    const fbclid = urlParams.get("fbclid");
+    if (fbclid) firstTouch.fbclid = fbclid;
     const referrer = externalReferrer();
     if (referrer) firstTouch.referrer = referrer;
     window.sessionStorage.setItem(firstTouchStorageKey, JSON.stringify(firstTouch));
@@ -130,6 +133,8 @@ export function getLeadAttribution(): LeadAttribution {
   }
   const gclid = new URLSearchParams(window.location.search).get("gclid");
   if (gclid) current.gclid = gclid;
+  const fbclid = new URLSearchParams(window.location.search).get("fbclid");
+  if (fbclid) current.fbclid = fbclid;
   const referrer = externalReferrer();
   if (referrer) current.referrer = referrer;
   try {

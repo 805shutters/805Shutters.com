@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { metaBookingSource, metaBookingMessage } from "@/lib/meta-booking-alert";
-import { sendMetaBookingSms } from "./meta-booking-sms";
+import { metaAttributionSource } from "@/lib/meta-booking-alert";
+import { sendMetaBookingSms, metaBookingMessage } from "./meta-booking-sms";
 
 function database() {
   const rows = new Map<string, any>();
@@ -22,8 +22,8 @@ function database() {
   }) } as unknown as SupabaseClient;
   return { db, rows, fail: () => { failure = true; } };
 }
-const now = new Date("2026-09-28T15:10:30Z");
-const input = { sessionId: "visit-1234567890123456", ip: "192.0.2.1", source: "Facebook/Instagram", now };
+const input = { calendarEventId: "test-appointment", metaSource: "Facebook/Instagram" as const,
+  name: "Test Customer", phone: "8055550100", address: "123 Main St", startAt: "2035-10-01T17:00:00Z" };
 
 beforeEach(() => {
   vi.stubEnv("VERCEL_ENV", "production"); vi.stubEnv("META_BOOKING_SMS_ENABLED", "true");
@@ -33,28 +33,30 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("Meta booking qualification", () => {
-  it("handles the actual static campaign URL, Instagram, click IDs and in-app browsers", () => {
-    expect(metaBookingSource("/book-consultation/?utm_source=facebook&utm_medium=cpc&utm_campaign=static-launch-1&utm_content=exterior-shades-book")).toBe("Facebook/Instagram");
-    expect(metaBookingSource("/book-consultation/?utm_source=facebook", "https://l.instagram.com/")).toBe("Instagram");
-    expect(metaBookingSource("/book-consultation/?utm_source=ig")).toBe("Instagram");
-    expect(metaBookingSource("/book-consultation/?fbclid=real-click-id")).toBe("Facebook/Instagram");
-    expect(metaBookingSource("/book-consultation/", "", "Mobile Instagram 400")).toBe("Instagram");
-    expect(metaBookingSource("/free-window-treatment-consultation/", "https://m.facebook.com/")).toBe("Facebook/Instagram");
+  it("does not guess the placement from the campaign's shared facebook tag", () => {
+    expect(metaAttributionSource({ utmSource: "facebook" })).toBe("Facebook/Instagram");
+    expect(metaAttributionSource({ utmSource: "facebook", referrer: "https://l.instagram.com/" })).toBe("Instagram");
+    expect(metaAttributionSource({ utmSource: "ig" })).toBe("Instagram");
+    expect(metaAttributionSource({ fbclid: "real-click-id" })).toBe("Facebook/Instagram");
+    expect(metaAttributionSource({ userAgent: "Mobile Instagram 400" })).toBe("Instagram");
+    expect(metaAttributionSource({ referrer: "https://m.facebook.com/" })).toBe("Facebook");
   });
-  it("rejects ordinary traffic, unrelated pages, spoofed referrer hosts and previews", () => {
-    expect(metaBookingSource("/book-consultation/?utm_source=google")).toBeNull();
-    expect(metaBookingSource("/crm/?utm_source=facebook")).toBeNull();
-    expect(metaBookingSource("/book-consultation/", "https://facebook.com.evil.example/")).toBeNull();
-    expect(metaBookingSource("/book-consultation/?utm_source=facebook&fbclid=fbclid")).toBeNull();
-    expect(metaBookingSource("/book-consultation/?utm_source=facebook", "", "facebookexternalhit/1.1")).toBeNull();
+  it("does not treat Google or spoofed hosts as Meta", () => {
+    expect(metaAttributionSource({ utmSource: "google" })).toBeNull();
+    expect(metaAttributionSource({ referrer: "https://facebook.com.evil.example/" })).toBeNull();
+    expect(metaAttributionSource({ fbclid: "fbclid" })).toBeNull();
   });
-  it("does not imply that a click is a lead or booked appointment", () => {
-    expect(metaBookingMessage("Instagram")).toBe("805 Shutters: Someone opened the booking page from Instagram. No appointment has been submitted yet.");
+  it("includes the completed appointment, Pacific time and customer contact", () => {
+    expect(metaBookingMessage(input)).toContain("New appointment booked via Facebook/Instagram.");
+    expect(metaBookingMessage(input)).toContain("10:00 AM PDT");
+    expect(metaBookingMessage(input)).toContain(input.name);
+    expect(metaBookingMessage(input)).toContain(input.phone);
+    expect(metaBookingMessage(input)).not.toContain("opened");
   });
 });
 
 describe("durable owner SMS protection", () => {
-  it("sends once across concurrent workers and refreshes, only to the configured owner", async () => {
+  it("sends once across concurrent workers and retries, only to the configured owner", async () => {
     const { db, rows } = database();
     const send = vi.fn().mockResolvedValue({ sent: true, sid: "SMtest", providerStatus: "queued" });
     await Promise.all(Array.from({ length: 8 }, () => sendMetaBookingSms(db, input, send)));
@@ -62,18 +64,11 @@ describe("durable owner SMS protection", () => {
     expect(send.mock.calls[0][0]).toMatchObject({ to: "+18055550101", timeoutMs: 8000 });
     expect([...rows.values()].find(r => r.action === "meta_booking_sms").after_data.status).toBe("accepted");
   });
-  it("suppresses renewed sessions from one IP for a minute but allows other visitors", async () => {
+  it("sends separately for two completed appointments", async () => {
     const { db } = database(); const send = vi.fn().mockResolvedValue({ sent: true, sid: "SMtest" });
     await sendMetaBookingSms(db, input, send);
-    expect((await sendMetaBookingSms(db, { ...input, sessionId: "another" }, send)).skipped).toBe("rate_limited");
-    await sendMetaBookingSms(db, { ...input, sessionId: "other-ip", ip: "192.0.2.2" }, send);
+    await sendMetaBookingSms(db, { ...input, calendarEventId: "another-appointment" }, send);
     expect(send).toHaveBeenCalledTimes(2);
-  });
-  it("enforces the hourly cap even for concurrent distinct sessions and IPs", async () => {
-    const { db } = database(); const send = vi.fn().mockResolvedValue({ sent: true, sid: "SMtest" });
-    for (let n = 0; n < 118; n++) await sendMetaBookingSms(db, { ...input, sessionId: `v${n}`, ip: `ip${n}` }, send);
-    await Promise.all(Array.from({ length: 10 }, (_, n) => sendMetaBookingSms(db, { ...input, sessionId: `last${n}`, ip: `last${n}` }, send)));
-    expect(send).toHaveBeenCalledTimes(120);
   });
   it("fails closed on missing database, recipient, disabled and preview environments", async () => {
     const h = database(); const send = vi.fn(); h.fail();

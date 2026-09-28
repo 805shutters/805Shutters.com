@@ -28,6 +28,7 @@ import {
   productInterestOptions,
 } from "@/lib/product-interest-options";
 import { isSyntheticBookingVerification, scheduleMatchingData } from "@/lib/booking/meta-schedule";
+import { metaAttributionSource } from "@/lib/meta-booking-alert";
 export const runtime = "nodejs";
 type BookingPayload = {
   variant?: "standard" | "commercial";
@@ -50,6 +51,7 @@ type BookingPayload = {
   utm_content?: string;
   utm_term?: string;
   gclid?: string;
+  fbclid?: string;
   referrer?: string;
   landingPath?: string;
 };
@@ -146,6 +148,8 @@ async function submit(request: NextRequest) {
   };
   const gclid = cleanAttributionValue(payload.gclid);
   const landingReferrer = cleanAttributionValue(payload.referrer);
+  const metaSource = metaAttributionSource({ utmSource: attribution.utm_source,
+    referrer: landingReferrer, fbclid: cleanAttributionValue(payload.fbclid), userAgent: request.headers.get("user-agent") });
   const leadSource = classifyLeadSource({
     utmSource: attribution.utm_source,
     utmMedium: attribution.utm_medium,
@@ -326,6 +330,7 @@ async function submit(request: NextRequest) {
     meta: { ...jobRecord.meta, windowCount, bookingAuthority: "jessica_v1" },
   };
   const effectDetails = {
+    metaSource,
     name,
     phone,
     email,
@@ -408,7 +413,7 @@ async function submit(request: NextRequest) {
       p_job: jobRecord,
       p_event: eventRecord,
       p_proofs: checked.proofs,
-      p_effects: [...(isSyntheticBookingVerification(email, phone) ? [] : bookingEffectKinds).map((kind) => ({
+      p_effects: [...(isSyntheticBookingVerification(email, phone) ? [] : [...bookingEffectKinds, ...(metaSource ? ["meta_booking_sms"] : [])]).map((kind) => ({
         kind,
         payload: effectDetails,
       })), { kind: "meta_schedule", payload: metaSchedule }],

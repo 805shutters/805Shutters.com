@@ -440,3 +440,26 @@ it("refuses a preview booking against the production Supabase project", async ()
     expect(state.after).not.toHaveBeenCalled();
   } finally { vi.unstubAllEnvs(); }
 });
+
+it.each(["facebook", "instagram"])("queues one owner alert only after a %s booking commits, never on retry", async utm_source => {
+  await publish();
+  const input = { ...base, utm_source, idempotencyKey: randomUUID() };
+  const first = await submit(input);
+  expect(first.status).toBe(200);
+  const saved = await first.json();
+  expect((await submit(input)).status).toBe(200);
+  const effects = await db.query<{ payload: Record<string, unknown> }>("select payload from booking_outbox where kind='meta_booking_sms'");
+  expect(effects.rows).toHaveLength(1);
+  expect(effects.rows[0].payload).toMatchObject({ calendarEventId: saved.calendarEventId, name: base.name,
+    metaSource: utm_source === "instagram" ? "Instagram" : "Facebook/Instagram" });
+});
+it("does not queue an owner alert for an unavailable Meta appointment", async () => {
+  const response = await submit({ ...base, utm_source: "instagram", idempotencyKey: randomUUID() });
+  expect(response.status).toBe(409);
+  expect((await db.query("select * from booking_outbox")).rows).toHaveLength(0);
+});
+it("does not queue a Meta owner alert for a regular website booking", async () => {
+  await publish();
+  expect((await submit({ ...base, idempotencyKey: randomUUID() })).status).toBe(200);
+  expect((await db.query("select * from booking_outbox where kind='meta_booking_sms'")).rows).toHaveLength(0);
+});
