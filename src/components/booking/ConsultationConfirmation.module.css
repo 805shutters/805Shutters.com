@@ -18,7 +18,7 @@
 
 .confirmation p { margin: 0; }
 .confirmation .status { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 32px; }
-.statusIcon { color: var(--confirmation-accent); margin-top: 2px; }
+.statusIcon { color: #16a34a; margin-top: 2px; }
 .confirmation .heading { margin: 0; font-size: 40px; font-weight: 750; letter-spacing: -1.2px; line-height: 1.12; }
 .confirmation .subheading { margin-top: 10px; font-size: 18px; line-height: 1.4; color: var(--confirmation-muted); }
 .consultant { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: start; gap: 22px; padding: 24px; border-radius: 16px; background: var(--confirmation-soft); }
