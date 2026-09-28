@@ -10,6 +10,7 @@ import {
   slugForPath
 } from "@/lib/site-data";
 import { pageJsonLdFor } from "@/lib/page-json-ld";
+import { pageSearchMetadata } from "@/lib/page-search-metadata";
 
 type PageProps = {
   params: Promise<{
@@ -34,8 +35,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: page.title,
-    description: page.description,
+    title: pageSearchMetadata[page.path]?.title ?? page.title,
+    description: pageSearchMetadata[page.path]?.description ?? page.description,
     alternates: {
       canonical: page.path
     },
