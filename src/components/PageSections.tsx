@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CitySearchIntro, CityServiceLinks } from "./CityServiceContent";
 import { useCommercialMode } from "./CommercialModeProvider";
 import { LeadForm } from "./LeadForm";
 import { ServiceGrid } from "./ServiceGrid";
@@ -1015,6 +1016,8 @@ export function PageSections({ page }: { page: SitePage }) {
         </section>
       ) : null}
 
+      <CitySearchIntro path={page.path} />
+
       {activePage.path === "/" ? <ServiceGrid commercialMode={isCommercialMode} /> : null}
 
       <section className="content-wrap section-stack">
@@ -1041,6 +1044,7 @@ export function PageSections({ page }: { page: SitePage }) {
       </section>
 
       <PageFaqSection faqs={activePage.faqs} />
+      <CityServiceLinks path={page.path} />
 
       {activePage.form ? (
         <section className="form-band">
@@ -1203,6 +1207,7 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
       </section>
 
       <PageFaqSection faqs={page.faqs} heading="Common shutter questions" />
+      <CityServiceLinks path={page.path} />
 
       <section className="form-band">
         <div className="content-wrap form-layout">
