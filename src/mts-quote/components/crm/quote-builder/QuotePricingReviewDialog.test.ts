@@ -40,7 +40,7 @@ it("keeps an unsuccessful price visible, saves the selected alternative, and rep
 });
 
 
-it("holds delivery while a custom price is dirty, saving, or failed, and retains zero after saving", async () => {
+it("saves the focused custom price when continuing, waits for persistence, and allows retry after failure", async () => {
   const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
   let finishSave!: () => void;
   const onSave = vi.fn().mockRejectedValueOnce(new Error("Connection interrupted"))
@@ -50,7 +50,7 @@ it("holds delivery while a custom price is dirty, saving, or failed, and retains
   const design = { id: "design", line_item_id: "line", variant: "A", unit_price: 100,
     options_json: { manual_price_override: true } } as unknown as SalesQuoteDesign;
   const props = { open: true, onClose: vi.fn(), onEdit: vi.fn(), lines: [line], designs: [design], onSave, onContinue };
-  const continueButton = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Continue to Send Quote")!;
+  const continueButton = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Continue to Send Quote" || b.textContent === "Saving prices…")!;
   try {
     await act(() => root.render(React.createElement(QuotePricingReviewDialog, props)));
     const input = document.querySelector<HTMLInputElement>('input[aria-label="Custom merchandise price each for Office"]')!;
@@ -62,21 +62,70 @@ it("holds delivery while a custom price is dirty, saving, or failed, and retains
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "0");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(continueButton().disabled).toBe(true);
-    await act(async () => save.click());
+    expect(continueButton().disabled).toBe(false);
+    await act(async () => continueButton().click());
     expect(document.body.textContent).toContain("Connection interrupted");
-    expect(continueButton().disabled).toBe(true);
-    await act(() => save.click());
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(continueButton().disabled).toBe(false);
+    await act(() => continueButton().click());
     expect(save.disabled).toBe(true);
     expect(continueButton().disabled).toBe(true);
     await act(async () => finishSave());
     await act(() => root.render(React.createElement(QuotePricingReviewDialog, { ...props, designs: [{ ...design, unit_price: 0 }] })));
     expect(input.value).toBe("0.00");
     expect(continueButton().disabled).toBe(false);
-    await act(() => continueButton().click());
     expect(onContinue).toHaveBeenCalledOnce();
     expect(onSave).toHaveBeenLastCalledWith("line", "A", 0);
     await act(() => root.render(React.createElement(QuotePricingReviewDialog, { ...props, deliveryDisabled: true })));
     expect(continueButton().disabled).toBe(true);
+  } finally { await act(() => root.unmount()); host.remove(); }
+});
+
+it("waits for an already running blur save without writing twice, then continues after server refresh", async () => {
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  let finishSave!: () => void;
+  const onSave = vi.fn(() => new Promise<void>(resolve => { finishSave = resolve; }));
+  const onContinue = vi.fn();
+  const line = { id: "line", room_name: "Upper Windows", product_type: "Roller Shades", quantity: 2 } as SalesQuoteLineItem;
+  const design = { id: "design", line_item_id: "line", variant: "A", unit_price: 0,
+    options_json: { authoritative_price_status: "blocked", authoritative_price_error: "Motor selection required before sending" } } as unknown as SalesQuoteDesign;
+  const props = { open: true, onClose: vi.fn(), onEdit: vi.fn(), lines: [line], designs: [design], onSave, onContinue };
+  try {
+    await act(() => root.render(React.createElement(QuotePricingReviewDialog, props)));
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Custom merchandise price each for Upper Windows"]')!;
+    const next = [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Continue to Send Quote")!;
+    await act(() => {
+      input.focus();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "$1,234.56");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(next.disabled).toBe(false);
+    await act(() => input.blur());
+    await act(() => next.click());
+    expect(onSave).toHaveBeenCalledExactlyOnceWith("line", "A", 1234.56);
+    expect(onContinue).not.toHaveBeenCalled();
+    await act(async () => finishSave());
+    expect(onContinue).not.toHaveBeenCalled();
+    await act(() => root.render(React.createElement(QuotePricingReviewDialog, { ...props,
+      designs: [{ ...design, unit_price: 1273.56, options_json: { manual_price_override: true, manual_merchandise_unit_price: 1234.56 } }],
+    })));
+    expect(onContinue).toHaveBeenCalledOnce();
+    expect(onSave).toHaveBeenCalledTimes(1);
+  } finally { await act(() => root.unmount()); host.remove(); }
+});
+
+it("reports an untouched missing price instead of silently disabling Continue", async () => {
+  const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+  const onSave = vi.fn(), onContinue = vi.fn();
+  const line = { id: "line", room_name: "Office", product_type: "Roller Shades", quantity: 1 } as SalesQuoteLineItem;
+  try {
+    await act(() => root.render(React.createElement(QuotePricingReviewDialog, {
+      open: true, onClose: vi.fn(), onEdit: vi.fn(), lines: [line], designs: [], onSave, onContinue,
+    })));
+    const next = [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Continue to Send Quote")!;
+    expect(next.disabled).toBe(false);
+    await act(async () => next.click());
+    expect(document.querySelector('[role="alert"]')!.textContent).toContain("Enter a price");
+    expect(onSave).not.toHaveBeenCalled(); expect(onContinue).not.toHaveBeenCalled();
   } finally { await act(() => root.unmount()); host.remove(); }
 });

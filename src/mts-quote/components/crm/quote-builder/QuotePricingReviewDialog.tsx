@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@mts/components/ui/dialog";
 import { Button } from "@mts/components/ui/button";
 import { billableQuoteDesigns, incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { authoritativeDesignPriceIssue, quoteMerchandisePriceForEditor } from "@mts/lib/quotePricingDisplay";
 import { formatDimensions, type SalesQuoteDesign, type SalesQuoteLineItem } from "@mts/types/quote";
-import { LineItemPriceInput } from "./LineItemPriceInput";
+import { LineItemPriceInput, type LineItemPriceInputHandle } from "./LineItemPriceInput";
 
 export function QuotePricingReviewDialog({ open, onClose, lines, designs, authoritativeV2 = false, onSave, onEdit, onContinue, deliveryDisabled = false, createsRevision = false }: {
   open: boolean;
@@ -19,17 +19,43 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
   createsRevision?: boolean;
 }) {
   const [dirtyPrices, setDirtyPrices] = useState<Set<string>>(new Set());
-  useEffect(() => { if (!open) setDirtyPrices(new Set()); }, [open]);
+  const editors = useRef(new Map<string, LineItemPriceInputHandle>());
+  const continuing = useRef(false);
+  const [savingAll, setSavingAll] = useState(false);
+  const [continueRequested, setContinueRequested] = useState(false);
+  useEffect(() => { if (!open) { setDirtyPrices(new Set()); setContinueRequested(false); } }, [open]);
   const incomplete = incompleteQuoteLineIds(lines, designs, authoritativeV2);
   const ready = lines.length > 0 && incomplete.length === 0 && dirtyPrices.size === 0;
-  return <Dialog open={open} onOpenChange={value => { if (!value) onClose(); }}>
+  useEffect(() => {
+    if (open && continueRequested && ready && !deliveryDisabled) {
+      setContinueRequested(false);
+      onContinue?.();
+    }
+  }, [open, continueRequested, ready, deliveryDisabled, onContinue]);
+  const saveAndContinue = async () => {
+    if (continuing.current) return;
+    continuing.current = true;
+    setSavingAll(true);
+    setContinueRequested(false);
+    try {
+      for (const editor of [...editors.current.values()]) {
+        if (!await editor.save()) return;
+      }
+      setContinueRequested(true);
+    } finally {
+      continuing.current = false;
+      setSavingAll(false);
+    }
+  };
+  return <Dialog open={open} onOpenChange={value => { if (!value && !continuing.current) onClose(); }}>
     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>Custom prices</DialogTitle>
-        <DialogDescription>Enter a custom merchandise price for any line, even when catalog pricing is unavailable. Save each changed price, then continue to review delivery. Installation and shipping are added separately when applicable.</DialogDescription>
+        <DialogDescription>Enter a custom merchandise price for any line, even when catalog pricing is unavailable. Continue saves your changes before opening delivery review. Installation and shipping are added separately when applicable.</DialogDescription>
       </DialogHeader>
       {createsRevision && <p className="text-sm">Saving a price creates an editable draft revision and preserves the original quote.</p>}
-      <p role="status">{incomplete.length > 0 ? `${incomplete.length} ${incomplete.length === 1 ? "line still needs" : "lines still need"} a price.` : lines.length === 0 ? "Add a line before entering prices." : dirtyPrices.size > 0 ? "Save your changed prices before continuing." : "Every line has a saved price. Ready to review delivery."}</p>
+      <p role="status">{incomplete.length > 0 ? `${incomplete.length} ${incomplete.length === 1 ? "line still needs" : "lines still need"} a price.` : lines.length === 0 ? "Add a line before entering prices." : dirtyPrices.size > 0 ? "Continue to save your changed prices and review delivery." : "Every line has a saved price. Ready to review delivery."}</p>
+      <fieldset disabled={savingAll} className="space-y-3">
       {lines.flatMap(line => {
         const billable = billableQuoteDesigns(designs.filter(row => row.line_item_id === line.id), authoritativeV2);
         return (billable.length ? billable : [undefined]).map(design => {
@@ -40,10 +66,13 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
           return <section key={`${line.id}-${design?.variant ?? "A"}`} aria-label={`Pricing for ${room}`} className="space-y-3 rounded-lg border p-4">
             <div><h3 className="font-semibold">{room} · {line.product_type}</h3>
               <p className="text-sm text-muted-foreground">{formatDimensions(line)} · Quantity {line.quantity}</p></div>
-            {issue && <p className="text-sm text-amber-900">{issue}</p>}
+            {issue && <div className="text-sm">
+              <p>Automatic pricing is unavailable. Your custom price can still be saved and sent.</p>
+              <details className="mt-1 text-muted-foreground"><summary>Catalog details</summary><p>{issue}</p></details>
+            </div>}
             <Button variant="outline" onClick={() => onEdit(line.id)}>Edit selections for {room}</Button>
             {billable.length > 1 && <p className="text-sm text-muted-foreground">Saving a custom price selects this option for this line.</p>}
-          <LineItemPriceInput value={needsPrice || !design ? null : quoteMerchandisePriceForEditor(design)} roomName={room} label="Custom merchandise price each"
+          <LineItemPriceInput ref={editor => { if (editor) editors.current.set(priceKey, editor); else editors.current.delete(priceKey); }} value={needsPrice || !design ? null : quoteMerchandisePriceForEditor(design)} roomName={room} label="Custom merchandise price each"
               onDirtyChange={dirty => setDirtyPrices(previous => {
                 const next = new Set(previous);
                 if (dirty) next.add(priceKey); else next.delete(priceKey);
@@ -53,9 +82,10 @@ export function QuotePricingReviewDialog({ open, onClose, lines, designs, author
           </section>;
         });
       })}
+      </fieldset>
       <div className="sticky bottom-0 flex flex-wrap justify-end gap-2 border-t bg-white pt-3">
-        <Button variant="outline" onClick={onClose}>Close pricing review</Button>
-        {onContinue && <Button disabled={!ready || deliveryDisabled} onClick={() => { if (ready && !deliveryDisabled) onContinue(); }}>Continue to Send Quote</Button>}
+        <Button variant="outline" disabled={savingAll} onClick={onClose}>Close pricing review</Button>
+        {onContinue && <Button disabled={lines.length === 0 || savingAll || (ready && deliveryDisabled)} onClick={() => { void saveAndContinue(); }}>{savingAll ? "Saving prices…" : "Continue to Send Quote"}</Button>}
       </div>
     </DialogContent>
   </Dialog>;
