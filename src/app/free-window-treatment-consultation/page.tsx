@@ -1,5 +1,6 @@
 import { normalizeStructuredData } from "@/lib/structured-data-identity";
 import type { Metadata } from "next";
+import { CitySearchIntro } from "@/components/CityServiceContent";
 import { LeadForm } from "@/components/LeadForm";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
 import { UtmPreservingLink } from "@/components/UtmPreservingLink";
@@ -248,6 +249,8 @@ export default function FreeWindowTreatmentConsultationPage() {
           </div>
         </div>
       </section>
+
+      <CitySearchIntro path="/free-window-treatment-consultation/" />
 
       <section className={styles.conversionBand} id="consultation-form">
         <div className={styles.conversionLayout}>
