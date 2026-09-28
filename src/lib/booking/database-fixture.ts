@@ -21,6 +21,7 @@ export function bookingDatabaseFixture(beforeAuthority = "") {
     ${table(read("20260624093000_port_sales_quote_builder_to_805.sql"), "sales_805_appointments")}
     ${read("20260605013000_create_crm_availability_slots.sql")}
     ${read("20260720143000_mirror_sales_805_appointments_to_crm_calendar.sql")}
+    create table public.crm_technical_measure_forms(id uuid primary key, job_id uuid references public.crm_jobs(id), meta jsonb not null default '{}');
     ${beforeAuthority}
     ${read("20260906145749_jessica_booking_authority.sql")}
     ${read("20260909120000_staff_reschedule_buffer_override.sql")}
@@ -29,5 +30,7 @@ export function bookingDatabaseFixture(beforeAuthority = "") {
     ${read("20260925233000_calendar_first_consultations.sql")}
     ${read("20260926182740_consultation_time_requests.sql")}
     ${read("20260927194921_meta_booking_launch.sql")}
+    ${read("20260928223000_atomic_staff_calendar_changes.sql")}
+    grant all on public.crm_technical_measure_forms to service_role;
     grant all on public.leads,public.crm_jobs,public.crm_quotes,public.crm_calendar_events,public.crm_availability_slots,public.sales_805_appointments to service_role;`;
 }

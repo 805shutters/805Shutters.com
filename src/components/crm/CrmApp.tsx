@@ -2562,7 +2562,7 @@ export function CrmApp({
     calendarEvent: CrmCalendarEvent,
     slot: CalendarSlotSelection,
   ) {
-    if (!session) return;
+    if (!session || busy) return;
 
     setBusy(true);
     setMessage(null);
@@ -2572,11 +2572,14 @@ export function CrmApp({
         method: "PATCH",
         body: JSON.stringify({
           id: calendarEvent.id,
+          expected_updated_at: calendarEvent.updated_at,
           start_at: slot.startAt,
           end_at: slot.endAt
         })
       });
       setReschedulingCalendarEvent(null);
+      setViewingCalendarEvent(null);
+      setCalendarDate(slot.date);
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointment could not be rescheduled.");
@@ -2600,7 +2603,7 @@ export function CrmApp({
   }
 
   async function cancelCalendarEvent(calendarEvent: CrmCalendarEvent) {
-    if (!session) return;
+    if (!session || busy) return;
 
     setBusy(true);
     setMessage(null);
@@ -2610,7 +2613,8 @@ export function CrmApp({
         method: "PATCH",
         body: JSON.stringify({
           action: "cancel",
-          id: calendarEvent.id
+          id: calendarEvent.id,
+          expected_updated_at: calendarEvent.updated_at
         })
       });
       setCancelingCalendarEvent(null);
@@ -3343,7 +3347,7 @@ export function CrmApp({
         />
       ) : null}
 
-      {message ? (
+      {message && !reschedulingCalendarEvent && !cancelingCalendarEvent ? (
         <p className="crm-alert" role="status" aria-live="polite" aria-atomic="true">
           {message}
         </p>
@@ -3695,6 +3699,7 @@ export function CrmApp({
                   key={reschedulingCalendarEvent.id}
                   busy={busy}
                   event={reschedulingCalendarEvent}
+                  error={message}
                   onClose={() => setReschedulingCalendarEvent(null)}
                   onSubmit={rescheduleCalendarEventFromForm}
                 />
@@ -3704,10 +3709,12 @@ export function CrmApp({
                   event={viewingCalendarEvent}
                   onClose={() => setViewingCalendarEvent(null)}
                   onReschedule={(event) => {
+                    setMessage(null);
                     setViewingCalendarEvent(null);
                     setReschedulingCalendarEvent(event);
                   }}
                   onCancel={(event) => {
+                    setMessage(null);
                     setViewingCalendarEvent(null);
                     setCancelingCalendarEvent(event);
                   }}
@@ -3717,6 +3724,7 @@ export function CrmApp({
                 <CalendarCancelModal
                   busy={busy}
                   event={cancelingCalendarEvent}
+                  error={message}
                   onClose={() => setCancelingCalendarEvent(null)}
                   onConfirm={cancelCalendarEvent}
                 />
@@ -14692,11 +14700,13 @@ function CalendarAppointmentModal({
 function CalendarRescheduleModal({
   event,
   busy,
+  error,
   onClose,
   onSubmit
 }: {
   event: CrmCalendarEvent;
   busy: boolean;
+  error: string | null;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
@@ -14705,15 +14715,15 @@ function CalendarRescheduleModal({
   const durationMinutes = calendarEventDurationMinutes(event);
 
   return (
-    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
-      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close reschedule form" onClick={onClose} />
+    <div className="crm-slot-modal crm-calendar-change-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close reschedule form" onClick={onClose} disabled={busy} />
       <section className="crm-slot-form-panel">
         <div className="crm-slot-form-head">
           <div>
             <p className="eyebrow">Reschedule</p>
             <h2 id="crm-reschedule-modal-title">{calendarEventCustomerLabel(event)}</h2>
           </div>
-          <button type="button" className="crm-slot-close" aria-label="Close reschedule form" onClick={onClose}>
+          <button type="button" className="crm-slot-close" aria-label="Close reschedule form" onClick={onClose} disabled={busy}>
             ×
           </button>
         </div>
@@ -14764,8 +14774,9 @@ function CalendarRescheduleModal({
           <p className="crm-muted">
             Admin rescheduling allows overlapping appointments and overrides travel time and availability restrictions.
           </p>
+          {error && <p className="crm-calendar-change-error" role="alert">{error}</p>}
           <div className="crm-slot-actions">
-            <button type="button" className="crm-ghost-button" onClick={onClose}>
+            <button type="button" className="crm-ghost-button" onClick={onClose} disabled={busy}>
               Cancel
             </button>
             <button type="submit" disabled={busy}>
@@ -14837,26 +14848,28 @@ function CalendarAppointmentDetailModal({
 function CalendarCancelModal({
   event,
   busy,
+  error,
   onClose,
   onConfirm
 }: {
   event: CrmCalendarEvent;
   busy: boolean;
+  error: string | null;
   onClose: () => void;
   onConfirm: (event: CrmCalendarEvent) => Promise<void>;
 }) {
   const date = calendarEventDateValue(event);
 
   return (
-    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-cancel-modal-title">
-      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close cancel form" onClick={onClose} />
+    <div className="crm-slot-modal crm-calendar-change-modal" role="dialog" aria-modal="true" aria-labelledby="crm-cancel-modal-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close cancel form" onClick={onClose} disabled={busy} />
       <section className="crm-slot-form-panel">
         <div className="crm-slot-form-head">
           <div>
             <p className="eyebrow">Cancel Appointment</p>
             <h2 id="crm-cancel-modal-title">{calendarEventCustomerLabel(event)}</h2>
           </div>
-          <button type="button" className="crm-slot-close" aria-label="Close cancel form" onClick={onClose}>
+          <button type="button" className="crm-slot-close" aria-label="Close cancel form" onClick={onClose} disabled={busy}>
             ×
           </button>
         </div>
@@ -14864,6 +14877,7 @@ function CalendarCancelModal({
           {formatCalendarLongDay(date)} - {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
           {calendarTimeFormatter.format(new Date(event.end_at))}
         </p>
+        {error && <p className="crm-calendar-change-error" role="alert">{error}</p>}
         <div className="crm-slot-actions">
           <button type="button" className="crm-ghost-button" onClick={onClose} disabled={busy}>
             Keep Appointment

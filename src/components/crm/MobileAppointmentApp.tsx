@@ -600,6 +600,7 @@ function AppointmentDetailSheet({
   etaBusy,
   mutationBusy,
   etaMessage,
+  error,
   onClose,
   onReschedule,
   onCancel,
@@ -610,6 +611,7 @@ function AppointmentDetailSheet({
   etaBusy: boolean;
   mutationBusy: boolean;
   etaMessage: string | null;
+  error: string | null;
   onClose: () => void;
   onReschedule: (event: MobileAppointment) => void;
   onCancel: (event: MobileAppointment) => void;
@@ -619,14 +621,14 @@ function AppointmentDetailSheet({
   const address = cleanText(event.customer_address || event.location);
   const canText = Boolean(event.customer_phone && address);
   return (
-    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={onClose}>
+    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={() => { if (!mutationBusy) onClose(); }}>
       <section className="mobile-crm-sheet" role="dialog" aria-modal="true" aria-label="Appointment details" onClick={(eventClick) => eventClick.stopPropagation()}>
         <div className="mobile-crm-sheet-bar">
           <div>
             <span>{formatEventTime(event)}</span>
             <h2>{eventTitle(event)}</h2>
           </div>
-          <button type="button" aria-label="Close appointment details" onClick={onClose}>
+          <button type="button" aria-label="Close appointment details" disabled={mutationBusy} onClick={onClose}>
             <X />
           </button>
         </div>
@@ -645,6 +647,7 @@ function AppointmentDetailSheet({
         </div>
 
         {etaMessage ? <p className="mobile-crm-eta-status">{etaMessage}</p> : null}
+        {error ? <p className="mobile-crm-alert" role="alert">{error}</p> : null}
 
         <div className="mobile-crm-sheet-actions">
           <button type="button" className="mobile-crm-secondary-action" disabled={mutationBusy} onClick={() => onReschedule(event)}>
@@ -678,17 +681,19 @@ function AppointmentDetailSheet({
 function RescheduleAppointmentSheet({
   event,
   busy,
+  error,
   onClose,
   onSubmit
 }: {
   event: MobileAppointment;
   busy: boolean;
+  error: string | null;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
   const duration = event.appointment_duration_minutes || bookingSlotDurationMinutes;
   return (
-    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={onClose}>
+    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={() => { if (!busy) onClose(); }}>
       <section className="mobile-crm-sheet mobile-crm-add-sheet" role="dialog" aria-modal="true" aria-label="Reschedule appointment" onClick={(eventClick) => eventClick.stopPropagation()}>
         <div className="mobile-crm-sheet-bar">
           <div>
@@ -721,6 +726,7 @@ function RescheduleAppointmentSheet({
               ))}
             </select>
           </label>
+          {error && <p className="mobile-crm-alert" role="alert">{error}</p>}
           <div className="mobile-crm-sheet-actions">
             <button type="submit" className="mobile-crm-primary-action" disabled={busy}>
               {busy ? <Loader2 className="spin" /> : <CalendarClock />}
@@ -1016,7 +1022,7 @@ export function MobileAppointmentApp() {
 
   async function rescheduleAppointment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session || !reschedulingAppointment) return;
+    if (!session || !reschedulingAppointment || appointmentMutationBusy) return;
 
     const formData = new FormData(event.currentTarget);
     const date = formString(formData, "date");
@@ -1031,6 +1037,7 @@ export function MobileAppointmentApp() {
         method: "PATCH",
         body: JSON.stringify({
           id: reschedulingAppointment.id,
+          expected_updated_at: reschedulingAppointment.updated_at,
           start_at: startAt,
           end_at: endAt
         })
@@ -1038,7 +1045,7 @@ export function MobileAppointmentApp() {
       setReschedulingAppointment(null);
       setSelectedAppointment(null);
       setAnchorDate(date);
-      await loadAppointments(session);
+      await loadAppointments(session, rangeForView(date, view));
       setMessage(`${eventTitle(reschedulingAppointment)} was rescheduled.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointment could not be rescheduled.");
@@ -1047,8 +1054,14 @@ export function MobileAppointmentApp() {
     }
   }
 
+  function selectAppointment(event: MobileAppointment) {
+    setMessage(null);
+    setEtaMessage(null);
+    setSelectedAppointment(event);
+  }
+
   async function cancelAppointment(event: MobileAppointment) {
-    if (!session) return;
+    if (!session || appointmentMutationBusy) return;
     const confirmed = window.confirm(
       `Cancel ${eventTitle(event)}'s appointment?\n\nThis removes it from the active schedule but keeps the cancellation in your records.`
     );
@@ -1061,6 +1074,7 @@ export function MobileAppointmentApp() {
         method: "PATCH",
         body: JSON.stringify({
           id: event.id,
+          expected_updated_at: event.updated_at,
           action: "cancel",
           reason: "Canceled from mobile appointments"
         })
@@ -1207,10 +1221,7 @@ export function MobileAppointmentApp() {
         {view === "list" ? (
           <UpcomingView
             events={visibleAppointments}
-            onSelectEvent={(event) => {
-              setEtaMessage(null);
-              setSelectedAppointment(event);
-            }}
+            onSelectEvent={selectAppointment}
           />
         ) : view === "month" ? (
           <><MonthView
@@ -1219,13 +1230,10 @@ export function MobileAppointmentApp() {
             onSelectDay={(day) => {
               setAnchorDate(day);
             }}
-            onSelectEvent={(event) => {
-              setEtaMessage(null);
-              setSelectedAppointment(event);
-            }}
-          /><section className="calendar-c-agenda"><div><h2>{longDayFormatter.format(dateToUtcNoon(anchorDate))}</h2><button type="button" onClick={() => openBooking()}>Book</button></div><DayView events={visibleAppointments} anchorDate={anchorDate} onSelectEvent={setSelectedAppointment} /><button type="button" onClick={() => setView("day")}>Open day &amp; choose a time</button></section></>
+            onSelectEvent={selectAppointment}
+          /><section className="calendar-c-agenda"><div><h2>{longDayFormatter.format(dateToUtcNoon(anchorDate))}</h2><button type="button" onClick={() => openBooking()}>Book</button></div><DayView events={visibleAppointments} anchorDate={anchorDate} onSelectEvent={selectAppointment} /><button type="button" onClick={() => setView("day")}>Open day &amp; choose a time</button></section></>
         ) : view === "five" ? (
-          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={openBooking} />
+          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} showAvailability={showAvailability} onSelectEvent={selectAppointment} onBook={openBooking} />
         ) : view === "week" ? (
           <WeekView
             events={visibleAppointments}
@@ -1234,13 +1242,10 @@ export function MobileAppointmentApp() {
               setAnchorDate(day);
               setView("day");
             }}
-            onSelectEvent={(event) => {
-              setEtaMessage(null);
-              setSelectedAppointment(event);
-            }}
+            onSelectEvent={selectAppointment}
           />
         ) : (
-          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} dayCount={1} showAvailability={showAvailability} onSelectEvent={setSelectedAppointment} onBook={openBooking} />
+          <FiveDayView events={visibleAppointments} anchorDate={anchorDate} dayCount={1} showAvailability={showAvailability} onSelectEvent={selectAppointment} onBook={openBooking} />
         )}
       </main>
 
@@ -1253,8 +1258,10 @@ export function MobileAppointmentApp() {
           etaBusy={etaBusy}
           mutationBusy={appointmentMutationBusy}
           etaMessage={etaMessage}
+          error={message}
           onClose={() => setSelectedAppointment(null)}
           onReschedule={(event) => {
+            setMessage(null);
             setSelectedAppointment(null);
             setReschedulingAppointment(event);
           }}
@@ -1267,6 +1274,7 @@ export function MobileAppointmentApp() {
       {reschedulingAppointment ? (
         <RescheduleAppointmentSheet
           event={reschedulingAppointment}
+          error={message}
           busy={appointmentMutationBusy}
           onClose={() => {
             if (!appointmentMutationBusy) setReschedulingAppointment(null);

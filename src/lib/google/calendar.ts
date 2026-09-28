@@ -126,7 +126,8 @@ export async function getDelegatedAccessToken(subject: string): Promise<string> 
   const res = await fetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body
+    body,
+    signal: AbortSignal.timeout(8000)
   });
   const data = (await res.json().catch(() => ({}))) as {
     access_token?: string;
@@ -206,9 +207,9 @@ export async function deleteCalendarEvent(
   try {
     const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
-      { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
+      { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` }, signal: AbortSignal.timeout(8000) }
     );
-    return res.ok;
+    return res.ok || res.status === 404 || res.status === 410;
   } catch {
     return false;
   }
@@ -275,4 +276,37 @@ export async function syncAppointmentToGoogleCalendars(
   }
 
   return { synced: results.some((result) => Boolean(result.eventId)), results };
+}
+
+/** Move existing mirrors in place, preserving invitees, notes, and event IDs. */
+export async function rescheduleSyncedGoogleCalendarEvents(
+  eventIds: Record<string, unknown> | null | undefined,
+  input: Pick<GoogleCalendarEventInput, "startAt" | "endAt">,
+): Promise<GoogleCalendarSyncResult> {
+  if (!isGoogleCalendarSyncConfigured()) return { synced: false, results: [], skipped: "not-configured" };
+  const entries = Object.entries(eventIds || {}).filter(
+    (entry): entry is [string, string] => Boolean(entry[0].trim()) && typeof entry[1] === "string" && Boolean(entry[1].trim()),
+  );
+  if (!entries.length) return { synced: false, results: [], skipped: "no-google-event-ids" };
+  const results: GoogleCalendarSyncResult["results"] = [];
+  const timeZone = process.env.GOOGLE_CALENDAR_TIME_ZONE || DEFAULT_TIME_ZONE;
+  for (const [calendar, eventId] of entries) {
+    try {
+      const token = await getDelegatedAccessToken(calendar);
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar)}/events/${encodeURIComponent(eventId)}?sendUpdates=none`,
+        {
+          method: "PATCH",
+          signal: AbortSignal.timeout(8000),
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ start: { dateTime: input.startAt, timeZone }, end: { dateTime: input.endAt, timeZone } }),
+        },
+      );
+      if (!response.ok) throw new Error(`Google Calendar update failed: HTTP ${response.status}`);
+      results.push({ calendar, eventId });
+    } catch (error) {
+      results.push({ calendar, error: error instanceof Error ? error.message : "update failed" });
+    }
+  }
+  return { synced: results.some(result => Boolean(result.eventId)), results };
 }

@@ -138,13 +138,13 @@ export function mobileAppointmentWindowCount(event: CrmCalendarEvent) {
 }
 
 export function mobileAppointmentDurationMinutes(event: CrmCalendarEvent) {
-  const explicit = numberValue(recordValue(event.meta)?.appointmentDurationMinutes);
-  if (explicit) return explicit;
-
   const start = new Date(event.start_at);
   const end = new Date(event.end_at);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) return null;
-  return Math.round((end.getTime() - start.getTime()) / 60000);
+  if (Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end > start) {
+    return Math.round((end.getTime() - start.getTime()) / 60000);
+  }
+  const explicit = numberValue(recordValue(event.meta)?.appointmentDurationMinutes);
+  return explicit && explicit > 0 ? explicit : null;
 }
 
 export function customerFirstName(customerName: string | null | undefined) {

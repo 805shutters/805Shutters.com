@@ -117,6 +117,11 @@ describe("805 mobile appointment helpers", () => {
     expect(mobileAppointmentDurationMinutes(event())).toBe(120);
   });
 
+  it("uses the rescheduled interval instead of stale duration metadata", () => {
+    expect(mobileAppointmentDurationMinutes(event({ meta: { appointmentDurationMinutes: 60 } }))).toBe(120);
+    expect(mobileAppointmentDurationMinutes(event({ start_at: "invalid", meta: { appointmentDurationMinutes: 90 } }))).toBe(90);
+  });
+
   it("builds exact in-route SMS copy", () => {
     expect(buildMobileEtaSms({ customerName: "Pat Smith", etaMinutes: 24 })).toBe(
       "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters\nOfficial 805 Shutters contact: 805Shutters.com | 805-806-9344 | 805@805shutters.com"

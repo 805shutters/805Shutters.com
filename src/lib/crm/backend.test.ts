@@ -2119,14 +2119,9 @@ describe("cancelCrmCalendarEvent", () => {
         canceledBy: actor.email
       }
     });
-    expect(updates.find((update) => update.table === "crm_jobs")?.payload).toEqual({
-      appointment_start: null,
-      appointment_end: null,
-      status: "follow_up",
-      next_action: "Follow up after canceled appointment",
-      next_action_due: null
-    });
-    expect(inserts[0]?.payload).toMatchObject({
+    // Linked job mutations now belong to the same database transaction.
+    expect(updates.filter(update => update.table === "crm_jobs")).toEqual([]);
+    expect(inserts.find(entry => entry.table === "crm_activity_events")?.payload).toMatchObject({
       entity_type: "calendar_event",
       entity_id: "event-1",
       action: "cancel",
@@ -2195,6 +2190,11 @@ function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | 
       if(name === "booking_schedule_snapshot") return {data:{revision:"1",events:[opts.event],slots:[],protectedIds:[],bufferExceptions:[]},error:null};
       if (name === "booking_admin_create") {
         return { data: { ...opts.event, ...(args.p_event as object) }, error: null };
+      }
+      if (name === "booking_admin_cancel") {
+        const payload = { id: args.p_event_id, meta: args.p_meta, status: "canceled" };
+        updates.push({ table: "crm_calendar_events", filters: { id: payload.id }, payload });
+        return { data: { ...opts.event, ...payload }, error: null };
       }
       if (name === "booking_admin_reschedule") {
         const payload = { id: args.p_event_id, start_at: args.p_start_at, end_at: args.p_end_at, meta: args.p_meta, status: "rescheduled" };
@@ -2327,6 +2327,32 @@ describe("rescheduleCrmCalendarEvent admin override", () => {
       }, actor);
       expect(rpcCalls.map(call => call.name)).toEqual(["booking_admin_reschedule"]);
     }
+  });
+
+  it("rejects an outdated calendar card before any mutation", async () => {
+    const { supabase, rpcCalls } = calendarCancelRecorder({ event });
+    const stale = { id: event.id, start_at: event.start_at, end_at: event.end_at, expected_updated_at: "2020-01-01T00:00:00Z" };
+    await expect(rescheduleCrmCalendarEvent(supabase, stale, actor)).rejects.toThrow(/appointment changed/);
+    await expect(cancelCrmCalendarEvent(supabase, stale, actor)).rejects.toThrow(/appointment changed/);
+    expect(rpcCalls).toHaveLength(0);
+  });
+
+  it("cancels every assignee through the staff RPC without route checks", async () => {
+    for (const assigned_to of ["Jessica", "Mike", "Unassigned"]) {
+      const { supabase, rpcCalls } = calendarCancelRecorder({ event: { ...event, assigned_to } });
+      await cancelCrmCalendarEvent(supabase, { id: event.id, actor_id: "forged" }, actor);
+      expect(rpcCalls.map(call => call.name)).toEqual(["booking_admin_cancel"]);
+      expect(rpcCalls[0].args).toMatchObject({ p_actor_id: actor.userId, p_actor_email: actor.email });
+      expect(JSON.stringify(rpcCalls)).not.toContain("forged");
+    }
+  });
+
+  it("repeated cancellation succeeds without another mutation or notification", async () => {
+    const { supabase, rpcCalls, inserts } = calendarCancelRecorder({ event: { ...event, status: "canceled" } });
+    expect((await cancelCrmCalendarEvent(supabase, { id: event.id, expected_updated_at: "2000-01-01T00:00:00Z" }, actor)).status).toBe("canceled");
+    expect(rpcCalls).toHaveLength(0);
+    expect(inserts).toHaveLength(0);
+    await expect(cancelCrmCalendarEvent(supabase, { id: event.id }, { email: actor.email })).rejects.toThrow(/authenticated staff/);
   });
 
   it("still rejects invalid time ranges", async () => {

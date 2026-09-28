@@ -69,3 +69,7 @@ body.qb-fullscreen .crm-platinum-content { padding:0; }
 .crm-calendar-navigation-dialog .crm-platinum-sidebar button { width:100%; }
 .crm-calendar-navigation-dialog .crm-calendar-menu-close { justify-content:flex-end; }
 @media(max-width:750px) { .crm-calendar-menu-open { padding:5px; left:8px; top:8px; }.crm-calendar-menu-open span { display:none; } }
+
+/* Light calendar change dialogs must not inherit the dark calendar's text. */
+.crm-calendar-change-modal .crm-slot-form-panel { color:#202522; }
+.crm-calendar-change-error { margin:0; padding:12px; border:1px solid #d9aba6; background:#fff3f1; color:#8d2016; font-size:14px; line-height:1.4; }

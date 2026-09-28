@@ -249,3 +249,29 @@ describe("syncAppointmentToGoogleCalendars", () => {
     expect(byCalendar["jessica@805shutters.com"].error).toContain("forbidden for jessica");
   });
 });
+
+describe("appointment mirror changes", () => {
+  it("reschedules the existing Google event in place without invitations or replacing notes", async () => {
+    const { rescheduleSyncedGoogleCalendarEvents } = await import('./calendar');
+    const fetchMock = vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({access_token:'test',expires_in:3600})}).mockResolvedValueOnce({ok:true,status:200});
+    vi.stubGlobal('fetch',fetchMock);
+    const input = {startAt:'2035-11-01T17:00:00Z',endAt:'2035-11-01T18:30:00Z'};
+    const result = await rescheduleSyncedGoogleCalendarEvents({'staff@local.invalid':'existing/id'},input);
+    expect(result.synced).toBe(true);
+    expect(fetchMock.mock.calls[1][0]).toContain('/events/existing%2Fid?sendUpdates=none');
+    expect(fetchMock.mock.calls[1][1].method).toBe('PATCH');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({start:{dateTime:input.startAt,timeZone:'America/Los_Angeles'},end:{dateTime:input.endAt,timeZone:'America/Los_Angeles'}});
+  });
+  it("reports failed mirrors without throwing or creating duplicate events", async () => {
+    const { rescheduleSyncedGoogleCalendarEvents } = await import('./calendar');
+    const fetchMock = vi.fn().mockResolvedValueOnce({ok:true,json:async()=>({access_token:'test'})}).mockResolvedValueOnce({ok:false,status:503});
+    vi.stubGlobal('fetch',fetchMock);
+    expect(await rescheduleSyncedGoogleCalendarEvents({'staff@local.invalid':'existing'}, {startAt:'2035-10-01',endAt:'2035-10-02'})).toMatchObject({synced:false,results:[{calendar:'staff@local.invalid',error:expect.stringContaining('503')}]});
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it.each([404,410])("treats an already removed Google event as canceled (%s)", async status => {
+    const { deleteCalendarEvent } = await import('./calendar');
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:false,status}));
+    expect(await deleteCalendarEvent('test','staff@local.invalid','gone')).toBe(true);
+  });
+});

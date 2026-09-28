@@ -2,7 +2,6 @@ import { assertCustomerFileDeletable } from "./customer-file-delete-guard";
 import { allocateReceivedMoney } from "./payment-allocation";
 import { eligibleBeforeCutoff, pacificDate, nextKenDueDate } from "./ken-monthly-ledger";
 import { buildOwnerPayablesLedger, resolveOwnerPaymentAmount, OWNER_PAYABLES_MODEL } from "./owner-payables";
-import { BookingError, writeCalendarWithRoutes } from "@/lib/booking/scheduling";
 import {emptyFulfillment,type FulfillmentData} from "./fulfillment";
 import {businessEventToActivity} from "./business-events";
 import { loadIntegrationHealth } from "./integration-health";
@@ -43,7 +42,8 @@ import {
   deleteSyncedGoogleCalendarEvents,
   GoogleCalendarDeleteResult,
   GoogleCalendarSyncResult,
-  syncAppointmentToGoogleCalendars
+  syncAppointmentToGoogleCalendars,
+  rescheduleSyncedGoogleCalendarEvents
 } from "@/lib/google/calendar";
 import {
   bookingEndIso,
@@ -2591,80 +2591,20 @@ async function syncSaleOwnerForJob(
   });
 }
 
-async function syncTechnicalMeasureCalendarState(
-  supabase: CrmSupabaseClient,
-  event: Record<string, unknown>,
-  patch: { status: "scheduled" | "unscheduled"; startAt?: string | null; endAt?: string | null; actorEmail: string }
-) {
-  if (event.event_type !== "measure") return;
-  const formId = optionalText(objectMeta(event.meta).technical_measure_form_id);
-  if (!formId) return;
-  const { data: form, error: formReadError } = await supabase
-    .from("crm_technical_measure_forms")
-    .select("id,job_id,meta")
-    .eq("id", formId)
-    .maybeSingle();
-  if (formReadError || !form) throw new CrmAuthError(502, "The calendar changed, but the technical measure form could not be updated.");
-  const formMeta = objectMeta(form.meta);
-  const previous = objectMeta(formMeta.measure_scheduling);
-  const scheduling = {
-    ...previous,
-    status: patch.status,
-    scheduled_at: patch.status === "scheduled" ? new Date().toISOString() : null,
-    scheduled_by: patch.status === "scheduled" ? patch.actorEmail : null,
-    scheduled_start_at: patch.status === "scheduled" ? patch.startAt || null : null,
-    scheduled_end_at: patch.status === "scheduled" ? patch.endAt || null : null,
-    calendar_event_id: event.id,
-  };
-  const { error: formError } = await supabase
-    .from("crm_technical_measure_forms")
-    .update({ meta: { ...formMeta, measure_scheduling: scheduling } })
-    .eq("id", formId);
-  if (formError) throw new CrmAuthError(502, "The calendar changed, but the technical measure form could not be updated.");
-
-  if (form.job_id) {
-    const { data: job, error: jobReadError } = await supabase
-      .from("crm_jobs")
-      .select("meta")
-      .eq("id", form.job_id)
-      .maybeSingle();
-    if (jobReadError || !job) throw new CrmAuthError(502, "The calendar changed, but the customer file could not be updated.");
-    const jobMeta = objectMeta(job.meta);
-    const measureMeta = objectMeta(jobMeta.measure_needed);
-    const { error: jobError } = await supabase
-      .from("crm_jobs")
-      .update({
-        meta: {
-          ...jobMeta,
-          measure_needed: {
-            ...measureMeta,
-            schedule_status: scheduling.status,
-            scheduled_at: scheduling.scheduled_at,
-            scheduled_by: scheduling.scheduled_by,
-            scheduled_start_at: scheduling.scheduled_start_at,
-            scheduled_end_at: scheduling.scheduled_end_at,
-            calendar_event_id: scheduling.calendar_event_id,
-          },
-        },
-      })
-      .eq("id", form.job_id);
-    if (jobError) throw new CrmAuthError(502, "The calendar changed, but the customer file could not be updated.");
+// Related scheduling records are saved atomically by the staff calendar RPCs.
+// Customer indexing is a secondary mirror and must not turn a saved change into
+// a failed request (which invites a duplicate retry / notification).
+async function calendarLinkedJob(supabase: CrmSupabaseClient, event: CrmCalendarEvent) {
+  if (!event.job_id) return null;
+  try {
+    const { data, error } = await supabase.from("crm_jobs").select("*").eq("id", event.job_id).maybeSingle();
+    if (error) throw error;
+    if (data) await syncCustomerFromJob(supabase, data);
+    return data as CrmJob | null;
+  } catch (error) {
+    console.warn("[crm] calendar saved; customer mirror needs retry", error);
+    return null;
   }
-}
-
-async function guardedCalendarWrite(
-  supabase: CrmSupabaseClient,
-  operation: "insert" | "update",
-  record: Record<string, unknown>,
-  existing?: CrmCalendarEvent,
-  bufferOverride?: {
-    actorId: string;
-    actorEmail: string;
-    reason: "staff_reschedule_extra_buffer_override";
-  },
-) {
-  try { return await writeCalendarWithRoutes(supabase, operation, record, existing, bufferOverride); }
-  catch(error) { if(error instanceof BookingError) throw new CrmAuthError(error.status,error.message); throw error; }
 }
 
 export async function createCrmCalendarEvent(
@@ -2828,6 +2768,9 @@ export async function rescheduleCrmCalendarEvent(
 
   if (existingError) throw new CrmAuthError(502, "Calendar event could not be loaded.");
   if (!existing) throw new CrmAuthError(404, "Calendar event was not found.");
+  if (payload.expected_updated_at && Date.parse(String(payload.expected_updated_at)) !== Date.parse(existing.updated_at)) {
+    throw new CrmAuthError(409, "This appointment changed. Reload it before saving.");
+  }
   if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
     throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
   }
@@ -2853,38 +2796,18 @@ export async function rescheduleCrmCalendarEvent(
     p_actor_id: actor.userId,
     p_actor_email: actor.email,
   });
-  if (error) {
-    if (/BOOKING_STALE/.test(error.message || "")) {
+  if (error || !data) {
+    if (/BOOKING_STALE/.test(error?.message || "")) {
       throw new CrmAuthError(409, "This appointment changed. Reload it before saving.");
     }
     throw new CrmAuthError(502, "Appointment could not be rescheduled. Please try again.");
   }
 
-  await syncTechnicalMeasureCalendarState(supabase, data, {
-    status: "scheduled",
-    startAt,
-    endAt,
-    actorEmail: actor.email,
-  });
-
-  let linkedJob: CrmJob | null = null;
-  if (existing.job_id && existing.event_type !== "measure") {
-    const { data: job, error: jobError } = await supabase
-      .from("crm_jobs")
-      .update({
-        appointment_start: startAt,
-        appointment_end: endAt
-      })
-      .eq("id", existing.job_id)
-      .select("*")
-      .maybeSingle();
-
-    if (jobError) throw new CrmAuthError(502, "Appointment moved, but the linked job could not be updated.");
-    if (job) {
-      linkedJob = job as CrmJob;
-      await syncCustomerFromJob(supabase, linkedJob);
-    }
-  }
+  const linkedJob = await calendarLinkedJob(supabase, data as CrmCalendarEvent);
+  const googleCalendarSync = await rescheduleSyncedGoogleCalendarEvents(
+    objectMeta(objectMeta(existing.meta).googleCalendarEventIds),
+    { startAt, endAt },
+  );
 
   const rescheduledSalespersonSms = await sendCalendarAssignmentSms({
     action: "rescheduled",
@@ -2909,6 +2832,7 @@ export async function rescheduleCrmCalendarEvent(
     metadata: {
       jobId: existing.job_id || null,
       rescheduledSalespersonSms,
+      googleCalendarSync,
       adminScheduleOverride: true,
       adminScheduleOverrideReason: "staff_manual_reschedule",
     }
@@ -2923,6 +2847,7 @@ export async function cancelCrmCalendarEvent(
   actor: CrmActor
 ) {
   const eventId = requiredText(payload.id, "Calendar event is required.");
+  if (!actor.userId) throw new CrmAuthError(403, "Manual cancellation requires an authenticated staff account.");
 
   const { data: existing, error: existingError } = await supabase
     .from("crm_calendar_events")
@@ -2932,6 +2857,10 @@ export async function cancelCrmCalendarEvent(
 
   if (existingError) throw new CrmAuthError(502, "Calendar event could not be loaded.");
   if (!existing) throw new CrmAuthError(404, "Calendar event was not found.");
+  if (existing.status === "canceled") return existing as CrmCalendarEvent;
+  if (payload.expected_updated_at && Date.parse(String(payload.expected_updated_at)) !== Date.parse(existing.updated_at)) {
+    throw new CrmAuthError(409, "This appointment changed. Reload it before saving.");
+  }
   if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
     throw new CrmAuthError(409, "Only scheduled appointments can be canceled.");
   }
@@ -2940,47 +2869,20 @@ export async function cancelCrmCalendarEvent(
   const cancelReason = optionalText(payload.reason);
   if (cancelReason) cancelMeta.canceledReason = cancelReason;
 
-  const data = await guardedCalendarWrite(supabase,"update",{id:eventId,status:"canceled",meta:cancelMeta},existing as CrmCalendarEvent);
-
-  await syncTechnicalMeasureCalendarState(supabase, data, {
-    status: "unscheduled",
-    actorEmail: actor.email,
+  const { data, error } = await supabase.rpc("booking_admin_cancel", {
+    p_event_id: eventId,
+    p_previous: existing,
+    p_meta: cancelMeta,
+    p_actor_id: actor.userId,
+    p_actor_email: actor.email,
   });
-
-  let linkedJob: CrmJob | null = null;
-  if (existing.job_id && existing.event_type !== "measure") {
-    const { data: linkedJobData, error: linkedJobError } = await supabase
-      .from("crm_jobs")
-      .select("*")
-      .eq("id", existing.job_id)
-      .maybeSingle();
-
-    if (linkedJobError) throw new CrmAuthError(502, "Appointment canceled, but the linked job could not be loaded.");
-
-    if (linkedJobData) {
-      linkedJob = linkedJobData as CrmJob;
-      const jobUpdate: Record<string, unknown> = {
-        appointment_start: null,
-        appointment_end: null
-      };
-
-      if (linkedJob.status === "scheduled") {
-        jobUpdate.status = "follow_up";
-        jobUpdate.next_action = "Follow up after canceled appointment";
-        jobUpdate.next_action_due = null;
-      }
-
-      const { data: job, error: jobError } = await supabase
-        .from("crm_jobs")
-        .update(jobUpdate)
-        .eq("id", existing.job_id)
-        .select("*")
-        .maybeSingle();
-
-      if (jobError) throw new CrmAuthError(502, "Appointment canceled, but the linked job could not be updated.");
-      if (job) await syncCustomerFromJob(supabase, job as CrmJob);
+  if (error || !data) {
+    if (/BOOKING_STALE/.test(error?.message || "")) {
+      throw new CrmAuthError(409, "This appointment changed. Reload it before canceling.");
     }
+    throw new CrmAuthError(502, "Appointment could not be canceled. Please try again.");
   }
+  const linkedJob = await calendarLinkedJob(supabase, data as CrmCalendarEvent);
 
   let googleCalendarDelete: GoogleCalendarDeleteResult = { deleted: false, results: [], skipped: "no-google-event-ids" };
   try {

@@ -806,3 +806,102 @@ describe("fixed one-hour residential booking policy", () => {
     expect(Number(result.rows[0].minutes)).toBe(180);
   });
 });
+
+async function adminCancel(event: CrmCalendarEvent, previous?: unknown) {
+  const row = previous || (await db.query<{ e: unknown }>("select to_jsonb(e) e from crm_calendar_events e where id=$1", [event.id])).rows[0].e;
+  return db.query<{ saved: CrmCalendarEvent }>("select booking_admin_cancel($1,$2,$3,$4,$5) saved", [event.id, JSON.stringify(row), '{}', staffActorId, 'staff@local.invalid']);
+}
+
+describe("atomic staff cancellations and reschedules", () => {
+  it("cancels during a drive conflict and retains protection on the remaining itinerary", async () => {
+    const { event, next } = await protectedPair();
+    await adminReschedule(event, '11:30');
+    expect((await adminCancel(next)).rows[0].saved.status).toBe('canceled');
+    await db.exec('select booking_private.validate_protections()');
+    expect((await adminCancel(next)).rows[0].saved.status).toBe('canceled');
+    await expect(commit('11:30')).rejects.toThrow(/BOOKING_/);
+    await expect(db.query("update crm_calendar_events set location='Changed address' where id=$1", [event.id])).rejects.toThrow(/BOOKING_/);
+  });
+
+  it("can remove a protected visit with an overlapping staff neighbor, without routes", async () => {
+    const { event } = await protectedPair();
+    await adminCreate('10:30');
+    expect((await adminCancel(event)).rows[0].saved.status).toBe('canceled');
+    await db.exec('select booking_private.validate_protections()');
+  });
+
+  it("moves then cancels only the linked job appointment and preserves sale data", async () => {
+    const { event } = await protectedPair();
+    const jobId = (await db.query<{ job_id: string }>('select job_id from crm_calendar_events where id=$1', [event.id])).rows[0].job_id;
+    await db.query("update crm_jobs set estimated_total=1234,deposit_paid=500 where id=$1", [jobId]);
+    await adminReschedule(event, '12:00', '2035-11-01');
+    let saved = (await db.query<Record<string, unknown>>('select * from crm_jobs where id=$1', [jobId])).rows[0];
+    expect(new Date(String(saved.appointment_start)).toISOString()).toBe(candidateVisit('2035-11-01','12:00','',5).start_at);
+    expect(new Date(String(saved.next_action_due)).toISOString()).toContain('2035-11-01');
+    await adminCancel(event);
+    saved = (await db.query<Record<string, unknown>>('select * from crm_jobs where id=$1', [jobId])).rows[0];
+    expect(saved).toMatchObject({ appointment_start: null, appointment_end: null, status: 'follow_up', next_action_due: null });
+    expect(Number(saved.estimated_total)).toBe(1234);
+    expect(Number(saved.deposit_paid)).toBe(500);
+  });
+
+  it.each([true, false])("preserves the original job when another visit is changed (returnVisit=%s)", async returnVisit => {
+    const { event } = await protectedPair();
+    const originalJob = (await db.query<{ j: Record<string, unknown> }>('select to_jsonb(j) j from crm_jobs j join crm_calendar_events e on e.job_id=j.id where e.id=$1',[event.id])).rows[0].j;
+    const other = await adminCreate('14:00', { job_id: originalJob.id, meta: { returnVisit } });
+    await adminReschedule(other, '15:00');
+    await adminCancel(other);
+    const after = (await db.query<{ j: Record<string, unknown> }>('select to_jsonb(j) j from crm_jobs j where id=$1',[originalJob.id])).rows[0].j;
+    expect(after).toEqual(originalJob);
+  });
+
+  it("updates the legacy source, so a later source edit cannot restore the old time or cancellation", async () => {
+    const legacyId = randomUUID();
+    await db.query("insert into sales_805_appointments(id,customer_name,customer_address,appointment_date,start_time,end_time,assigned_to,status) values($1,'Fixture','Test address',$2,'10:00','11:00','Jessica','scheduled')", [legacyId,date]);
+    const event = (await db.query<CrmCalendarEvent>("select * from crm_calendar_events where meta->>'sales_805_appointment_id'=$1", [legacyId])).rows[0];
+    await adminReschedule(event,'12:00','2035-11-01');
+    const source = (await db.query<{ appointment_date: string; start_time: string }>('select appointment_date,start_time from sales_805_appointments where id=$1',[legacyId])).rows[0];
+    expect(new Date(String(source.appointment_date)).toISOString()).toContain('2035-11-01');
+    expect(source.start_time).toBe('12:00:00');
+    await adminCancel(event);
+    await db.query("update sales_805_appointments set notes='Notes only' where id=$1",[legacyId]);
+    expect((await db.query<{ status: string }>('select status from crm_calendar_events where id=$1',[event.id])).rows[0].status).toBe('canceled');
+  });
+
+  it("saves technical measure scheduling atomically and preserves unrelated metadata", async () => {
+    const { event } = await protectedPair();
+    const jobId = (await db.query<{ job_id: string }>('select job_id from crm_calendar_events where id=$1',[event.id])).rows[0].job_id;
+    const formId = randomUUID();
+    await db.query("insert into crm_technical_measure_forms(id,job_id,meta) values($1,$2,'{\"keep\":true}')",[formId,jobId]);
+    const measure = await adminCreate('14:00',{event_type:'measure', job_id:jobId,meta:{technical_measure_form_id:formId}});
+    await adminReschedule(measure,'15:00');
+    let form = (await db.query<{ meta: Record<string, unknown> }>('select meta from crm_technical_measure_forms where id=$1',[formId])).rows[0];
+    expect(form.meta).toMatchObject({keep:true,measure_scheduling:{status:'scheduled',calendar_event_id:measure.id}});
+    await adminCancel(measure);
+    form = (await db.query<{ meta: Record<string, unknown> }>('select meta from crm_technical_measure_forms where id=$1',[formId])).rows[0];
+    expect(form.meta).toMatchObject({keep:true,measure_scheduling:{status:'unscheduled',scheduled_start_at:null}});
+    expect((await db.query<{ status:string }>('select status from crm_jobs where id=$1',[jobId])).rows[0].status).toBe('scheduled');
+  });
+
+  it("rolls back the entire calendar change if a required linked form is missing", async () => {
+    const measure = await adminCreate('14:00',{event_type:'measure',meta:{technical_measure_form_id:randomUUID()}});
+    await expect(adminReschedule(measure,'15:00')).rejects.toThrow(/BOOKING_LINK/);
+    await expect(adminCancel(measure)).rejects.toThrow(/BOOKING_LINK/);
+    const row = (await db.query<CrmCalendarEvent>('select * from crm_calendar_events where id=$1',[measure.id])).rows[0];
+    expect(row.status).toBe('scheduled');
+    expect(new Date(row.start_at).toISOString()).toBe(candidateVisit(date,'14:00','',5).start_at);
+  });
+
+  it("rejects stale cancellation, missing actor, and direct public access", async () => {
+    const { event } = await protectedPair();
+    const previous = (await db.query<{ e: unknown }>('select to_jsonb(e) e from crm_calendar_events e where id=$1',[event.id])).rows[0].e;
+    await adminReschedule(event,'12:00');
+    await expect(adminCancel(event,previous)).rejects.toThrow(/BOOKING_STALE/);
+    await expect(db.query('select booking_admin_cancel($1,$2,$3,$4,$5)',[event.id,JSON.stringify(previous),'{}',null,'staff@local.invalid'])).rejects.toThrow(/BOOKING_ACTOR/);
+    for (const role of ['anon','authenticated']) {
+      await db.exec(`set role ${role}`);
+      try { await expect(adminCancel(event,previous)).rejects.toThrow(/permission denied/); }
+      finally { await db.exec('reset role'); }
+    }
+  });
+});
