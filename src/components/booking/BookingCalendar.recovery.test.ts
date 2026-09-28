@@ -447,7 +447,7 @@ it.each([true, false])("submits and retains follow-up choice %s across a failed 
   expect(host.textContent).toContain('10:30 AM · 1 hour · Pacific time');
   expect(host.textContent).toContain('601 Carmen Drive, Camarillo, CA');
   expect(host.textContent).toContain(followUpRequested ? 'Follow-up from 805 requested.' : 'No follow-up necessary.');
-  expect(host.querySelector('.consultation-booking__complete img')).toBeNull();
+  expect(host.querySelector('.consultation-booking__complete img')?.getAttribute('alt')).toBe('Jessica, your design consultant');
   expect(document.activeElement).toBe(host.querySelector('.consultation-booking__complete'));
   const calendar = host.querySelector<HTMLAnchorElement>('.consultation-booking__complete a[target="_blank"]')!;
   expect(calendar.textContent).toContain('Add to Google Calendar');

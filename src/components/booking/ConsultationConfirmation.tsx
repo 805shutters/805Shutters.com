@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { CalendarDays, CircleCheck, MapPin } from "lucide-react";
 import { brandIdentity } from "@/lib/brand-identity";
 import { googleCalendarUrl } from "@/lib/booking/google-calendar";
@@ -10,15 +11,15 @@ export const bookingConsultant = {
   name: "Jessica",
   role: "Design consultant",
   bio: "Jessica brings nine years of design consulting experience to help you find the right window treatments for your home. From shutters to shades and drapery, she’ll guide you through light control, privacy, insulation, and material choices that suit your style.",
-  // Set to the approved portrait's public URL when Jessica's photo is supplied.
-  photoSrc: null as string | null,
+  photoSrc: "/images/team/jessica-design-consultant.png",
 };
 
 function ConsultantPortrait({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false);
   return <div className={styles.portrait}>
     {src && !failed
-      ? <img src={src} alt="Jessica, your design consultant" width={72} height={72}
+      ? <Image src={src} alt="Jessica, your design consultant" width={96} height={96}
+          sizes="(max-width: 560px) 88px, 96px"
           onError={() => setFailed(true)} />
       : <span aria-hidden="true">J</span>}
   </div>;
