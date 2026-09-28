@@ -1,12 +1,14 @@
-import type { ValidationIssue } from "@/lib/quote-v2/core";
+import { baseConfigurationIssues } from "@/lib/quote-v2/base-configuration-validation";
+import type { SelectionContext, ValidationIssue } from "@/lib/quote-v2/core";
 import { isOrderingOnlyIssue } from "@/lib/quote-v2/quote-pricing-policy";
 
 /** The quote displays pricing issues; installation evidence belongs to order preparation. */
-export function QuoteConfigurationIssues({ issues }: {
+export function QuoteConfigurationIssues({ issues, baseSelection }: {
   issues: readonly ValidationIssue[];
+  baseSelection?: SelectionContext;
   gridOptionQuoting: boolean;
 }) {
-  const displayed = issues.filter(issue => !isOrderingOnlyIssue(issue));
+  const displayed = (baseSelection ? baseConfigurationIssues(baseSelection,issues).filter(i=>issues.some(original=>original.ruleId===i.ruleId)) : issues).filter(issue => !isOrderingOnlyIssue(issue));
   const blockers = displayed.filter(issue => issue.severity === "hard_block");
   const notes = displayed.filter(issue => issue.severity !== "hard_block");
   return <>

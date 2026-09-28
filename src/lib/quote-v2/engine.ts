@@ -1,3 +1,6 @@
+import { BASE_CONFIGURATION_VERSION } from './base-configuration';
+import { withBaseShutterTilt } from './base-shutter-tilt';
+import { baseConfigurationIssues, restoreBaseSizeIssues } from './base-configuration-validation';
 import { SUNDANCE_RETAIL_PRODUCTS, priceSundanceRetail, sundanceRetailComponentInputs } from "./sundance-retail";
 import { SMARTDRAPE_REPLACEMENT } from "../quote/norman-smartdrape-replacement";
 import { priceSmartdrapeReplacement } from "./norman-smartdrape-replacement";
@@ -598,15 +601,15 @@ export function authoritativeAutomaticSurchargeSelections(
   const hcPremiumId = selection.productId === "vertical_honeycomb" ? "room_darkening_sheer_fr_essentials_fabric_surcharge" : "room_darkening";
   const hcDual = honeycombDualFabrics(selection);
   const hcFront = currentHoneycomb ? findHoneycombColor(String(selection.configuration.fabric_collection ?? ""), String(selection.configuration.fabric_color_code ?? "")) : null;
-  const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : false;
-  return withOnyxPolyH3Surcharges(selection, [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerGuard||!["basic_light_guard","premium_wood_light_guard"].includes(entry.id))&&(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(rollerGuard?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
+  const hcPremium = hcDual ? hcDual.priceComponents.some(f=>f.premium) : hcFront ? honeycombFabricHasPremium(hcFront.family) : selection.configuration.base_configuration_version === BASE_CONFIGURATION_VERSION && selection.configuration.light_control === 'Room Darkening';
+  return withBaseShutterTilt(selection, withOnyxPolyH3Surcharges(selection, [...deriveAutomaticSurcharges(selection.productId, details).filter(entry=>(!rollerGuard||!["basic_light_guard","premium_wood_light_guard"].includes(entry.id))&&(!rollerPoleExtras||!["additional_fiberglass_pole","pole_attachment_only","cordless_operating_pole_premium_hardware"].includes(entry.id))&&(!rollerExtras||entry.id!=="magnetic_hold_down")&&(!roller||!["shim","raceway"].includes(entry.id))&&(!roman||!romanHardwareIds.has(entry.id))&&(!wood||!woodIds.has(entry.id))&&(!citylights||!citylightsIds.has(entry.id))&&(!ultimateFaux||!ultimateFauxIds.has(entry.id))&&(!smartprivacy||!smartprivacyIds.has(entry.id))&&(!hcHardware||!hcHardwareIds.has(entry.id))&&(!currentHoneycomb||entry.id!==hcPremiumId)&&(!sdExtras||!entry.id.startsWith("additional_vanes_pack_of_6_length_")&&entry.id!=="additional_wand")),...(roller?.selections??[]),...(rollerExtras?.selections??[]),...(rollerPoleExtras?.selections??[]),...(rollerGuard?.selections??[]),...(roman?.surchargeSelections??[]),...(wood?.surchargeSelections??[]),...(citylights?.surchargeSelections??[]),...(ultimateFaux?.surchargeSelections??[]),...(smartprivacy?.surchargeSelections??[]),...(sdExtras?.selections??[]),...(hcHardware?.surchargeSelections??[]),...(currentHoneycomb&&hcPremium?[{id:hcPremiumId,units:1}]:[])].filter(entry => {
     const psCommon=perfectsheerCommon(selection);
     if(psCommon && psCommon.chargeSharedOptions !== true && ["wood_valance","3_1_2in_and_4_1_2in_fabric_valance","keystone"].includes(entry.id))return false;
     const common=smartfoldCommonValance(selection);
     return !common || common.chargeSharedOptions === true || !(/^smartfold_.*valance$/.test(entry.id) || entry.id === "basic_light_guard" || entry.id === "keystone");
   }).map(
     (entry) => ({ ...entry, units: entry.units ?? 1 }),
-  ));
+  )));
 }
 
 function surchargeContractIssues(
@@ -1805,7 +1808,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   const quoteMode = request.validationPurpose === 'quote';
   const smartfoldPriceBranch = quoteMode && smartfoldHasDocumentedQuotePricingBranch(selection);
   const issues = quoteMode
-    ? quotePricingValidationIssues(validationIssues).map(issue => selection.productId === 'sundance_sheerview' && selection.configuration.sundance_sheerview_assembly === 'Two on one' &&
+    ? restoreBaseSizeIssues(selection, quotePricingValidationIssues(baseConfigurationIssues(selection, validationIssues)), validationIssues).map(issue => selection.productId === 'sundance_sheerview' && selection.configuration.sundance_sheerview_assembly === 'Two on one' &&
       ['sundance.assembly.records','sundance.sheerview.assembly_components'].includes(issue.ruleId)
       ? {...issue,severity:'warning' as const,explanation:`Before ordering: ${issue.explanation}`}
       : smartfoldPriceBranch && issue.ruleId === 'norman.smartfold.branch_verification'

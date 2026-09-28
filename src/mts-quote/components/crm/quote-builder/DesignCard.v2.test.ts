@@ -1770,14 +1770,15 @@ describe("Basic Norman roller quote flow", () => {
     onUpdate() {}, onUpdateFields() {}, sideBySideLineOptions:[], onSideBySidePairChange() {}, onClearSideBySidePartner() {},
   }));
 
-  it("starts a standard single shade with no valance without choosing mount, tube, fabric or operation", () => {
+  it("starts a cordless standard single shade with no valance and leaves mount, tube and fabric blank", () => {
     const patch = buildCatalogSelectionPatch({quote_v2_backend:true,temporary_shade:true}, product);
-    expect(patch).toMatchObject({shade_type:"Single Shade",valance:"No Valance",mount_type:null,lift_system:null,fabric:null,motor_type:null,
+    expect(patch).toMatchObject({shade_type:"Single Shade",valance:"No Valance",mount_type:null,lift_system:"Cordless",fabric:null,motor_type:null,
       options_json:{roller_application:"Single Shade",top_treatment_class:"No Top Treatment",roller_top_treatment:"No Top Treatment",temporary_shade:true}});
     expect(patch.options_json?.tube_class).toBeUndefined();
     const html = render(patch);
-    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric","lift_system"]);
+    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric"]);
     expect(html).toContain("More Options");
+    expect(html).toContain('title="Control Type: Cordless"');
     expect(html).toContain('title="Valance: No Valance"');
     expect(html).toContain('title="Shade Type: Single Shade"');
   });
@@ -1785,8 +1786,9 @@ describe("Basic Norman roller quote flow", () => {
   it("keeps the actual CRM's legacy presentation limited to fabric and operation too", () => {
     const patch=buildCatalogSelectionPatch({quote_v2_backend:true},product);
     const html=render(patch,false);
-    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric","lift_system"]);
+    expect([...html.matchAll(/data-option-field="([^"]+)"/g)].map(match=>match[1])).toEqual(["fabric"]);
     expect(html).toContain("More Options");
+    expect(html).toContain('title="Control Type: Cordless"');
     expect(html).toContain('title="Valance: No Valance"');
     expect(html).not.toContain('data-option-field="mount_type"');
     expect(html).not.toContain('data-option-field="json:hem_bar"');

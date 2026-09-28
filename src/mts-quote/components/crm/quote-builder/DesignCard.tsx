@@ -1,3 +1,4 @@
+import { baseConfiguration, clearBaseFabricOptions, resolveBaseFabricProgram, baseProgramMaterial } from '@/lib/quote-v2/base-configuration';
 import { NormanRollerAdditionalOptions } from "@/components/crm/NormanRollerAdditionalOptions";
 import {normanBifold90Layouts} from '@/lib/quote/norman-shutter-bifold90';
 import { NormanSharedAutomateHubOptions } from "@/components/crm/NormanSharedAutomateHubOptions";
@@ -2342,14 +2343,18 @@ export function buildCatalogSelectionPatch(
   current: Record<string, unknown>,
   product: QuoteLabCatalogProduct,
   requestedProgramId?: string | null,
+  withBaseDefaults = current.quote_v2_backend === true || current.base_configuration_version != null,
 ): Partial<SalesQuoteDesign> {
+  const base = withBaseDefaults ? baseConfiguration(product.id) : undefined;
   const programs = usableCatalogPrograms(product);
   const program =
     typeof requestedProgramId === "string"
       ? programs.find((candidate) => candidate.id === requestedProgramId) ?? null
       : requestedProgramId === null
         ? null
-        : programs.length === 1
+        : base?.programId
+          ? programs.find(candidate => candidate.id === base.programId) ?? null
+          : programs.length === 1
           ? programs[0]
           : null;
   const normanRoller = product.manufacturer === "Norman" && product.id === "roller";
@@ -2374,6 +2379,8 @@ export function buildCatalogSelectionPatch(
     remote_type: null,
     unit_price: 0,
     ...lotusDefaults,
+    ...base?.fields,
+    ...(base && product.id === 'norman_shutters' && program?.id === 'woodlore_aquashield' ? {tilt_type:'Invisible Tilt'} : {}),
     options_json: {
       ...buildCleanCatalogSelectionOptions(
       current,
@@ -2381,6 +2388,7 @@ export function buildCatalogSelectionPatch(
       program?.id ?? null,
       ),
       ...lotusDefaults?.options_json,
+      ...base?.options,
       ...(normanRoller ? {
         roller_application: "Single Shade",
         top_treatment_class: "No Top Treatment",
@@ -6504,7 +6512,7 @@ export function ManufacturerCatalogStampChooser({
             (candidate) => candidate.id === nextProductId,
           );
           if (!product) return;
-          onUpdateFields(buildCatalogSelectionPatch(options, product));
+          onUpdateFields(buildCatalogSelectionPatch(options, product, undefined, true));
         }}
       >
         <SelectTrigger
@@ -6562,6 +6570,7 @@ export function ManufacturerCatalogStampChooser({
                 options,
                 selectedProduct,
                 nextProgramId,
+                true,
               ),
             );
           }}
@@ -8908,7 +8917,8 @@ export function ShadesAndBlindsOptions({
     ) {
       onUpdateFields({
         fabric: null,
-        options_json: withoutProductColorDetails(currentJson),
+        ...baseProgramMaterial(clearBaseFabricOptions(currentJson)),
+        options_json: clearBaseFabricOptions(withoutProductColorDetails(currentJson)),
       });
       return;
     }
@@ -12489,6 +12499,13 @@ export function ShadesAndBlindsOptions({
     quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},
     configuration:{...optionsJson,...perfectsheerSavedCommonForDisplay(optionsJson,design?.quote_v2_selection,measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),_lineItem.quantity),mount_type:design?.mount_type??null,lift_system:design?.lift_system??null,motor_type:design?.motor_type??null,remote_type:design?.remote_type??null,valance:design?.valance??null} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
+  const baseIssueSelection = authoritativeV2 && optionsJson.base_configuration_version ? {
+    manufacturerId: design?.supplier ?? '', productId: String(optionsJson.catalog_product_id ?? ''),
+    programId: String(optionsJson.catalog_program_id ?? ''), catalogVersion: '', catalogAsOf: '2026-09-28',
+    widthInches: measurementToInches(_lineItem.width_whole, _lineItem.width_fraction),
+    heightInches: measurementToInches(_lineItem.height_whole, _lineItem.height_fraction), quantity: _lineItem.quantity,
+    options: {}, configuration: {...optionsJson, fabric: design?.fabric, mount_type: design?.mount_type, louver_size: design?.louver_size},
+  } as import("@/lib/quote-v2/core").SelectionContext : undefined;
   const honeycombMountingIssues = productType === "Honeycomb Shades" && authoritativeV2 ? ((context: import("@/lib/quote-v2/core").SelectionContext) => [...validateHoneycombMounting(context), ...(honeycombChargingClearance(context)?.issues ?? [])])({
     manufacturerId:"norman",productId:/Patio Door Vertical/.test(String(optionsJson.honeycomb_application)) ? "vertical_honeycomb" : "honeycomb",catalogAsOf:"2026-09-20",catalogVersion:quoteV2CatalogVersionFor("honeycomb",new Date().toISOString().slice(0,10)),programId:"preview",quantity:_lineItem.quantity,widthInches:measurementToInches(_lineItem.width_whole,_lineItem.width_fraction),heightInches:measurementToInches(_lineItem.height_whole,_lineItem.height_fraction),options:{},configuration:{...optionsJson,application:String(optionsJson.honeycomb_application ?? "Standard Horizontal"),cell_size:String(optionsJson.cell_size ?? ""),mount_type:design?.mount_type,lift_system:design?.lift_system,motor_type:design?.motor_type} as import("@/lib/quote-v2/core").SelectionContext["configuration"],
   }) : [];
@@ -12520,8 +12537,9 @@ export function ShadesAndBlindsOptions({
     setOpenOptionField(null);
     onUpdateFields({
       fabric: fabricColor.collection,
+      ...baseProgramMaterial(resolveBaseFabricProgram(optionsJson,fabricColor.programId)),
       options_json: {
-        ...withoutProductColorDetails(optionsJson),
+        ...resolveBaseFabricProgram(withoutProductColorDetails(optionsJson),fabricColor.programId),
         [ROLLER_FABRIC_COLOR_ID_DETAIL]: fabricColor.id,
         [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: "roller",
         [PRODUCT_COLOR_PROGRAM_DETAIL]: fabricColor.programId,
@@ -12537,7 +12555,8 @@ export function ShadesAndBlindsOptions({
     setOpenOptionField("fabric");
     onUpdateFields({
       fabric: null,
-      options_json: withoutProductColorDetails(optionsJson),
+      ...baseProgramMaterial(clearBaseFabricOptions(optionsJson)),
+      options_json: clearBaseFabricOptions(withoutProductColorDetails(optionsJson)),
     });
   };
 
@@ -12589,7 +12608,7 @@ export function ShadesAndBlindsOptions({
 
     const selectedValue = getMtsProductColorValue(fabricColor);
     let nextJson: Record<string, unknown> = {
-      ...withoutProductColorDetails(optionsJson),
+      ...resolveBaseFabricProgram(withoutProductColorDetails(optionsJson),fabricColor.programId),
       ...fabricColor.automaticDetails,
       [PRODUCT_COLOR_ID_DETAIL]: fabricColor.id,
       [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: fabricColor.productId,
@@ -12599,7 +12618,7 @@ export function ShadesAndBlindsOptions({
       [PRODUCT_COLOR_NAME_DETAIL]: fabricColor.colorName,
       [PRODUCT_COLOR_TYPE_DETAIL]: fabricColor.fabricType,
     };
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, unknown> = {...baseProgramMaterial(nextJson)};
     const jsonKey = getJsonFieldKey(field);
 
     if (jsonKey) {
@@ -12632,7 +12651,7 @@ export function ShadesAndBlindsOptions({
       const inferredCellSize = getHoneycombCellSizeFromProgram(fabricColor.programId);
       const inferredLightControl = getLightControlFromProductColor(fabricColor);
       if (inferredCellSize && !nextJson.cell_size) nextJson.cell_size = inferredCellSize;
-      if (inferredLightControl && !nextJson.light_control) nextJson.light_control = inferredLightControl;
+      if (inferredLightControl && (nextJson.base_configuration_version || !nextJson.light_control)) nextJson.light_control = inferredLightControl;
     }
 
     if (productType === "Sheer Shades") {
@@ -12673,14 +12692,16 @@ export function ShadesAndBlindsOptions({
   const handleProductColorClear = (field: string) => {
     setOpenOptionField(field);
 
-    let nextJson = withoutProductColorDetails(optionsJson);
+    let nextJson = clearBaseFabricOptions(withoutProductColorDetails(optionsJson));
     const jsonKey = getJsonFieldKey(field);
-    if (jsonKey) {
+    if (jsonKey && !(optionsJson.base_configuration_version && jsonKey === "fabric_group")) {
       nextJson = { ...nextJson, [jsonKey]: null };
     }
 
     onUpdateFields({
       ...(field === "fabric" ? { fabric: null } : {}),
+      ...baseProgramMaterial(nextJson),
+      ...(optionsJson.base_configuration_version && productType === "Smart Drapes" ? {shade_type: null} : {}),
       options_json: nextJson,
     });
   };
@@ -12990,23 +13011,23 @@ export function ShadesAndBlindsOptions({
         </div>
       ) : null}
 
-      <QuoteConfigurationIssues issues={honeycombMountingIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={honeycombMountingIssues} gridOptionQuoting={authoritativeV2} />
       {authoritativeV2 && productType === "Roman Shades" && /motor/i.test(String(design?.lift_system)) && /common valance/i.test(String(design?.shade_type)) && <p className="text-sm text-slate-700">Two motors: the left shade has its motor on the left; the right shade has its motor on the right. Each shade retains its own width.</p>}
       {productType === "Faux Wood Blinds" && optionsJson.product_line === "Ultimate" && Boolean(optionsJson.ultimate_common_group) && optionsJson.ultimate_common_group !== "None" && <p className="text-sm text-slate-700">Use the same common-valance group and shared valance choices on each blind line. Number blinds from left to right and enter the gap after each blind; the last gap is zero. Common-valance pricing requires dealer confirmation.</p>}
       {productType === "Sheer Shades" && Boolean(optionsJson.perfectsheer_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. The shared valance and keystone charges appear on the leftmost shade.</p>}
       {((productType === "SmartFold Shades" && optionsJson.smartfold_keystone_layout === "At Gaps Between Shades") || (productType === "Sheer Shades" && optionsJson.perfectsheer_keystone_layout === "At Gaps Between Shades")) && <p className="text-sm text-slate-700">Save every common-valance shade to establish its gaps. Zero-gap joints follow the shade boundaries. For each positive gap, enter the measured joint position from the left end of the finished valance. If the valance and shade span widths differ, measure the first shade offset; a negative offset means the shade starts left of the valance.</p>}
       {productType === "SmartFold Shades" && Boolean(optionsJson.smartfold_common_valance_id) && <p className="text-sm text-slate-700">Use the same valance group on each shade line. Number shades from left to right and enter the gap after each shade; the last gap is zero. Shared valance, Light Guard and keystone charges appear on the leftmost shade.</p>}
       {productType === "SmartFold Shades" && /cordless/i.test(String(design?.lift_system)) && <p className="text-sm text-slate-700">One complimentary 30-inch fiberglass pole is included per cordless SmartFold order. Additional poles are charged per shade.</p>}
-      <QuoteConfigurationIssues issues={romanHardwareIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={woodIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={smartprivacyIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={ultimateFauxIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={smartdrapeIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={perfectsheerIssues} gridOptionQuoting={authoritativeV2} />
-      <QuoteConfigurationIssues issues={smartfoldIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={romanHardwareIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={woodIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={smartprivacyIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={ultimateFauxIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={smartdrapeIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={perfectsheerIssues} gridOptionQuoting={authoritativeV2} />
+      <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={smartfoldIssues} gridOptionQuoting={authoritativeV2} />
       {productType === "Palladian Shelf" && <div className="text-sm text-slate-700">
         <p>Inside mount only. Order a separate shelf for Faux Wood, San Clemente, Synchrony and SmartDrape. Default paired measurements include a 1/32-inch shelf width deduction; custom finished measurements have no deduction.</p>
-        <QuoteConfigurationIssues issues={palladianIssues} gridOptionQuoting={authoritativeV2} />
+        <QuoteConfigurationIssues baseSelection={baseIssueSelection} issues={palladianIssues} gridOptionQuoting={authoritativeV2} />
       </div>}
       {productType === "Palladian Shelf" && optionsJson.accompanying_product_id && optionsJson.accompanying_product_id !== "none" ? (
         <label className="block text-sm">Accompanying quote line

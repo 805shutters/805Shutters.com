@@ -7,6 +7,12 @@
   },
   "artifacts": [
     {
+      "sourceId": "805-owner-woodlore-invisible-tilt-existing-policy",
+      "fileName": "src/lib/quote/woodlore-invisible-tilt-owner-policy.json",
+      "byteLength": 486,
+      "sha256": "27cbe48bd2d019e6712caed9556cb6065090df444b4309aa9705830c7c4dfd87"
+    },
+    {
       "sourceId": "onyx-owner-confirmed-poly-composite-2026-07-27",
       "fileName": "src/lib/quote/onyx-poly-composite-owner-policy.json",
       "byteLength": 479,

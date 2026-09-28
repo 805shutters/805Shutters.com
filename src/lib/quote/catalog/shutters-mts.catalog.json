@@ -450,6 +450,21 @@
           "sourceType": "flat"
         },
         {
+          "id": "woodlore_invisible_tilt_per_panel",
+          "name": "Woodlore InvisibleTilt ($15/panel)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 15,
+          "wholesaleUnverified": true,
+          "programIds": [
+            "woodlore"
+          ],
+          "sourceId": "805-owner-woodlore-invisible-tilt-existing-policy",
+          "appliesTo": "shutter",
+          "notes": "Existing 805 Woodlore selling policy from shutterOptionSurcharges.ts; $15 per actual panel, supplier cost unverified.",
+          "sourceType": "805 existing owner selling policy"
+        },
+        {
           "id": "invisibletilt",
           "name": "InvisibleTilt",
           "kind": "flat",

@@ -1,3 +1,4 @@
+import { BASE_CONFIGURATION_VERSION, baseProgramForConfiguration } from '@/lib/quote-v2/base-configuration';
 import { honeycombSavedFamily } from "@/lib/quote-v2/catalog";
 import { GRID_OPTION_QUOTING_EFFECTIVE_FROM } from '@/lib/quote-v2/quote-pricing-policy';
 import { currentRollerPanel, rollerMotorizationForSelection } from "@/lib/quote-v2/norman-roller-panel";
@@ -227,6 +228,12 @@ function resolveV2ProgramId(
     }
     const eligible = palladianProductEligible(accompanying);
     return `palladian_shelf_palladian_shelf_${eligible ? "with" : "without"}_product`;
+  }
+
+  if (options.base_configuration_version === BASE_CONFIGURATION_VERSION &&
+      !design.fabric && !textOption(options, "fabric_color_code", "fabric_color_id", "fabric_color_name", "fabric_color_collection")) {
+    const baseProgram = baseProgramForConfiguration(productId, options);
+    if (baseProgram) return productId === 'honeycomb' ? baseProgram : textOption(options, 'catalog_program_id', 'quote_lab_program_id') ?? baseProgram;
   }
 
   const selectedFabricProgram = textOption(options, "fabric_program_id");

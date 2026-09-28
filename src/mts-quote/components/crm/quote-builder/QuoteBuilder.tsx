@@ -1077,6 +1077,8 @@ export function QuoteBuilder({
       const catalogSelectionPatch = buildCatalogSelectionPatch(
         {},
         item.catalog_product,
+        undefined,
+        authoritativeV2,
       );
       if (serverOwnedV2) {
         const lineItemId = crypto.randomUUID();

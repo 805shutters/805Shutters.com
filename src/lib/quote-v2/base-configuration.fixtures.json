@@ -1,0 +1,475 @@
+{
+  "source": "Norman September 2026 Retail Price Guide",
+  "sourceSha256": "3767de1e04ee7c8dc6bab14a6224868e4ca366f2ec4be2d8d3d13ec5cf45aafd",
+  "method": "Every fixture row matched in full against saved September PDF text; size limits checked separately in program guides.",
+  "fixtures": [
+    {
+      "category": "Roller Shades",
+      "case": "minimum",
+      "width": 10.5,
+      "height": 12,
+      "price": 254,
+      "programId": "roller_cordless_fabric_price_group_1_pg1",
+      "matchedWidth": 24,
+      "matchedHeight": 36,
+      "sourcePdfPages": [
+        18
+      ]
+    },
+    {
+      "category": "Roller Shades",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 346,
+      "programId": "roller_cordless_fabric_price_group_1_pg1",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        18
+      ]
+    },
+    {
+      "category": "Roller Shades",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 377,
+      "programId": "roller_cordless_fabric_price_group_1_pg1",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        18
+      ]
+    },
+    {
+      "category": "Roller Shades",
+      "case": "maximum",
+      "width": 119,
+      "height": 144,
+      "price": 1362,
+      "programId": "roller_cordless_fabric_price_group_1_pg1",
+      "matchedWidth": 120,
+      "matchedHeight": 144,
+      "sourcePdfPages": [
+        18
+      ]
+    },
+    {
+      "category": "Roman Shades",
+      "case": "minimum",
+      "width": 20,
+      "height": 24,
+      "price": 404,
+      "programId": "roman_cordless_usa_price_group_1_pg1",
+      "matchedWidth": 24,
+      "matchedHeight": 36,
+      "sourcePdfPages": [
+        26
+      ]
+    },
+    {
+      "category": "Roman Shades",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 861,
+      "programId": "roman_cordless_usa_price_group_1_pg1",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        26
+      ]
+    },
+    {
+      "category": "Roman Shades",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 1003,
+      "programId": "roman_cordless_usa_price_group_1_pg1",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        26
+      ]
+    },
+    {
+      "category": "Roman Shades",
+      "case": "maximum",
+      "width": 96,
+      "height": 60,
+      "price": 2098,
+      "programId": "roman_cordless_usa_price_group_1_pg1",
+      "matchedWidth": 96,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        26
+      ]
+    },
+    {
+      "category": "Honeycomb Shades",
+      "case": "minimum",
+      "width": 11.5,
+      "height": 10,
+      "price": 270,
+      "programId": "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      "matchedWidth": 24,
+      "matchedHeight": 36,
+      "sourcePdfPages": [
+        10
+      ]
+    },
+    {
+      "category": "Honeycomb Shades",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 415,
+      "programId": "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        10
+      ]
+    },
+    {
+      "category": "Honeycomb Shades",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 465,
+      "programId": "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        10
+      ]
+    },
+    {
+      "category": "Honeycomb Shades",
+      "case": "maximum",
+      "width": 108,
+      "height": 120,
+      "price": 1726,
+      "programId": "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      "matchedWidth": 108,
+      "matchedHeight": 120,
+      "sourcePdfPages": [
+        10
+      ]
+    },
+    {
+      "category": "Sheer Shades",
+      "case": "minimum",
+      "width": 12,
+      "height": 12,
+      "price": 624,
+      "programId": "perfectsheer_perfectsheer_shades_light_filtering",
+      "matchedWidth": 24,
+      "matchedHeight": 36,
+      "sourcePdfPages": [
+        22
+      ]
+    },
+    {
+      "category": "Sheer Shades",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 927,
+      "programId": "perfectsheer_perfectsheer_shades_light_filtering",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        22
+      ]
+    },
+    {
+      "category": "Sheer Shades",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 1029,
+      "programId": "perfectsheer_perfectsheer_shades_light_filtering",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        22
+      ]
+    },
+    {
+      "category": "Sheer Shades",
+      "case": "maximum",
+      "width": 98,
+      "height": 98,
+      "price": 2845,
+      "programId": "perfectsheer_perfectsheer_shades_light_filtering",
+      "matchedWidth": 98,
+      "matchedHeight": 98,
+      "sourcePdfPages": [
+        22
+      ]
+    },
+    {
+      "category": "Mini Blinds",
+      "case": "minimum",
+      "width": 9,
+      "height": 10,
+      "price": 261,
+      "programId": "citylights_aluminum_1in_slats_cordless_pgusa",
+      "matchedWidth": 24,
+      "matchedHeight": 42,
+      "sourcePdfPages": [
+        35
+      ]
+    },
+    {
+      "category": "Mini Blinds",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 303,
+      "programId": "citylights_aluminum_1in_slats_cordless_pgusa",
+      "matchedWidth": 36,
+      "matchedHeight": 61,
+      "sourcePdfPages": [
+        35
+      ]
+    },
+    {
+      "category": "Mini Blinds",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 321,
+      "programId": "citylights_aluminum_1in_slats_cordless_pgusa",
+      "matchedWidth": 42,
+      "matchedHeight": 61,
+      "sourcePdfPages": [
+        35
+      ]
+    },
+    {
+      "category": "Mini Blinds",
+      "case": "maximum",
+      "width": 78,
+      "height": 90,
+      "price": 580,
+      "programId": "citylights_aluminum_1in_slats_cordless_pgusa",
+      "matchedWidth": 78,
+      "matchedHeight": 90,
+      "sourcePdfPages": [
+        35
+      ]
+    },
+    {
+      "category": "Faux Wood Blinds",
+      "case": "minimum",
+      "width": 20,
+      "height": 24,
+      "price": 134,
+      "programId": "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      "matchedWidth": 24,
+      "matchedHeight": 30,
+      "sourcePdfPages": [
+        31
+      ]
+    },
+    {
+      "category": "Faux Wood Blinds",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 246,
+      "programId": "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        31
+      ]
+    },
+    {
+      "category": "Faux Wood Blinds",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 266,
+      "programId": "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        31
+      ]
+    },
+    {
+      "category": "Faux Wood Blinds",
+      "case": "maximum",
+      "width": 72,
+      "height": 84,
+      "price": 546,
+      "programId": "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      "matchedWidth": 72,
+      "matchedHeight": 84,
+      "sourcePdfPages": [
+        31
+      ]
+    },
+    {
+      "category": "Wood Blinds",
+      "case": "minimum",
+      "width": 6.5,
+      "height": 16,
+      "price": 297,
+      "programId": "wood_blinds_2in_and_2_1_2in_slats",
+      "matchedWidth": 24,
+      "matchedHeight": 30,
+      "sourcePdfPages": [
+        33
+      ]
+    },
+    {
+      "category": "Wood Blinds",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 535,
+      "programId": "wood_blinds_2in_and_2_1_2in_slats",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        33
+      ]
+    },
+    {
+      "category": "Wood Blinds",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 598,
+      "programId": "wood_blinds_2in_and_2_1_2in_slats",
+      "matchedWidth": 42,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        33
+      ]
+    },
+    {
+      "category": "Wood Blinds",
+      "case": "maximum",
+      "width": 96,
+      "height": 96,
+      "price": 1799,
+      "programId": "wood_blinds_2in_and_2_1_2in_slats",
+      "matchedWidth": 96,
+      "matchedHeight": 96,
+      "sourcePdfPages": [
+        33
+      ]
+    },
+    {
+      "category": "Vertical Blinds",
+      "case": "minimum",
+      "width": 18,
+      "height": 36,
+      "price": 204,
+      "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+      "matchedWidth": 24,
+      "matchedHeight": 48,
+      "sourcePdfPages": [
+        34
+      ]
+    },
+    {
+      "category": "Vertical Blinds",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 261,
+      "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        34
+      ]
+    },
+    {
+      "category": "Vertical Blinds",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 321,
+      "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+      "matchedWidth": 48,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        34
+      ]
+    },
+    {
+      "category": "Vertical Blinds",
+      "case": "maximum",
+      "width": 100,
+      "height": 108,
+      "price": 714,
+      "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+      "matchedWidth": 100,
+      "matchedHeight": 108,
+      "sourcePdfPages": [
+        34
+      ]
+    },
+    {
+      "category": "Smart Drapes",
+      "case": "minimum",
+      "width": 17.625,
+      "height": 24,
+      "price": 758,
+      "programId": "smartdrape_smartdrape_light_filtering",
+      "matchedWidth": 36,
+      "matchedHeight": 48,
+      "sourcePdfPages": [
+        24
+      ]
+    },
+    {
+      "category": "Smart Drapes",
+      "case": "middle",
+      "width": 36,
+      "height": 60,
+      "price": 842,
+      "programId": "smartdrape_smartdrape_light_filtering",
+      "matchedWidth": 36,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        24
+      ]
+    },
+    {
+      "category": "Smart Drapes",
+      "case": "boundary",
+      "width": 36.0625,
+      "height": 60,
+      "price": 998,
+      "programId": "smartdrape_smartdrape_light_filtering",
+      "matchedWidth": 48,
+      "matchedHeight": 60,
+      "sourcePdfPages": [
+        24
+      ]
+    },
+    {
+      "category": "Smart Drapes",
+      "case": "maximum",
+      "width": 184,
+      "height": 144,
+      "price": 5285,
+      "programId": "smartdrape_smartdrape_light_filtering",
+      "matchedWidth": 184,
+      "matchedHeight": 144,
+      "sourcePdfPages": [
+        24
+      ]
+    }
+  ]
+}

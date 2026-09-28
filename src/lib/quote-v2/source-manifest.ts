@@ -52,6 +52,24 @@ export interface SourceManifestEntry {
  */
 export const QUOTE_V2_SOURCE_MANIFEST = [
 {
+  "id": "805-owner-woodlore-invisible-tilt-existing-policy",
+  "manufacturer": "Norman",
+  "kind": "pricing_evidence",
+  "format": "json",
+  "fileName": "src/lib/quote/woodlore-invisible-tilt-owner-policy.json",
+  "title": "805 Woodlore customer selling policy; not manufacturer MSRP",
+  "revision": "Existing 805 owner policy recorded 2026-09-28",
+  "effectiveDate": null,
+  "effectiveDateEvidence": "Existing deployed policy; original confirmation date not established.",
+  "receivedDate": "2026-09-28",
+  "modifiedDate": null,
+  "sha256": "27cbe48bd2d019e6712caed9556cb6065090df444b4309aa9705830c7c4dfd87",
+  "authorities": [
+    "pricing"
+  ],
+  "accountScope": "805 customer retail only; supplier costs unverified"
+},
+{
   "id": "onyx-owner-confirmed-poly-composite-2026-07-27",
   "manufacturer": "Onyx",
   "kind": "pricing_evidence",

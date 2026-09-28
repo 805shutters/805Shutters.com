@@ -58,7 +58,7 @@ describe("V2 quote builder load integrity", () => {
 
   it("keeps the selected catalog identity on a newly created line and refreshes its design", () => {
     expect(quoteBuilderSource).toMatch(
-      /buildCatalogSelectionPatch\(\s*\{\},\s*item\.catalog_product,?\s*\)/,
+      /buildCatalogSelectionPatch\(\s*\{\},\s*item\.catalog_product,\s*undefined,\s*authoritativeV2,?\s*\)/,
     );
     expect(quoteBuilderSource).toMatch(
       /sales_quote_designs[\s\S]*product_type:\s*item\.product_type,[\s\S]*\.\.\.catalogSelectionPatch/,

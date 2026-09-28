@@ -55,6 +55,7 @@ const DIRECT_DETAIL_FIELDS: Array<[string, keyof SalesQuoteDesign]> = [
 ];
 
 const INTERNAL_OPTION_KEYS = new Set([
+  "base_configuration_version",
   ROMAN_ANCILLARY_RECORD, ONYX_BASELINE_KEY,
   ROLLER_LIGHT_GUARD_KEY, ROLLER_LIGHT_GUARD_GROUP_KEY, "roller_light_guard_source_v1", ROLLER_POLE_KEY, ROLLER_POLE_ORDER_KEY, "roller_pole_source_v1", ROLLER_ACCESSORY_KEY, ROLLER_ACCESSORY_DERIVED, ROLLER_CHAIN_KEY, "roller_chain_source_v1",
   "norman_valance_only_v1",
