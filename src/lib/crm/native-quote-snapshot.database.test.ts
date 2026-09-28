@@ -74,6 +74,9 @@ beforeAll(async()=>{
  await db.exec(migration('20260925191000_native_staff_sold'));
  await db.exec(migration('20260927182921_explicit_quote_delivery_selection'));
  await db.exec(migration('20260927234452_native_manual_selection_projection'));
+ await db.exec(migration('20260928185500_native_empty_manual_selection_projection'));
+ // Safe to retry after a deployment interruption.
+ await db.exec(migration('20260928185500_native_empty_manual_selection_projection'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
 },30000);
 afterAll(()=>db.close());
@@ -517,19 +520,43 @@ it('refuses to claim a multi-quote message after one selected quote is archived'
  await expect(db.query('select claim_native_quote_delivery_attempt($1,$2)',[attempt.id,id(50)])).rejects.toMatchObject({code:'PT409'});
 });
 
-it('reserves a staff custom price even when no catalog selection ever existed',async()=>{
- await seed(3600);
- await db.query("update sales_quote_designs set quote_v2_selection=null,current_v2_snapshot_id=null,options_json='{}' where id=$1",[id(3800)]);
- await db.query('select set_sales_quote_line_price($1,$2,$3,$4,$5,$6,$7)',[id(3600),id(3700),'A',123.45,id(50),1,id(4600)]);
- const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(3600)])).rows[0];
- const lineItems=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(3600)])).rows;
- const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(3700)])).rows;
- const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(3600)])).rows;
+it.each([null, {}, 'json-null'])('reserves a staff custom price with an absent selection: %j',async(missingSelection)=>{
+ const n=missingSelection===null?3600:missingSelection==='json-null'?5600:4600;
+ await seed(n);
+ await db.query("update sales_quote_designs set quote_v2_selection=$2::jsonb,current_v2_snapshot_id=null,options_json='{}' where id=$1",[id(n+200),missingSelection==='json-null'?'null':missingSelection]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,$4,$5,$6,$7)',[id(n),id(n+100),'A',123.45,id(50),1,id(n+1000)]);
+ const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(n)])).rows[0];
+ const lineItems=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(n)])).rows;
+ const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(n+100)])).rows;
+ const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(n)])).rows;
  const p=prepareV2CustomerSendPayload({quote,lineItems,designs,snapshots});
- const delivery=await reserve(3600,p,2);
+ const delivery=await reserve(n,p,2);
+ expect(delivery.customer_payload).toEqual(p);
+ expect((await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(n)])).rows).toEqual(snapshots);
+ expect((await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(n+100)])).rows).toEqual(designs);
+ expect((await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(n)])).rows).toEqual(lineItems);
  expect(delivery.customer_payload.total).toBe(p.total);
- expect((await db.query<any>('select status from sales_quotes where id=$1',[id(3600)])).rows[0].status).toBe('draft');
+ expect((await db.query<any>('select status from sales_quotes where id=$1',[id(n)])).rows[0].status).toBe('draft');
  await finishDelivery(delivery);
- expect((await db.query<any>('select status from sales_quotes where id=$1',[id(3600)])).rows[0].status).toBe('sent');
- expect((await db.query<any>('select quote_v2_selection from sales_quote_designs where id=$1',[id(3800)])).rows[0].quote_v2_selection).toBeNull();
+ expect((await db.query<any>('select status from sales_quotes where id=$1',[id(n)])).rows[0].status).toBe('sent');
+ expect((await db.query<any>('select quote_v2_selection from sales_quote_designs where id=$1',[id(n+200)])).rows[0].quote_v2_selection).toEqual(missingSelection==='json-null'?null:missingSelection);
+});
+
+it.each([
+ {n:6600,missingSelection:[],trusted:true},
+ {n:7600,missingSelection:{productId:'different-product'},trusted:true},
+ {n:8600,missingSelection:{},trusted:false},
+])('keeps invalid or unaudited manual selections blocked: $n',async({n,missingSelection,trusted})=>{
+ await seed(n);
+ await db.query("update sales_quote_designs set quote_v2_selection=$2::jsonb,current_v2_snapshot_id=null,options_json='{}' where id=$1",[id(n+200),JSON.stringify(missingSelection)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,$4,$5,$6,$7)',[id(n),id(n+100),'A',123.45,id(50),1,id(n+1000)]);
+ const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(n)])).rows[0];
+ const lineItems=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(n)])).rows;
+ const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(n+100)])).rows;
+ const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(n)])).rows;
+ const p=prepareV2CustomerSendPayload({quote,lineItems,designs,snapshots});
+ if(!trusted) await db.query("update sales_quote_v2_price_snapshots set provenance_snapshot=provenance_snapshot-'manualLinePrice' where id=$1",[designs[0].current_v2_snapshot_id]);
+ await expect(reserve(n,p,2)).rejects.toThrow(/canonical selection/);
+ expect((await db.query<any>('select count(*)::int as count from sales_quote_v2_customer_send_preparations where quote_id=$1',[id(n)])).rows[0].count).toBe(0);
+ expect((await db.query<any>('select status,quote_v2_revision from sales_quotes where id=$1',[id(n)])).rows[0]).toMatchObject({status:'draft',quote_v2_revision:2});
 });
