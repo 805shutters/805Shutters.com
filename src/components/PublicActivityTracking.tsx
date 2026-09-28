@@ -6,6 +6,7 @@ import type { BeforeSendMiddleware as SpeedInsightsBeforeSend } from "@vercel/sp
 import { usePathname } from "next/navigation";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
+import { MetaBookingAlertTracking } from "@/components/MetaBookingAlertTracking";
 import { VisitorTelegramTracking } from "@/components/VisitorTelegramTracking";
 import { isPublicFacingPath } from "@/lib/public-activity";
 
@@ -26,6 +27,7 @@ export function PublicActivityTracking() {
           <TrackingScripts />
           <RouteTracking />
           <VisitorTelegramTracking />
+          <MetaBookingAlertTracking />
           <Analytics beforeSend={onlyPublicAnalytics} />
           <SpeedInsights beforeSend={onlyPublicSpeedInsights} />
         </>
