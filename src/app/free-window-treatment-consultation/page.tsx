@@ -4,12 +4,11 @@ import { LeadForm } from "@/components/LeadForm";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
 import { UtmPreservingLink } from "@/components/UtmPreservingLink";
 import { ogDefaults, site } from "@/lib/site-data";
+import { pageSearchMetadata } from "@/lib/page-search-metadata";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "Free Window Treatment Consultation in Ventura County | 805 Shutters",
-  description:
-    "Request a free in-home consultation for custom shutters, shades, blinds, exterior shades, and commercial window coverings in Ventura County.",
+  ...pageSearchMetadata["/free-window-treatment-consultation/"],
   alternates: {
     canonical: "/free-window-treatment-consultation/"
   },
@@ -112,8 +111,9 @@ const consultationJsonLd = {
       "@type": "WebPage",
       "@id": `${site.baseUrl}/free-window-treatment-consultation/#webpage`,
       url: `${site.baseUrl}/free-window-treatment-consultation/`,
-      name: metadata.title,
-      description: metadata.description,
+      name: "Free Window Treatment Consultation in Ventura County | 805 Shutters",
+      description:
+        "Request a free in-home consultation for custom shutters, shades, blinds, exterior shades, and commercial window coverings in Ventura County.",
       isPartOf: {
         "@type": "WebSite",
         "@id": `${site.baseUrl}#website`,
