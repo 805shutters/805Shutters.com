@@ -55,6 +55,7 @@ beforeAll(async () => {
       email text,
       source text not null default 'manual',
       external_source text,
+      status text not null default 'sold',
       meta jsonb not null default '{}'::jsonb
     );
     create table public.crm_quotes(
@@ -62,6 +63,7 @@ beforeAll(async () => {
       job_id uuid not null references public.crm_jobs(id),
       status text not null default 'draft',
       signed_at timestamptz,
+      installed_at timestamptz,
       sold_at timestamptz,
       archived_at timestamptz,
       quote_number text,
@@ -70,6 +72,7 @@ beforeAll(async () => {
     );
     create table public.crm_installer_forms(id uuid primary key, quote_id uuid not null references public.crm_quotes(id), status text not null default 'sent');
     ${migration}
+    ${readFileSync("supabase/migrations/20260929042500_prevent_stale_installer_delivery.sql", "utf8")}
   `);
 });
 
@@ -90,7 +93,7 @@ describe("installer delivery outbox migration", () => {
     expect(rows.rows).toEqual([{ quote_id: quoteId, kind: "base_packet", status: "pending" }]);
   });
 
-  it("queues later sale lifecycle states without backfilling untouched rows", async () => {
+  it("does not backfill an existing sale on later lifecycle updates", async () => {
     const jobId = await insertJob();
     const signedAt = new Date().toISOString();
     const oldQuoteId = await insertQuote(jobId, { status: "sold", signed_at: signedAt, sold_at: signedAt });
@@ -98,7 +101,7 @@ describe("installer delivery outbox migration", () => {
     await db.exec("truncate crm_installer_delivery_outbox");
     expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(0);
     await db.query("update crm_quotes set status='ordered' where id=$1", [oldQuoteId]);
-    expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(1);
+    expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(0);
   });
 
   it.each([
@@ -152,6 +155,44 @@ describe("installer delivery outbox migration", () => {
     await db.query("update crm_quotes set meta=jsonb_build_object('note','ordinary edit') where id=$1", [quoteId]);
     const rows = await db.query<{ status: string }>("select status from crm_installer_delivery_outbox where quote_id=$1", [quoteId]);
     expect(rows.rows).toEqual([{ status: "sent" }]);
+  });
+
+  it.each([
+    "meta=jsonb_build_object('lastUpdatedAt',now(),'lastUpdatedBy','office')",
+    "meta=jsonb_build_object('payment_progress',jsonb_build_object('source','customer-payment-ledger'),'lastUpdatedAt',now())",
+    "sold_at=now(),signed_at=now()",
+    "status='paid'",
+  ])("does not create a historical packet for an existing sale edited with %s", async (patch) => {
+    const jobId = await insertJob();
+    const quoteId = await insertQuote(jobId, { status: "ordered", signed_at: "2026-07-03T00:00:00Z" });
+    await db.exec("truncate crm_installer_delivery_outbox");
+    await db.query(`update crm_quotes set ${patch} where id=$1`, [quoteId]);
+    expect((await db.query("select * from crm_installer_delivery_outbox")).rows).toHaveLength(0);
+  });
+
+  it.each(["installed_at", "quote_status", "job_status", "quote_stage", "job_stage", "completed_form", "suppressed"])(
+    "blocks queued sends and explicit enqueue for %s", async (completion) => {
+      const jobId = await insertJob();
+      const quoteId = await insertQuote(jobId, { status: "sold", signed_at: new Date().toISOString() });
+      if (completion === "installed_at") await db.query("update crm_quotes set installed_at=now(),meta=jsonb_build_object('lastUpdatedAt',now()) where id=$1", [quoteId]);
+      if (completion === "quote_status") await db.query("update crm_quotes set status='installed' where id=$1", [quoteId]);
+      if (completion === "job_status") await db.query("update crm_jobs set status='closed' where id=$1", [jobId]);
+      if (completion === "quote_stage") await db.query("update crm_quotes set meta='{\"job_tracking\":{\"stage\":\"complete\"}}' where id=$1", [quoteId]);
+      if (completion === "job_stage") await db.query("update crm_jobs set meta='{\"job_tracking\":{\"stage\":\"complete\"}}' where id=$1", [jobId]);
+      if (completion === "completed_form") await db.query("insert into crm_installer_forms(id,quote_id,status) values($1,$2,'completed')", [randomUUID(), quoteId]);
+      if (completion === "suppressed") await db.query("update crm_quotes set meta='{\"no_installer_form\":true}' where id=$1", [quoteId]);
+      expect((await db.query<{ result: unknown }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeNull();
+      expect((await db.query<{ result: unknown }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result).toBeNull();
+      expect((await db.query<{ status: string }>("select status from crm_installer_delivery_outbox where quote_id=$1", [quoteId])).rows[0].status).toBe("blocked");
+    },
+  );
+
+  it("keeps paid but not installed work eligible and preserves explicit missed-packet repair", async () => {
+    const jobId = await insertJob();
+    const quoteId = await insertQuote(jobId, { status: "paid", signed_at: new Date().toISOString() });
+    await db.exec("truncate crm_installer_delivery_outbox");
+    expect((await db.query<{ result: unknown }>("select installer_delivery_enqueue($1) result", [quoteId])).rows[0].result).toBeTruthy();
+    expect((await db.query<{ result: unknown }>("select installer_delivery_claim($1) result", [quoteId])).rows[0].result).toBeTruthy();
   });
 
   it("claims once, protects the lease token, and recovers an expired pre-send claim", async () => {
