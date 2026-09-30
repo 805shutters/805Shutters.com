@@ -6,6 +6,7 @@ import type { ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 
 import { canDeleteCustomerFile, customerFileDeletePayload } from "@/lib/crm/customer-file-deletion";
 
+import type { KenPayoffData } from "@/lib/crm/ken-payoff";
 import { PayablesWorkspace, type PayableReadinessRequest } from "./PayablesWorkspace";
 
 import { ContractsWorkspace } from "./ContractsWorkspace";
@@ -890,12 +891,13 @@ export function CrmApp({
   const dashboardDataRef = useRef<CrmDashboardData | null>(null);
   const fullDashboardRequest = useRef<Promise<CrmDashboardData> | null>(null);
   const startupRequest = useRef<Promise<void> | null>(null);
+  const [kenPayoffData, setKenPayoffData] = useState<KenPayoffData | null>(null);
   const [closedSalesStart, setClosedSalesStart] = useState<string | null>(null);
   const [activitySnapshot, setActivitySnapshot] = useState<CrmActivitySnapshot | null>(null);
   const [activityLoading, setActivityLoading] = useState(false);
   const [dashboardRefreshError, setDashboardRefreshError] = useState<string | null>(null);
   const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab === "bookkeeping" ? "tracking" : initialTab));
+  const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "payoff" : initialTab === "bookkeeping" ? "tracking" : initialTab));
   const [trackingDetailId, setTrackingDetailId] = useState<string | null>(null);
   const [trackingQuickAction, setTrackingQuickAction] = useState<{ itemId: string; requestId: string; paymentType?: "deposit" | "balance"; kind: "contract" | "sold_date" | "payment" | "install" } | null>(null);
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
@@ -1323,8 +1325,8 @@ export function CrmApp({
 
   function openTab(tab: CrmTab) {
     setTrackingDetailId(null);
-    if (isKenMode && tab !== "bookkeeping" && tab !== "payoff") {
-      setActiveTab("bookkeeping");
+    if (isKenMode && tab !== "payoff") {
+      setActiveTab("payoff");
       setDrill(null);
       setFocusCustomer(null);
       return;
@@ -1356,6 +1358,7 @@ export function CrmApp({
     setSession(null);
     setUser(null);
     setData(null);
+    setKenPayoffData(null);
     dashboardDataRef.current = null;
     setActiveJobsSnapshot(null);
     setActivitySnapshot(null);
@@ -1366,10 +1369,16 @@ export function CrmApp({
     setMessage(null);
     const sessionResult = await crmFetch<CrmUser>(activeSession, "/api/crm/session");
     if (isKenMode && !isKenCrmEmail(sessionResult.email)) {
-      throw new Error(`Ken's bookkeeping page is only available to ${KEN_CRM_EMAIL}.`);
+      throw new Error(`Ken's payoff page is only available to ${KEN_CRM_EMAIL}.`);
     }
     if (!isKenMode && isKenCrmEmail(sessionResult.email)) {
       window.location.replace("/crm/ken");
+      return;
+    }
+    if (isKenMode) {
+      setKenPayoffData(await crmFetch<NonNullable<typeof kenPayoffData>>(activeSession, "/api/crm/ken-payoff"));
+      setUser(sessionResult);
+      crmLoadedRef.current = true;
       return;
     }
     // The home screen needs active work, not the complete financial/activity history.
@@ -1395,6 +1404,10 @@ export function CrmApp({
 
   async function refresh() {
     if (!session) return null;
+    if (isKenMode) {
+      setKenPayoffData(await crmFetch<NonNullable<typeof kenPayoffData>>(session, "/api/crm/ken-payoff"));
+      return null;
+    }
     // Every explicit/post-save refresh starts a new generation. Never reuse a
     // background read that began before a save, even when it is still pending.
     const requestVersion = ++dashboardRequestVersion.current;
@@ -1437,7 +1450,7 @@ export function CrmApp({
 
   const needsFullDashboard = activeTab !== "tracking" || Boolean(trackingDetailId || trackingQuickAction || builderQuoteId || drill);
   useEffect(() => {
-    if (!session || loading || data || !needsFullDashboard) return;
+    if (isKenMode || !session || loading || data || !needsFullDashboard) return;
     void ensureFullDashboard().catch(() => undefined);
   }, [session, loading, data, needsFullDashboard]);
 
@@ -1736,6 +1749,11 @@ export function CrmApp({
       // Only foreground changes invalidate it; duplicate polls must not do so.
       const requestVersion = dashboardRequestVersion.current;
       try {
+        if (isKenMode) {
+          const payoff = await crmFetch<NonNullable<typeof kenPayoffData>>(session, "/api/crm/ken-payoff");
+          if (!cancelled) { setKenPayoffData(payoff); setMessage(null); }
+          return;
+        }
         if (dashboardDataRef.current) {
           const dashboardResult = await readDashboard<CrmDashboardData>(session, "/api/crm/jobs", requestVersion);
           if (cancelled || busyRef.current || requestVersion !== dashboardRequestVersion.current) return;
@@ -1748,6 +1766,7 @@ export function CrmApp({
         }
         setDashboardRefreshError(null);
       } catch {
+        if (isKenMode && !cancelled) setMessage("Payoff refresh failed. Showing the last successful figures.");
         if (!cancelled && requestVersion === dashboardRequestVersion.current) setDashboardRefreshError("Refresh failed. Showing the last successful snapshot; figures may be stale.");
       }
     };
@@ -3146,10 +3165,10 @@ export function CrmApp({
       <div className="crm-app-shell">
         <section className="crm-login-panel">
           <p className="eyebrow">{isKenMode ? "Ken Portal" : "Private CRM"}</p>
-          <h1>{isKenMode ? "Ken bookkeeping login." : "CRM login."}</h1>
+          <h1>{isKenMode ? "Ken payoff login." : "CRM login."}</h1>
           <p>
             {isKenMode
-              ? "Use Ken's approved email to open the read-only bookkeeping and payoff ledger."
+              ? "Use Ken's approved email to open the read-only payoff ledger."
               : "Use an approved 805 Shutters email to access sales jobs, quotes, bookkeeping, and calendar."}
           </p>
           {authSetupMessage ? <p className="crm-alert">{authSetupMessage}</p> : null}
@@ -3198,7 +3217,7 @@ export function CrmApp({
     );
   }
 
-  if (needsFullDashboard && !data) {
+  if (!isKenMode && needsFullDashboard && !data) {
     return <CrmLoadingScreen
       error={fullDashboardError}
       onRetry={() => void ensureFullDashboard().catch(() => undefined)}
@@ -3209,16 +3228,14 @@ export function CrmApp({
   const financialUnavailable=(data?.sourceHealth||[]).some(s=>s.state!=="complete"&&["job expenses","installation invoices","order emails","Ken payments","Ken allocations","commission payments","commission allocations","settings"].includes(s.source));
   if (isKenMode && financialUnavailable) return <div className="crm-app-shell"><p role="alert">Payables are unavailable because cost or allocation sources failed to load. {data?.loadWarnings?.join(" ")}</p><button onClick={()=>void refresh()}>Retry refresh</button></div>;
   if (isKenMode) {
-    const activeKenTab = activeTab === "payoff" ? "payoff" : "bookkeeping";
     return (
-      <KenPortalView
-        activeTab={activeKenTab}
-        rows={rows}
-        data={data}
-        payments={kenPayments}
-        busy={busy}
-        onTabChange={openTab}
-      />
+      <div className="crm-app-shell crm-ken-app-shell">
+        <header className="crm-topbar crm-ken-topbar"><h1>Payoff</h1>
+          <button type="button" onClick={() => void signOut()}>Sign out</button>
+        </header>
+        {message ? <p className="crm-alert">{message}</p> : null}
+        <PayablesWorkspace rows={[]} readOnlyData={kenPayoffData || undefined} canEdit={false} busy={busy} onPay={async () => { throw new Error("Read-only access"); }} onReadiness={async () => { throw new Error("Read-only access"); }} />
+      </div>
     );
   }
 
@@ -3747,77 +3764,6 @@ export function CrmApp({
       ) : null}
 
     </div></div></div>
-  );
-}
-
-function KenPortalView({
-  activeTab,
-  rows,
-  data,
-  payments,
-  busy,
-  onTabChange
-}: {
-  activeTab: "bookkeeping" | "payoff";
-  rows: CrmBookkeepingRow[];
-  data: CrmDashboardData | null;
-  payments: CrmKenPayment[];
-  busy: boolean;
-  onTabChange: (tab: CrmTab) => void;
-}) {
-  const monthlyCut = data?.partnerPaymentLedger?.people.ken.owed ?? data?.bookkeepingTotals?.kenMonthlyDue ?? 0;
-
-  return (
-    <div className="crm-app-shell crm-ken-app-shell">
-      <header className="crm-topbar crm-ken-topbar">
-        <div className="crm-logo-lockup">
-          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} />
-          <h1 className="crm-visually-hidden">Ken Portal</h1>
-          <span aria-hidden="true">Ken Portal</span>
-        </div>
-      </header>
-
-      <section className="crm-ken-monthly-cut" aria-label="Ken monthly cut">
-        <span>Ken's Monthly Cut</span>
-        <strong>{toLedgerCurrency(monthlyCut)}</strong>
-      </section>
-
-      <nav className="crm-tabs" aria-label="Ken CRM sections">
-        <button
-          type="button"
-          className={activeTab === "bookkeeping" ? "active" : ""}
-          onClick={() => onTabChange("bookkeeping")}
-        >
-          Bookkeeping Spreadsheet
-        </button>
-        <button
-          type="button"
-          className={activeTab === "payoff" ? "active" : ""}
-          onClick={() => onTabChange("payoff")}
-        >
-          Monthly Payments / Payoff Ledger
-        </button>
-      </nav>
-
-      {activeTab === "bookkeeping" ? (
-        <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
-          <div className="crm-bookkeeping-main">
-            <ReadOnlyBookkeepingSpreadsheet
-              rows={rows}
-              totals={data?.bookkeepingTotals}
-              payoff={data?.kenPayoff}
-              partnerPaymentLedger={data?.partnerPaymentLedger}
-              busy={busy}
-              onOpenPayoff={() => onTabChange("payoff")}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      {activeTab === "payoff" ? (
-        <KenPayoffView payoff={data?.kenPayoff} buyoutLedger={data?.partnerPaymentLedger?.kenBuyout} payments={payments} busy={busy} readOnly />
-      ) : null}
-    </div>
   );
 }
 

@@ -15,7 +15,10 @@ export type PayableReadinessRequest = {
   source: CrmBookkeepingRow["source"]; id: string; ready: boolean | null;
   person?: "ken"; reason: string; expected_revision: string | null;
 };
+import type { KenPayoffData } from "@/lib/crm/ken-payoff";
+
 type Props = {
+  readOnlyData?: KenPayoffData;
   rows: CrmBookkeepingRow[]; ledger?: CrmPartnerPaymentLedger; busy: boolean; canEdit: boolean;
   activePerson?: CrmPaymentPerson; onPersonChange?: (person: CrmPaymentPerson) => void;
   onPay: (request: OwnerPaymentRequest) => Promise<void>;
@@ -26,7 +29,7 @@ const money = (value: number) => new Intl.NumberFormat("en-US", { style: "curren
 const date = (value?: string | null) => value ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/Los_Angeles" }).format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value)) : "Date needs review";
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 type Editor = { kind: "payment"; keys: string[]; requestId: string; snapshot: string } | { kind: "readiness"; row: CrmBookkeepingRow };
-export function PayablesWorkspace({ rows, ledger, busy, canEdit, onPay, onReadiness }: Props) {
+export function PayablesWorkspace({ rows, ledger, busy, canEdit, onPay, onReadiness, readOnlyData }: Props) {
   const [tab, setTab] = useState<"ready" | "paid">("ready");
   const [search, setSearch] = useState("");
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -35,8 +38,10 @@ export function PayablesWorkspace({ rows, ledger, busy, canEdit, onPay, onReadin
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const editorRef = useRef<HTMLDivElement>(null);
-  const view = kenPayoffView(rows, ledger);
-  const disabled = busy || saving || !canEdit;
+  // Editing always uses the full staff ledger; Ken receives only display fields.
+  const view = readOnlyData ? readOnlyData.view as unknown as ReturnType<typeof kenPayoffView> : kenPayoffView(rows, ledger);
+  const loaded = Boolean(ledger || readOnlyData);
+  const disabled = busy || saving || !canEdit || Boolean(readOnlyData);
   const filtered = view.ready.filter(({ item }) => `${item.customerName} ${item.quoteNumber || ""}`.toLowerCase().includes(search.toLowerCase()));
   const selected = editor?.kind === "payment" ? payoffSelection(view.ready, editor.keys) : null;
   const stale = editor?.kind === "payment" && (!selected || selected.snapshot !== editor.snapshot);
@@ -71,16 +76,16 @@ export function PayablesWorkspace({ rows, ledger, busy, canEdit, onPay, onReadin
   return <section className={styles.workspace} aria-label="Payoff">
     <header className={styles.header}><h1>Payoff</h1><p>Ken Hill · 10% contract buyout</p></header>
     <section className={styles.summary} aria-label="Ken payoff summary">
-      <div className={styles.next}><span>Next payment · {view.dueDate ? date(view.dueDate) : "Loading"}</span><strong>{ledger ? money(view.total) : "—"}</strong><small>{view.ready.length} qualifying jobs · includes unpaid carryover</small></div>
-      <div><span>Paid to Ken</span><strong>{ledger ? money(view.paidTotal) : "—"}</strong><small>{view.history.length} payment batches</small></div>
-      <div><span>Buyout remaining</span><strong>{ledger ? money(view.remainingBuyout) : "—"}</strong><small>Of {ledger ? money(ledger.kenBuyout.target) : "—"} total buyout · payment batches</small></div>
+      <div className={styles.next}><span>Next payment · {view.dueDate ? date(view.dueDate) : "Loading"}</span><strong>{loaded ? money(view.total) : "—"}</strong><small>{view.ready.length} qualifying jobs · includes unpaid carryover</small></div>
+      <div><span>Paid to Ken</span><strong>{loaded ? money(view.paidTotal) : "—"}</strong><small>{view.history.length} payment batches</small></div>
+      <div><span>Buyout remaining</span><strong>{loaded ? money(view.remainingBuyout) : "—"}</strong><small>Of {loaded ? money(readOnlyData?.target ?? ledger?.kenBuyout.target ?? 0) : "—"} total buyout · payment batches</small></div>
     </section>
     {view.review.length > 0 && <details className={styles.review}><summary>Payment history needs review · {view.review.length} records</summary><p>Older entries awaiting reconciliation are preserved here and excluded from the payment-batch totals above. These are not credit against new jobs.</p>{view.review.map(batch => <p key={batch.id}>{date(batch.paidOn)} · {money(batch.amount)} · {batch.reconciliation?.reason || "Payment allocation needs review"}</p>)}</details>}
     <div className={styles.toolbar}><div className={styles.tabs} role="group" aria-label="Payoff ledger view"><button type="button" aria-pressed={tab === "ready"} onClick={() => { setTab("ready"); setSearch(""); }}>Ready for {view.dueDate ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${view.dueDate}T12:00:00Z`)) : "payment"} <b>{view.ready.length}</b></button><button type="button" aria-pressed={tab === "paid"} onClick={() => { setTab("paid"); setSearch(""); }}>Paid to Ken <b>{view.history.length}</b></button></div>{tab === "ready" && <label><span className={styles.srOnly}>Search qualifying jobs</span><input type="search" placeholder="Search customer or contract" value={search} onChange={event => setSearch(event.target.value)} /></label>}</div>
     <div role="status">{notice}</div>
-    {!ledger ? <p>Loading payoff…</p> : tab === "ready" ? <>
+    {!loaded ? <p>Loading payoff…</p> : tab === "ready" ? <>
       <p className={styles.description}>Customer paid in full. Installation complete. Job closed.</p>
-      <div className={styles.tableWrap}><table><thead><tr><th>Customer / contract</th><th>Closed</th><th>Contract total</th><th>Ready</th><th>10% buyout</th><th>Unpaid to Ken</th><th>Ken paid</th></tr></thead><tbody>{filtered.map(({ row, item }) => <tr key={item.itemKey}><td><strong>{item.customerName}</strong><small>{item.quoteNumber || "Job record"}</small></td><td>{date(row.jobClosedAt)}<small>{item.dueDate && item.dueDate < (view.dueDate || "") ? `Carried from ${date(item.dueDate)}` : `Eligible ${date(item.eligibleAt)}`}</small></td><td>{money(item.total)}</td><td><button type="button" className={`${styles.circle} ${styles.checked}`} disabled={disabled} aria-label={`Review readiness for ${item.customerName}`} onClick={() => { setError(""); setEditor({ kind: "readiness", row }); }}><Check size={19} /></button><small>{kenPayableReadiness(row).automatic ? "Automatic" : "Manual"}</small></td><td>{money(item.owedAmount)}</td><td className={styles.green}><strong>{money(item.remainingAmount)}</strong>{item.paidAmount > 0 && <small>{money(item.paidAmount)} already paid</small>}</td><td><button type="button" className={styles.circle} disabled={disabled} aria-label={`Record Ken payment for ${item.customerName}`} onClick={() => openPayment([item.itemKey])}><Circle size={19} /></button></td></tr>)}</tbody></table></div>
+      <div className={styles.tableWrap}><table><thead><tr><th>Customer / contract</th><th>Closed</th><th>Contract total</th><th>Ready</th><th>10% buyout</th><th>Unpaid to Ken</th><th>Ken paid</th></tr></thead><tbody>{filtered.map(({ row, item }) => <tr key={item.itemKey}><td><strong>{item.customerName}</strong><small>{item.quoteNumber || "Job record"}</small></td><td>{date(row.jobClosedAt)}<small>{item.dueDate && item.dueDate < (view.dueDate || "") ? `Carried from ${date(item.dueDate)}` : `Eligible ${date(item.eligibleAt)}`}</small></td><td>{money(item.total)}</td><td><button type="button" className={`${styles.circle} ${styles.checked}`} disabled={disabled} aria-label={`Review readiness for ${item.customerName}`} onClick={() => { setError(""); setEditor({ kind: "readiness", row }); }}><Check size={19} /></button><small>{(readOnlyData ? readOnlyData.view.ready.find(entry => entry.item.itemKey === item.itemKey)?.automatic : kenPayableReadiness(row).automatic) ? "Automatic" : "Manual"}</small></td><td>{money(item.owedAmount)}</td><td className={styles.green}><strong>{money(item.remainingAmount)}</strong>{item.paidAmount > 0 && <small>{money(item.paidAmount)} already paid</small>}</td><td><button type="button" className={styles.circle} disabled={disabled} aria-label={`Record Ken payment for ${item.customerName}`} onClick={() => openPayment([item.itemKey])}><Circle size={19} /></button></td></tr>)}</tbody></table></div>
       {!filtered.length && <p className={styles.empty}>No qualifying jobs{search ? " match your search" : " are ready for this payment"}.</p>}
       <footer className={styles.footer}><div><small>{search ? "All ready jobs · search does not change payment selection" : "Monthly ledger total"}</small><strong>{money(view.total)}</strong></div><button className={styles.primary} type="button" disabled={disabled || !view.ready.length} onClick={() => openPayment(view.ready.map(({ item }) => item.itemKey))}>Review &amp; record payment</button></footer>
     </> : <section aria-label="Ken payment history" className={styles.history}>{view.history.map(batch => <details key={batch.id} className={styles.batch}><summary><span className={`${styles.circle} ${styles.checked}`}><Check size={19}/></span><span><strong>{date(batch.paidOn)}</strong><small>{batch.allocations.length} job allocations{batch.dateReviewRequired ? " · historical dates need review" : ""}</small></span><strong>{money(batch.recordedAmount ?? batch.amount)}</strong></summary><p>{batch.note || "Recorded payment"}</p>{batch.dueDate && <p>Payment due {date(batch.dueDate)} · cutoff {date(batch.paymentCutoffAt)}</p>}<div className={styles.tableWrap}><table><thead><tr><th>Covered job</th><th>Contract</th><th>Paid to Ken</th></tr></thead><tbody>{batch.allocations.map(allocation => <tr key={allocation.id}><td>{allocation.customerName}</td><td>{allocation.quoteNumber || "—"}</td><td>{money(allocation.amount)}</td></tr>)}</tbody></table></div></details>)}{!view.history.length && <p className={styles.empty}>No reconciled payments to display.</p>}{view.duplicates.length > 0 && <details className={styles.review}><summary>Preserved audit history · {view.duplicates.length} duplicate entries excluded</summary>{view.duplicates.map(batch => <p key={batch.id}>{date(batch.paidOn)} · {money(batch.amount)} · {batch.reconciliation?.reason}</p>)}</details>}</section>}

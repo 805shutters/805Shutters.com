@@ -21,6 +21,12 @@ export function isReadOnlyCrmMutation(email: string | null | undefined, method: 
   return isKenCrmEmail(email) && normalizedMethod !== "GET" && normalizedMethod !== "HEAD";
 }
 
+export function isKenCrmRequestAllowed(email: string | null | undefined, method: string, pathname: string) {
+  if (!isKenCrmEmail(email)) return true;
+  return (method.toUpperCase() === "GET" || method.toUpperCase() === "HEAD")
+    && ["/api/crm/session", "/api/crm/ken-payoff"].includes(pathname.replace(/\/$/, ""));
+}
+
 function getBearerToken(request: NextRequest) {
   const authorization = request.headers.get("authorization") || "";
   const [scheme, token] = authorization.split(" ");
@@ -65,8 +71,8 @@ export async function requireCrmUser(request: NextRequest) {
     throw new CrmAuthError(403, "This CRM account is not allowed for the 805 CRM.");
   }
 
-  if (isReadOnlyCrmMutation(email, request.method)) {
-    throw new CrmAuthError(403, "Ken's CRM login is read-only.");
+  if (!isKenCrmRequestAllowed(email, request.method, request.nextUrl.pathname)) {
+    throw new CrmAuthError(403, "Ken's CRM login is restricted to read-only payoff access.");
   }
 
   const supabase = getSupabaseServiceClient();
