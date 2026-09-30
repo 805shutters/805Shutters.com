@@ -3,7 +3,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { ArrowUpRight, Check, Circle, Plus, Search, Trash2 } from "lucide-react";
 import type { QuoteTableRow } from "@mts/components/crm/quote-builder/QuotesTable";
-import { canDeleteStaffDraft, staffNextSteps, staffQuoteAmount, staffQuoteStage, staffStageLabels, type StaffQuoteFilter } from "./staff-quote-view";
+import { staffNextSteps, staffQuoteAmount, staffQuoteStage, staffStageLabels, type StaffQuoteFilter } from "./staff-quote-view";
 import { staffCustomerQuoteView, staffQuoteLetter } from "./staff-quote-groups";
 import { quoteColor } from "@/app/quote/[token]/quoteColors";
 import styles from "./StaffQuoteDesk.module.css";
@@ -33,11 +33,11 @@ function Status({ quote }: { quote: QuoteTableRow }) {
 export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry, onOpen, onDelete, onNewQuote, onNewNormanQuote, onOpenTools }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const deleteDraft = async (quote: QuoteTableRow) => {
-    if (deletingId || !canDeleteStaffDraft(quote)) return;
+  const deleteQuote = async (quote: QuoteTableRow) => {
+    if (deletingId) return;
     const letter = staffQuoteLetter(quote);
     const label = `${letter ? `${letter} · ` : ""}${quote.quote_number || quote.id}`;
-    if (!window.confirm(`Delete draft quote ${label} for ${quote.customer_name || "this customer"}? The quote will be removed from your quote list. Other quotes for this customer will be kept.`)) return;
+    if (!window.confirm(`Delete quote ${label} for ${quote.customer_name || "this customer"}? The quote will be removed from your quote list. This cannot be undone from this view. Other quotes for this customer will be kept.`)) return;
     setDeletingId(quote.id);
     setDeleteError(null);
     try {
@@ -50,9 +50,9 @@ export function StaffQuoteDesk({ quotes, isLoading, isError, isFetching, onRetry
   };
   const quoteActions = (quote: QuoteTableRow) => <div className={styles.quoteActions}>
     <button type="button" onClick={() => onOpen(quote)} aria-label={`Open quote ${staffQuoteLetter(quote) || ""} ${quote.quote_number || quote.id}`}>Open <ArrowUpRight size={15} /></button>
-    {canDeleteStaffDraft(quote) && <button type="button" className={styles.deleteButton} disabled={deletingId !== null} onClick={() => void deleteDraft(quote)} aria-label={`Delete draft quote ${staffQuoteLetter(quote) || ""} ${quote.quote_number || quote.id}`}>
-      <Trash2 size={15} aria-hidden="true" /> {deletingId === quote.id ? "Deleting…" : "Delete draft"}
-    </button>}
+    <button type="button" className={styles.deleteButton} disabled={deletingId !== null} onClick={() => void deleteQuote(quote)} aria-label={`Delete quote ${staffQuoteLetter(quote) || ""} ${quote.quote_number || quote.id}`}>
+      <Trash2 size={15} aria-hidden="true" /> {deletingId === quote.id ? "Deleting…" : "Delete"}
+    </button>
   </div>;
   const [filter, setFilter] = useState<StaffQuoteFilter>("all");
   const [search, setSearch] = useState("");

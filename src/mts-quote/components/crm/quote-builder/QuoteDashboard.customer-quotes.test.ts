@@ -42,6 +42,14 @@ describe("customer grouping in the active staff quote dashboard", () => {
     expect(html).toContain("2 customers");
     expect(html).toContain("4 quotes");
   });
+  it("links externally identified CRM mirrors to their exact builder quote", () => {
+    const mirror = crmQuote("mirror", { external_id: "quote:sales-b", quote_number: "805-0433",
+      customer_name: "Taylor Example", quote_total: 3627.23 });
+    const html = renderToStaticMarkup(React.createElement(QuoteDashboard, { staffOverview: true, crmQuotes: [mirror] }));
+    expect(html.match(/aria-label="Quote B 805-0433"/g)).toHaveLength(1);
+    expect(html.match(/<article /g)).toHaveLength(1);
+    expect(html).toContain("3 quotes");
+  });
   it("joins separate CRM projects through the persisted customer contract links passed from the CRM", () => {
     const quotes = ["one", "two"].map(id => crmQuote(id, { customer_name: "Customer" }));
     const html = renderToStaticMarkup(React.createElement(QuoteDashboard, { staffOverview: true, crmQuotes: quotes,

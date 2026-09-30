@@ -70,6 +70,7 @@ export type CrmDeletedJob = Pick<CrmJob, "id" | "customer_name" | "product_inter
 };
 
 export type CrmQuote = {
+  external_id?: string | null;
   /** Read-only dashboard projection; mutation loaders remain authoritative. */
   lineItems?: CrmQuoteLineItem[];
   id: string;

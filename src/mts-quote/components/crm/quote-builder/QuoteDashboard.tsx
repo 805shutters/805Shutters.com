@@ -116,7 +116,8 @@ function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
     return null;
   }
   const value =
-    meta.target_sales_quote_id || meta.mts_quote_id || meta.sales_quote_id;
+    meta.target_sales_quote_id || meta.mts_quote_id || meta.sales_quote_id ||
+    (quote.external_id?.startsWith("quote:") ? quote.external_id.slice("quote:".length) : null);
   return typeof value === "string" && value.trim() ? value : null;
 }
 

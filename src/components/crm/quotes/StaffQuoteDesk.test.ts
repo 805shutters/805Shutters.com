@@ -36,7 +36,7 @@ describe("staff customer quote UI", () => {
     expect(customer.querySelector('section[aria-label="Quote B 805-0433"]')?.getAttribute("style")).toContain("#2263aa");
     expect(customer.querySelector('section[aria-label="Quote C 805-0434"]')?.getAttribute("style")).toContain("#7b47a4");
     expect(customer.textContent).toContain("$3,627.23");
-    expect(container.querySelector('button[aria-label="Delete draft quote A 805-0432"]')).toBeNull();
+    expect(container.querySelectorAll('button[aria-label^="Delete quote"]')).toHaveLength(3);
     await click("Open quote B 805-0433");
     expect(handlers.onOpen).toHaveBeenCalledWith(rows[2]);
   });
@@ -54,15 +54,26 @@ describe("staff customer quote UI", () => {
     expect(container.querySelectorAll("article section")).toHaveLength(3);
     expect(container.textContent).toContain("1 quote matching");
   });
-  it("deletes only the chosen draft inside the box and retains confirmation", async () => {
+  it("deletes only the chosen quote inside the box and retains confirmation", async () => {
     const handlers = props(), confirm = vi.fn().mockReturnValue(true);
     Object.defineProperty(window, "confirm", { configurable: true, value: confirm });
     await act(() => root.render(React.createElement(StaffQuoteDesk, { quotes: rows, ...handlers })));
-    await click("Delete draft quote C 805-0434");
+    await click("Delete quote C 805-0434");
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining("C · 805-0434"));
     expect(handlers.onDelete).toHaveBeenCalledTimes(1);
     expect(handlers.onDelete).toHaveBeenCalledWith(rows[0]);
     expect(container.querySelectorAll("article section")).toHaveLength(3);
+  });
+  it("requires confirmation for sent and sold quotes and sends only the chosen quote", async () => {
+    const handlers = props(), confirm = vi.fn().mockReturnValue(false);
+    Object.defineProperty(window, "confirm", { configurable: true, value: confirm });
+    await act(() => root.render(React.createElement(StaffQuoteDesk, { quotes: rows.map(row => ({ ...row, status: "sent" })), ...handlers })));
+    await click("Delete quote B 805-0433");
+    expect(handlers.onDelete).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    await click("Delete quote B 805-0433");
+    expect(handlers.onDelete).toHaveBeenCalledTimes(1);
+    expect(handlers.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: "b", status: "sent" }));
   });
   it("pages customer boxes without splitting their alternatives", async () => {
     const quotes = Array.from({ length: 26 }, (_, index) => ({ ...rows[0], id: `q-${index}`, quote_group_id: `group-${index}`, customer_name: `Customer ${index}` }));
