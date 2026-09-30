@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
+import { loadPublicQuoteByToken, loadPublicQuoteOptions } from "@/lib/crm/public-quote";
 import { ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
 import { resolveSquareApplicationId, squareLocationId, squareWebSdkUrl } from "@/lib/finance/square";
@@ -39,6 +39,7 @@ export default async function PublicQuotePage({
 
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) notFound();
+  quote.versions = crmContractPreview ? [] : await loadPublicQuoteOptions(supabase, quote);
   const applicationId = await resolveSquareApplicationId();
   const locationId = squareLocationId();
   const walletConfig = applicationId && locationId

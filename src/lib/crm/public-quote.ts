@@ -1,3 +1,4 @@
+import { customerQuoteOptionRows } from "./public-quote-options";
 import { selectedDeliveryQuoteIds } from "./quote-delivery-selection";
 import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
 import { customerChargeLabels } from "@/lib/quote/customer-charges";
@@ -1025,6 +1026,27 @@ export async function loadPublicQuoteByToken(
   return projectPublicQuote(supabase, quote, token);
 }
 
+/** Customer navigation includes only already delivered members of the saved group.
+ * Projection uses the same contract calculation as opening each individual URL.
+ * This loader performs no delivery, token creation, acceptance, or payment writes.
+ */
+export async function loadPublicQuoteOptions(supabase: CrmSupabaseClient, current: PublicQuote): Promise<PublicQuote["versions"]> {
+  if (!current.token) return [];
+  const { data: row, error: rootError } = await supabase.from("crm_quotes").select("*").eq("id", current.id).maybeSingle();
+  if (rootError || !row?.quote_group_id) return [];
+  const root = row as CrmQuote;
+  const { data, error } = await supabase.from("crm_quotes").select("*").eq("quote_group_id", root.quote_group_id);
+  if (error) return [];
+  const candidates = customerQuoteOptionRows(root, (data || []) as CrmQuote[]);
+  if (candidates.length < 2) return [];
+  const versions = await Promise.all(candidates.map(async candidate => {
+    const document = candidate.id === current.id ? current : await projectPublicQuote(supabase, candidate, candidate.share_token!);
+    return { token: candidate.id === current.id ? current.token : candidate.share_token!, label: candidate.quote_label!,
+      total: document.total, signed: document.signed, current: candidate.id === current.id };
+  }));
+  return versions;
+}
+
 export async function loadPublicQuoteById(
   supabase: CrmSupabaseClient,
   quoteId: string,
@@ -1106,7 +1128,7 @@ async function projectPublicQuote(
     customerEmail ||= customer?.email || null;
   }
 
-  // A quote URL never exposes sibling drafts or expands after another send.
+  // Navigation is populated separately on the customer page; contract and acceptance projections remain scoped to this quote.
   const versions: PublicQuote["versions"] = [];
 
   return {

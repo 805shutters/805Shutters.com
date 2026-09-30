@@ -12,3 +12,12 @@
 .standardIdentity { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 18px; font-weight: 800; }
 @media (max-width: 520px) { .content { padding: 12px; } .ribbon { padding: 16px; } }
 @media print { .frame { overflow: visible; } .ribbon, .letter { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+
+.tab[aria-current="page"] .letter { background: #ffffff26; }
+@media (max-width: 520px) {
+  .tabsGrid { grid-template-columns: repeat(auto-fit, minmax(86px, 1fr)) !important; gap: 8px !important; }
+  .tab { padding: 12px 6px !important; }
+  .tabLabel { gap: 4px; font-size: 15px !important; }
+  .tabLabel .letter { min-width: 20px; min-height: 24px; padding: 2px 4px; font-size: 16px; }
+  .tabPrice { font-size: 14px !important; }
+}

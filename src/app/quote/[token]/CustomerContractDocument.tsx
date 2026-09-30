@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
@@ -132,31 +133,31 @@ export function CustomerContractDocument({
       >
         {!previewOnly && quote.versions.length > 1 ? (
           <section className="no-print" style={quoteTabsSection} aria-label="Compare quote options">
-            <strong style={quoteTabsHeading}>Choose a quote to review</strong>
-            <div role="tablist" aria-label="Available quotes" style={quoteTabsGrid}>
+            <strong style={quoteTabsHeading}>Compare your quotes</strong>
+            <nav aria-label="Available quotes" className={identityStyles.tabsGrid} style={quoteTabsGrid}>
               {quote.versions.map((version) => (
-                <a
+                <Link
                   key={version.token}
                   href={`/quote/${version.token}`}
-                  role="tab"
-                  aria-selected={version.current}
+                  scroll={false}
+                  aria-label={`Quote ${version.label}${version.current ? ", currently viewing" : ""}`}
                   aria-current={version.current ? "page" : undefined}
                   className={identityStyles.tab}
                   style={{
                     ...quoteTab,
                     "--quote-color": quoteColor(version.label),
-                    background: version.label === "A" && version.current ? "#0b0b0b" : "#ffffff",
-                    color: version.label === "A" && version.current ? "#ffffff" : "#0b0b0b",
+                    background: version.current ? quoteColor(version.label) : "#ffffff",
+                    color: version.current ? "#ffffff" : "#0b0b0b",
                     borderColor: version.label === "A" && !version.current ? "#b8b6ae" : quoteColor(version.label),
                   } as CSSProperties}
                 >
                   <span style={quoteTabLabel} className={identityStyles.tabLabel}>Quote <span className={identityStyles.letter}>{customerQuoteText(version.label) || "Option"}</span></span>
-                  <span style={quoteTabPrice}>{money(version.total)}</span>
+                  <span className={identityStyles.tabPrice} style={quoteTabPrice}>{money(version.total)}</span>
                   {version.current ? <span className={identityStyles.viewing}>Viewing ✓</span> : null}
                   {version.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
-                </a>
+                </Link>
               ))}
-            </div>
+            </nav>
           </section>
         ) : null}
 
@@ -170,7 +171,7 @@ export function CustomerContractDocument({
             <div className={identityStyles.standardIdentity}><span className={identityStyles.letter}>A</span>Quote A</div>
           ) : null}
           <div className={alternative ? identityStyles.content : undefined}>
-            <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
+            <QuoteSelection key={quote.token || quote.id} quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
           </div>
         </div>
       </div>
