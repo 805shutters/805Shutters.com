@@ -66,6 +66,18 @@ describe("customer quote boxes", () => {
     expect(customers.slice(0, 25).find(customer => customer.quotes.some(q => q.id === "24"))?.quotes).toHaveLength(41);
     expect(customers.slice(25)).toHaveLength(1);
   });
+  it("shows linked CRM and builder copies once while keeping distinct numbered options", () => {
+    const rows = [
+      quote("latest", { crm_job_id: "job", quote_group_id: "group", quote_letter: "B", quote_number: "805-0433" }),
+      quote("copy", { source: "sales", quote_group_id: "group", quote_letter: "B", quote_number: "805-0433" }),
+      quote("other", { crm_job_id: "job", quote_letter: "B", quote_number: "805-0500" }),
+    ];
+    const view = staffCustomerQuoteView(rows, "all", "");
+    expect(view.customers[0].quotes.map(row => row.id)).toEqual(["latest", "other"]);
+    expect(view.matching).toHaveLength(2);
+    expect(view.counts.draft).toBe(2);
+    expect(rows).toHaveLength(3);
+  });
   it("uses saved letters without inventing an alternative for a non-letter label", () => {
     expect(staffQuoteLetter(quote("ungrouped"))).toBe("A");
     expect(staffQuoteLetter(quote("pending", { quote_group_id: "group", quote_letter: "Pending Quote" }))).toBeNull();

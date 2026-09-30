@@ -63,18 +63,34 @@ export function groupStaffQuotes(quotes: QuoteTableRow[]): StaffQuoteCustomer[] 
     group.quotes.push(quote);
     groups.set(id, group);
   });
-  for (const group of groups.values()) group.quotes.sort((a, b) => {
-    const aLetter = staffQuoteLetter(a), bLetter = staffQuoteLetter(b);
-    if (aLetter && bLetter) return aLetter.length - bLetter.length || aLetter.localeCompare(bLetter) ||
-      (a.quote_number || "").localeCompare(b.quote_number || "", undefined, { numeric: true });
-    return aLetter ? -1 : bLetter ? 1 : 0;
-  });
+  for (const group of groups.values()) {
+    // CRM delivery and builder copies can represent the same saved option.
+    // Collapse only explicit option letters with the same number inside an
+    // already identity-linked customer box; keep the newest visible record.
+    const options = new Set<string>();
+    group.quotes = group.quotes.filter(quote => {
+      const savedLetter = quote.quote_letter || quote.salesQuote?.quote_letter;
+      if (!savedLetter || !staffQuoteLetter(quote) || !quote.quote_number) return true;
+      const key = `${staffQuoteLetter(quote)}:${quote.quote_number}`;
+      if (options.has(key)) return false;
+      options.add(key);
+      return true;
+    });
+    group.quotes.sort((a, b) => {
+      const aLetter = staffQuoteLetter(a), bLetter = staffQuoteLetter(b);
+      if (aLetter && bLetter) return aLetter.length - bLetter.length || aLetter.localeCompare(bLetter) ||
+        (a.quote_number || "").localeCompare(b.quote_number || "", undefined, { numeric: true });
+      return aLetter ? -1 : bLetter ? 1 : 0;
+    });
+  }
   return [...groups.values()];
 }
 
 export function staffCustomerQuoteView(quotes: QuoteTableRow[], filter: StaffQuoteFilter, search: string) {
-  const view = staffQuoteView(quotes, filter, search);
+  const allCustomers = groupStaffQuotes(quotes);
+  const visibleQuotes = allCustomers.flatMap(customer => customer.quotes);
+  const view = staffQuoteView(visibleQuotes, filter, search);
   const matchingIds = new Set(view.matching.map(quote => `${quote.source}:${quote.id}`));
-  const customers = groupStaffQuotes(quotes).filter(customer => customer.quotes.some(quote => matchingIds.has(`${quote.source}:${quote.id}`)));
+  const customers = allCustomers.filter(customer => customer.quotes.some(quote => matchingIds.has(`${quote.source}:${quote.id}`)));
   return { ...view, customers, matchingIds };
 }
