@@ -1,0 +1,14 @@
+.tab { position: relative; }
+.tab:focus-visible { outline: 3px solid #0b0b0b; outline-offset: 4px; }
+.tabLabel { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.letter { display: inline-grid; place-items: center; min-width: 30px; min-height: 30px; padding: 3px 7px; border-radius: 6px; background: var(--quote-color); color: #fff; font-size: 20px; font-weight: 800; }
+.viewing { margin-top: 6px; font-size: 12px; font-weight: 700; }
+.frame { border: 3px solid var(--quote-color); border-radius: 12px; overflow: hidden; background: #fff; }
+.ribbon { display: flex; align-items: center; gap: 12px; padding: 18px 20px; background: var(--quote-color); color: #fff; }
+.ribbon .letter { min-width: 44px; min-height: 44px; font-size: 26px; background: #ffffff26; }
+.ribbonTitle { display: block; font-size: 21px; font-weight: 800; }
+.ribbonSubtitle { display: block; margin-top: 3px; font-size: 13px; }
+.content { padding: 20px; min-width: 0; }
+.standardIdentity { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; font-size: 18px; font-weight: 800; }
+@media (max-width: 520px) { .content { padding: 12px; } .ribbon { padding: 16px; } }
+@media print { .frame { overflow: visible; } .ribbon, .letter { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }

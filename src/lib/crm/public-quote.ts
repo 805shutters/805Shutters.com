@@ -135,6 +135,8 @@ export type PublicQuote = {
   /** Internal quote id (uuid). Used to reconcile online payments; gated by the token. */
   id: string;
   quoteNumber: string | null;
+  /** Presentation identity for a grouped alternative; never exposes sibling drafts. */
+  quoteLabel?: string;
   customerName: string;
   customerAddress: string | null;
   customerPhone: string | null;
@@ -1111,6 +1113,7 @@ async function projectPublicQuote(
     token,
     id: quote.id,
     quoteNumber: quote.quote_number,
+    quoteLabel: quote.quote_group_id && /^[A-Z]+$/.test(quote.quote_label || "") ? quote.quote_label! : undefined,
     customerName: customerName || "Valued customer",
     customerAddress,
     customerPhone,

@@ -9,6 +9,9 @@ import { QuoteSelection } from "./QuoteSelection";
 import type { QuoteWalletConfig } from "./QuoteWalletButtons";
 import { PrintButton } from "./PrintButton";
 import type { CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
+import type { CSSProperties } from "react";
+import identityStyles from "./QuoteIdentity.module.css";
+import { quoteColor } from "./quoteColors";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -49,6 +52,10 @@ export function CustomerContractDocument({
   contractTerms?: CustomerContractTerms;
 }) {
   const preparedFor = customerDetails(quote);
+  const multipleQuotes = !previewOnly && (Boolean(quote.quoteLabel) || quote.versions.length > 1);
+  const currentLabel = quote.quoteLabel ?? quote.versions.find((version) => version.current)?.label ?? "A";
+  const alternative = multipleQuotes && currentLabel !== "A";
+  const identityColor = { "--quote-color": quoteColor(currentLabel) } as CSSProperties;
   const reserveCustomerActionRail =
     !embedded &&
     !previewOnly &&
@@ -134,15 +141,18 @@ export function CustomerContractDocument({
                   role="tab"
                   aria-selected={version.current}
                   aria-current={version.current ? "page" : undefined}
+                  className={identityStyles.tab}
                   style={{
                     ...quoteTab,
-                    background: version.current ? "#0b0b0b" : "#ffffff",
-                    color: version.current ? "#ffffff" : "#0b0b0b",
-                    borderColor: version.current ? "#0b0b0b" : "#b8b6ae",
-                  }}
+                    "--quote-color": quoteColor(version.label),
+                    background: version.label === "A" && version.current ? "#0b0b0b" : "#ffffff",
+                    color: version.label === "A" && version.current ? "#ffffff" : "#0b0b0b",
+                    borderColor: version.label === "A" && !version.current ? "#b8b6ae" : quoteColor(version.label),
+                  } as CSSProperties}
                 >
-                  <span style={quoteTabLabel}>Quote {customerQuoteText(version.label) || "Option"}</span>
+                  <span style={quoteTabLabel} className={identityStyles.tabLabel}>Quote <span className={identityStyles.letter}>{customerQuoteText(version.label) || "Option"}</span></span>
                   <span style={quoteTabPrice}>{money(version.total)}</span>
+                  {version.current ? <span className={identityStyles.viewing}>Viewing ✓</span> : null}
                   {version.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
                 </a>
               ))}
@@ -150,7 +160,19 @@ export function CustomerContractDocument({
           </section>
         ) : null}
 
-        <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
+        <div className={alternative ? identityStyles.frame : undefined} style={identityColor}>
+          {multipleQuotes ? alternative ? (
+            <div className={identityStyles.ribbon}>
+              <span className={identityStyles.letter}>{customerQuoteText(currentLabel)}</span>
+              <div><strong className={identityStyles.ribbonTitle}>Quote {customerQuoteText(currentLabel)}</strong><span className={identityStyles.ribbonSubtitle}>Alternative quote</span></div>
+            </div>
+          ) : (
+            <div className={identityStyles.standardIdentity}><span className={identityStyles.letter}>A</span>Quote A</div>
+          ) : null}
+          <div className={alternative ? identityStyles.content : undefined}>
+            <QuoteSelection quote={quote} paymentOptions={paymentOptions} walletConfig={walletConfig} previewOnly={previewOnly} contractTerms={contractTerms} />
+          </div>
+        </div>
       </div>
       <footer className="customer-contract-print-only" style={contractFooter}>
         <strong>{quote.business.name}</strong>
@@ -176,7 +198,7 @@ const wrap = {
 const contractLogo = { display: "block", width: 170, maxWidth: "46vw", height: "auto" } as const;
 const quoteTabsSection = { marginBottom: 22, padding: 14, border: "2px solid #0b0b0b", borderRadius: 12, background: "#f4f4f2" } as const;
 const quoteTabsHeading = { display: "block", marginBottom: 10, fontSize: 15 } as const;
-const quoteTabsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 } as const;
+const quoteTabsGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 } as const;
 const quoteTab = { display: "flex", minHeight: 78, flexDirection: "column", justifyContent: "center", padding: "12px 16px", border: "2px solid", borderRadius: 9, textDecoration: "none", textAlign: "center", boxSizing: "border-box" } as const;
 const quoteTabLabel = { fontSize: 18, fontWeight: 800, lineHeight: 1.2 } as const;
 const quoteTabPrice = { marginTop: 4, fontSize: 16, fontWeight: 650, lineHeight: 1.2 } as const;
