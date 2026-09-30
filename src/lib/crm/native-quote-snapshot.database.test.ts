@@ -75,6 +75,8 @@ beforeAll(async()=>{
  await db.exec(migration('20260927182921_explicit_quote_delivery_selection'));
  await db.exec(migration('20260927234452_native_manual_selection_projection'));
  await db.exec(migration('20260928185500_native_empty_manual_selection_projection'));
+ await db.exec(migration('20260930001500_preserve_inherited_manual_unknown_cost'));
+ await db.exec(migration('20260930001500_preserve_inherited_manual_unknown_cost'));
  // Safe to retry after a deployment interruption.
  await db.exec(migration('20260928185500_native_empty_manual_selection_projection'));
  await db.query('insert into crm_profiles values($1,true,$2)',[id(50),'805shutters@gmail.com']);
@@ -559,4 +561,43 @@ it.each([
  await expect(reserve(n,p,2)).rejects.toThrow(/canonical selection/);
  expect((await db.query<any>('select count(*)::int as count from sales_quote_v2_customer_send_preparations where quote_id=$1',[id(n)])).rows[0].count).toBe(0);
  expect((await db.query<any>('select status,quote_v2_revision from sales_quotes where id=$1',[id(n)])).rows[0]).toMatchObject({status:'draft',quote_v2_revision:2});
+});
+
+
+it.each([false,true])('keeps repeated manual prices unresolved and prepares legacy inherited snapshots: %s',async(legacy)=>{
+ const n=legacy?10600:9600;
+ await seed(n);
+ await db.query('update sales_quote_designs set current_v2_snapshot_id=null where id=$1',[id(n+200)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,123.45,$4,1,$5)',[id(n),id(n+100),'A',id(50),id(n+1000)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,124.45,$4,2,$5)',[id(n),id(n+100),'A',id(50),id(n+1001)]);
+ const current=(await db.query<any>('select s.* from sales_quote_v2_price_snapshots s join sales_quote_designs d on d.current_v2_snapshot_id=s.id where d.id=$1',[id(n+200)])).rows[0];
+ expect(current.provenance_snapshot.costResolution).toBe('unresolved');
+ expect(current.internal_cost_snapshot).toMatchObject({status:'unresolved',landedCostTotal:null});
+ if(legacy) await db.query("update sales_quote_v2_price_snapshots set provenance_snapshot=jsonb_set(provenance_snapshot,'{costResolution}','\"preserved_snapshot\"'),internal_landed_cost_total=0 where id=$1",[current.id]);
+ const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(n)])).rows[0];
+ const lineItems=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(n)])).rows;
+ const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(n+100)])).rows;
+ const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1 order by id',[id(n)])).rows;
+ const p=prepareV2CustomerSendPayload({quote,lineItems,designs,snapshots});
+ const delivery=await reserve(n,p,3);
+ expect(delivery.customer_payload).toEqual(p);
+ expect((await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1 order by id',[id(n)])).rows).toEqual(snapshots);
+ expect((await db.query<any>('select wholesale_unit_price from crm_quote_designs where id=$1',[id(n+200)])).rows[0].wholesale_unit_price).toBeNull();
+});
+
+
+it.each(['foreign-root','changed-cost','missing-audit'])('rejects unaudited inherited manual cost: %s',async(kind)=>{
+ const n=kind==='foreign-root'?12600:kind==='changed-cost'?13600:14600;
+ await seed(n);
+ await db.query('update sales_quote_designs set current_v2_snapshot_id=null where id=$1',[id(n+200)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,123.45,$4,1,$5)',[id(n),id(n+100),'A',id(50),id(n+1000)]);
+ await db.query('select set_sales_quote_line_price($1,$2,$3,124.45,$4,2,$5)',[id(n),id(n+100),'A',id(50),id(n+1001)]);
+ await db.query("update sales_quote_v2_price_snapshots set provenance_snapshot=jsonb_set(provenance_snapshot,'{costResolution}','\"preserved_snapshot\"') where id=(select current_v2_snapshot_id from sales_quote_designs where id=$1)",[id(n+200)]);
+ const current=(await db.query<any>('select s.* from sales_quote_v2_price_snapshots s join sales_quote_designs d on d.current_v2_snapshot_id=s.id where d.id=$1',[id(n+200)])).rows[0];
+ if(kind==='foreign-root') await db.query('update sales_quote_v2_price_snapshots set quote_id=$1 where id=$2',[id(1),current.provenance_snapshot.originalSnapshotId]);
+ if(kind==='changed-cost') await db.query("update sales_quote_v2_price_snapshots set internal_cost_snapshot=internal_cost_snapshot || '{\"extra\":true}' where id=$1",[current.id]);
+ if(kind==='missing-audit') await db.query("update sales_quote_v2_price_snapshots set provenance_snapshot=provenance_snapshot-'manualLinePrice' where id=$1",[current.id]);
+ expect((await db.query<any>('select quote_v2_manual_unknown_cost($1) as allowed',[current.id])).rows[0].allowed).toBe(false);
+ await expect(db.query('select * from prepare_native_quote_customer_snapshot($1,3,$2,$3,$4,$5,$6)',[id(n),'custom-override-v1','untrusted',id(50),'email',payload(n)])).rejects.toThrow(/canonical selection/);
+ expect((await db.query<any>('select count(*)::int as count from sales_quote_v2_customer_send_preparations where quote_id=$1',[id(n)])).rows[0].count).toBe(0);
 });
