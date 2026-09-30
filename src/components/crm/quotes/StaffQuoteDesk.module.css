@@ -57,3 +57,27 @@
 .desk .deleteButton:hover { background:#422523; border-color:#ffb4ab; }
 .desk .deleteError { color:#ffb4ab; margin:0 0 16px; }
 .card footer { flex-wrap:wrap; }
+
+.customers { display:grid; gap:14px; }
+.customerBox { display:grid; grid-template-columns:200px minmax(0,1fr); gap:20px; padding:16px; border:1px solid #343330; border-radius:13px; background:#1d1d1b; min-width:0; }
+.customerHeader { min-width:0; padding:4px; overflow-wrap:anywhere; }
+.desk .customerHeader h3 { margin:0; font-weight:600; font-size:17px; }
+.desk .customerHeader p { margin:6px 0; font-size:12px; }
+.customerHeader > span { display:block; margin-top:10px; color:#b8b6ae; font-size:12px; }
+.customerQuotes { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:12px; min-width:0; }
+.quoteTile { border:2px solid var(--quote-color); border-radius:9px; background:#151513; min-width:0; overflow-wrap:anywhere; overflow:hidden; }
+.quoteIdentity { display:flex; align-items:center; gap:9px; padding:10px 12px; background:var(--quote-color); color:#fff; }
+.quoteIdentity > div { min-width:0; }
+.quoteIdentity strong { font-size:13px; font-weight:600; }
+.quoteIdentity small { display:block; margin-top:1px; font-size:11px; color:#fff; }
+.quoteLetter { display:flex; align-items:center; justify-content:center; flex:0 0 auto; min-width:32px; height:32px; padding:0 5px; border-radius:5px; background:rgba(255,255,255,.16); font-size:20px; font-weight:700; }
+.quoteDetails { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:12px 12px 0; }
+.quoteAmount { font-size:18px; font-weight:500; font-variant-numeric:tabular-nums; }
+.desk .quoteNext { margin:5px 12px 10px; font-size:11px; }
+.quoteTile .quoteActions { padding:0 12px 12px; gap:6px; }
+.desk .quoteTile button { font-size:11px; padding:6px 8px; }
+.otherQuote { opacity:.7; }
+.otherQuote:focus-within,.otherQuote:hover { opacity:1; }
+.otherLabel { margin-left:auto; font-size:10px; }
+@media(max-width:1050px) { .customerBox { grid-template-columns:1fr; gap:12px; }.customerHeader { display:flex; gap:6px 16px; align-items:baseline; flex-wrap:wrap; }.customerHeader > span { margin:0 0 0 auto; }.desk .customerHeader p { flex-basis:100%; order:1; margin:0; } }
+@media(max-width:750px) { .customerBox { padding:12px; }.customerQuotes { grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); }.desk .quoteTile button { min-height:40px; } }

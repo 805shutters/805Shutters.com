@@ -21,6 +21,11 @@ export type QuoteTableRow = QuoteStatsSource & {
   customer_address?: string | null;
   customer_phone?: string | null;
   customer_email?: string | null;
+  /** Persisted identity links used by the staff customer quote boxes. */
+  customer_id?: string | null;
+  crm_job_id?: string | null;
+  quote_group_id?: string | null;
+  quote_letter?: string | null;
   total_amount?: number | null;
   created_at?: string | null;
   updated_at?: string | null;

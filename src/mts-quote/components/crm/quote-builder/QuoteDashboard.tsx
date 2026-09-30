@@ -42,6 +42,9 @@ import type { ProductLineOrderState } from "@/lib/crm/product-line-ordering";
 import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
+import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
+import { staffQuoteCustomerId } from "@/components/crm/quotes/staff-quote-groups";
+
 interface QuoteDashboardProps {
   staffOverview?: boolean;
   onOpenQuoteTools?: () => void;
@@ -54,6 +57,7 @@ interface QuoteDashboardProps {
   crmBookkeepingRows?: CrmBookkeepingRow[];
   crmCalendarEvents?: CrmCalendarEvent[];
   crmCustomers?: CrmCustomer[];
+  crmCustomerRelationships?: MobileQuoteRelationship[];
   onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
@@ -160,6 +164,7 @@ export function QuoteDashboard({
   crmBookkeepingRows = [],
   crmCalendarEvents = [],
   crmCustomers,
+  crmCustomerRelationships = [],
   onChanged,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
@@ -356,6 +361,10 @@ export function QuoteDashboard({
         live_status: quote.live_status ?? null,
         quote_number: quote.quote_number || quote.quote_label || quote.id.slice(0, 8),
         customer_name: crmQuoteCustomerName(quote, job),
+        crm_job_id: quote.job_id,
+        customer_id: staffQuoteCustomerId(crmCustomerRelationships, quote.job_id, quote.id),
+        quote_group_id: quote.quote_group_id || sourceQuote?.quote_group_id || null,
+        quote_letter: /^[A-Z]+$/.test(quote.quote_label || "") ? quote.quote_label : sourceQuote?.quote_letter || null,
         customer_address: quote.customer_address || job?.address || null,
         customer_phone: quote.customer_phone || job?.phone || null,
         customer_email: quote.customer_email || job?.email || null,
@@ -388,6 +397,7 @@ export function QuoteDashboard({
         ...quote,
         source: "sales" as const,
         sourceQuoteId: quote.id,
+        customer_id: staffQuoteCustomerId(crmCustomerRelationships, null, quote.id),
         salesQuote: quote,
         pendingAlternative: isPendingQuoteAlternative(quote, quotes),
       }));
@@ -401,7 +411,7 @@ export function QuoteDashboard({
       ).getTime();
       return bTime - aTime;
     });
-  }, [crmBookkeepingRows, crmJobs, crmQuotes, quotes]);
+  }, [crmBookkeepingRows, crmCustomerRelationships, crmJobs, crmQuotes, quotes]);
 
   const dashboardCalendarAppointments = useMemo<DashboardCalendarAppointment[]>(() => {
     const crmQuoteIdsByJobId = new Map(

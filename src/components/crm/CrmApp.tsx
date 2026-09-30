@@ -3394,6 +3394,7 @@ export function CrmApp({
           quotes={quotes}
           bookkeepingRows={rows}
           customers={customers}
+          customerRelationships={[...(data?.customerContracts || []), ...(data?.customerProducts || [])]}
           events={events}
           onChanged={refresh}
           onOpenCalendarDate={(date) => {

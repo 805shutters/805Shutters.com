@@ -5,6 +5,8 @@ import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote
 import type { QuoteWorkspaceOpenRequest, QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 import { QuoteWorkspace } from "@mts/QuoteWorkspace";
 
+import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
+
 type Props = {
   session: Session;
   jobs: CrmJob[];
@@ -12,6 +14,7 @@ type Props = {
   bookkeepingRows?: CrmBookkeepingRow[];
   events: CrmCalendarEvent[];
   customers?: CrmCustomer[];
+  customerRelationships?: MobileQuoteRelationship[];
   openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
   onOpenCalendarDate?: (date: string) => void;
@@ -24,6 +27,7 @@ export function QuotesWorkspace({
   bookkeepingRows = [],
   events,
   customers,
+  customerRelationships,
   openRequest,
   onOpenCalendarDate,
   onOpenCrmQuote,
@@ -37,6 +41,7 @@ export function QuotesWorkspace({
       crmBookkeepingRows={bookkeepingRows}
       crmCalendarEvents={events}
       crmCustomers={customers}
+      crmCustomerRelationships={customerRelationships}
       onChanged={onChanged}
       openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}

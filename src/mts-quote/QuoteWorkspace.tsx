@@ -26,6 +26,8 @@ import { PortalContainerContext } from "@mts/lib/portal-container";
 import type { CrmBookkeepingRow, CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { HistoricalQuotePriceLock } from "@/lib/crm/historical-quote-price-lock";
 
+import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
+
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
   { value: "builder", label: "Builder", icon: Hammer, requiresQuote: true },
@@ -41,6 +43,7 @@ type QuoteWorkspaceProps = {
   crmBookkeepingRows?: CrmBookkeepingRow[];
   crmCalendarEvents?: CrmCalendarEvent[];
   crmCustomers?: CrmCustomer[];
+  crmCustomerRelationships?: MobileQuoteRelationship[];
   openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
@@ -62,6 +65,7 @@ export function QuoteWorkspace({
   crmBookkeepingRows = [],
   crmCalendarEvents = [],
   crmCustomers,
+  crmCustomerRelationships,
   openRequest,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
@@ -201,6 +205,7 @@ export function QuoteWorkspace({
                 crmBookkeepingRows={crmBookkeepingRows}
                 crmCalendarEvents={crmCalendarEvents}
                 crmCustomers={crmCustomers}
+                crmCustomerRelationships={crmCustomerRelationships}
                 searchQuery={quoteSearch}
                 onClearSearch={() => setQuoteSearch("")}
                 onChanged={onChanged}
