@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const date = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(start);
   const time = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }).format(start);
   try {
-    portrait ??= readFile(path.join(process.cwd(), "public", bookingConsultant.photoSrc)).then(data => `data:image/png;base64,${data.toString("base64")}`).catch(error => { portrait = undefined; throw error; });
+    portrait ??= readFile(path.join(process.cwd(), "public/images/team/jessica-design-consultant.png")).then(data => `data:image/png;base64,${data.toString("base64")}`).catch(error => { portrait = undefined; throw error; });
     const photo = await portrait;
     return new ImageResponse(
       <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: "#f8f6f0", color: "#152e40", fontFamily: "sans-serif" }}>
