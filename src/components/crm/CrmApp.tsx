@@ -137,7 +137,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
+type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -3406,8 +3406,10 @@ export function CrmApp({
         </div>
       ) : null}
 
-      {activeTab === "quotes" && session ? (
+      {(activeTab === "quotes" || activeTab === "followups") && session ? (
         <QuotesWorkspace
+          key={activeTab}
+          followUps={activeTab === "followups"}
           session={session}
           jobs={jobs}
           quotes={quotes}

@@ -46,6 +46,7 @@ import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
 import { staffQuoteCustomerId } from "@/components/crm/quotes/staff-quote-groups";
 
 interface QuoteDashboardProps {
+  initialFilter?: StatsFilter;
   staffOverview?: boolean;
   onOpenQuoteTools?: () => void;
   quoteOperatorMode?: boolean;
@@ -154,6 +155,7 @@ function appointmentSortKey(appointment: DashboardCalendarAppointment): string {
 }
 
 export function QuoteDashboard({
+  initialFilter = "all",
   staffOverview = false,
   onOpenQuoteTools,
   quoteOperatorMode = false,
@@ -172,7 +174,7 @@ export function QuoteDashboard({
 }: QuoteDashboardProps) {
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
-  const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<StatsFilter>(initialFilter);
   const isSearching = Boolean(searchQuery.trim());
   const effectiveFilter = isSearching ? "all" : activeFilter;
 

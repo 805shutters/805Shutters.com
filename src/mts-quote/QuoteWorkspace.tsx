@@ -36,6 +36,7 @@ const tabs = [
 ] as const;
 
 type QuoteWorkspaceProps = {
+  followUps?: boolean;
   /** Opt-in staff CRM list; the standalone quote system keeps its original UI. */
   staffOverview?: boolean;
   crmJobs?: CrmJob[];
@@ -59,6 +60,7 @@ export type QuoteWorkspaceOpenRequest = {
 };
 
 export function QuoteWorkspace({
+  followUps = false,
   staffOverview = false,
   crmJobs = [],
   crmQuotes = [],
@@ -78,6 +80,13 @@ export function QuoteWorkspace({
   const [quoteSearch, setQuoteSearch] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { activeTab, setActiveTab, activeQuoteId, setActiveQuote, setAccountId } = useQuoteBuilderStore();
+
+  useEffect(() => {
+    if (followUps) {
+      setAccountId(ACCOUNT_IDS.SHUTTERS_805);
+      setActiveTab("dashboard");
+    }
+  }, [followUps, setAccountId, setActiveTab]);
 
   useEffect(() => {
     if (!openRequest?.quoteId) return;
@@ -197,6 +206,7 @@ export function QuoteWorkspace({
           <div>
             {effectiveTab === "dashboard" && (
               <QuoteDashboard
+                initialFilter={followUps ? "sent" : "all"}
                 staffOverview={staffOverview && !showQuoteTools}
                 quoteOperatorMode={false}
                 newQuoteRequest={newQuoteRequest}

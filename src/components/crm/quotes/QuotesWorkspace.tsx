@@ -8,6 +8,7 @@ import { QuoteWorkspace } from "@mts/QuoteWorkspace";
 import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
 
 type Props = {
+  followUps?: boolean;
   session: Session;
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -22,6 +23,7 @@ type Props = {
 };
 
 export function QuotesWorkspace({
+  followUps = false,
   jobs,
   quotes,
   bookkeepingRows = [],
@@ -35,7 +37,8 @@ export function QuotesWorkspace({
 }: Props) {
   return (
     <QuoteWorkspace
-      staffOverview
+      staffOverview={!followUps}
+      followUps={followUps}
       crmJobs={jobs}
       crmQuotes={quotes}
       crmBookkeepingRows={bookkeepingRows}
@@ -43,7 +46,7 @@ export function QuotesWorkspace({
       crmCustomers={customers}
       crmCustomerRelationships={customerRelationships}
       onChanged={onChanged}
-      openRequest={openRequest}
+      openRequest={followUps ? null : openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}
       onOpenCrmQuote={onOpenCrmQuote}
     />
