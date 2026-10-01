@@ -28,6 +28,12 @@ describe("server follow-up sale checks", () => {
     const sales = from.mock.results.find((_,i) => from.mock.calls[i][0] === "sales_quotes")!.value;
     expect(sales.eq).toHaveBeenCalledWith("account_id","72ccf12a-11c0-4261-8ad0-31af8ad0bbfb");
   });
+  it("loads quote names through jobs rather than selecting a nonexistent quote column", async () => {
+    const {db,from} = database();
+    await loadFollowUpEligibleQuoteIds(db);
+    const quotes = from.mock.results.find((_,i) => from.mock.calls[i][0] === "crm_quotes")!.value;
+    expect(quotes.select.mock.calls[0][0].split(",")).not.toContain("customer_name");
+  });
   it.each(["crm_jobs","crm_quotes","sales_quotes","crm_customer_contracts","crm_customer_products","crm_customers","crm_quote_bookkeeping_entries"])(
     "fails closed when %s cannot be checked", async table => {
       await expect(loadFollowUpEligibleQuoteIds(database(table).db)).rejects.toMatchObject({status:502});
