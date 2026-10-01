@@ -1040,7 +1040,7 @@ export function QuoteDashboard({
 
           {/* Contracts Section */}
           <ContractsSection
-            quotes={filteredQuotes}
+            quotes={showCommunicationHub ? followUpQuotes : filteredQuotes}
             onOpenContract={openQuoteRowInBuilder}
           />
         </>
