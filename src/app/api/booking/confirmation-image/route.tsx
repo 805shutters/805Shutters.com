@@ -49,7 +49,6 @@ export async function GET(request: Request) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={companyLogo} alt="805 Shutters" width={182} height={119} />
           <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 10, borderLeft: "1px solid #d6d6d6", paddingLeft: 34 }}>
-            <div style={{ display: "flex", fontSize: 25, fontWeight: 700 }}>{brandIdentity.name}</div>
             <div style={{ display: "flex", fontSize: 23 }}>{brandIdentity.phoneDisplay}</div>
             <div style={{ display: "flex", fontSize: 21 }}>{brandIdentity.domain}</div>
             <div style={{ display: "flex", fontSize: 21 }}>{brandIdentity.email}</div>
