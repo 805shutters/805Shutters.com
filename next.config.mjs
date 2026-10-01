@@ -263,7 +263,7 @@ const trailingSlashRedirects = [
 const nextConfig = {
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core", "pdf-parse", "@napi-rs/canvas"],
   outputFileTracingIncludes: {
-    "/api/booking/confirmation-image": ["./public/images/team/jessica-design-consultant.png"],
+    "/api/booking/confirmation-image": ["./public/images/team/jessica-design-consultant.png", "./public/brand/805-shutters-logo-header.png"],
     "/api/cron/customer-signed-contract-email": ["./node_modules/@sparticuz/chromium/bin/**/*"],
     "/api/crm/quote-hub/**/*": [
       "./public/images/homepage-flow/mobile-hero-plantation-shutters.jpg",

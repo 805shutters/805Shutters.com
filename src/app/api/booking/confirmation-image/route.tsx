@@ -7,6 +7,7 @@ import { brandIdentity } from "@/lib/brand-identity";
 
 export const runtime = "nodejs";
 let portrait: Promise<string> | undefined;
+let logo: Promise<string> | undefined;
 
 /** Design B: date first, then the same approved portrait and bio as the web. */
 export async function GET(request: Request) {
@@ -16,7 +17,8 @@ export async function GET(request: Request) {
   const time = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit" }).format(start);
   try {
     portrait ??= readFile(path.join(process.cwd(), "public/images/team/jessica-design-consultant.png")).then(data => `data:image/png;base64,${data.toString("base64")}`).catch(error => { portrait = undefined; throw error; });
-    const photo = await portrait;
+    logo ??= readFile(path.join(process.cwd(), "public/brand/805-shutters-logo-header.png")).then(data => `data:image/png;base64,${data.toString("base64")}`).catch(error => { logo = undefined; throw error; });
+    const [photo, companyLogo] = await Promise.all([portrait, logo]);
     return new ImageResponse(
       <div style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", background: "#f8f6f0", color: "#152e40", fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", flexDirection: "column", background: "#526957", color: "#ffffff", padding: "44px 48px", gap: 18 }}>
@@ -32,21 +34,29 @@ export async function GET(request: Request) {
           <div style={{ display: "flex", fontSize: 23 }}>Free in-home consultation</div>
         </div>
         <div style={{ display: "flex", margin: "0 48px", height: 2, background: "#b69a59" }} />
-        <div style={{ display: "flex", padding: "34px 48px", gap: 26, flex: 1, alignItems: "flex-start" }}>
+        <div style={{ display: "flex", flexDirection: "column", padding: "30px 48px", gap: 22, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo} alt="Jessica, your design consultant" width={180} height={180} style={{ borderRadius: "50%", objectFit: "cover" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", fontSize: 36, fontWeight: 700 }}>Meet {bookingConsultant.name}</div>
+              <div style={{ display: "flex", fontSize: 24, color: "#526957" }}>{bookingConsultant.role}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", fontSize: 26, lineHeight: 1.35 }}>{bookingConsultant.bio}</div>
+        </div>
+        <div style={{ display: "flex", background: "#ffffff", color: "#111111", alignItems: "center", padding: "28px 48px", gap: 42, borderTop: "2px solid #b69a59" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt="Jessica, your design consultant" width={142} height={142} style={{ borderRadius: "50%", objectFit: "cover" }} />
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 10 }}>
-            <div style={{ display: "flex", fontSize: 33, fontWeight: 700 }}>Meet {bookingConsultant.name}</div>
-            <div style={{ display: "flex", fontSize: 21, color: "#526957" }}>{bookingConsultant.role}</div>
-            <div style={{ display: "flex", fontSize: 26, lineHeight: 1.35 }}>{bookingConsultant.bio}</div>
+          <img src={companyLogo} alt="805 Shutters" width={182} height={119} />
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, gap: 10, borderLeft: "1px solid #d6d6d6", paddingLeft: 34 }}>
+            <div style={{ display: "flex", fontSize: 25, fontWeight: 700 }}>{brandIdentity.name}</div>
+            <div style={{ display: "flex", fontSize: 23 }}>{brandIdentity.phoneDisplay}</div>
+            <div style={{ display: "flex", fontSize: 21 }}>{brandIdentity.domain}</div>
+            <div style={{ display: "flex", fontSize: 21 }}>{brandIdentity.email}</div>
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", background: "#152e40", color: "#ffffff", alignItems: "center", padding: "28px 36px", gap: 10 }}>
-          <div style={{ display: "flex", fontSize: 32, letterSpacing: 7 }}>805 SHUTTERS</div>
-          <div style={{ display: "flex", fontSize: 20 }}>{brandIdentity.domain} · {brandIdentity.phone}</div>
-        </div>
       </div>,
-      { width: 800, height: 980, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Robots-Tag": "noindex, nofollow" } },
+      { width: 800, height: 1080, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Robots-Tag": "noindex, nofollow" } },
     );
   } catch {
     return new Response("Confirmation image unavailable", { status: 503 });
