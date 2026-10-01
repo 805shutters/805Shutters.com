@@ -59,6 +59,7 @@ export async function sendSms(input: {
   to: string | null | undefined;
   body: string;
   statusCallback?: string | null;
+  mediaUrls?: readonly string[];
   timeoutMs?: number;
 }): Promise<SmsResult> {
   const to = toE164(input.to);
@@ -74,6 +75,7 @@ export async function sendSms(input: {
     params.set("From", process.env.TWILIO_FROM_PHONE as string);
   }
   if (input.statusCallback) params.set("StatusCallback", input.statusCallback);
+  for (const url of input.mediaUrls || []) params.append("MediaUrl", url);
 
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {

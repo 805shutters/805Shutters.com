@@ -120,3 +120,18 @@ describe("Twilio webhook signatures", () => {
     })).toBe(false);
   });
 });
+
+describe("MMS media transport", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+  it("attaches images while preserving body, sender, callback, and provider status", async () => {
+    vi.stubEnv("TWILIO_ACCOUNT_SID", "ACtest");vi.stubEnv("TWILIO_AUTH_TOKEN", "test");vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", "MGtest");
+    const fetchMock=vi.fn().mockResolvedValue(new Response(JSON.stringify({sid:"MMtest",status:"queued"}),{status:201}));
+    vi.stubGlobal("fetch",fetchMock);
+    const result=await sendSms({to:"8055550100",body:"Confirmed",mediaUrls:["https://example.test/card.png"],statusCallback:"https://example.test/status"});
+    const form=new URLSearchParams(fetchMock.mock.calls[0][1].body);
+    expect(form.getAll("MediaUrl")).toEqual(["https://example.test/card.png"]);
+    expect(form.get("Body")).toBe("Confirmed");expect(form.get("MessagingServiceSid")).toBe("MGtest");
+    expect(form.get("StatusCallback")).toBe("https://example.test/status");
+    expect(result).toEqual({sent:true,sid:"MMtest",providerStatus:"queued"});
+  });
+});

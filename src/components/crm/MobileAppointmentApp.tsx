@@ -848,6 +848,8 @@ function AddAppointmentSheet({
             Notes
             <textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring..." />
           </label>
+          <label style={{ display: "flex", alignItems: "center", gap: 10 }}><input style={{ width: 18, height: 18, minHeight: 18, padding: 0 }} type="checkbox" name="send_customer_confirmation" defaultChecked /> Send customer confirmation</label>
+          <p>Jessica’s consultations include her photo and introduction.</p>
           </fieldset>
           <div className="mobile-crm-sheet-actions">
             <button type="submit" className="mobile-crm-primary-action" disabled={busy}>
@@ -991,10 +993,11 @@ export function MobileAppointmentApp() {
         const { job } = await crmFetch<{ job: { id: string } }>(session, "/api/crm/jobs", { method: "POST", body: jobPayload });
         pendingBookingJob.current = { id: job.id, payload: jobPayload };
       }
-      await crmFetch<{ event: MobileAppointment }>(session, "/api/crm/calendar", {
+      const { event: savedAppointment } = await crmFetch<{ event: MobileAppointment & { customerConfirmation?: { sent: boolean } } }>(session, "/api/crm/calendar", {
         method: "POST",
         body: JSON.stringify({
           job_id: pendingBookingJob.current.id,
+          send_customer_confirmation: formData.get("send_customer_confirmation") === "on",
           title: `${customerName} consultation`,
           event_type: "sales_consult",
           assigned_to: assignedTo,
@@ -1011,7 +1014,7 @@ export function MobileAppointmentApp() {
       setOwnerFilter("All");
       pendingBookingJob.current = null;
       await loadAppointments(session, rangeForView(date, view));
-      setBookingNotice("Appointment saved.");
+      setBookingNotice(savedAppointment.customerConfirmation?.sent ? "Appointment saved. Customer confirmation accepted for sending." : "Appointment saved. Customer confirmation was not sent.");
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : "Appointment could not be saved.");
     } finally {

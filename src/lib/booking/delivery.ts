@@ -3,6 +3,7 @@ import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
 import type { MetaSource } from "@/lib/meta-booking-alert";
 import { sendSms } from "@/lib/notify/twilio";
+import { sendAppointmentConfirmation } from "./confirmation-message";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { syncAppointmentToGoogleCalendars } from "@/lib/google/calendar";
 import { syncSelfBookingCustomerDetails } from "./customer-snapshot";
@@ -152,17 +153,7 @@ async function sendSmsConfirmation({
   productInterest: string;
   productTypes: string[];
 }) {
-  const body = [
-    "805 Shutters appointment confirmation.",
-    `Your free in-home consultation is confirmed for ${formatAppointmentForSms(startAt)}.`,
-    productTypes.length ? `Product interest: ${productInterest}.` : null,
-    "We look forward to meeting you.",
-    officialContactLine,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return sendSmsMessage({ to: phone, body });
+  return sendAppointmentConfirmation({ phone, startAt, assignedTo: "Jessica", productInterest: productTypes.length ? productInterest : undefined });
 }
 
 async function sendStaffSmsAlerts(details: BookingAutomationDetails) {

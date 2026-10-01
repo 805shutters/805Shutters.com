@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/booking/confirmation-message", () => ({ sendAppointmentConfirmation: vi.fn(async () => ({sent: true, sid: "MMtest", providerStatus: "queued"})) }));
+import { sendAppointmentConfirmation } from "@/lib/booking/confirmation-message";
+
 vi.mock("./sold-installer-delivery", () => ({
   ensureSoldQuoteInstallerDelivery: vi.fn(async () => null),
 }));
@@ -2248,6 +2251,24 @@ describe("rescheduleCrmCalendarEvent admin override", () => {
       expect(JSON.stringify(rpcCalls)).not.toContain("forged");
       expect(inserts.at(-1)?.payload).toMatchObject({ action: "create", actor_email: actor.email });
     }
+  });
+
+  it("sends a requested confirmation only after a future consultation is saved", async () => {
+    vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+    vi.mocked(sendAppointmentConfirmation).mockClear();
+    try {
+      const existing = job({phone: "8055550101", customer_name: "Verified Customer"});
+      const {supabase,inserts} = calendarCancelRecorder({event, job:existing});
+      const saved = await createCrmCalendarEvent(supabase, {...event, job_id:existing.id, existing_customer:true, appointment_customer:{phone:"8055550102"},send_customer_confirmation:true},actor);
+      expect(sendAppointmentConfirmation).toHaveBeenCalledWith(expect.objectContaining({phone:"8055550102",startAt:event.start_at,assignedTo:"Jessica"}));
+      expect(saved.customerConfirmation).toMatchObject({sent:true,providerStatus:"queued"});
+      expect(inserts.at(-1)?.payload).toMatchObject({metadata:{customerConfirmation:{sent:true}}});
+      for (const patch of [{send_customer_confirmation:false},{event_type:"measure"},{status:"canceled"},{start_at:"2020-01-01T17:00:00Z",end_at:"2020-01-01T18:00:00Z"}]) {
+        vi.mocked(sendAppointmentConfirmation).mockClear();
+        await createCrmCalendarEvent(calendarCancelRecorder({event}).supabase,{...event,send_customer_confirmation:true,...patch},actor);
+        expect(sendAppointmentConfirmation).not.toHaveBeenCalled();
+      }
+    } finally { vi.unstubAllEnvs(); }
   });
 
   it("links a return visit without reopening or rescheduling the existing job", async () => {

@@ -7,12 +7,8 @@ import { brandIdentity } from "@/lib/brand-identity";
 import { googleCalendarUrl } from "@/lib/booking/google-calendar";
 import styles from "./ConsultationConfirmation.module.css";
 
-export const bookingConsultant = {
-  name: "Jessica",
-  role: "Design consultant",
-  bio: "Jessica brings nine years of design consulting experience to help you find the right window treatments for your home. From shutters to shades and drapery, she’ll guide you through light control, privacy, insulation, and material choices that suit your style.",
-  photoSrc: "/images/team/jessica-design-consultant.png",
-};
+import { bookingConsultant } from "@/lib/booking/consultant";
+export { bookingConsultant } from "@/lib/booking/consultant";
 
 function ConsultantPortrait({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false);

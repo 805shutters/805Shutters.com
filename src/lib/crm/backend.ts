@@ -37,6 +37,8 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
 import { hydrateLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
+import { sendAppointmentConfirmation } from "@/lib/booking/confirmation-message";
+import { isBookingDeliveryEnabled } from "@/lib/booking/delivery-config";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
   deleteSyncedGoogleCalendarEvents,
@@ -2726,6 +2728,18 @@ export async function createCrmCalendarEvent(
     productInterest: appointmentCustomer?.productInterest || linkedJob?.product_interest || null
   });
 
+  // Explicit form choice only; legacy callers and non-consultation events do
+  // not start sending customer messages. Failure must not undo a saved visit.
+  const customerConfirmation = payload.send_customer_confirmation === true
+    && eventType === "sales_consult" && record.status === "scheduled"
+    && startDate.getTime() > Date.now() && isBookingDeliveryEnabled()
+    ? await sendAppointmentConfirmation({
+        phone: appointmentCustomer?.phone || linkedJob?.phone,
+        startAt: startDate.toISOString(), assignedTo,
+        productInterest: appointmentCustomer?.productInterest || linkedJob?.product_interest || undefined,
+      }).catch(() => ({ sent: false, error: "Customer confirmation unavailable" }))
+    : { sent: false, skipped: "Customer confirmation not requested or unavailable" };
+
   await recordCrmActivity(supabase, actor, {
     entityType: "calendar_event",
     entityId: data.id,
@@ -2734,12 +2748,13 @@ export async function createCrmCalendarEvent(
     metadata: {
       jobId: payload.job_id || null,
       assignedSalespersonSms,
+      customerConfirmation,
       googleCalendarSynced: googleCalendarSync.synced,
       googleCalendarSync: googleCalendarSync.results
     }
   });
 
-  return data as CrmCalendarEvent;
+  return { ...data, customerConfirmation } as CrmCalendarEvent & { customerConfirmation: typeof customerConfirmation };
 }
 
 export async function rescheduleCrmCalendarEvent(

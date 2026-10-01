@@ -2550,10 +2550,11 @@ export function CrmApp({
         })
       });
 
-      await crmFetch<{ event: CrmCalendarEvent }>(session, "/api/crm/calendar", {
+      const { event: savedAppointment } = await crmFetch<{ event: CrmCalendarEvent & { customerConfirmation?: { sent: boolean; error?: string; skipped?: string } } }>(session, "/api/crm/calendar", {
         method: "POST",
         body: JSON.stringify({
           job_id: job.id,
+          send_customer_confirmation: formData.get("send_customer_confirmation") === "on",
           existing_customer: Boolean(existingJobId),
           appointment_customer: existingJobId ? { name: customerName, phone, email, address, city, productInterest, leadSource: formString(formData, "lead_source") } : undefined,
           title: `${customerName} consultation`,
@@ -2569,6 +2570,7 @@ export function CrmApp({
       form.reset();
       setSelectedCalendarSlot(null);
       await refresh();
+      setMessage(savedAppointment.customerConfirmation?.sent ? "Appointment saved. Customer confirmation accepted for sending." : "Appointment saved. Customer confirmation was not sent.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointment could not be saved.");
       await refresh();
@@ -14628,6 +14630,8 @@ function CalendarAppointmentModal({
               <summary>Add job notes</summary>
               <label>Job notes<textarea name="notes" defaultValue={customer?.notes || ""} rows={3} placeholder="Gate code, rooms, samples to bring…" /></label>
             </details>
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}><input style={{ width: 18, height: 18, minHeight: 18, padding: 0 }} type="checkbox" name="send_customer_confirmation" defaultChecked /> Send customer confirmation</label>
+            <p>Jessica’s consultations include her photo and introduction.</p>
             <p className={appointmentStyles.notice} id="crm-slot-booking-notice">
               <span aria-hidden="true">ⓘ</span> Manual booking overrides travel time, appointment conflicts, and public availability restrictions.
             </p>

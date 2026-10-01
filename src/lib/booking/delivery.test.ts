@@ -82,11 +82,14 @@ it("sends a current booking and records provider acceptance", async () => {
   vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account");
   vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token");
   vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
-  const fetch = vi.fn().mockResolvedValue(new Response('{}', { status: 201 }));
+  const fetch = vi.fn().mockResolvedValue(new Response('{"sid":"SMconfirmation","status":"queued"}', { status: 201 }));
   vi.stubGlobal("fetch", fetch);
   const { supabase, updates } = outboxClient("customer_sms", { start_at: details.startAt, end_at: details.endAt, status: "scheduled" });
   await processBookingOutbox(supabase);
   expect(fetch).toHaveBeenCalledTimes(1);
+  const form = new URLSearchParams(fetch.mock.calls[0][1].body);
+  expect(form.get("MediaUrl")).toContain("/api/booking/confirmation-image/?start=");
+  expect(form.get("Body")).toContain("with Jessica");
   expect(updates).toContainEqual(expect.objectContaining({ status: "sent" }));
 });
 
