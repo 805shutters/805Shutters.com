@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const {supabase} = await context(request);
     const prior = await latest(supabase);
     const result = prior?.after_data as {sid?:string} | undefined;
-    if (!result?.sid || !/^SM[0-9a-f]{32}$/i.test(result.sid)) return NextResponse.json({result:prior?.after_data ?? null});
+    if (!result?.sid || !/^(?:SM|MM)[0-9a-f]{32}$/i.test(result.sid)) return NextResponse.json({result:prior?.after_data ?? null});
     const account = process.env.TWILIO_ACCOUNT_SID;
     const token = process.env.TWILIO_AUTH_TOKEN;
     if (!account || !token) return NextResponse.json({result});
