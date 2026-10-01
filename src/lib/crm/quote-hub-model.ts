@@ -168,7 +168,7 @@ export function hubTemplate(
   }[action];
   return {
     subject: content[0],
-    body: `Hi ${first},\n\n${content[1]}\n\nMichael\n805 Shutters`,
+    body: `Hi ${first},\n\n${content[1]}\n\nJessica\n805 Shutters`,
   };
 }
 export function validateHubDraft(value: unknown): HubDraft {

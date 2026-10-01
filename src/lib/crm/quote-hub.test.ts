@@ -60,6 +60,12 @@ describe("sent quote communication", () => {
       ),
     ).toThrow();
   });
+  it.each(["interested", "savings", "inspiration", "personal"] as const)(
+    "signs the %s template as Jessica",
+    (action) => {
+      expect(hubTemplate(action, "Paul Lee").body).toMatch(/\n\nJessica\n805 Shutters$/);
+    },
+  );
   it("creates distinct editable templates", () => {
     expect(hubTemplate("interested", "Paul Lee").body).toContain("Hi Paul");
     expect(hubTemplate("inspiration", "Paul Lee").body).toContain("photos");
