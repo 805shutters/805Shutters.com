@@ -14,8 +14,8 @@ export async function loadFollowUpEligibleQuoteIds(db: SupabaseClient): Promise<
     ["products", "crm_customer_products", "id,customer_id,job_id,quote_id,bookkeeping_entry_id,status,meta"],
     ["entries", "crm_quote_bookkeeping_entries", "id,job_id,quote_id,sold_date,meta"],
   ] as const;
-  const results = await Promise.all(definitions.map(async ([key, table, columns]) => {
-    const result = await loadCompleteCrmTable(db, table, "id", columns, "id", table === "sales_quotes"
+  const results = await Promise.all(definitions.map(async ([key, table]) => {
+    const result = await loadCompleteCrmTable(db, table, "id", "*", "id", table === "sales_quotes"
       ? [{ column: "account_id", value: "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb" }] : []);
     if (result.error) throw new CrmAuthError(502, "Sold-customer checks could not be completed. Please retry before following up.");
     return [key, result.data as FollowUpRecord[]] as const;
