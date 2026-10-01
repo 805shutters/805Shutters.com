@@ -46,6 +46,7 @@ import type { MobileQuoteRelationship } from "@/lib/crm/mobile-quotes";
 import { staffQuoteCustomerId } from "@/components/crm/quotes/staff-quote-groups";
 
 interface QuoteDashboardProps {
+  followUps?: boolean;
   initialFilter?: StatsFilter;
   staffOverview?: boolean;
   onOpenQuoteTools?: () => void;
@@ -156,6 +157,7 @@ function appointmentSortKey(appointment: DashboardCalendarAppointment): string {
 
 export function QuoteDashboard({
   initialFilter = "all",
+  followUps = false,
   staffOverview = false,
   onOpenQuoteTools,
   quoteOperatorMode = false,
@@ -874,7 +876,7 @@ export function QuoteDashboard({
     createQuoteFromAppointment.mutate(appointment);
   };
 
-  const showCommunicationHub = !isSearching && activeFilter === "sent" && activeAccountId === ACCOUNT_IDS.SHUTTERS_805;
+  const showCommunicationHub = (followUps || (!isSearching && activeFilter === "sent")) && activeAccountId === ACCOUNT_IDS.SHUTTERS_805;
   const hubReadiness = useQuery({
     queryKey: ["quote-hub-readiness", activeAccountId],
     enabled: showCommunicationHub,
@@ -889,6 +891,24 @@ export function QuoteDashboard({
       return await response.json() as { ready: boolean };
     },
   });
+
+  const hubEligibility = useQuery({
+    queryKey: ["quote-hub-eligibility", activeAccountId, dashboardQuotes.map(q => [q.id, q.status, q.updated_at])],
+    enabled: showCommunicationHub,
+    staleTime: 0,
+    refetchInterval: 30_000,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch("/api/crm/quote-hub/eligibility", {
+        headers: { Authorization: `Bearer ${data.session?.access_token || ""}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Sold-customer checks could not be completed.");
+      return await response.json() as { eligibleQuoteIds: string[] };
+    },
+  });
+  const followUpQuotes = hubEligibility.isError ? [] : filteredQuotes.filter(quote => hubEligibility.data?.eligibleQuoteIds?.includes(quote.id));
 
   const statsBar = (
     <QuoteStatsBar
@@ -991,12 +1011,17 @@ export function QuoteDashboard({
               <Button variant="ghost" size="sm" disabled={hubReadiness.isFetching} onClick={() => void hubReadiness.refetch()}>Check again</Button>
             </p>
           )}
+          {showCommunicationHub && hubEligibility.isError && (
+            <p role="alert">Sold-customer checks could not be completed. Follow-ups are paused.
+              <Button variant="ghost" size="sm" onClick={() => void hubEligibility.refetch()}>Retry checks</Button>
+            </p>
+          )}
           {showCommunicationHub && hubReadiness.data?.ready ? (
-            <QuoteCommunicationHub quotes={filteredQuotes} isLoading={isLoading} onOpenQuote={handleOpenQuote} onChanged={onChanged} />
+            <QuoteCommunicationHub quotes={followUpQuotes} isLoading={isLoading || hubEligibility.isPending} onOpenQuote={handleOpenQuote} onChanged={onChanged} />
           ) : (
           <QuotesTable
-            quotes={filteredQuotes}
-            isLoading={isLoading}
+            quotes={showCommunicationHub ? followUpQuotes : filteredQuotes}
+            isLoading={isLoading || (showCommunicationHub && (hubEligibility.isPending || hubReadiness.isPending))}
             onOpen={handleOpenQuote}
             onPortfolio={(quote) => {
               if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);

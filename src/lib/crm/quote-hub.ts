@@ -1,3 +1,4 @@
+import { loadFollowUpEligibleQuoteIds } from "./quote-hub-eligibility-server";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -102,29 +103,9 @@ async function assertContactable(db: SupabaseClient, quote: CrmQuote) {
     quote.archived_at
   )
     return "This quote is no longer an unsigned sent quote.";
-  if (quote.quote_group_id) {
-    const { data, error } = await db
-      .from("crm_quotes")
-      .select("id,status,signed_at")
-      .eq("quote_group_id", quote.quote_group_id);
-    check(error);
-    if (
-      data?.some(
-        (q) =>
-          q.signed_at ||
-          [
-            "sold",
-            "approved",
-            "ordered",
-            "received",
-            "installed",
-            "invoiced",
-            "paid",
-          ].includes(q.status),
-      )
-    )
-      return "A quote in this group has already sold.";
-  }
+  const eligibleIds = await loadFollowUpEligibleQuoteIds(db);
+  if (!eligibleIds.includes(quote.id))
+    return "This customer or a linked contract has already sold. Sales follow-ups are blocked.";
   return null;
 }
 async function photoList(

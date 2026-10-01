@@ -207,6 +207,7 @@ export function QuoteWorkspace({
             {effectiveTab === "dashboard" && (
               <QuoteDashboard
                 initialFilter={followUps ? "sent" : "all"}
+                followUps={followUps}
                 staffOverview={staffOverview && !showQuoteTools}
                 quoteOperatorMode={false}
                 newQuoteRequest={newQuoteRequest}

@@ -287,12 +287,12 @@ export function QuoteCommunicationHub({
       setNotice("Photo added to this conversation.");
     });
   }
-  if (isLoading) return <div className={styles.hub}>Loading sent quotes…</div>;
+  if (isLoading) return <div className={styles.hub}>Checking unsold customers…</div>;
   if (!quote)
     return (
       <div className={styles.hub}>
-        <h2>Sent quotes</h2>
-        <p>No sent quotes yet.</p>
+        <h2>Unsold follow-ups</h2>
+        <p>No unsold customers are eligible for follow-up.</p>
       </div>
     );
 
@@ -300,8 +300,8 @@ export function QuoteCommunicationHub({
     <section className={styles.hub} aria-label="Sent quote communication hub">
       <header className={styles.heading}>
         <div>
-          <h2>Sent quotes</h2>
-          <p>A little follow-up. A real conversation.</p>
+          <h2>Unsold follow-ups</h2>
+          <p>Sent quotes for customers who have not purchased.</p>
         </div>
         <span>{quotes.length} quotes</span>
       </header>
