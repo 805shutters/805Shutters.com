@@ -37,7 +37,7 @@ export async function GET(request: Request) {
         <div style={{ display: "flex", flexDirection: "column", padding: "30px 48px", gap: 22, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 30 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo} alt="Jessica, your design consultant" width={180} height={180} style={{ borderRadius: "50%", objectFit: "cover" }} />
+            <img src={photo} alt="Jessica, your design consultant" width={210} height={280} style={{ borderRadius: 8, objectFit: "contain" }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", fontSize: 36, fontWeight: 700 }}>Meet {bookingConsultant.name}</div>
               <div style={{ display: "flex", fontSize: 24, color: "#526957" }}>{bookingConsultant.role}</div>
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
           </div>
         </div>
       </div>,
-      { width: 800, height: 1080, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Robots-Tag": "noindex, nofollow" } },
+      { width: 800, height: 1180, headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400", "X-Robots-Tag": "noindex, nofollow" } },
     );
   } catch {
     return new Response("Confirmation image unavailable", { status: 503 });
