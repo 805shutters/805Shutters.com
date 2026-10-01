@@ -5976,7 +5976,17 @@ export function DesignCard({
             </div>
           </div>
           <div className="quote-line-card-summary">
-            {/* Sqft + editable $/sqft for shutters */}
+            <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
+                unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal}
+                issue={authoritativeV2 || normanServerPricing ? authoritativePriceError :
+                  !isPriceLocked && currentOptions.manual_price_override !== true && legacyPricingBlockReason
+                    ? pricingBlockReasonMessage(legacyPricingBlockReason) : null}
+                roomName={lineItem.room_name}
+                manualPrice={currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
+                onSave={(price) => onSaveLinePrice(activeVariant, price)}
+                notPriced={authoritativeV2 && !currentDesign}
+                leadingContent={<>
+                  {/* Sqft + editable $/sqft for shutters */}
             {!mobilePresentation && isShutters && sqft !== null && currentRetailPerSqft !== null && (
               <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
                 <ShutterBillableAreaLabel
@@ -6044,22 +6054,14 @@ export function DesignCard({
                 )}
               </div>
             )}
-            <div className="quote-line-price-readout">
-              {authoritativeV2 && !currentDesign ? <p className="text-lg font-bold text-amber-900">Not priced</p> : <QuoteLinePriceReadout key={`${lineItem.id}-${activeVariant}`}
-                unitPrice={displayedUnitPrice} lineTotal={displayedLineTotal}
-                issue={authoritativeV2 || normanServerPricing ? authoritativePriceError :
-                  !isPriceLocked && currentOptions.manual_price_override !== true && legacyPricingBlockReason
-                    ? pricingBlockReasonMessage(legacyPricingBlockReason) : null}
-                roomName={lineItem.room_name}
-                manualPrice={currentOptions.manual_price_override === true ? manualMerchandisePriceForDisplay(currentDesign, displayedUnitPrice) : null}
-                onSave={(price) => onSaveLinePrice(activeVariant, price)} />}
+                </>}
+                controls={<>
               {!mobilePresentation && !authoritativeV2 && !normanServerPricing && isPriceLocked && (
                 <Button type="button" variant="outline" size="sm" onClick={handleRecalculateLockedPrice}
                   className="mt-1 h-8 text-xs" title="Recalculate this locked contract line">
                   <Calculator className="mr-1 h-3.5 w-3.5" />Reprice
                 </Button>
               )}
-            </div>
             <label className="quote-line-quantity-control" title="Line item quantity">
               <span>Qty</span>
               <input
@@ -6109,6 +6111,8 @@ export function DesignCard({
                 </SelectContent>
               </Select>
             )}
+                </>}
+                actions={<>
             {onCopyItem && (
               <Button
                 variant="ghost"
@@ -6131,6 +6135,7 @@ export function DesignCard({
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
+                </>} />
           </div>
         </div>
       </CardHeader>

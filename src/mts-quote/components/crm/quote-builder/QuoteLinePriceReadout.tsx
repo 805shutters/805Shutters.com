@@ -1,34 +1,59 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { Pencil } from "lucide-react";
 import { AutomaticPricingNotice } from "./AutomaticPricingNotice";
 import { LineItemPriceInput } from "./LineItemPriceInput";
 
 const money = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-/** Keep a failed calculation unpriced until staff explicitly saves a custom amount. */
-export function QuoteLinePriceReadout({ unitPrice, lineTotal, issue, roomName, manualPrice, onSave }: {
+/** A compact summary with an explicit-save drawer; failed calculations stay unpriced. */
+export function QuoteLinePriceReadout({ unitPrice, lineTotal, issue, roomName, manualPrice, onSave,
+  leadingContent, controls, actions, notPriced = false }: {
   unitPrice: number;
   lineTotal: number;
   issue: string | null;
   roomName: string;
   manualPrice: number | null;
   onSave: (price: number) => Promise<void>;
+  leadingContent?: ReactNode;
+  controls?: ReactNode;
+  actions?: ReactNode;
+  notPriced?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(Boolean(issue));
+  const [saved, setSaved] = useState(false);
   const editorId = useId();
-  const showEditor = editing || manualPrice !== null || Boolean(issue);
-  return <>
-    {issue ? <AutomaticPricingNotice issue={issue} /> : <div aria-label={`Price for ${roomName}`}>
-      {manualPrice !== null && <p className="text-xs font-semibold text-slate-600">Custom price</p>}
-      <div className="text-lg font-bold tabular-nums">{money(unitPrice)} each</div>
-      <div className="text-[11px] text-muted-foreground">{money(lineTotal)} line total · excl. tax</div>
+  // Unpriced lines retain direct custom entry; saved manual lines start compact.
+  const showEditor = editing;
+  return <div className="quote-line-price-panel">
+    <div className="quote-line-price-summary-row">
+      {leadingContent}
+      <div className="quote-line-price-unit" aria-label={`Price for ${roomName}`}>
+        {notPriced ? <p className="text-lg font-bold text-amber-900">Not priced</p> : issue ?
+          <AutomaticPricingNotice issue={issue} /> : <>
+            <span className="quote-line-price-caption">{manualPrice !== null ? "Custom price" : "Price"}</span>
+            <strong className="quote-line-price-amount">{money(unitPrice)} <span>each</span></strong>
+          </>}
+        {!notPriced && (!issue || !showEditor) && <button type="button" className="quote-line-price-edit"
+          aria-label={`${issue ? "Set custom price" : "Edit price"} for ${roomName}`} aria-expanded={showEditor} aria-controls={editorId}
+          disabled={showEditor} onClick={() => { setSaved(false); setEditing(true); }}>
+          {issue ? "Set custom price" : "Edit price"} <Pencil aria-hidden="true" size={12} />
+        </button>}
+      </div>
+      {controls}
+      {!issue && !notPriced && <div className="quote-line-price-total">
+        <span className="quote-line-price-caption">Line total</span>
+        <strong className="quote-line-price-amount">{money(lineTotal)}</strong>
+        <span className="quote-line-price-caption">Excl. tax</span>
+      </div>}
+      {actions && <div className="quote-line-price-actions">{actions}</div>}
+    </div>
+    {!notPriced && showEditor && <div id={editorId} className="quote-line-price-drawer">
+      <LineItemPriceInput value={manualPrice} roomName={roomName} onSave={onSave}
+        label="Custom merchandise price each" saveOnBlur={false}
+        onSaved={() => { setEditing(false); setSaved(true); }}
+        onCancel={() => setEditing(false)} />
+      <p className="quote-line-price-note">Installation and shipping are added separately when applicable.</p>
     </div>}
-    {!showEditor && <button type="button"
-      className="mt-1 rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold"
-      aria-label={`${issue ? "Set custom price" : "Edit price"} for ${roomName}`} aria-expanded={showEditor} aria-controls={editorId}
-      onClick={() => setEditing(true)}>{issue ? "Set custom price" : "Edit price"}</button>}
-    {showEditor && <div id={editorId} className="mt-1 text-xs">
-      <LineItemPriceInput value={manualPrice} roomName={roomName} onSave={onSave} label="Custom merchandise price each" />
-      <p className="my-1 max-w-48 text-muted-foreground">Installation and shipping are added separately when applicable.</p>
-    </div>}
-  </>;
+    {saved && <span role="status" className="quote-line-price-saved">Price saved</span>}
+  </div>;
 }

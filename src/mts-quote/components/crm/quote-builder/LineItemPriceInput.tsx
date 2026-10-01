@@ -10,13 +10,16 @@ export function parseLineItemPrice(value: string): number | null {
 export type LineItemPriceInputHandle = { save: () => Promise<boolean> };
 
 /** Keep the draft intact while typing; persist only on Save, blur, or Enter. */
-export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, label = "Price each", ref }: {
+export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, label = "Price each", ref, saveOnBlur = true, onSaved, onCancel }: {
   ref?: Ref<LineItemPriceInputHandle>;
   value: number | null;
   roomName: string;
   onSave: (price: number) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
   label?: string;
+  saveOnBlur?: boolean;
+  onSaved?: () => void;
+  onCancel?: () => void;
 }) {
   const formattedValue = value == null ? "" : value.toFixed(2);
   const [draft, setDraft] = useState(formattedValue);
@@ -40,7 +43,7 @@ export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, lab
       setError("Enter a price of $0 or more, with up to two decimal places.");
       return Promise.resolve(false);
     }
-    if (!changed.current && !error) return Promise.resolve(true);
+    if (!changed.current && !error) { onSaved?.(); return Promise.resolve(true); }
     setDraft(price.toFixed(2));
     setSaving(true);
     setSaved(false);
@@ -51,6 +54,7 @@ export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, lab
       changed.current = false;
       onDirtyChange?.(false);
       setSaved(true);
+      onSaved?.();
       return true;
     }).catch((cause: unknown) => {
       editing.current = true;
@@ -63,7 +67,7 @@ export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, lab
     return pending.current;
   };
   useImperativeHandle(ref, () => ({ save }));
-  return <div className="quote-line-price-editor">
+  return <div className={`quote-line-price-editor${onCancel ? " quote-line-price-editor--drawer" : ""}`}>
     <label>
       <span>{label}</span>
       <div className="quote-line-price-input-wrap"><span aria-hidden="true">$</span>
@@ -71,23 +75,26 @@ export function LineItemPriceInput({ value, roomName, onSave, onDirtyChange, lab
           value={draft} disabled={saving} aria-invalid={Boolean(error)}
           onFocus={() => { editing.current = true; }}
           onChange={event => { changed.current = true; onDirtyChange?.(true); setDraft(event.target.value); setError(""); setSaved(false); }}
-          onBlur={() => { if (changed.current || error) void save(); }}
+          onBlur={() => { editing.current = false; if (saveOnBlur && (changed.current || error)) void save(); }}
           onKeyDown={event => {
-            if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur(); }
+            if (event.key === "Enter") { event.preventDefault(); if (saveOnBlur) event.currentTarget.blur(); else void save(); }
             if (event.key === "Escape") {
               editing.current = false; changed.current = false;
               onDirtyChange?.(false);
               setDraft(formattedValue); setError(""); setSaved(false);
               event.preventDefault();
+              onCancel?.();
             }
           }} />
       </div>
     </label>
     <button type="button" disabled={saving} aria-label={`Save price for ${roomName}`}
       className="mt-1 rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-50"
-      onMouseDown={event => event.preventDefault()} onClick={() => { if (changed.current || error) void save(); }}>
+      onMouseDown={event => event.preventDefault()} onClick={() => { if (changed.current || error || onSaved) void save(); }}>
       {saving ? "Saving…" : "Save price"}
     </button>
+    {onCancel && <button type="button" disabled={saving} aria-label={`Cancel price edit for ${roomName}`}
+      className="quote-line-price-cancel" onClick={onCancel}>Cancel</button>}
     {saved && <span role="status" className="block text-xs text-emerald-700">Price saved</span>}
     {error && <span role="alert">{error}</span>}
   </div>;

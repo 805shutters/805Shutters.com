@@ -1944,3 +1944,89 @@
 .mts-quote-scope .quote-line-card--details .quote-line-card-size {
   width: auto;
 }
+
+/* Price summaries use the horizontal header; custom entry is an optional drawer. */
+.mts-quote-scope .quote-line-card-summary:has(.quote-line-price-panel) {
+  min-width: 0;
+  max-width: 100%;
+}
+.mts-quote-scope .quote-line-price-panel { min-width: 0; width: 100%; }
+.mts-quote-scope .quote-line-price-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+.mts-quote-scope .quote-line-price-unit { min-width: 130px; text-align: left; }
+.mts-quote-scope .quote-line-price-caption { display: block; color: #69665e; font-size: 11px; line-height: 1.4; }
+.mts-quote-scope .quote-line-price-amount { display: block; font-size: 18px; line-height: 1.4; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mts-quote-scope .quote-line-price-amount > span { color: #69665e; font-size: 12px; font-weight: 400; }
+.mts-quote-scope .quote-line-price-edit {
+  display: inline-flex;
+  width: auto;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #344b50;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mts-quote-scope .quote-line-price-edit:disabled { opacity: .55; cursor: default; }
+.mts-quote-scope .quote-line-price-total { min-width: 88px; text-align: right; }
+.mts-quote-scope .quote-line-price-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
+.mts-quote-scope .quote-line-price-actions > button { width: auto; }
+.mts-quote-scope .quote-line-price-drawer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dedcd5;
+  text-align: left;
+}
+.mts-quote-scope .quote-line-price-editor--drawer {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.mts-quote-scope .quote-line-price-editor--drawer > label {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.mts-quote-scope .quote-line-price-editor--drawer label > span { font-size: 12px; }
+.mts-quote-scope .quote-line-price-editor--drawer .quote-line-price-input-wrap { width: 140px; }
+.mts-quote-scope .quote-line-price-editor--drawer > button {
+  width: auto;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.mts-quote-scope .quote-line-price-editor--drawer > button:first-of-type { border-color: #18363b; background: #18363b; color: #fff; }
+.mts-quote-scope .quote-line-price-cancel { border: 1px solid #d8d6cf; background: #fff; color: #4a4740; cursor: pointer; }
+.mts-quote-scope .quote-line-price-editor--drawer [role="alert"] { flex-basis: 100%; max-width: none; font-size: 12px; }
+.mts-quote-scope .quote-line-price-note { margin: 8px 0 0; font-size: 12px; color: #69665e; }
+.mts-quote-scope .quote-line-price-saved { display: block; margin-top: 6px; font-size: 12px; color: #166534; }
+@media (max-width: 767px) {
+  .mts-quote-scope .quote-line-card-summary:has(.quote-line-price-panel) { width: 100%; }
+  .mts-quote-scope .quote-line-price-summary-row { justify-content: flex-start; gap: 10px; }
+  .mts-quote-scope .quote-line-price-unit { flex: 1 1 130px; }
+  .mts-quote-scope .quote-line-price-total { margin-left: auto; }
+  .mts-quote-scope .quote-line-price-editor--drawer > label { display: contents; }
+  .mts-quote-scope .quote-line-price-editor--drawer label > span { flex-basis: 100%; }
+  .mts-quote-scope .quote-line-price-editor--drawer .quote-line-price-input-wrap { width: 130px; }
+  .mts-quote-scope .quote-line-price-editor--drawer > button { padding: 0 10px; }
+}
+@media (pointer: coarse) {
+  .mts-quote-scope .quote-line-price-edit,
+  .mts-quote-scope .quote-line-price-editor--drawer > button,
+  .mts-quote-scope .quote-line-price-editor--drawer input { min-height: 44px; }
+}

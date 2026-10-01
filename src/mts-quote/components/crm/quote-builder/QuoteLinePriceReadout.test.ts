@@ -23,10 +23,12 @@ describe("quote line calculation and custom entry", () => {
   });
   it("shows calculated amounts and accepts a genuine authoritative zero", () => {
     const paid = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, unitPrice: 623.45, lineTotal: 2493.8, issue: null }));
-    expect(paid).toContain("$623.45 each");
-    expect(paid).toContain("$2,493.80 line total");
+    expect(paid).toContain("$623.45");
+    expect(paid).toContain("each</span>");
+    expect(paid).toContain("Line total");
+    expect(paid).toContain("$2,493.80");
     const free = renderToStaticMarkup(React.createElement(QuoteLinePriceReadout, { ...props, issue: null }));
-    expect(free).toContain("$0.00 each");
+    expect(free).toContain("$0.00");
     expect(free).not.toContain("Price unavailable");
   });
   it("keeps custom pricing available without saving a blank or manufacturing a zero", async () => {
@@ -83,10 +85,13 @@ describe("quote line calculation and custom entry", () => {
       await act(() => root.render(React.createElement(QuoteLinePriceReadout, {
         ...props, unitPrice: 939, lineTotal: 2817, manualPrice: 900, issue: null, onSave: save,
       })));
+      expect(host.querySelector("input")).toBeNull();
+      expect(host.querySelector("button")!.getAttribute("aria-expanded")).toBe("false");
+      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Edit price for Bedroom 1"]')!.click());
       const input = host.querySelector("input")!;
       expect(input.value).toBe("900.00");
       expect(host.textContent).toContain("$939.00 each");
-      expect(host.textContent).toContain("$2,817.00 line total");
+      expect(host.textContent).toContain("$2,817.00");
       expect(host.querySelector("details")).toBeNull();
       await act(() => {
         input.focus();
@@ -96,6 +101,7 @@ describe("quote line calculation and custom entry", () => {
       await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Save price for Bedroom 1"]')!.click());
       expect(save).toHaveBeenCalledExactlyOnceWith(925.5);
       expect(host.textContent).toContain("Price saved");
+      expect(host.querySelector("input")).toBeNull();
     } finally { await act(() => root.unmount()); host.remove(); }
   });
   it("keeps an existing manual amount editable when grid pricing reports an issue", () => {
@@ -107,4 +113,59 @@ describe("quote line calculation and custom entry", () => {
     expect(html).toContain("Save price for Bedroom 1");
     expect(html).not.toContain("$0.00 each");
   });
+  it("cancels a changed draft without writing, including blur before Cancel, and reopens the saved amount", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host); const save = vi.fn().mockResolvedValue(undefined);
+    try {
+      await act(() => root.render(React.createElement(QuoteLinePriceReadout, {
+        ...props, unitPrice: 377.38, lineTotal: 377.38, manualPrice: 377.38, issue: null, onSave: save,
+      })));
+      const edit = () => host.querySelector<HTMLButtonElement>('button[aria-label="Edit price for Bedroom 1"]')!;
+      await act(() => edit().click());
+      const input = host.querySelector("input")!;
+      await act(() => {
+        input.focus();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "999");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(() => input.blur());
+      expect(save).not.toHaveBeenCalled();
+      await act(() => host.querySelector<HTMLButtonElement>('button[aria-label="Cancel price edit for Bedroom 1"]')!.click());
+      expect(host.querySelector("input")).toBeNull();
+      expect(save).not.toHaveBeenCalled();
+      await act(() => edit().click());
+      expect(host.querySelector("input")!.value).toBe("377.38");
+      await act(() => host.querySelector("input")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+      expect(host.querySelector("input")).toBeNull();
+      expect(save).not.toHaveBeenCalled();
+    } finally { await act(() => root.unmount()); host.remove(); }
+  });
+  it("keeps the drawer open on validation or server errors, disables Cancel while saving, and closes after Enter succeeds", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    let resolveSave!: () => void;
+    const save = vi.fn().mockRejectedValueOnce(new Error("Connection lost")).mockImplementationOnce(() => new Promise<void>(resolve => { resolveSave = resolve; }));
+    try {
+      await act(() => root.render(React.createElement(QuoteLinePriceReadout, { ...props, manualPrice: 450, issue: null, onSave: save })));
+      await act(() => host.querySelector("button")!.click());
+      const input = host.querySelector("input")!;
+      const enter = async (value: string) => act(() => {
+        input.focus();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      const submit = () => host.querySelector<HTMLButtonElement>('button[aria-label="Save price for Bedroom 1"]')!;
+      await enter("-1"); await act(async () => submit().click());
+      expect(save).not.toHaveBeenCalled(); expect(host.querySelector('[role="alert"]')).not.toBeNull();
+      await enter("0"); await act(async () => submit().click());
+      expect(host.querySelector('[role="alert"]')!.textContent).toBe("Connection lost");
+      expect(host.querySelector("input")).not.toBeNull();
+      await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+      expect(host.querySelector<HTMLButtonElement>('button[aria-label="Cancel price edit for Bedroom 1"]')!.disabled).toBe(true);
+      await act(async () => resolveSave());
+      expect(save).toHaveBeenNthCalledWith(1, 0); expect(save).toHaveBeenNthCalledWith(2, 0);
+      expect(host.querySelector("input")).toBeNull(); expect(host.textContent).toContain("Price saved");
+    } finally { await act(() => root.unmount()); host.remove(); }
+  });
+
 });
