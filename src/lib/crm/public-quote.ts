@@ -856,7 +856,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreM
   if (!token) return null;
   const { data, error } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
   if (error) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
-  if (data) return data as CrmQuote;
+  if (data) return record(data.meta).deleted_at ? null : data as CrmQuote;
 
   // Historical sales quotes are mirrored into crm_quotes before they are sent.
   // Older syncs could later overwrite a generated mirror token with NULL when
@@ -885,7 +885,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreM
       .eq("id", quoteId)
       .maybeSingle();
     if (quoteError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
-    if (aliasedQuote) return aliasedQuote as CrmQuote;
+    if (aliasedQuote) return record(aliasedQuote.meta).deleted_at ? null : aliasedQuote as CrmQuote;
 
     // A legacy quote delete could remove the CRM mirror after the customer had
     // already received its link while leaving the source sales quote intact.
@@ -916,7 +916,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreM
       .select("*")
       .maybeSingle();
     if (restoreError) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
-    if (restoredQuote) return restoredQuote as CrmQuote;
+    if (restoredQuote) return record(restoredQuote.meta).deleted_at ? null : restoredQuote as CrmQuote;
 
     const { data: currentQuote, error: currentError } = await supabase
       .from("crm_quotes")
@@ -925,7 +925,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreM
       .eq("share_token", token)
       .maybeSingle();
     if (currentError) throw new CrmAuthError(502, "This contract link could not be restored. Please try again shortly.");
-    if (currentQuote) return currentQuote as CrmQuote;
+    if (currentQuote) return record(currentQuote.meta).deleted_at ? null : currentQuote as CrmQuote;
   }
 
   // Current sales-quote sends persist the generated customer token back to the
@@ -947,7 +947,7 @@ async function fetchByToken(supabase: CrmSupabaseClient, token: string, restoreM
     .eq("external_id", `quote:${salesQuoteId}`)
     .maybeSingle();
   if (legacyMirrorError) throw new CrmAuthError(502, "This contract could not be loaded. Please try again shortly.");
-  if (legacyMirror) return legacyMirror as CrmQuote;
+  if (legacyMirror) return record(legacyMirror.meta).deleted_at ? null : legacyMirror as CrmQuote;
   return null;
 }
 
@@ -1052,7 +1052,7 @@ export async function loadPublicQuoteById(
   quoteId: string,
 ): Promise<PublicQuote | null> {
   const { data, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
-  if (error || !data) return null;
+  if (error || !data || record(data.meta).deleted_at) return null;
   return projectPublicQuote(supabase, data as CrmQuote, "");
 }
 

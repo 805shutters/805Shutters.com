@@ -3319,22 +3319,38 @@ export async function deleteCrmQuote(
     : null;
   const linkedSalesQuoteId = [
     meta.target_sales_quote_id,
+    meta.source_sales_quote_id,
     meta.sales_quote_id,
     meta.mts_quote_id,
     externalId
   ].find((value): value is string => typeof value === "string" && Boolean(value.trim())) || null;
 
-  const { error } = await supabase.from("crm_quotes").delete().eq("id", id);
+  // Native delivery freezes the contract and its append-only receipts. Removing
+  // it from the workspace must preserve those rows and their foreign keys.
+  const deletedAt = new Date().toISOString();
+  const { data: deletedQuote, error } = await supabase
+    .from("crm_quotes")
+    .update({ meta: {
+      ...meta,
+      deleted_at: deletedAt,
+      deleted_by: actor.email,
+      deleted_by_user_id: actor.userId || null,
+      delete_source: "quote_delete"
+    } })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
   if (error) {
     logSupabaseError("crm_quotes delete failed", error);
     throw new CrmAuthError(502, "Quote could not be deleted.");
   }
+  if (!deletedQuote) throw new CrmAuthError(404, "Quote was not found.");
 
   if (linkedSalesQuoteId) {
     const linkedDelete = await supabase
       .from("sales_quotes")
       .update({
-        deleted_at: new Date().toISOString(),
+        deleted_at: deletedAt,
         deleted_by: actor.email,
         deleted_by_user_id: actor.userId || null
       })
@@ -3350,7 +3366,7 @@ export async function deleteCrmQuote(
     entityId: id,
     action: "delete",
     before: existing,
-    metadata: { jobId: existing.job_id, linkedSalesQuoteId }
+    metadata: { jobId: existing.job_id, linkedSalesQuoteId, deletedAt }
   });
   return { deleted: true, quoteId: id, linkedSalesQuoteId };
 }
