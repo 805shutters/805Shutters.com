@@ -1,6 +1,7 @@
 import { normalizedProductLabel, splitProductTypes, scopedProductMeta, productTargetIdentity, productManufacturerKey, type ProductTargetRecord } from './product-workflow-groups';
 import { trackingJobClosed } from "./job-closure";
 import { shipmentEvidence, type ShipmentEvidence } from "./shipment-evidence";
+import { WEEKLY_SALES_GOAL_START_DATE } from "./weekly-sales-average";
 import { losAngelesDateString } from "@/lib/booking/availability";
 import { buildJobTrackingView, type JobTrackingViewItem } from "./job-tracking-view";
 import { objectMeta } from "./measure-needed-state";
@@ -276,7 +277,7 @@ export function buildPerformanceMetrics(data: CrmDashboardData, now = new Date()
       cashCents: receipts.reduce((total, payment) => total + Math.round(payment.amount * 100), 0) };
   };
   const periods = { weekly: range(weekStart), monthly: range(monthStart), threeMonths: range(monthOffset(2)), sixMonths: range(monthOffset(5)) };
-  const grossWeeks = (data.closedSales?.weeks || []).map(week => ({
+  const grossWeeks = (data.closedSales?.weeks || []).filter(week => week.endDate >= WEEKLY_SALES_GOAL_START_DATE).map(week => ({
     start: week.startDate, end: week.startDate === weekStart ? weekEnd : week.endDate,
     grossCents: week.totalCents, sales: week.sales, isCurrent: week.startDate === weekStart,
     status: week.totalCents >= WEEKLY_GROSS_SALES_GOAL_CENTS ? "met" : "below"

@@ -468,3 +468,15 @@ describe('installation prerequisite reconciliation', () => {
     const closedSales = buildClosedSalesReport({ jobs: [], contracts: [], quotes: [quote({ signed_at: "2026-09-21T06:59:00Z", quote_total: 14000 })], now: current, includeCurrentWeek: true });
     expect(buildPerformanceMetrics(data({ closedSales }), current)).toMatchObject({ weekStart, weekEnd, grossCents, grossStatus });
   });
+
+  it("begins goal-card navigation with June 29–July 5 while retaining older signed sales in history", () => {
+    const current = new Date("2026-07-13T18:00:00Z");
+    const closedSales = buildClosedSalesReport({ jobs: [], contracts: [], quotes: [
+      quote({ id: "older", job_id: "older-job", signed_at: "2026-06-28T18:00:00Z", quote_total: 50000 }),
+      quote({ id: "first", job_id: "first-job", signed_at: "2026-06-29T18:00:00Z", quote_total: 21227.07 })
+    ], now: current, includeCurrentWeek: true });
+    const metrics = buildPerformanceMetrics(data({ closedSales }), current);
+    expect(metrics.grossWeeks.map(week => week.start)).toEqual(["2026-07-13", "2026-07-06", "2026-06-29"]);
+    expect(metrics.grossWeeks.at(-1)).toMatchObject({ end: "2026-07-05", grossCents: 2122707, status: "met" });
+    expect(closedSales.weeks.flatMap(week => week.sales).some(sale => sale.amountCents === 5000000)).toBe(true);
+  });
