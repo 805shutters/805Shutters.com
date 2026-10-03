@@ -116,7 +116,6 @@ beforeAll(async () => {
     migration("20260928185500_native_empty_manual_selection_projection"),
   );
   await db.exec(`
- alter table crm_quotes add customer_name text default 'Synthetic';
  create table crm_quote_bookkeeping_entries(id uuid primary key,quote_id uuid);
  create table crm_quote_bookkeeping_payments(id uuid primary key,quote_id uuid,bookkeeping_entry_id uuid,amount numeric,paid_at date,payment_label text,external_source text,external_id text,meta jsonb);
  create table crm_quote_bookkeeping_credits(id uuid primary key,to_quote_id uuid,from_quote_id uuid);
@@ -160,6 +159,7 @@ beforeAll(async () => {
     ),
   );
   await db.exec(migration("20261003192115_in_house_three_month_payments"));
+  await db.exec(migration("20261003223500_in_house_accepted_job_identity"));
   await db.query("insert into crm_profiles values($1,true,$2)", [
     id(50),
     "805shutters@gmail.com",
@@ -430,6 +430,11 @@ it("atomically accepts only selected products and preserves the remainder withou
     ])
   ).rows;
   expect(plans).toHaveLength(1);
+  expect(plans[0].baseline.customerName).toBe("Test customer");
+  const acceptedJob = (await db.query<{ job_id: string }>(
+    "select job_id from crm_quotes where id=$1", [delivery.crm_quote_id],
+  )).rows[0].job_id;
+  expect(plans[0].baseline.jobId).toBe(acceptedJob);
   const i = (
     await db.query<any>(
       "select amount_cents,due_date::text from crm_in_house_plan_installments where plan_id=$1 order by number",
