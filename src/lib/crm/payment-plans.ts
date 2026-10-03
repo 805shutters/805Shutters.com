@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // In-house payment plan ("805 House Plan"): 0% interest, 50% deposit up front,
 // balance split into equal monthly installments. The first installment is due
 // the DAY OF INSTALLATION, then monthly. The plan lives on
@@ -439,7 +440,7 @@ export async function runPaymentPlanReminders(supabase: CrmSupabaseClient, now: 
         }
         const alertBody = `805 Shutters: payment plan OVERDUE — ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${plan.installment_count} (${formatMoney(installmentChargeAmount(inst))}) was due ${inst.due_date}.`;
         for (const num of shopNumbers) {
-          await sendSms({ to: num, body: alertBody });
+          await sendSms({ to: num, body: alertBody, ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}) });
         }
         installments[i] = { ...inst, overdue_notice_sent_at: new Date().toISOString() };
         summary.overdueNoticesSent += 1;
@@ -536,7 +537,7 @@ export async function linkAutopayCard(
 
     const alert = `805 Shutters: ${job.customer_name || "customer"} saved a card for their payment plan autopay (${card.brand || "card"} ending ${card.last4 || "????"}).`;
     for (const num of shopSmsNumbers()) {
-      await sendSms({ to: num, body: alert });
+      await sendSms({ to: num, body: alert, ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}) });
     }
 
     return { ok: true, cardBrand: card.brand, cardLast4: card.last4 };
@@ -608,6 +609,7 @@ export async function runPaymentPlanCharges(supabase: CrmSupabaseClient, now: Da
           for (const num of shopNumbers) {
             await sendSms({
               to: num,
+              ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}),
               body: `805 Shutters: autopay charged ${formatMoney(chargeTotal)} for ${jobRow.customer_name || "customer"} (payment ${inst.seq}) but the CRM could not record it - please mark it paid manually.`
             });
           }
@@ -629,6 +631,7 @@ export async function runPaymentPlanCharges(supabase: CrmSupabaseClient, now: Da
         for (const num of shopNumbers) {
           await sendSms({
             to: num,
+            ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}),
             body: `805 Shutters: autopay charge FAILED - ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${currentPlan.installment_count} (${formatMoney(chargeTotal)}). ${result.error}`
           });
         }

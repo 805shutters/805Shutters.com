@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // Meta (Facebook/Instagram) Lead Ads webhook — the "speed to lead" pipeline.
 // When an Instant Form is submitted, Meta POSTs a leadgen event here; we fetch
 // the lead's answers from the Graph API, store it in the same `leads` table the
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
         `${mapped.phone ? ` ${mapped.phone}` : ""}${mapped.city ? ` (${mapped.city})` : ""}. ` +
         `Auto-text sent - call them while it's hot.`;
       for (const to of staffSmsRecipients()) {
-        await sendSms({ to, body: staffBody });
+        await sendSms({ to, body: staffBody, ...(isMikeAlertRecipient(to) ? { ownerAlert: true } : {}) });
       }
     } catch (error) {
       console.error("meta-leads processing failed", leadgenId, error);

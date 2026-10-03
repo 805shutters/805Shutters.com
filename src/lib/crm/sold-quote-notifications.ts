@@ -335,6 +335,7 @@ export async function sendSoldQuoteSmsNotifications(
 
     const result = await smsSender({
       to: recipient.e164 || recipient.input,
+      ...(recipient.role === "primary" ? { ownerAlert: true } : {}),
       body,
       statusCallback,
     });

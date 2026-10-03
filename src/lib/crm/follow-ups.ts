@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 // Automated follow-ups (#2 overdue deposit/balance alerts, #3 stale-quote nudges).
 // Pure selectors are unit-tested; the run* functions are driven by Vercel cron
 // routes (/api/cron/overdue-alerts, /api/cron/stale-quotes) and reuse the existing
@@ -139,7 +140,7 @@ export async function runOverdueAlerts(supabase: SupabaseClient, now: Date = new
     const kind = overdueDeposit ? "deposit" : "balance";
     const amount = overdueDeposit ? round2(e.depositDue - e.depositPaid) : round2(e.balance);
     const msg = `805 Shutters: OVERDUE ${kind} — ${row.customerName || "customer"} ($${amount}). Sold ${row.soldDate || "?"}.`;
-    for (const num of numbers) await sendSms({ to: num, body: msg });
+    for (const num of numbers) await sendSms({ to: num, body: msg, ...(isMikeAlertRecipient(num) ? { ownerAlert: true } : {}) });
     if (shopEmail) {
       await sendEmail({ to: shopEmail, subject: `Overdue ${kind}: ${row.customerName || "customer"}`, html: `<p>${msg}</p>`, text: msg });
     }

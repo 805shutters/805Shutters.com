@@ -40,7 +40,7 @@ export async function deliverSquarePaymentAlerts(db: SupabaseClient, sender: typ
     if (claim.error) throw new Error(claim.error.message);
     if (!claim.data?.length) continue;
     attempted++;
-    const result = await sender({ to: SQUARE_OWNER_ALERT_TO, body, statusCallback: `${SQUARE_OWNER_ALERT_CALLBACK}?alert=${encodeURIComponent(alert.id)}`, timeoutMs: 10000 });
+    const result = await sender({ to: SQUARE_OWNER_ALERT_TO, ownerAlert: true, body, statusCallback: `${SQUARE_OWNER_ALERT_CALLBACK}?alert=${encodeURIComponent(alert.id)}`, timeoutMs: 10000 });
     const saved = await db.from('crm_square_alerts').update({ status: result.sent ? 'accepted' : result.uncertain ? 'unknown' : 'failed', provider_sid: result.sid || null, provider_status: result.providerStatus || null, error: result.error || result.skipped || null }).eq('id', alert.id).eq('status', 'sending');
     if (saved.error) throw new Error('Payment text was attempted but the result could not be saved; do not resend without checking Twilio.');
   }

@@ -98,6 +98,7 @@ describe("weekly sales SMS", () => {
     await Promise.all([runWeeklySalesSms(db.client, now, sender), runWeeklySalesSms(db.client, now, sender)]);
     await runWeeklySalesSms(db.client, new Date("2026-09-21T00:30:00Z"), sender);
     expect(sender.mock.calls.map(call => (call as unknown as [{ to: string }])[0].to).sort()).toEqual(["+18055550101", "+18055550102"]);
+    expect(sender.mock.calls.map(call => (call as unknown as [{ ownerAlert?: boolean }])[0].ownerAlert)).toEqual([undefined, true]);
     expect([...db.events.values()].filter(row => row.action === "weekly_sales_sms.accepted")).toHaveLength(2);
     expect([...db.events.values()].filter(row => row.action === "weekly_sales_sms.report")).toHaveLength(1);
   });

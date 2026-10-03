@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 import { NextRequest, NextResponse } from "next/server";
 import { classifyLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { isTwilioConfigured, sendSms, toE164 } from "@/lib/notify/twilio";
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
     .join("\n");
 
   const staffResults = await Promise.all(
-    staffSmsRecipients().map((to) => sendSms({ to, body: staffBody }))
+    staffSmsRecipients().map((to) => sendSms({ to, body: staffBody, ...(isMikeAlertRecipient(to) ? { ownerAlert: true } : {}) }))
   );
   const staffSmsSent = staffResults.some((result) => result.sent);
 

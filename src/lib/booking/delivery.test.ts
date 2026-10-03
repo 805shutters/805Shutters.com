@@ -157,6 +157,7 @@ it("sends the request only to Mike and records the provider message ID", async (
   expect(fetch).toHaveBeenCalledTimes(1);
   const body = new URLSearchParams(fetch.mock.calls[0][1].body);
   expect(body.get("To")).toBe("+18055550199");
+  expect(body.get("From")).toBe("+18057931853");
   expect(body.get("Body")).toContain("not booked");
   expect(body.get("Body")).toContain(details.phone);
   expect(body.get("Body")).toContain(details.address);
@@ -228,4 +229,18 @@ it.each([null, { start_at: details.startAt, end_at: details.endAt, status: "canc
   await processBookingOutbox(supabase);
   expect(mocks.metaBooking).not.toHaveBeenCalled();
   expect(updates).toContainEqual(expect.objectContaining({ status: "skipped" }));
+});
+
+
+it("pins only Mike within existing staff booking alerts", async () => {
+  vi.stubEnv("TWILIO_ACCOUNT_SID", "ACtest"); vi.stubEnv("TWILIO_AUTH_TOKEN", "test");
+  vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", "MGshared");
+  vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550102");
+  vi.stubEnv("CRM_APPOINTMENT_ALERT_SMS_NUMBERS", "+18055550102,+18055550103");
+  const f = vi.fn().mockImplementation(async () => Response.json({ sid: "SMtest" })); vi.stubGlobal("fetch", f);
+  await deliverBookingEffect(client, "staff_sms", details);
+  const forms = f.mock.calls.map(call => new URLSearchParams(call[1].body));
+  expect(forms.map(form => form.get("To"))).toEqual(["+18058069344", "+18055550102", "+18055550103"]);
+  expect(forms.map(form => form.get("From"))).toEqual([null, "+18057931853", null]);
+  expect(new Set(forms.map(form => form.get("Body"))).size).toBe(1);
 });

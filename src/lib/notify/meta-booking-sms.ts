@@ -38,7 +38,7 @@ export async function sendMetaBookingSms(db: SupabaseClient, input: MetaBookingS
   if (duplicate) return { sent: false, skipped: duplicate.code === "23505" ? "duplicate" : "database_unavailable" };
 
   const result = await sender({
-    to, body: metaBookingMessage(input), timeoutMs: 8000,
+    to, ownerAlert: true, body: metaBookingMessage(input), timeoutMs: 8000,
     statusCallback: `https://www.805shutters.com/api/webhooks/meta-booking-sms/?id=${id}`,
   });
   // Keep the reservation even on failure: an uncertain provider request must never be resent.

@@ -6,6 +6,7 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { toE164 } from "./phone";
+import { OWNER_ALERT_FROM_PHONE } from "./owner-alert-routing";
 export { toE164 } from "./phone";
 
 export type SmsResult = {
@@ -61,6 +62,7 @@ export async function sendSms(input: {
   statusCallback?: string | null;
   mediaUrls?: readonly string[];
   timeoutMs?: number;
+  ownerAlert?: boolean;
 }): Promise<SmsResult> {
   const to = toE164(input.to);
   if (!to) return { sent: false, skipped: "invalid or missing destination phone" };
@@ -74,6 +76,8 @@ export async function sendSms(input: {
   } else {
     params.set("From", process.env.TWILIO_FROM_PHONE as string);
   }
+  // Supplying From alongside MessagingServiceSid prevents shared-pool selection.
+  if (input.ownerAlert) params.set("From", OWNER_ALERT_FROM_PHONE);
   if (input.statusCallback) params.set("StatusCallback", input.statusCallback);
   for (const url of input.mediaUrls || []) params.append("MediaUrl", url);
 

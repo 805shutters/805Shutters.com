@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient } from "@/lib/notify/owner-alert-routing";
 import { sendSms, SmsResult } from "@/lib/notify/twilio";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -138,7 +139,7 @@ export async function sendCalendarAssignmentSms(
 
   const body = buildCalendarAssignmentSms(input);
   const deliveries = await Promise.all(
-    targets.map(async ({ rep, to }) => ({ rep, result: await sendSms({ to, body }) }))
+    targets.map(async ({ rep, to }) => ({ rep, result: await sendSms({ to, body, ...(rep === "Mike" ? { ownerAlert: true } : {}) }) }))
   );
 
   return { sent: deliveries.some((delivery) => delivery.result.sent), deliveries };
@@ -298,7 +299,7 @@ export async function forwardCustomerAppointmentReply(
         `Phone: ${fromPhone}`,
         `Response: ${cleanResponse}`
       ].join("\n");
-  const result = await smsSender({ to: destination, body });
+  const result = await smsSender({ to: destination, body, ...(isMikeAlertRecipient(destination) ? { ownerAlert: true } : {}) });
   return { forwarded: result.sent, matched: Boolean(matchingEvent && job), sms: result };
 }
 

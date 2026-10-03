@@ -1,3 +1,4 @@
+import { isMikeAlertRecipient, OWNER_ALERT_FROM_PHONE } from "@/lib/notify/owner-alert-routing";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
@@ -90,7 +91,7 @@ function formatAppointmentForSms(startAt: string) {
   }).format(new Date(startAt));
 }
 
-async function sendSmsMessage({ to, body }: { to: string; body: string }) {
+async function sendSmsMessage({ to, body, ownerAlert }: { to: string; body: string; ownerAlert?: boolean }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromPhone = process.env.TWILIO_FROM_PHONE;
@@ -116,6 +117,7 @@ async function sendSmsMessage({ to, body }: { to: string; body: string }) {
   } else if (fromPhone) {
     form.set("From", fromPhone);
   }
+  if (ownerAlert) form.set("From", OWNER_ALERT_FROM_PHONE);
 
   try {
     const response = await fetch(
@@ -178,7 +180,7 @@ async function sendStaffSmsAlerts(details: BookingAutomationDetails) {
     .join("\n");
 
   const results = await Promise.all(
-    recipients.map((to) => sendSmsMessage({ to, body })),
+    recipients.map((to) => sendSmsMessage({ to, body, ownerAlert: isMikeAlertRecipient(to) })),
   );
   return results.length > 0 && results.every(Boolean);
 }
@@ -408,7 +410,7 @@ export async function sendTimeRequestSms(details: Pick<BookingAutomationDetails,
     "Customer is awaiting confirmation. Contact the customer at the number above.",
   ].filter(Boolean).join("\n");
   // Leave room for the Twilio message limit, while preserving contact/time/address.
-  const result = await sendSms({ to, body: body.length > 1550 ? body.slice(0, 1460) + "\nFull notes in CRM. Customer awaiting confirmation." : body });
+  const result = await sendSms({ to, ownerAlert: true, body: body.length > 1550 ? body.slice(0, 1460) + "\nFull notes in CRM. Customer awaiting confirmation." : body });
   if (!result.sent || !result.sid) throw new Error("Owner SMS not confirmed by provider");
   return { sid: result.sid, status: result.providerStatus || "accepted" };
 }

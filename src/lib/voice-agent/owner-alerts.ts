@@ -68,6 +68,6 @@ export async function sendVoiceAgentOwnerAlert(input: VoiceAgentOwnerAlertInput)
   if (!to) return { sent: false, skipped: "no voice alert sms recipient configured" };
 
   const body = buildVoiceAgentOwnerSms(input);
-  const result = await sendSms({ to, body });
+  const result = await sendSms({ to, body, ownerAlert: true });
   return { sent: result.sent, result, body };
 }

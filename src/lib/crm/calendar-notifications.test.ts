@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assignmentRecipientReps,
   buildAppointmentReplyForward,
@@ -244,5 +244,24 @@ describe("day-before reminder processing", () => {
     expect(db.updates[0]).toMatchObject({ meta: { dayBeforeReminderUncertainStart: event.start_at } });
     const retry = database([{ ...event, meta: { dayBeforeReminderUncertainStart: event.start_at } }], [{ id: "job", phone: "8055551212" }]);
     expect(await runDayBeforeAppointmentReminders(retry.client, now, async () => { throw new Error("must not send"); })).toMatchObject({ failed: 1 });
+  });
+});
+
+
+describe("owner sender on mixed calendar alerts", () => {
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+  it("keeps Jessica on the existing route and pins only Mike", async () => {
+    vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055550101");
+    vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055550102");
+    vi.stubEnv("TWILIO_ACCOUNT_SID", "ACtest"); vi.stubEnv("TWILIO_AUTH_TOKEN", "test");
+    vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", "MGshared");
+    const f = vi.fn().mockImplementation(async () => Response.json({ sid: "SMtest", status: "queued" }));
+    vi.stubGlobal("fetch", f);
+    await sendCalendarAssignmentSms({ assignedTo: "Jessica", title: "Existing appointment", startAt: "2035-10-03T17:00:00Z", endAt: "2035-10-03T18:00:00Z" });
+    const forms = f.mock.calls.map(call => new URLSearchParams(call[1].body));
+    expect(forms).toHaveLength(2);
+    expect(forms.find(form => form.get("To") === "+18055550101")?.get("From")).toBeNull();
+    expect(forms.find(form => form.get("To") === "+18055550102")?.get("From")).toBe("+18057931853");
+    expect(forms[0].get("Body")).toBe(forms[1].get("Body"));
   });
 });

@@ -84,7 +84,7 @@ export async function runWeeklySalesSms(supabase: SupabaseClient, now = new Date
     }
     if (claimError) throw claimError;
     let result;
-    try { result = await smsSender({ to: recipient.phone, body: report.body }); }
+    try { result = await smsSender({ to: recipient.phone, body: report.body, ...(recipient.name === "Mike" ? { ownerAlert: true } : {}) }); }
     catch { result = { sent: false, error: "Provider outcome uncertain; review before resending." }; }
     const providerAccepted = Boolean(result.sent && result.sid);
     const { error: saveError } = await supabase.from("crm_activity_events").update({

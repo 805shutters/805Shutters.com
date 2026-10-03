@@ -219,3 +219,17 @@ describe("authorization and callback state", () => {
     ).toBe(401);
   });
 });
+
+it("pins the existing owner channel while leaving customer payment-plan SMS routing unchanged", async () => {
+  vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", "MGshared");
+  const f = vi.fn().mockImplementation(async () => Response.json({ sid: "SMtest" }));
+  vi.stubGlobal("fetch", f);
+  await deliverPlanMessage(message);
+  await deliverPlanMessage({ ...message, channel: "owner" });
+  const customer = f.mock.calls[0][1].body as URLSearchParams;
+  const owner = f.mock.calls[1][1].body as URLSearchParams;
+  expect(customer.get("From")).toBeNull();
+  expect(owner.get("From")).toBe("+18057931853");
+  expect(owner.get("MessagingServiceSid")).toBe("MGshared");
+  expect(owner.get("To")).toBe(message.to); expect(owner.get("Body")).toBe(message.text);
+});

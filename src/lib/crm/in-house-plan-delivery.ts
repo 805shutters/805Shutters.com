@@ -1,3 +1,4 @@
+import { OWNER_ALERT_FROM_PHONE } from "@/lib/notify/owner-alert-routing";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { toE164 } from "@/lib/notify/twilio";
 import type { PlanNotification } from "./in-house-plan-model";
@@ -72,6 +73,7 @@ export async function deliverPlanMessage(
         Body: message.text,
         StatusCallback: `${callback}?notification=${message.id}`,
         ...(service ? { MessagingServiceSid: service } : { From: from! }),
+        ...(message.channel === "owner" ? { From: OWNER_ALERT_FROM_PHONE } : {}),
       });
       response = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,

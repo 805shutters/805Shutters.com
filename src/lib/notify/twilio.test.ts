@@ -135,3 +135,29 @@ describe("MMS media transport", () => {
     expect(result).toEqual({sent:true,sid:"MMtest",providerStatus:"queued"});
   });
 });
+
+describe("owner-only sender separation", () => {
+  beforeEach(() => {
+    vi.stubEnv("TWILIO_ACCOUNT_SID", "ACtest");
+    vi.stubEnv("TWILIO_AUTH_TOKEN", "test");
+    vi.stubEnv("TWILIO_FROM_PHONE", "+18055550123");
+  });
+  afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+  it.each(["MGshared", ""])("pins only owner alerts, preserving recipients and customer routing (service %s)", async service => {
+    vi.stubEnv("TWILIO_MESSAGING_SERVICE_SID", service);
+    const f = vi.fn().mockImplementation(async () => Response.json({ sid: "SMtest", status: "queued" }));
+    vi.stubGlobal("fetch", f);
+    const input = { to: "+18055550100", body: "Existing content", statusCallback: "https://example.test/status", timeoutMs: 1000 };
+    await sendSms(input);
+    await sendSms({ ...input, ownerAlert: true });
+    const customer = new URLSearchParams(f.mock.calls[0][1].body);
+    const owner = new URLSearchParams(f.mock.calls[1][1].body);
+    expect(customer.get("From")).toBe(service ? null : "+18055550123");
+    expect(owner.get("From")).toBe("+18057931853");
+    expect(owner.get("MessagingServiceSid")).toBe(service || null);
+    expect(owner.get("To")).toBe(input.to); expect(owner.get("Body")).toBe(input.body);
+    expect(owner.get("StatusCallback")).toBe(input.statusCallback);
+    owner.delete("From"); customer.delete("From");
+    expect(owner.toString()).toBe(customer.toString());
+  });
+});

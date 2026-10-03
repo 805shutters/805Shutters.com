@@ -143,6 +143,7 @@ describe("sendSoldQuoteSmsNotifications", () => {
     }, smsSender);
 
     expect(smsSender).toHaveBeenCalledTimes(2);
+    expect(smsSender.mock.calls.map(call => call[0].ownerAlert)).toEqual([true, undefined]);
     expect(smsSender).toHaveBeenCalledWith(expect.objectContaining({
       statusCallback: "https://example.com/status",
     }));
