@@ -25,7 +25,7 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 beforeEach(async () => {
-  state.pending = true; state.error = false; state.lines = undefined; state.mutate.mockClear();
+  state.pending = true; state.error = false; state.lines = undefined; state.quote.status = "draft"; state.mutate.mockClear();
   useQuoteBuilderStore.getState().setActiveQuote("quote-c");
   container = document.createElement("div"); document.body.append(container); root = createRoot(container);
   await act(() => root.render(React.createElement(QuoteBuilder)));
@@ -51,4 +51,10 @@ describe("saved completed-window stacking while loading", () => {
     const saved = JSON.parse(state.mutate.mock.calls[0][0].installer_notes);
     expect(saved.__stackedLineItemIds).toEqual(["line-1"]);
   });
+});
+
+it("does not attempt an automatic metadata edit on an already sent quote",async()=>{
+ state.quote.status="sent";state.pending=false;state.lines=[{id:"line-1",quote_id:"quote-c",quantity:1,room_name:"Living room",product_type:"Shutters"}];
+ await act(()=>root.render(React.createElement(QuoteBuilder)));
+ expect(state.mutate).not.toHaveBeenCalled();
 });

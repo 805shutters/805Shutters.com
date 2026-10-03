@@ -209,6 +209,8 @@ export type QuoteV2StructureResponse = Readonly<{
   lineCount: number;
   selectedDesigns: Readonly<Record<string, string | null>>;
   operations: readonly JsonObject[];
+  sourceQuoteId?: string;
+  identityMap?: Readonly<Record<string, string>>;
 }>;
 
 function plainObject(value: unknown, label: string): JsonObject {
@@ -938,10 +940,11 @@ export async function mutateSalesQuoteV2Structure(
   quoteIdValue: string,
   actorIdValue: string,
   input: ReturnType<typeof parseSalesQuoteV2StructureBody>,
+  createRevision = false,
 ): Promise<QuoteV2StructureResponse> {
   const quoteId = uuid(quoteIdValue, "quoteId");
   const actorId = uuid(actorIdValue, "actorId");
-  const { data, error } = await supabase.rpc("mutate_quote_v2_structure", {
+  const { data, error } = await supabase.rpc(createRevision ? "revise_quote_v2_structure" : "mutate_quote_v2_structure", {
     p_quote_id: quoteId,
     p_expected_revision: input.expectedRevision,
     p_idempotency_key: input.idempotencyKey,
@@ -955,9 +958,10 @@ export async function mutateSalesQuoteV2Structure(
     );
   }
   const result = rpcObject(data, "Quote V2 structural persistence");
+  const persistedQuoteId = uuid(result.quoteId, "persisted quoteId");
   if (
     result.backend !== "authoritative_v2" ||
-    result.quoteId !== quoteId ||
+    (createRevision ? result.sourceQuoteId !== quoteId || persistedQuoteId === quoteId : persistedQuoteId !== quoteId) ||
     result.status !== "draft" ||
     (result.quoteV2Status !== "draft" && result.quoteV2Status !== "stale")
   ) {
@@ -965,6 +969,12 @@ export async function mutateSalesQuoteV2Structure(
       502,
       "Quote V2 structural persistence returned an inconsistent identity or lifecycle.",
     );
+  }
+  const identityMap: Record<string, string> = {};
+  if (createRevision) {
+    const rawIds = plainObjectOrNull(result.identityMap);
+    if (!rawIds) throw new CrmAuthError(502, "Quote revision returned no identity map.");
+    for (const [source, target] of Object.entries(rawIds)) identityMap[uuid(source, "source identity")] = uuid(target, "copied identity");
   }
   const rawSelections = plainObjectOrNull(result.selectedDesigns) ?? {};
   const selectedDesigns: Record<string, string | null> = {};
@@ -993,7 +1003,8 @@ export async function mutateSalesQuoteV2Structure(
   }
   return {
     backend: "authoritative_v2",
-    quoteId,
+    quoteId: persistedQuoteId,
+    ...(createRevision ? { sourceQuoteId: quoteId, identityMap } : {}),
     revision: positiveRevision(result.revision, "Quote V2 structural persistence"),
     status: "draft",
     quoteV2Status: result.quoteV2Status,

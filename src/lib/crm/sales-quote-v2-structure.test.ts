@@ -494,3 +494,19 @@ it("returns an explicit unassigned selection after the authoritative RPC accepts
     operations: [{type: "line.create", lineItemId: LINE_ID, patch: { roomName: "Window 1", productType: "", widthWhole: 36, heightWhole: 60 }}] });
   await expect(mutateSalesQuoteV2Structure(rpcClient({data: response, error: null}), QUOTE_ID, ACTOR_ID, request)).resolves.toEqual(response);
 });
+
+describe("finalized structural revisions", () => {
+ it("validates the new draft identity and exposes only its remapped IDs", async () => {
+  const client=rpcClient({data:{backend:"authoritative_v2",quoteId:TARGET_LINE_ID,sourceQuoteId:QUOTE_ID,revision:3,status:"draft",quoteV2Status:"stale",lineCount:1,selectedDesigns:{[TARGET_LINE_ID]:DESIGN_ID},identityMap:{[LINE_ID]:TARGET_LINE_ID},operations:[],productCost:999},error:null});
+  const parsed=parseSalesQuoteV2StructureBody({expectedRevision:7,idempotencyKey:"revise-detail-test",operations:[{type:"line.update",lineItemId:LINE_ID,patch:{roomName:"Office"}}]});
+  const result=await mutateSalesQuoteV2Structure(client,QUOTE_ID,ACTOR_ID,parsed,true);
+  expect((client as {rpc:ReturnType<typeof vi.fn>}).rpc).toHaveBeenCalledWith("revise_quote_v2_structure",expect.objectContaining({p_quote_id:QUOTE_ID,p_actor_id:ACTOR_ID,p_expected_revision:7,p_operations:parsed.operations}));
+  expect(result).toMatchObject({quoteId:TARGET_LINE_ID,sourceQuoteId:QUOTE_ID,identityMap:{[LINE_ID]:TARGET_LINE_ID}});
+  expect(result).not.toHaveProperty("productCost");
+ });
+ it.each([QUOTE_ID,LINE_ID])("rejects a response that cannot prove the original source (%s)",async sourceQuoteId=>{
+  const client=rpcClient({data:{backend:"authoritative_v2",quoteId:QUOTE_ID,sourceQuoteId,revision:3,status:"draft",quoteV2Status:"stale",lineCount:0,selectedDesigns:{},identityMap:{},operations:[]},error:null});
+  const parsed=parseSalesQuoteV2StructureBody({expectedRevision:7,idempotencyKey:"revise-detail-test",operations:[{type:"lines.clear"}]});
+  await expect(mutateSalesQuoteV2Structure(client,QUOTE_ID,ACTOR_ID,parsed,true)).rejects.toMatchObject({status:502});
+ });
+});

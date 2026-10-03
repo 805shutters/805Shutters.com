@@ -3,6 +3,7 @@ import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quot
 import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valance-only";
 import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
+import { remapQuoteV2RevisionOperations } from "@mts/lib/quoteV2RevisionOperations";
 import { currentQuoteLineIds, refreshQuoteV2Rows } from "@mts/lib/quoteV2RowRefresh";
 import { createDraftPricingRecovery, draftPricingRecoveryRequest } from "@mts/lib/quoteDraftPricingRecovery";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
@@ -616,6 +617,10 @@ export function QuoteBuilder({
   const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
   const designsQueryKey = [...quoteQueryKey, "designs"] as const;
   const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const structuralRevisionTargetsRef = useRef(new Map<string, { quoteId: string; identityMap: Readonly<Record<string, string>> }>());
+  const structuralRevisionTarget = (quoteId: string) =>
+    structuralRevisionTargetsRef.current.get(quoteId)
+      ?? [...structuralRevisionTargetsRef.current.values()].find(target => target.quoteId === quoteId);
   const revisionInFlightRef = useRef(false);
   const draftPricingRecoveryRef = useRef(createDraftPricingRecovery());
   const lastNormanPricingAttemptRef = useRef<string | null>(null);
@@ -860,7 +865,11 @@ export function QuoteBuilder({
       | QuoteV2StructureResponse
       | Awaited<ReturnType<typeof priceQuoteV2>>,
   ) => {
-    queryClient.setQueryData<SalesQuote>(quoteQueryKey, (current) => {
+    // A finalized edit owns a new draft; never write its revision or total into
+    // the sent source cache. The new quote is loaded after the atomic edit.
+    const responseKey = response.quoteId === activeQuoteId
+      ? quoteQueryKey : queryKeys.salesQuotes.detail(response.quoteId);
+    queryClient.setQueryData<SalesQuote>(responseKey, (current) => {
       if (!current) return current;
       if ("quoteTotal" in response) {
         return {
@@ -892,8 +901,17 @@ export function QuoteBuilder({
   ): Promise<void> => {
     const execute = async () => {
       if (!activeQuoteId) throw new Error("No active quote is open.");
-      const cachedQuote =
-        queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
+      // Another queued edit may have just revised this same finalized source.
+      const redirected = structuralRevisionTarget(activeQuoteId);
+      const targetQuoteId = redirected?.quoteId ?? activeQuoteId;
+      if (useQuoteBuilderStore.getState().activeQuoteId !== targetQuoteId) {
+        throw new Error("The active quote changed. Apply this edit to the current draft.");
+      }
+      const targetKey = queryKeys.salesQuotes.detail(targetQuoteId);
+      const cachedQuote = queryClient.getQueryData<SalesQuote>(targetKey)
+        ?? (targetQuoteId === activeQuoteId ? quote : undefined);
+      const targetOperations = redirected
+        ? remapQuoteV2RevisionOperations(operations, redirected.identityMap) : operations;
       if (!cachedQuote?.quote_v2_backend) {
         throw new Error(
           "Historical quote conversion is required before this quote can be changed in V2.",
@@ -910,19 +928,34 @@ export function QuoteBuilder({
       try {
         structure = await mutateQuoteV2Structure(
           supabase,
-          activeQuoteId,
+          targetQuoteId,
           expectedRevision,
-          operations,
+          targetOperations,
+          { createRevision: isQuotePriceLocked(cachedQuote) },
         );
+        if (structure.quoteId !== targetQuoteId) {
+          structuralRevisionTargetsRef.current.set(activeQuoteId, {
+            quoteId: structure.quoteId, identityMap: structure.identityMap ?? {},
+          });
+          // Seed the new draft before the next queued edit reads its revision.
+          const { data, error } = await (supabase as any).from("sales_quotes")
+            .select("*").eq("id", structure.quoteId).single();
+          if (error) throw error;
+          queryClient.setQueryData(queryKeys.salesQuotes.detail(structure.quoteId), data);
+        }
         updateServerOwnedV2QuoteCache(structure);
+        const redirectedLineItemId = preferredLineItemId
+          ? redirected?.identityMap[preferredLineItemId] ?? preferredLineItemId : undefined;
+        const targetLineItemId = redirectedLineItemId
+          ? structure.identityMap?.[redirectedLineItemId] ?? redirectedLineItemId : undefined;
 
         if (structure.lineCount > 0) {
-          const preferredDesignId = preferredLineItemId
-            ? structure.selectedDesigns[preferredLineItemId]
+          const preferredDesignId = targetLineItemId
+            ? structure.selectedDesigns[targetLineItemId]
             : null;
           const selectedEntry =
-            preferredLineItemId && preferredDesignId
-              ? ([preferredLineItemId, preferredDesignId] as const)
+            targetLineItemId && preferredDesignId
+              ? ([targetLineItemId, preferredDesignId] as const)
               : Object.entries(structure.selectedDesigns).find(
                   (entry): entry is [string, string] =>
                     typeof entry[1] === "string" && entry[1].length > 0,
@@ -933,7 +966,7 @@ export function QuoteBuilder({
             );
           }
 
-          const priced = await priceQuoteV2(supabase, activeQuoteId, {
+          const priced = await priceQuoteV2(supabase, structure.quoteId, {
             lineItemId: selectedEntry[0],
             designId: selectedEntry[1],
             expectedRevision: structure.revision,
@@ -942,7 +975,29 @@ export function QuoteBuilder({
         }
       } finally {
         if (structure) {
-          await refreshServerOwnedV2Rows();
+          if (structure.quoteId !== targetQuoteId) {
+            if (useQuoteBuilderStore.getState().activeQuoteId === targetQuoteId) setActiveQuote(structure.quoteId);
+            // Load copied selections before the next queued options edit rebases.
+            const copiedKey = queryKeys.salesQuotes.detail(structure.quoteId);
+            const { data: copiedLines, error: lineError } = await (supabase as any)
+              .from("sales_quote_line_items").select("*").eq("quote_id", structure.quoteId)
+              .is("archived_at", null).order("sort_order");
+            if (lineError) throw lineError;
+            queryClient.setQueryData([...copiedKey, "line-items"], copiedLines ?? []);
+            const copiedLineIds = (copiedLines ?? []).map((line: SalesQuoteLineItem) => line.id);
+            if (copiedLineIds.length) {
+              const { data: copiedDesigns, error: designError } = await (supabase as any)
+                .from("sales_quote_designs").select("*").in("line_item_id", copiedLineIds);
+              if (designError) throw designError;
+              queryClient.setQueryData([...copiedKey, "designs"], copiedDesigns ?? []);
+            }
+            await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+            toast.success("Change saved in a new draft revision. Original quote preserved.");
+          } else {
+            await refreshQuoteV2Rows(queryClient, targetKey,
+              [...targetKey, "line-items"], [...targetKey, "designs"]);
+            await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.lists() });
+          }
         }
       }
     };
@@ -1049,7 +1104,7 @@ export function QuoteBuilder({
 
   useEffect(() => {
     // A pending or failed read is not an authoritative empty set of saved lines.
-    if (!quote || quote.quote_v2_accepted_selection != null || areLineItemsLoading || isLineItemsLoadError || stackedLineItemIds.length === 0) return;
+    if (!quote || isQuotePriceLocked(quote) || quote.quote_v2_accepted_selection != null || areLineItemsLoading || isLineItemsLoadError || stackedLineItemIds.length === 0) return;
 
     const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
     const changed =
@@ -1541,9 +1596,12 @@ export function QuoteBuilder({
     scope: { id: `quote-pricing-${activeQuoteId}` },
     mutationKey: quoteDesignMutationKey,
     mutationFn: async (edit: QuoteDesignEdit) => {
-      const latestDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ?? designs;
+      const redirected = activeQuoteId ? structuralRevisionTarget(activeQuoteId) : undefined;
+      const latestDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(redirected
+        ? [...queryKeys.salesQuotes.detail(redirected.quoteId), "designs"] : designsQueryKey) ?? designs;
+      const latestLineId = redirected?.identityMap[edit.design.line_item_id] ?? edit.design.line_item_id;
       const existing = latestDesigns.find(row =>
-        row.line_item_id === edit.design.line_item_id && row.variant === edit.design.variant);
+        row.line_item_id === latestLineId && row.variant === edit.design.variant);
       const design = applyQuoteDesignEdit(edit, existing);
       if (serverOwnedV2) {
         const designId = existing?.id ?? crypto.randomUUID();

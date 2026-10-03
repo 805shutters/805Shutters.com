@@ -308,3 +308,13 @@ describe("Finalized quote revision client", () => {
    expect(request).toHaveBeenCalledWith('/api/crm/sales-quotes/quote/norman-price',expect.objectContaining({method:'POST',headers:expect.objectContaining({Authorization:'Bearer crm-token'}),body:'{}'}));
   }finally{request.mockRestore();}
  });
+
+it("routes finalized detail edits to authenticated revision persistence with a stable request key",async()=>{
+ const result={quoteId:"new-draft",sourceQuoteId:"sent-quote",identityMap:{"old-line":"new-line"},revision:3};
+ const fetchMock=vi.spyOn(globalThis,"fetch").mockResolvedValueOnce(new Response(JSON.stringify(result),{status:200}));
+ try {
+  const operations=[{type:"line.update" as const,lineItemId:"old-line",patch:{roomName:"Office"}}];
+  expect(await mutateQuoteV2Structure(databaseWithToken(),"sent-quote",7,operations,{createRevision:true,idempotencyKey:"detail-stable-request"})).toEqual(result);
+  expect(fetchMock).toHaveBeenCalledWith("/api/crm/sales-quotes/sent-quote/v2/structure-revision",expect.objectContaining({headers:expect.objectContaining({Authorization:"Bearer crm-token"}),body:JSON.stringify({expectedRevision:7,idempotencyKey:"detail-stable-request",operations})}));
+ } finally {fetchMock.mockRestore();}
+});

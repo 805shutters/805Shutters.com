@@ -1,7 +1,8 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-const db = new PGlite();
+const db = new PGlite({ extensions: { pgcrypto } });
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const actor = id(50), account = '72ccf12a-11c0-4261-8ad0-31af8ad0bbfb';
 beforeAll(async () => {
@@ -32,6 +33,20 @@ beforeAll(async () => {
  await db.exec('create view sales_quote_active_line_items as select * from sales_quote_line_items where archived_at is null');
  const manualDefinition=(await db.query<{definition:string}>("select pg_get_functiondef('set_sales_quote_line_price(uuid,uuid,text,numeric,uuid,bigint,uuid,boolean)'::regprocedure) as definition")).rows[0].definition;
  await db.exec(manualDefinition.replace(/from public\.sales_quote_line_items/gi,'from public.sales_quote_active_line_items'));
+ await db.exec(`create extension pgcrypto;
+ alter table sales_quotes add updated_at timestamptz;
+ alter table sales_quote_line_items add updated_at timestamptz;
+ alter table sales_quote_designs add supplier text,add material text,add louver_size text,add tilt_type text,
+ add hinge_color text,add panel_config text,add mount_type text,add shade_type text,add lift_system text,
+ add valance text,add fabric text,add motor_type text,add remote_type text,add hard_surface_install boolean,
+ add ladder_over_15ft boolean,add requires_takedown boolean,add notes text;
+ `);
+ const structure=readFileSync('supabase/migrations/20260726120000_add_quote_v2_structural_mutation_rpc.sql','utf8');
+ await db.exec(structure.slice(0,structure.indexOf('create table if not exists')));
+ await db.exec(structure.slice(structure.indexOf('create or replace function public.mutate_quote_v2_structure(')));
+ const structureDefinition=(await db.query<{definition:string}>("select pg_get_functiondef('mutate_quote_v2_structure(uuid,bigint,text,uuid,jsonb)'::regprocedure) as definition")).rows[0].definition;
+ await db.exec(structureDefinition.replace(/from public\.sales_quote_line_items/gi,'from public.sales_quote_active_line_items'));
+ await db.exec(readFileSync('supabase/migrations/20261003001626_quote_v2_sent_detail_revision.sql','utf8'));
  await db.query('insert into crm_profiles(id,email) values($1,$2)', [actor,'805shutters@gmail.com']);
 }, 30000);
 afterAll(() => db.close());
@@ -263,4 +278,49 @@ it('allocates a revision number under the native lock with no auth.uid while rea
  expect(await row('sales_quotes',s.q)).toEqual(original);expect(await row('sales_quote_line_items',s.l)).toEqual(originalLine);
  const second=await revise(s.q,s.l,179,'delete');expect(second.quote.quote_number).toBe('805-1001');
  await expect(db.query("select next_quote_number('805')")).rejects.toThrow(/805 CRM authentication is required/);
+});
+
+async function reviseStructure(s: {q:string}, operations: object[], key: string, who=actor, revision=7) {
+ return (await db.query<any>('select revise_quote_v2_structure($1,$2,$3,$4,$5) as r',[s.q,revision,key,who,operations])).rows[0].r;
+}
+it('copies a sent detail edit atomically, remaps line/design IDs and retains original snapshots and manual overrides',async()=>{
+ const s=await source(60);
+ await db.query("update sales_quotes set status='sent',signed_at=null,customer_signature=null,installer_notes=$1 where id=$2",[JSON.stringify({__stackedLineItemIds:[s.l]}),s.q]);
+ const original=await row('sales_quotes',s.q),originalLine=await row('sales_quote_line_items',s.l),originalDesign=await row('sales_quote_designs',s.d),snapshot=await row('sales_quote_v2_price_snapshots',s.snapshot);
+ const ops=[{type:'design.upsert',lineItemId:s.l,designId:s.d,variant:'B',selectDesign:true,patch:{louverSize:'2 1/2"'}}];
+ const r=await reviseStructure(s,ops,'detail-revision-60');
+ expect(r.quoteId).not.toBe(s.q);expect(r.sourceQuoteId).toBe(s.q);expect(r.status).toBe('draft');
+ const copiedLine=await row('sales_quote_line_items',r.identityMap[s.l]);
+ expect(copiedLine).toMatchObject({quantity:2,width_whole:36,height_whole:60});
+ expect(copiedLine.selected_design_id).toBe(r.identityMap[s.d]);
+ expect((await row('sales_quote_designs',r.identityMap[s.d])).louver_size).toBe('2 1/2"');
+ const q=await row('sales_quotes',r.quoteId);
+ expect(q).toMatchObject({sent_at:null,signed_at:null,customer_signature:null,quote_v2_revision:r.revision});
+ expect(JSON.parse(q.installer_notes).__stackedLineItemIds).toEqual([r.identityMap[s.l]]);
+ expect((await db.query<any>('select unit_price from sales_quote_line_price_overrides where design_id=$1',[r.identityMap[s.d]])).rows[0].unit_price).toBe('100.00');
+ expect((await db.query<any>('select retail_total from sales_quote_v2_price_snapshots where quote_id=$1',[r.quoteId])).rows[0].retail_total).toBe('278');
+ expect(await row('sales_quotes',s.q)).toEqual(original);expect(await row('sales_quote_line_items',s.l)).toEqual(originalLine);
+ expect(await row('sales_quote_designs',s.d)).toEqual(originalDesign);expect(await row('sales_quote_v2_price_snapshots',s.snapshot)).toEqual(snapshot);
+ expect(await reviseStructure(s,ops,'detail-revision-60')).toEqual(r);
+ await expect(reviseStructure(s,[{...ops[0],patch:{louverSize:'4"'}}],'detail-revision-60')).rejects.toThrow(/different inputs/);
+ expect((await db.query('select * from sales_quote_revision_requests where source_quote_id=$1',[s.q])).rows).toHaveLength(1);
+});
+it('rolls back the copy on invalid, cross-quote, excluded, stale or unauthorized structural edits',async()=>{
+ const s=await acceptedSource(61),other=await source(62);
+ const count=async()=> (await db.query<any>('select count(*) as n from sales_quotes')).rows[0].n;
+ const before=await count();
+ await expect(reviseStructure(s,[{type:'line.update',lineItemId:other.l,patch:{roomName:'Wrong'}}],'detail-other-line')).rejects.toThrow(/does not belong/);
+ await expect(reviseStructure(s,[{type:'line.update',lineItemId:s.excluded,patch:{roomName:'Excluded'}}],'detail-excluded')).rejects.toThrow(/does not belong/);
+ await expect(reviseStructure(s,[{type:'line.update',lineItemId:s.l,patch:{quantity:0}}],'detail-invalid')).rejects.toThrow();
+ await expect(reviseStructure(s,[{type:'line.update',lineItemId:s.l,patch:{roomName:'Office'}}],'detail-stale',actor,8)).rejects.toThrow(/changed/);
+ await expect(reviseStructure(s,[{type:'line.update',lineItemId:s.l,patch:{roomName:'Office'}}],'detail-unauthorized',id(999))).rejects.toThrow(/authorized/);
+ expect(await count()).toBe(before);
+});
+it('remaps serialized quote notes in a structural revision and keeps accepted scope',async()=>{
+ const s=await acceptedSource(63);
+ const r=await reviseStructure(s,[{type:'quote.update',patch:{installerNotes:JSON.stringify({__quoteBuilderNote:'Updated detail',__stackedLineItemIds:[s.l]})}}],'detail-note-63');
+ const q=await row('sales_quotes',r.quoteId);
+ expect(JSON.parse(q.installer_notes)).toMatchObject({__quoteBuilderNote:'Updated detail',__stackedLineItemIds:[r.identityMap[s.l]]});
+ const lines=(await db.query<any>('select room_name,quantity from sales_quote_line_items where quote_id=$1',[r.quoteId])).rows;
+ expect(lines).toHaveLength(2);expect(lines).toContainEqual({room_name:'Bedroom',quantity:1});
 });

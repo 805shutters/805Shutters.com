@@ -65,6 +65,8 @@ export type QuoteV2StructureResponse = Readonly<{
   lineCount: number;
   selectedDesigns: Readonly<Record<string, string | null>>;
   operations: readonly JsonObject[];
+  sourceQuoteId?: string;
+  identityMap?: Readonly<Record<string, string>>;
 }>;
 
 export type QuoteV2PriceResponse = Readonly<{
@@ -433,11 +435,11 @@ export function mutateQuoteV2Structure(
   quoteId: string,
   expectedRevision: number,
   operations: readonly QuoteV2StructureOperation[],
-  options: Readonly<{ idempotencyKey?: string }> = {},
+  options: Readonly<{ idempotencyKey?: string; createRevision?: boolean }> = {},
 ): Promise<QuoteV2StructureResponse> {
   return postAuthenticated<QuoteV2StructureResponse>(
     database,
-    `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/structure`,
+    `/api/crm/sales-quotes/${encodeURIComponent(quoteId)}/v2/${options.createRevision ? "structure-revision" : "structure"}`,
     {
       expectedRevision,
       idempotencyKey: options.idempotencyKey || quoteV2RequestKey("structure"),
