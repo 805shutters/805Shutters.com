@@ -63,6 +63,10 @@
     {
       "path": "/api/cron/installation-invoices/",
       "schedule": "7 * * * *"
+    },
+    {
+      "path": "/api/cron/in-house-payments/",
+      "schedule": "17 * * * *"
     }
   ]
 }

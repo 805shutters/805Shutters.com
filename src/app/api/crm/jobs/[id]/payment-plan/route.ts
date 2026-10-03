@@ -16,6 +16,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
     const payload = await request.json();
+    const guard = await supabase.from("crm_quotes").select("meta,signed_at").eq("job_id",id);
+    if(guard.error)throw new CrmAuthError(502,"Payment terms could not be verified.");
+    if(guard.data?.some(q=>q.signed_at && q.meta?.adjustments?.paymentSchedule==="in_house_three_month_v1"))throw new CrmAuthError(409,"This job uses accepted V2 in-house terms. Manage its exact installment schedule.");
     const method = METHODS.has(payload.method) ? (payload.method as CrmPaymentPlanMethod) : undefined;
 
     const result = await createPaymentPlanForJob(

@@ -146,6 +146,7 @@ export async function sendSquareOrderPaymentLink(
   if (collectionMode === "partial" && confirmation?.customAmount === undefined) {
     throw new CrmAuthError(400, "Enter the partial payment amount.");
   }
+  if(publicQuote.paymentSchedule === "in_house_three_month_v1")throw new CrmAuthError(409,"Use the exact installment checkout or reviewed reminder in In-house payment tracking.");
   const amount = squarePaymentRequestAmount(collectionMode || kind === "full" || kind === "custom" ? amounts.outstanding : amounts[paymentType], confirmation?.customAmount);
   if (collectionMode === "partial" && dollarsToCents(amount) >= dollarsToCents(amounts.outstanding)) {
     throw new CrmAuthError(400, "Use full balance to collect the entire remaining amount.");

@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { InHousePayments } from "@/components/crm/InHousePayments";
+import { parseQuoteAdminControls } from "@mts/lib/quoteTotals";
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
@@ -47,6 +49,7 @@ export function CollectPaymentDialog({
   mode = "balance",
 }: CollectPaymentDialogProps) {
   const queryClient = useQueryClient();
+  const inHouse = parseQuoteAdminControls(quote.installer_notes).paymentSchedule === "in_house_three_month_v1";
 
   const expectedBalance = useMemo(() => {
     const total = Number(quote.total_amount) || 0;
@@ -105,6 +108,7 @@ export function CollectPaymentDialog({
       (Number(quote.total_amount) || 0) - 0.01 &&
     quote.status === "received";
 
+  if(inHouse) return <Dialog open={open} onOpenChange={o=>!o&&onClose()}><DialogContent className="max-h-[85vh] overflow-auto"><DialogHeader><DialogTitle>Record an in-house payment receipt</DialogTitle><DialogDescription>Record money already received in the accepted quote ledger.</DialogDescription></DialogHeader><InHousePayments salesQuoteId={quote.id} initiallyOpen/><Button onClick={onClose}>Close</Button></DialogContent></Dialog>;
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[460px]">

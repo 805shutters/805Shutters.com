@@ -1,3 +1,4 @@
+import { paymentSchedule, IN_HOUSE_SCHEDULE, type PaymentSchedule } from "./payment-schedule";
 import { calculateCustomerCharges, parseCustomerCharges, storedCustomerCharges } from "@/lib/quote/customer-charges";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteSurchargeSelection } from "@/lib/crm/types";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
@@ -64,6 +65,7 @@ export function quoteTotal(input: { subtotal: number; discount: number; tax: num
 
 export type QuoteFee = { name: string; amount: number };
 export type QuoteAdjustments = {
+  paymentSchedule?: PaymentSchedule;
   discountPercent: number;
   discountFlat: number;
   taxPercent: number;
@@ -120,6 +122,7 @@ export function parseAdjustments(meta: unknown): QuoteAdjustments {
     balanceDueOverride: nullableNonNeg(o.balanceDueOverride),
     balanceAdjustmentNote: optionalText(o.balanceAdjustmentNote),
     fees,
+    ...(paymentSchedule(o.paymentSchedule) === IN_HOUSE_SCHEDULE ? { paymentSchedule: IN_HOUSE_SCHEDULE } : {}),
   };
 }
 
@@ -146,11 +149,13 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments, fixed
   const taxAmount = round2(taxableBase * (adj.taxPercent / 100));
   const engineTotal = round2(taxableBase + taxAmount);
   const calculatedTotal = adj.totalOverride == null ? engineTotal : round2(Math.max(adj.totalOverride, 0));
-  const depositRequired = round2(calculatedTotal * (adj.depositPercent / 100));
+  const originalDeposit = round2(calculatedTotal * (adj.depositPercent / 100));
+  const depositRequired = adj.paymentSchedule === IN_HOUSE_SCHEDULE ? Math.floor(Math.round(calculatedTotal * 100) / 3) / 100 : originalDeposit;
   const calculatedBalanceDue = round2(Math.max(calculatedTotal - depositRequired, 0));
   const balanceDue = adj.balanceDueOverride == null ? calculatedBalanceDue : round2(Math.max(adj.balanceDueOverride, 0));
   const balanceAdjustment = round2(calculatedBalanceDue - balanceDue);
-  const total = adj.balanceDueOverride == null ? calculatedTotal : round2(depositRequired + balanceDue);
+  const total = adj.balanceDueOverride == null ? calculatedTotal : round2(originalDeposit + balanceDue);
+  const finalDeposit = adj.paymentSchedule === IN_HOUSE_SCHEDULE ? Math.floor(Math.round(total * 100) / 3) / 100 : depositRequired;
   return {
     subtotal: round2(subtotal),
     extrasTotal,
@@ -158,8 +163,8 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments, fixed
     taxableBase,
     taxAmount,
     total,
-    depositRequired,
-    balanceDue,
+    depositRequired: finalDeposit,
+    balanceDue: adj.paymentSchedule === IN_HOUSE_SCHEDULE ? round2(total - finalDeposit) : balanceDue,
     calculatedBalanceDue,
     balanceAdjustment,
   };

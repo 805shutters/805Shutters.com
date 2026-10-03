@@ -63,6 +63,7 @@ export type V2CustomerRetailPrice = {
 
 export type PreparedV2CustomerQuote = {
   backend: "authoritative_v2";
+  paymentSchedule?: "in_house_three_month_v1";
   total: number;
   lines: Array<{
     lineItemId: string;
@@ -507,7 +508,7 @@ export function prepareV2CustomerSendPayload(
     ) {
       fail("The stored quote total does not match its immutable saved retail snapshots.");
     }
-    return { backend: "authoritative_v2", total, lines: customerLines };
+    return { backend: "authoritative_v2", total, lines: customerLines, ...(parseQuoteAdminControls(input.quote).paymentSchedule === "in_house_three_month_v1" ? {paymentSchedule: "in_house_three_month_v1" as const} : {}) };
   }
 
   const serverDate = input.serverDate ?? quoteV2ServerCatalogDate();
@@ -660,7 +661,7 @@ export function prepareV2CustomerSendPayload(
   ) {
     fail("The stored quote total does not match the selected authoritative V2 designs.");
   }
-  return { backend: "authoritative_v2", total, lines: customerLines };
+  return { backend: "authoritative_v2", total, lines: customerLines, ...(parseQuoteAdminControls(input.quote).paymentSchedule === "in_house_three_month_v1" ? {paymentSchedule: "in_house_three_month_v1" as const} : {}) };
 }
 
 export async function prepareV2CustomerSendPayloadFromDatabase(

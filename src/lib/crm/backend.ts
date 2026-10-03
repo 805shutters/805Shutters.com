@@ -9,6 +9,7 @@ import { buildJobTrackingView } from "./job-tracking-view";
 import type { InstallerOutcomeEvidence, ProgressSourceHealth } from "./job-progress";
 import { loadCompleteCrmTable } from "@/lib/crm/pagination";
 import { insertReceivedPayment } from "@/lib/crm/received-payment";
+import { refreshPlansAfterLedgerWrite } from "@/lib/crm/in-house-plan-processor";
 import { SupabaseClient } from "@supabase/supabase-js";
 import {
   BUSINESS_PAYOFF_TARGET,
@@ -3677,6 +3678,7 @@ export async function updateCrmQuote(
     await maybeSendCustomerCloseoutForQuote(supabase, id, actor, "quote_ledger_update");
   }
 
+  await refreshPlansAfterLedgerWrite(supabase, { quoteId: id });
   return quote as CrmQuote;
 }
 
@@ -4126,6 +4128,7 @@ export async function updateCrmBookkeepingEntry(
         : undefined
   });
 
+  await refreshPlansAfterLedgerWrite(supabase, { bookkeepingEntryId: id, quoteId: optionalText(entry.quote_id) || undefined });
   return entry as CrmBookkeepingEntry;
 }
 
@@ -4191,6 +4194,7 @@ export async function updateCrmBookkeepingPayment(
 
   const quoteId = optionalText((data as CrmBookkeepingPayment).quote_id || (existing as CrmBookkeepingPayment).quote_id);
   if (quoteId) await maybeSendCustomerCloseoutForQuote(supabase, quoteId, actor, "payment_row_update");
+  await refreshPlansAfterLedgerWrite(supabase, { quoteId: quoteId || undefined, bookkeepingEntryId: optionalText(existing.bookkeeping_entry_id) || undefined });
 
   return data as CrmBookkeepingPayment;
 }
@@ -4214,6 +4218,7 @@ export async function deleteCrmBookkeepingPayment(supabase: CrmSupabaseClient, i
     before: existing
   });
 
+  await refreshPlansAfterLedgerWrite(supabase, { quoteId: optionalText(existing.quote_id) || undefined, bookkeepingEntryId: optionalText(existing.bookkeeping_entry_id) || undefined });
   return { id };
 }
 

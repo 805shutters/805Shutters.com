@@ -1,3 +1,4 @@
+import { refreshPlansAfterLedgerWrite } from './in-house-plan-processor';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { squareEnvironment, squareLocationId, fetchSquareOrderFacts } from '@/lib/finance/square';
@@ -87,6 +88,10 @@ export async function syncSquareFinance(db: SupabaseClient, budgetMs = 45000, pr
           const detail = error instanceof Error ? error.message : 'Payment needs review.';
           checked(await db.from('crm_square_objects').update({ details: { ...obj.details, review_error: detail } }).eq('environment', environment).eq('kind', kind).eq('id', obj.id));
         }
+      }
+      if(environment==='production'&&(kind==='payment'||kind==='refund')){
+        const paymentId=kind==='payment'?obj.id:obj.payment_id;
+        if(paymentId){const receipts=checked(await db.from('crm_quote_bookkeeping_payments').select('quote_id').or(`and(external_source.eq.square,external_id.eq.${paymentId}),meta->>square_payment_id.eq.${paymentId}`));for(const r of receipts||[])if(r.quote_id){const warning=await refreshPlansAfterLedgerWrite(db,{quoteId:r.quote_id});if(warning)errors.push(warning);}}
       }
     };
     if (priorityPaymentId) {

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     const pub = await loadPublicQuoteByToken(supabase, token);
     if (!pub) throw new CrmAuthError(404, "This quote link is no longer valid.");
     if (pub.superseded) throw new CrmAuthError(409, "Another option was accepted for this project. Use its signed contract for payment.");
+    if(pub.paymentSchedule === "in_house_three_month_v1")throw new CrmAuthError(409,"Use the secure installment card checkout on this contract.");
     const money = selectedLineIds?.length ? await computeSelectionTotal(supabase, token, selectedLineIds) : pub;
     const amount = amountDueForPaymentType(money.payment, body.paymentType);
     const amountCents = dollarsToCents(amount);

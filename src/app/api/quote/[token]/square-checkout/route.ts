@@ -1,3 +1,7 @@
+import {IN_HOUSE_SCHEDULE} from "@/lib/crm/payment-schedule";
+import {findOpenPlan,withPlanLease,synchronizePlan} from "@/lib/crm/in-house-plans";
+import {installmentLink,retireObsoletePlanLinks,providers} from "@/lib/crm/in-house-plan-processor";
+import {unpaidCents} from "@/lib/crm/in-house-plan-model";
 import { trackSquarePaymentRequest } from "@/lib/crm/square-payment-requests";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
@@ -20,6 +24,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     const body = (await request.json().catch(() => ({}))) as {
       paymentType?: QuotePaymentType;
       selectedLineIds?: unknown;
+      installmentId?: unknown;
     };
     if (body.paymentType !== "deposit" && body.paymentType !== "balance") {
       throw new CrmAuthError(400, "Choose the payment shown on this contract.");
@@ -32,6 +37,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     if (!pub) throw new CrmAuthError(404, "This quote link is no longer valid.");
     if (pub.superseded) throw new CrmAuthError(409, "Another option was accepted for this project. Use its signed contract for payment.");
 
+    if(pub.paymentSchedule===IN_HOUSE_SCHEDULE){
+      if(!pub.signed)throw new CrmAuthError(409,"Accept the selected quote before making the deposit.");
+      const plan=await findOpenPlan(supabase,{quoteId:pub.id});if(!plan)throw new CrmAuthError(409,"The accepted payment schedule could not be verified. Contact 805 Shutters.");
+      const url=await withPlanLease(supabase,plan.id,async(p,t)=>{
+        p=await synchronizePlan(supabase,p,t);
+        if(!["active","waiting_deposit"].includes(p.status))throw new CrmAuthError(409,"This payment schedule is on hold or has ended. Contact 805 Shutters.");
+        await retireObsoletePlanLinks(supabase,p,providers);
+        const i=typeof body.installmentId==="string"?p.installments.find(i=>i.id===body.installmentId):p.installments.find(i=>unpaidCents(i)>0);
+        if(!i||!unpaidCents(i))throw new CrmAuthError(409,"This payment is already covered.");
+        if((i.number===1?"deposit":"balance")!==body.paymentType)throw new CrmAuthError(409,"Review the current installment before paying.");
+        return installmentLink(supabase,p,i,providers);
+      });return NextResponse.json({url});
+    }
     const money = selectedLineIds?.length ? await computeSelectionTotal(supabase, token, selectedLineIds) : pub;
     const amount = amountDueForPaymentType(money.payment, body.paymentType);
     const { data: quoteIdentity, error: quoteIdentityError } = await supabase

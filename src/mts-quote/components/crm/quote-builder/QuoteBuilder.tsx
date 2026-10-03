@@ -1,3 +1,5 @@
+"use client";
+import { PaymentScheduleSelector, InHousePayments, inHouseRequest } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valance-only";
@@ -2339,6 +2341,12 @@ export function QuoteBuilder({
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
+      {quote.quote_v2_backend && <PaymentScheduleSelector value={parseQuoteAdminControls(quote).paymentSchedule??"standard"} total={Number(quote.total_amount)||0} disabled={Boolean(quote.signed_at||quote.customer_signature)} onSave={async schedule=>{
+        const saved=await inHouseRequest(`/api/crm/sales-quotes/${quote.id}/payment-schedule/`,"POST",{schedule,revision:Number(quote.quote_v2_revision),requestId:crypto.randomUUID()});
+        await queryClient.invalidateQueries({queryKey:queryKeys.salesQuotes.all});
+        if(saved.quoteId!==quote.id)setActiveQuote(saved.quoteId);
+      }}/>}<InHousePayments salesQuoteId={quote.id}/>
+
       <div className="quote-builder-sticky-shell relative z-40 -mx-4 -mt-4 mb-3">
         <header id="quote-builder-command-bar" className="quote-builder-command-bar" aria-label="Quote workspace header">
           <div className="quote-header-main">

@@ -371,6 +371,7 @@ async function mirrorSalesQuoteV2ForCustomerSend(
   quote: AnyRow,
   prepared: PreparedV2CustomerQuote,
 ): Promise<string> {
+  if(prepared.paymentSchedule === "in_house_three_month_v1")throw new CrmAuthError(409,"In-house payment terms require native V2 delivery. Create a native V2 draft before sending.");
   const accountId = quote.account_id || DEFAULT_805_ACCOUNT_ID;
   const importedMeta = quoteMeasureMeta(quote);
   const job = await upsertOne(supabase, "crm_jobs", {

@@ -93,6 +93,8 @@ export type SquarePaymentLinkInput = {
   buyerEmail?: string | null;
   idempotencyKey?: string;
   selectedLineIds?: string[];
+  inHousePlanId?: string;
+  inHouseInstallmentId?: string;
 };
 
 export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, locationId: string) {
@@ -117,6 +119,7 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
         ...(input.bookkeepingEntryId ? { bookkeeping_entry_id: input.bookkeepingEntryId } : { quote_id: input.quoteId }),
         job_id: input.jobId,
         payment_type: input.paymentType,
+        ...(input.inHousePlanId ? {in_house_plan_id: input.inHousePlanId, in_house_installment_id: input.inHouseInstallmentId} : {}),
         expected_amount_cents: String(input.amountCents),
         ...(input.selectedLineIds?.length ? { selected_line_ids: input.selectedLineIds.join(",") } : {}),
       },
@@ -363,6 +366,8 @@ export type SquareOrderFacts = {
   expectedAmountCents: number | null;
   currency: string | null;
   selectedLineIds?: string[];
+  inHousePlanId?: string;
+  inHouseInstallmentId?: string;
 };
 
 export async function fetchSquareOrderFacts(
@@ -496,6 +501,8 @@ export type SquareWalletPaymentInput = {
   walletType: "apple_pay" | "google_pay";
   idempotencyKey: string;
   selectedLineIds?: string[];
+  inHousePlanId?: string;
+  inHouseInstallmentId?: string;
 };
 
 export type SquareWalletPayment = {
@@ -515,6 +522,7 @@ export function squareWalletOrderRequestBody(input: SquareWalletPaymentInput, lo
         quote_id: input.quoteId,
         job_id: input.jobId,
         payment_type: input.paymentType,
+        ...(input.inHousePlanId ? {in_house_plan_id: input.inHousePlanId, in_house_installment_id: input.inHouseInstallmentId} : {}),
         wallet_type: input.walletType,
         expected_amount_cents: String(input.amountCents),
         ...(input.selectedLineIds?.length
@@ -717,4 +725,11 @@ export function isSquarePaidPaymentEvent(event: unknown): boolean {
   } | undefined;
   const status = String(payment?.status || payment?.card_details?.status || "").toUpperCase();
   return status === "COMPLETED" && Number(payment?.refunded_money?.amount || 0) === 0;
+}
+
+/** Retire only the known checkout link; this never charges or refunds a card. */
+export async function retireSquarePaymentLink(id: string): Promise<void> {
+ const token = squareAccessToken(); if (!token) throw new Error("Square is not configured.");
+ const res = await fetch(`${squarePaymentLinksUrl()}/${encodeURIComponent(id)}`, {method:"DELETE", headers:{Authorization:`Bearer ${token}`, "Square-Version":SQUARE_VERSION}});
+ if (!res.ok && res.status !== 404) throw new Error(`Square link retirement failed (${res.status}).`);
 }

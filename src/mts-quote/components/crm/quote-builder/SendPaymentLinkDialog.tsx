@@ -1,3 +1,4 @@
+import { parseQuoteAdminControls } from "@mts/lib/quoteTotals";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -51,8 +52,8 @@ export function SendPaymentLinkDialog({ open, onClose, quote }: SendPaymentLinkD
   const depositDue = useMemo(() => {
     const total = Number(quote.total_amount) || 0;
     const depositPaid = Number(quote.deposit_paid) || 0;
-    return Math.max(total * 0.5 - depositPaid, 0);
-  }, [quote.deposit_paid, quote.total_amount]);
+    return Math.max((parseQuoteAdminControls(quote.installer_notes).paymentSchedule === "in_house_three_month_v1" ? Math.floor(Math.round(total*100)/3)/100 : total * 0.5) - depositPaid, 0);
+  }, [quote.deposit_paid, quote.total_amount, quote.installer_notes]);
 
   const sendPaymentLink = useMutation<PaymentLinkSendResponse, Error>({
     mutationFn: async () => {

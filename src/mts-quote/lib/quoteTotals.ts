@@ -1,3 +1,4 @@
+import { paymentSchedule, type PaymentSchedule } from "@/lib/crm/payment-schedule";
 import { storedCustomerCharges } from "@/lib/quote/customer-charges";
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import { authoritativeDesignPriceIssue } from "./quotePricingDisplay";
@@ -33,6 +34,7 @@ export interface QuoteExtraFee {
 }
 
 export interface QuoteAdminControls {
+  paymentSchedule?: PaymentSchedule;
   showExtras: boolean;
   showDiscount: boolean;
   showTax: boolean;
@@ -359,5 +361,6 @@ function normalizeAdminControls(raw: unknown): QuoteAdminControls {
         ? normalizeMoney(obj.depositPercent)
         : DEFAULT_QUOTE_ADMIN_CONTROLS.depositPercent,
     progressPercent: 0,
+    paymentSchedule: paymentSchedule(obj.paymentSchedule),
   };
 }

@@ -1,3 +1,5 @@
+import { IN_HOUSE_SCHEDULE, scheduleAmounts, type PaymentSchedule } from "./payment-schedule";
+import { loadPublicPaymentPlan, type PublicPaymentPlan } from "./in-house-plan-public";
 import { customerQuoteOptionRows } from "./public-quote-options";
 import { selectedDeliveryQuoteIds } from "./quote-delivery-selection";
 import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
@@ -132,6 +134,8 @@ export type PublicQuoteDesignOption = {
 };
 
 export type PublicQuote = {
+  paymentSchedule?: PaymentSchedule;
+  inHousePlan?: PublicPaymentPlan | null;
   token: string;
   /** Internal quote id (uuid). Used to reconcile online payments; gated by the token. */
   id: string;
@@ -189,6 +193,7 @@ export function publicQuoteCustomerDetails(
 }
 
 export type SignedContractSnapshot = {
+  paymentSchedule?: {version: "in_house_three_month_v1"; amountsCents: [number,number,number]; anchor: "full_deposit_receipt"; timeZone: "America/Los_Angeles"};
   schema: "805_signed_quote_contract_v1";
   signedAt: string;
   customerPrintedName: string;
@@ -309,7 +314,8 @@ export function buildSignedContractSnapshot(
       total: pub.total,
     },
     hasOnyxShutters: pub.hasOnyxShutters,
-    terms: customerContractTerms(pub.hasOnyxShutters),
+    ...(pub.paymentSchedule === IN_HOUSE_SCHEDULE ? {paymentSchedule: {version: IN_HOUSE_SCHEDULE, amountsCents: scheduleAmounts(pub.total), anchor: "full_deposit_receipt" as const, timeZone: "America/Los_Angeles" as const}} : {}),
+    terms: customerContractTerms(pub.hasOnyxShutters, pub.paymentSchedule),
   };
 }
 
@@ -346,7 +352,7 @@ function computePublicSelectionMoney(pub: PublicQuote, lines: PublicQuoteLine[])
   const sourceTotalAdjustment = round2(pub.sourceTotalAdjustment * ratio);
   const total = round2(base.total + sourceTotalAdjustment);
   const depositDue =
-    pub.adjustments.depositPercent > 0
+    pub.adjustments.paymentSchedule === IN_HOUSE_SCHEDULE ? scheduleAmounts(total)[0] / 100 : pub.adjustments.depositPercent > 0
       ? round2(total * (pub.adjustments.depositPercent / 100))
       : base.depositDue;
   return {
@@ -1108,7 +1114,7 @@ async function projectPublicQuote(
   const sourceTotalAdjustment = legacyMts ? await legacySourceTotalAdjustment(supabase, quote, money.total) : 0;
   const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
   const depositPercent = adj.depositPercent || 0;
-  const depositDue = depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;
+  const depositDue = adj.paymentSchedule === IN_HOUSE_SCHEDULE ? scheduleAmounts(total)[0] / 100 : depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;
   const payment = await loadQuotePaymentState(supabase, quote.id, { total, depositRequired: depositDue });
 
   let customerName = quote.customer_name || "";
@@ -1133,6 +1139,8 @@ async function projectPublicQuote(
 
   return {
     token,
+    paymentSchedule: adj.paymentSchedule ?? "standard",
+    inHousePlan: adj.paymentSchedule === IN_HOUSE_SCHEDULE && quote.signed_at ? await loadPublicPaymentPlan(supabase, quote.id) : null,
     id: quote.id,
     quoteNumber: quote.quote_number,
     quoteLabel: quote.quote_group_id && /^[A-Z]+$/.test(quote.quote_label || "") ? quote.quote_label! : undefined,
@@ -2401,7 +2409,7 @@ export async function sendQuoteToCustomer(
 
 export function buildQuotePaymentLinkSms(
   url: string,
-  details: { depositDue?: number; balanceDue?: number; total?: number } = {},
+  details: { depositDue?: number; balanceDue?: number; total?: number; paymentSchedule?: string } = {},
 ): string {
   const hasDepositDue = Number(details.depositDue) > 0;
   const amountDue = hasDepositDue
@@ -2412,6 +2420,7 @@ export function buildQuotePaymentLinkSms(
         ? Number(details.total)
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
+  if(details.paymentSchedule === IN_HOUSE_SCHEDULE)return `805 Shutters three-month payment link.${amountText} Pay securely: ${url}. Questions? Call or text 805-806-9344. Reply STOP to stop text messages.`;
   return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
 }
 
@@ -2453,6 +2462,7 @@ export async function sendQuotePaymentLinkToCustomer(
   const requestedPhone = options.phone?.trim() || phone;
   const note = options.note?.trim();
   const paymentDetails = {
+    paymentSchedule: publicQuote?.paymentSchedule,
     quoteNumber: publicQuote?.quoteNumber,
     depositDue: publicQuote?.depositDue,
     balanceDue: publicQuote?.balanceDue,

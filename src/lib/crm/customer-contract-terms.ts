@@ -1,3 +1,4 @@
+import { IN_HOUSE_TERMS, IN_HOUSE_SCHEDULE, type PaymentSchedule } from "./payment-schedule";
 export type CustomerContractTermSection = {
   heading?: string;
   paragraphs?: string[];
@@ -53,12 +54,12 @@ export const PAYMENT_AT_INSTALLATION_SECTION: CustomerContractTermSection = {
   ],
 };
 
-export function customerContractTerms(hasOnyxShutters: boolean): CustomerContractTerms {
+export function customerContractTerms(hasOnyxShutters: boolean, schedule?: PaymentSchedule): CustomerContractTerms {
   return {
     version: "2026-09-16",
     sections: [
       ...(hasOnyxShutters ? SHUTTER_MANUFACTURER_WARRANTY_SECTIONS : []),
-      PAYMENT_AT_INSTALLATION_SECTION,
+      schedule === IN_HOUSE_SCHEDULE ? IN_HOUSE_TERMS as CustomerContractTermSection : PAYMENT_AT_INSTALLATION_SECTION,
     ].map((section) => ({
       ...section,
       ...(section.paragraphs ? { paragraphs: [...section.paragraphs] } : {}),

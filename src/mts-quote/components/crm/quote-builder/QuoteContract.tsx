@@ -1,3 +1,5 @@
+"use client";
+import { PaymentScheduleSelector, SchedulePreview, InHousePayments, inHouseRequest } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
@@ -564,7 +566,7 @@ export function QuoteContract({
   const depositPercent = 50;
   const balancePercent = 50;
   const totalCents = Math.round(totalAmount * 100);
-  const depositCents = Math.round(totalCents * 0.5);
+  const depositCents = adminControls.paymentSchedule === "in_house_three_month_v1" ? Math.floor(totalCents / 3) : Math.round(totalCents * 0.5);
   const depositAmount = depositCents / 100;
   const balanceAmount = (totalCents - depositCents) / 100;
   const customerEmailNote = quote ? getQuoteEmailNote(quote) : "";
@@ -648,6 +650,11 @@ export function QuoteContract({
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto relative">
+      {quote.quote_v2_backend && <PaymentScheduleSelector value={adminControls.paymentSchedule??"standard"} total={totalAmount} disabled={hasAcceptedQuote} onSave={async schedule=>{
+        const saved=await inHouseRequest(`/api/crm/sales-quotes/${quote.id}/payment-schedule/`,"POST",{schedule,revision:Number(quote.quote_v2_revision),requestId:crypto.randomUUID()});
+        await queryClient.invalidateQueries({queryKey:queryKeys.salesQuotes.all});
+        if(saved.quoteId!==quote.id)setActiveQuote(saved.quoteId);
+      }}/>}<InHousePayments salesQuoteId={quote.id}/>
       {/* Admin Panel Toggle */}
       <Button
         variant="outline"
@@ -801,7 +808,7 @@ export function QuoteContract({
           <div className="space-y-3 border-t pt-3">
             <h4 className="font-medium">Payment Schedule</h4>
             <div className="text-sm text-muted-foreground">
-              Fixed customer schedule: 50% deposit and 50% balance.
+              {adminControls.paymentSchedule === "in_house_three_month_v1" ? "Three payments: deposit upon acceptance, then one and two calendar months after the full deposit is received." : "Fixed customer schedule: 50% deposit and 50% balance."}
             </div>
           </div>
         </div>
@@ -1124,7 +1131,7 @@ export function QuoteContract({
           </div>
 
           <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg flex justify-between">
-            <span>{depositPercent}% Deposit:</span>
+            <span>{adminControls.paymentSchedule === "in_house_three_month_v1" ? "1 of 3" : `${depositPercent}%`} Deposit:</span>
             <span className="font-bold">
               ${depositAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </span>
@@ -1132,7 +1139,7 @@ export function QuoteContract({
 
           <div>
             <p className="text-sm font-medium mb-3">Payment Schedule</p>
-            <div className="grid grid-cols-2 gap-3">
+            {adminControls.paymentSchedule === "in_house_three_month_v1" ? <SchedulePreview total={totalAmount}/> : <div className="grid grid-cols-2 gap-3">
               <div className="p-3 border rounded-lg">
                 <p className="text-sm font-medium">{depositPercent}% Deposit</p>
                 <p className="text-lg font-bold">
@@ -1145,7 +1152,7 @@ export function QuoteContract({
                   ${balanceAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
               </div>
-            </div>
+            </div>}
           </div>
 
           <div>

@@ -1,5 +1,7 @@
 "use client";
 
+import {IN_HOUSE_SCHEDULE,IN_HOUSE_TERMS,scheduleAmounts} from "@/lib/crm/payment-schedule";
+import {unpaidCents,installmentStatus} from "@/lib/crm/in-house-plan-model";
 import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
 
 import { useEffect, useRef, useState } from "react";
@@ -44,8 +46,9 @@ type LiveMoney = {
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
 export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
-  const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation") || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
-  const paymentSection = contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
+  const isInHouse = quote.paymentSchedule === IN_HOUSE_SCHEDULE;
+  const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation" && section.heading !== IN_HOUSE_TERMS.heading) || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
+  const paymentSection = isInHouse ? IN_HOUSE_TERMS : contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
@@ -125,8 +128,11 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
   const canSign = !quote.superseded && !["archived", "lost"].includes(quote.status) && !contractSigned && quote.allPriced && quote.total > 0;
   const showActionPanel = !previewOnly && !quote.superseded && (canSign || Boolean(paymentOptions));
-  const paymentType = live.payment.available ? live.payment.dueType : null;
-  const paymentLabel = paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
+  const nextInstallment=quote.inHousePlan?.installments.find(i=>unpaidCents(i)>0);
+  const planCollectible=!quote.signed || ["waiting_deposit","active"].includes(quote.inHousePlan?.status||"");
+  const paymentType = isInHouse ? !planCollectible ? null : nextInstallment ? nextInstallment.number===1?"deposit":"balance" : quote.signed?null:"deposit" : live.payment.available ? live.payment.dueType : null;
+  const paymentAmount=isInHouse ? nextInstallment ? unpaidCents(nextInstallment)/100 : quote.signed?0:live.depositDue : live.payment.amountDue;
+  const paymentLabel = isInHouse && nextInstallment ? `Payment ${nextInstallment.number} of 3 remaining` : paymentType === "deposit" ? "Deposit due" : paymentType === "balance" ? "Balance due" : null;
   const depositReady = contractSigned && paymentType === "deposit";
   const customerPhone = customerPhoneDisplay(quote.customerPhone);
   const customerInformation = [
@@ -136,17 +142,17 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
     quote.customerEmail,
   ].filter((detail): detail is string => Boolean(detail));
 
-  async function startSquare(type: QuotePaymentType) {
+  async function startSquare(type: QuotePaymentType, installmentId?: string) {
     setSquareMsg(null);
     setSquareBusy(type);
     try {
       const res = await fetch(`/api/quote/${quote.token}/square-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentType: type, ...(selectedLineIds ? { selectedLineIds } : {}) }),
+        body: JSON.stringify({ ...(isInHouse&&nextInstallment?{installmentId:installmentId||nextInstallment.id}:{}), paymentType: type, ...(selectedLineIds ? { selectedLineIds } : {}) }),
       });
       const data = await res.json();
-      if (data?.url) {
+      if (res.ok && typeof data?.url === "string" && data.url.startsWith("https://")) {
         window.location.href = data.url;
         return;
       }
@@ -347,7 +353,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                   <>
                     <div className={styles.amountDue}>
                       <span>{paymentLabel}</span>
-                      <strong>{money(live.payment.amountDue)}</strong>
+                      <strong>{money(paymentAmount)}</strong>
                     </div>
                     <button
                       type="button"
@@ -358,7 +364,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                       {squareBusy === paymentType ? "Opening secure card checkout…" : `Pay ${paymentType} with card`}
                     </button>
                     {squareMsg ? <p className={styles.paymentError}>{squareMsg}</p> : null}
-                    {walletConfig ? (
+                    {walletConfig && !isInHouse ? (
                       <QuoteWalletButtons
                         config={walletConfig}
                         token={quote.token}
@@ -389,7 +395,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                     </div>
                   </>
                 ) : (
-                  <p className={styles.paidMessage}>No payment is currently due.</p>
+                  <p className={styles.paidMessage}>{isInHouse&&!planCollectible?"Payment collection is paused. Please call or text 805-806-9344 for help.":"No payment is currently due."}</p>
                 )}
               </section>
             ) : null}
@@ -397,7 +403,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
         ) : null}
 
         <div className={styles.contractContent}>
-          {!previewOnly && !quote.superseded && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
+          {!isInHouse && !previewOnly && !quote.superseded && paymentOptions && live.payment.available && live.payment.outstanding > 0 ? (
             <div className="no-print" style={financingBox}>
               <FinancingOptions
                 quoteNumber={quote.quoteNumber}
@@ -431,6 +437,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
         </details>
       ) : null}
 
+      {isInHouse&&<section style={termsBox} aria-label="Three-payment schedule"><strong>Payment schedule</strong>{(quote.inHousePlan?.installments||(live.total>=0.03?scheduleAmounts(live.total):[0,0,0]).map((c,n)=>({id:String(n),plan_id:"",number:n+1,amount_cents:c,paid_cents:0,due_date:null}))).map(i=><p key={i.id}>Payment {i.number} of 3: {money(i.amount_cents/100)} · Received {money(i.paid_cents/100)} · Remaining {money(unpaidCents(i)/100)}<br/>{i.due_date?`Due ${i.due_date}`:i.number===1?"Upon acceptance":`${i.number-1} calendar month${i.number===3?"s":""} after full deposit`} · {installmentStatus(i)}{"paid_at" in i&&i.paid_at?` · Receipt date ${i.paid_at}`:""}{"payment_method" in i&&i.payment_method?` · ${i.payment_method}`:""}{quote.signed&&planCollectible&&unpaidCents(i)>0&&<><br/><button type="button" disabled={squareBusy!==null||actionBlocked} className={styles.cardPaymentButton} onClick={()=>startSquare(i.number===1?"deposit":"balance",i.id)}>Pay payment {i.number} of 3</button></>}</p>)}{quote.inHousePlan&&<p>{quote.inHousePlan.status==="waiting_deposit"?"Waiting for full deposit":quote.inHousePlan.status}</p>}</section>}
       {/* Balance terms — shown above the sign section */}
       <div style={termsBox}>
         <strong style={{ color: "#0b0b0b" }}>{paymentSection.heading}</strong>

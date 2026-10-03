@@ -1,4 +1,5 @@
 "use client";
+import {InHousePayments} from "./InHousePayments";
 
 import { readCrmResponse } from "@/lib/crm/client-response";
 import { createInFlightRequests } from "@/lib/crm/in-flight-requests";
@@ -13275,6 +13276,7 @@ function BookkeepingSpreadsheet({
 
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
+      <InHousePayments />
       <div className="crm-bookkeeping-summary-grid">
         {summaryCards.map((card) =>
           card.action ? (

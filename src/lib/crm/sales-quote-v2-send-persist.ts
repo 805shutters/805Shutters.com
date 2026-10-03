@@ -276,7 +276,7 @@ function parseCustomerPayload(value: unknown): PreparedV2CustomerQuote {
   if (!source) {
     throw new CrmAuthError(502, "V2 persistence returned no customer payload.");
   }
-  exactObjectKeys(source, ["backend", "total", "lines"], "customerPayload");
+  exactObjectKeys(source, source.paymentSchedule === "in_house_three_month_v1" ? ["backend", "total", "lines", "paymentSchedule"] : ["backend", "total", "lines"], "customerPayload");
   if (source.backend !== "authoritative_v2" || !Array.isArray(source.lines)) {
     throw new CrmAuthError(502, "V2 persistence returned an invalid customer payload.");
   }
@@ -390,7 +390,7 @@ function parseCustomerPayload(value: unknown): PreparedV2CustomerQuote {
       "V2 persistence returned a customer total that does not equal its lines.",
     );
   }
-  return { backend: "authoritative_v2", total, lines };
+  return { backend: "authoritative_v2", total, lines, ...(source.paymentSchedule === "in_house_three_month_v1" ? {paymentSchedule: "in_house_three_month_v1" as const} : {}) };
 }
 
 function rpcRow(value: unknown): JsonRecord {
