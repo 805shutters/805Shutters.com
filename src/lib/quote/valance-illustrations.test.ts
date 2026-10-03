@@ -43,5 +43,6 @@ describe("manufacturer-specific valance artwork", () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Roller Shades", options:["Supplier: Norman", "Valance: Square Fascia", "Lift System: Unsupported"]}));
     expect(html).toContain('data-valance-artwork="norman-square-fascia"');
     expect(html).not.toContain('/roller.webp');
+    expect(html).not.toContain('/roller-open-roll.webp');
   });
 });

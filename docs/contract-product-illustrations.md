@@ -40,3 +40,25 @@ The shutter and cellular additions were generated with the built-in image genera
 ## Local verification
 
 The full test suite, typecheck, and production build passed. The actual customer renderer was exercised through `/quote/artwork-preview/` (development-only; production returns 404) with in-memory sample data. Desktop, 834px iPad, 390px phone, and print media were inspected. Tests covered operation transitions, side changes, missing side, alternative designs, unchanged totals, and image loading. This route does not load, save, sign, or send customer records.
+
+## Roller shade top treatment (October 3, 2026)
+
+The shared line-item sketch now shows an exposed wound-fabric roll when no
+valance/top treatment is selected. Supported selected roller valances are assembled
+on top of the shade rather than shown as a disconnected profile below it. A recorded
+cover whose exact manufacturer profile is unavailable retains the older covered-top
+reference. The operating system, chain side, remote, reference notes, and temporary
+shade remain independent. Quote selections, dimensions, prices, and saved records
+are not mutated by the artwork component.
+
+Three versioned assets (`roller-open-roll.webp` and its `loop-left`/`loop-right`
+variants) were created with the built-in imagegen tool. The original assets remain.
+The manifest records generated source hashes and export details. Prompt: edit only
+the top assembly, remove the cassette/valance and expose the cylindrical wound-fabric
+roll with concentric layers and mounting brackets; preserve perspective, fabric,
+bottom rail, graphite style, white square background, margins, and existing chain
+side. Chain edits also use the new exposed-roll asset as their matching reference.
+
+The development-only `/quote/artwork-preview/` includes a no-valance/with-valance
+comparison using sample configurations and sample prices. It does not access
+Marcus's or any other customer's record.

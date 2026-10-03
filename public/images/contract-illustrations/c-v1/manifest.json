@@ -274,6 +274,30 @@
       "file": "public/images/contract-illustrations/c-v1/temporary-shade.webp",
       "bytes": 23468,
       "description": "Single sheet of accordion-pleated paper. No hardware, top rail, bottom rail, clips or brackets."
+    },
+    {
+      "id": "roller-open-roll",
+      "source": "exec-0fae3870-99f4-40e7-87c5-3467763f13c6.png",
+      "sourceSha256": "c7e04e40bec3d9190a01e5ef8c15f7ce79c676ad43722e6cf0bac68a1100959a",
+      "method": "Built-in imagegen edit of existing roller artwork: exposed wound fabric roll with brackets; preserve shade, pencil style, and chain side. Full image resized to 627px WebP.",
+      "file": "public/images/contract-illustrations/c-v1/roller-open-roll.webp",
+      "bytes": 44624
+    },
+    {
+      "id": "roller-open-roll-loop-left",
+      "source": "exec-a196b59f-5686-42f5-9570-12dd6d5b5ec7.png",
+      "sourceSha256": "16c1ac37235c814e5052ccbe6a7fddf17d7ed4518618e3904391e8a148ed69aa",
+      "method": "Built-in imagegen edit of existing roller artwork: exposed wound fabric roll with brackets; preserve shade, pencil style, and chain side. Full image resized to 627px WebP.",
+      "file": "public/images/contract-illustrations/c-v1/roller-open-roll-loop-left.webp",
+      "bytes": 51314
+    },
+    {
+      "id": "roller-open-roll-loop-right",
+      "source": "exec-e69cc052-05ef-4ebf-a9d8-2c616a128468.png",
+      "sourceSha256": "a76274b344777f0f93a28310aa68d76aab37bd252de0fea86d2623ce946acaea",
+      "method": "Built-in imagegen edit of existing roller artwork: exposed wound fabric roll with brackets; preserve shade, pencil style, and chain side. Full image resized to 627px WebP.",
+      "file": "public/images/contract-illustrations/c-v1/roller-open-roll-loop-right.webp",
+      "bytes": 50604
     }
   ]
 }

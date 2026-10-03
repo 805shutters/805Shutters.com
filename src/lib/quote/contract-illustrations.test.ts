@@ -136,3 +136,52 @@ describe("approved C contract illustrations", () => {
     expect(html).not.toContain(">Remote<");
   });
 });
+
+
+describe("roller shade assembled top treatment", () => {
+  it.each(["No Valance", "None", "Open Roll", "No Valance / Open Roll"])("shows exposed roll for %s across operating systems", (valance) => {
+    for (const operation of ["Cordless", "Motorized", "Continuous Cord Loop"]) {
+      const options = [`Lift System: ${operation}`, "Control Side: Right", `Valance: ${valance}`];
+      const before = [...options];
+      const art = contractIllustration("Roller Shades", options);
+      expect(art?.src).toContain("/roller-open-roll");
+      expect(existsSync(`public${art?.src}`)).toBe(true);
+      const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Roller Shades", options, valanceArtId: null }));
+      expect(html).toContain('data-roller-top-treatment="open-roll"');
+      expect(html).not.toContain("data-valance-artwork");
+      expect(art?.remote).toBe(operation === "Motorized");
+      expect(options).toEqual(before);
+    }
+  });
+
+  it.each(["norman-fabric", "norman-square-fascia", "polar-curved-cassette"])("places %s inside the shade assembly after supplier branding is removed", (valanceArtId) => {
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Roller Shades", options: ["Lift System: Motorized"], valanceArtId }));
+    expect(html).toMatch(new RegExp(`data-roller-top-treatment="valance"[^]*data-valance-artwork="${valanceArtId}"[^]*</div>`));
+    expect(html).toContain("over the roller shade");
+    expect(html).not.toContain("Open roll, no valance");
+    expect(html).toContain("/remote.webp");
+  });
+
+  it("returns to the exposed roll when the valance is removed", () => {
+    const props = { productType: "Roller Shades", options: ["Lift System: Continuous Cord Loop", "Control Side: Left"] };
+    const covered = renderToStaticMarkup(createElement(ContractProductIllustration, { ...props, valanceArtId: "norman-fabric" }));
+    const open = renderToStaticMarkup(createElement(ContractProductIllustration, { ...props, valanceArtId: null }));
+    expect(covered).toContain('data-roller-top-treatment="valance"');
+    expect(open).toContain('data-roller-top-treatment="open-roll"');
+    expect(open).toContain("roller-open-roll-loop-left.webp");
+    expect(open).not.toContain("data-valance-artwork");
+  });
+
+  it("keeps a recorded legacy cover visible when the exact profile is unavailable", () => {
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Roller Shades", options: ["Lift System: Cordless", "Valance: Cassette"], valanceArtId: null }));
+    expect(html).toContain('data-roller-top-treatment="valance"');
+    expect(html).toContain('/roller.webp');
+    expect(html).not.toContain("Open roll, no valance");
+  });
+
+  it("keeps blind valances as their separate references", () => {
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Faux Wood Blinds", options: ["Control Side: Left"], valanceArtId: "lotus-crown" }));
+    expect(html).not.toContain("data-roller-top-treatment");
+    expect(html).toMatch(/<figcaption[^]*data-valance-artwork="lotus-crown"/);
+  });
+});

@@ -30,3 +30,8 @@
 .operation span { display: block; }
 @media (max-width: 640px) { .companions { gap: 6px; } .temporary { width: 72px; flex-basis: 72px; } .temporary img { height: 96px; } .temporary figcaption { font-size: 9px; } }
 @media print { .companions { gap: 8px; } .temporary { width: 78px; flex-basis: 78px; } .temporary img { height: 106px; } }
+
+/* Assemble the selected top treatment on the shade, at every display size. */
+.rollerAssembly { position: relative; width: 100%; }
+.rollerValance { position: absolute; top: 0; left: 10.8%; width: 78.4%; height: 31%; object-fit: fill; clip-path: inset(0 0 20% 0); }
+.rollerLabel { padding: 4px 6px; font-size: 10px; line-height: 1.3; text-align: center; color: #333; }

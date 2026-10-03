@@ -1,5 +1,6 @@
 "use client";
 import { VALANCE_ARTWORK, valanceIllustration } from "@/lib/quote/valance-illustrations";
+import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
 import { useState } from "react";
 import { CustomerContractDocument } from "../[token]/CustomerContractDocument";
@@ -46,12 +47,12 @@ export function ArtworkPreview() {
     business:{name:"805 Shutters",phone:"805-806-9344",website:"https://www.805shutters.com",email:"805@805shutters.com"},
   };
   return <>
-    <div className="no-print" style={{padding:20,background:"#eee",display:"flex",gap:16,flexWrap:"wrap",position:"sticky",top:0,zIndex:30}}>
+    <div className="no-print" style={{padding:20,background:"#eee",display:"flex",gap:16,flexWrap:"wrap",position:"relative",zIndex:30}}>
       <strong>Option C · Working contract preview</strong>
       <label>Product <select aria-label="Preview product" value={product} onChange={e=>setProduct(e.target.value)}>{examples.map(([p])=><option key={p}>{p}</option>)}</select></label>
       {product !== "Shutters" ? <>
         <label>Manufacturer <select aria-label="Preview manufacturer" value={manufacturer} onChange={e=>{setManufacturer(e.target.value);setValance("");}}>{["norman","polar","lotus","onyx"].map(m=><option key={m}>{m}</option>)}</select></label>
-        <label>Valance <select aria-label="Preview valance" value={selectedValance?.id||""} onChange={e=>setValance(e.target.value)}><option value="">No valance sketch</option>{valances.map(a=><option value={a.id} key={a.id}>{a.label}</option>)}</select></label>
+        <label>Valance <select aria-label="Preview valance" value={selectedValance?.id||""} onChange={e=>setValance(e.target.value)}><option value="">No valance · open roll</option>{valances.map(a=><option value={a.id} key={a.id}>{a.label}</option>)}</select></label>
         <label>Operating system <select aria-label="Preview operating system" value={operation} onChange={e=>setOperation(e.target.value)}>{["Continuous Cord Loop","Cordless","Motorized","Cordless TDBU","Motorized TDBU",""].map(p=><option key={p} value={p}>{p||"None"}</option>)}</select></label>
         <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
       </> : null}
@@ -64,6 +65,14 @@ export function ArtworkPreview() {
         <label><input type="checkbox" checked={divider} onChange={e=>setDivider(e.target.checked)} /> Divider rail</label>
       </> : null}
     </div>
+    {product === "Roller Shades" ? <section className="no-print" style={{padding:20,maxWidth:1280,margin:"0 auto"}} aria-label="Roller shade comparison">
+      <h1 style={{fontSize:28,margin:"0 0 8px"}}>Roller shade top treatment</h1>
+      <p style={{margin:"0 0 20px",color:"#67645e"}}>Preview only · sample configurations. The valance sits over the roll when selected.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(min(100%, 440px), 1fr))",gap:20}}>
+        <QuoteLineItemCard lineNumber={1} room="No valance" productType="Roller Shades" options={[...productOptions,"Valance: No Valance"]} valanceArtId={null} price="$500.00" notice="Exposed fabric roll" />
+        <QuoteLineItemCard lineNumber={2} room="With valance" productType="Roller Shades" options={[...productOptions,`Valance: ${selectedValance?.label || "Fabric valance"}`]} valanceArtId={selectedValance?.id || "norman-fabric"} price="$500.00" notice="Valance covers the roll" />
+      </div>
+    </section> : null}
     <div className="no-print" style={{padding:20}}><TemporaryShadeOption selected={temporary} onChange={setTemporary} /></div>
     <details className="no-print" style={{padding:20}} open><summary>Older quotes · product references when controls were not recorded</summary><div style={{display:"flex",gap:32,flexWrap:"wrap",padding:20}}>{["Wood Blinds","Faux Wood Blinds","Mini Blinds","Roller Shades","Honeycomb Shades"].map(p=><div key={p}><strong>{p}</strong><ContractProductIllustration productType={p} /></div>)}</div></details>
     <details className="no-print" style={{padding:20}} open><summary>Assembled shutter windows · one shared frame</summary><div style={{display:"flex",gap:32,flexWrap:"wrap",padding:20}}>{["LR","LRR","LLR","LLRR"].map(l=><div key={l}><ContractProductIllustration productType="Shutters" options={[`Panel Config: ${l}`,"Tilt Type: Standard Tilt"]} /><p style={{textAlign:"center"}}>{l} · {l.length} panels</p></div>)}</div></details>

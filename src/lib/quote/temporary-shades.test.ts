@@ -28,7 +28,7 @@ describe('temporary shade companion', () => {
   it('places the companion after the product and remote, with no change to product artwork', () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Roller Shades',options:['Lift System: Motorized','Temporary Shade: Yes']}));
     expect(html.indexOf('data-temporary-shade')).toBeGreaterThan(html.indexOf('class="remote"'));
-    expect(html).toContain('roller.webp');
+    expect(html).toContain('roller-open-roll.webp');
     expect(html).toContain('remote.webp');
   });
   it('survives legacy details and the V2 save/projection boundary without adding a price', () => {

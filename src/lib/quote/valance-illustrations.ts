@@ -52,3 +52,14 @@ export function valanceIllustration(productType: string, options: readonly strin
 export function valanceSurchargeIds(value: unknown): string[] {
   return Array.isArray(value) ? value.flatMap((entry) => entry && typeof entry === "object" && typeof entry.id === "string" ? [entry.id] : []) : [];
 }
+
+/** A recorded cover remains a cover even when its exact manufacturer artwork is unavailable. */
+export function rollerTopTreatmentSelected(options: readonly string[]): boolean {
+  const fields = options.flatMap(option => {
+    const colon = option.indexOf(":");
+    return colon < 0 ? [] : [[normalize(option.slice(0, colon)), normalize(option.slice(colon + 1))]];
+  });
+  const explicit = fields.filter(([key]) => ["valance", "valance type", "valance style"].includes(key));
+  const selected = explicit.length ? explicit : fields.filter(([key]) => ["top treatment", "top treatment class", "roller top treatment"].includes(key));
+  return selected.some(([, value]) => value && !/^(none|no|n\/a|na|not applicable|not selected|no valance|no top treatment|open roll|no valance \/ open roll)$/.test(value));
+}

@@ -398,8 +398,8 @@ describe("contract artwork follows each saved option", () => {
       { ...first, id: "right", label: "B", options: ["Lift System: Continuous Cord Loop", "Control Side: Right"] },
     ];
     const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
-    expect(html).toContain("roller-loop-left.webp");
-    expect(html).toContain("roller-loop-right.webp");
+    expect(html).toContain("roller-open-roll-loop-left.webp");
+    expect(html).toContain("roller-open-roll-loop-right.webp");
     expect(html).toContain("$509.40");
     expect(html).toContain("Control Side");
     expect(html).not.toContain("remote.webp");

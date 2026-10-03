@@ -76,7 +76,7 @@ export function contractIllustration(productType: string, options: readonly stri
     const shutter = shutterIllustration(fields);
     return shutter ? { src: `${CONTRACT_ART_ROOT}/${shutter.asset}.webp`, alt: `${productType} · ${shutter.detail} — pencil illustration`, remote: false, mirror: false, panels: shutter.panels, shutterLayout: shutter.layout, ...(track ? { operationReference: track } : {}) } : track ? { src: track.src, alt: `${track.label} — pencil illustration`, remote: false, mirror: false, operationReference: track } : null;
   }
-  let asset = tdbu ? "honeycomb-tdbu" : product;
+  let asset = tdbu ? "honeycomb-tdbu" : product === "roller" ? "roller-open-roll" : product;
   let mirror = false;
   let detail = "";
   let remote = false;
@@ -99,7 +99,7 @@ export function contractIllustration(productType: string, options: readonly stri
     if (loop) {
       if (!["roller", "honeycomb"].includes(product)) return null;
       if (!side) return sideValues.length === 0 ? reference(asset, "Cord loop side not recorded") : null;
-      asset = `${product}-loop-${side}`;
+      asset = `${product === "roller" ? "roller-open-roll" : product}-loop-${side}`;
       detail = `Continuous cord loop · ${side}`;
     } else if (motorized) {
       remote = true;
