@@ -279,6 +279,7 @@ function persistedV2Supabase(
   const selects: Array<{ table: string; columns: string }> = [];
   const client = {
     from(table: string) {
+      let selectedColumns = "*";
       const filters: Array<
         | { kind: "eq"; column: string; value: unknown }
         | { kind: "in"; column: string; values: unknown[] }
@@ -293,6 +294,7 @@ function persistedV2Supabase(
         );
       const query = {
         select(columns: string) {
+          selectedColumns = columns;
           selects.push({ table, columns });
           return query;
         },
@@ -320,7 +322,9 @@ function persistedV2Supabase(
           return { data, error: null };
         },
         async maybeSingle() {
-          return { data: evaluate()[0] ?? null, error: null };
+          const row = evaluate()[0];
+          const data = !row ? null : selectedColumns === "*" ? row : Object.fromEntries(selectedColumns.split(",").map(column => [column, row[column]]));
+          return { data, error: null };
         },
       };
       return query;
@@ -607,6 +611,21 @@ describe("V2 production send boundary", () => {
     await expect(
       prepareV2CustomerSendPayloadFromDatabase(client, initialQuote),
     ).rejects.toThrow("quote changed while send preparation was running");
+  });
+
+  it("retains saved three-month terms through the final database quote reload", async () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    const quote = authoritativeQuote(total, {
+      installer_notes: JSON.stringify({ __adminControls: { paymentSchedule: "in_house_three_month_v1" } }),
+    });
+    const { client } = persistedV2Supabase({
+      sales_quotes: [quote], sales_quote_line_items: [{ ...line }],
+      sales_quote_designs: [design], sales_quote_v2_price_snapshots: [storedSnapshot],
+    });
+    const payload = await prepareV2CustomerSendPayloadFromDatabase(client, quote, { sendAsIs: true });
+    expect(payload.paymentSchedule).toBe("in_house_three_month_v1");
+    expect(payload.total).toBe(total);
+    expect(payload.lines[0].price.total).toBe(storedSnapshot.retail_total);
   });
 });
 

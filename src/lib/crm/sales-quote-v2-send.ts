@@ -714,7 +714,7 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
   const { data: currentQuote, error: quoteError } = await supabase
     .from("sales_quotes")
     .select(
-      "id,status,total_amount,quote_v2_backend,quote_v2_status,quote_v2_catalog_version,quote_v2_revision",
+      "id,status,total_amount,installer_notes,quote_v2_backend,quote_v2_status,quote_v2_catalog_version,quote_v2_revision",
     )
     .eq("id", quote.id)
     .maybeSingle();
