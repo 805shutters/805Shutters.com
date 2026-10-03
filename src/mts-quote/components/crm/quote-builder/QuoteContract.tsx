@@ -1,5 +1,5 @@
 "use client";
-import { PaymentScheduleSelector, SchedulePreview, InHousePayments, inHouseRequest } from "@/components/crm/InHousePayments";
+import { SchedulePreview, InHousePayments } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
@@ -650,11 +650,7 @@ export function QuoteContract({
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto relative">
-      {quote.quote_v2_backend && <PaymentScheduleSelector value={adminControls.paymentSchedule??"standard"} total={totalAmount} disabled={hasAcceptedQuote} onSave={async schedule=>{
-        const saved=await inHouseRequest(`/api/crm/sales-quotes/${quote.id}/payment-schedule/`,"POST",{schedule,revision:Number(quote.quote_v2_revision),requestId:crypto.randomUUID()});
-        await queryClient.invalidateQueries({queryKey:queryKeys.salesQuotes.all});
-        if(saved.quoteId!==quote.id)setActiveQuote(saved.quoteId);
-      }}/>}<InHousePayments salesQuoteId={quote.id}/>
+      <InHousePayments salesQuoteId={quote.id}/>
       {/* Admin Panel Toggle */}
       <Button
         variant="outline"

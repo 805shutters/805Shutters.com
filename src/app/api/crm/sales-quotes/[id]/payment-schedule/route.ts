@@ -26,7 +26,11 @@ export async function POST(
       p_request: body.requestId,
     });
     if (error) throw new CrmAuthError(409, error.message);
-    return NextResponse.json({ quoteId: data });
+    const { data: saved, error: readError } = await supabase.from("sales_quotes")
+      .select("id,quote_v2_revision").eq("id", data).single();
+    if (readError || !saved) throw new CrmAuthError(409, "Saved payment terms could not be verified. Retry this request before sending.");
+    if (saved.id === id && Number(saved.quote_v2_revision) !== body.revision + 1) throw new CrmAuthError(409, "This quote changed after saving payment terms. Close and reopen Send to review it.");
+    return NextResponse.json({ quoteId: saved.id, revision: Number(saved.quote_v2_revision) });
   } catch (e) {
     return crmAuthErrorResponse(e);
   }

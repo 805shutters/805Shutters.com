@@ -4,6 +4,7 @@ export default {
   ...base,
   resolve: {
     alias: {
+      "@mts/integrations/supabase/client": fileURLToPath(new URL("./fixtures/send-payment-auth.ts", import.meta.url)),
       "@/lib/supabase-browser": fileURLToPath(
         new URL("./fixtures/mobile-payment-auth.ts", import.meta.url),
       ),

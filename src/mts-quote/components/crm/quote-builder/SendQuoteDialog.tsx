@@ -33,7 +33,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
-import { getQuoteEmailNote } from "@mts/lib/quoteTotals";
+import { IN_HOUSE_SCHEDULE, scheduleAmounts, type PaymentSchedule } from "@/lib/crm/payment-schedule";
+import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
+import { parseQuoteAdminControls, getQuoteEmailNote } from "@mts/lib/quoteTotals";
 import type { SalesQuote } from "@mts/types/quote";
 
 type Channel = "email" | "sms" | "both";
@@ -56,6 +58,12 @@ interface SendQuoteDialogProps {
 
 export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) {
   const deliveryKey = useRef<string | null>(null);
+  const sendBody = useRef<string | null>(null);
+  const [paymentChoices, setPaymentChoices] = useState<Record<string, PaymentSchedule>>({});
+  const [requestLocked, setRequestLocked] = useState(false);
+  const [reviewRevision, setReviewRevision] = useState<string | null>(null);
+  // Keep successful saves and unknown save outcomes replayable before any delivery.
+  const scheduleRequests = useRef<Record<string, { schedule: PaymentSchedule; revision: number; requestId: string; savedRevision?: number }>>({});
   const queryClient = useQueryClient();
   const [multipleQuotes, setMultipleQuotes] = useState(false);
   const [selectedQuoteIds, setSelectedQuoteIds] = useState<string[]>([quote.id]);
@@ -63,12 +71,20 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     queryKey: [...queryKeys.salesQuotes.all, "send-options", quote.quote_group_id],
     enabled: open && Boolean(quote.quote_group_id),
     queryFn: async () => {
-      const { data, error } = await supabase.from("sales_quotes").select("id,quote_letter,quote_number,total_amount,status,archived_at,quote_v2_revision").eq("quote_group_id", quote.quote_group_id!).order("quote_letter");
+      const { data, error } = await supabase.from("sales_quotes").select("id,quote_letter,quote_number,total_amount,status,archived_at,quote_v2_revision,quote_v2_backend,quote_v2_status,installer_notes,signed_at,customer_signature,sent_at").eq("quote_group_id", quote.quote_group_id!).order("quote_letter");
       if (error) throw error;
       return ((data || []) as unknown as SalesQuote[]).filter(member => !member.archived_at && !["archived", "lost"].includes(member.status));
     },
   });
-  const sendOptions = alternatives.data || [quote];
+  const sendOptions = (alternatives.data || [quote]).map(member => member.id === quote.id ? quote : member);
+  const selectedOptions = sendOptions.filter(member => selectedQuoteIds.includes(member.id));
+  const scheduleFor = (member: SalesQuote): PaymentSchedule => paymentChoices[member.id] ?? parseQuoteAdminControls(member).paymentSchedule ?? "standard";
+  const commonSchedule = selectedOptions.every(member => scheduleFor(member) === scheduleFor(selectedOptions[0] || quote)) ? scheduleFor(selectedOptions[0] || quote) : null;
+  const termsLocked = selectedOptions.some(member => !member.quote_v2_backend || Boolean(member.signed_at || member.customer_signature) || ["sold", "ordered", "received", "installed", "paid"].includes(member.status));
+  const chooseSchedule = (schedule: PaymentSchedule) => {
+    setPaymentChoices(choices => ({ ...choices, ...Object.fromEntries(selectedOptions.map(member => [member.id, schedule])) }));
+    deliveryKey.current = null;
+  };
   const deliveryOptions = useRef<{ deliveryMode?: "resend"; previousDeliveryKey?: string; measureDecision?: "needed" | "not_needed" }>({});
   const [deliveryState, setDeliveryState] = useState<"loading" | "ready" | "resend" | "resume" | "blocked">(quote.quote_v2_backend ? "loading" : "ready");
   const [deliveryNotice, setDeliveryNotice] = useState("");
@@ -87,6 +103,11 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     if (!open) return;
     let current = true;
     deliveryKey.current = null;
+    sendBody.current = null;
+    scheduleRequests.current = {};
+    setPaymentChoices({});
+    setRequestLocked(false);
+    setReviewRevision(null);
     setMultipleQuotes(false);
     setSelectedQuoteIds([quote.id]);
     deliveryOptions.current = {};
@@ -172,18 +193,51 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("CRM session is required.");
 
+      if (multipleQuotes && (alternatives.isPending || alternatives.isError)) throw new Error("Load every selected quote before sending.");
+      if (selectedOptions.length !== selectedQuoteIds.length) throw new Error("A selected quote is unavailable. Close and reopen Send.");
+      setRequestLocked(true);
+      const revisions = Object.fromEntries(selectedOptions.map(member => [member.id, member.quote_v2_revision]));
+      if (deliveryState !== "resume" && !sendBody.current) {
+        for (const member of selectedOptions) {
+          const schedule = scheduleFor(member);
+          const savedSchedule = parseQuoteAdminControls(member).paymentSchedule ?? "standard";
+          let pending = scheduleRequests.current[member.id];
+          if (!pending && schedule === savedSchedule) continue;
+          if (!pending) {
+            pending = { schedule, revision: Number(member.quote_v2_revision), requestId: crypto.randomUUID() };
+            scheduleRequests.current[member.id] = pending;
+          }
+          if (pending.savedRevision == null) {
+            const saveResponse = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(member.id)}/payment-schedule/`, {
+              method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ schedule: pending.schedule, revision: pending.revision, requestId: pending.requestId }),
+            });
+            const saved = await saveResponse.json();
+            if (!saveResponse.ok) throw new Error(saved.message || saved.error || "Payment terms could not be saved. No quote was sent.");
+            await queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+            if (saved.quoteId !== member.id) {
+              setDeliveryState("blocked");
+              setReviewRevision(saved.quoteId);
+              throw new Error("An editable revision was created with these payment terms. Review that revision, then reopen Send. No quote was sent.");
+            }
+            if (!Number.isSafeInteger(saved.revision)) throw new Error("Saved payment terms could not be verified. Retry before sending.");
+            pending.savedRevision = saved.revision;
+          }
+          revisions[member.id] = pending.savedRevision;
+        }
+      }
       const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/send`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
+        body: sendBody.current ?? (sendBody.current = JSON.stringify({
           ...deliveryOptions.current,
           selectedQuoteIds,
           multipleQuotesApproved: multipleQuotes,
-          selectedQuoteRevisions: Object.fromEntries(sendOptions.filter(member => selectedQuoteIds.includes(member.id)).map(member => [member.id, member.quote_v2_revision])),
-          expectedRevision: quote.quote_v2_revision,
+          selectedQuoteRevisions: revisions,
+          expectedRevision: revisions[quote.id],
           idempotencyKey: deliveryKey.current ?? (deliveryKey.current = `quote-delivery:${crypto.randomUUID()}`),
           channels: { email: needsEmail, sms: needsPhone },
           emails: needsEmail ? cleanedEmails : [],
@@ -191,7 +245,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           note: customMessage.trim() || null,
           emailType,
           bypassHours,
-        }),
+        })),
       });
       const data = (await response.json().catch(() => ({}))) as SendQuoteResponse;
       if (!response.ok) throw new Error(data.message || data.error || "Failed to send quote");
@@ -281,9 +335,11 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
 
         <div className="min-h-0 overflow-y-auto px-5 py-4 sm:px-6">
           {deliveryError && <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">{deliveryError}</p>}
+          {reviewRevision && <Button variant="outline" className="mb-4" onClick={() => { useQuoteBuilderStore.getState().setActiveQuote(reviewRevision); onClose(); }}>Review revised quote</Button>}
+          {requestLocked && !sendQuote.isPending && <p role="status" className="mb-4 text-sm">This request is locked for retry. Close and reopen Send to review changes.</p>}
           {deliveryNotice && <p role="status" className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{deliveryNotice}</p>}
           {deliveryState === "loading" && <p role="status" className="mb-4 text-sm">Checking previous delivery…</p>}
-          <fieldset disabled={sendQuote.isPending || deliveryState === "loading" || deliveryState === "resume" || deliveryState === "blocked"} className="m-0 min-w-0 space-y-4 border-0 p-0">
+          <fieldset disabled={requestLocked || sendQuote.isPending || deliveryState === "loading" || deliveryState === "resume" || deliveryState === "blocked"} className="m-0 min-w-0 space-y-4 border-0 p-0">
             <DialogSection title="Quotes to send" description="Send this quote by default. Every selected quote keeps its own items, total, and customer link.">
               <label className="flex items-center gap-3 text-sm font-medium">
                 <Checkbox style={{ width: 16, height: 16, minHeight: 16, padding: 0 }} checked={multipleQuotes} onCheckedChange={checked => { setMultipleQuotes(checked === true); setSelectedQuoteIds([quote.id]); deliveryKey.current = null; }} />
@@ -300,6 +356,29 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
               </div>
               <p className="mt-3 text-xs text-slate-600">{selectedQuoteIds.length === 1 ? "Only this quote will be sent." : `You are approving ${selectedQuoteIds.length} separate quotes in one message per selected channel.`}</p>
             </DialogSection>
+            {quote.quote_v2_backend && <DialogSection title="Payment terms" description="Choose how the customer will pay this quote.">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button type="button" aria-pressed={commonSchedule === "standard"} disabled={termsLocked} onClick={() => chooseSchedule("standard")} className={cn("min-h-[44px] rounded-md border px-3 py-2 text-sm font-semibold", commonSchedule === "standard" ? "border-black bg-black text-white" : "border-slate-200 bg-white text-slate-700")}>Standard payments</button>
+                <button type="button" aria-pressed={commonSchedule === IN_HOUSE_SCHEDULE} disabled={termsLocked} onClick={() => chooseSchedule(IN_HOUSE_SCHEDULE)} className={cn("min-h-[44px] rounded-md border px-3 py-2 text-sm font-semibold", commonSchedule === IN_HOUSE_SCHEDULE ? "border-black bg-black text-white" : "border-slate-200 bg-white text-slate-700")}>In-house 3-month payments</button>
+              </div>
+              {commonSchedule === null && <p className="mt-3 text-xs text-slate-600">Selected quotes have different payment terms. Choose an option above to apply it to all selected quotes.</p>}
+              {selectedOptions.filter(member => scheduleFor(member) === IN_HOUSE_SCHEDULE).map(member => {
+                const total = Number(member.total_amount) || 0;
+                const amounts = total >= 0.03 ? scheduleAmounts(total) : null;
+                return <div key={member.id} className="mt-3">
+                  {selectedOptions.length > 1 && <p className="mb-2 text-xs font-semibold">Quote {member.quote_letter || "A"} · #{member.quote_number}</p>}
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {["Deposit", "Month 2", "Month 3"].map((label, index) => <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-medium text-slate-600">{label}</p>
+                      <p className="mt-1 text-lg font-semibold text-slate-950">{amounts ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amounts[index] / 100) : "Total needed"}</p>
+                      <p className="mt-1 text-xs text-slate-600">{index === 0 ? "Due upon acceptance" : `${index} month${index === 1 ? "" : "s"} after full deposit`}</p>
+                    </div>)}
+                  </div>
+                </div>;
+              })}
+              {selectedOptions.some(member => scheduleFor(member) === IN_HOUSE_SCHEDULE) && <p className="mt-3 text-xs text-slate-600">No fees or interest. Email and text reminders for payments 2 and 3.</p>}
+              <p className="mt-3 text-xs text-slate-600">{termsLocked ? "Signed agreements and legacy quotes keep their saved payment terms." : selectedOptions.some(member => member.sent_at || member.status !== "draft" || member.quote_v2_status === "sent") ? "Changing sent terms creates an editable revision for review before sending." : "These payment terms will be included when you send the quote."}</p>
+            </DialogSection>}
             <DialogSection title="Delivery" description="Choose the message channel and email format.">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
