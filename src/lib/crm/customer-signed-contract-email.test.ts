@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { signedSnapshotPublicQuote } from "./signed-contract-snapshot";
+import { validateSignedContractSnapshot, signedSnapshotPublicQuote } from "./signed-contract-snapshot";
 import { customerContractTerms } from "./customer-contract-terms";
 import {
   CUSTOMER_SIGNED_CONTRACT_FROM,
@@ -242,4 +242,20 @@ it("blocks a paid receipt whose recipient differs from its frozen snapshot", asy
     paid_snapshot: { customerName: "Jane Customer", quoteNumber: "805-0400", total: 1000, paidOn: "2026-09-24", recipient: "different@example.com", scopeKey: "quote:receipt-1" } })] });
   await processCustomerSignedContractEmailOutbox({} as never, { dependencies: h.dependencies });
   expect(h.send).not.toHaveBeenCalled();expect(h.updates.at(-1)).toMatchObject({ status: "blocked" });
+});
+
+it("preserves and validates immutable three-payment terms in the signed PDF projection", () => {
+  const source = structuredClone(snapshot);
+  source.paymentSchedule={version:"in_house_three_month_v1",amountsCents:[81333,81333,81334],anchor:"full_deposit_receipt",timeZone:"America/Los_Angeles"};
+  source.totals.depositDue=813.33;source.totals.balanceDue=1626.67;
+  source.terms=customerContractTerms(true,"in_house_three_month_v1");
+  const before=JSON.stringify(source);
+  expect(validateSignedContractSnapshot(source)).toEqual(source);
+  const document=signedSnapshotPublicQuote(source);
+  expect(document.paymentSchedule).toBe("in_house_three_month_v1");
+  expect(document.adjustments.paymentSchedule).toBe("in_house_three_month_v1");
+  expect(document.depositDue).toBe(813.33);
+  expect(JSON.stringify(source)).toBe(before);
+  source.paymentSchedule.amountsCents=[81334,81333,81333];
+  expect(()=>validateSignedContractSnapshot(source)).toThrow(/payment schedule is malformed/);
 });

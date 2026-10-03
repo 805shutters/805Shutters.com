@@ -1,3 +1,4 @@
+import { IN_HOUSE_SCHEDULE, IN_HOUSE_TERMS, scheduleAmounts } from "./payment-schedule";
 import type { CustomerContractTerms } from "./customer-contract-terms";
 import { customerQuoteOptions, customerQuoteStyleName } from "./customer-quote-branding";
 import type { PublicQuote, SignedContractSnapshot } from "./public-quote";
@@ -70,9 +71,14 @@ export function validateSignedContractSnapshot(
     throw new ContractContentError("The signed contract signature no longer matches its immutable snapshot.");
   }
   const signedTerms = terms(snapshot.terms);
+  const schedule = snapshot.paymentSchedule;
+  if (schedule && (schedule.version !== IN_HOUSE_SCHEDULE || schedule.anchor !== "full_deposit_receipt" || schedule.timeZone !== "America/Los_Angeles" || JSON.stringify(schedule.amountsCents) !== JSON.stringify(scheduleAmounts(Number(totals.total))) || Number(totals.depositDue) !== schedule.amountsCents[0] / 100)) {
+    throw new ContractContentError("The immutable signed payment schedule is malformed.");
+  }
+  const paymentHeading = schedule ? IN_HOUSE_TERMS.heading : "Payment at Installation";
   const expectedHeadings = snapshot.hasOnyxShutters
-    ? ["Shutter Manufacturer Warranty", "Manufacturer warranty coverage", "Manufacturer exclusions", "Color matching", "Payment at Installation"]
-    : ["Payment at Installation"];
+    ? ["Shutter Manufacturer Warranty", "Manufacturer warranty coverage", "Manufacturer exclusions", "Color matching", paymentHeading]
+    : [paymentHeading];
   if (JSON.stringify(signedTerms.sections.map(section => section.heading)) !== JSON.stringify(expectedHeadings)) {
     throw new ContractContentError("The signed contract terms cannot be displayed by the original contract layout.");
   }
@@ -98,6 +104,7 @@ export function validateSignedContractSnapshot(
 
 export function signedSnapshotPublicQuote(snapshot: SignedContractSnapshot): PublicQuote {
   return {
+    ...(snapshot.paymentSchedule ? { paymentSchedule: snapshot.paymentSchedule.version } : {}),
     token: "", id: snapshot.quote.id, quoteNumber: snapshot.quote.quoteNumber,
     customerName: snapshot.customerName, customerAddress: snapshot.customerAddress,
     customerPhone: snapshot.customerPhone, customerEmail: snapshot.customerEmail,
@@ -115,7 +122,7 @@ export function signedSnapshotPublicQuote(snapshot: SignedContractSnapshot): Pub
       showDesignOptions: Boolean(line.showDesignOptions) })),
     ...snapshot.totals, allPriced: true, hasOnyxShutters: snapshot.hasOnyxShutters,
     payment: { available: false, dueType: null, amountDue: 0, outstanding: 0, depositPaid: 0, paidTotal: 0 },
-    adjustments: { discountPercent: 0, discountFlat: 0, taxPercent: 0, depositPercent: 0,
+    adjustments: { ...(snapshot.paymentSchedule ? { paymentSchedule: snapshot.paymentSchedule.version } : {}), discountPercent: 0, discountFlat: 0, taxPercent: 0, depositPercent: 0,
       totalOverride: null, balanceDueOverride: null, balanceAdjustmentNote: null, fees: [] },
     business: snapshot.business, versions: [],
   };

@@ -48,7 +48,7 @@ type LiveMoney = {
 export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnly = false, contractTerms }: { contractTerms?: CustomerContractTerms; quote: PublicQuote; paymentOptions?: PaymentOptions | null; walletConfig?: QuoteWalletConfig | null; previewOnly?: boolean }) {
   const isInHouse = quote.paymentSchedule === IN_HOUSE_SCHEDULE;
   const warrantySections = contractTerms?.sections.filter(section => section.heading !== "Payment at Installation" && section.heading !== IN_HOUSE_TERMS.heading) || SHUTTER_MANUFACTURER_WARRANTY_SECTIONS;
-  const paymentSection = isInHouse ? IN_HOUSE_TERMS : contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
+  const paymentSection = isInHouse ? contractTerms?.sections.find(section => section.heading === IN_HOUSE_TERMS.heading) || IN_HOUSE_TERMS : contractTerms?.sections.find(section => section.heading === "Payment at Installation") || PAYMENT_AT_INSTALLATION_SECTION;
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
