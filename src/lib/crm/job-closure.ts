@@ -7,9 +7,11 @@ export function jobClosureHeldOpen(meta: unknown): boolean {
 }
 
 export function trackingPaymentSettled(item: JobTrackingViewItem): boolean {
-  return item.isSale && (item.total ?? 0) > 0 && item.balanceOutstanding !== null && item.balanceOutstanding <= 0.005;
+  // A receipt-backed ledger can be settled before signed-contract evidence is
+  // recorded. Keep commercial acceptance and financial settlement independent.
+  return (item.isSale || Boolean(item.row)) && (item.total ?? 0) > 0 && item.balanceOutstanding !== null && item.balanceOutstanding <= 0.005;
 }
 
 export function trackingJobClosed(item: JobTrackingViewItem): boolean {
-  return trackingPaymentSettled(item) && !jobClosureHeldOpen(item.job?.meta);
+  return item.isSale && trackingPaymentSettled(item) && !jobClosureHeldOpen(item.job?.meta);
 }

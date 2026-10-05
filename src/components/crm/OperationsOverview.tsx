@@ -253,7 +253,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       <td data-label="Deposit">{mark(item, "deposit")}<small>{item.source.depositRequired === null ? "—" : currency(item.source.depositRequired)}</small></td>
       <td data-label="Ordered"><ProductChecks item={item} step="ordered" disabled={disabled} pending={pending} onAction={act} /></td><td data-label="Shipped"><ProductChecks item={item} step="shipped" disabled={disabled} pending={pending} onAction={act} /></td>
       <td data-label="Installed">{mark(item, "installed")}<small>{item.installed ? "Complete" : "Not confirmed"}</small></td>
-      <td data-label="Balance paid">{mark(item, "paid")}<small>{item.paid ? "Paid in full" : !item.sold ? "Not sold" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
+      <td data-label="Balance paid">{mark(item, "paid")}<small>{item.source.progress.payment === "overpaid" ? `Overpaid ${currency(Math.abs(item.source.balanceOutstanding!))}` : item.paid ? "Paid in full" : item.source.balanceOutstanding === null ? "Verify balance" : currency(item.source.balanceOutstanding)}</small></td>
 
       </tr></tbody></table>
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}

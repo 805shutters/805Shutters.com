@@ -8,7 +8,7 @@ export const jobStatusFilters = [
   { id: 'order_complete', label: 'Ordered', description: 'Sold jobs with every product marked ordered' },
   { id: 'shipment_complete', label: 'Shipped', description: 'Sold jobs with every product marked shipped' },
   { id: 'installed', label: 'Installed', description: 'Jobs with installation confirmed complete' },
-  { id: 'paid', label: 'Balance paid', description: 'Sold jobs with the customer balance paid; this does not mean the job is closed' },
+  { id: 'paid', label: 'Balance paid', description: 'Jobs with the customer balance paid; signature and job closure are tracked separately' },
 ] as const;
 // Other workflow queries remain available internally without adding toolbar buttons.
 export type JobStatusFilter = typeof jobStatusFilters[number]['id']

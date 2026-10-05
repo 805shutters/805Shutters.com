@@ -3519,7 +3519,8 @@ export async function updateCrmQuote(
       source: "crm_quote",
       notes: optionalText(payload.payment_notes),
       meta: { createdBy: actor.email }
-    }, payload.payment_request_id, "Quote was updated, but payment failed to save.");
+    }, payload.payment_request_id, "Quote was updated, but payment failed to save.",
+    hasPayloadKey(payload, "payment_expected_balance") ? { total: toMoney(quote.quote_total), expectedBalance: payload.payment_expected_balance } : undefined);
   }
 
   const paymentTargetAdjustments = hasPaymentTargetAdjustment
@@ -4076,7 +4077,8 @@ export async function updateCrmBookkeepingEntry(
       source: payload.source === "legacy_sheet" ? "legacy_sheet" : "manual",
       notes: optionalText(payload.payment_notes),
       meta: { createdBy: actor.email }
-    }, payload.payment_request_id, "Bookkeeping row was updated, but payment failed to save.");
+    }, payload.payment_request_id, "Bookkeeping row was updated, but payment failed to save.",
+    hasPayloadKey(payload, "payment_expected_balance") ? { total: toMoney(entry.total_amount), expectedBalance: payload.payment_expected_balance } : undefined);
   }
 
   const paymentTargetAdjustments = hasPaymentTargetAdjustment

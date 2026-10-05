@@ -38,7 +38,7 @@ export function JobRecordDetail({item,disabled,onEdit,onFulfillment}:{item:JobTr
       <section><span>Total outstanding</span><strong>{money(item.balanceOutstanding)}</strong><small>Includes any unpaid deposit</small>{paymentSettled&&<span className={styles.complete}><Check size={15}/>Paid in full</span>}</section>
     </div>
     <div className={styles.actions}>
-      <button className={styles.primary} disabled={disabled||!canEdit} onClick={()=>onEdit("payment",item.depositOutstanding&&item.depositOutstanding>0?"deposit":"balance")}>Record payment</button>
+      <button className={styles.primary} disabled={disabled||!canEdit||item.balanceOutstanding===null||item.balanceOutstanding<=0.005} onClick={()=>onEdit("payment",item.depositOutstanding&&item.depositOutstanding>0?"deposit":"balance")}>Record payment</button>
       <button disabled={disabled||!canEdit||item.balanceOutstanding===null} onClick={()=>onEdit("adjustment")}>Credit / Add charge</button>
       <button disabled={disabled||!canSend||!item.depositOutstanding||item.depositOutstanding<=0} onClick={()=>onEdit("square","deposit")}>Send deposit link <b>{money(item.depositOutstanding)}</b></button>
       <button disabled={disabled||!canSend||!item.squareBalanceOutstanding||item.squareBalanceOutstanding<=0} onClick={()=>onEdit("square","balance")}>Send balance link <b>{money(item.squareBalanceOutstanding)}</b></button>

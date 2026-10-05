@@ -150,3 +150,70 @@ describe("retry-safe received payment records", () => {
     expect(db.records.size).toBe(1);
   });
 });
+
+function guardedDatabase(options: { paid?: number; creditIn?: number; creditOut?: number; readFailure?: boolean; failAfterInsertOnce?: boolean } = {}) {
+  const db = database({ failAfterInsertOnce: options.failAfterInsertOnce });
+  const from = (table: string) => {
+    const base = table === "crm_quote_bookkeeping_payments" ? db.client.from(table) : null;
+    return {
+      insert: base?.insert.bind(base),
+      select: (columns: string) => ({ eq: (key: string, value: string) => {
+        if (key === "id") return base!.select(columns).eq(key, value);
+        if (options.readFailure) return Promise.resolve({ data: null, error: { message: "Unavailable" } });
+        const amount = table === "crm_quote_bookkeeping_payments"
+          ? (options.paid || 0) + [...db.records.values()].filter(row => row[key] === value).reduce((sum, row) => sum + Number(row.amount), 0)
+          : key.startsWith("to_") ? options.creditIn || 0 : options.creditOut || 0;
+        return Promise.resolve({ data: [{ amount }], error: null });
+      } })
+    };
+  };
+  return { ...db, client: { from } as unknown as SupabaseClient };
+}
+
+describe("outstanding-balance receipt protection", () => {
+  const receipt = { ...payment, amount: 611.07, payment_label: "Balance payment" };
+  const guard = { total: 1222.14, expectedBalance: 611.07 };
+
+  it("records the balance once and rejects the same receipt from a newly opened stale editor", async () => {
+    const db = guardedDatabase({ paid: 611.07 });
+    expect(await insertReceivedPayment(db.client, receipt, requestId, undefined, guard)).toEqual({ reused: false });
+    await expect(insertReceivedPayment(db.client, receipt, entryId, undefined, guard)).rejects.toMatchObject({ status: 409, message: expect.stringContaining("balance changed") });
+    expect(db.records.size).toBe(1);
+  });
+
+  it("accepts an identical retry after a lost response even though the balance is now zero", async () => {
+    const db = guardedDatabase({ paid: 611.07, failAfterInsertOnce: true });
+    await expect(insertReceivedPayment(db.client, receipt, requestId, undefined, guard)).rejects.toMatchObject({ status: 502 });
+    expect(await insertReceivedPayment(db.client, receipt, requestId, undefined, guard)).toEqual({ reused: true });
+    expect(db.records.size).toBe(1);
+    await expect(insertReceivedPayment(db.client, { ...receipt, amount: 600 }, requestId, undefined, guard)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("includes credits and added charges in the live balance for standalone ledger entries", async () => {
+    const db = guardedDatabase({ paid: 500, creditIn: 50, creditOut: 25 });
+    const entryReceipt = { ...receipt, quote_id: null, bookkeeping_entry_id: entryId, amount: 475, source: "manual" };
+    await insertReceivedPayment(db.client, entryReceipt, requestId, undefined, { total: 1000, expectedBalance: 475 });
+    expect(db.records.size).toBe(1);
+  });
+
+  it("allows a partial payment without permitting an amount above the outstanding balance", async () => {
+    const db = guardedDatabase({ paid: 611.07 });
+    await expect(insertReceivedPayment(db.client, { ...receipt, amount: 611.08 }, requestId, undefined, guard)).rejects.toMatchObject({ status: 409 });
+    expect(db.records.size).toBe(0);
+    await insertReceivedPayment(db.client, { ...receipt, amount: 200 }, requestId, undefined, guard);
+    expect(db.records.size).toBe(1);
+  });
+
+  it.each([0, -1, null, "611.07", NaN])("rejects an invalid expected outstanding balance: %s", async expectedBalance => {
+    const db = guardedDatabase({ paid: 611.07 });
+    await expect(insertReceivedPayment(db.client, receipt, requestId, undefined, { total: 1222.14, expectedBalance })).rejects.toMatchObject({ status: 400 });
+    expect(db.records.size).toBe(0);
+  });
+
+  it("fails closed if current ledger reads fail or the request token is missing", async () => {
+    const db = guardedDatabase({ paid: 611.07, readFailure: true });
+    await expect(insertReceivedPayment(db.client, receipt, requestId, undefined, guard)).rejects.toMatchObject({ status: 502 });
+    await expect(insertReceivedPayment(db.client, receipt, undefined, undefined, guard)).rejects.toMatchObject({ status: 400 });
+    expect(db.records.size).toBe(0);
+  });
+});

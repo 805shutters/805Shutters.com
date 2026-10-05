@@ -1131,7 +1131,7 @@ export function CrmApp({
       return;
     }
     if (step === "sold" || step === "paid" || (step === "installed" && item.installed)) {
-      if ((step === "paid" && (item.paid || !financialSource || source.balanceOutstanding === null)) || (!source.row && !source.quote)) { setTrackingDetailId(source.id); return; }
+      if ((step === "paid" && (item.paid || !financialSource || source.balanceOutstanding === null || source.balanceOutstanding <= 0.005)) || (!source.row && !source.quote)) { setTrackingDetailId(source.id); return; }
       setTrackingQuickAction({ itemId: source.id, requestId: crypto.randomUUID(), kind: step === "paid" ? "payment" : step === "installed" ? "install" : item.sold ? "sold_date" : "contract" });
       return;
     }

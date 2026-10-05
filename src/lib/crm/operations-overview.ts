@@ -1,5 +1,5 @@
 import { normalizedProductLabel, splitProductTypes, scopedProductMeta, productTargetIdentity, productManufacturerKey, type ProductTargetRecord } from './product-workflow-groups';
-import { trackingJobClosed } from "./job-closure";
+import { trackingJobClosed, trackingPaymentSettled } from "./job-closure";
 import { shipmentEvidence, type ShipmentEvidence } from "./shipment-evidence";
 import { WEEKLY_SALES_GOAL_START_DATE } from "./weekly-sales-average";
 import { losAngelesDateString } from "@/lib/booking/availability";
@@ -170,7 +170,7 @@ export function buildOperationsItems(data: CrmDashboardData): OperationsItem[] {
     }
     return { source, products: progress, headerProducts: header.products, headerProductSource: header.source, wholeJob, quote: Boolean(source.quote), sold: source.isSale,
       installed: source.progress.installation === "complete",
-      paid: source.isSale && (source.total ?? 0) > 0 && ["settled", "overpaid"].includes(source.progress.payment),
+      paid: trackingPaymentSettled(source),
       closed: trackingJobClosed(source),
       complete: source.progress.stage === "complete",
       archived: ["lost", "archived"].includes(source.stageId) };

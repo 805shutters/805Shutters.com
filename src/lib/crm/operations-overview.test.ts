@@ -15,6 +15,19 @@ const snapshot = (lines: Array<{ lineItemId: string; productName: string; quanti
 const now = new Date("2026-09-16T19:00:00Z");
 
 describe("operations overview source integrity", () => {
+  it.each([0, -611.07])("shows a receipt-backed unsigned quote as paid at balance %s without marking it sold or closed", balance => {
+    const quoted = quote({ status: "sent", quote_total: 1222.14, deposit_required: 611.07, signed_at: null, sold_at: null, approved_at: null, installed_at: "2026-10-05" });
+    const row = { id: "q1", quoteId: "q1", jobId: "j1", source: "crm_quote", customerName: "Avery", total: 1222.14, depositDue: 611.07, depositPaid: 611.07, balancePaid: 611.07 - balance, paidTotal: 1222.14 - balance, balance, meta: {} } as CrmBookkeepingRow;
+    const item = buildOperationsItems(data({ quotes: [quoted], bookkeepingRows: [row] }))[0];
+    expect(item).toMatchObject({ paid: true, sold: false, closed: false, source: { signatureRecorded: false } });
+  });
+
+  it("keeps a partially paid unsigned quote unpaid and does not assume an unsigned quote with no ledger is paid", () => {
+    const quoted = quote({ quote_total: 1222.14, deposit_required: 611.07, balance_due: 0 });
+    expect(buildOperationsItems(data({ quotes: [quoted] }))[0].paid).toBe(false);
+    const row = { id: "q1", quoteId: "q1", source: "crm_quote", total: 1222.14, depositDue: 611.07, depositPaid: 611.07, balancePaid: 0, paidTotal: 611.07, balance: 611.07 } as CrmBookkeepingRow;
+    expect(buildOperationsItems(data({ quotes: [quoted], bookkeepingRows: [row] }))[0]).toMatchObject({ paid: false, sold: false });
+  });
   it("keeps quote products carrying their exact cost-entry link visible", () => {
     const row = { id: "q1", quoteId: "q1", jobId: "j1", source: "crm_quote", costRecordId: "cost1", customerName: "Brian", total: 1000, status: "sold" } as unknown as CrmBookkeepingRow;
     const item = buildOperationsItems(data({ quotes: [quote({ status: "sold" })], bookkeepingRows: [row],

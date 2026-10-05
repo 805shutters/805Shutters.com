@@ -15,6 +15,34 @@ type ReceivedPaymentRecord = Record<string, unknown> & {
 
 const uuidPattern = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
 
+type PaymentBalanceGuard = { total: number; expectedBalance: unknown };
+
+async function verifyOutstandingBalance(supabase: SupabaseClient, payment: ReceivedPaymentRecord, guard: PaymentBalanceGuard) {
+  const expected = guard.expectedBalance;
+  if (typeof expected !== "number" || !Number.isFinite(expected) || expected <= 0 || !Number.isFinite(guard.total)) {
+    throw new CrmAuthError(400, "A positive outstanding balance is required. Refresh the payment ledger.");
+  }
+  const quote = Boolean(payment.quote_id);
+  const target = quote ? payment.quote_id : payment.bookkeeping_entry_id;
+  if (!target) throw new CrmAuthError(400, "A payment ledger is required.");
+  const [receipts, creditsIn, creditsOut] = await Promise.all([
+    supabase.from("crm_quote_bookkeeping_payments").select("amount").eq(quote ? "quote_id" : "bookkeeping_entry_id", target),
+    supabase.from("crm_quote_bookkeeping_credits").select("amount").eq(quote ? "to_quote_id" : "to_bookkeeping_entry_id", target),
+    supabase.from("crm_quote_bookkeeping_credits").select("amount").eq(quote ? "from_quote_id" : "from_bookkeeping_entry_id", target)
+  ]);
+  if ([receipts, creditsIn, creditsOut].some(result => result.error)) {
+    throw new CrmAuthError(502, "The outstanding balance could not be verified. Refresh before recording a payment.");
+  }
+  const sum = (rows: { amount: unknown }[] | null) => (rows || []).reduce((total, row) => total + Math.round(Number(row.amount) * 100), 0);
+  const outstanding = Math.round(guard.total * 100) - sum(receipts.data) - sum(creditsIn.data) + sum(creditsOut.data);
+  if (!Number.isFinite(outstanding) || outstanding !== Math.round(expected * 100)) {
+    throw new CrmAuthError(409, "This balance changed. Refresh and review the recorded payments before recording another receipt.");
+  }
+  if (Math.round(payment.amount * 100) > outstanding) {
+    throw new CrmAuthError(409, "This amount exceeds the outstanding balance. Review the recorded payments first.");
+  }
+}
+
 function paymentRequestId(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !uuidPattern.test(value.trim())) {
@@ -45,9 +73,24 @@ export async function insertReceivedPayment(
   supabase: SupabaseClient,
   payment: ReceivedPaymentRecord,
   requestId?: unknown,
-  failureMessage = "Payment failed to save."
+  failureMessage = "Payment failed to save.",
+  balanceGuard?: PaymentBalanceGuard
 ) {
   const id = paymentRequestId(requestId);
+  if (balanceGuard) {
+    // An acknowledged/lost-response retry must still succeed after its original
+    // receipt reduced the balance. Verify receipt identity before the balance.
+    if (!id) throw new CrmAuthError(400, "A payment request ID is required. Reopen the payment editor.");
+    const { data: existing, error } = await supabase.from("crm_quote_bookkeeping_payments")
+      .select("quote_id,job_id,bookkeeping_entry_id,payment_label,payment_type,amount,paid_at,notes,source")
+      .eq("id", id).maybeSingle();
+    if (error) throw new CrmAuthError(502, "The payment retry could not be verified. Refresh the ledger before trying again.");
+    if (existing) {
+      if (!equivalentPayment(existing, payment)) throw new CrmAuthError(409, "This payment request was already used for different payment details. Refresh the ledger before recording another payment.");
+      return { reused: true };
+    }
+    await verifyOutstandingBalance(supabase, payment, balanceGuard);
+  }
   const { error } = await supabase.from("crm_quote_bookkeeping_payments").insert({ ...payment, ...(id ? { id } : {}) });
   if (!error) return { reused: false };
   if (!id || error.code !== "23505") throw new CrmAuthError(502, failureMessage);
