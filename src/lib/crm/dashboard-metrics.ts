@@ -302,8 +302,9 @@ export function buildClosedSalesReport({ jobs, quotes, contracts, entries = [], 
     const sale: CrmClosedSale = { id: key, jobId, quoteId: quote?.id || contract?.quote_id || null,
       customerId, customerName, reference: quote?.quote_number || contract?.title || quote?.id || key,
       signedAt: signedAt!, amountCents };
-    // Retained alternatives share a group. Earliest acceptance wins, matching the signing flow.
-    const saleKey = quote?.quote_group_id ? `group:${quote.quote_group_id}` : key;
+    // Deduplicate contract shells by quote identity, not by customer/option group.
+    // Two separately signed contracts in one group are two purchases.
+    const saleKey = key;
     const existing = accepted.get(saleKey);
     if (!existing || sale.signedAt < existing.signedAt || (sale.signedAt === existing.signedAt && sale.id < existing.id)) accepted.set(saleKey, sale);
   }

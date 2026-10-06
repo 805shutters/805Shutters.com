@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { acceptPublicQuote, publicQuoteSigningStatus } from "./public-quote";
-function fixture(options: { status?: string; error?: { code: string }; concurrent?: boolean; native?: boolean; timestampOnly?: boolean } = {}) {
+function fixture(options: { status?: string; error?: { code: string }; concurrent?: boolean; native?: boolean; superseded?: boolean; timestampOnly?: boolean } = {}) {
   const quote = { id: "quote", share_token: "token", job_id: null, status: options.status || "sent", signed_at: options.timestampOnly ? "2026-09-23T00:00:00Z" : null,
-    customer_signature: null, customer_name: "Synthetic Customer", quote_group_id: null, meta: options.native ? { native_delivery_id: "delivery", native_frozen_line_totals: { line: { quantity: 1, total: 450 } } } : {} };
+    customer_signature: null, customer_name: "Synthetic Customer", quote_group_id: null, meta: options.native ? { native_delivery_id: "delivery", native_frozen_line_totals: { line: { quantity: 1, total: 450 } }, ...(options.superseded ? { native_superseded_by_quote_id: "sibling" } : {}) } : {} };
   const design = { id: "design", product_id: "roller", unit_price: 450, price_status: "ok", price_breakdown: {}, details: {}, surcharges: [], motorization: [] };
   const lines = [{ id: "line", quote_id: "quote", room: "Kitchen", quantity: 1, sort_order: 0, selected_design_id: "design", discount_percent: 0, designs: [design] }];
   let attempted = false;
@@ -34,8 +34,8 @@ describe("signature claims require evidence for this exact contract", () => {
     const { db } = fixture({ error, concurrent: true });
     await expect(acceptPublicQuote(db, "token", consent)).resolves.toEqual({ ok: true, alreadySigned: true });
   });
-  it("treats empty native RPC result as unconfirmed", async () => {
-    const { db, rpc } = fixture({ native: true });
+  it.each([false, true])("requires this native contract's signature even with an old sibling marker: %s", async superseded => {
+    const { db, rpc } = fixture({ native: true, superseded });
     await expect(acceptPublicQuote(db, "token", consent)).rejects.toMatchObject({ status: 409 });
     expect(rpc).toHaveBeenCalledWith("accept_native_quote_delivery", expect.anything());
   });

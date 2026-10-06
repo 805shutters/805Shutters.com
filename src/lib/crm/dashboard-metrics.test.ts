@@ -542,15 +542,15 @@ describe("weekly closed sales", () => {
     expect(calculate([signed({ quote_total: 9000, meta: { signed_selection: { total: 1200.25 } } })]).weeks[0].totalCents).toBe(120025);
   });
 
-  it("counts one accepted alternative while retaining separate purchases by the same customer", () => {
+  it("counts separately signed contracts in one group while excluding unsigned alternatives", () => {
     const report = calculate([
       signed({ id: "first", quote_group_id: "group", signed_at: "2026-09-08T12:00:00Z", quote_total: 100 }),
-      signed({ id: "duplicate-alternative", quote_group_id: "group", quote_total: 200 }),
+      signed({ id: "second-contract", quote_group_id: "group", quote_total: 200 }),
       quote({ id: "unsigned-alternative", quote_group_id: "group", quote_total: 5000 }),
       signed({ id: "separate-purchase", quote_total: 300 })
     ]);
-    expect(report.weeks[0].totalCents).toBe(40000);
-    expect(report.weeks[0].sales).toHaveLength(2);
+    expect(report.weeks[0].totalCents).toBe(60000);
+    expect(report.weeks[0].sales).toHaveLength(3);
   });
 
   it("keeps historical gross revenue after status and payment changes", () => {

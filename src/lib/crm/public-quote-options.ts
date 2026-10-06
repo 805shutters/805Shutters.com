@@ -6,7 +6,7 @@ export function customerQuoteOptionRows(current: CrmQuote, rows: CrmQuote[]): Cr
   const eligible = rows.filter(row => row.quote_group_id === current.quote_group_id &&
     row.share_token && /^[A-Z]+$/.test(row.quote_label || "") &&
     (row.id === current.id || (row.status !== "draft" && row.status !== "archived" && row.status !== "lost" && Boolean(row.sent_at || row.signed_at))) &&
-    !row.meta?.deleted_at && !row.meta?.native_superseded_by_quote_id &&
+    !row.meta?.deleted_at &&
     !(typeof row.meta?.partial_acceptance === "object" && row.meta.partial_acceptance !== null &&
       (row.meta.partial_acceptance as Record<string, unknown>).role === "future"));
   eligible.sort((a, b) => {

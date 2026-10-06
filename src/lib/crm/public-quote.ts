@@ -1150,7 +1150,7 @@ async function projectPublicQuote(
     customerEmail,
     status: quote.status,
     signed: Boolean(quote.signed_at),
-    superseded: nativeContract && Boolean(record(quote.meta).native_superseded_by_quote_id),
+    superseded: false, // A signed sibling does not supersede this distinct contract.
     signedAt: quote.signed_at,
     lines,
     subtotal: money.subtotal,
@@ -1825,7 +1825,7 @@ export async function acceptPublicQuote(
     return { ok: true, alreadySigned: true };
   }
 
-  if (["archived", "lost"].includes(quote.status) || quote.archived_at || record(quote.meta).native_superseded_by_quote_id) {
+  if (["archived", "lost"].includes(quote.status) || quote.archived_at) {
     throw new CrmAuthError(409, "This contract is no longer available to sign. Please contact 805 Shutters for the current contract.");
   }
 
@@ -1858,13 +1858,6 @@ export async function acceptPublicQuote(
   }
   if (pub.wholeQuoteOffer) {
     if (chosenLines.length !== pub.lines.length) throw new CrmAuthError(409, "This savings offer applies to the complete quote. Contact us to revise the project.");
-    if (quote.quote_group_id) {
-      const { data: siblings, error: siblingError } = await supabase.from("crm_quotes").select("id,signed_at,status").eq("quote_group_id", quote.quote_group_id).neq("id", quote.id);
-      if (siblingError) throw new CrmAuthError(502, "Offer availability could not be checked.");
-      if (siblings?.some((s) => s.signed_at || ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"].includes(s.status))) {
-        throw new CrmAuthError(409, "Another quote for this project has already been accepted. Please contact us.");
-      }
-    }
   }
   const selectedMoney = computePublicSelectionMoney(pub, chosenLines);
   const soldTotal = selectedMoney.total;
@@ -1953,9 +1946,8 @@ export async function acceptPublicQuote(
         .select("id");
   const { data: claimed, error } = claim;
   if (error) {
-    // The one-signed-per-group unique index (crm_quotes_one_signed_per_group)
-    // rejects a second concurrent sign in the same group. Only report success
-    // if this exact contract has a persisted signature.
+    // Only report a conflicting/repeated claim as successful when this exact
+    // contract has a persisted signature.
     if ((error as { code?: string }).code === "23505") return confirmConcurrentSignature(supabase, quote.id);
     if (native && ["40001", "55000", "22023"].includes((error as { code?: string }).code || "")) throw new CrmAuthError(409, "This contract changed or was already accepted. Refresh and review it before signing.");
     throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
@@ -1966,44 +1958,9 @@ export async function acceptPublicQuote(
   const futureQuoteId = "futureQuoteId" in claimed[0] ? claimed[0].futureQuoteId : undefined;
   const futureJobId = "futureJobId" in claimed[0] ? claimed[0].futureJobId : undefined;
 
-  // Within a group, the chosen version wins — supersede the unsigned alternatives
-  // so they can't also be signed and never get their own bookkeeping entry.
+  // Each distinct contract is an independent purchase. The claim above remains
+  // atomic per quote; signing a sibling must never clear another signature.
   const effectiveGroupId = quote.quote_group_id;
-  if (effectiveGroupId && !native) {
-    // Concurrency guard (M6): if a sibling link was signed at nearly the same
-    // moment, both per-row claims can succeed. Resolve to a single winner — the
-    // earliest signature (tiebreak: lowest id). If THIS request lost, revert our
-    // claim before any bookkeeping/supersede so we never end up with two sold
-    // versions + two ledger entries.
-    const { data: signedRows } = await supabase
-      .from("crm_quotes")
-      .select("id, signed_at")
-      .eq("quote_group_id", effectiveGroupId)
-      .not("signed_at", "is", null);
-    const others = ((signedRows as { id: string; signed_at: string }[]) ?? []).filter((r) => r.id !== quote.id);
-    // Compare by parsed epoch ms — toISOString() (ms, "Z") and a PostgREST
-    // timestamptz (microseconds, "+00:00") are NOT lexicographically comparable.
-    const nowMs = Date.parse(now);
-    const weLost = others.some((o) => {
-      const oMs = Date.parse(String(o.signed_at));
-      return oMs < nowMs || (oMs === nowMs && o.id < quote.id);
-    });
-    if (weLost) {
-      await supabase
-        .from("crm_quotes")
-        .update({ status: "archived", signed_at: null, sold_at: null, customer_signature: null, customer_printed_name: null, share_token: null })
-        .eq("id", quote.id);
-      throw new CrmAuthError(409, "Another option for this project was accepted. Please refresh to view the accepted contract.");
-    }
-
-    let archiveSiblings = supabase
-      .from("crm_quotes")
-      .update({ status: "archived", share_token: null })
-      .eq("quote_group_id", effectiveGroupId)
-      .neq("id", quote.id)
-      .is("signed_at", null);
-    await archiveSiblings;
-  }
 
   const nativeSigned = native ? await supabase.from("crm_quotes").select("*").eq("id", quote.id).single() : null;
   if (nativeSigned?.error) throw new CrmAuthError(502, "The signed native contract could not be loaded.");

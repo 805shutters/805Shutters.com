@@ -10,14 +10,19 @@ describe("customer quote navigation", () => {
     const a = row("A"), b = row("B"), c = row("C");
     expect(customerQuoteOptionRows(a, [c, b, a]).map(q => q.id)).toEqual(["A", "B", "C"]);
   });
-  it("does not expose drafts, missing links, other groups, deleted, superseded, future, or archived records", () => {
+  it("does not expose drafts, missing links, other groups, deleted, future, or archived records", () => {
     const a = row("A");
     const candidates = [row("B", { status: "draft" }), row("C", { share_token: null }), row("D", { quote_group_id: "other" }),
-      row("E", { meta: { deleted_at: "today" } }), row("F", { meta: { native_superseded_by_quote_id: "new" } }),
+      row("E", { meta: { deleted_at: "today" } }),
       row("G", { meta: { partial_acceptance: { role: "future" } } }), row("H", { status: "archived" }),
       row("I", { sent_at: null }), row("J", { quote_label: "Pending Quote" })];
     expect(customerQuoteOptionRows(a, [a, ...candidates])).toEqual([a]);
     expect(customerQuoteOptionRows(row("A", { quote_group_id: null }), [a])).toEqual([]);
+  });
+  it("keeps a sent contract available when a sibling was previously marked as superseding it", () => {
+    const a = row("A", { signed_at: "2026-10-06", status: "sold" });
+    const b = row("B", { meta: { native_superseded_by_quote_id: a.id } });
+    expect(customerQuoteOptionRows(b, [a, b]).map(q => q.id)).toEqual(["A", "B"]);
   });
   it("keeps the opened token and prefers the current delivered mirror for other letters", () => {
     const a = row("A"), oldB = row("old", { quote_label: "B" }), nativeB = row("native", { quote_label: "B", meta: { native_delivery_id: "delivery" } });
