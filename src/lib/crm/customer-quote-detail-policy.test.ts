@@ -16,7 +16,7 @@ describe("purchase details instead of manufacturing worksheets", () => {
     "Light Guard Channel Lengths", "Custom Chain Length", "AutoWand Length (inches)",
     "Unobstructed Below Tension Device", "Keystone 1 from Left in Inches", "Splice Locations",
     "Joint 3 from Valance Left", "Keystone centers from inner left end",
-    "Divider-rail positions", "T-post positions", "Offset tilt distance", "Tilt-rod section lengths",
+    "T-post positions", "Offset tilt distance", "Tilt-rod section lengths",
     "Left Cut-out Top from Headrail in Inches", "Handle center from bottom", "Lock center from bottom",
     "Panel net widths", "Finished Net Shade Height", "Net Left Leg Height",
     "Common Valance Group", "Side-by-Side Matching Group", "Butt Together Group",
@@ -39,6 +39,7 @@ describe("purchase details instead of manufacturing worksheets", () => {
   it.each([
     "Material: Ash", "Louver Size: 3.5 inches", "Tilt: Hidden tilt", "Frame: Z frame",
     "Panel configuration: 2 panels", "Divider-rail count: 1", "Specialty shape: Arch",
+    "Divider rail location: Custom", "Divider rail height: 32.625 inches", "Divider-rail positions: 32.625 inches, 54 inches",
     "Fabric: Lakeside", "Fabric Color: F0183 — Milk", "Cell size: 3/4 inch",
     "Light Control: Room Darkening", "Rear fabric: Mist", "Banding Layout: Three sides",
     "Lining: Blackout", "Fold Style: Flat Fold", "Fabric orientation: Railroaded",
@@ -108,6 +109,41 @@ describe("purchase details instead of manufacturing worksheets", () => {
   it("keeps the shutter application while hiding unrelated order metadata", () => {
     const options = v2CustomerConfigurationOptions({ manufacturerId: "onyx", selections: { onyx_order_type: "French Door" } });
     expect(customerQuoteOptions(options)).toContain("Shutter type: French Door");
+  });
+
+  it("keeps the entered divider height from both legacy and V2 selections", () => {
+    const design = { options_json: { divider_rail: "Yes", divider_rail_location: "Custom", divider_rail_height: "32.625" } } as unknown as SalesQuoteDesign;
+    const legacy = quoteProductDetails("", getQuoteDesignDetails(design).map(detail => `${detail.label}: ${detail.value}`));
+    expect(legacy).toContainEqual({ label: "Divider Rail Height", value: '32.625"' });
+    const selection = { manufacturerId: "Onyx", configuration: {
+      divider_rail: "Yes", divider_rail_location: "Custom", divider_rail_location_mode: "custom",
+      divider_rail_positions_inches: [32.625, 54],
+    }, options: {} } as unknown as SelectionContext;
+    const before = structuredClone(selection);
+    const details = quoteProductDetails("", v2CustomerConfigurationOptions(customerConfigurationFromSelection(selection)));
+    expect(details).toContainEqual({ label: "Divider-rail location", value: "Custom" });
+    expect(details).toContainEqual({ label: "Divider-rail positions", value: '32.625", 54"' });
+    expect(selection).toEqual(before);
+  });
+
+  it("makes a missing saved custom height explicit without inventing a measurement", () => {
+    expect(quoteProductDetails("", ["Divider rail: Yes", "Divider rail location: Custom"]))
+      .toContainEqual({ label: "Divider rail location", value: "Custom — measurement not recorded" });
+  });
+
+  it("projects specified Norman rail centers with the saved datum, without panel worksheets", () => {
+    const selection = { manufacturerId: "Norman", configuration: {
+      norman_shutter_panels_v1: { version: 1, application: "regular", motor: "", existingDoorGlassOrSidelight: false,
+        panels: [{ heightInches: 80, divider: "present", dividerDetails: {
+          version: 1, measurementBasis: "window", referenceHeightInches: 80,
+          rails: [{ heightInches: 3, location: "specified", centerInches: 32.625, exactLocation: true }],
+          splitTiltCentersInches: [], clearLouverCounts: [],
+        } }],
+      },
+    }, options: {} } as unknown as SelectionContext;
+    const output = customerQuoteOptions(v2CustomerConfigurationOptions(customerConfigurationFromSelection(selection)));
+    expect(output).toContain('Divider rail location: Panel 1, rail 1: 32 5/8" to rail center (window measurement) — exact location');
+    expect(JSON.stringify(output)).not.toMatch(/heightInches|referenceHeightInches|panels_v1/);
   });
 
   it("names purchased motorization components without displaying internal catalog keys", () => {

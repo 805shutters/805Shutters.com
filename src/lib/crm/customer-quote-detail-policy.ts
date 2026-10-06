@@ -38,7 +38,7 @@ const INTERNAL_PATTERNS = [
   /\b(?:shade|blind) position from left\b|\bgap (?:after|between)|\bcommon valance gap\b/,
   /\b(?:keystone|splice) (?:locations?|centers?|layout)|\bjoint \d+ from|\bfirst shade offset/,
   /\bkeystone \d+ from|\b(?:handle|lock) center from/,
-  /\b(?:divider rail|t post) (?:positions?|locations?|height)|\boffset tilt distance|\btilt rod section lengths/,
+  /\bt post (?:positions?|locations?|height)|\boffset tilt distance|\btilt rod section lengths/,
   /\b(?:panel net|finished net|net shade|net (?:left |right )?leg)|^(?:left |right )?leg height\b/,
   /^panel (?:widths|heights)$|\bcut out (?:width|top|bottom)/,
   /\btemplate (?:reference|file)|\bshape side \d+\b/,

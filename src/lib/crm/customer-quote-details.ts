@@ -99,6 +99,8 @@ export function quoteProductDetails(styleName: string, options: string[], presen
   const colorType = parsed.find(({ label }) => normalized(label) === "fabric color type")?.value;
   const selectedFabric = parsed.find(({ label }) => normalized(label) === "fabric")?.value;
   const hasNoValance = parsed.some(({ label, value }) => normalized(label) === "valance" && normalized(value) === "no valance");
+  const hasDividerMeasurement = parsed.some(({ label, value }) =>
+    /^divider rail (?:height|positions?)$/.test(normalized(label)) && /\d/.test(value));
 
   const grouped = new Map<string, QuoteProductDetail>();
   const visibleValues: string[] = [];
@@ -113,7 +115,13 @@ export function quoteProductDetails(styleName: string, options: string[], presen
     if (selectedFabric && /^(?:roman )?fabric (?:color|collection|category)$/.test(labelKey)
       && selectedFabric.split(/[|·]/).some(part => normalized(part) === normalized(detail.value))) continue;
 
-    const value = labelKey === "fabric" ? stripRepeatedLightControl(detail.value, lightControl) : detail.value;
+    let value = labelKey === "fabric" ? stripRepeatedLightControl(detail.value, lightControl) : detail.value;
+    if (/^divider rail (?:height|positions?)$/.test(labelKey) && !/["″]|\bin(?:ches)?\b/i.test(value)) {
+      value = value.split(",").map(part => `${part.trim()}"`).join(", ");
+    }
+    if (labelKey === "divider rail location" && normalized(value) === "custom" && !hasDividerMeasurement) {
+      value = "Custom — measurement not recorded";
+    }
     const existing = grouped.get(labelKey);
     if (existing) {
       if (!valueIsCovered(value, existing.value.split(" · "))) existing.value += ` · ${value}`;

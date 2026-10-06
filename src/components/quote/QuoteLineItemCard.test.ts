@@ -40,4 +40,15 @@ describe("approved quote line item card", () => {
     expect(html).not.toContain('data-contract-illustration="c-v1"');
     expect(html).not.toContain("Natural Tan");
   });
+
+  it("renders the special divider location and saved height on the customer contract", () => {
+    const html = renderToStaticMarkup(createElement(QuoteLineItemCard, { ...base, productType: "Shutters", options: [
+      "Divider rail: Yes", "Divider rail location: Custom", "Divider rail height: 32.625",
+    ] }));
+    expect(html).toContain("Divider rail location");
+    expect(html).toContain("Custom");
+    expect(html).toContain("Divider rail height");
+    expect(html).toContain("32.625&quot;");
+    expect(html).not.toContain("measurement not recorded");
+  });
 });

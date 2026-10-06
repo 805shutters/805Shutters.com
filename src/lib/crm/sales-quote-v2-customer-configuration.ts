@@ -495,6 +495,7 @@ export function customerConfigurationFromSelection(
   const shutterFields: Record<string, V2CustomerConfigurationKey> = {
     "Shutter type": "shutter_type", "Specialty shape": "specialty_shape", "Frame": "frame_type",
     "Panel configuration": "panel_configuration", "Motor": "motor_type", "Divider rail": "divider_rail",
+    "Divider rail location": "divider_rail_location",
     "Track system": "track_system", "French-door cutout": "french_door_cutout",
   };
   for (const detail of customerShutterDetails(source)) {
@@ -543,6 +544,16 @@ function title(value: string): string {
 function displayValue(key: string, value: SelectionValue): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (value === null) return "None";
+  if (key === "divider_rail_location_mode") {
+    return value === "factory_even" ? "Center" : value === "custom" ? "Custom" : String(value);
+  }
+  if (key === "divider_rail_height" || key === "divider_rail_positions_inches") {
+    const values = Array.isArray(value) ? value : [value];
+    return values.map(entry => {
+      const raw = String(entry).trim();
+      return raw && !/["″]|\bin(?:ches)?\b/i.test(raw) ? `${raw}"` : raw;
+    }).join(", ");
+  }
   if (!Array.isArray(value)) return String(value);
   if (key === "motorization_selections") {
     return value

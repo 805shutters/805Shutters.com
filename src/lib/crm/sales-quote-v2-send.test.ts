@@ -713,6 +713,33 @@ describe("staff manual prices retaining a Norman catalog", () => {
     expect(input).toEqual(before);
   });
 
+  it.each([false, true])("requires a saved custom divider height even for a manual price, sendAsIs=%s", (sendAsIs) => {
+    const input = manualFixture(498.31);
+    const selection = input.designs[0].quote_v2_selection as unknown as { configuration: Record<string, unknown> };
+    Object.assign(selection.configuration, { divider_rail: "Yes", divider_rail_location: "Custom", divider_rail_count: 1 });
+    expect(() => prepareV2CustomerSendPayload({ ...input, sendAsIs })).toThrow(/Living Room.*custom divider-rail height/);
+    selection.configuration.divider_rail_height = "32.625";
+    const payload = prepareV2CustomerSendPayload({ ...input, sendAsIs });
+    expect(payload.lines[0].configuration.selections.divider_rail_height).toBe("32.625");
+    expect(payload.total).toBe(996.62);
+  });
+
+  it("requires a valid position for each custom rail and permits the saved positions", () => {
+    const input = manualFixture(498.31);
+    const selection = input.designs[0].quote_v2_selection as unknown as { configuration: Record<string, unknown> };
+    Object.assign(selection.configuration, { divider_rail: "Yes", divider_rail_location_mode: "custom", divider_rail_count: 2 });
+    for (const positions of [[], [32.625], [32.625, null], [32.625, 0]]) {
+      selection.configuration.divider_rail_positions_inches = positions;
+      expect(() => prepareV2CustomerSendPayload({ ...input, sendAsIs: true })).toThrow(/custom divider-rail height/);
+    }
+    selection.configuration.divider_rail_positions_inches = [32.625, 54];
+    const payload = prepareV2CustomerSendPayload({ ...input, sendAsIs: true });
+    expect(payload.lines[0].configuration.selections.divider_rail_positions_inches).toEqual([32.625, 54]);
+    selection.configuration.divider_rail = "No";
+    delete selection.configuration.divider_rail_positions_inches;
+    expect(prepareV2CustomerSendPayload(input).total).toBe(996.62);
+  });
+
   it.each([[false, false], [true, false], [false, true], [true, true]])("sends a manual line with no catalog selection, sendAsIs=%s mixed=%s", (sendAsIs, mixed) => {
     const input: Parameters<typeof prepareV2CustomerSendPayload>[0] = manualFixture(123.45);
     input.quote.quote_v2_catalog_version = "custom-override-v1";

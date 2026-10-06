@@ -1,6 +1,7 @@
 import { NORMAN_SHUTTER_APPLICATIONS, NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from "@/lib/quote/norman-shutter-panels";
 import { NORMAN_SPECIALTY_SHAPES } from "@/lib/quote/norman-shutter-specialty";
 import { NORMAN_SHUTTER_PROGRAMS, normanShutterFrame } from "@/lib/quote/norman-shutter-assortment";
+import { formatInches } from "@/lib/quote/measurements";
 
 /** Purchased shutter choices only; never serialize the factory panel worksheet. */
 export function customerShutterDetails(options: Record<string, unknown>): Array<{ label: string; value: string }> {
@@ -15,6 +16,17 @@ export function customerShutterDetails(options: Record<string, unknown>): Array<
   if (record.motor === "perfect_tilt_g4") add("Motor", "Motorized tilt");
   if (record.motor === "other") add("Motor", "Other motorization");
   if (record.panels.some(panel => panel.divider === "present")) add("Divider rail", "Yes");
+  const specifiedRails = record.panels.flatMap((panel, panelIndex) => {
+    if (panel.divider !== "present" || !panel.dividerDetails) return [];
+    const divider = panel.dividerDetails;
+    const basis = { window: "window", max_frame: "max frame", panel: "panel", "": "" }[divider.measurementBasis];
+    return divider.rails.flatMap((rail, railIndex) => {
+      if (rail.location !== "specified") return [];
+      const location = rail.centerInches == null ? "measurement not recorded" : `${formatInches(rail.centerInches)} to rail center`;
+      return [`Panel ${panelIndex + 1}, rail ${railIndex + 1}: ${location}${basis ? ` (${basis} measurement)` : ""}${rail.exactLocation ? " — exact location" : ""}`];
+    });
+  });
+  if (specifiedRails.length) add("Divider rail location", specifiedRails.join("; "));
 
   if (record.application === "specialty" && record.specialty) {
     const specialty = record.specialty;

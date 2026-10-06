@@ -423,6 +423,21 @@ export function prepareV2CustomerSendPayload(
       fail(`Line item ${line.id} references a selected design that does not belong to it.`);
     }
     const selected = selectedMatches[0];
+    // Custom retail prices and send-as-is still require the purchased rail
+    // location. Neither path may silently publish an incomplete specification.
+    const selection = record(selected.quote_v2_selection);
+    const configuration = record(selection?.configuration) ?? record(selected.options_json) ?? {};
+    const customDivider = [configuration.divider_rail_location, configuration.divider_rail_location_mode]
+      .some(value => String(value).toLowerCase() === "custom");
+    if (customDivider && !["no", "none", "false"].includes(String(configuration.divider_rail).toLowerCase())) {
+      const positions = configuration.divider_rail_positions_inches;
+      const heights = Array.isArray(positions) && positions.length ? positions : [configuration.divider_rail_height];
+      const count = Number(configuration.divider_rail_count ?? 1);
+      if (heights.length !== count || heights.some(value =>
+        value == null || String(value).trim() === "" || !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+        fail(`${text(line.room_name) || "Line item"}: enter the custom divider-rail height before preparing the contract.`);
+      }
+    }
     selectedDesigns.push(selected);
     selectedVariantByLine[line.id] = selected.variant;
     storedByDesignId.set(
