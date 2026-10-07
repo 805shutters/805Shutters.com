@@ -5,7 +5,7 @@ import type { CrmCalendarEvent, CrmDashboardData, CrmQuote } from './types';
 
 export const jobStatusQueues = [
   { id: 'upcoming_quotes', label: 'Upcoming quotes', context: 'Appointments scheduled' },
-  { id: 'pending_quotes', label: 'Pending quotes', context: 'Visit completed · Quote unsent' },
+  { id: 'pending_quotes', label: 'Pending quotes', context: 'Last 7 days · Quote unsent' },
   { id: 'measures_needed', label: 'Measures needed', context: 'Sold · Measure outstanding' },
   { id: 'need_to_order', label: 'Need to order', context: 'Measure submitted · Unordered' },
   { id: 'active_jobs', label: 'Active jobs', context: 'Sold · Not closed' },
@@ -70,6 +70,7 @@ export function buildJobStatusQueues(data: CrmDashboardData, items = buildOperat
     if (!current || Date.parse(event.updated_at) > Date.parse(current.updated_at)) events.set(key, event);
   }
   const pending = new Map<string, CrmCalendarEvent>();
+  const pendingCutoff = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   for (const event of events.values()) {
     if (event.status === 'canceled' || event.status === 'rescheduled') continue;
     const job = event.job_id ? jobs.get(event.job_id) : undefined;
@@ -82,6 +83,9 @@ export function buildJobStatusQueues(data: CrmDashboardData, items = buildOperat
       continue;
     }
     if (!(event.status === 'complete' || end <= now.getTime())) continue;
+    // Pending age starts when the visit ends. Editing an old appointment or
+    // saving its draft quote must not return stale work to this queue.
+    if (end < pendingCutoff || end > now.getTime()) continue;
     const meta = objectMeta(event.meta);
     const quoteId = [meta.crm_quote_id, meta.quote_id, meta.mts_quote_id].find(value => typeof value === 'string' && value) as string | undefined;
     const related = quoteId ? quotes.filter(quote => quoteMatchesId(quote, quoteId)) : event.job_id ? quotes.filter(quote => quote.job_id === event.job_id) : [];

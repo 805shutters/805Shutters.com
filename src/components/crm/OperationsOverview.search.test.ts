@@ -3,7 +3,7 @@ import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JobStatusOverview } from './OperationsOverview';
-import { buildActiveJobsSnapshot } from '@/lib/crm/active-jobs';
+import { buildActiveJobsSnapshot, type ActiveJobsSnapshot } from '@/lib/crm/active-jobs';
 import type { CrmDashboardData } from '@/lib/crm/types';
 
 vi.mock('./CustomerEmailStatus', () => ({ CustomerEmailStatus: () => null }));
@@ -22,8 +22,8 @@ const data = {
 let host: HTMLDivElement, root: Root;
 const action = vi.fn();
 const snapshot = buildActiveJobsSnapshot(data);
-async function render(full: CrmDashboardData | null = data, onLoadAll?: () => Promise<unknown>) {
-  await act(async () => root.render(createElement(JobStatusOverview, { data: full, activeSnapshot: snapshot, onLoadAll, busy: false, onOpen: vi.fn(), onSaveCost: async () => true, onAction: action })));
+async function render(full: CrmDashboardData | null = data, onLoadAll?: () => Promise<unknown>, activeSnapshot: ActiveJobsSnapshot = snapshot) {
+  await act(async () => root.render(createElement(JobStatusOverview, { data: full, activeSnapshot, onLoadAll, busy: false, onOpen: vi.fn(), onSaveCost: async () => true, onAction: action })));
 }
 async function search(query: string) {
   await act(async () => {
@@ -40,13 +40,15 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); action.mockClear();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
 });
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('search across all job statuses', () => {
   it('shows the five queues, filters appointment and job records, and keeps counts independent of search', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-06T23:00:00Z'));
     const fixture = { ...data, jobs: [{ id: 'measure', customer_name: 'Measure customer', status: 'sold', meta: { measure_needed: { status: 'needed' } } }],
       quotes: [...data.quotes, { ...data.quotes[1], id: 'q-measure', job_id: 'measure', customer_name: 'Measure customer' }],
-      events: [{ id: 'future', event_type: 'sales_consult', status: 'scheduled', start_at: '2035-10-07T17:00:00Z', end_at: '2035-10-07T18:00:00Z', customer_name: 'Future consultation', assigned_to: 'Mike' }, { id: 'past', event_type: 'sales_consult', status: 'complete', start_at: '2025-10-07T17:00:00Z', end_at: '2025-10-07T18:00:00Z', customer_name: 'Past consultation', assigned_to: 'Jessica' }]
+      events: [{ id: 'future', event_type: 'sales_consult', status: 'scheduled', start_at: '2026-10-07T17:00:00Z', end_at: '2026-10-07T18:00:00Z', customer_name: 'Future consultation', assigned_to: 'Mike' }, { id: 'past', event_type: 'sales_consult', status: 'complete', start_at: '2026-10-05T17:00:00Z', end_at: '2026-10-05T18:00:00Z', customer_name: 'Past consultation', assigned_to: 'Jessica' }, { id: 'stale', event_type: 'sales_consult', status: 'complete', start_at: '2026-09-28T17:00:00Z', end_at: '2026-09-28T18:00:00Z', customer_name: 'Stale consultation', assigned_to: 'Jessica' }]
     } as unknown as CrmDashboardData;
     await render(fixture);
     const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Job status queues"] button')];
@@ -55,6 +57,13 @@ describe('search across all job statuses', () => {
     expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '1', '0', '2']);
     await choose('Upcoming quotes'); expect(host.textContent).toContain('Future consultation'); expect(cards()).toEqual([]);
     await choose('Pending quotes'); expect(host.textContent).toContain('Past consultation'); expect(host.textContent).not.toContain('Future consultation');
+    expect(host.textContent).not.toContain('Stale consultation');
+    expect(host.textContent).toContain('Last 7 days · Quote unsent');
+    await render(null, undefined, buildActiveJobsSnapshot(fixture));
+    expect(buttons()[1].querySelector('strong')?.textContent).toBe('1');
+    expect(host.textContent).toContain('Past consultation');
+    expect(host.textContent).not.toContain('Stale consultation');
+    await render(fixture);
     await choose('Measures needed'); expect(cards()).toEqual(['Job status for Measure customer']);
     await choose('Need to order'); expect(host.textContent).toContain('No jobs match');
     await search('John Charamonte'); expect(cards()).toEqual(['Job status for John Charamonte']);

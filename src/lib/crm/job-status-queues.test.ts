@@ -64,6 +64,29 @@ describe('job status queues', () => {
     expect(buildJobStatusQueues(dashboard, undefined, new Date('2026-10-06T23:30:00Z')).pending_quotes.map(event => event.id)).toEqual(['ongoing']);
   });
 
+  it('limits pending visits to seven elapsed days, including the exact cutoff', () => {
+    const dashboard = data({ quotes: [quote('stale', { status: 'draft', created_at: now.toISOString(), updated_at: now.toISOString() })], events: [
+      event('stale', { status: 'complete', start_at: '2026-09-29T21:59:59.999Z', end_at: '2026-09-29T22:59:59.999Z', updated_at: now.toISOString() }),
+      event('cutoff', { start_at: '2026-09-29T22:00:00Z', end_at: '2026-09-29T23:00:00Z' }),
+      event('recent'),
+      event('just-completed', { start_at: '2026-10-06T22:00:00Z', end_at: now.toISOString() }),
+      event('future-complete', { status: 'complete', start_at: '2026-10-07T17:00:00Z', end_at: '2026-10-07T18:00:00Z' }),
+    ] });
+    const before = JSON.stringify(dashboard);
+    expect(buildJobStatusQueues(dashboard, undefined, now).pending_quotes.map(event => event.id)).toEqual(['cutoff', 'recent', 'just-completed']);
+    expect(buildJobStatusQueues(dashboard, undefined, new Date(now.getTime() + 1)).pending_quotes.map(event => event.id)).toEqual(['recent', 'just-completed']);
+    expect(JSON.stringify(dashboard)).toBe(before);
+  });
+
+  it('uses elapsed time across the Los Angeles daylight-saving change', () => {
+    const afterFallback = new Date('2026-11-03T18:00:00-08:00');
+    const dashboard = data({ events: [
+      event('too-old', { start_at: '2026-10-27T17:00:00-07:00', end_at: '2026-10-27T18:00:00-07:00' }),
+      event('cutoff', { start_at: '2026-10-27T18:00:00-07:00', end_at: '2026-10-27T19:00:00-07:00' }),
+    ] });
+    expect(buildJobStatusQueues(dashboard, undefined, afterFallback).pending_quotes.map(event => event.id)).toEqual(['cutoff']);
+  });
+
   it('deduplicates mirror records, counts pending quote opportunities once, and resolves legacy quote IDs', () => {
     const dashboard = data({ quotes: [quote('sent', { external_id: 'quote:legacy', status: 'sent' })], events: [
       event('mirror', { meta: { sales_805_appointment_id: 'visit' }, start_at: '2026-10-07T17:00:00Z', end_at: '2026-10-07T18:00:00Z' }),
