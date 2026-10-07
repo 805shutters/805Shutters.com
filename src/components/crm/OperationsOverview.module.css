@@ -271,3 +271,30 @@
 .salesAverage { display:flex; align-items:baseline; gap:6px; margin-top:8px; font-size:13px; line-height:1.4; white-space:nowrap; }
 .salesAverage > span { font-size:inherit; }
 .salesAverage > strong { font-size:inherit; }
+
+.threePaymentTable thead th { width:12.5%; }
+.financialMetrics.paymentMetrics { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:18px; }
+.financialMetrics.costMetrics { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.financialMetrics.costMetrics > div:nth-child(5) { border-left:1px solid #3b3d3b; padding-left:12px; }
+.paymentPlanBadge { color:#75dfab!important; }
+.paymentFooter { border-top:1px solid #3b3d3b; padding:12px 22px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px 20px; color:#b8b6ae; font-size:12px; }
+.paymentFooter strong { color:#fbfbfa; font-weight:500; }
+.paymentPanel { border-top:1px solid #3b3d3b; padding:16px; }
+.paymentCell { min-width:0; }
+.condensedTable .paymentCell { display:flex; align-items:center; gap:6px; }
+.condensedTable .paymentCell small { display:inline; margin:0; }
+@media(max-width:900px) {
+  .threePaymentTable tr { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .threePaymentTable td, .threePaymentTable td:nth-child(n) { grid-column:auto; border-left:1px solid #383b37; }
+  .threePaymentTable td:nth-child(4n+1) { border-left:0; }
+  .financialMetrics.costMetrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .financialMetrics.costMetrics > div:nth-child(3n+1) { border-left:0; padding-left:0; }
+}
+@media(max-width:600px) {
+  .financialMetrics.paymentMetrics, .financialMetrics.costMetrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .financialMetrics.costMetrics > div:nth-child(odd) { border-left:0; padding-left:0; }
+  .financialMetrics.costMetrics > div:nth-child(even) { border-left:1px solid #3b3d3b; padding-left:12px; }
+  .threePaymentTable tr { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .threePaymentTable td:nth-child(odd) { border-left:0; }
+  .paymentFooter { padding:12px 16px; }
+}

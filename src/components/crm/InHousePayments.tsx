@@ -121,10 +121,16 @@ export function InHousePayments({
   quoteId,
   salesQuoteId,
   initiallyOpen = false,
+  planId,
+  initialInstallmentNumber,
+  onChanged,
 }: {
   quoteId?: string | null;
   salesQuoteId?: string | null;
   initiallyOpen?: boolean;
+  planId?: string;
+  initialInstallmentNumber?: number;
+  onChanged?: () => void | Promise<unknown>;
 }) {
   const [plans, setPlans] = useState<PlanView[]>([]);
   const [open, setOpen] = useState(initiallyOpen);
@@ -143,22 +149,28 @@ export function InHousePayments({
     method: string;
     requestId: string;
   } | null>(null);
-  const refresh = async () => {
+  const refresh = async (selectInstallment = false) => {
     const data = await inHouseRequest(
       `/api/crm/in-house-plans/${salesQuoteId ? `?salesQuoteId=${encodeURIComponent(salesQuoteId)}` : ""}`,
     );
-    setPlans(
-      quoteId
-        ? data.plans.filter((p: PlanView) => p.quote_id === quoteId)
-        : data.plans,
-    );
+    const matching = (data.plans as PlanView[]).filter(p =>
+      (!planId || p.id === planId) && (!quoteId || p.quote_id === quoteId));
+    setPlans(matching);
+    if (selectInstallment && initialInstallmentNumber) {
+      const p = matching.find(p => p.status !== "cancelled");
+      const i = p?.installments.find(i => i.number === initialInstallmentNumber);
+      if (p && i && unpaidCents(i) > 0) setReceipt({
+        planId: p.id, installmentId: i.id, amount: (unpaidCents(i) / 100).toFixed(2),
+        day: planDate(), method: "zelle", requestId: crypto.randomUUID(),
+      });
+    }
   };
   useEffect(() => {
     if (open) {
-      refresh().catch((e) => setError(e.message));
+      refresh(true).catch((e) => setError(e.message));
     }
     setReview(null);
-  }, [open, quoteId, salesQuoteId]);
+  }, [open, quoteId, salesQuoteId, planId, initialInstallmentNumber]);
   const act = async (id: string, action: string) => {
     setBusy(true);
     setError("");
@@ -172,6 +184,7 @@ export function InHousePayments({
       });
       setReview(null);
       await refresh();
+      await onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Action failed");
     } finally {
@@ -205,7 +218,7 @@ export function InHousePayments({
                 <div key={i.id} className="border rounded p-3 my-2">
                   <strong>
                     Payment {i.number} of 3 ·{" "}
-                    {i.number === 1 ? "Deposit" : `Month ${i.number}`}
+                    {i.number === 1 ? "Deposit" : i.number === 2 ? "Second payment" : "Balance"}
                   </strong>
                   <p>
                     Scheduled: {money(i.amount_cents)} · Received:{" "}
@@ -241,6 +254,7 @@ export function InHousePayments({
               ))}
               {receipt?.planId === p.id && (
                 <form
+                  aria-label="Record received installment payment"
                   className="border rounded p-3 space-y-3"
                   onSubmit={async (e) => {
                     e.preventDefault();
@@ -258,6 +272,7 @@ export function InHousePayments({
                       );
                       setReceipt(null);
                       await refresh();
+                      await onChanged?.();
                       if (result.warning) setError(result.warning);
                     } catch (e) {
                       setError(
