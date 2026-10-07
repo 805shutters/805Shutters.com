@@ -31,6 +31,7 @@ describe("active-first job loading", () => {
     expect(snapshot.items.map(item => item.source.customerName).sort()).toEqual(["open", "reopened", "unsold"]);
     expect(snapshot.loadWarnings).toEqual(dashboard.loadWarnings);
     expect(snapshot.items.every(item => !item.source.file)).toBe(true);
+    expect(snapshot.queues?.active_jobs).toEqual(['open', 'reopened']);
     expect(JSON.stringify(dashboard)).toBe(before);
     expect(buildOperationsItems(dashboard)).toHaveLength(4);
   });

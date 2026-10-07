@@ -946,6 +946,7 @@ export type CrmClosedSalesReport = {
 };
 
 export type CrmDashboardData = {
+  technicalMeasureSubmissions?: Array<{ formId: string; jobId: string; quoteId: string | null; submittedAt: string }>;
   /** Signed-sale history, calculated before display/status projections. */
   closedSales?: CrmClosedSalesReport;
   installerOutcomes?: InstallerOutcomeEvidence[];

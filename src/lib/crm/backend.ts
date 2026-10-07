@@ -1976,7 +1976,12 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     openingBalance,
     payoffTarget
   });
-  return { ...dashboard, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], integrationHealth, loadWarnings: sourceHealth.filter(source=>source.state!=="complete").map(source=>source.message || `Could not load ${source.source}. Related details may be incomplete.`) };
+  const technicalMeasureSubmissions = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || []).flatMap(value => {
+    const row = objectMeta(value);
+    const formId = optionalText(row.id), jobId = optionalText(row.job_id), submittedAt = optionalText(row.submitted_at);
+    return formId && jobId && submittedAt ? [{ formId, jobId, quoteId: optionalText(row.quote_id), submittedAt }] : [];
+  });
+  return { ...dashboard, technicalMeasureSubmissions, ownedActions: (ownedActionsResult.error ? [] : ownedActionsResult.data || []) as unknown as import("./owned-actions").OwnedAction[], integrationHealth, loadWarnings: sourceHealth.filter(source=>source.state!=="complete").map(source=>source.message || `Could not load ${source.source}. Related details may be incomplete.`) };
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {

@@ -1,6 +1,7 @@
 import { buildOperationsItems, type OperationsItem } from "./operations-overview";
 import type { CrmDashboardData } from "./types";
 import { canDeleteCustomerFile } from "./customer-file-deletion";
+import { buildJobStatusQueues, type JobStatusQueueSnapshot } from "./job-status-queues";
 
 /** Initial view excludes only explicitly closed jobs, including unsold work. */
 export function isOpenJob(item: Pick<OperationsItem, "closed">): boolean {
@@ -12,6 +13,7 @@ export type ActiveJobsSnapshot = {
   items: OperationsItem[];
   loadWarnings: string[];
   deletableFiles: Record<string, string>;
+  queues?: JobStatusQueueSnapshot;
 };
 
 /** Apply viewer restrictions before projecting this response. Keep the complete
@@ -19,9 +21,11 @@ export type ActiveJobsSnapshot = {
  * Customer files contain unrelated history and are loaded on demand instead.
  */
 export function buildActiveJobsSnapshot(data: CrmDashboardData): ActiveJobsSnapshot {
-  const items = buildOperationsItems(data).filter(isOpenJob);
+  const allItems = buildOperationsItems(data);
+  const items = allItems.filter(isOpenJob);
   return {
     scope: "active",
+    queues: buildJobStatusQueues(data, allItems),
     items: items.map(item => ({
       ...item,
       source: { ...item.source, file: undefined }

@@ -27,6 +27,7 @@ describe("customer file trash control", () => {
     const render = (busy = false) => act(() => root.render(createElement(JobStatusOverview, { data: { ...data }, busy, onDelete, onOpen: vi.fn(), onAction: vi.fn(), onSaveCost: vi.fn() })));
     const button = () => container.querySelector<HTMLButtonElement>('[aria-label="Delete customer file for Sample customer"]');
     render();
+    act(() => [...container.querySelectorAll<HTMLButtonElement>("nav button")].find((button) => button.textContent === "Quote")!.click());
     expect(button()).not.toBeNull();
     act(() => button()!.click());
     expect(onDelete).toHaveBeenCalledWith(customerFile);
@@ -44,6 +45,7 @@ describe("customer file trash control", () => {
     const container = document.createElement("div");
     const root = createRoot(container);
     act(() => root.render(createElement(JobStatusOverview, { data, busy: false, onDelete: vi.fn(), onOpen: vi.fn(), onAction: vi.fn(), onSaveCost: vi.fn() })));
+    act(() => [...container.querySelectorAll<HTMLButtonElement>("nav button")].find((button) => button.textContent === "Quote")!.click());
     expect(container.querySelectorAll("article")).toHaveLength(2);
     expect(container.querySelector('[title="Delete customer file"]')).toBeNull();
     act(() => root.unmount());

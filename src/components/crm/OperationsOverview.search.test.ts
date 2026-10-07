@@ -43,6 +43,25 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); });
 
 describe('search across all job statuses', () => {
+  it('shows the five queues, filters appointment and job records, and keeps counts independent of search', async () => {
+    const fixture = { ...data, jobs: [{ id: 'measure', customer_name: 'Measure customer', status: 'sold', meta: { measure_needed: { status: 'needed' } } }],
+      quotes: [...data.quotes, { ...data.quotes[1], id: 'q-measure', job_id: 'measure', customer_name: 'Measure customer' }],
+      events: [{ id: 'future', event_type: 'sales_consult', status: 'scheduled', start_at: '2035-10-07T17:00:00Z', end_at: '2035-10-07T18:00:00Z', customer_name: 'Future consultation', assigned_to: 'Mike' }, { id: 'past', event_type: 'sales_consult', status: 'complete', start_at: '2025-10-07T17:00:00Z', end_at: '2025-10-07T18:00:00Z', customer_name: 'Past consultation', assigned_to: 'Jessica' }]
+    } as unknown as CrmDashboardData;
+    await render(fixture);
+    const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="Job status queues"] button')];
+    const choose = async (label: string) => act(async () => buttons().find(button => button.querySelector('span')?.textContent === label)!.click());
+    expect(buttons().map(button => button.querySelector('span')?.textContent)).toEqual(['Upcoming quotes', 'Pending quotes', 'Measures needed', 'Need to order', 'Active jobs']);
+    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '1', '0', '2']);
+    await choose('Upcoming quotes'); expect(host.textContent).toContain('Future consultation'); expect(cards()).toEqual([]);
+    await choose('Pending quotes'); expect(host.textContent).toContain('Past consultation'); expect(host.textContent).not.toContain('Future consultation');
+    await choose('Measures needed'); expect(cards()).toEqual(['Job status for Measure customer']);
+    await choose('Need to order'); expect(host.textContent).toContain('No jobs match');
+    await search('John Charamonte'); expect(cards()).toEqual(['Job status for John Charamonte']);
+    expect(buttons().map(button => button.querySelector('strong')?.textContent)).toEqual(['1', '1', '1', '0', '2']);
+    await choose('Active jobs'); expect(cards().sort()).toEqual(['Job status for Measure customer', 'Job status for Open customer']);
+    expect(action).not.toHaveBeenCalled();
+  });
   it('finds a closed job regardless of every highlighted filter and restores the filter when cleared', async () => {
     await render();
     expect(cards()).not.toContain('Job status for John Charamonte');
@@ -109,6 +128,9 @@ it('shows paid unsigned work accurately and signed jobs in sale-date order in bo
     ],
   } as unknown as CrmDashboardData;
   await render(fixture);
+  // Active jobs now means sold and not closed; Quote still exposes unsigned work.
+  expect(cards()).toEqual(['Job status for Signed sale', 'Job status for Earlier sale']);
+  await filter('Quote');
   expect(cards()).toEqual(['Job status for Signed sale', 'Job status for Earlier sale', 'Job status for Paid unsigned']);
   const verify = () => {
     expect(host.querySelector('[aria-label="Review Sold for Signed sale"]')?.getAttribute('aria-pressed')).toBe('true');

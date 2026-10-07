@@ -2,8 +2,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { customerEmailStatus, type CustomerEmailRecord } from "@/lib/crm/customer-email-status";
+import { Mail, RefreshCw } from "lucide-react";
+import styles from "./CustomerEmailStatus.module.css";
 type Result = { messages?: CustomerEmailRecord[]; activation?: string | null; activated?: boolean; ok?: boolean; attention?: number; stale?: boolean; missing?: number; workerFailed?: boolean; providerConfigured?: boolean; providerReady?: boolean; providerReason?: string | null };
-export function CustomerEmailStatus({ jobId }: { jobId?: string }) {
+export function CustomerEmailStatus({ jobId, compact = false }: { jobId?: string; compact?: boolean }) {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const refresh = useCallback(async (signal?: AbortSignal) => {
@@ -22,9 +24,7 @@ export function CustomerEmailStatus({ jobId }: { jobId?: string }) {
   useEffect(() => { setResult(null); const controller = new AbortController(); void refresh(controller.signal);
     const timer = setInterval(() => void refresh(controller.signal), 60000);
     return () => { controller.abort(); clearInterval(timer); }; }, [refresh]);
-  return <section aria-label="Customer email delivery" style={{ padding: "12px 0", overflowWrap: "anywhere" }}>
-    <h3>Customer emails</h3>
-    {error ? <p role="alert">{error}</p> : !result ? <p>Loading email status…</p> : jobId ? <>
+  const content = <>{error ? <p role="alert">{error}</p> : !result ? <p>Loading email status…</p> : jobId ? <>
       {!result.messages?.length && <p>No automatic email is recorded for this job. New signing and final-payment events are tracked after activation; older missed messages are not sent.</p>}
       {result.messages?.map(message => <div key={message.id} style={{ marginBottom: 12 }}>
         <strong>{message.kind === "paid_in_full" ? "Paid-in-full thank-you & receipt" : "Signing thank-you & contract"}</strong>
@@ -34,6 +34,11 @@ export function CustomerEmailStatus({ jobId }: { jobId?: string }) {
         {result.activation && Date.parse(message.created_at) < Date.parse(result.activation) && <p>Historical record · excluded from automatic retries.</p>}
       </div>)}
     </> : <p role={result.ok ? "status" : "alert"}>{!result.activated ? "Customer email automation is awaiting activation." : result.ok ? "Signing and paid-in-full email checks are current." : `${result.attention || 0} customer email(s) need attention. ${result.missing ? `${result.missing} new event(s) are missing an email request. ` : ""}${result.providerConfigured === false ? "The email provider is not configured. " : ""}${result.providerReady === false ? `${result.providerReason || "Delivery tracking is unavailable."} ` : ""}${result.workerFailed ? "The latest email worker run failed. " : ""}${result.stale ? "The email worker has not checked in within 15 minutes." : "Open the customer’s job to review delivery details."}`}</p>}
-    <button type="button" onClick={() => void refresh()}>Refresh email status</button>
+    <button type="button" onClick={() => void refresh()}><RefreshCw size={14} aria-hidden="true" />Refresh email status</button>
+  </>;
+  if (compact && !jobId) return <details className={styles.compact} aria-label="Customer email delivery"><summary><Mail size={15} aria-hidden="true" />{error ? 'Email status unavailable' : !result ? 'Checking email status…' : !result.activated ? 'Email automation awaiting activation' : result.ok ? 'Emails current' : (result.attention || 0) > 0 ? `${result.attention} email issue${result.attention === 1 ? '' : 's'}` : 'Email system needs attention'}</summary><div>{content}</div></details>;
+  return <section aria-label="Customer email delivery" style={{ padding: "12px 0", overflowWrap: "anywhere" }}>
+    <h3>Customer emails</h3>
+    {content}
   </section>;
 }

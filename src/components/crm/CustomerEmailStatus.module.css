@@ -1,0 +1,8 @@
+.compact { color:#b8b6ae; font:inherit; font-size:12px; overflow-wrap:anywhere; margin:0 0 14px; }
+.compact summary { display:flex; justify-content:flex-end; align-items:center; gap:7px; cursor:pointer; min-height:32px; list-style:none; }
+.compact summary::-webkit-details-marker { display:none; }
+.compact summary:after { content:'▾'; }
+.compact[open] summary:after { content:'▴'; }
+.compact > div { color:#fbfbfa; background:#1d1d1b; border:1px solid #343330; border-radius:8px; padding:12px; }
+.compact p { margin:0 0 10px; }
+.compact button { display:inline-flex; align-items:center; gap:7px; background:none; border:0; color:#fbfbfa; padding:6px 0; font:inherit; cursor:pointer; }

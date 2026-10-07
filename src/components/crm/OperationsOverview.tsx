@@ -4,10 +4,10 @@ import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Circle, FileText, LoaderCircle, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Ruler, Search, Trash2 } from "lucide-react";
 import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
 import { weeklySalesAverage } from "@/lib/crm/weekly-sales-average";
-import type { CrmCustomerFile, CrmDashboardData } from "@/lib/crm/types";
+import type { CrmCalendarEvent, CrmCustomerFile, CrmDashboardData } from "@/lib/crm/types";
 import { WEEKLY_GROSS_SALES_GOAL_CENTS, performancePeriods, type PerformancePeriod, attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
 import type { JobTrackingViewItem } from "@/lib/crm/job-tracking-view";
 import { jobContractPreviewUrl } from "@/lib/crm/job-contract-preview";
@@ -17,6 +17,7 @@ import { InlineJobContract } from "./InlineJobContract";
 import { ProductOrderEditor, orderCostParent, orderCostTotal, displayedOrderAmount } from "./ProductOrderEditor";
 import { allocatedOrderCost, type ProductOrderInvoiceInput } from "@/lib/crm/product-order-cost";
 import { jobStatusFilters, matchesJobStatusFilter, type JobStatusFilter } from "@/lib/crm/job-status-filters";
+import { buildJobStatusQueues, isJobStatusQueue, jobStatusQueues, statusQueueJobKey, type JobStatusQueueId } from "@/lib/crm/job-status-queues";
 import styles from "./OperationsOverview.module.css";
 
 function displayDate(value: string) { return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)); }
@@ -115,7 +116,7 @@ export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn).filter((date): date is string => Boolean(date)))].sort();
   return <small className={styles.shipmentDates}>{product.completionFromInstallation?.shipped && <span>Completed from installation · </span>}{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}{[...new Map((product.shipments || []).filter(shipment => shipment.trackingNumber).map(shipment => [shipment.orderReference, shipment])).values()].map(shipment => <span key={shipment.orderReference}>{[shipment.carrier, shipment.trackingNumber].filter(Boolean).join(" · ")}</span>)}</small>;
 }
-export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onAction, onDelete }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
+export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onOpenAppointment, onAction, onDelete }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onOpenAppointment?: (event: CrmCalendarEvent) => void; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void> }) {
   const [orderEditor, setOrderEditor] = useState<{item:OperationsItem;product:ProductProgress} | null>(null);
   const [contractId, setContractId] = useState<string | null>(null);
   const contractButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -153,7 +154,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     setCondensed(value);
     setContractId(null);
   }
-  const [filter, setFilter] = useState<JobStatusFilter>("active");
+  const [filter, setFilter] = useState<JobStatusFilter | JobStatusQueueId>("active_jobs");
   const [search, setSearch] = useState("");
   const searchQuery = search.trim().toLowerCase();
   const searchLoadRequested = useRef(false);
@@ -168,30 +169,42 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
   }, [searchQuery, data, onLoadAll]);
   useEffect(() => { const jobId = new URLSearchParams(window.location.search).get("jobId"); if (jobId) { setSearch(jobId); setFilter("all"); } }, []);
   const items = useMemo(() => data ? buildOperationsItems(data) : activeSnapshot?.items || [], [data, activeSnapshot]);
-  async function selectFilter(next: JobStatusFilter) {
+  const queues = useMemo(() => data ? buildJobStatusQueues(data, items) : activeSnapshot?.queues, [data, items, activeSnapshot]);
+  async function selectFilter(next: JobStatusFilter | JobStatusQueueId) {
     if (loadingAll) return;
-    if (next !== "active" && !data && onLoadAll) {
+    if (next !== "active" && !(isJobStatusQueue(next) && queues) && !data && onLoadAll) {
       setLoadingAll(true); setError(""); setFeedbackId(null);
       try { await onLoadAll(); }
       catch (cause) { setError(cause instanceof Error ? cause.message : "Jobs could not be loaded. Try again."); return; }
       finally { setLoadingAll(false); }
     }
+    if (isJobStatusQueue(next)) setSearch("");
     setFilter(next);
   }
+  const appointmentQueue = !searchQuery && (filter === 'upcoming_quotes' || filter === 'pending_quotes');
+  const appointments = appointmentQueue ? queues?.[filter as 'upcoming_quotes' | 'pending_quotes'] || [] : [];
   const visible = items.filter(item => {
-    if (!searchQuery) return matchesJobStatusFilter(item, filter);
+    if (!searchQuery) {
+      if (appointmentQueue) return false;
+      if (isJobStatusQueue(filter)) return (queues?.[filter] as string[] | undefined)?.includes(statusQueueJobKey(item)) && item.sold && !item.closed && !item.archived;
+      return matchesJobStatusFilter(item, filter);
+    }
     // Search the complete workspace regardless of the selected workflow filter.
     if (!data) return false;
     return [item.source.id, item.source.job?.id, item.source.quote?.id, item.source.row?.jobId, item.source.customerName, item.source.project, item.source.phone, ...item.products.map(product => product.name)].join(" ").toLowerCase().includes(searchQuery);
   });
   return <section className={`${styles.workspace}${condensed ? ` ${styles.condensedWorkspace}` : ""}`} aria-label="Job status" aria-busy={busy}>
-    <CustomerEmailStatus />
+    <div className={styles.statusQueues} aria-label="Job status queues">
+      {jobStatusQueues.map((queue, index) => { const Icon = [CalendarDays, FileClock, Ruler, PackagePlus, BriefcaseBusiness][index]; return <button type="button" className={styles.statusQueue} key={queue.id} disabled={loadingAll} aria-pressed={!searchQuery && filter === queue.id} onClick={() => void selectFilter(queue.id)}><span className={styles.statusQueueLabel}><Icon size={16} aria-hidden="true" />{queue.label}</span><strong>{queues ? queues[queue.id].length : "—"}</strong><small>{queue.context}</small></button>; })}
+    </div>
+    <CustomerEmailStatus compact />
     <div className={styles.toolbar}><nav aria-label="Job status filters">{jobStatusFilters.map(({id, label, description}) => <button type="button" key={id} title={description} disabled={loadingAll} aria-pressed={filter === id} onClick={() => void selectFilter(filter === id ? "active" : id)}>{label}</button>)}</nav><div className={styles.viewOptions} role="radiogroup" aria-label="Job view"><label className={styles.densityToggle}><input type="radio" name="job-view" checked={!condensed} onChange={() => changeDensity(false)} />Card view</label><label className={styles.densityToggle}><input type="radio" name="job-view" checked={condensed} onChange={() => changeDensity(true)} />List view</label></div><label><Search size={16} aria-hidden="true" /><input type="search" aria-label="Search jobs" placeholder="Search all jobs" value={search} onChange={event => setSearch(event.target.value)} /></label></div>
     {loadingAll ? <p role="status">Loading all jobs…</p> : searchQuery && data ? <p role="status">Searching all job statuses</p> : null}
     {error && !feedbackId && <p role="alert" className={styles.warning}>{error}</p>}
     {(data?.loadWarnings || activeSnapshot?.loadWarnings)?.map(warning => <p className={styles.warning} key={warning}>{warning}</p>)}
     {condensed && feedbackId && (error || notice) && <p className={styles.rowFeedback} role={error ? "alert" : "status"}>{items.find(item => item.source.id === feedbackId)?.source.customerName}: {error || notice}</p>}
-    {condensed ? <div className={styles.condensedScroll} role="region" aria-label="Condensed customer jobs" tabIndex={0}>
+    {appointmentQueue && <div className={styles.appointmentQueue} aria-label={filter === 'upcoming_quotes' ? 'Upcoming quote appointments' : 'Pending quote appointments'}>{appointments.map(event => <article className={styles.appointmentCard} key={event.id}><div><strong>{event.customer_name || event.title}</strong><small>{new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(event.start_at))} · {event.assigned_to}</small><small>{event.customer_address || event.location || 'Address needed'}</small></div><div><span>{filter === 'pending_quotes' ? 'Quote not sent' : 'Consultation scheduled'}</span>{onOpenAppointment && <button type="button" onClick={() => onOpenAppointment(event)}>Open appointment <ArrowRight size={14} /></button>}</div></article>)}</div>}
+    {appointmentQueue ? null : condensed ? <div className={styles.condensedScroll} role="region" aria-label="Condensed customer jobs" tabIndex={0}>
       <table className={styles.condensedTable}>
         <caption className={styles.srOnly}>One line per customer job. Product numbers correspond across Ordered, Shipped, and product details. Scroll horizontally for all fields.</caption>
         <thead><tr>{["Customer", "Date sold", ...statusColumns, "Contract total", "Deposit collected", "Balance due", "Cost of goods", "Installation cost", "Profit · Before buyout", "Margin · Contract less COGS", "10% buyout", "Product quantities", "Product / manufacturer", "Invoice cost by product", "Ship dates by product", "Address", "Phone", "Email", "Job state", "Actions"].map((label, index) => <th key={`${label}-${index}`} scope="col">{label}</th>)}</tr></thead>
@@ -262,9 +275,9 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
     </article>;
     })}</div>}
     {condensed && contractId && visible.some(item => item.source.id === contractId) && <CondensedContract item={visible.find(item => item.source.id === contractId)!} onClose={closeContract} />}
-    {!visible.length && !loadingAll && !(searchQuery && !data) && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : "No jobs match this view."}</p>}
+    {!visible.length && !appointments.length && !loadingAll && !(searchQuery && !data) && <p className={styles.empty} role="status">{busy ? "Loading jobs…" : !data && !activeSnapshot ? "Job records are unavailable. Refresh to try again." : appointmentQueue ? "No quote appointments match this view." : "No jobs match this view."}</p>}
     {orderEditor && <ProductOrderEditor orderEmails={data?.orderCogsEmails || orderEditor.item.source.orderEmails} item={orderEditor.item} product={orderEditor.product} onSave={onAction} onClose={()=>setOrderEditor(null)} />}
-    <footer className={styles.footer}>{searchQuery && !data ? "All jobs must load before search results are available" : `${visible.length} jobs shown · Checks reflect recorded evidence`}{condensed && <span>One line per customer job · Scroll right for all details</span>}</footer>
+    <footer className={styles.footer}>{searchQuery && !data ? "All jobs must load before search results are available" : appointmentQueue ? `${appointments.length} quote appointments shown` : `${visible.length} job records shown · Checks reflect recorded evidence`}{condensed && !appointmentQueue && <span>One line per customer job · Scroll right for all details</span>}</footer>
   </section>;
 }
 
