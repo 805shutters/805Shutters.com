@@ -925,6 +925,10 @@ export function CrmApp({
   const [builderVersion, setBuilderVersion] = useState<"current" | "original-v1">("current");
   const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
+  const salesDrillRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (drill?.metric === "closedSales") salesDrillRef.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [drill?.metric]);
   const [closeRatePeriod, setCloseRatePeriod] = useState<30 | 60 | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
   const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
@@ -1202,10 +1206,13 @@ export function CrmApp({
     } finally { setBusy(false); }
   }
 
-  function openSummaryDrill(metric: string) {
+  function openSummaryDrill(metric: string, salesStart = closedSalesStart) {
     if (metric === "closedSales") {
-      const week = selectedClosedSalesWeek(data?.closedSales, closedSalesStart);
-      if (week && data?.closedSales) setDrill(buildClosedSalesDrill(week, jobs, customerFiles));
+      const week = selectedClosedSalesWeek(data?.closedSales, salesStart);
+      if (week && data?.closedSales) {
+        setClosedSalesStart(week.startDate);
+        setDrill(buildClosedSalesDrill(week, jobs, customerFiles));
+      }
       return;
     }
     const payload = buildSummaryDrill(
@@ -3376,7 +3383,7 @@ export function CrmApp({
 
 
       {globalDrill ? (
-        <div className="crm-inline-drill-shell">
+        <div className="crm-inline-drill-shell" ref={salesDrillRef}>
           {globalDrill.metric === "closedSales" && data?.closedSales && closedWeek ? <>
             <ClosedSalesWeekSelector report={data.closedSales} week={closedWeek} onChange={setClosedSalesStart} />
             {data.closedSales.review.length ? <details className="crm-closed-sales-evidence"><summary>Signing records needing review ({data.closedSales.review.length})</summary>
@@ -3475,9 +3482,9 @@ export function CrmApp({
         /></div></>
       ) : null}
 
-      {activeTab === "command" && !financialViewBlocked ? <OperationsDashboard data={dashboardRefreshError ? null : data} busy={busy}
+      {activeTab === "command" && !financialViewBlocked ? <div hidden={globalDrill?.metric === "closedSales"}><OperationsDashboard data={dashboardRefreshError ? null : data} busy={busy}
         onOpen={item => { openTab("tracking"); setTrackingDetailId(item.id); }} onStatus={() => openTab("tracking")}
-        onSales={() => openSummaryDrill("closedSales")} onPayments={() => openTab("square")} /> : null}
+        onSales={weekStart => openSummaryDrill("closedSales", weekStart)} onPayments={() => openTab("square")} /></div> : null}
       {activeTab === "tools" && !financialViewBlocked ? (
         <>
           <CommandDashboard
