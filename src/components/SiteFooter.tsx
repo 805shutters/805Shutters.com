@@ -77,6 +77,7 @@ export function SiteFooter() {
         <div className="footer-nap" aria-label="805 Shutters service area and contact information">
           <strong>{site.legalName}</strong>
           <span>Serving Camarillo and {site.serviceArea}</span>
+          <span>Mailing address: {site.mailingAddressDisplay}</span>
           <span>
             <TrackedPhoneLink location="footer local business information">{site.phone}</TrackedPhoneLink>
             <span aria-hidden="true"> • </span>

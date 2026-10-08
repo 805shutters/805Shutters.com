@@ -52,6 +52,8 @@ export const site = {
   smsHref: brandIdentity.smsHref,
   email: brandIdentity.email,
   emailHref: brandIdentity.emailHref,
+  mailingAddress: brandIdentity.mailingAddress,
+  mailingAddressDisplay: brandIdentity.mailingAddressDisplay,
   domain: brandIdentity.domain,
   website: brandIdentity.website,
   officialPath: brandIdentity.officialPath,
@@ -1241,6 +1243,10 @@ const supportPages: SitePage[] = [
         heading: "Local Ventura County Service",
         body:
           "805 Shutters serves Ventura County communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Fillmore, and Oak Park."
+      },
+      {
+        heading: "Mailing Address",
+        body: `${brandIdentity.mailingAddressDisplay}. This is our mailing address. Consultations take place at your home or business.`
       }
     ]
   },

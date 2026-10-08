@@ -122,6 +122,10 @@ export default function OfficialContactPage() {
             <p className="eyebrow">Customer records</p>
             <h2 id="official-record-title">Where the official details appear.</h2>
             <p>
+              Mailing address: {brandIdentity.mailingAddressDisplay}. Consultations take
+              place at your home or business.
+            </p>
+            <p>
               Communications about an 805 Shutters project should connect back to the website,
               phone number, or email address shown on this page.
             </p>
