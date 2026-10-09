@@ -284,6 +284,25 @@ describe("extractNormanOrderCogs", () => {
 });
 
 describe("contract-number manufacturer POs", () => {
+  it("keeps the Norman subject side mark separate from the greeting and body", () => {
+    const text = [
+      "Online Order Confirmation: R00743 | WO# 8880988962 | PO#: 805-0233 | Side Mark: 805 Shutters - Paul Lee",
+      "Dear Customer, Thank you for your order! If you have any questions, please contact your customer service representative.",
+      "Norman Window Fashions",
+      "Order Date: 10/5/2026",
+      "WO#: 8880988962",
+      "PO#: 805-0233",
+      "Side Mark: 805 Shutters - Paul Lee",
+      "SalesNo: S88058588",
+      "Payment Terms: NET 15 DAY",
+      "Total Amount: $1,666.61"
+    ].join("\n");
+    expect(extractNormanOrderCogs(text))
+      .toMatchObject({customerName:"Paul Lee",orderNumber:"8880988962",orderAmount:1666.61});
+  });
+  it("bounds a collapsed Norman side mark at its sales number", () => {
+    expect(extractNormanOrderCogs("WO#: 8880988962 PO#: 805-0233 Side Mark: 805 Shutters - Paul Lee SalesNo: S88058588 Payment Terms: NET 15 DAY Total Amount: $1,666.61").customerName).toBe("Paul Lee");
+  });
   it("reads a Norman customer from Side Mark instead of the contract PO", () => {
     expect(extractNormanOrderCogs("Online Order Confirmation: R00743 | WO# 8880988962 | PO#: 805-0233 | Side Mark: 805 Shutters - Paul Lee Total Amount: $1,666.61"))
       .toMatchObject({customerName:"Paul Lee",orderNumber:"8880988962",orderAmount:1666.61});

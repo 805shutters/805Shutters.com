@@ -462,12 +462,15 @@ function stripProductSuffix(value: string) {
 
 /** The next Norman label after a field's value (used to bound a captured value). */
 const NORMAN_FIELD_STOP =
-  /\||WO\s*#|PO\s*#|Side\s*Mark|Ship\s*Via|Payment\s*Terms|Customer\s*ID|Company\s*Name|Owner\s*Name|Phone|Order\s*Date|Sales\s*Amount|Additional\s*Tariff|Freight\s*Handling|Processing\s*Fee|Tax\s*Amount|Miscellaneous\s*Fee|Total\s*Amount|Checked\s*Out|Ship\s*To|Special\s*Delivery|Pricing|Contact|Online\s*Order\s*Confirmation/;
+  /\||WO\s*#|PO\s*#|Side\s*Mark|Ship\s*Via|Payment\s*Terms|Customer\s*ID|Company\s*Name|Owner\s*Name|Phone|Order\s*Date|Sales\s*No|Sales\s*Amount|Additional\s*Tariff|Freight\s*Handling|Processing\s*Fee|Tax\s*Amount|Miscellaneous\s*Fee|Total\s*Amount|Checked\s*Out|Ship\s*To|Special\s*Delivery|Pricing|Contact|Online\s*Order\s*Confirmation/;
 
-/** Value of a labeled field on the whitespace-collapsed Norman email body. */
+/** Keep subject/body boundaries before falling back to wrapped PDF fields. */
 function normanLabeledValue(text: string, label: RegExp) {
+  const lineSource = `${label.source}[\\t ]*[:#-]?[\\t ]*([^\\r\\n]*?)[\\t ]*(?=${NORMAN_FIELD_STOP.source}|$)`;
+  const lineValue = text.match(new RegExp(lineSource, "im"))?.[1]?.trim();
+  if (lineValue) return lineValue;
   const source = `${label.source}\\s*[:#-]?\\s*(.*?)\\s*(?=${NORMAN_FIELD_STOP.source}|$)`;
-  return text.match(new RegExp(source, "i"))?.[1]?.trim() || null;
+  return text.replace(/\s+/g, " ").match(new RegExp(source, "i"))?.[1]?.trim() || null;
 }
 
 export function isNormanOrderEmail(text: string, fromEmail: string | null) {
@@ -484,8 +487,8 @@ export function isNormanOrderEmail(text: string, fromEmail: string | null) {
 export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
   const normalized = text.replace(/\s+/g, " ").trim();
 
-  const sideMark = normanLabeledValue(normalized, /\bSide\s*Mark/);
-  const po = normanLabeledValue(normalized, /\bPO\s*#/);
+  const sideMark = normanLabeledValue(text, /\bSide\s*Mark/);
+  const po = normanLabeledValue(text, /\bPO\s*#/);
   const customerName = customerNameFromSideMark(sideMark ? stripProductSuffix(sideMark) : null)
     || customerNameFromSideMark(po ? stripProductSuffix(po) : null);
 
