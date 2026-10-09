@@ -259,9 +259,9 @@ Product order emails should arrive in the configured 805 Gmail mailbox. The CRM
 can pull order COGS from the Bookkeeping tab or through the Vercel cron route at
 `/api/cron/order-cogs`.
 
-The automatic run is at **8 AM and 8 PM America/Los_Angeles**. Vercel is
-its only automatic scheduler. Its UTC triggers cover both daylight-saving offsets;
-the authenticated GET handler skips the unused offset. The GitHub workflow is
+The automatic order scan runs **every ten minutes**. Vercel is
+its only automatic scheduler. Independent Square and peer-payment checks retain
+their 8 AM and 8 PM America/Los_Angeles schedule. The GitHub workflow is
 manual recovery only. An authorized POST or staff Find COGS can run on demand.
 
 The run:

@@ -466,7 +466,7 @@ const NORMAN_FIELD_STOP =
 
 /** Value of a labeled field on the whitespace-collapsed Norman email body. */
 function normanLabeledValue(text: string, label: RegExp) {
-  const source = `${label.source}\\s*[:#-]?\\s*(.+?)\\s*(?=${NORMAN_FIELD_STOP.source}|$)`;
+  const source = `${label.source}\\s*[:#-]?\\s*(.*?)\\s*(?=${NORMAN_FIELD_STOP.source}|$)`;
   return text.match(new RegExp(source, "i"))?.[1]?.trim() || null;
 }
 
@@ -484,9 +484,10 @@ export function isNormanOrderEmail(text: string, fromEmail: string | null) {
 export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
   const normalized = text.replace(/\s+/g, " ").trim();
 
-  const sideMark =
-    normanLabeledValue(normalized, /\bPO\s*#/) || normanLabeledValue(normalized, /\bSide\s*Mark/);
-  const customerName = sideMark ? stripProductSuffix(sideMark) || null : null;
+  const sideMark = normanLabeledValue(normalized, /\bSide\s*Mark/);
+  const po = normanLabeledValue(normalized, /\bPO\s*#/);
+  const customerName = customerNameFromSideMark(sideMark ? stripProductSuffix(sideMark) : null)
+    || customerNameFromSideMark(po ? stripProductSuffix(po) : null);
 
   const totalMatch = normalized.match(/\bTotal\s*Amount\b\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
   const orderAmount = moneyFrom(totalMatch?.[1]);
@@ -510,9 +511,12 @@ export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
   };
 }
 
-function customerNameFromOnyx(value: string | null) {
+function customerNameFromSideMark(value: string | null) {
   if (!value) return null;
-  const withoutSideMarkPrefix = value.replace(/^[A-Z]{2,}\d+-/i, "").trim();
+  const withoutSideMarkPrefix = value.replace(/^[A-Z]{2,}\d+\s*-\s*/i, "")
+    .replace(/^805\s+Shutters\s*[-–—]\s*/i, "").trim();
+  // Dealers also use the PO field for contract numbers, which are not names.
+  if (!/[a-z]/i.test(withoutSideMarkPrefix) || /^805\s+Shutters$/i.test(withoutSideMarkPrefix)) return null;
   const lastFirst = withoutSideMarkPrefix.match(/^([^,]{2,}),\s*(.+)$/);
   return cleanName(lastFirst ? `${lastFirst[2]} ${lastFirst[1]}` : withoutSideMarkPrefix);
 }
@@ -525,11 +529,12 @@ export function isOnyxOrderEmail(text: string, fromEmail: string | null) {
 /** Parse Onyx order confirmations. Grand Total is COGS; Proposed Deposit is not. */
 export function extractOnyxOrderCogs(text: string): ExtractedOrderCogs {
   const normalized = text.replace(/\s+/g, " ").trim();
-  const poMatch = normalized.match(/\bPO\s*No\.?\s*[:#-]?\s*(.+?)\s+(?=Side\s*Mark|Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
-  const sideMarkMatch = normalized.match(/\bSide\s*Mark\s*[:#-]?\s*(.+?)\s+(?=Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
+  const poMatch = normalized.match(/\bPO\s*No\.?\s*[:#-]?\s*(.*?)\s*(?=Side\s*Mark|Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
+  const sideMarkMatch = normalized.match(/\bSide\s*Mark\s*[:#-]?\s*(.*?)\s*(?=Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
   const amountMatch = normalized.match(/\bGrand\s*Total\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
   const orderMatch = normalized.match(/\bOrder\s*(?:No\.?|Number|#)\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i);
-  const customerName = customerNameFromOnyx(poMatch?.[1] || sideMarkMatch?.[1] || null);
+  const customerName = customerNameFromSideMark(sideMarkMatch?.[1] || null)
+    || customerNameFromSideMark(poMatch?.[1] || null);
   const orderAmount = moneyFrom(amountMatch?.[1]);
   const orderNumber = orderMatch?.[1] || null;
   const confidence = Math.min(1, (customerName ? 0.6 : 0) + (orderAmount ? 0.35 : 0) + (orderNumber ? 0.05 : 0));

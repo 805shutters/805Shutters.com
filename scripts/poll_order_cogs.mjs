@@ -123,7 +123,9 @@ export async function pollOrderCogs({
 export function summarizeProcessors(payload) {
   const fields = ["mailbox", "scanned", "processed", "applied", "needsReview", "unmatched", "skipped", "deferred", "errors", "recordErrors", "checked", "recorded", "duplicates", "review", "ignored"];
   const compact = value => value && typeof value === "object"
-    ? Object.fromEntries(fields.filter(key => typeof value[key] === "number" || key === "mailbox" && typeof value[key] === "string").map(key => [key, value[key]])) : null;
+    ? Object.fromEntries([...fields.filter(key => typeof value[key] === "number" || key === "mailbox" && typeof value[key] === "string").map(key => [key, value[key]]),
+        // Only this wrapper-generated diagnostic is safe to include in operational logs.
+        ...(typeof value.lastError === "string" && /^Order email mailbox (?:access failed \(Google token broker HTTP \d{3}\)\. Reconnect this mailbox or check broker configuration\.|could not be processed\. Check its account connection\.)$/.test(value.lastError) ? [["lastError", value.lastError]] : [])]) : null;
   return {
     orderCogs: compact(payload?.orderCogs ?? payload),
     mailboxes: Array.isArray(payload?.orderCogs?.mailboxes) ? payload.orderCogs.mailboxes.map(compact) : [],

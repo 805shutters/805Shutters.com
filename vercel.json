@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/order-cogs/",
-      "schedule": "0 3,4,15,16 * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/square-contract-reminders",

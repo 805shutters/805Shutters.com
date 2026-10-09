@@ -136,3 +136,13 @@ test("partial-failure diagnostics retain mailbox and peer counts without exposin
     return true;
   });
 });
+
+test("mailbox diagnostics expose only the wrapper's bounded connection message", () => {
+  const safe = "Order email mailbox access failed (Google token broker HTTP 503). Reconnect this mailbox or check broker configuration.";
+  const result = summarizeProcessors({ orderCogs: { ...successfulPayload, mailboxes: [
+    { ...successfulPayload, lastError: safe },
+    { ...successfulPayload, lastError: "private upstream credentials" },
+  ] } });
+  assert.equal(result.mailboxes[0].lastError, safe);
+  assert.ok(!JSON.stringify(result).includes("private"));
+});

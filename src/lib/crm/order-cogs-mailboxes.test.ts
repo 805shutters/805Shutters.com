@@ -1,12 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { processScheduledOrderMailboxes } from "./order-cogs-mailboxes";
 import type { ProcessOrderCogsResult } from "./order-cogs";
+import { CrmAuthError } from "./auth";
 
 const empty: ProcessOrderCogsResult = { mailbox: "", query: "orders", scanned: 0, processed: 0, matched: 0,
   needsReview: 0, unmatched: 0, skipped: 0, errors: 0, archived: 0, archiveErrors: 0,
   telegramSent: 0, telegramErrors: 0, emails: [] };
 
 describe("scheduled order mailboxes", () => {
+  it("reports a broker status without exposing arbitrary upstream error details", async () => {
+    const processInbox = vi.fn(async (_db, options) => {
+      if (options.mailbox === "805@805shutters.com") throw new CrmAuthError(502, "805 Gmail token broker rejected the configured operation (HTTP 503). Verify its supported contract. private-provider-details");
+      return { ...empty, mailbox: options.mailbox };
+    });
+    const result = await processScheduledOrderMailboxes({} as never, {}, processInbox);
+    expect(result.mailboxes[1].lastError).toContain("Google token broker HTTP 503");
+    expect(JSON.stringify(result)).not.toContain("private-provider-details");
+  });
   it("finishes each mailbox before starting the next and preserves deferred counts", async () => {
     let finishedFirst = false;
     const processInbox = vi.fn(async (_db, options) => {

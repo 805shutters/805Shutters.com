@@ -1,7 +1,7 @@
 name: Poll order COGS emails
 
 on:
-  # Automatic runs belong to Vercel: 8 AM and 8 PM Pacific.
+  # Automatic order scans belong to Vercel: every ten minutes.
   # Retain this workflow only as an explicit manual recovery tool.
   workflow_dispatch:
 

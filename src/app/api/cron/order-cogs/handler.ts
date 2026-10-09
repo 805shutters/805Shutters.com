@@ -8,10 +8,10 @@ import { processPeerPaymentEmails } from "@/lib/crm/peer-payment-emails";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 
-/** Vercel uses UTC. Both possible offsets are scheduled; only 8 AM/PM Pacific runs. */
-export function isOrderCogsRunTime(now: Date) {
+/** Preserve the existing twice-daily payment checks while orders run every ten minutes. */
+export function isAuxiliaryRunTime(now: Date) {
   const hour = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hourCycle: "h23" }).format(now);
-  return hour === "08" || hour === "20" || hour === "8";
+  return (hour === "08" || hour === "20" || hour === "8") && now.getUTCMinutes() === 0;
 }
 
 export type OrderCogsCronDependencies = {
@@ -70,9 +70,7 @@ export async function runOrderCogsCron(
 ) {
   try {
     requireCronAccess(request, dependencies.env);
-    if (request.method === "GET" && !isOrderCogsRunTime(dependencies.now?.() || new Date())) {
-      return NextResponse.json({ skipped: true, reason: "Scheduled for 8 AM and 8 PM America/Los_Angeles." });
-    }
+    const runPayments = request.method === "POST" || isAuxiliaryRunTime(dependencies.now?.() || new Date());
     const supabase = dependencies.getSupabase();
     if (!supabase) throw new CrmAuthError(503, "Dedicated Supabase database is not configured.");
     // Start independent email intake immediately: a failed or slow vendor scan
@@ -90,17 +88,17 @@ export async function runOrderCogsCron(
         }), result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched)),
         result => !(result.errors || result.recordErrors || result.deferred || result.needsReview || result.unmatched),
       ),
-      runAuxiliaryProcessor(
+      runPayments ? runAuxiliaryProcessor(
         "Square payment reconciliation",
         "Square payment reconciliation is temporarily unavailable.",
         () => dependencies.reconcileSquarePayments(supabase),
-      ),
-      runAuxiliaryProcessor(
+      ) : Promise.resolve({ result: null, state: { status: "skipped" as const } }),
+      runPayments ? runAuxiliaryProcessor(
         "Peer payment processing",
         "Peer payment processing is temporarily unavailable.",
         () => observeIntegration(supabase, "peer-payment-email", () => dependencies.processPeerPayments(supabase), result => result.errors === 0),
         result => result.errors === 0,
-      ),
+      ) : Promise.resolve({ result: null, state: { status: "skipped" as const } }),
     ]);
     return NextResponse.json({
       orderCogs: orders.result,

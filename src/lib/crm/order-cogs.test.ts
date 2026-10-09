@@ -283,7 +283,39 @@ describe("extractNormanOrderCogs", () => {
   });
 });
 
+describe("contract-number manufacturer POs", () => {
+  it("reads a Norman customer from Side Mark instead of the contract PO", () => {
+    expect(extractNormanOrderCogs("Online Order Confirmation: R00743 | WO# 8880988962 | PO#: 805-0233 | Side Mark: 805 Shutters - Paul Lee Total Amount: $1,666.61"))
+      .toMatchObject({customerName:"Paul Lee",orderNumber:"8880988962",orderAmount:1666.61});
+  });
+  it("keeps a named Norman PO fallback when Side Mark is empty", () => {
+    expect(extractNormanOrderCogs("WO#: 8880988962 PO#: Linda Brown Side Mark: Ship Via: Air Total Amount: $1,666.61").customerName).toBe("Linda Brown");
+  });
+});
+
 describe("extractOnyxOrderCogs", () => {
+  it("reads the customer from the Side Mark when the PO is an 805 contract number", () => {
+    const result = extractOnyxOrderCogs(
+      "Order No.: 52610061484 PO No.: 805-0462 Side Mark: CHE01-805 Shutters - Eduardo Arce Total Area: 85.089 Grand Total: 1120.62 Proposed Deposit: 560.31"
+    );
+    expect(result.customerName).toBe("Eduardo Arce");
+    expect(result.orderNumber).toBe("52610061484");
+    expect(result.orderAmount).toBe(1120.62);
+    expect(result.confidence).toBe(1);
+  });
+
+  it("does not invent a customer from a contract-only PO", () => {
+    const result = extractOnyxOrderCogs("Order No.: 52610061484 PO No.: 805-0462 Grand Total: 1120.62");
+    expect(result.customerName).toBeNull();
+  });
+
+  it("retains named PO fallback when no Side Mark is present", () => {
+    expect(extractOnyxOrderCogs("Order No.: 52607181014 PO No.: Brown, Linda Grand Total: 1646.25").customerName).toBe("Linda Brown");
+  });
+  it("retains named PO fallback when Side Mark is empty", () => {
+    expect(extractOnyxOrderCogs("Order No.: 52607181014 PO No.: Brown, Linda Side Mark: Total Area: 125.000 Grand Total: 1646.25").customerName).toBe("Linda Brown");
+  });
+
   it("uses Grand Total and normalizes a last-name-first PO", () => {
     const result = extractOnyxOrderCogs(
       "Order No.: 52607181014 PO No.: Brown, Linda Side Mark: CHE01-Brown, Linda Total Area: 125.000 Grand Total: 1646.25 Proposed Deposit: 823.13"
@@ -1022,6 +1054,21 @@ describe("product-mode order ingestion", () => {
     });
     vi.stubGlobal("fetch", fetcher); return fetcher;
   }
+  it("retries a contract-number Onyx confirmation against the named sale and verifies its product cost", async () => {
+    const fetcher = gmail(); const original = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async input => String(input).includes("/messages/msg-norman")
+      ? jsonResponse({ id: "msg-norman", payload: { headers: [{name:"From",value:"orders@onyxshutters.com"}], mimeType:"text/plain", body:{ data:gmailTextBody("Order No.: 52610061484 PO No.: 805-0462 Side Mark: CHE01-805 Shutters - Eduardo Arce Total Area: 85.089 Grand Total: 1120.62 Proposed Deposit: 560.31") } } })
+      : original(input));
+    const db = new FakeSupabase();
+    db.jobs[0].customer_name = "Eduardo Arce"; db.entries[0].customer_name = "Eduardo Arce";
+    db.records.push({ id:"prior-unmatched", gmail_message_id:"msg-norman", mailbox_email:"805shutters@gmail.com", match_status:"unmatched", extracted_customer_name:"805-0462", applied_at:null });
+    const apply = vi.spyOn(productEmailWorkflow,"applyOrderEmailProduct").mockResolvedValue({addedCogs:1120.62,totalCogs:1120.62});
+    const options = {productAutoApply:true,archive:false,messageIds:["msg-norman"]};
+    expect(await processOrderCogsInbox(db as never,options)).toMatchObject({applied:1,addedCogs:1120.62,errors:0});
+    expect(apply).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({extracted_customer_name:"Eduardo Arce",matched_job_id:"job-1",extracted_order_amount:1120.62,extracted_order_number:"52610061484"}),"Onyx",expect.anything());
+    await processOrderCogsInbox(db as never,options);
+    expect(apply).toHaveBeenCalledOnce();
+  });
   it("persists invoice evidence before saving, marks verified only afterward, and skips a proven retry", async () => {
     const fetcher = gmail(); const db = new FakeSupabase();
     const apply = vi.spyOn(productEmailWorkflow, "applyOrderEmailProduct").mockImplementation(async (_db, email) => {

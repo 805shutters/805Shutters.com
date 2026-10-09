@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { isOrderCogsRunTime, runOrderCogsCron, type OrderCogsCronDependencies } from "./handler";
+import { isAuxiliaryRunTime, runOrderCogsCron, type OrderCogsCronDependencies } from "./handler";
 
 function request() {
   return new NextRequest("https://www.805shutters.com/api/cron/order-cogs/", {
@@ -157,10 +157,10 @@ describe("order COGS cron route", () => {
 });
 
 
-describe("twice daily Pacific schedule", () => {
+describe("frequent order intake with twice daily Pacific payment checks", () => {
   it("has one automatic scheduler with a direct, non-redirecting endpoint", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8"));
-    expect(config.crons.filter((cron: {path:string}) => cron.path.includes("order-cogs"))).toEqual([{ path: "/api/cron/order-cogs/", schedule: "0 3,4,15,16 * * *" }]);
+    expect(config.crons.filter((cron: {path:string}) => cron.path.includes("order-cogs"))).toEqual([{ path: "/api/cron/order-cogs/", schedule: "*/10 * * * *" }]);
     expect(readFileSync(".github/workflows/order-cogs-email-poll.yml", "utf8")).not.toContain("  schedule:");
   });
   it.each([
@@ -170,13 +170,19 @@ describe("twice daily Pacific schedule", () => {
     ["2026-12-19T15:00:00Z", false], ["2026-12-20T03:00:00Z", false],
     ["2026-03-08T15:00:00Z", true], ["2026-11-01T16:00:00Z", true],
   ])("runs only at the requested local time: %s", (date, expected) => {
-    expect(isOrderCogsRunTime(new Date(date))).toBe(expected);
+    expect(isAuxiliaryRunTime(new Date(date))).toBe(expected);
   });
-  it("skips the unused UTC offset without touching processors", async () => {
+  it("processes orders outside payment hours without running payment processors", async () => {
     const deps = dependencies(); deps.now = () => new Date("2026-09-19T16:00:00Z");
     const response = await runOrderCogsCron(new NextRequest(request().url, { headers: request().headers }), deps);
     expect(response.status).toBe(200);
-    expect(deps.getSupabase).not.toHaveBeenCalled();
+    expect(deps.processOrderCogs).toHaveBeenCalledOnce();
+    expect(deps.reconcileSquarePayments).not.toHaveBeenCalled();
+    expect(deps.processPeerPayments).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({processorStates:{orderCogs:{status:"completed"},squarePayments:{status:"skipped"},peerPayments:{status:"skipped"}}});
+  });
+  it("does not repeat payment checks throughout the 8 AM hour", () => {
+    expect(isAuxiliaryRunTime(new Date("2026-10-09T15:10:00Z"))).toBe(false);
   });
   it("accepts the Vercel cron credential even when the manual recovery secret differs", async () => {
     const deps = dependencies(); deps.env.CRON_SECRET = "vercel-secret";
