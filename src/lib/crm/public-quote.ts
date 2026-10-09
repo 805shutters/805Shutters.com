@@ -86,6 +86,7 @@ import {
 import { loadQuotePaymentState, type QuotePaymentState } from "@/lib/crm/quote-payment-state";
 import { loadHistoricalCrmMirrorPricing } from "@/lib/crm/historical-sales-quote-pricing";
 import { customerContractTerms, type CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
+import { shutterIllustrationGeometry, type ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -102,6 +103,7 @@ type SignedShopSmsContact = {
 };
 
 export type PublicQuoteLine = {
+  illustrationGeometry?: ShutterIllustrationGeometry;
   fixedCharges?: number;
   id: string;
   lineItemId: string;
@@ -121,6 +123,7 @@ export type PublicQuoteLine = {
 };
 
 export type PublicQuoteDesignOption = {
+  illustrationGeometry?: ShutterIllustrationGeometry;
   fixedCharges?: number;
   id: string;
   label: string;
@@ -659,7 +662,15 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   return { productName, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(customerOptions), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
-function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {
+/** Geometry reads saved curve measurements before display-only filtering. Only
+ * dimensionless drawing values leave this projection. */
+function designIllustrationGeometry(design: CrmQuoteDesign, opening: Pick<CrmQuoteLineItem, 'width_in'|'height_in'>, options: string[]) {
+  const rawConfigurationOptions = v2CustomerConfigurationOptions(record(design.details)[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL]);
+  const rawLegacyOptions = (legacyDesignSnapshot(design)?.details ?? []).map(detail => `${detail.label}: ${detail.value}`);
+  return shutterIllustrationGeometry(opening.width_in, opening.height_in, [...options, ...rawConfigurationOptions, ...rawLegacyOptions]);
+}
+
+function projectDesignOption(design: CrmQuoteDesign, quantity: number, opening?: Pick<CrmQuoteLineItem, 'width_in'|'height_in'>): PublicQuoteDesignOption {
   const { productName, styleName, options, valanceArtId } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
@@ -671,6 +682,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
     styleName,
     options,
     valanceArtId,
+    ...(productName === 'Shutters' && opening ? {illustrationGeometry: designIllustrationGeometry(design, opening, options)} : {}),
     unitPrice,
     lineTotal: priceReady ? round2(unitPrice * quantity + designOnceTotal(design)) : 0,
     priceReady,
@@ -703,7 +715,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
   if (legacyMts) {
     const projectedDesignOptions = [...(li.designs || [])]
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((design) => projectDesignOption(design, qty));
+      .map((design) => projectDesignOption(design, qty, li));
     const hasPricedDesign = projectedDesignOptions.some((option) => option.priceReady && option.lineTotal > 0);
     const designOptions = hasPricedDesign
       ? projectedDesignOptions.filter((option) => !isLegacyPlaceholderOption(option))
@@ -720,6 +732,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       fixedCharges: designOptions.reduce((sum, option) => sum + (option.fixedCharges ?? 0), 0),
       designOptions,
       showDesignOptions: true,
+      ...(first?.illustrationGeometry ? {illustrationGeometry: first.illustrationGeometry} : {}),
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
       quantity: qty,
       lineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.lineTotal, 0)) : 0,
@@ -758,7 +771,8 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     styleName,
     options,
     valanceArtId,
-    designOptions: [projectDesignOption(design, qty)],
+    ...(productName === 'Shutters' ? {illustrationGeometry: designIllustrationGeometry(design, li, options)} : {}),
+    designOptions: [projectDesignOption(design, qty, li)],
     fixedCharges: designCustomerCharges(design, qty)?.total ?? 0,
     showDesignOptions: false,
     unitPrice,

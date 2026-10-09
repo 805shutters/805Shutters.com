@@ -1,6 +1,7 @@
 import { NORMAN_SHUTTER_APPLICATIONS, NORMAN_SHUTTER_PANEL_RECORD, parseNormanPanelRecord } from "@/lib/quote/norman-shutter-panels";
 import { NORMAN_SPECIALTY_SHAPES } from "@/lib/quote/norman-shutter-specialty";
 import { NORMAN_SHUTTER_PROGRAMS, normanShutterFrame } from "@/lib/quote/norman-shutter-assortment";
+import { FRENCH_DOOR_SKETCH_TYPES } from "@/lib/quote/specialty-shutter-illustrations";
 import { formatInches } from "@/lib/quote/measurements";
 
 /** Purchased shutter choices only; never serialize the factory panel worksheet. */
@@ -26,6 +27,7 @@ export function customerShutterDetails(options: Record<string, unknown>): Array<
       return [`Panel ${panelIndex + 1}, rail ${railIndex + 1}: ${location}${basis ? ` (${basis} measurement)` : ""}${rail.exactLocation ? " — exact location" : ""}`];
     });
   });
+  if (record.panels.some(panel => panel.dividerDetails && (["equal", "custom"].includes(panel.dividerDetails.splitTiltMode ?? '') || panel.dividerDetails.splitTiltCentersInches.length > 0))) add("Split tilt", "Yes");
   if (specifiedRails.length) add("Divider rail location", specifiedRails.join("; "));
 
   if (record.application === "specialty" && record.specialty) {
@@ -35,12 +37,15 @@ export function customerShutterDetails(options: Record<string, unknown>): Array<
     add("Frame", frame(specialty.frameType));
     if (specialty.curvedTilt?.control === "rear_standard") add("Curved section tilt", "Rear standard tilt");
     if (specialty.curvedTilt?.control === "invisible") add("Curved section tilt", "Hidden tilt");
+    if (specialty.curvedTilt?.topLouverFixed === true) add("Top louver", "Fixed");
   }
   if (record.application === "french_door" && record.frenchDoor) {
     const door = record.frenchDoor;
     add("Top shape", { rectangular: "Rectangular", arch: "Arch", quarter_arch: "Quarter arch" }[door.topShape as "rectangular" | "arch" | "quarter_arch"]);
     add("Frame", frame(door.lFrameCode));
-    if (door.cutoutType) add("French-door cutout", "Yes");
+    if (door.cutoutType) add("French-door cutout type", FRENCH_DOOR_SKETCH_TYPES.find(([, label]) => label.startsWith(`Type ${door.cutoutType}`))?.[1]);
+    if (door.handleSide) add("Handle side", door.handleSide === "left" ? "Left" : "Right");
+    if (door.topShape === "quarter_arch" && door.quarterArchSide) add("Quarter arch side", door.quarterArchSide === "left" ? "Left" : "Right");
     layout(door.panelDirection);
   }
   if (record.application === "double_hung" && record.doubleHung) layout(record.doubleHung.rowLayout);

@@ -1,3 +1,8 @@
+import { specialtyShutterCustomerOptions } from '../quote/specialty-shutter-customer-options';
+import { emptyNormanSpecialtyRecord } from '../quote/norman-shutter-specialty';
+import { NORMAN_SHUTTER_PANEL_RECORD, type NormanShutterPanelRecord } from '../quote/norman-shutter-panels';
+import { specialtyShutterSketch } from '../quote/specialty-shutter-illustrations';
+import { v2CustomerConfigurationOptions } from './sales-quote-v2-customer-configuration';
 import { computeQuoteMoney, parseAdjustments } from './quote-money';
 import { prepareV2CustomerSendPayload } from './sales-quote-v2-send';
 import { PGlite } from '@electric-sql/pglite';
@@ -69,6 +74,8 @@ beforeAll(async()=>{
  await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
  await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
  await db.exec(migration('20260923215906_native_delivery_customer_configuration_parity'));
+ await db.exec(migration('20261009002558_specialty_shutter_customer_sketch_fields'));
+ await db.exec(migration('20261009002558_specialty_shutter_customer_sketch_fields'));
  await db.exec(migration('20260925141722_native_quote_explicit_resends'));
  await db.exec(migration('20260925190000_native_in_person_signing'));
  await db.exec(migration('20260925191000_native_staff_sold'));
@@ -627,4 +634,21 @@ it('keeps a second grouped in-person contract signable after the first signature
  expect((await db.query<any>('select * from crm_quotes where id=$1',[first.crm_quote_id])).rows[0]).toEqual(before);
  expect((await db.query<any>('select * from sales_quote_v2_acceptances where crm_quote_id=any($1::uuid[])',[[first.crm_quote_id,second.crm_quote_id]])).rows).toHaveLength(2);
  expect((await db.query<any>('select * from sales_quote_v2_delivery_attempts where delivery_id=any($1::uuid[])',[[first.id,second.id]])).rows).toHaveLength(0);
+});
+
+it('preserves saved specialty and door meaning through native SQL snapshots without factory data',async()=>{
+ const base: NormanShutterPanelRecord={version:1,application:'specialty',motor:'none',existingDoorGlassOrSidelight:false,panels:[{heightInches:80,divider:'present',dividerDetails:{version:1,measurementBasis:'panel',referenceHeightInches:80,rails:[],splitTiltMode:'equal',splitTiltCentersInches:[],clearLouverCounts:[]}}]};
+ const arch: NormanShutterPanelRecord={...base,specialty:{...emptyNormanSpecialtyRecord(),shapeCode:'YS05',archStyle:'continuous',curvedTilt:{version:1,control:'rear_standard',topLouverFixed:true}}};
+ const door: NormanShutterPanelRecord={...base,application:'french_door',frenchDoor:{version:1,cutoutType:'B',panelDirection:'L',topShape:'quarter_arch',quarterArchSide:'left',handleSide:'right',lFrameCode:'',measurementFormReference:'private-template'}};
+ for(const record of [arch,door]){
+  const value={...selection,configuration:{tilt_type:'InvisibleTilt',panel_configuration:'L',...specialtyShutterCustomerOptions(record),[NORMAN_SHUTTER_PANEL_RECORD]:record}} as unknown as SelectionContext;
+  const actual=(await db.query<any>('select quote_v2_customer_safe_configuration($1) as configuration',[value])).rows[0].configuration;
+  expect(actual).toEqual(customerConfigurationFromSelection(value));
+  const sketch=specialtyShutterSketch('Shutters',v2CustomerConfigurationOptions(actual));
+  expect(sketch).toMatchObject({code:record===arch?'YS05':'YS34',split:true,divider:true,tilt:'hidden'});
+  if(record===door)expect(sketch).toMatchObject({cutoutSide:'right',top:'quarter-left'});
+  expect(JSON.stringify(actual)).not.toMatch(/private-template|norman_shutter_panels|referenceHeight/);
+ }
+ const reset=specialtyShutterCustomerOptions({...base,application:'regular',panels:[{heightInches:80,divider:'none'}]});
+ expect(reset).toMatchObject({specialty_shape:null,french_door_cutout_type:null,handle_side:null,top_shape:null,split_tilt:null,divider_rail:null});
 });

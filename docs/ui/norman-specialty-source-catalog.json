@@ -1,0 +1,220 @@
+{
+  "checked": "2026-10-08",
+  "source": "Authenticated Norman specialty catalog and linked shape forms",
+  "shapes": [
+    {
+      "label": "Eyebrow Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS03&Service=PO"
+    },
+    {
+      "label": "Elongated Eyebrow \n                                Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS04&Service=PO"
+    },
+    {
+      "label": "Half Round Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS01&Service=PO"
+    },
+    {
+      "label": "Half Round w/ \n                                Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS53&Service=PO"
+    },
+    {
+      "label": "Left Quarter \n                                Round Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS02&Service=PO"
+    },
+    {
+      "label": "Right Quarter \n                                Round Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS06&Service=PO"
+    },
+    {
+      "label": "Left Quarter Arch",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS57&Service=PO"
+    },
+    {
+      "label": "Right Quarter Arch",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS58&Service=PO"
+    },
+    {
+      "label": "Sunburst on Top\n                                w/ Divider Strip",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSpecialOption.asp?SpecialShutterId=YS09&Service=PO&Ran9=279342"
+    },
+    {
+      "label": "Sunburst on Top\n                                w/ T Post",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS52&Service=PO"
+    },
+    {
+      "label": "Sunburst on Top\n                                w/ Continuous Frame",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS10&Service=PO"
+    },
+    {
+      "label": "Quarter Sunburst Panel\n                                w/ Continuous Frame",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS51&Service=PO"
+    },
+    {
+      "label": "Left Quarter Sunburst Panel with Continuous Frame",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS68&Service=PO"
+    },
+    {
+      "label": "Right Quarter Sunburst Panel with Continuous Frame",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS69&Service=PO"
+    },
+    {
+      "label": "Solid Rail Arch",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS56&Service=PO"
+    },
+    {
+      "label": "Louvered Arch Shutter",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS05&Service=PO"
+    },
+    {
+      "label": "Peak",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS62&Service=PO"
+    },
+    {
+      "label": "Arch Top Picture Window with Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS63&Service=PO"
+    },
+    {
+      "label": "Standard Unit with Horizontal Arch Center",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS64&Service=PO"
+    },
+    {
+      "label": "Arch Top Picture Window with Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS65&Service=PO"
+    },
+    {
+      "label": "Horizontal Louvers Center Arch with Quarter Round Side Panels",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS66&Service=PO"
+    },
+    {
+      "label": "Sunburst Louvers Center Arch with Quarter Round Side Panels",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS67&Service=PO"
+    },
+    {
+      "label": "Hexagon \n                                w/ Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS11&Service=PO"
+    },
+    {
+      "label": "Hexagon \n                                Straight Sides  w/ Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS14&Service=PO"
+    },
+    {
+      "label": "Octagon w/ Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS12&Service=PO"
+    },
+    {
+      "label": "Circle w/Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS13&Service=PO"
+    },
+    {
+      "label": "Hexagon Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS17&Service=PO"
+    },
+    {
+      "label": "Hexagon Sunburst  w/ Straight Sides",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS18&Service=PO"
+    },
+    {
+      "label": "Octagon Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS19&Service=PO"
+    },
+    {
+      "label": "Circle Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS15&Service=PO"
+    },
+    {
+      "label": "Oval w/Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS16&Service=PO"
+    },
+    {
+      "label": "Triangle with Horizontal Louvers",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS59&Service=PO"
+    },
+    {
+      "label": "Left Triangle",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?SpecialShutterId=YS27&Service=PO"
+    },
+    {
+      "label": "Right Triangle",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderAA.asp?SpecialShutterId=YS28&Service=PO"
+    },
+    {
+      "label": "Oval  Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderSun.asp?SpecialShutterId=YS20&Service=PO"
+    },
+    {
+      "label": "Triangle Sunburst",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderSun.asp?SpecialShutterId=YS60&Service=PO"
+    },
+    {
+      "label": "Left Angle Top/Left Rake",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS21&Service=PO"
+    },
+    {
+      "label": "Right Angle Top/Right Rake",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS23&Service=PO"
+    },
+    {
+      "label": "French Door Cut-out",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderSpecialYS33.asp?Service=PO"
+    },
+    {
+      "label": "Upside Down Left Angle Top/Upside Down Left Rake",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS25&Service=PO"
+    },
+    {
+      "label": "Upside Down Right Angle Top/Upside Down Right Rake",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?id=b&SpecialShutterId=YS26&Service=PO"
+    },
+    {
+      "label": "Mansard",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?SpecialShutterId=YS70&Service=PO"
+    },
+    {
+      "label": "Mansard Left",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS71&Service=PO"
+    },
+    {
+      "label": "Mansard Right",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS72&Service=PO"
+    },
+    {
+      "label": "Upside Down Mansard",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderAA.asp?SpecialShutterId=YS73&Service=PO"
+    },
+    {
+      "label": "Upside Down Mansard Left",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS74&Service=PO"
+    },
+    {
+      "label": "Upside Down Mansard Right",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/OrderHL.asp?SpecialShutterId=YS75&Service=PO"
+    }
+  ],
+  "frenchDoors": [
+    {
+      "label": "Type A Curved Flush Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS33&Service=PO"
+    },
+    {
+      "label": "Type B Curved Offset Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS34&Service=PO"
+    },
+    {
+      "label": "Type C Rectangular Flush Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS35&Service=PO"
+    },
+    {
+      "label": "Type D Rectangular Offset Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS36&Service=PO"
+    },
+    {
+      "label": "Type E 60 degree Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS38&Service=PO"
+    },
+    {
+      "label": "Type F Rectangular Cutout",
+      "url": "https://www.normanwindowcoverings.com/Login/Order/orderFD.asp?SpecialShutterId=YS39&Service=PO"
+    }
+  ]
+}

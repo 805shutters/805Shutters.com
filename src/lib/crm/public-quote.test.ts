@@ -422,6 +422,20 @@ function lineItem(over: Partial<CrmQuoteLineItem> & { designs?: CrmQuoteDesign[]
 }
 
 describe("projectLine (per-line discount on the contract)", () => {
+  it('carries measured shutter proportions through customer variants and quantity expansion without measurement labels', () => {
+    const d=design({product_id:'onyx_shutters',program_id:'onyx_poly',unit_price:500,details:{quote_v2_customer_configuration:{manufacturerId:'onyx',selections:{leg_height_inches:25,louver_size:3.5}}} as unknown as CrmQuoteDesign['details']});
+    for(const legacy of [false,true]) {
+      const line=projectLine(lineItem({notes:'Shutters',width_in:70,height_in:45,quantity:2,designs:[d],selected_design_id:d.id}),legacy);
+      expect(line.illustrationGeometry?.aspectRatio).toBeCloseTo(70/45);
+      expect(line.illustrationGeometry?.legHeightFraction).toBeCloseTo(25/45);
+      expect(line.options.join(' ')).not.toMatch(/Leg height/i);
+      expect(line.designOptions[0].illustrationGeometry?.aspectRatio).toBeCloseTo(70/45);
+      const rows=expandPublicQuoteLine(line);
+      expect(rows.every(row=>row.illustrationGeometry?.aspectRatio===70/45)).toBe(true);
+      expect(rows.every(row=>!('dimensions' in row)&&!('width_in' in row)&&!('height_in' in row))).toBe(true);
+      expect(rows.reduce((sum,row)=>sum+row.lineTotal,0)).toBe(line.lineTotal);
+    }
+  });
   it("uses the source's selected shutter even when the legacy mirror still selects A", () => {
     const old = { ...design({ unit_price: 641.7 }), id: "old-a", label: "A" };
     const chosen = { ...design({ unit_price: 753.3 }), id: "chosen-c", label: "C" };

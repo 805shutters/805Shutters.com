@@ -1,4 +1,6 @@
 "use client";
+import { specialtyShutterSketch } from "@/lib/quote/specialty-shutter-illustrations";
+import { SpecialtyShutterSketch } from "@/components/quote/SpecialtyShutterSketch";
 import {normanSpecialtyNeedsCurvedTilt} from '@/lib/quote/norman-shutter-specialty-tilt';
 import {NORMAN_SPECIALTY_FRAME_CONSTRUCTIONS,normanSpecialtyFrameConstruction} from '@/lib/quote/norman-shutter-specialty-frame';
 import {NormanShutterSpecialtyGeometryOptions} from './NormanShutterSpecialtyGeometryOptions';
@@ -12,6 +14,7 @@ export function NormanShutterSpecialtyOptions({pricingOnly=false,value,programId
  return <section aria-label="Norman specialty construction" className="space-y-3">
   {shapes.length===0&&<p className="text-sm text-amber-900">This program's specialty assortment still needs source verification.</p>}
   <label className="block text-sm">Exact specialty shape<select className={cls} aria-label="Norman specialty shape" value={r.shapeCode} onChange={e=>update({shapeCode:e.target.value,archStyle:'',sunburstHubInches:null,geometry:undefined,frameConstruction:undefined,curvedTilt:undefined,hingeGeometry:undefined})}><option value="">Select</option>{shapes.map(([code,label])=><option value={code} key={code}>{code} · {label}</option>)}</select></label>
+  {(() => { const sketch = specialtyShutterSketch('Shutters', [`Specialty shape: ${r.shapeCode}`, ...(tiltType?[`Tilt: ${tiltType}`]:[])]); return sketch ? <div className="flex items-center gap-3"><SpecialtyShutterSketch sketch={sketch}/><p className="text-xs text-slate-600">805 shape reference · panel layout and controls appear on the contract from saved choices.</p></div> : null; })()}
   {NORMAN_CONTINUOUS_ARCH_SHAPES.includes(r.shapeCode)&&<label className="block text-sm">Arch construction<select className={cls} aria-label="Norman specialty arch style" value={r.archStyle} onChange={e=>update({archStyle:e.target.value as NormanSpecialtyRecord['archStyle']})}><option value="">Select</option><option value="standard">Standard Louvered Arch</option>{programId!=='woodlore_aquashield'&&<option value="continuous">Continuous Arch</option>}</select></label>}
   {!pricingOnly&&normanSpecialtyNeedsCurvedTilt(programId,r.shapeCode,tiltType)&&<fieldset className="space-y-2"><legend className="text-sm font-semibold">Curved-section louver control</legend>
    <p className="text-sm">Invisible Tilt operates the straight section only. The curved horizontal louvers use a separate Standard Tilt rod on the back; the top louver is fixed.</p>

@@ -401,6 +401,10 @@ function formatOptionValue(value: unknown): string {
 function humanizeKey(key: string): string {
   const labels: Record<string, string> = {
     onyx_order_type: "Shutter Type",
+    french_door_cutout_type: "French-door cutout type",
+    handle_side: "Handle side",
+    top_shape: "Top shape",
+    quarter_arch_side: "Quarter arch side",
     smartfold_light_guard_recess: "Light Guard Recess Arrangement",
     smartfold_full_recess_depth_inches: "Available Full-Assembly Recess Depth (inches)",
     day_night_top_layer: "Top Shade Selection",

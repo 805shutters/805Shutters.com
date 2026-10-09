@@ -355,6 +355,13 @@ export const V2_CUSTOMER_CONFIGURATION_FIELDS = [
   ["vertical_right_width_inches", "Right panel width"],
   ["split_splice", "Split or splice"],
   ["specialty_shape", "Specialty shape"],
+  ["arch_style", "Arch style"],
+  ["curved_section_tilt", "Curved section tilt"],
+  ["top_louver", "Top louver"],
+  ["top_shape", "Top shape"],
+  ["french_door_cutout_type", "French-door cutout type"],
+  ["handle_side", "Handle side"],
+  ["quarter_arch_side", "Quarter arch side"],
   ["left_leg_height_inches", "Left leg height"],
   ["right_leg_height_inches", "Right leg height"],
   ["leg_height_inches", "Leg height"],
@@ -496,7 +503,9 @@ export function customerConfigurationFromSelection(
     "Shutter type": "shutter_type", "Specialty shape": "specialty_shape", "Frame": "frame_type",
     "Panel configuration": "panel_configuration", "Motor": "motor_type", "Divider rail": "divider_rail",
     "Divider rail location": "divider_rail_location",
-    "Track system": "track_system", "French-door cutout": "french_door_cutout",
+    "Track system": "track_system", "French-door cutout type": "french_door_cutout_type",
+    "Arch style": "arch_style", "Curved section tilt": "curved_section_tilt", "Top louver": "top_louver",
+    "Top shape": "top_shape", "Handle side": "handle_side", "Quarter arch side": "quarter_arch_side", "Split tilt": "split_tilt",
   };
   for (const detail of customerShutterDetails(source)) {
     const key = shutterFields[detail.label];
@@ -585,6 +594,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
       if (configuration.selections.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return [];
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
+      if (selected == null && ["specialty_shape","arch_style","curved_section_tilt","top_louver","top_shape","french_door_cutout_type","handle_side","quarter_arch_side"].includes(key)) return [];
       if (key === "temporary_shade") return selected === true ? ["Complementary temporary paper shade: Free"] : [];
       if (key === "order_type" && /^onyx$/i.test(configuration.manufacturerId)) return [`Shutter type: ${displayValue(key, selected)}`];
       if ((key === "control_side" || key === "chain_location") && (selected === null || selected === "")) return [];

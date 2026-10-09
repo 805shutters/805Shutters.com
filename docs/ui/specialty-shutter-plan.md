@@ -1,0 +1,11 @@
+# Specialty shutter contract sketches
+
+Requested: all Norman specialty shapes and six French-door profiles; shared original 805 art for Onyx; accurate saved tilt rods, hidden tilt, divider rails and split tilt. Closed louvers face upward. Match the user's fabric-valance pencil artwork, with soft gray shading and restrained paper texture. Drawings follow opening measurements, including the 70 × 45 example.
+
+- Complete: isolated worktree; authenticated Norman source catalog and forms; 46 window shapes and six French-door cutouts; source construction research; supplier option mapping and customer-safe snapshot fields; exact public readback of production migration with unchanged permissions and security-definer state; measured drawing geometry connected to staff/customer cards.
+- Complete: original pencil raster material, upward-closing louver and sunburst components; 64 standalone SVG/PNG exports; all 52 profiles visually reviewed; separate horizontal arch crown corrected; 70:45 and 45:70 browser checks; hidden tilt without front rods; split/divider controls; phone/iPad fit; four-page sample contract exported and reviewed; typecheck, 9,971 tests and production build passed.
+- In progress: intentional-source commit/push, production deployment and authenticated verification.
+
+Measurement behavior: dimensionless proportions keep customer artwork correctly shaped without restoring removed measurement labels. Width/height define the opening aspect ratio. Recorded leg heights locate arch spring lines; unrecorded curves remain shape references. Louvers are reconstructed using recorded louver size instead of stretching a finished shutter image. Unspecified divider/split locations remain illustrative.
+
+QA: all 52 identities; left/right and upside-down orientation; six door cutouts and side/top variants; hidden tilt without front rods; independent rods for split; lower louvers more closed and facing upward; physical rail distinct from tilt break; radial sections preserved; unknown or contradictory selections not guessed; staff/customer serialization matched; measured wide/tall/fractional openings; no cost/template/private-record leakage; desktop/iPad/print fit; pricing unchanged.

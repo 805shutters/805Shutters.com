@@ -8,6 +8,7 @@ import { CONTRACT_ART_ROOT } from "@/lib/quote/contract-illustrations";
 import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 import { ContractProductIllustration } from "./ContractProductIllustration";
 import styles from "./QuoteLineItemCard.module.css";
+import { shutterGeometryFromDimensions, type ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
 
 type Props = {
   lineNumber: string | number;
@@ -21,6 +22,7 @@ type Props = {
   priceLabel?: string;
   quantity?: number;
   dimensions?: string | null;
+  illustrationGeometry?: ShutterIllustrationGeometry;
   actions?: ReactNode;
   selection?: ReactNode;
   notice?: ReactNode;
@@ -31,7 +33,7 @@ const groupIcons = { finish: SwatchBook, operation: SlidersHorizontal, construct
 /** Shared staff/customer presentation. All money and mutations belong to the caller. */
 export function QuoteLineItemCard({
   lineNumber, room, productType, optionLabel, styleName = "", options = [], valanceArtId,
-  price, priceLabel = "Item total", quantity = 1, dimensions, actions, selection, notice,
+  price, priceLabel = "Item total", quantity = 1, dimensions, illustrationGeometry, actions, selection, notice,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
   const detailsId = useId();
@@ -57,7 +59,7 @@ export function QuoteLineItemCard({
           {notice ? <div className={styles.notice}>{notice}</div> : null}
         </div>
         <div className={styles.artwork}>
-          <ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} showTemporaryShade={false} />
+          <ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} showTemporaryShade={false} illustrationGeometry={illustrationGeometry ?? shutterGeometryFromDimensions(dimensions, options)} />
         </div>
         <div className={styles.cost}>
           <div><p className={styles.priceLabel}>{priceLabel}</p><div className={styles.price}>{price}</div></div>

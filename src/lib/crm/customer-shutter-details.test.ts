@@ -20,7 +20,7 @@ describe("customer shutter details", () => {
     expect(project(record)).toEqual([
       { label: "Shutter type", value: "Specialty Shape" }, { label: "Motor", value: "Motorized tilt" },
       { label: "Specialty shape", value: "Louvered Arch" }, { label: "Arch style", value: "Continuous" },
-      { label: "Frame", value: "Direct Mount (No Frame)" }, { label: "Curved section tilt", value: "Rear standard tilt" },
+      { label: "Frame", value: "Direct Mount (No Frame)" }, { label: "Curved section tilt", value: "Rear standard tilt" }, { label: "Top louver", value: "Fixed" },
     ]);
     expect(record).toEqual(original);
   });
@@ -43,7 +43,7 @@ describe("customer shutter details", () => {
     } });
     expect(details).toEqual([
       { label: "Shutter type", value: "French Door" }, { label: "Top shape", value: "Quarter arch" },
-      { label: "French-door cutout", value: "Yes" }, { label: "Panel configuration", value: "R" },
+      { label: "French-door cutout type", value: "Type B · Curved Offset Cutout" }, { label: "Panel configuration", value: "R" },
     ]);
   });
   it("keeps Bi-fold 180 and Double Hung layouts without their construction references", () => {

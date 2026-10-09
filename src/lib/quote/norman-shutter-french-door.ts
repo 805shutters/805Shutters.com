@@ -6,6 +6,9 @@ export type NormanFrenchDoorRecord = {
  panelDirection:''|'L'|'R';
  cutoutType:''|'A'|'B'|'C'|'D'|'E'|'F';
  topShape:''|'rectangular'|'arch'|'quarter_arch';
+ /** Handle side is independent of the panel hinge direction. Optional for older quotes. */
+ handleSide?:''|'left'|'right';
+ quarterArchSide?:''|'left'|'right';
  lFrameCode:string;
  measurementFormReference:string;
 };
@@ -22,6 +25,7 @@ export function parseNormanFrenchDoorRecord(value:unknown):NormanFrenchDoorRecor
  if(!value||typeof value!=='object'||Array.isArray(value))return null;
  const r=value as Record<string,unknown>;
  if(r.version!==1||!['','L','R'].includes(String(r.panelDirection))||!['','A','B','C','D','E','F'].includes(String(r.cutoutType))||!['','rectangular','arch','quarter_arch'].includes(String(r.topShape))||typeof r.lFrameCode!=='string'||typeof r.measurementFormReference!=='string')return null;
+ if(['handleSide','quarterArchSide'].some(k=>r[k]!==undefined&&!['','left','right'].includes(String(r[k]))))return null;
  return r as NormanFrenchDoorRecord;
 }
 export function normanFrenchDoorPages(program:string){return program==='brightwood'?[116,117]:[118,119];}

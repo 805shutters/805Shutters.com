@@ -301,6 +301,8 @@ import {
   supportsMtsProductColorSearch,
   type ProductColorOption,
 } from "@mts/lib/productColorCatalog";
+import { specialtyShutterSketch, FRENCH_DOOR_SKETCH_TYPES } from "@/lib/quote/specialty-shutter-illustrations";
+import { SpecialtyShutterSketch } from "@/components/quote/SpecialtyShutterSketch";
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { historicalUnitPrice } from "@/lib/crm/historical-quote-price-lock";
@@ -4032,6 +4034,10 @@ export function getStandardShutterGridOptions(
       );
       if (String(onyxOptions.french_door_cutout || "") === "Yes") {
         options.push(
+          {key:"french_door_cutout_type",label:"Cutout Sketch Profile",field:"json:french_door_cutout_type",type:"buttons",options:FRENCH_DOOR_SKETCH_TYPES.map(([,label])=>label)},
+          {key:"handle_side",label:"Handle Side (viewed from room)",field:"json:handle_side",type:"buttons",options:["Left","Right"]},
+          {key:"top_shape",label:"Top Shape",field:"json:top_shape",type:"buttons",options:/^Type [EF]\b/.test(String(onyxOptions.french_door_cutout_type||''))?["Rectangular"]:["Rectangular","Arch","Quarter arch"]},
+          ...(onyxOptions.top_shape === "Quarter arch" ? [{key:"quarter_arch_side",label:"Quarter Arch Side",field:"json:quarter_arch_side",type:"buttons" as const,options:["Left","Right"]}] : []),
           {
             key: "handle_center_from_bottom_inches",
             label: "Handle Center From Bottom",
@@ -7054,6 +7060,10 @@ function ShutterDesignOptions({
                   flat_mounting_area_inches: null,
                   hardware_clearance_inches: null,
                   french_door_cutout: null,
+                  french_door_cutout_type: null,
+                  handle_side: null,
+                  top_shape: null,
+                  quarter_arch_side: null,
                   handle_center_from_bottom_inches: null,
                   lock_center_from_bottom_inches: null,
                 }),
@@ -7069,11 +7079,23 @@ function ShutterDesignOptions({
             ...(value === "Yes"
               ? {}
               : {
+                  french_door_cutout_type: null,
+                  handle_side: null,
+                  top_shape: null,
+                  quarter_arch_side: null,
                   handle_center_from_bottom_inches: null,
                   lock_center_from_bottom_inches: null,
                 }),
           },
         });
+        return;
+      }
+      if (field === 'json:french_door_cutout_type' && /^Type [EF]\b/.test(String(value))) {
+        onUpdateFields({options_json:{...currentJson,french_door_cutout_type:value,top_shape:'Rectangular',quarter_arch_side:null}});
+        return;
+      }
+      if (field === 'json:top_shape' && value !== 'Quarter arch') {
+        onUpdateFields({options_json:{...currentJson,top_shape:value,quarter_arch_side:null}});
         return;
       }
     }
@@ -7391,7 +7413,6 @@ function LegacyShutterSteps({
   if (shutterType === "Specialty Shutter") {
     const selectedShape = (design?.options_json as Record<string, string>)?.specialty_shape;
     if (selectedShape) {
-      const shape = ONYX_SPECIALTY_SHAPES.find((s) => s.label === selectedShape);
       return (
         <div className="flex flex-wrap gap-2">
           <button
@@ -7399,13 +7420,7 @@ function LegacyShutterSteps({
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-background text-sm font-medium hover:bg-accent transition-all cursor-pointer group"
             title="Click to change"
           >
-            {shape?.image && (
-              <img
-                src={shape.image}
-                alt={selectedShape}
-                className="h-8 w-8 object-contain rounded bg-accent"
-              />
-            )}
+            {(() => { const sketch = specialtyShutterSketch('Shutters', [`Specialty shape: ${selectedShape}`]); return sketch ? <span className="inline-block w-8"><SpecialtyShutterSketch sketch={sketch}/></span> : null; })()}
             <span className="text-muted-foreground">Shape:</span>
             <span className="font-semibold">{selectedShape}</span>
           </button>
@@ -13147,16 +13162,7 @@ function SpecialtyShapeGrid({
                   className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-border bg-background hover:bg-accent hover:border-primary/50 transition-all group"
                 >
                   <div className="w-full aspect-square flex items-center justify-center bg-accent/50 rounded-lg overflow-hidden">
-                    <img
-                      src={shape.image}
-                      alt={shape.label}
-                      className="max-h-full max-w-full object-contain"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        target.style.display = "none";
-                        target.parentElement!.innerHTML = `<span class="text-xs text-center text-muted-foreground px-1">${shape.label}</span>`;
-                      }}
-                    />
+                    {(() => { const sketch = specialtyShutterSketch('Shutters', [`Specialty shape: ${shape.label}`]); return sketch ? <SpecialtyShutterSketch sketch={sketch}/> : <span className="text-xs text-center text-muted-foreground px-1">{shape.label}</span>; })()}
                   </div>
                   <span className="text-xs font-medium text-center leading-tight">
                     {shape.label}

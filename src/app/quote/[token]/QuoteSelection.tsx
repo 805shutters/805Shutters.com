@@ -249,7 +249,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
               const dimmed = mode === "some" && !isChecked;
               const configurations = line.priceReady && line.showDesignOptions && line.designOptions.length
                 ? line.designOptions
-                : [{ id: line.id, label: "", productName: line.productName, styleName: line.styleName, options: line.priceReady ? line.options : [], valanceArtId: line.valanceArtId, lineTotal: line.lineTotal, priceReady: line.priceReady }];
+                : [{ id: line.id, label: "", productName: line.productName, styleName: line.styleName, options: line.priceReady ? line.options : [], valanceArtId: line.valanceArtId, illustrationGeometry: line.illustrationGeometry, lineTotal: line.lineTotal, priceReady: line.priceReady }];
               return (
                 <div key={line.id} style={{ opacity: dimmed ? 0.4 : 1, display: "grid", gap: 12 }}>
                   {configurations.map((configuration, configurationIndex) => (
@@ -262,6 +262,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                       styleName={configuration.styleName}
                       options={configuration.options}
                       valanceArtId={configuration.valanceArtId}
+                      illustrationGeometry={configuration.illustrationGeometry}
                       price={configuration.priceReady ? money(configurations.length > 1 ? configuration.lineTotal : line.lineTotal) : "Pricing in progress"}
                       priceLabel={configurations.length > 1 ? "Option total" : "Item total"}
                       quantity={line.quantity}
