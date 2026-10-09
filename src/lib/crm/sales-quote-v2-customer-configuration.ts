@@ -594,7 +594,7 @@ export function v2CustomerConfigurationOptions(value: unknown): string[] {
       if (configuration.selections.perfectsheer_light_guard != null && ["light_guard", "basic_light_guard", "premium_wood_light_guard"].includes(key)) return [];
       const selected = configuration.selections[key];
       if (selected === undefined) return [];
-      if (selected == null && ["specialty_shape","arch_style","curved_section_tilt","top_louver","top_shape","french_door_cutout_type","handle_side","quarter_arch_side"].includes(key)) return [];
+      if (selected == null && ["specialty_shape","arch_style","curved_section_tilt","top_louver","top_shape","french_door_cutout","french_door_cutout_type","handle_side","quarter_arch_side"].includes(key)) return [];
       if (key === "temporary_shade") return selected === true ? ["Complementary temporary paper shade: Free"] : [];
       if (key === "order_type" && /^onyx$/i.test(configuration.manufacturerId)) return [`Shutter type: ${displayValue(key, selected)}`];
       if ((key === "control_side" || key === "chain_location") && (selected === null || selected === "")) return [];

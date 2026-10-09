@@ -11,10 +11,11 @@ const visualFields = {
  * SQL snapshots only copy allow-listed primitives, never the worksheet itself.
  * Clearing inactive visual fields prevents an old door/shape surviving a change. */
 export function specialtyShutterCustomerOptions(record: NormanShutterPanelRecord): Record<string,string|null> {
- const patch: Record<string,string|null> = Object.fromEntries(Object.values(visualFields).map(key=>[key,null]));
+ const patch: Record<string,string|null> = Object.fromEntries([...Object.values(visualFields),'french_door_cutout'].map(key=>[key,null]));
  for(const detail of customerShutterDetails({[NORMAN_SHUTTER_PANEL_RECORD]:record})) {
   const key=visualFields[detail.label as keyof typeof visualFields];
   if(key) patch[key]=detail.value;
  }
+ if(patch.french_door_cutout_type)patch.french_door_cutout='Yes';
  return patch;
 }

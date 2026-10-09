@@ -641,7 +641,8 @@ it('preserves saved specialty and door meaning through native SQL snapshots with
  const arch: NormanShutterPanelRecord={...base,specialty:{...emptyNormanSpecialtyRecord(),shapeCode:'YS05',archStyle:'continuous',curvedTilt:{version:1,control:'rear_standard',topLouverFixed:true}}};
  const door: NormanShutterPanelRecord={...base,application:'french_door',frenchDoor:{version:1,cutoutType:'B',panelDirection:'L',topShape:'quarter_arch',quarterArchSide:'left',handleSide:'right',lFrameCode:'',measurementFormReference:'private-template'}};
  for(const record of [arch,door]){
-  const value={...selection,configuration:{tilt_type:'InvisibleTilt',panel_configuration:'L',...specialtyShutterCustomerOptions(record),[NORMAN_SHUTTER_PANEL_RECORD]:record}} as unknown as SelectionContext;
+  expect(specialtyShutterCustomerOptions(record).french_door_cutout).toBe(record===door?'Yes':null);
+  const value={...selection,configuration:{french_door_cutout:'No',tilt_type:'InvisibleTilt',panel_configuration:'L',...specialtyShutterCustomerOptions(record),[NORMAN_SHUTTER_PANEL_RECORD]:record}} as unknown as SelectionContext;
   const actual=(await db.query<any>('select quote_v2_customer_safe_configuration($1) as configuration',[value])).rows[0].configuration;
   expect(actual).toEqual(customerConfigurationFromSelection(value));
   const sketch=specialtyShutterSketch('Shutters',v2CustomerConfigurationOptions(actual));
@@ -650,5 +651,5 @@ it('preserves saved specialty and door meaning through native SQL snapshots with
   expect(JSON.stringify(actual)).not.toMatch(/private-template|norman_shutter_panels|referenceHeight/);
  }
  const reset=specialtyShutterCustomerOptions({...base,application:'regular',panels:[{heightInches:80,divider:'none'}]});
- expect(reset).toMatchObject({specialty_shape:null,french_door_cutout_type:null,handle_side:null,top_shape:null,split_tilt:null,divider_rail:null});
+ expect(reset).toMatchObject({specialty_shape:null,french_door_cutout:null,french_door_cutout_type:null,handle_side:null,top_shape:null,split_tilt:null,divider_rail:null});
 });
