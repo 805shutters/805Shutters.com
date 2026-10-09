@@ -7,11 +7,32 @@ import { customerQuoteOptions } from '@/lib/crm/customer-quote-branding';
 import { customerConfigurationFromSelection, v2CustomerConfigurationOptions } from '@/lib/crm/sales-quote-v2-customer-configuration';
 import { NORMAN_SHUTTER_PANEL_RECORD } from './norman-shutter-panels';
 import { emptyNormanSpecialtyRecord } from './norman-shutter-specialty';
+import { contractIllustration } from './contract-illustrations';
 import type { SelectionContext } from '@/lib/quote-v2/core';
 
 const markup=(options:string[])=>renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options}));
 const optionsFor=(code:string,label:string)=>[...(frenchDoorSketch(code)?['Shutter type: French Door',`French-door cutout type: ${label}`,'Handle side: Left','Top shape: Rectangular','Panel configuration: L']:[`Specialty shape: ${label}`,'Panel configuration: LR']),'Tilt: Standard Tilt'];
 describe('805 specialty shutter contract sketches',()=>{
+ it('draws imported Onyx Arch B from its saved shutter type in staff and public contracts',()=>{
+  const options=['Material: Painted Basswood · Bassia','Color: 100_Pure White','Tilt Type: C - Front Center Tiltrod','Louver Size: 3 1/2"','Panel Config: LR','Frame Type: Z Crest FS','Frame Sides: 4','Shutter Type: Arch Shutters','Divider Rail Count: 0'];
+  const publicOptions=customerQuoteOptions(v2CustomerConfigurationOptions({manufacturerId:'onyx',selections:{shutter_type:'Arch Shutters',panel_config:'LR',tilt_type:'C - Front Center Tiltrod',divider_rail_count:0,louver_size:'3 1/2"'}}));
+  for(const savedOptions of [options,publicOptions]){
+   expect(specialtyShutterSketch('Shutters',savedOptions)).toMatchObject({code:'YS05',layout:'LR',tilt:'center',divider:false});
+   const html=markup(savedOptions);
+   expect(html).toContain('data-specialty-sketch="YS05"');
+   expect(html).toContain('data-specialty-layout="LR"');
+   expect((html.match(/data-front-tilt-rod=/g)||[])).toHaveLength(2);
+   expect(html).not.toContain('data-shutter-assembly="shared-frame"');
+   expect(contractIllustration('Shutters',savedOptions)).toBeNull();
+  }
+ });
+ it('does not substitute a rectangle for an ambiguous or conflicting arch selection',()=>{
+  for(const shape of [['Shutter Type: Arch'],['Shutter Type: Arch Shutters','Specialty Shape: YS13']]){
+   const options=[...shape,'Panel Config: LR','Tilt Type: Standard Tilt'];
+   expect(specialtyShutterSketch('Shutters',options)).toBeNull();
+   expect(markup(options)).toBe('');
+  }
+ });
  it('covers 46 exact window shapes and six door profiles',()=>{expect(SPECIALTY_SHUTTER_SKETCHES).toHaveLength(52);expect(new Set(SPECIALTY_SHUTTER_SKETCHES.map(([code])=>code)).size).toBe(52);});
  it.each(SPECIALTY_SHUTTER_SKETCHES)('draws %s %s through the actual contract component',(code,label)=>{
   const html=markup(optionsFor(code,label));

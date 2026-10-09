@@ -18,6 +18,8 @@ export type SpecialtyShutterSketch = {
 };
 const normalize = (value: string) => value.toLowerCase().replace(/w\s*\//g, 'with ').replace(/[®™]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 const aliases: Record<string, SpecialtySketchCode> = {
+  // Exact saved Onyx application: horizontal louvers in an arched panel.
+  'arch shutters':'YS05',
   'louvered arch shutter':'YS05', 'left angle top':'YS21', 'right angle top':'YS23', 'left angle top left rake':'YS21', 'right angle top right rake':'YS23',
   'upside down left angle top upside down left rake':'YS25', 'upside down right angle top upside down right rake':'YS26',
   'circle withhorizontal louvers':'YS13', 'oval withhorizontal louvers':'YS16',
@@ -39,7 +41,9 @@ export function specialtyShutterSketch(productType: string, options: readonly st
   }).filter(([key,value]) => value && !(normalize(value) === 'none' && ['specialty shape','french door cutout type','handle side','quarter arch side','top shape','arch style','curved section tilt','top louver'].includes(key)));
   const values = (...keys: string[]) => fields.filter(([key]) => keys.includes(key)).map(([,value]) => value);
   const single = (...keys: string[]) => { const entries = [...new Set(values(...keys).map(normalize))]; return entries.length === 1 ? entries[0] : ''; };
-  const shapeValues = values('specialty shape');
+  // Imported Onyx orders store their shape in shutter_type, without a separate
+  // specialty_shape. Include only recognized identities; generic Arch stays unknown.
+  const shapeValues = [...values('specialty shape'), ...values('shutter type').filter(value => identity(value))];
   const codes = new Set(shapeValues.map(identity));
   const doorValues = values('french door cutout', 'french door cutout type');
   const doorCodes = new Set(doorValues.filter(value=>!['yes','no','none'].includes(normalize(value))).map(value => {

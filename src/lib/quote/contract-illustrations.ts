@@ -43,6 +43,9 @@ export function contractIllustration(productType: string, options: readonly stri
   const savedOperations = values("lift system", "operating system", "control type", "honeycomb operating system");
   if (values("specialty shape").some((value) => value && !["none", "rectangle", "rectangular"].includes(value))) return null;
   const special = values("application", "shade type", "shutter type", "honeycomb application", "roller application", "specialty shape").join(" ");
+  // A specialty selection must never fall through to an ordinary rectangle,
+  // even when its exact drawing identity is missing or contradictory.
+  if (product === "shutters" && /\barch\b|\barches\b|\braked?\b|\btrapezoid\b|\bcircle\b|\boval\b|\bsunburst\b/.test(special)) return null;
   const tdbuPattern = /\btdbu\b|top down[ /]*bottom up/;
   const tdbu = product === "honeycomb" && tdbuPattern.test(special + " " + savedOperations.join(" "));
   const operationValues = savedOperations.map((value) => {
