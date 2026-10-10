@@ -3825,6 +3825,12 @@ export function getStandardShutterGridOptions(
         options: onyxPortalTiltLabels(currentOnyxIdentity) ?? ONYX_TILT_TYPES,
       },
       {
+        key: "split_tilt",
+        label: "Split Tilt",
+        field: "json:split_tilt",
+        type: "yes-no",
+      },
+      {
         key: "extension_rod",
         label: "Extension Rod",
         field: "json:extension_rod",
@@ -6914,7 +6920,7 @@ function ManufacturerComparisonPanel({
 
 // --- Shutter Design Options (restructured with pills + grid) ---
 
-function ShutterDesignOptions({
+export function ShutterDesignOptions({
   design,
   displayedUnitPrice,
   activeVariant,
@@ -7155,7 +7161,9 @@ function ShutterDesignOptions({
   const gridOptions = standardComplete && !useOldSteps
     ? quotePricingInputs(getStandardShutterGridOptions(workingDesign, authoritativeV2))
     : [];
-  const slotOptions = standardComplete && !useOldSteps ? [...mobileMaterialOptions, ...definingOptions, ...gridOptions] : [...mobileMaterialOptions, ...definingOptions];
+  // Keep split tilt in its own persistent control, including after selection.
+  const splitTiltOption = gridOptions.find((option) => option.field === "json:split_tilt");
+  const slotOptions = standardComplete && !useOldSteps ? [...mobileMaterialOptions, ...definingOptions, ...gridOptions.filter((option) => option !== splitTiltOption)] : [...mobileMaterialOptions, ...definingOptions];
   const optionRows = partitionOptionSlots(slotOptions, [
     ...mobileMaterialOptions.map((option) => option.field),
     ...definingOptions.map((option) => option.field),
@@ -7311,6 +7319,23 @@ function ShutterDesignOptions({
 
       {/* For Tracked/Specialty shutters, use the old step-by-step flow */}
       {useOldSteps && <LegacyShutterSteps design={workingDesign} onUpdate={onUpdate} />}
+
+      {splitTiltOption && (
+        <fieldset aria-label="Split Tilt" className="rounded-lg border border-[#d9d5cc] bg-[#faf9f6] px-3 py-2.5 [&_button]:min-h-11 [&_button]:min-w-14">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-[#292722]">Split Tilt</p>
+              <p className="mt-0.5 text-[11px] text-[#6b675e]">Separate upper and lower louver control.</p>
+            </div>
+            <GridYesNo
+              label="Split Tilt"
+              value={getFieldValue(workingDesign, "json:split_tilt")}
+              hideLabel
+              onChange={(value) => handleUpdate("json:split_tilt", value)}
+            />
+          </div>
+        </fieldset>
+      )}
 
       {/* Show More section (divider rail, etc.) */}
       {standardComplete && !useOldSteps && (

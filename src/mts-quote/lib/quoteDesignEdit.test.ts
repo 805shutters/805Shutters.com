@@ -30,4 +30,20 @@ describe("queued quote option intent", () => {
     const edit = captureQuoteDesignEdit({line_item_id:"line",variant:"A",mount_type:"Outside Mount"}, row);
     expect(applyQuoteDesignEdit(edit, row)).not.toHaveProperty("options_json");
   });
+  it("retains split tilt on reopen, independently of divider rails and another alternative", () => {
+    const original = { line_item_id: "bedroom-c", variant: "A", options_json: {
+      split_tilt: "No", divider_rail: "No", manual_price_override: 622.85,
+    }};
+    const alternative = { ...original, variant: "B", options_json: { ...original.options_json } };
+    const splitEdit = captureQuoteDesignEdit({ ...original, options_json: { ...original.options_json, split_tilt: "Yes" } }, original);
+    const railEdit = captureQuoteDesignEdit({ ...original, options_json: { ...original.options_json, divider_rail: "Yes" } }, original);
+    const saved = applyQuoteDesignEdit(splitEdit, original);
+    const reopened = JSON.parse(JSON.stringify(saved));
+    expect(reopened.options_json).toEqual({ split_tilt: "Yes", divider_rail: "No", manual_price_override: 622.85 });
+    const withRail = applyQuoteDesignEdit(railEdit, reopened);
+    expect(withRail.options_json).toMatchObject({ split_tilt: "Yes", divider_rail: "Yes" });
+    expect(alternative.options_json).toMatchObject({ split_tilt: "No", divider_rail: "No" });
+    const unsplit = captureQuoteDesignEdit({ ...reopened, options_json: { ...reopened.options_json, split_tilt: "No" } }, reopened);
+    expect(applyQuoteDesignEdit(unsplit, reopened).options_json).toEqual(original.options_json);
+  });
 });

@@ -56,7 +56,7 @@ export function specialtyShutterSketch(productType: string, options: readonly st
   const code = door ? doorCodes.size === 1 ? [...doorCodes][0] : undefined : codes.size === 1 ? [...codes][0] : undefined;
   if (!code || (codes.has(undefined) && !door) || doorCodes.has(undefined)) return null;
   if (door && shapeValues.length && (!frenchDoorSketch(code) || [...codes].some(shape => shape !== code))) return null;
-  const tiltEntries = new Set(values('tilt','tilt type').map(value => /hidden|invisible/i.test(value) ? 'hidden' : /offset/i.test(value) ? 'offset' : /standard tilt|front center|center ?tilt|tilt bar/i.test(value) ? 'center' : 'unknown'));
+  const tiltEntries = new Set(values('tilt','tilt type').map(value => /hidden|invisible/i.test(value) ? 'hidden' : /offset/i.test(value) ? 'offset' : /^standard$|standard tilt|front center|center ?tilt|tilt bar/i.test(value) ? 'center' : 'unknown'));
   if (tiltEntries.size > 1 || tiltEntries.has('unknown')) return null;
   const flag = (...keys: string[]) => {
     const entries = new Set(values(...keys).map(value => /^(yes|true|1)$/i.test(value) ? true : /^(no|false|0|none)$/i.test(value) ? false : null));

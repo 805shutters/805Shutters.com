@@ -79,3 +79,24 @@ describe('tracked shutter operation references',()=>{
     expect(contractIllustration('Shutters',options)?.operationReference?.src).toContain('bifold-180');
   });
 });
+
+
+describe("saved Onyx split tilt contracts", () => {
+  it.each(["L", "R"])("renders saved standard tilt and split selection for %s without a divider", layout => {
+    const options = ["Shutter type: standard", "Shutter type: Regular", "Tilt: standard", `Panel configuration: ${layout}`, "Divider-rail count: 0", "Split tilt: Yes"];
+    const art = contractIllustration("Shutters", options);
+    expect(art?.src).toContain("shutter-center-split.webp");
+    expect(art?.src).not.toContain("divider");
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters", options, illustrationGeometry:{aspectRatio:34.25/58.5}}));
+    expect(html).toContain('shutter-center-split.webp');
+    expect(html).toContain('Split tilt: upper louvers open, lower louvers closed');
+    expect(html).toContain(`data-shutter-layout="${layout}"`);
+    const ratio = Number(/data-opening-aspect-ratio="([^"]+)"/.exec(html)?.[1]);
+    expect(ratio).toBeCloseTo(34.25/58.5, 8);
+    expect(html).not.toContain("Product reference");
+  });
+  it("continues rejecting conflicting or unknown tilt selections", () => {
+    expect(contractIllustration("Shutters", ["Tilt: standard", "Tilt: hidden", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();
+    expect(contractIllustration("Shutters", ["Tilt: nonstandard", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();
+  });
+});

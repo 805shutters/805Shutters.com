@@ -33,6 +33,7 @@ import {
   ManufacturerCatalogStampChooser,
   ManualQuoteOnlyBadge,
   ShutterBillableAreaLabel,
+  ShutterDesignOptions,
   ShadesAndBlindsOptions,
   mobileShutterMaterialRoutePatch,
   motorizationEligibleControlOptions,
@@ -1911,4 +1912,35 @@ describe("legacy roller canonical pricing transitions", () => {
     setRollerPowerConfiguration(options, "Automate ARC Motor");
     expect(options.motorization_selections).toEqual([]);
   });
+});
+
+
+it("exposes split tilt independently of divider rails in existing and V2 Onyx quotes", () => {
+  for (const authoritative of [false, true]) {
+    const fields = getStandardShutterGridOptions({supplier:"Onyx",material:"Basswood",options_json:{catalog_program_id:"painted_basswood"}} as unknown as SalesQuoteDesign, authoritative);
+    expect(fields.find(field => field.key === "split_tilt")).toMatchObject({label:"Split Tilt", field:"json:split_tilt", type:"yes-no"});
+  }
+});
+
+describe("dedicated Split Tilt control", () => {
+  for (const supplier of ["Onyx", "Norman"]) {
+    for (const value of [undefined, "Yes", "No"]) {
+      it(`${supplier} keeps Yes and No visible with saved value ${value}`, () => {
+        const design = { supplier, material: "Basswood", options_json: {
+          material_type: "Wood", split_tilt: value, divider_rail: "No",
+        }} as unknown as SalesQuoteDesign;
+        const html = renderToStaticMarkup(createElement(ShutterDesignOptions, {
+          design, displayedUnitPrice: 622.85, activeVariant: "A", productType: "Shutters",
+          authoritativeV2: false, onUpdate: () => {}, onUpdateFields: () => {},
+        }));
+        const control = html.match(/<fieldset aria-label="Split Tilt"[\s\S]*?<\/fieldset>/)?.[0];
+        expect(control).toBeDefined();
+        for (const choice of ["Yes", "No"]) {
+          expect(control).toMatch(new RegExp(`aria-pressed="${value === choice}"[^>]*>${choice}</button>`));
+        }
+        expect(html.indexOf('aria-label="Split Tilt"')).toBeLessThan(html.indexOf("More Options"));
+        expect(html).not.toContain('data-option-field="json:split_tilt"');
+      });
+    }
+  }
 });

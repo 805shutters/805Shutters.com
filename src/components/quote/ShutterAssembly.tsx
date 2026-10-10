@@ -1,16 +1,22 @@
 import { useId } from "react";
+import type { ShutterIllustrationGeometry } from "@/lib/quote/shutter-illustration-geometry";
 import styles from "./ContractProductIllustration.module.css";
 
 /** One opening: align the original pencil panels, frame them, then angle the whole unit. */
-export function ShutterAssembly({ src, alt, panels, layout }: {
-  src: string; alt: string; panels: number; layout: string;
+export function ShutterAssembly({ src, alt, panels, layout, geometry }: {
+  src: string; alt: string; panels: number; layout: string; geometry?: ShutterIllustrationGeometry;
 }) {
   const grainId = `shutter-grain-${useId().replace(/:/g, "")}`;
-  const panelWidth = 100;
   const panelHeight = 320;
   const frame = 12;
   const postWidth = 9;
   const tokens = /^[LRT]+$/.test(layout) ? [...layout] : Array<string>(panels).fill("?");
+  const height = panelHeight + frame * 2;
+  const postCount = tokens.filter(token => token === "T").length;
+  const measuredWidth = geometry && Number.isFinite(geometry.aspectRatio)
+    ? height * geometry.aspectRatio : 0;
+  const panelWidth = measuredWidth > 2 * frame + postCount * postWidth + panels
+    ? (measuredWidth - 2 * frame - postCount * postWidth) / panels : 100;
   let cursor = frame;
   const pieces = tokens.map((token, index) => {
     const x = cursor;
@@ -18,13 +24,12 @@ export function ShutterAssembly({ src, alt, panels, layout }: {
     return { token, index, x };
   });
   const width = cursor + frame;
-  const height = panelHeight + frame * 2;
   const rise = width * 0.045;
   const hingePositions = [...new Set(pieces.flatMap(({ token, x }) => token === "L" ? [x] : token === "R" ? [x + panelWidth] : []))];
   return <svg className={styles.shutterAssembly} width={160} height={160}
     viewBox={`-3 -3 ${width + 15} ${height + rise + 8}`}
     role="img" aria-label={alt} data-shutter-assembly="shared-frame"
-    data-panel-count={panels} data-shutter-layout={layout}>
+    data-panel-count={panels} data-shutter-layout={layout} data-opening-aspect-ratio={width / height}>
     <defs>
       <pattern id={grainId} width="19" height="11" patternUnits="userSpaceOnUse">
         <rect width="19" height="11" fill="#e9e8e5" />

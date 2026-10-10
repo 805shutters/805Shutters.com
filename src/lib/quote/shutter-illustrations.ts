@@ -17,7 +17,7 @@ export function shutterIllustration(fields: readonly string[][]) {
   const tilts = new Set(values("tilt", "tilt type").map((value) => {
     if (/hidden|invisible/.test(value)) return "hidden";
     if (/offset/.test(value)) return "unknown";
-    if (/standard tilt|front center|center tilt|tilt bar/.test(value)) return "center";
+    if (/^standard$|standard tilt|front center|center tilt|tilt bar/.test(value)) return "center";
     return "unknown";
   }));
   if (tilts.size !== 1 || tilts.has("unknown")) return null;
