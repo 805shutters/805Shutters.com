@@ -1,3 +1,5 @@
+import { contractProductType } from './contract-product-family';
+
 /** Presentation catalog only. Order choices and pricing remain in the quote catalog. */
 export const VALANCE_ART_ROOT = "/images/contract-illustrations/valances-c-v1";
 const normalize = (value: string) => value.toLowerCase().replace(/[_*-]/g, " ").replace(/[“”″]/g, '"').replace(/\s+/g, " ").trim();
@@ -36,7 +38,7 @@ export function valanceIllustration(productType: string, options: readonly strin
     .map((value) => /^(norman|norman usa)$/.test(value) ? "norman" : /^(polar|polar shades)$/.test(value) ? "polar" : /^(lotus|lotus windoware)$/.test(value) ? "lotus" : value));
   if (manufacturers.size !== 1) return null;
   const manufacturer = [...manufacturers][0];
-  const product = normalize(productType) === "interior roller" ? "roller shades" : normalize(productType);
+  const product = normalize(contractProductType(productType));
   const explicit = fields.filter(([key]) => ["valance", "valance type", "valance style"].includes(key)).map(([, value]) => value);
   let selected = explicit.length ? explicit : fields.filter(([key]) => ["top treatment", "top treatment class", "roller top treatment"].includes(key)).map(([, value]) => value);
   if (!selected.length) {

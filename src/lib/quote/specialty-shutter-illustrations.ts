@@ -1,4 +1,5 @@
 import { NORMAN_SPECIALTY_SHAPES } from './norman-shutter-specialty';
+import { contractProductFamily } from './contract-product-family';
 
 /** Geometry identities shared by our Norman and Onyx drawings. This is artwork,
  * never a supplier's availability, pricing, or factory measurement catalog. */
@@ -34,7 +35,7 @@ export const frenchDoorSketch = (code: string) => FRENCH_DOOR_SKETCH_TYPES.some(
 /** Read the labeled purchased choices used by BOTH staff and public contracts.
  * Missing choices stay missing; ambiguous generic "Arch"/"Raked" are not shapes. */
 export function specialtyShutterSketch(productType: string, options: readonly string[]): SpecialtyShutterSketch | null {
-  if (!/^shutters?$/i.test(productType.trim())) return null;
+  if (contractProductFamily(productType) !== 'shutters') return null;
   const fields = options.flatMap(option => {
     const colon = option.indexOf(':');
     return colon < 0 ? [] : [[normalize(option.slice(0,colon)), option.slice(colon+1).trim()]];

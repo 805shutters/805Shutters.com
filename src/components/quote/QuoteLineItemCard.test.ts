@@ -33,11 +33,13 @@ describe("approved quote line item card", () => {
     expect(render(["Temporary Shade: Yes", "Temporary Shade: No"])).not.toContain("temporary-shade.webp");
   });
 
-  it("retains unknown product specifications without inventing a sketch or finish", () => {
+  it("retains unknown product specifications with a neutral reference instead of a blank", () => {
     const html = renderToStaticMarkup(createElement(QuoteLineItemCard, { ...base, productType: "Custom treatment", options: ["Customer request: Keep the existing hardware"] }));
     expect(html).toContain("Keep the existing hardware");
     expect(html).toContain("Additional details");
-    expect(html).not.toContain('data-contract-illustration="c-v1"');
+    expect(html).toContain('data-contract-illustration="c-v1"');
+    expect(html).toContain('data-product-reference="custom"');
+    expect(html).toContain('See specifications for configuration');
     expect(html).not.toContain("Natural Tan");
   });
 

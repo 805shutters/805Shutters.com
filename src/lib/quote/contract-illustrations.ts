@@ -1,4 +1,5 @@
 import { shutterIllustration } from "./shutter-illustrations";
+import { contractProductFamily } from "./contract-product-family";
 
 /** Approved C artwork. Presentation only; never supplies missing order selections. */
 export const CONTRACT_ART_ROOT = "/images/contract-illustrations/c-v1";
@@ -14,26 +15,14 @@ export type ContractIllustration = {
   operationReference?: { src: string; label: string };
 };
 
-const PRODUCTS: Record<string, string> = {
-  shutters: "shutters", shutter: "shutters",
-  "roller shade": "roller", "roller shades": "roller",
-  "roman shade": "roman", "roman shades": "roman",
-  "honeycomb shade": "honeycomb", "honeycomb shades": "honeycomb",
-  "cellular shade": "honeycomb", "cellular shades": "honeycomb",
-  "sheer shade": "sheer", "sheer shades": "sheer", "smartfold shade": "sheer",
-  "faux wood blind": "faux-wood", "faux wood blinds": "faux-wood",
-  "wood blind": "wood", "wood blinds": "wood",
-  "mini blinds": "mini", "aluminum blind": "mini", "aluminum blinds": "mini",
-  "vertical blind": "vertical", "vertical blinds": "vertical",
-  "smart drape": "smart-drapes", "smart drapes": "smart-drapes", drapery: "smart-drapes", "drapery shades": "smart-drapes",
-};
-
 const normalize = (value: string) => value.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/[_-]/g, " ").replace(/\s+/g, " ").trim();
 
 /** Consume the same labeled specifications printed alongside the drawing. */
 export function contractIllustration(productType: string, options: readonly string[] = []): ContractIllustration | null {
-  const product = PRODUCTS[normalize(productType)];
-  if (!product) return null;
+  const product = contractProductFamily(productType);
+  if (!["shutters", "roller", "roman", "honeycomb", "sheer", "faux-wood", "wood", "mini", "vertical", "smart-drapes"].includes(product)) return null;
+  // Product titles can carry a specialty identity even before options exist.
+  if (/specialty|french door|\barch|\brake|exterior|patio|zip.?screen|cable.guided/i.test(productType)) return null;
   const fields = options.flatMap((option) => {
     const colon = option.indexOf(":");
     const value = colon < 0 ? "" : normalize(option.slice(colon + 1));

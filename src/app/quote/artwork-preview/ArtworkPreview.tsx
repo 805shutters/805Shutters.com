@@ -17,6 +17,7 @@ const examples: [string, string[]][] = [
   ["Sheer Shades", ["Lift System: Cordless"]],
   ["Shutters", ["Panel Config: LR", "Tilt Type: Standard Tilt"]], ["Vertical Blinds", []], ["Smart Drapes", []],
 ];
+const referenceProducts = ['Vinyl Blinds', 'Vertical Honeycomb Shades', 'Woven Wood Shades', 'Fabric Blinds', 'Valances', 'Fabric by Yard', 'Decorative Pillow Covers', 'Vane Packs', 'Palladian Window Shelf', 'Drapery Tracks', 'Tension Shades', 'Retractable Screens', 'Awnings', 'Parts & Accessories', 'Custom treatment'];
 export function ArtworkPreview() {
   const [product,setProduct]=useState("Roller Shades");
   const [operation,setOperation]=useState("Continuous Cord Loop");
@@ -65,6 +66,13 @@ export function ArtworkPreview() {
         <label><input type="checkbox" checked={divider} onChange={e=>setDivider(e.target.checked)} /> Divider rail</label>
       </> : null}
     </div>
+    <section className="no-print" style={{padding:20,maxWidth:1280,margin:'0 auto'}} aria-label="Contract sketch coverage">
+      <h1 style={{fontSize:28,margin:'0 0 16px'}}>Product sketches · contract coverage</h1>
+      <QuoteLineItemCard lineNumber={2} room="Living Room" productType="Cordless Faux Wood Blinds" price="$253.07" styleName={'2" & 2 1/2" Slats Cordless'} options={['Color: P001 - Pure White | Solid - Smooth', 'Fabric color: Pure White', 'Finish: Smooth', 'Mount type: Inside Mount', 'Control side: Left', 'Operating system: Cordless', 'Draw direction: Left', 'Installation: $25.00 (1 × $25)', 'Shipping: $14.00 (1 × $14)']} />
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:20,marginTop:24}}>
+        {referenceProducts.map(name => <div key={name}><h2 style={{fontSize:14,margin:'0 0 8px'}}>{name}</h2><ContractProductIllustration productType={name} /></div>)}
+      </div>
+    </section>
     {product === "Roller Shades" ? <section className="no-print" style={{padding:20,maxWidth:1280,margin:"0 auto"}} aria-label="Roller shade comparison">
       <h1 style={{fontSize:28,margin:"0 0 8px"}}>Roller shade top treatment</h1>
       <p style={{margin:"0 0 20px",color:"#67645e"}}>Preview only · sample configurations. The valance sits over the roll when selected.</p>

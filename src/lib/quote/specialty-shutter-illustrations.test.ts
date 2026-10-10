@@ -30,7 +30,10 @@ describe('805 specialty shutter contract sketches',()=>{
   for(const shape of [['Shutter Type: Arch'],['Shutter Type: Arch Shutters','Specialty Shape: YS13']]){
    const options=[...shape,'Panel Config: LR','Tilt Type: Standard Tilt'];
    expect(specialtyShutterSketch('Shutters',options)).toBeNull();
-   expect(markup(options)).toBe('');
+   const html=markup(options);
+   expect(html).toContain('data-product-reference="custom"');
+   expect(html).not.toContain('data-shutter-assembly=');
+   expect(html).not.toContain('data-specialty-sketch=');
   }
  });
  it('covers 46 exact window shapes and six door profiles',()=>{expect(SPECIALTY_SHUTTER_SKETCHES).toHaveLength(52);expect(new Set(SPECIALTY_SHUTTER_SKETCHES.map(([code])=>code)).size).toBe(52);});
