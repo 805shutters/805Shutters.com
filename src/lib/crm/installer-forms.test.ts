@@ -12,7 +12,7 @@ import {
 import { pendingInstallationHandoffDeliveryState } from "./installation-handoff";
 
 it("routes installer packets to MTS Agent 101", () => {
-  expect(INSTALLER_FORM_RECIPIENT).toBe("mtsagent101@gmail.com");
+  expect(INSTALLER_FORM_RECIPIENT).toBe("mtsinstallations@gmail.com");
 });
 
 describe("installer COD adjustment", () => {

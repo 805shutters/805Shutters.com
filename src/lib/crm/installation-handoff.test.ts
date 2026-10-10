@@ -66,7 +66,7 @@ describe("805 to MTS installation handoff", () => {
       source_sha256: handoff.sha256,
       source_version: handoff.payload.sourceVersion,
       status: "pending_delivery",
-      email_recipient: "mtsagent101@gmail.com",
+      email_recipient: "mtsinstallations@gmail.com",
     });
     expect(installationHandoffPackageFromDeliveryState(state)).toEqual(handoff);
     expect(
@@ -77,7 +77,7 @@ describe("805 to MTS installation handoff", () => {
   it("preserves historical recipient receipts so delivered packets stay deduplicated", () => {
     const state = {
       ...pendingInstallationHandoffDeliveryState(buildTechnicalMeasureInstallationHandoff(input)),
-      email_recipient: "mtsinstallations@gmail.com",
+      email_recipient: "mtsagent101@gmail.com",
       status: "sent",
       sent_at: "2026-09-12T14:00:00.000Z",
       email_message_id: "historical-message",

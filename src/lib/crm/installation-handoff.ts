@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 
 export const INSTALLATION_HANDOFF_SCHEMA_VERSION = "805-mts-installation-handoff-v1";
-export const INSTALLATION_HANDOFF_RECIPIENT = "mtsagent101@gmail.com";
+export const INSTALLATION_HANDOFF_RECIPIENT = "mtsinstallations@gmail.com";
 // Read historical delivery receipts without changing who received them.
-const LEGACY_INSTALLATION_HANDOFF_RECIPIENT = "mtsinstallations@gmail.com";
+const LEGACY_INSTALLATION_HANDOFF_RECIPIENT = "mtsagent101@gmail.com";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

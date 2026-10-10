@@ -24,7 +24,7 @@ type InstallerOutboxStatus = "pending" | "processing" | "retry" | "uncertain" | 
 
 export type FrozenInstallerEmail = {
   to: typeof INSTALLER_FORM_RECIPIENT;
-  // Optional only for immutable payloads frozen before dual-recipient delivery.
+  // Retained for historical frozen payload typing; new packets use the native To only.
   cc?: [typeof INSTALLER_FORM_CC];
   from: typeof INSTALLER_FORM_FROM;
   subject: string;
@@ -155,7 +155,6 @@ async function defaultPrepareBase(
   const message = buildInstallerFormEmail(balanced, url);
   const payload: FrozenInstallerEmail = {
     to: INSTALLER_FORM_RECIPIENT,
-    cc: [INSTALLER_FORM_CC],
     from: INSTALLER_FORM_FROM,
     subject: message.subject,
     html: message.html,
@@ -176,7 +175,8 @@ async function defaultPrepareHandoff(
   claim: InstallerOutboxClaim,
 ): Promise<PreparedDelivery> {
   const form = await defaultLoadForm(supabase, claim) || await ensureInstallerForm(supabase, claim.quote_id);
-  const prepared = await prepareInstallerFormInstallationHandoff(supabase, form);
+  const preparedHandoff = await prepareInstallerFormInstallationHandoff(supabase, form);
+  const prepared = await refreshInstallerCustomerBalance(supabase, preparedHandoff) as InstallerFormRow;
   const handoff = installerFormHandoffPackage(prepared);
   if (!handoff || handoff.sha256 !== claim.version_key) {
     throw new Error("The exact canonical installation handoff version is not available.");
@@ -185,12 +185,16 @@ async function defaultPrepareHandoff(
   const text = `${subject}\n\nCanonical handoff JSON and SHA-256 sidecar are attached. Source version: ${handoff.payload.sourceVersion}`;
   const payload: FrozenInstallerEmail = {
     to: INSTALLER_FORM_RECIPIENT,
-    cc: [INSTALLER_FORM_CC],
     from: INSTALLER_FORM_FROM,
     subject,
     text,
     html: `<div style="font-family:Arial,sans-serif"><h1>${subject}</h1><p>Canonical handoff JSON and SHA-256 sidecar are attached.</p><p>Source version: ${handoff.payload.sourceVersion}</p></div>`,
     attachments: [
+      {
+        filename: `805-Shutters-Installation-Form-${prepared.customer_snapshot.quoteNumber || prepared.id.slice(0, 8)}.pdf`,
+        content: buildInstallerFormPdf(prepared, installerUrl(prepared.public_token)).toString("base64"),
+        contentType: "application/pdf",
+      },
       {
         filename: handoff.jsonFilename,
         content: Buffer.from(handoff.canonicalJson, "utf8").toString("base64"),

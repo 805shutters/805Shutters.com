@@ -36,13 +36,13 @@ const form: InstallerFormRow = {
 };
 
 const payload: FrozenInstallerEmail = {
-  to: "mtsagent101@gmail.com",
+  to: "mtsinstallations@gmail.com",
   from: INSTALLER_FORM_FROM,
   subject: "Installer packet",
   html: "<p>Installer packet</p>",
   text: "Installer packet",
   attachments: [{ filename: "installer.pdf", content: "cGRm", contentType: "application/pdf" }],
-  idempotencyKey: "805-installer-form-10000000-0000-4000-8000-000000000003-base-v1-mtsagent101@gmail.com",
+  idempotencyKey: "805-installer-form-10000000-0000-4000-8000-000000000003-base-v1-mtsinstallations@gmail.com",
 };
 
 function claim(overrides: Partial<InstallerOutboxClaim> = {}): InstallerOutboxClaim {
@@ -96,7 +96,7 @@ function harness(input: {
 const client = {} as never;
 
 describe("installer delivery outbox runtime", () => {
-  it.each(["base_packet", "installation_handoff"] as const)("freezes and submits both recipients with the %s attachments", async (kind) => {
+  it.each(["base_packet", "installation_handoff"] as const)("freezes and submits the native MTS recipient with the %s attachments", async (kind) => {
     const handoff = buildTechnicalMeasureInstallationHandoff({
       sourceCustomerId: "10000000-0000-4000-8000-000000000001",
       sourceJobId: form.job_id!,
@@ -133,12 +133,12 @@ describe("installer delivery outbox runtime", () => {
     const request = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(request).toMatchObject({
       from: "805 Shutters <805@805shutters.com>",
-      to: ["mtsagent101@gmail.com"],
-      cc: ["mtsinstallations@gmail.com"],
+      to: ["mtsinstallations@gmail.com"],
     });
-    expect(request.attachments).toHaveLength(kind === "base_packet" ? 1 : 2);
-    expect(request.attachments[0].filename).toMatch(kind === "base_packet" ? /\.pdf$/ : /\.json$/);
-    expect(h.updates[0].patch.payload).toMatchObject({ to: "mtsagent101@gmail.com", cc: ["mtsinstallations@gmail.com"] });
+    expect(request.cc).toBeUndefined();
+    expect(request.attachments).toHaveLength(kind === "base_packet" ? 1 : 3);
+    expect(request.attachments[0].filename).toMatch(/\.pdf$/);
+    expect(h.updates[0].patch.payload).toMatchObject({ to: "mtsinstallations@gmail.com" });
     expect(h.updates.at(-1)?.patch).toMatchObject({ status: "sent", provider_message_id: "both-recipients" });
   });
 
@@ -164,7 +164,7 @@ describe("installer delivery outbox runtime", () => {
     expect(result).toMatchObject({ processed: 1, pending: 0, blocked: 0, errors: [] });
     expect(h.updates[0].patch).toMatchObject({ payload, idempotency_key: payload.idempotencyKey, form_id: form.id });
     expect(h.send).toHaveBeenCalledWith(expect.objectContaining({
-      to: "mtsagent101@gmail.com",
+      to: "mtsinstallations@gmail.com",
       from: "805 Shutters <805@805shutters.com>",
     }));
     expect(h.recordAccepted).toHaveBeenCalledWith(expect.anything(), form, expect.anything(), expect.objectContaining({ id: "resend-accepted-1" }), expect.any(String));
@@ -353,4 +353,12 @@ describe("installer delivery outbox runtime", () => {
     await expect(processInstallerDeliveryOutbox(client, { dependencies: h.dependencies }))
       .resolves.toMatchObject({ pending: 3, blocked: 2 });
   });
+});
+
+it("blocks an old Agent101 frozen attempt rather than silently changing its destination",async()=>{
+ const old={...payload,to:"mtsagent101@gmail.com"} as unknown as FrozenInstallerEmail;
+ const h=harness({claims:[claim({payload:old,idempotency_key:old.idempotencyKey,first_send_attempt_at:"2026-10-10T15:00:00Z"})]});
+ await processInstallerDeliveryOutbox({} as never,{dependencies:h.dependencies,limit:1});
+ expect(h.send).not.toHaveBeenCalled();
+ expect(h.updates.at(-1)?.patch.status).toBe("blocked");
 });
