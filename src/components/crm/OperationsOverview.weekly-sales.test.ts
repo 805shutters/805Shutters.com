@@ -36,18 +36,52 @@ afterEach(async () => {
   host.remove(); vi.useRealTimers(); vi.unstubAllGlobals();
 });
 
-it("keeps the selected sales week independent of dashboard period filters", async () => {
+it("preserves the selected sales week when switching through monthly and longer period filters", async () => {
   await render();
   await click(previous());
   await click(card().querySelector<HTMLButtonElement>("button")!);
   for (const tab of host.querySelectorAll<HTMLButtonElement>('[role="tab"]')) {
     await click(tab);
+    if (tab.textContent === "Monthly") {
+      expect(host.textContent).toContain("Monthly gross revenue");
+      expect(host.textContent).toContain("$36,718.55");
+      expect(host.textContent).toContain("Current week customer");
+      continue;
+    }
     expect(card().dataset.salesStatus).toBe("below");
     expect(card().textContent).toContain("$5,000.00");
     expect(card().textContent).toContain("Sep 14 – Sep 20, 2026");
     expect(host.textContent).toContain("Prior week customer");
     expect(host.textContent).not.toContain("Current week customer");
   }
+});
+
+it("browses calendar months, shows the monthly average, and opens monthly details instead of weekly history", async () => {
+  const onSales = vi.fn();
+  await act(async () => root.render(createElement(OperationsDashboard, { data: fixture(), busy: false, onOpen: vi.fn(), onSales })));
+  await click(host.querySelector<HTMLButtonElement>('#period-monthly')!);
+  const monthlyCard = () => host.querySelector<HTMLElement>('[aria-label="Average monthly gross revenue"]')!.parentElement!;
+  expect(monthlyCard().textContent).toContain("$36,718.55");
+  expect(monthlyCard().textContent).toContain("Sep 1 – Sep 30, 2026");
+  expect(monthlyCard().textContent).not.toContain("Goal");
+  expect(host.querySelector('[aria-label="Average monthly gross revenue"]')!.textContent).toBe("Monthly average$0.00");
+  await click(monthlyCard().querySelector<HTMLButtonElement>('button')!);
+  expect(onSales).not.toHaveBeenCalled();
+  expect(host.textContent).toContain("Current week customer");
+  await click(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!);
+  expect(monthlyCard().textContent).toContain("Aug 1 – Aug 31, 2026");
+  expect(monthlyCard().textContent).toContain("$0.00");
+  expect(host.textContent).toContain("No signed sales in this month.");
+  await click(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!);
+  expect(monthlyCard().textContent).toContain("Jul 1 – Jul 31, 2026");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!.disabled).toBe(true);
+  await click(host.querySelector<HTMLButtonElement>('[aria-label="Next sales month"]')!);
+  expect(monthlyCard().textContent).toContain("Aug 1 – Aug 31, 2026");
+  await click([...host.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === "This month")!);
+  expect(monthlyCard().textContent).toContain("Month to date");
+  await click(host.querySelector<HTMLButtonElement>('#period-weekly')!);
+  await click(card().querySelector<HTMLButtonElement>('button')!);
+  expect(onSales).toHaveBeenCalledWith("2026-09-21");
 });
 
 it("browses consecutive weeks including zero-sales weeks, updates details, and stops at history boundaries", async () => {
@@ -94,4 +128,8 @@ it("disables navigation when sales history is unavailable", async () => {
   expect(previous().disabled).toBe(true);
   expect(next().disabled).toBe(true);
   expect(reset().disabled).toBe(true);
+  await click(host.querySelector<HTMLButtonElement>('#period-monthly')!);
+  expect(host.textContent).toContain("Monthly gross revenueUnavailable");
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Previous sales month"]')!.disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('[aria-label="Next sales month"]')!.disabled).toBe(true);
 });

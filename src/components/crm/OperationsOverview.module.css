@@ -268,7 +268,7 @@
 .salesWeekNavigation button:not(:disabled):hover { background:#ffffff22; }
 .salesWeekNavigation button:focus-visible, .salesMetricDetails:focus-visible { outline:2px solid #fff; outline-offset:3px; }
 
-.salesAverage { display:flex; align-items:baseline; gap:6px; margin-top:8px; font-size:13px; line-height:1.4; white-space:nowrap; }
+.salesAverage { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px; margin-top:8px; font-size:13px; line-height:1.4; white-space:nowrap; }
 .salesAverage > span { font-size:inherit; }
 .salesAverage > strong { font-size:inherit; }
 

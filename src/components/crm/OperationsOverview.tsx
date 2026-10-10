@@ -6,6 +6,7 @@ import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Ruler, Search, Trash2 } from "lucide-react";
 import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
+import { monthlyGrossSales, monthlySalesAverage } from "@/lib/crm/monthly-sales";
 import { weeklySalesAverage } from "@/lib/crm/weekly-sales-average";
 import type { CrmCalendarEvent, CrmCustomerFile, CrmDashboardData } from "@/lib/crm/types";
 import { WEEKLY_GROSS_SALES_GOAL_CENTS, performancePeriods, type PerformancePeriod, attentionDetail, buildOperationsItems, buildPerformanceMetrics, currency, formatOperationsDate, stepComplete, workflowLabels, workflowSteps, workflowSummary, type OperationsItem, type ProductProgress, type WorkflowStep } from "@/lib/crm/operations-overview";
@@ -34,6 +35,7 @@ function Ring({ value }: { value: number | null }) {
 }
 export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onPayments }: Props) {
   const [period, setPeriod] = useState<PerformancePeriod>("weekly");
+  const [salesMonthStart, setSalesMonthStart] = useState<string | null>(null);
   const [salesWeekStart, setSalesWeekStart] = useState<string | null>(null);
   const [step, setStep] = useState<WorkflowStep>("ordered");
   const [metric, setMetric] = useState<"close" | "quoted" | "gross" | "cash" | null>(null);
@@ -46,12 +48,19 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
   const salesWeek = metrics.grossWeeks[salesWeekIndex] || { start: metrics.weekStart, end: metrics.weekEnd, grossCents: null, status: "unavailable", sales: [], isCurrent: true };
   const hasEarlierWeek = salesWeekIndex + 1 < metrics.grossWeeks.length;
   const hasLaterWeek = salesWeekIndex > 0;
-  const average = weeklySalesAverage(data.closedSales, Number((salesWeek.isCurrent ? metrics.today : salesWeek.start).slice(0, 4)), metrics.weekStart);
+  const isMonthly = period === "monthly";
+  const grossMonths = monthlyGrossSales(data.closedSales, metrics.today);
+  const salesMonthIndex = Math.max(0, grossMonths.findIndex(month => month.start === (salesMonthStart || metrics.monthStart)));
+  const salesMonth = grossMonths[salesMonthIndex] || { start: metrics.monthStart, end: metrics.today, grossCents: null, sales: [], isCurrent: true };
+  const salesPeriod = isMonthly ? salesMonth : salesWeek;
+  const hasEarlier = isMonthly ? Boolean(data.closedSales) && salesMonthIndex + 1 < grossMonths.length : hasEarlierWeek;
+  const hasLater = isMonthly ? Boolean(data.closedSales) && salesMonthIndex > 0 : hasLaterWeek;
+  const average = isMonthly ? monthlySalesAverage(data.closedSales, Number(salesMonth.start.slice(0, 4)), metrics.today) : weeklySalesAverage(data.closedSales, Number((salesWeek.isCurrent ? metrics.today : salesWeek.start).slice(0, 4)), metrics.weekStart);
   const dateRange = `${displayDate(selected.start)} – ${displayDate(selected.end)}`;
   const definitions = {
     close: "Customers first sent a quote in this period who have a dated sale, divided by all customers first sent a quote in this period. Each customer counts once; quote alternatives do not inflate the rate.",
     quoted: "Unique customers first sent a quote in this period. Repeat quotes and quote alternatives count once per customer.",
-    gross: "Signed contract value for the selected Monday–Sunday week in Los Angeles time. Use the arrows to browse weeks; This week returns to the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately. The average uses actual recorded signed gross sales in the displayed calendar year, starting with June 29–July 5 as Week 1 for 2026. Earlier weeks are excluded from goal tracking and the average. Later calendar years start January 1. Every completed week from that starting point is included, even with zero sales. The current year stops at the last completed Sunday. Weeks crossing January 1 count in each year using only that year’s sales.",
+    gross: isMonthly ? "Signed contract value for the selected calendar month in Los Angeles time. Use the arrows to browse months; This month returns to the current month. Monthly average uses completed calendar months in the displayed year, including zero-sales months and excluding the current partial month. Tracking starts July 2026, the first full month after the June 29 reporting baseline. Later years start January 1. Deposits and balance receipts are reported separately." : "Signed contract value for the selected Monday–Sunday week in Los Angeles time. Use the arrows to browse weeks; This week returns to the current week. The weekly goal is $14,000: red below the goal and green at or above it. Deposits and balance receipts are reported separately. The average uses actual recorded signed gross sales in the displayed calendar year, starting with June 29–July 5 as Week 1 for 2026. Earlier weeks are excluded from goal tracking and the average. Later calendar years start January 1. Every completed week from that starting point is included, even with zero sales. The current year stops at the last completed Sunday. Weeks crossing January 1 count in each year using only that year’s sales.",
     cash: "Recorded customer payments received in the selected period, including deposits and balances, less recorded refunds. Credits and invoices are not cash receipts. This is not profit."
   };
   const cohort = metric === "close" || metric === "quoted" ? selected.cohort : null;
@@ -70,27 +79,27 @@ export function OperationsDashboard({ data, busy, onOpen, onStatus, onSales, onP
     <div className={styles.metrics}>
       <button type="button" className={styles.metric} aria-expanded={metric === "close"} onClick={() => setMetric(metric === "close" ? null : "close")}><span>Close rate</span><div><strong>{selected.cohort.percent === null ? "—" : `${selected.cohort.percent.toFixed(1)}%`}</strong><Ring value={selected.cohort.percent} /></div><small>{selected.cohort.sold} sold / {selected.cohort.quoted} quoted customers</small><small>{dateRange}</small></button>
       <button type="button" className={styles.metric} aria-expanded={metric === "quoted"} onClick={() => setMetric(metric === "quoted" ? null : "quoted")}><span>Quoted customers</span><div><strong>{selected.cohort.quoted}</strong></div><small>Unique customers first quoted</small><small>{dateRange}</small></button>
-      <div className={`${styles.metric} ${styles.salesMetric}`} data-sales-status={salesWeek.status}>
-        <button type="button" className={styles.salesMetricDetails} aria-expanded={onSales ? undefined : metric === "gross"} onClick={() => onSales ? onSales(salesWeek.start) : setMetric(metric === "gross" ? null : "gross")}>
-          <span>Weekly gross sales status</span>
-          <div><strong>{salesWeek.grossCents === null ? "Unavailable" : currency(salesWeek.grossCents / 100)}</strong></div>
-          <small>{salesWeek.status === "unavailable" ? "Status unavailable" : salesWeek.status === "met" ? "Goal met" : "Below goal"} · Goal {currency(WEEKLY_GROSS_SALES_GOAL_CENTS / 100)}</small>
-          <small>Signed contract value · {salesWeek.isCurrent ? "Week to date" : "Completed week"}</small>
-          <small>{displayDate(salesWeek.start)}{salesWeek.start.slice(0, 4) !== salesWeek.end.slice(0, 4) ? `, ${salesWeek.start.slice(0, 4)}` : ""} – {displayDate(salesWeek.end)}, {salesWeek.end.slice(0, 4)} · Mon–Sun</small>
+      <div className={`${styles.metric} ${styles.salesMetric}`} data-sales-status={isMonthly ? undefined : salesWeek.status}>
+        <button type="button" className={styles.salesMetricDetails} aria-expanded={onSales && !isMonthly ? undefined : metric === "gross"} onClick={() => onSales && !isMonthly ? onSales(salesWeek.start) : setMetric(metric === "gross" ? null : "gross")}>
+          <span>{isMonthly ? "Monthly gross revenue" : "Weekly gross sales status"}</span>
+          <div><strong>{salesPeriod.grossCents === null ? "Unavailable" : currency(salesPeriod.grossCents / 100)}</strong></div>
+          {!isMonthly && <small>{salesWeek.status === "unavailable" ? "Status unavailable" : salesWeek.status === "met" ? "Goal met" : "Below goal"} · Goal {currency(WEEKLY_GROSS_SALES_GOAL_CENTS / 100)}</small>}
+          <small>Signed contract value · {isMonthly ? salesMonth.isCurrent ? "Month to date" : "Completed month" : salesWeek.isCurrent ? "Week to date" : "Completed week"}</small>
+          <small>{displayDate(salesPeriod.start)}{salesPeriod.start.slice(0, 4) !== salesPeriod.end.slice(0, 4) ? `, ${salesPeriod.start.slice(0, 4)}` : ""} – {displayDate(salesPeriod.end)}, {salesPeriod.end.slice(0, 4)}{isMonthly ? "" : " · Mon–Sun"}</small>
         </button>
-        <nav className={styles.salesWeekNavigation} aria-label="Weekly gross sales navigation">
-          <button type="button" aria-label="Previous sales week" title="Previous week" disabled={!hasEarlierWeek} onClick={() => setSalesWeekStart(metrics.grossWeeks[salesWeekIndex + 1].start)}><ArrowLeft size={18} aria-hidden="true" /></button>
-          <button type="button" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(null)}>This week</button>
-          <button type="button" aria-label="Next sales week" title="Next week" disabled={!hasLaterWeek} onClick={() => setSalesWeekStart(salesWeekIndex === 1 ? null : metrics.grossWeeks[salesWeekIndex - 1].start)}><ArrowRight size={18} aria-hidden="true" /></button>
+        <nav className={styles.salesWeekNavigation} aria-label={isMonthly ? "Monthly gross revenue navigation" : "Weekly gross sales navigation"}>
+          <button type="button" aria-label={isMonthly ? "Previous sales month" : "Previous sales week"} title={isMonthly ? "Previous month" : "Previous week"} disabled={!hasEarlier} onClick={() => isMonthly ? setSalesMonthStart(grossMonths[salesMonthIndex + 1].start) : setSalesWeekStart(metrics.grossWeeks[salesWeekIndex + 1].start)}><ArrowLeft size={18} aria-hidden="true" /></button>
+          <button type="button" disabled={!hasLater} onClick={() => isMonthly ? setSalesMonthStart(null) : setSalesWeekStart(null)}>{isMonthly ? "This month" : "This week"}</button>
+          <button type="button" aria-label={isMonthly ? "Next sales month" : "Next sales week"} title={isMonthly ? "Next month" : "Next week"} disabled={!hasLater} onClick={() => isMonthly ? setSalesMonthStart(salesMonthIndex === 1 ? null : grossMonths[salesMonthIndex - 1].start) : setSalesWeekStart(salesWeekIndex === 1 ? null : metrics.grossWeeks[salesWeekIndex - 1].start)}><ArrowRight size={18} aria-hidden="true" /></button>
         </nav>
-        <section className={styles.salesAverage} aria-label="Average weekly gross sales">
-          <span>AVG</span>
+        <section className={styles.salesAverage} aria-label={isMonthly ? "Average monthly gross revenue" : "Average weekly gross sales"} title={isMonthly ? "Completed calendar months in this year, starting July 2026; includes zero-sales months and excludes the current partial month." : undefined}>
+          <span>{isMonthly ? "Monthly average" : "AVG"}</span>
           <strong>{average.averageCents === null ? "—" : currency(average.averageCents / 100)}</strong>
         </section>
       </div>
       <button type="button" className={styles.metric} aria-expanded={metric === "cash"} onClick={() => setMetric(metric === "cash" ? null : "cash")}><span>Payments collected</span><div><strong>{currency(selected.cashCents / 100)}</strong></div><small>Deposits + balances, less refunds</small><small>{dateRange}</small></button>
     </div>
-    {metric && <section className={styles.explanation}><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <>{salesWeek.grossCents === null ? <p>Signed sales history is unavailable.</p> : salesWeek.sales.length ? <ul>{salesWeek.sales.map(sale => <li key={sale.id}>{sale.customerName} · {sale.reference} · {currency(sale.amountCents / 100)}</li>)}</ul> : <p>No signed sales in this week.</p>}<button type="button" onClick={() => onSales?.(salesWeek.start)}>Open signed sales history <ArrowRight size={14} /></button></>}{metric === "cash" && <><p>{selected.receipts.length} dated receipts in this period · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onPayments}>Open payment records <ArrowRight size={14} /></button></>}</section>}
+    {metric && <section className={styles.explanation}><p>{definitions[metric]}</p>{cohort && <><p>{metrics.missingQuoteDates} quote records lack a valid sent date and cannot establish a cohort.</p>{cohort.customers.length ? <ul>{cohort.customers.map(person => <li key={person.id}>{person.name} · {person.sold ? "Sold" : "Sale pending"}</li>)}</ul> : <p>No dated quoted customers in this period.</p>}</>}{metric === "gross" && <>{salesPeriod.grossCents === null ? <p>Signed sales history is unavailable.</p> : salesPeriod.sales.length ? <ul>{salesPeriod.sales.map(sale => <li key={sale.id}>{sale.customerName} · {sale.reference} · {currency(sale.amountCents / 100)}</li>)}</ul> : <p>No signed sales in this {isMonthly ? "month" : "week"}.</p>}{!isMonthly && <button type="button" onClick={() => onSales?.(salesWeek.start)}>Open signed sales history <ArrowRight size={14} /></button>}</>}{metric === "cash" && <><p>{selected.receipts.length} dated receipts in this period · {metrics.missingPaymentDates} receipt records have missing, invalid, or future dates.</p><button type="button" onClick={onPayments}>Open payment records <ArrowRight size={14} /></button></>}</section>}
     </div>
     <div className={styles.sectionHeading}><h2>Workflow completion</h2><span>Select a step to see what needs attention</span></div>
     <div className={styles.stages}>{workflowSteps.map(id => { const value = workflowSummary(items, id); return <button key={id} type="button" aria-pressed={step === id} className={styles.stage} onClick={() => setStep(id)}><div><span>{workflowLabels[id]}</span><CompletionMark done={value.total > 0 && value.done === value.total && value.unknown === 0} /></div><strong>{value.done}<small> / {value.total}</small></strong><small>{value.unit}</small><span>{value.total ? `${Math.round(value.done / value.total * 100)}% complete` : "No records"}</span>{value.unknown > 0 && <small>{value.unknown} jobs need product details</small>}</button>; })}</div>
