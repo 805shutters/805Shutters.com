@@ -152,7 +152,9 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Callie - Linen");
     expect(html).toContain("Control type");
     expect(html).toContain("Cordless");
-    expect(html).toContain("(Inside Mount)");
+    expect(html).not.toContain("(Inside Mount)");
+    const construction = html.match(/<section[^>]*aria-label="Construction &amp; fit"[\s\S]*?<\/section>/)?.[0];
+    expect(construction).toContain("Inside Mount");
     expect(html).toContain("Inside Mount");
     expect(html).toContain("Valance");
     expect(html).toContain("Cassette");
