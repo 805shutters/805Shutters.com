@@ -32,7 +32,7 @@ import { MobileRoomSelector } from "./MobileRoomSelector";
 import styles from "./MobileQuoteWalkthrough.module.css";
 import { MobileSupplierSequence } from './MobileSupplierSequence';
 import { MobileCostMultiplierButtons, MobileSupplierSubmission } from './MobileSupplierSubmission';
-import { jobSettings, patchSupplierInputs, selectSupplierFamily, selectSupplierManufacturer } from '@/lib/crm/mobile-supplier-spec';
+import { jobSettings, prepareMobileSupplierDraft, patchSupplierInputs, selectSupplierFamily, selectSupplierManufacturer } from '@/lib/crm/mobile-supplier-spec';
 import supplierStyles from './MobileSupplierWorkflow.module.css';
 
 type Tab = "scheduled" | "today" | "add" | "sold";
@@ -319,9 +319,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       ((customer.jobId && item.customer.jobId === customer.jobId) ||
         (customer.sourceId && item.customer.sourceId === customer.sourceId)),
     );
-    const next = existing || createMobileQuoteDraft(owner, customer);
-    // Existing frozen legacy submissions retain their original resumable path.
-    if (!next.submission.snapshot && !next.submission.quoteId) {next.draftJob = jobSettings(next);next.workflowMode="full-design";}
+    const next = prepareMobileSupplierDraft(existing || createMobileQuoteDraft(owner, customer));
     setDraft(next); setScreen(next.submission.snapshot || next.draftJob?.submittedSpec ? "review" : "build"); setError(""); window.scrollTo(0, 0);
   }
 
@@ -659,7 +657,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       </nav>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <section className={styles.homeContent}>
-        {drafts.some((item) => isMobileQuoteDraftAccessible(item)) && <div className={styles.resume}><div className={styles.sectionTitle}><small>SAVED ON THIS DEVICE</small><h2>Resume a draft</h2></div>{drafts.filter((item) => isMobileQuoteDraftAccessible(item)).map((item) => <button className={styles.customer} key={item.id} onClick={() => { setDraft(item); setScreen(item.submission.snapshot || item.draftJob?.submittedSpec ? "review" : "build"); setError(""); }}><span><strong>{item.customer.name}</strong><small>{item.windows.length} window{item.windows.length === 1 ? "" : "s"} · saved {new Date(item.updatedAt).toLocaleString()}</small></span><ChevronRight /></button>)}</div>}
+        {drafts.some((item) => isMobileQuoteDraftAccessible(item)) && <div className={styles.resume}><div className={styles.sectionTitle}><small>SAVED ON THIS DEVICE</small><h2>Resume a draft</h2></div>{drafts.filter((item) => isMobileQuoteDraftAccessible(item)).map((item) => <button className={styles.customer} key={item.id} onClick={() => { const next = prepareMobileSupplierDraft(item); setDraft(next); setScreen(next.submission.snapshot || next.draftJob?.submittedSpec ? "review" : "build"); setError(""); }}><span><strong>{item.customer.name}</strong><small>{item.windows.length} window{item.windows.length === 1 ? "" : "s"} · saved {new Date(item.updatedAt).toLocaleString()}</small></span><ChevronRight /></button>)}</div>}
         {(tab === "today" || tab === "scheduled") && <>
           <div className={styles.sectionTitle}><small>{tab === "today" ? `${mobileQuoteLosAngelesDate()} · Pacific time` : "Next 14 days · Pacific time"}</small><h2>{tab === "today" ? "Today’s sales consultations" : "Scheduled consultations"}</h2></div>
           {query.trim().length >= 2 && <div className={styles.searchResults}><small>Customer search results</small>{customers.map((customer) => <button className={styles.customer} key={customer.jobId} onClick={() => start({ kind: "existing", ...customer, appointmentDate: null })}><span><strong>{customer.name}</strong><small>{customer.address || "Address unavailable"}</small></span><ChevronRight /></button>)}{customerNextCursor && <button type="button" className={styles.outline} disabled={customersLoadingMore} onClick={() => void loadMoreCustomers()}>{customersLoadingMore ? "Loading more customers…" : "Load more customers"}</button>}</div>}

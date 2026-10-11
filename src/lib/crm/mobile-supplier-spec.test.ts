@@ -1,9 +1,31 @@
 import { describe,it,expect } from 'vitest';
 import { addMobileQuoteWindow,createMobileQuoteDraft,emptyMobileQuoteDesign,selectMobileQuoteProduct,updateMobileQuoteDesign,setMobileQuoteLinePrice,selectMobileQuoteRoom } from './mobile-quote-draft';
-import { COST_MULTIPLIERS,MOBILE_PRODUCT_FAMILIES,buildSupplierSpec,jobSettings,lineInputs,patchSupplierInputs,selectSupplierFamily,selectSupplierManufacturer,validateSupplierSpec,canonicalJson } from './mobile-supplier-spec';
+import { COST_MULTIPLIERS,MOBILE_PRODUCT_FAMILIES,buildSupplierSpec,jobSettings,prepareMobileSupplierDraft,lineInputs,patchSupplierInputs,selectSupplierFamily,selectSupplierManufacturer,validateSupplierSpec,canonicalJson } from './mobile-supplier-spec';
 
 import { syntheticDraft } from './mobile-supplier-test-fixture';
 describe('mobile supplier spec',()=>{
+  it('resumes an older editable device draft in the current design without altering saved content',()=>{
+    const draft=syntheticDraft();delete draft.draftJob;draft.workflowMode='measure-first';
+    draft.windows[0].manualAllInPrice='123.45';draft.windows[0].families.roller.design.options_json.manual_price_override=true;
+    draft.windows[0].families.roller.design.unit_price=123.45;
+    const before=structuredClone(draft),next=prepareMobileSupplierDraft(draft);
+    expect(draft).toEqual(before);expect(next).toEqual({...before,workflowMode:'full-design',draftJob:jobSettings(before)});
+    expect(next.windows).toBe(draft.windows);expect(prepareMobileSupplierDraft(next)).toBe(next);
+  });
+  it('preserves the original path for existing CRM quotes and frozen supplier or legacy snapshots',()=>{
+    const quote=syntheticDraft();delete quote.draftJob;quote.submission.quoteId='55555555-5555-4555-8555-555555555555';
+    expect(prepareMobileSupplierDraft(quote)).toBe(quote);
+    const submitted=syntheticDraft();submitted.draftJob!.submittedSpec=buildSupplierSpec(submitted);
+    expect(prepareMobileSupplierDraft(submitted)).toBe(submitted);
+    const frozen=syntheticDraft();delete frozen.draftJob;
+    frozen.submission.snapshot={customer:frozen.customer,windows:structuredClone(frozen.windows),createdAt:frozen.updatedAt,requiresManualPricing:true};
+    expect(prepareMobileSupplierDraft(frozen)).toBe(frozen);
+  });
+  it('keeps existing supplier job identity, multiplier and tax decisions when opening a draft',()=>{
+    const draft=syntheticDraft();draft.workflowMode='measure-first';draft.draftJob!.jobId='SYNTHETIC JOB';
+    const next=prepareMobileSupplierDraft(draft);expect(next.draftJob).toBe(draft.draftJob);
+    expect(next.draftJob!.multiplier).toBe('2');expect(next.draftJob!.requestId).toBe(draft.draftJob!.requestId);
+  });
   it('offers exactly nine unique families and eight cost factors',()=>{
     expect(MOBILE_PRODUCT_FAMILIES).toEqual(['Shutters','Faux Wood Blinds','Wood Blinds','Roman Shades','Sheer Shades','Vertical Blinds','Roller Shades','Honeycomb Shades','Drapery']);
     expect(new Set(MOBILE_PRODUCT_FAMILIES).size).toBe(9);expect(COST_MULTIPLIERS).toEqual(['1.75','2','2.25','2.5','2.75','3','3.25','3.5']);

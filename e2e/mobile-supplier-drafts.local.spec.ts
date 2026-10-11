@@ -47,3 +47,17 @@ test('production design rollout keeps submission disabled and the saved source e
  await expect(page.getByRole('button',{name:'Submit',exact:true})).toBeDisabled();await expect(page.getByRole('status').filter({hasText:'Supplier costing is not connected yet'})).toBeVisible();expect(state.requests).toHaveLength(0);await page.screenshot({path:'test-results/supplier-design-rollout-390.png',fullPage:true});
  await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();await expect(page.getByRole('button',{name:/^1 family /i})).toBeVisible();expect(state.requests).toHaveLength(0);expect(state.errors).toEqual([]);
 });
+
+test('an older device draft resumes in the new design with measurements and manual price intact',async({page})=>{
+ await page.setViewportSize({width:390,height:844});const state=await setup(page,true);await roller(page);await dimensions(page);await minimalOptions(page);
+ const readSaved=()=>page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('805-mobile-quotes',2);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});return await new Promise<any[]>((resolve,reject)=>{const tx=db.transaction('drafts','readonly'),request=tx.objectStore('drafts').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);tx.oncomplete=()=>db.close();});});
+ await expect.poll(async()=>{const rows=await readSaved();return rows[0]?.value.windows[0].heightFraction;}).toBe('15/16');
+ await expect.poll(async()=>{const rows=await readSaved();return rows[0]?.value.draftJob?.multiplier;}).toBe('2');
+ const before=await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('805-mobile-quotes',2);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts');const request=store.getAll();let draft:any;request.onsuccess=()=>{const row=request.result[0];draft=row.value;delete draft.draftJob;draft.windows[0].manualAllInPrice='123.45';draft.windows[0].notes='SYNTHETIC preserved draft note';store.put(row);};await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();return draft;});
+ await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();
+ await expect(page.getByRole('button',{name:/^1 family /i})).toBeVisible();await expect(page.getByRole('button',{name:/36 3\/16″ × 60 15\/16″/})).toBeVisible();
+ await page.getByRole('button',{name:/^1 family /i}).click();await expect(page.getByRole('group',{name:'Product family',exact:true})).toBeVisible();
+ await expect.poll(async()=>{const rows=await readSaved();return Boolean(rows[0]?.value.draftJob);}).toBe(true);
+ const after=(await readSaved())[0].value;expect(after.windows).toEqual(before.windows);expect(after.customer).toEqual(before.customer);expect(after.submission).toEqual(before.submission);expect(after.id).toBe(before.id);
+ expect(state.requests).toHaveLength(0);expect(state.errors).toEqual([]);await page.screenshot({path:'test-results/supplier-legacy-resume-390.png',fullPage:true});
+});

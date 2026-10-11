@@ -40,6 +40,12 @@ export function jobSettings(draft: MobileQuoteDraft): DraftJobSettings {
   return draft.draftJob || { version: 1, multiplier: null, requestId: `mobile-supplier:${draft.id}:1`, jobId: null, submittedSpec: null,
     tax: { treatment: 'unresolved', amount: null, instruction: '' }, comparisonMode: 'mixed_lines' };
 }
+/** Open editable device drafts in the current design without changing their saved content. */
+export function prepareMobileSupplierDraft(draft: MobileQuoteDraft): MobileQuoteDraft {
+  if (draft.submission.snapshot || draft.submission.quoteId || draft.draftJob?.submittedSpec) return draft;
+  if (draft.draftJob && draft.workflowMode === 'full-design') return draft;
+  return { ...draft, draftJob: jobSettings(draft), workflowMode: 'full-design' };
+}
 export function patchSupplierInputs(draft: MobileQuoteDraft, id: string, patch: Partial<SupplierLineInputs>): MobileQuoteDraft {
   if (jobSettings(draft).submittedSpec || draft.submission.snapshot) return draft;
   const next = structuredClone(draft); const line = next.windows.find(line => line.id === id);

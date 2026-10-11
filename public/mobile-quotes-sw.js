@@ -1,4 +1,4 @@
-const CACHE_NAME = "mobile-quotes-shell-v2";
+const CACHE_NAME = "mobile-quotes-shell-v3";
 const SHELL_PATH = "/crm/mobile/quotes";
 const STATIC_PREFIX = "/_next/static/";
 
@@ -17,7 +17,7 @@ function isAllowedStaticUrl(value) {
 
 async function cacheShell() {
   try {
-    const response = await fetch(`${SHELL_PATH}/`, { credentials: "same-origin", redirect: "follow" });
+    const response = await fetch(`${SHELL_PATH}/`, { credentials: "same-origin", redirect: "follow", cache: "reload" });
     const finalUrl = new URL(response.url);
     if (!response.ok || !isShellUrl(finalUrl)) return;
     const cache = await caches.open(CACHE_NAME);
