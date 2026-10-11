@@ -94,6 +94,36 @@ export function contractAnatomy(productType: string, options: readonly string[],
 export const isFinishDetail = (detail: { label: string }) => /fabric|colou?r|finish|material|opacity|light control|lining|texture|weave/i.test(detail.label);
 export const isMountDetail = (detail: { label: string; value: string }) => /mount/i.test(detail.label) || /^(inside|outside) mount$/i.test(detail.value);
 
+/** Place complete option cards in facing pairs, regardless of category.
+ * Categories stay intact; card counts differ by at most one. Within each pair,
+ * favor the physical control side and similar amounts of text on each side. */
+export function balancedAnatomyCallouts<T extends AnatomyCallout>(callouts: readonly T[]): T[] {
+  const ordered = ANATOMY_SELECTION_GROUPS.flatMap(group => callouts.filter(c => anatomySelectionGroup(c.details[0].label) === group));
+  const load = {left: 0, right: 0};
+  const weight = (c: T) => c.details.reduce((sum, d) => sum + 1 + Math.ceil(d.value.length / 30), 0);
+  const preference = (c: T, side: 'left' | 'right') => {
+    const physicalSide = c.anchor === 'cord-loop' ? (c.point[0] < 50 ? 'left' : 'right') : c.side;
+    return side === physicalSide ? 0 : c.anchor ? 12 : 1;
+  };
+  const result: T[] = [];
+  for (let i = 0; i < ordered.length; i += 2) {
+    const a = ordered[i], b = ordered[i + 1];
+    if (!b) {
+      const side = result.filter(c => c.side === 'left').length > result.filter(c => c.side === 'right').length ? 'right'
+        : result.filter(c => c.side === 'right').length > result.filter(c => c.side === 'left').length ? 'left'
+        : load.left <= load.right ? 'left' : 'right';
+      result.push({...a, side});
+      break;
+    }
+    const normal = Math.abs(load.left + weight(a) - load.right - weight(b)) + preference(a, 'left') + preference(b, 'right');
+    const swapped = Math.abs(load.left + weight(b) - load.right - weight(a)) + preference(b, 'left') + preference(a, 'right');
+    const [left, right] = swapped < normal ? [b, a] : [a, b];
+    result.push({...left, side: 'left'}, {...right, side: 'right'});
+    load.left += weight(left); load.right += weight(right);
+  }
+  return result;
+}
+
 /** Complete label-only model shared by saved contracts and the catalogue review. */
 export function contractAnatomyLabels(productType: string, options: readonly string[], styleName = '', layout = 'grouped') {
     const source = contractAnatomy(productType, options, styleName);
@@ -131,7 +161,7 @@ export function contractAnatomyLabels(productType: string, options: readonly str
         const details = c.details.filter(d => anatomySelectionGroup(d.label) === group);
         return details.length ? [{...c, details, side: (group === 'Design & color' || group === 'Valance' ? 'left' : 'right') as 'left' | 'right'}] : [];
       }));
-      callouts.splice(0, callouts.length, ...separated);
+      callouts.splice(0, callouts.length, ...balancedAnatomyCallouts(separated));
     }
     return { ...anatomy, callouts, notes };
 }

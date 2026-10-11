@@ -4,12 +4,36 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { anatomyReferenceArtwork } from './anatomy-reference-artwork';
 import { ContractAnatomy } from '@/components/quote/ContractAnatomy';
-import { contractAnatomy, anatomySelectionGroup } from './contract-anatomy';
+import { contractAnatomy, contractAnatomyLabels, anatomySelectionGroup } from './contract-anatomy';
 import { anatomyPreviewProduct, anatomyProductIndex } from './contract-anatomy-catalog';
 import { catalog } from './catalog';
 import { PRODUCT_TYPES } from '@mts/lib/quoteConstants';
 
 describe('visual contract catalog and saved selections', () => {
+  it('balances crowded shutter details into facing rows without dropping selections', () => {
+    const options = ['Material: Bassia','Color: 100_Pure White','Hinge Color: Match','Tilt: standard','Split Tilt: No','Louver Size: 3 1/2 inch','Frame: Z Crest FS','Panel Configuration: LR','Mount Type: Inside mount','Shutter Type: arch_shutters','Divider Rail Count: 0','Divider Rail: No','T-post Count: 0','Style: Basswood'];
+    const model = contractAnatomyLabels('Shutters', options);
+    const left = model.callouts.filter(c => c.side === 'left'), right = model.callouts.filter(c => c.side === 'right');
+    expect(left.length).toBe(right.length);
+    expect(left.length).toBeGreaterThan(1);
+    const details = model.callouts.flatMap(c => c.details);
+    for (const detail of model.specifications) expect(details).toContainEqual(detail);
+    const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType:'Shutters',room:'Primary Bedroom',layout:'grouped',options}));
+    for (const side of ['left','right']) for (let row = 0; row < left.length; row++) expect(html).toContain(`data-label-row="${row}" data-label-side="${side}"`);
+  });
+  it('balances all catalog product configurations while preserving complete category cards', () => {
+    for (const product of anatomyProductIndex()) {
+      const p = anatomyPreviewProduct(product.id)!;
+      for (const group of p.groups) for (const choice of group.choices) {
+        const model = contractAnatomyLabels(p.productType, [`Manufacturer: ${p.manufacturer}`, ...choice.options]);
+        const left = model.callouts.filter(c => c.side === 'left').length;
+        const right = model.callouts.length - left;
+        expect(Math.abs(left - right), `${p.id}:${choice.id}`).toBeLessThanOrEqual(1);
+        for (const card of model.callouts) expect(new Set(card.details.map(d => anatomySelectionGroup(d.label))).size).toBe(1);
+      }
+    }
+  });
+
   it('groups visual, operating and construction details without losing unfamiliar selections', () => {
     expect(anatomySelectionGroup('Light control')).toBe('Design & color');
     expect(anatomySelectionGroup('Hinge color')).toBe('Design & color');
