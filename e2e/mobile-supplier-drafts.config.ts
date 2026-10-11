@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+// Only this isolated fixture is reachable. Never use the repository's staging/send config.
+export default defineConfig({testDir:'.',testMatch:'mobile-supplier-drafts.local.spec.ts',workers:1,retries:0,timeout:60000,outputDir:'../test-results/mobile-supplier-playwright',reporter:[['list'],['json',{outputFile:'test-results/mobile-supplier-drafts.json'}]],use:{baseURL:'http://127.0.0.1:4282',headless:true,trace:'retain-on-failure'},webServer:{cwd:process.cwd(),command:'npx vite --config e2e/mobile-supplier-drafts.vite.mjs',url:'http://127.0.0.1:4282/e2e/fixtures/mobile-window-drafts.html',reuseExistingServer:false}});
