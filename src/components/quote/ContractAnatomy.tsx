@@ -68,9 +68,14 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
           const startY = (above ? text.bottom + 5 : labelBounds.top - 8) - frame.top;
           const end = `L ${x} ${y}`;
           const lane = image.right - frame.left + 8;
-          const d = above && callout.anchor
-            ? `M ${startX} ${startY} L ${lane} ${startY + 14} L ${lane} ${y - 18} ${end}`
-            : `M ${startX} ${startY} ${end}`;
+          const lowerLane = callout.side === 'right' ? frame.width + 6 : -6;
+          const lowerStartX = (callout.side === 'right' ? text.right + 4 : text.left - 4) - frame.left;
+          const lowerStartY = text.top - frame.top + Math.min(24, text.height / 2);
+          const d = !above && Number(section?.getAttribute('data-label-row') || 0) > 1
+            ? `M ${lowerStartX} ${lowerStartY} L ${lowerLane} ${lowerStartY} L ${lowerLane} ${y} ${end}`
+            : above && callout.anchor
+              ? `M ${startX} ${startY} L ${lane} ${startY + 14} L ${lane} ${y - 18} ${end}`
+              : `M ${startX} ${startY} ${end}`;
           return { part:callout.part, d, x, y };
         }
         const left = callout.side === 'left';
