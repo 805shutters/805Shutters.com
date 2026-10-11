@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { frenchDoorSketch, pureSunburst, type SpecialtyShutterSketch as Sketch } from '@/lib/quote/specialty-shutter-illustrations';
 import styles from './ContractProductIllustration.module.css';
 import type { ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
@@ -113,7 +113,7 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
   // references; never substitute the source thumbnail's demonstration layout.
   const tokens=sketch.layout.replace(/T/g,'');
   const totalPanels=tokens.length;
-  return <svg className={styles.shutterAssembly} viewBox={`0 0 250 ${height}`} width={160} height={160}
+  return <svg className={styles.shutterAssembly} viewBox={`0 0 250 ${height}`} style={{'--sketch-aspect': `250 / ${height}`} as CSSProperties} width={160} height={160}
     role="img" aria-label={`${title} — 805 signature sketch`} data-specialty-sketch={sketch.code}
     data-sketch-tilt={fixed?'radial':sketch.tilt??'unrecorded'} data-sketch-split={!fixed&&sketch.split} data-sketch-divider={!fixed&&sketch.divider} data-arch-style={sketch.archStyle||undefined} data-specialty-layout={sketch.layout||undefined} data-opening-aspect-ratio={geometry?.aspectRatio}>
     <title>{title}</title>

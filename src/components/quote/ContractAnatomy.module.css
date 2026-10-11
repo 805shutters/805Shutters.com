@@ -225,3 +225,14 @@
 @media print{
  .grouped .art{position:relative;left:auto;top:auto;width:100%;height:245px;grid-column:2;grid-row:1 / span var(--label-rows,1);align-self:center}
 }
+
+/* The selected frame stays attached to the central shutter illustration. */
+.art.withFrameProfile{display:flex;flex-direction:column;height:auto!important;min-height:340px;gap:8px}
+.frameProfile{margin:0;display:flex;flex-direction:column;align-items:center;break-inside:avoid;text-align:center}
+.frameProfile img{display:block;width:128px;height:90px;object-fit:contain}
+.frameProfile figcaption{font-size:11px;line-height:1.4;color:#686c61}
+.frameProfile strong,.frameProfile span{display:block}
+.frameProfile strong{font-weight:600;color:#30332c}
+@media print{.art.withFrameProfile{min-height:245px}.frameProfile img{width:100px;height:68px}.frameProfile figcaption{font-size:9px}}
+
+.withFrameProfile [data-specialty-sketch]{aspect-ratio:var(--sketch-aspect,1)}

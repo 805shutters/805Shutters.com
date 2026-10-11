@@ -7,6 +7,7 @@ import { shutterIllustrationGeometry, type ShutterIllustrationGeometry } from '@
 import { ContractProductIllustration } from './ContractProductIllustration';
 import { fabricPerformanceLabels } from '@/lib/quote/fabric-performance-labels';
 import styles from './ContractAnatomy.module.css';
+import { shutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
 import { anatomyLeaderPath, type AnatomyLineRouting } from '@/lib/quote/anatomy-leader-path';
 
 export type AnatomyLayout = 'compact' | 'centered' | 'bordered' | 'classic' | 'grouped';
@@ -15,6 +16,7 @@ export type ContractAnatomyProps = { productType: string; room: string; options:
 /** Shared, read-only presentation. The caller owns selections and order validity. */
 export function ContractAnatomy({ productType, room, options, styleName, width, height, quantity = 1, valanceArtId, illustrationGeometry, layout = 'centered', lineRouting='around',summaryStyle='current', showHeader=true, afterIllustration }: ContractAnatomyProps) {
   const model = useMemo(() => contractAnatomyLabels(productType, options, styleName, layout), [productType, options, styleName, layout]);
+  const frameProfile = shutterFrameProfile(productType, options);
   const finishDetails = model.specifications.filter(isFinishDetail);
   const visibleCalloutDetails = model.callouts.flatMap(callout => callout.details.slice(0, 2));
   const constructionDetails = model.specifications.filter(detail => !isFinishDetail(detail) && !visibleCalloutDetails.includes(detail));
@@ -42,7 +44,8 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       };
       const frame = measure(scene.current);
       const mobile = frame.width <= 620;
-      const image = measure(art.current.querySelector(mobile ? '[data-shade-fold], [data-roller-top-treatment], figure' : '[data-shade-fold]') || art.current);
+      const primaryProduct = art.current.querySelector('[data-primary-product]');
+      const image = measure(primaryProduct?.querySelector(mobile ? '[data-shade-fold], [data-roller-top-treatment], figure' : '[data-shade-fold]') || (frameProfile ? primaryProduct : null) || art.current);
       setPaths(model.callouts.map((callout, i) => {
         if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const text = labels.current[i] ? measure(labels.current[i]!) : undefined;
@@ -107,7 +110,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       window.removeEventListener('afterprint', afterPrint);
       printMedia.removeEventListener('change', mediaChanged);
     };
-  }, [model, layout, lineRouting, summaryStyle]);
+  }, [model, layout, lineRouting, summaryStyle, frameProfile]);
   const selected = model.callouts.find(c => c.part === active);
   const renderCallout = (callout: typeof model.callouts[number], i: number) => {
         const CalloutTag = layout === 'grouped' ? 'div' : 'button';
@@ -122,7 +125,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
   return <article className={`${styles.card} ${printing ? styles.printing : ''} ${styles[layout]} ${showNumbers?styles.numbered:''} ${summaryStyle==='legend'?styles.legend:''}`} aria-labelledby={showHeader ? heading : undefined} aria-label={showHeader ? undefined : room} data-contract-anatomy={model.family} data-contract-layout={layout} data-line-routing={lineRouting} data-summary-style={summaryStyle}>
     {showHeader && <header className={styles.header}><div className={styles.identity}><h2 id={heading} className={styles.room}>{room || 'Room not specified'}</h2><p className={styles.eyebrow}>{customerQuoteProductName(productType)}</p>{layout==='classic'&&<p className={styles.subtitle}>{model.family==='shutters'?'Your shutters':/roller|roman|honeycomb|sheer|woven|pleated|dual|solar/.test(model.family)?'Your shade':'Your product'}, explained</p>}</div><div className={styles.headerMeta}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div></header>}
     <div className={styles.diagram} ref={scene} style={{'--label-rows': Math.max(1, ...(['left', 'right'] as const).map(side => model.callouts.filter(c => c.side === side).length))} as CSSProperties}>
-      <div className={styles.art} ref={art}><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>
+      <div className={`${styles.art} ${frameProfile ? styles.withFrameProfile : ''}`} ref={art}><div data-primary-product="true"><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>{frameProfile && <figure className={styles.frameProfile} data-frame-profile={frameProfile.id}><img src={frameProfile.src} alt={`${frameProfile.label} — pencil side-profile sketch`} width={128} height={90}/><figcaption><strong>{frameProfile.label}</strong><span>Side profile</span></figcaption></figure>}</div>
       <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
       {layout==='grouped' ? (['left','right'] as const).flatMap(side => {
         const entries = ANATOMY_SELECTION_GROUPS.flatMap(title => model.callouts
