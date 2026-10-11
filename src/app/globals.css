@@ -18438,3 +18438,55 @@ body.quote-lab-active [data-public-activity-tracking],
 body.quote-lab-active .assistant-widget {
   display: none !important;
 }
+
+/* 805 Call Center */
+.phone-desk { max-width: 1200px; padding: 24px 20px 32px; background: #f4f7f6; border-radius: 12px; font-family: Arial, sans-serif; color: #19343b; }
+.phone-desk h1 { margin: 0; font: 600 32px/1.2 Arial, sans-serif; letter-spacing: -.04em; }
+.phone-desk h2 { margin: 0 0 12px; font: 600 20px/1.3 Arial, sans-serif; letter-spacing: -.02em; }
+.phone-desk p { margin: 8px 0; }
+.phone-desk section { margin-top: 26px; }
+.phone-desk article { margin-top: 14px; padding: 22px; border: 1px solid #d8e1df; border-radius: 12px; background: #fff; }
+.phone-desk button, .crm-customer-phone-messages button { border: 1px solid #bbcaca; border-radius: 7px; background: #fff; color: #19343b; padding: 10px 14px; min-height: 44px; font-size: 14px; font-weight: 600; letter-spacing: normal; text-transform: none; cursor: pointer; }
+.phone-desk button:hover, .crm-customer-phone-messages button:hover { background: #e9f1ef; }
+.phone-desk button[aria-pressed="true"] { background: #163e43; color: white; border-color: #163e43; }
+.phone-desk button:disabled { cursor: not-allowed; opacity: .5; }
+.phone-desk .flex { display: flex; gap: 10px; }
+.phone-desk .flex-wrap { flex-wrap: wrap; }
+.phone-desk .justify-between { justify-content: space-between; }
+.phone-desk .items-center { align-items: center; }
+.phone-desk .grid { display: grid; gap: 12px; }
+.phone-desk .mt-1 { margin-top: 4px; }
+.phone-desk .mt-2 { margin-top: 8px; }
+.phone-desk .mt-3 { margin-top: 12px; }
+.phone-desk .mt-4 { margin-top: 16px; }
+.phone-desk .mt-5 { margin-top: 20px; }
+.phone-desk .mt-6 { margin-top: 24px; }
+.phone-desk .mt-8 { margin-top: 32px; }
+.phone-desk .text-sm { font-size: 13px; }
+.phone-desk .text-slate-600, .phone-desk .text-slate-500 { color: #526968; }
+.phone-desk .bg-teal-100, .phone-desk .bg-slate-100 { background: #eaf1ef; padding: 5px 9px; border-radius: 5px; }
+.phone-desk .capitalize { text-transform: capitalize; }
+.phone-desk .whitespace-pre-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.phone-desk .block { display: block; }
+.phone-desk textarea { display: block; width: 100%; min-height: 70px; border: 1px solid #bbcaca; border-radius: 6px; padding: 10px; font: inherit; }
+.phone-desk select { max-width: 100%; padding: 10px; background: white; border: 1px solid #bbcaca; border-radius: 6px; }
+.phone-desk .bg-amber-50 { padding: 18px; background: #fff6df; border: 1px solid #e4d5a3; border-radius: 10px; }
+.phone-desk ol, .phone-desk ul { padding-left: 22px; }
+.phone-desk li { margin: 6px 0; }
+.crm-customer-phone-messages { min-width: 260px; }
+.crm-customer-phone-messages > div { margin: 10px 0; padding: 12px; border: 1px solid #d8e1df; border-radius: 8px; }
+.crm-customer-phone-messages button { margin: 4px 4px 0 0; }
+.crm-customer-phone-panel { max-width: 900px; margin: 20px 0; padding: 20px; border: 1px solid #bbcaca; border-radius: 12px; background: #f0f6f4; }
+.crm-customer-phone-panel h3 { margin: 0 0 14px; font: 600 22px/1.3 Arial, sans-serif; }
+@media (max-width: 700px) {
+  .crm-app-shell:has(.phone-desk) .crm-metrics { display: none; }
+
+  .crm-navigation-layout > .crm-tabs { position: static; flex-direction: row; flex-wrap: wrap; margin-bottom: 22px; }
+  .crm-navigation-layout > .crm-tabs button { width: auto; flex: 1 1 auto; font-size: 10px; padding: 10px; }
+  .phone-desk h1 { font-size: 28px; }
+  .phone-desk article { padding: 16px; }
+}
+
+
+.crm-platinum-sidebar nav button.crm-call-center-unresolved { background: #b91c1c; color: white; }
+.crm-call-center-count { background: white; color: #991b1b; border-radius: 99px; padding: 2px 8px; font-weight: 800; }

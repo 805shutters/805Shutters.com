@@ -68,6 +68,8 @@ import {
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
+import { PhoneDesk, type PhoneSnapshot } from "@/app/crm/phone/phone-desk";
+import { PhoneCustomerMessages } from "@/components/crm/PhoneCustomerMessages";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
@@ -138,7 +140,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
+type CrmTab = "phone" | "square" | "contracts" | "tools" | "reports" | "command" | "intelligence" | "tracking" | "quotes" | "followups" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -885,6 +887,28 @@ export function CrmApp({
   const isKenMode = mode === "ken";
   const loginRedirectPath = loginRedirectPathOverride || (isKenMode ? "/crm/ken" : "/crm/");
   const [session, setSession] = useState<Session | null>(null);
+  const [phoneState,setPhoneState]=useState<PhoneSnapshot|null>(null);
+  const [phoneStale,setPhoneStale]=useState(false);
+  const [phoneContact,setPhoneContact]=useState<{id:string;display_name:string;phone:string|null;email:string|null}|null>(null);
+  useEffect(()=>{
+    setPhoneState(null);setPhoneStale(false);setPhoneContact(null);
+    if(!session || isKenMode)return;
+    let active=true,working=false,lastSync=0;
+    async function updatePhone(){
+      if(working)return;working=true;
+      try{
+        const headers={Authorization:`Bearer ${session!.access_token}`};
+        if(Date.now()-lastSync>60000){const sync=await fetch("/api/crm/phone/sync",{method:"POST",headers});if(sync.ok)lastSync=Date.now();}
+        const response=await fetch("/api/crm/phone/state",{headers});
+        if(!response.ok)throw new Error("Phone state unavailable");
+        const next=await response.json();if(active){setPhoneState(next);setPhoneStale(false);}
+      }catch{if(active)setPhoneStale(true);}finally{working=false;}
+    }
+    void updatePhone();const timer=setInterval(()=>void updatePhone(),10000);
+    window.addEventListener("805-phone-updated",updatePhone);
+    return ()=>{active=false;clearInterval(timer);window.removeEventListener("805-phone-updated",updatePhone);};
+  },[session,isKenMode]);
+
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
   const [activeJobsSnapshot, setActiveJobsSnapshot] = useState<ActiveJobsSnapshot | null>(null);
@@ -3268,7 +3292,7 @@ export function CrmApp({
 
   return (
     <div className="crm-app-shell crm-platinum-shell">
-      <CrmNavigation activeTab={activeTab} onNavigate={openTab} onRefresh={() => void (data ? refresh() : session ? crmFetch<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active").then(snapshot => { setActiveJobsSnapshot(snapshot); setDashboardRefreshError(null); }) : Promise.resolve()).catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
+      <CrmNavigation phoneCount={phoneState?.unresolvedCount || 0} phoneStale={phoneStale} activeTab={activeTab} onNavigate={openTab} onRefresh={() => void (data ? refresh() : session ? crmFetch<ActiveJobsSnapshot>(session, "/api/crm/jobs?scope=active").then(snapshot => { setActiveJobsSnapshot(snapshot); setDashboardRefreshError(null); }) : Promise.resolve()).catch(error => setMessage(error instanceof Error ? error.message : "Refresh failed."))} onSignOut={() => void signOut()} busy={busy} />
       <div className="crm-platinum-main">
       <div className="crm-platinum-content">
       {builderQuoteId && session ? (
@@ -3524,8 +3548,13 @@ export function CrmApp({
         </>
       ) : null}
 
+      {activeTab === "phone" && session ? <PhoneDesk customers={customerFiles.filter(file=>file.customer?.id).map(file=>({id:file.customer!.id,name:file.customerName}))} onOpenCustomer={async id=>{
+        try{const response=await fetch(`/api/crm/phone/customers/${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});if(!response.ok)throw new Error("The linked customer could not be loaded.");setPhoneContact(await response.json());openTab("customers");}catch(error){setMessage(error instanceof Error?error.message:"Customer unavailable");}
+      }} /> : null}
+      {activeTab === "customers" && phoneContact ? <section className="crm-customer-phone-panel" aria-label="Linked customer communications"><h3>{phoneContact.display_name}</h3><p>{[phoneContact.phone,phoneContact.email].filter(Boolean).join(" · ")}</p><PhoneCustomerMessages messages={phoneState?.messages.filter(m=>m.customerId===phoneContact.id)||[]} session={session} onOpenCallCenter={()=>openTab("phone")} /></section> : null}
       {activeTab === "customers" && !financialViewBlocked ? (
         <CustomerFilesView
+          phoneState={phoneContact && phoneState ? {...phoneState, messages: phoneState.messages.filter(message => message.customerId !== phoneContact.id)} : phoneState} phoneSession={session} onOpenCallCenter={()=>openTab("phone")}
           files={customerFiles}
           focusCustomer={focusCustomer}
           onFocusHandled={() => setFocusCustomer(null)}
@@ -9990,6 +10019,7 @@ function CustomerFilePaymentActions({
 }
 
 function CustomerFilesView({
+  phoneState, phoneSession = null, onOpenCallCenter,
   files,
   activeStatus,
   focusCustomer,
@@ -10002,6 +10032,9 @@ function CustomerFilesView({
   onSaveJob,
   busy = false
 }: {
+  phoneState?: PhoneSnapshot | null;
+  phoneSession?: Session | null;
+  onOpenCallCenter?: () => void;
   files: CrmCustomerFile[];
   activeStatus?: JobStatusFilter;
   focusCustomer?: string | null;
@@ -10279,7 +10312,7 @@ function CustomerFilesView({
               <tr className={`crm-customer-info-row ${focusClassName}${fileHasMissingWork ? " crm-customer-info-row--missing" : ""}`} id={customerCardDomId(file.customerName)}>
                 <td className="crm-customer-name-cell">
                   <div className="crm-cf-name" title={`${file.customerName} · ${file.latestStatus || "Open"}`}>
-                    <h3>{file.customerName}</h3>
+                    <h3>{file.customerName}</h3>{file.customer?.id && phoneState ? <PhoneCustomerMessages messages={phoneState.messages.filter(m=>m.customerId===file.customer!.id)} session={phoneSession} onOpenCallCenter={onOpenCallCenter} /> : null}
                     <p>{file.latestStatus || "Open"}</p>
                   </div>
                 </td>
