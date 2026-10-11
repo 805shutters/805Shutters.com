@@ -40,6 +40,17 @@ test('SIP response does not wait for lookup; lookup starts while greeting can pl
  const response=await f.handler(carrierRequest(f,'/twilio/inbound',{CallSid:'CA'+'1'.repeat(32),To:f.c.number,From:'+18055550199'}));
  assert.equal(response.status,200);assert.match(await response.text(),/<Sip>sip:/);await new Promise(r=>setImmediate(r));assert(f.client.lookupStarted);assert.equal(f.provider.operations.length,0);release();await Promise.all(f.tasks);
 });
+test('hosted gateway paths route correctly while carrier signatures use the public URL',async()=>{
+ const f=fixture();
+ const health=await f.handler(new Request('http://edge-runtime/voice-805/health'));
+ assert.equal(health.status,200);assert.equal((await health.json()).service,'805-phone');
+ const signed=carrierRequest(f,'/twilio/inbound',{CallSid:'CA'+'2'.repeat(32),To:f.c.number,From:'+18055550199'});
+ const forwarded=new Request('http://edge-runtime/voice-805/twilio/inbound',{method:'POST',headers:signed.headers,body:await signed.text()});
+ assert.equal((await f.handler(forwarded)).status,200);await Promise.all(f.tasks);
+ for(const path of ['/health','/voice-805-other/health','/other/voice-805/health','/voice-805/health?bypass=1']){
+  assert.equal((await f.handler(new Request('http://edge-runtime'+path))).status,400);
+ }
+});
 test('unknown caller: no ring until greeting completion, both offers start together, one wins',async()=>{
  const f=fixture(),call=await incoming(f);await prefetchContext(f.state,call.id,f.client,{});
  assert.equal(f.provider.operations.length,0);

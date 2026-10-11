@@ -1,7 +1,8 @@
 # 805 phone system — execution plan
 
-- Completed: recovered original work into an isolated checkout; integrated current CRM; implemented Supabase state/worker/webhooks and AI-first context branches; validated engine, database roles/CAS, browser behavior, full website tests/build and Deno entrypoint; prepared deployment/agent/watchdog artifacts.
-- In progress: final source review and publication; final contrast screenshot verification.
-- Remaining: dedicated 805 Supabase access and deployment; hosted-agent binding verification; secure provider configuration/readback; user-defined Pacific hours; temporary-number actual handset/audio/transfer and approved alert pilot.
-- Access intervention: reconnect Supabase management to the owner of the existing 805 production project. Restore authenticated browser-control tooling in this chat for provider configuration; login itself is not the identified problem.
+- Completed: published the Call Center website; installed migration 20261011014441 in the dedicated 805 production project through its authenticated dashboard; verified exact migration source, RLS denial for browser roles, service lookup and stale-write rejection; deployed the pinned backend in standby; saved the approved 24/7 Pacific ringing schedule with no holiday closures; updated the hosted receptionist draft.
+- In progress: publish and redeploy the hosted-gateway routing correction found during live endpoint verification. The Supabase runtime strips /functions/v1; signatures must still use the full public URL.
+- Remaining: secure provider/website configuration and watchdog; hosted-agent trusted call-token/tool and greeting-audio binding; temporary-number routing; actual handset/audio/transfer and approved alert pilot.
+- Access intervention: Twilio currently shows its email sign-in screen. The Supabase dashboard and xAI console are accessible. The CLI/MCP management identity still lacks the dedicated 805 project, so use the correct authenticated dashboard until that identity is connected.
+- User decision: ring Mike and Jessica all hours, all days. Keep activation flags false until the provider contract and temporary-number acceptance checks pass.
 - Existing MTS and production routes remain untouched. No Render, no port. Calling stays disabled until all activation checks pass.

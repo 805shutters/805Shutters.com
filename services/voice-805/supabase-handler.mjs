@@ -17,8 +17,15 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
  const queue=()=>waitUntil(worker.drain().catch(()=>{}));
  return async request=>{
   try {
-   const u=new URL(request.url),base=new URL(c.origin); const path=u.pathname.slice(base.pathname.replace(/\/$/,'').length)||'/';
-   if(!(u.pathname===base.pathname || u.pathname.startsWith(base.pathname.replace(/\/$/,'')+'/'))||u.search)return json({error:'Invalid route'},400);
+   const u=new URL(request.url),base=new URL(c.origin);
+   const publicPrefix=base.pathname.replace(/\/$/,'');
+   // The hosted gateway removes /functions/v1 before invoking the function.
+   // Keep the configured public URL for Twilio signature validation below.
+   const prefixes=[publicPrefix];
+   if(publicPrefix.startsWith('/functions/v1/'))prefixes.push(publicPrefix.slice('/functions/v1'.length));
+   const prefix=prefixes.find(p=>u.pathname===p||u.pathname.startsWith(p+'/'));
+   if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
+   const path=u.pathname.slice(prefix.length)||'/';
    if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
    if(!['GET','POST'].includes(request.method))return json({error:'Method rejected'},405);
    if(Number(request.headers.get('content-length')||0)>65536)return json({error:'Body too large'},413);
