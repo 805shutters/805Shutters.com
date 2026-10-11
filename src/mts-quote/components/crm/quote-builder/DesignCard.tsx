@@ -6153,6 +6153,7 @@ export function DesignCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {mobilePresentation && authoritativeV2 && <MobileCatalogProgramChooser design={currentDesign} onUpdateFields={updateFields} />}
         {/* Variant tabs */}
         {variants.length > 1 && (
           <Tabs value={activeVariant} onValueChange={handleVariantChange}>
@@ -6184,7 +6185,7 @@ export function DesignCard({
           />
         )}
 
-        {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} />}
+        {authoritativeV2 && manufacturerOptionsRoute.productId === "norman_shutters" && <NormanShutterPanelOptions pricingOnly={!mobilePresentation} design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerPanelOptions design={currentDesign} onUpdateFields={updateFields} />}
         {authoritativeV2 && ["roller","roman"].includes(manufacturerOptionsRoute.productId??"") && <NormanSharedAutomateHubOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} />}
         {authoritativeV2 && manufacturerOptionsRoute.productId === "roller" && <NormanRollerCommonOptions design={currentDesign} onUpdateFields={updateFields} />}
@@ -6192,7 +6193,7 @@ export function DesignCard({
 
         {/* Design options based on the exact persisted manufacturer route. */}
         {manufacturerOptionsRoute.productId && isLotusObservedProduct(manufacturerOptionsRoute.productId) ? (
-          <LotusObservedDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
+          <LotusObservedDesignOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
         ) : manufacturerOptionsRoute.status === "manual_quote" ? (
           <>
             <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
@@ -6200,17 +6201,17 @@ export function DesignCard({
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
           hasSundanceConfiguration(manufacturerOptionsRoute.productId) ? (<SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />) :
-          manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
+          manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isNormanValanceOnly(manufacturerOptionsRoute.productId) ? (<NormanValanceOnlyOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />) :
-          manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions pricingOnly design={currentDesign} onUpdateFields={updateFields} />) :
+          manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions pricingOnly={!mobilePresentation} design={currentDesign} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isRomanAncillary(manufacturerOptionsRoute.productId) ? (
             <NormanRomanAncillaryOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isOnyxHeldProduct(manufacturerOptionsRoute.productId) ? (
             <OnyxHeldDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} widthInches={widthIn} heightInches={heightIn} quantity={quantity} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isNormanContractProduct(manufacturerOptionsRoute.productId) ? (
-            <NormanContractDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+            <NormanContractDesignOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : manufacturerOptionsRoute.productId && isSanClementeProduct(manufacturerOptionsRoute.productId) ? (
-            <SanClementeDesignOptions pricingOnly design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
+            <SanClementeDesignOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} lineItem={lineItem} onUpdateFields={updateFields} />
           ) : isShutters ? (
             <ShutterDesignOptions
               design={currentDesign}
@@ -6397,6 +6398,35 @@ export function DesignCard({
     </MobileDesignCardContext.Provider>
     </QuoteBuilderCatalogProductsContext.Provider>
   );
+}
+
+/** A program change clears incompatible options, while retaining a hand-set line price. */
+export function buildMobileCatalogProgramPatch(design: SalesQuoteDesign, product: QuoteLabCatalogProduct, programId: string): Partial<SalesQuoteDesign> | null {
+  const options = (design.options_json as Record<string, unknown>) || {};
+  if (options.catalog_product_id !== product.id || !usableCatalogPrograms(product).some(program => program.id === programId)) return null;
+  if (options.catalog_program_id === programId) return null;
+  const patch = buildCatalogSelectionPatch(options, product, programId, false);
+  if (options.manual_price_override === true) {
+    patch.unit_price = design.unit_price;
+    patch.options_json = { ...patch.options_json, manual_price_override: true,
+      ...(options.manual_merchandise_unit_price !== undefined ? { manual_merchandise_unit_price: options.manual_merchandise_unit_price } : {}) };
+  }
+  return patch;
+}
+
+function MobileCatalogProgramChooser({ design, onUpdateFields }: { design: SalesQuoteDesign | undefined; onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void }) {
+  const products = useContext(QuoteBuilderCatalogProductsContext);
+  const product = products?.find(product => product.id === design?.options_json?.catalog_product_id);
+  const programs = product ? usableCatalogPrograms(product) : [];
+  if (!design || !product || programs.length < 2) return null;
+  const programId = String(design.options_json.catalog_program_id || '');
+  return <label className="quote-mobile-program block space-y-2 text-sm font-bold">Supplier program
+    <select aria-label="Supplier program" className="block min-h-12 w-full rounded-lg border p-3" value={programs.some(program => program.id === programId) ? programId : ''} onChange={event => {
+      const patch = buildMobileCatalogProgramPatch(design, product, event.target.value);
+      if (patch) onUpdateFields(patch);
+    }}><option value="">Choose the exact supplier program</option>{programs.map(program => <option key={program.id} value={program.id}>{program.name}</option>)}</select>
+    <span className="block text-xs font-normal">Choose the exact supplier program to show its configuration options.</span>
+  </label>;
 }
 
 export function ManufacturerCatalogStampChooser({
@@ -7135,7 +7165,7 @@ export function ShutterDesignOptions({
 
   const allDefiningSteps = getDefiningSteps(workingDesign, authoritativeV2);
   const definingSteps = mobilePresentation
-    ? allDefiningSteps.filter((step) => step.field !== "json:wood_route")
+    ? allDefiningSteps.filter((step) => step.field !== "json:wood_route" && (!authoritativeV2 || step.key !== 'norman_program'))
     : allDefiningSteps;
   const standardComplete = isStandardShutterComplete(workingDesign, authoritativeV2);
   const useOldSteps = isTrackedOrSpecialty(workingDesign);
@@ -7149,7 +7179,7 @@ export function ShutterDesignOptions({
   }));
 
 
-  const mobileMaterialOptions: GridOption[] = mobilePresentation && ["Norman", "Onyx"].includes(workingDesign.supplier || "")
+  const mobileMaterialOptions: GridOption[] = mobilePresentation && !authoritativeV2 && ["Norman", "Onyx"].includes(workingDesign.supplier || "")
     ? [{
         key: "mobile-shutter-material",
         label: "Material",
@@ -7159,7 +7189,7 @@ export function ShutterDesignOptions({
       }]
     : [];
   const gridOptions = standardComplete && !useOldSteps
-    ? quotePricingInputs(getStandardShutterGridOptions(workingDesign, authoritativeV2))
+    ? mobilePresentation ? getStandardShutterGridOptions(workingDesign, authoritativeV2) : quotePricingInputs(getStandardShutterGridOptions(workingDesign, authoritativeV2))
     : [];
   // Keep split tilt in its own persistent control, including after selection.
   const splitTiltOption = gridOptions.find((option) => option.field === "json:split_tilt");
@@ -7341,7 +7371,7 @@ export function ShutterDesignOptions({
       {standardComplete && !useOldSteps && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <button
+            {mobilePresentation ? <h3 className="text-sm font-bold">Additional product and installation options</h3> : <button
               type="button"
               aria-expanded={showMoreOptions}
               onClick={() => setShowMoreOptions((value) => !value)}
@@ -7349,10 +7379,10 @@ export function ShutterDesignOptions({
             >
               <Lightbulb className="h-3.5 w-3.5" />
               More Options
-            </button>
+            </button>}
           </div>
 
-          {showMoreOptions && (
+          {(mobilePresentation || showMoreOptions) && (
             <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
               {mobilePresentation ? (
                 <MobileInstallOptions
@@ -12762,17 +12792,17 @@ export function ShadesAndBlindsOptions({
     return undefined;
   };
 
-  gridOptions = quotePricingInputs(gridOptions);
+  if (!mobilePresentation) gridOptions = quotePricingInputs(gridOptions);
 
   const rollerMoreOptionFields = design?.supplier === "Norman"
     ? NORMAN_ROLLER_MORE_OPTION_FIELDS
     : ROLLER_MORE_OPTION_FIELDS;
   const mainGridOptions =
-    productType === "Roller Shades"
+    !mobilePresentation && productType === "Roller Shades"
       ? gridOptions.filter((option) => !rollerMoreOptionFields.has(option.field))
       : gridOptions;
   const moreGridOptions =
-    productType === "Roller Shades"
+    !mobilePresentation && productType === "Roller Shades"
       ? gridOptions.filter((option) => rollerMoreOptionFields.has(option.field))
       : [];
   const optionRows = partitionOptionSlots(
@@ -13102,7 +13132,7 @@ export function ShadesAndBlindsOptions({
       {gridOptions.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <button
+            {mobilePresentation ? <h3 className="text-sm font-bold">Additional product and installation options</h3> : <button
               type="button"
               aria-expanded={showMoreOptions}
               onClick={() => setShowMoreOptions((value) => !value)}
@@ -13110,10 +13140,10 @@ export function ShadesAndBlindsOptions({
             >
               <Lightbulb className="h-3.5 w-3.5" />
               More Options
-            </button>
+            </button>}
           </div>
 
-          {showMoreOptions && (
+          {(mobilePresentation || showMoreOptions) && (
             <div className="space-y-2">
               {moreGridOptions.length > 0 &&
                 (moreEditableOptionRows.mandatory.length > 0 ||

@@ -19,8 +19,16 @@
 /* Approved 805 mobile typography and mint actions. */
 .shell h1,.shell h2,.shell h3,.customer strong{font-family:inherit;font-weight:700}.shell input,.shell select,.shell textarea{color:#fff}.shell .primary,.shell .visit button{background:#b7efd0;color:#102019}.shell .header{padding-right:62px}.shell .header>a.outline{white-space:normal;max-width:140px}.shell .tabs button[aria-current=true]{background:#b7efd0;color:#102019}.shell .customer{min-height:72px}.shell .customer strong{font-size:17px}.shell .roomPresets button,.shell .fractionGrid button,.shell .quickButtons button,.shell .fractions button,.shell .footer button,.shell .windowActions button{color:#fff}.shell button[aria-pressed=true]{background:#294b39}.shell{--background:200 15% 9%;--foreground:0 0% 100%;--card:200 15% 11%;--card-foreground:0 0% 100%;--popover:200 15% 11%;--popover-foreground:0 0% 100%;--muted:200 10% 18%;--muted-foreground:150 10% 70%;--border:200 10% 26%;--input:200 10% 26%;--ring:145 60% 78%}
 
-/* Eight cost factors and mobile actions remain visible without covering the last options. */
-.builder{padding-bottom:270px}.shell .error{color:#ffd5ce;border-color:#b76a60}.footer button.primary{color:#102019}.footer{max-height:260px}.footer>div:has(fieldset){display:block;grid-column:1/-1}
+/* Keep the last configuration fields clear of the compact action footer. */
+.builder{padding-bottom:150px}.shell .error{color:#ffd5ce;border-color:#b76a60}.footer button.primary{color:#102019}.footer{max-height:260px}
 
 /* The reused quick-select has white defaults; match the mobile dark surface. */
 .designCard :global([data-mobile-quick-options] button){background:#1d2824!important;color:#fff!important;border-color:#485b51!important}.designCard :global([data-mobile-quick-options] button[aria-pressed=true]){background:#b7efd0!important;color:#102019!important}
+
+.designCard :global(input:not([type=checkbox])),.designCard :global(select){background:#111b17;color:#fff;border-color:#485b51;min-height:44px;max-width:100%}
+.designCard :global([data-mobile-install-options] [data-install-field]>span){color:#fff}
+.designCard :global([data-mobile-install-options] button){background:#1d2824;color:#fff;border-color:#485b51}
+.designCard :global([data-mobile-install-options] button[aria-pressed=true]){background:#294b39;color:#fff}
+.designCard :global(fieldset[aria-label="Split Tilt"]),.designCard :global(.bg-white),.designCard :global(.bg-slate-50){background:#141c1b;border-color:#485b51}
+.designCard :global(fieldset[aria-label="Split Tilt"] p),.designCard :global([class*="text-slate-"]){color:#bdcec5}
+.designCard :global(.text-amber-900){color:#f2d795}

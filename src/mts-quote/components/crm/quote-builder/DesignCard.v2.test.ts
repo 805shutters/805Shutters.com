@@ -5,12 +5,14 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { resolveRetailPrice } from "@mts/stores/retailPriceStore";
 import { describe, expect, it } from "vitest";
+import { buildUiCatalog } from '@/lib/quote/ui-catalog';
 import {
   BACK_FABRIC_CODE_DETAIL,
   BACK_FABRIC_COLOR_ID_DETAIL,
   clearSmartfoldMotorizationOptions,
   buildAuthoritativeShutterRouteUpdate,
   buildCatalogSelectionPatch,
+  buildMobileCatalogProgramPatch,
   buildCleanCatalogSelectionOptions,
   buildDraftShutterDesign,
   buildFauxWoodColorIdentityPatch,
@@ -1943,4 +1945,14 @@ describe("dedicated Split Tilt control", () => {
       });
     }
   }
+});
+
+it('mobile program selection uses catalog identities, clears incompatible choices and preserves a manual price',()=>{
+  const product=normalizeCrmQuoteCatalog({catalog:buildUiCatalog()}).products.find(product=>product.id==='onyx_shutters')!;
+  const programs=product.programs.filter(program=>program.priceBasis!=='unavailable');expect(programs.length).toBeGreaterThan(1);
+  const design={...buildDraftShutterDesign('A',true),supplier:'Onyx',material:programs[0].name,unit_price:123.45,louver_size:'SYNTHETIC prior louver',options_json:{catalog_product_id:product.id,catalog_program_id:programs[0].id,manual_price_override:true,frame_type:'SYNTHETIC prior frame'}} as SalesQuoteDesign;
+  const before=structuredClone(design),patch=buildMobileCatalogProgramPatch(design,product,programs[1].id)!;
+  expect(design).toEqual(before);expect(patch).toMatchObject({supplier:'Onyx',material:programs[1].name,unit_price:123.45,louver_size:null,options_json:{catalog_product_id:product.id,catalog_program_id:programs[1].id,manual_price_override:true}});
+  expect(patch.options_json?.frame_type).toBeUndefined();expect(patch.fabric).toBeNull();
+  expect(buildMobileCatalogProgramPatch(design,product,programs[0].id)).toBeNull();expect(buildMobileCatalogProgramPatch(design,product,'UNSUPPORTED')).toBeNull();
 });
