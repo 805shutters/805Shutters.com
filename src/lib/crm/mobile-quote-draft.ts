@@ -58,6 +58,9 @@ export type MobileQuoteWorkflowMode = "measure-first" | "full-design";
 export type MobileQuoteWorkflowPhase = "measure" | "assign" | "groups";
 
 export type MobileQuoteWindow = {
+  /** Opening-specific all-in manual price; survives configuration corrections. */
+  manualAllInPrice?: string;
+  supplierInputs?: import('./mobile-supplier-spec').SupplierLineInputs;
   id: string;
   room: string;
   position: string;
@@ -100,6 +103,7 @@ export type MobileQuoteSubmission = {
 };
 
 export type MobileQuoteDraft = {
+  draftJob?: import('./mobile-supplier-spec').DraftJobSettings;
   id: string;
   owner: string;
   customer: MobileQuoteCustomer;
@@ -281,7 +285,7 @@ export function setMobileQuoteWorkflow(
   phase: MobileQuoteWorkflowPhase = "measure",
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot || mobileQuoteWorkflowMode(draft) === mode) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || mobileQuoteWorkflowMode(draft) === mode) return draft;
   const next = structuredClone(draft);
   next.workflowMode = mode;
   next.workflowPhase = phase;
@@ -300,7 +304,7 @@ export function setMobileQuoteWorkflowPhase(
   phase: MobileQuoteWorkflowPhase,
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot || mobileQuoteWorkflowMode(draft) !== "measure-first") return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || mobileQuoteWorkflowMode(draft) !== "measure-first") return draft;
   const next = structuredClone(draft);
   next.workflowPhase = phase;
   next.updatedAt = updatedAt;
@@ -348,23 +352,32 @@ function copyPath(target: SalesQuoteDesign, source: SalesQuoteDesign, path: stri
   (target as unknown as Record<string, unknown>)[path] = structuredClone((source as unknown as Record<string, unknown>)[path]);
 }
 
+export function retainMobileManualPrice(line:MobileQuoteWindow) {
+  const design=line.activeProductId?line.families[line.activeProductId]?.design:null;
+  if(line.manualAllInPrice==null&&design?.options_json.manual_price_override===true&&Number.isFinite(design.unit_price)&&design.unit_price>=0)line.manualAllInPrice=design.unit_price.toFixed(2);
+}
+
 export function selectMobileQuoteProduct(
   draft: MobileQuoteDraft,
   lineId: string,
   configuration: Omit<MobileQuoteFamilyConfiguration, "overriddenPaths">,
 ): MobileQuoteDraft {
-  if (draft.submission.snapshot) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const next = structuredClone(draft);
   const index = next.windows.findIndex((line) => line.id === lineId);
   if (index < 0) return draft;
   const source = next.windows[index];
+  if(draft.draftJob&&source.activeProductId!==configuration.productId){
+    retainMobileManualPrice(source);source.families={};
+    if(source.supplierInputs)source.supplierInputs={...source.supplierInputs,colorFabric:"",mount:"",control:"",controlSide:""};
+  }
   const retained = source.families[configuration.productId];
   source.families[configuration.productId] = retained || { ...familyClone({ ...configuration, overriddenPaths: [] }, source.id), overriddenPaths: [] };
   source.activeProductId = configuration.productId;
   source.price = null;
   source.saved = false;
 
-  if (index === 0 && mobileQuoteWorkflowMode(draft) === "full-design") {
+  if (!draft.draftJob && index === 0 && mobileQuoteWorkflowMode(draft) === "full-design") {
     const selected = source.families[configuration.productId];
     next.firstLineDefaults = familyClone(selected, source.id);
     next.firstLineDefaults.overriddenPaths = [];
@@ -394,7 +407,7 @@ export function updateMobileQuoteDesign(
   lineId: string,
   incoming: Partial<SalesQuoteDesign>,
 ): MobileQuoteDraft {
-  if (draft.submission.snapshot) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const next = structuredClone(draft);
   const index = next.windows.findIndex((line) => line.id === lineId);
   const line = next.windows[index];
@@ -408,7 +421,7 @@ export function updateMobileQuoteDesign(
   line.price = null;
   line.saved = false;
 
-  if (index === 0 && mobileQuoteWorkflowMode(draft) === "full-design") {
+  if (!draft.draftJob && index === 0 && mobileQuoteWorkflowMode(draft) === "full-design") {
     next.firstLineDefaults = familyClone(family, line.id);
     next.firstLineDefaults.overriddenPaths = [];
     for (const target of next.windows.slice(1)) {
@@ -494,7 +507,7 @@ export function appendMobileQuotePhoto(
   windowId: string,
   photo: MobileQuotePhoto,
 ): MobileQuoteDraft {
-  if (draft.id !== draftId || draft.submission.snapshot) return draft;
+  if (draft.id !== draftId || draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const index = draft.windows.findIndex((window) => window.id === windowId);
   if (index < 0 || draft.windows[index].photos.some((existing) => existing.id === photo.id)) return draft;
   const next = structuredClone(draft);
@@ -505,7 +518,7 @@ export function appendMobileQuotePhoto(
 }
 
 export function removeMobileQuoteWindow(draft: MobileQuoteDraft, windowId: string): MobileQuoteDraft {
-  if (draft.submission.snapshot || draft.windows.length <= 1) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || draft.windows.length <= 1) return draft;
   const removedIndex = draft.windows.findIndex((window) => window.id === windowId);
   if (removedIndex < 0) return draft;
   const next = structuredClone(draft);
@@ -522,9 +535,10 @@ export function removeMobileQuoteWindow(draft: MobileQuoteDraft, windowId: strin
 }
 
 export function addMobileQuoteWindow(draft: MobileQuoteDraft) {
-  if (draft.submission.snapshot) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const next = structuredClone(draft);
-  const line = newMobileQuoteWindow(mobileQuoteWorkflowMode(next) === "full-design" ? next.firstLineDefaults : null);
+  // Supplier-cost workflow repeats only after the next line explicitly chooses the same family.
+  const line = newMobileQuoteWindow(next.draftJob ? null : mobileQuoteWorkflowMode(next) === "full-design" ? next.firstLineDefaults : null);
   next.windows.push(line);
   next.activeWindowId = line.id;
   next.quotePrice = null;
@@ -555,7 +569,7 @@ export function saveMobileQuoteWindowAndAdvance(
   windowId: string,
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot || !draft.windows.some((window) => window.id === windowId)) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || !draft.windows.some((window) => window.id === windowId)) return draft;
   let next = structuredClone(draft);
   next.windows.find((window) => window.id === windowId)!.saved = true;
   const placeholder = next.windows.find((window) => window.id !== windowId && isReusableMobileQuotePlaceholder(next, window));
@@ -624,7 +638,7 @@ function updateRoomWindow(
   update: (window: MobileQuoteWindow) => void,
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const index = draft.windows.findIndex((window) => window.id === windowId);
   if (index < 0) return draft;
   const next = structuredClone(draft);
@@ -728,7 +742,7 @@ export function isUntouchedMobileQuoteWindow(window: MobileQuoteWindow) {
 }
 
 export function omitTrailingUntouchedMobileQuoteWindow(draft: MobileQuoteDraft, updatedAt = new Date().toISOString()) {
-  if (draft.submission.snapshot || draft.windows.length < 2 || !isReusableMobileQuotePlaceholder(draft, draft.windows.at(-1)!)) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || draft.windows.length < 2 || !isReusableMobileQuotePlaceholder(draft, draft.windows.at(-1)!)) return draft;
   const realWindows = draft.windows.slice(0, -1);
   if (!realWindows.some((window) => !isUntouchedMobileQuoteWindow(window))) return draft;
   const next = structuredClone(draft);
@@ -739,7 +753,7 @@ export function omitTrailingUntouchedMobileQuoteWindow(draft: MobileQuoteDraft, 
 }
 
 export function beginMobileQuoteMeasureMore(draft: MobileQuoteDraft, updatedAt = new Date().toISOString()) {
-  if (draft.submission.snapshot || mobileQuoteWorkflowMode(draft) !== "measure-first") return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || mobileQuoteWorkflowMode(draft) !== "measure-first") return draft;
   let next = setMobileQuoteWorkflowPhase(draft, "measure", updatedAt);
   const untouched = next.windows.find((line) => isUntouchedMobileQuoteWindow(line));
   if (untouched) return next.activeWindowId === untouched.id ? next : { ...next, activeWindowId: untouched.id };
@@ -765,7 +779,7 @@ export function assignMobileQuoteProductBatch(
   configuration: Omit<MobileQuoteFamilyConfiguration, "overriddenPaths">,
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot || selectedIds.length === 0) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || selectedIds.length === 0) return draft;
   const selected = new Set(selectedIds);
   if (selected.size !== selectedIds.length || selectedIds.some((lineId) => !draft.windows.some((line) => line.id === lineId))) return draft;
   const next = structuredClone(draft);
@@ -791,7 +805,7 @@ export function updateMobileQuoteDesignBatch(
   incoming: Partial<SalesQuoteDesign>,
   updatedAt = new Date().toISOString(),
 ) {
-  if (draft.submission.snapshot || selectedIds.length === 0) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || selectedIds.length === 0) return draft;
   const selected = new Set(selectedIds);
   if (selected.size !== selectedIds.length) return draft;
   const targets = draft.windows.filter((line) => selected.has(line.id));
@@ -820,13 +834,14 @@ export function updateMobileQuoteDesignBatch(
 
 /** A line price never becomes a default for the other openings. */
 export function setMobileQuoteLinePrice(draft: MobileQuoteDraft, lineId: string, price: number): MobileQuoteDraft {
-  if (draft.submission.snapshot || !Number.isFinite(price) || price < 0) return draft;
+  if (draft.submission.snapshot || draft.draftJob?.submittedSpec || !Number.isFinite(price) || price < 0) return draft;
   const next = structuredClone(draft);
   const line = next.windows.find(line => line.id === lineId);
   const family = line?.activeProductId ? line.families[line.activeProductId] : null;
   if (!line || !family) return draft;
   family.design.unit_price = Math.round((price + Number.EPSILON) * 100) / 100;
   family.design.options_json = { ...family.design.options_json, manual_price_override: true };
+  if(draft.draftJob)line.manualAllInPrice=family.design.unit_price.toFixed(2);
   line.saved = false; line.price = null; next.quotePrice = null;
   next.updatedAt = new Date().toISOString();
   return next;

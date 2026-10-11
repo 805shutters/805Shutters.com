@@ -101,6 +101,7 @@ export function MobileMeasurementKeypad({
   initialSide = "width",
   fractions = MOBILE_QUOTE_FRACTIONS,
   dimensionLabel,
+  blankZero = false,
 }: {
   widthWhole: number;
   widthFraction: string;
@@ -116,17 +117,19 @@ export function MobileMeasurementKeypad({
   initialSide?: MobileMeasurementSide;
   fractions?: readonly string[];
   dimensionLabel?: string;
+  blankZero?: boolean;
 }) {
   const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? initialSide);
   const [open, setOpen] = useState(true);
   const [replaceNext, setReplaceNext] = useState(true);
-  const [manualValue, setManualValue] = useState(String((measurementAxis ?? initialSide) === "height" ? heightWhole : widthWhole));
+  const displayWhole = (whole:number) => blankZero && whole===0 ? '' : String(whole);
+  const [manualValue, setManualValue] = useState(displayWhole((measurementAxis ?? initialSide) === "height" ? heightWhole : widthWhole));
 
   const whole = activeSide === "width" ? widthWhole : heightWhole;
   const fraction = activeSide === "width" ? widthFraction : heightFraction;
 
   useEffect(() => {
-    setManualValue(String(whole));
+    setManualValue(displayWhole(whole));
   }, [activeSide, whole]);
 
   function selectSide(side: MobileMeasurementSide) {
@@ -134,7 +137,7 @@ export function MobileMeasurementKeypad({
     onSideSelected?.(side);
     setOpen(true);
     setReplaceNext(true);
-    setManualValue(String(side === "width" ? widthWhole : heightWhole));
+    setManualValue(displayWhole(side === "width" ? widthWhole : heightWhole));
   }
 
   function advanceOrDone() {
@@ -192,7 +195,7 @@ export function MobileMeasurementKeypad({
           aria-label={`${activeSide} whole inches`}
           value={manualValue}
           onChange={(event) => changeManual(event.target.value)}
-          onBlur={() => setManualValue(String(whole))}
+          onBlur={() => setManualValue(displayWhole(whole))}
         /></label>
         {onOpenGrid && <button type="button" className={styles.gridButton} aria-label={`Open ${activeSide} measurement grid`} onClick={(event) => {
           setReplaceNext(true);
