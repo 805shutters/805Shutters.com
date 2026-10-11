@@ -27,7 +27,11 @@ describe("approved quote line item card", () => {
 
   it("preserves actions, selection and geometry while omitting opening height", () => {
     const html=renderToStaticMarkup(createElement(QuoteLineItemCard,{...base,productType:'Shutters',dimensions:'70" × 45"',options:['Panel Config: LR','Tilt Type: Hidden Tilt','Split Tilt: Yes','Mount Type: Inside mount'],actions:createElement('button',null,'Save price'),selection:createElement('input',{type:'checkbox','aria-label':'Select item'}),notice:'10% off applied'}));
-    for(const value of ['Save price','Select item','10% off applied','(Inside mount)','70″','shutter-hidden-split.webp','data-opening-aspect-ratio="1.5555555555555556"']) expect(html).toContain(value);
+    for(const value of ['Save price','Select item','10% off applied','Inside mount','70″','shutter-hidden-split.webp','data-opening-aspect-ratio="1.5555555555555556"']) expect(html).toContain(value);
+    expect(html).toContain('<summary>Edit price</summary>');
+    expect(html).not.toContain('details open');
+    expect(html.match(/<h2/g)).toHaveLength(1);
+    expect(html).not.toContain('(Inside mount)');
     expect(html).not.toContain('45″');
     expect(html).not.toContain('45&quot;');
     expect(html).not.toContain('Width × height');
@@ -40,6 +44,12 @@ describe("approved quote line item card", () => {
     expect(html.match(/Complimentary temporary paper shade/g)).toHaveLength(1);
     expect(html).toContain("No charge");
     expect(render(["Temporary Shade: Yes", "Temporary Shade: No"])).not.toContain("temporary-shade.webp");
+  });
+
+  it("keeps notes after included accessories", () => {
+    const html = render(["Lift System: Cordless", "Temporary Shade: Yes", "Notes: Keep sill clear"]);
+    expect(html.indexOf('data-contract-notes=')).toBeGreaterThan(html.indexOf('data-temporary-shade="included"'));
+    expect(html.match(/Keep sill clear/g)).toHaveLength(1);
   });
 
   it("retains unknown product specifications with a neutral reference instead of a blank", () => {

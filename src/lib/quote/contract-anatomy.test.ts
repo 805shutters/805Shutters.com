@@ -17,18 +17,42 @@ describe('visual contract catalog and saved selections', () => {
     expect(anatomySelectionGroup('Divider Rail')).toBe('Construction & fit');
     expect(anatomySelectionGroup('Custom treatment note')).toBe('Additional details');
     const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Shutters',room:'Bedroom',layout:'grouped',summaryStyle:'recap',options:['Color: Pure White','Tilt Type: Hidden Tilt','Split Tilt: Yes','Louver Size: 3 1/2 inch','Mount Type: Inside mount','Custom treatment note: Keep clear of handle']}));
-    for(const text of ['Design &amp; color','Operation','Construction &amp; fit','Additional details','Pure White','Hidden Tilt','Keep clear of handle']) expect(html).toContain(text);
+    for(const text of ['Design &amp; color','Operation','Construction &amp; fit','Notes','Pure White','Hidden Tilt','Keep clear of handle']) expect(html).toContain(text);
     expect(html).not.toContain('data-selection-number=');
     expect(html).not.toContain('aria-label="Selection recap"');
     expect(html).not.toContain('aria-label="Fabric and finish description"');
     expect(html).toContain('>Tilt Type</span><strong>Hidden Tilt</strong>');
+  });
+  it('gives valances their own section and keeps fabric and color in Design & color', () => {
+    for (const label of ['Valance', 'Cassette', 'Fascia', 'Top treatment']) expect(anatomySelectionGroup(label)).toBe('Valance');
+    for (const label of ['Fabric', 'Fabric Color', 'Valance Color']) expect(anatomySelectionGroup(label)).toBe('Design & color');
+    const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType:'Roller Shades', room:'Office', layout:'grouped', options:['Valance: No Valance','Fabric: Flow 1%','Fabric Color: Polar White','Control Type: Cordless']}));
+    const valanceSection = html.match(/<section[^>]*aria-label="Valance"[\s\S]*?<\/section>/)?.[0];
+    const designSection = html.match(/<section[^>]*aria-label="Design &amp; color"[\s\S]*?<\/section>/)?.[0];
+    expect(valanceSection).toContain('No Valance');
+    expect(designSection).toContain('Flow 1%');
+    expect(designSection).toContain('Polar White');
+    expect(designSection).not.toContain('No Valance');
+  });
+  it('keeps notes once at the bottom, separate from visual option labels', () => {
+    for (const productType of ['Roller Shades', 'Shutters', 'Honeycomb Shades']) {
+      const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType, room:'Office', layout:'grouped', options:['Color: Pure White','Notes: Keep sill clear','Installation notes: Call before arrival']}));
+      const footer = html.indexOf('data-contract-notes="true"');
+      expect(footer).toBeGreaterThan(html.lastIndexOf('data-callout-part='));
+      expect(html.slice(0, footer)).not.toContain('Keep sill clear');
+      expect(html.match(/Keep sill clear/g)).toHaveLength(1);
+      expect(html.slice(footer)).toContain('Call before arrival');
+      expect(html).not.toContain('aria-label="Additional details"');
+    }
+    const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType:'Roller Shades', room:'Office', layout:'grouped', options:['Color: Pure White']}));
+    expect(html).not.toContain('data-contract-notes=');
   });
   it('retains negative options and emphasized fabric performance in label-only layouts', () => {
     const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Bedroom',layout:'grouped',summaryStyle:'cards',options:['Valance: None','Fabric: Amelia RD (Room Darkening)','Lift System: Motorized','Mount Type: Outside mount']}));
     expect(html).toContain('>Valance</span><strong>None</strong>');
     expect(html).toContain('Room-darkening fabric');
     expect(html).toContain('Remote control');
-    expect(html).toContain('(Outside mount)');
+    expect(html).toContain('>Outside mount</strong>');
     expect(html).not.toContain('Numbered selection summary');
   });
   it('points motorized operation to the remote without a second mechanism label', () => {
@@ -61,12 +85,15 @@ describe('visual contract catalog and saved selections', () => {
     }
     expect(contractAnatomy('Roller Shades',[...base,'Roll Type: Reverse']).callouts.find(c=>c.part==='roll')?.details[0].value).toBe('Reverse');
   });
-  it('places mount beside the product and excludes a separate mount row', () => {
-    for(const mount of ['Inside mount','Outside mount']) {
-      const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Living Room',options:['Lift System: Cordless',`Mount Type: ${mount}`]}));
-      expect(html).toContain(` (${mount})`);
-      expect(html).not.toContain('<dt>Mount Type</dt>');
+  it('places mount in construction and fit without a separate pointer', () => {
+    for (const mount of ['Inside mount','Outside mount']) {
+      const html = renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Living Room',layout:'grouped',options:['Lift System: Cordless','Hem Bar: Fabric Covered',`Mount Type: ${mount}`]}));
+      expect(html).toContain('aria-label="Construction &amp; fit"');
+      expect(html).toContain(`>Mount Type</span><strong>${mount}</strong>`);
+      expect(html.match(new RegExp(mount, 'g'))).toHaveLength(1);
+      expect(html).not.toContain(` (${mount})`);
       expect(html).not.toContain('data-callout-part="frame"');
+      expect(html).toContain('data-callout-part="bottom"');
     }
   });
   it('preserves numbered selections and fabric performance in every summary design', () => {

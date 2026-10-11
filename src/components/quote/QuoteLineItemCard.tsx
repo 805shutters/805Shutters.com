@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import { Check } from "lucide-react";
-import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
+import { customerQuoteText, customerQuoteProductName } from "@/lib/crm/customer-quote-branding";
 import { CONTRACT_ART_ROOT } from "@/lib/quote/contract-illustrations";
 import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 import { ContractAnatomy } from "./ContractAnatomy";
@@ -42,28 +42,31 @@ export function QuoteLineItemCard({
       <header className={styles.contractToolbar}>
         <div>
           {selection ? <div className={styles.selection}>{selection}</div> : null}
-          <div className={styles.meta} id={headingId}>
+          <div className={styles.meta}>
             <span className={styles.number}>Item {number}</span>
             {optionLabel ? <span className={styles.option}>Option {customerQuoteText(optionLabel) || "A"}</span> : null}
           </div>
+          <h2 className={styles.room} id={headingId}>{customerQuoteText(room) || 'Room not specified'}</h2>
+          <p className={styles.product}>{customerQuoteProductName(productType)}</p>
           {notice ? <div className={styles.notice}>{notice}</div> : null}
         </div>
+        <div className={styles.measurements}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div>
         <div className={styles.cost}>
           <p className={styles.priceLabel}>{priceLabel}</p><div className={styles.price}>{price}</div>
-          {actions ? <div className={`${styles.actions} no-print`}>{actions}</div> : null}
+          {actions ? <details className={`${styles.priceEditor} no-print`}><summary>Edit price</summary><div className={styles.actions}>{actions}</div></details> : null}
         </div>
       </header>
       <div className={styles.anatomy}>
         <ContractAnatomy productType={productType} room={room} options={options} styleName={styleName}
           width={width} quantity={quantity} valanceArtId={valanceArtId}
           illustrationGeometry={illustrationGeometry ?? shutterGeometryFromDimensions(dimensions, options)}
-          layout="grouped" lineRouting="direct" summaryStyle="current" />
-      </div>
-      {temporary ? <footer className={styles.included} data-temporary-shade="included">
+          showHeader={false} layout="grouped" lineRouting="around" summaryStyle="current"
+          afterIllustration={temporary ? <footer className={styles.included} data-temporary-shade="included">
         <img src={`${CONTRACT_ART_ROOT}/temporary-shade.webp`} alt="Temporary pleated paper shade — pencil illustration" width={30} height={51} />
         <div className={styles.includedCopy}><p>Complimentary temporary paper shade</p><span>Included with this item</span></div>
         <span className={styles.noCharge}><Check size={14} aria-hidden="true" />No charge</span>
-      </footer> : null}
+      </footer> : null} />
+      </div>
     </article>
   );
 }

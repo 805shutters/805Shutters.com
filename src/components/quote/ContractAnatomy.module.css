@@ -194,3 +194,23 @@
  .grouped .labelSlot{grid-template-rows:16px 1fr;gap:7px;padding-top:0;break-inside:avoid}
  .grouped .labelSlot h3{font-size:12px}
 }
+
+.notes{grid-column:1/-1;border-top:1px solid #dfe2d8;margin-top:12px;padding-top:14px;text-align:left;break-inside:avoid}.notes h3{margin:0 0 7px;font:600 11px/1.4 Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;color:#676e5f}.notes p{margin:4px 0;font:400 13px/1.55 Arial,sans-serif;color:#595f52;white-space:pre-wrap;overflow-wrap:anywhere}.notes p span{font-weight:500}@media print{.notes{padding-top:10px}.notes p{font-size:11px}}
+
+/* Phone view keeps readable labels around the drawing and live leader lines. */
+@media screen {
+ @container(max-width:620px){
+  .grouped .diagram{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding-top:0;min-height:0;row-gap:22px;column-gap:18px;margin-top:16px}
+  .grouped .art{position:relative;grid-column:1/-1;grid-row:2;left:auto;top:auto;width:76%;height:auto;min-height:245px;justify-self:center;align-self:center;margin:6px 0;z-index:0}
+  .grouped .labelSlot{grid-row:var(--phone-label-row)!important;grid-template-rows:32px 1fr;gap:6px;padding:0}
+  .grouped .designColumn{grid-column:1}.grouped .operationColumn{grid-column:2}
+  .grouped .labelSlot h3{font:500 14px/1.2 Arial,sans-serif;align-self:end}
+  .grouped .labelSlot .callout{padding:10px;border-radius:7px}
+  .grouped .callout strong{font-size:13px;line-height:1.35}
+  .grouped .callout .calloutCategory{font-size:9px;letter-spacing:.035em}
+  .grouped .callout .fabricPerformance{font-size:14px}
+  .grouped .lines{display:block;height:100%;z-index:1}
+  .grouped .line{stroke:#7a8372;stroke-width:1.25}
+  .grouped .labelSlot{z-index:2}
+ }
+}

@@ -13,10 +13,12 @@ const titles: Record<AnatomyPart, string> = { top: 'Top treatment', surface: 'Fa
 const points: Record<AnatomyPart, [number, number]> = { top: [50, 25], surface: [47, 49], slat: [54, 39], control: [82, 58], remote: [50, 48], roll: [82, 27], bottom: [52, 81], frame: [20, 64] };
 const norm = (s: string) => s.toLowerCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-export const ANATOMY_SELECTION_GROUPS = ['Design & color', 'Operation', 'Construction & fit', 'Additional details'] as const;
+export const ANATOMY_SELECTION_GROUPS = ['Valance', 'Design & color', 'Operation', 'Construction & fit', 'Additional details'] as const;
 export function anatomySelectionGroup(label: string): typeof ANATOMY_SELECTION_GROUPS[number] {
   const key = norm(label);
-  if (/fabric|colou?r|finish|material|opacity|light control|lining|texture|weave|valance|cassette|fascia|banding|binding|top treatment/.test(key)) return 'Design & color';
+  if (/colou?r|finish/.test(key)) return 'Design & color';
+  if (/valance|cassette|fascia|top treatment|head pocket/.test(key)) return 'Valance';
+  if (/fabric|material|opacity|light control|lining|texture|weave|banding|binding/.test(key)) return 'Design & color';
   if (/tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'Operation';
   if (/frame|mount|hinge|track|panel|louver|slat|vane|cell|fold|rail|hem|cutout|handle|guide|return|bracket|recess|shape|shutter type|shade type|application|tube|width|height/.test(key)) return 'Construction & fit';
   return 'Additional details';
@@ -94,7 +96,11 @@ export const isMountDetail = (detail: { label: string; value: string }) => /moun
 
 /** Complete label-only model shared by saved contracts and the catalogue review. */
 export function contractAnatomyLabels(productType: string, options: readonly string[], styleName = '', layout = 'grouped') {
-    const anatomy = contractAnatomy(productType, options, styleName);
+    const source = contractAnatomy(productType, options, styleName);
+    const isNote = (detail: QuoteProductDetail) => /\bnotes?\b/i.test(detail.label);
+    const notes = source.specifications.filter(isNote);
+    const anatomy = { ...source, specifications: source.specifications.filter(detail => !isNote(detail)),
+      callouts: source.callouts.map(callout => ({ ...callout, details: callout.details.filter(detail => !isNote(detail)) })).filter(callout => callout.details.length) };
     const callouts: (AnatomyCallout & { noLeader?: boolean })[] = anatomy.callouts.map(callout => ({
       ...callout,
       point: callout.part === 'surface' ? [50, 55] as [number, number] : callout.point,
@@ -103,7 +109,12 @@ export function contractAnatomyLabels(productType: string, options: readonly str
     if (layout === 'grouped') {
       // In the label-only view every selection must survive without a footer.
       for (const detail of anatomy.specifications) {
-        if (isMountDetail(detail) && /^(inside|outside) mount$/i.test(detail.value)) continue;
+        if (isMountDetail(detail) && /^(inside|outside) mount$/i.test(detail.value)) {
+          const construction = callouts.find(c => anatomySelectionGroup(c.details[0].label) === 'Construction & fit');
+          if (construction) construction.details.push(detail);
+          else callouts.push({part:'frame',title:'Construction & fit',details:[detail],point:[50,50],side:'right',noLeader:true});
+          continue;
+        }
         if (callouts.some(c => c.details.some(d => d.label === detail.label && d.value === detail.value))) continue;
         const group = anatomySelectionGroup(detail.label);
         const part = isFinishDetail(detail) ? 'surface' : anatomyPart(detail.label, anatomy.family);
@@ -112,15 +123,15 @@ export function contractAnatomyLabels(productType: string, options: readonly str
         else {
           const extra = callouts.find(c => c.noLeader && anatomySelectionGroup(c.details[0].label) === group);
           if (extra) extra.details.push(detail);
-          else callouts.push({ part: part || 'frame', title: group, details: [detail], point: [50, 50], side: group === 'Design & color' ? 'left' : 'right', noLeader: true });
+          else callouts.push({ part: part || 'frame', title: group, details: [detail], point: [50, 50], side: group === 'Design & color' || group === 'Valance' ? 'left' : 'right', noLeader: true });
         }
       }
       // A physical part may carry selections from different categories (e.g. cell size and fabric).
       const separated = callouts.flatMap(c => ANATOMY_SELECTION_GROUPS.flatMap(group => {
         const details = c.details.filter(d => anatomySelectionGroup(d.label) === group);
-        return details.length ? [{...c, details, side: (group === 'Design & color' ? 'left' : 'right') as 'left' | 'right'}] : [];
+        return details.length ? [{...c, details, side: (group === 'Design & color' || group === 'Valance' ? 'left' : 'right') as 'left' | 'right'}] : [];
       }));
       callouts.splice(0, callouts.length, ...separated);
     }
-    return { ...anatomy, callouts };
+    return { ...anatomy, callouts, notes };
 }
