@@ -6406,6 +6406,12 @@ export function buildMobileCatalogProgramPatch(design: SalesQuoteDesign, product
   if (options.catalog_product_id !== product.id || !usableCatalogPrograms(product).some(program => program.id === programId)) return null;
   if (options.catalog_program_id === programId) return null;
   const patch = buildCatalogSelectionPatch(options, product, programId, false);
+  // These choices describe the dimensions already entered in the mobile sequence.
+  if (product.productType === 'Shutters' && ONYX_SIZE_TYPES.some(value => value === options.size_type)) {
+    patch.options_json = { ...patch.options_json, size_type: options.size_type };
+  } else if (product.productType !== 'Shutters' && ['Inside Mount', 'Outside Mount'].includes(String(design.mount_type))) {
+    patch.mount_type = design.mount_type;
+  }
   if (options.manual_price_override === true) {
     patch.unit_price = design.unit_price;
     patch.options_json = { ...patch.options_json, manual_price_override: true,

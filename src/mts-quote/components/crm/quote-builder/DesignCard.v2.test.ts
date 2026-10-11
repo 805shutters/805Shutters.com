@@ -1956,3 +1956,12 @@ it('mobile program selection uses catalog identities, clears incompatible choice
   expect(patch.options_json?.frame_type).toBeUndefined();expect(patch.fabric).toBeNull();
   expect(buildMobileCatalogProgramPatch(design,product,programs[0].id)).toBeNull();expect(buildMobileCatalogProgramPatch(design,product,'UNSUPPORTED')).toBeNull();
 });
+
+it('mobile program changes retain the measurement basis already entered for shutters and shades',()=>{
+  const catalog=normalizeCrmQuoteCatalog({catalog:buildUiCatalog()});
+  for(const [id,field,value] of [['onyx_shutters','size_type','F - Frame to Frame'],['norman_shutters','size_type','W - Window Size'],['honeycomb','mount_type','Outside Mount']] as const){
+    const product=catalog.products.find(product=>product.id===id)!;const programs=product.programs.filter(program=>program.priceBasis!=='unavailable');expect(programs.length).toBeGreaterThan(1);
+    const design={...buildDraftShutterDesign('A',true),mount_type:field==='mount_type'?value:null,options_json:{catalog_product_id:id,catalog_program_id:programs[0].id,...(field==='size_type'?{size_type:value}:{})}} as SalesQuoteDesign;
+    const patch=buildMobileCatalogProgramPatch(design,product,programs[1].id)!;expect(field==='size_type'?patch.options_json?.size_type:patch.mount_type).toBe(value);
+  }
+});

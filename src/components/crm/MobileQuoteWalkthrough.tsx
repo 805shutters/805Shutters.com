@@ -32,7 +32,7 @@ import { MobileRoomSelector } from "./MobileRoomSelector";
 import styles from "./MobileQuoteWalkthrough.module.css";
 import { MobileSupplierSequence } from './MobileSupplierSequence';
 import { MobileSupplierSubmission } from './MobileSupplierSubmission';
-import { prepareMobileSupplierDraft, patchSupplierInputs, selectSupplierFamily, selectSupplierManufacturer } from '@/lib/crm/mobile-supplier-spec';
+import { prepareMobileSupplierDraft, patchSupplierInputs, selectSupplierFamily, selectSupplierManufacturer, selectSupplierMeasurementBasis, supplierMeasurementBasis } from '@/lib/crm/mobile-supplier-spec';
 
 type Tab = "scheduled" | "today" | "add" | "sold";
 type ExistingCustomer = { jobId: string; name: string; phone: string; email: string; address: string };
@@ -406,6 +406,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   async function saveAndNext() {
     if (!draft || !active || draft.submission.snapshot || savingRef.current || preparingPhotos.current) return;
+    if (draft.draftJob && !supplierMeasurementBasis(active)) { setError('Choose the measurement basis or mount before entering dimensions.'); return; }
     const issue = validateMobileQuoteMeasurement(active);
     if (issue) { setError(issue); return; }
     savingRef.current = true; setBusy(true);
@@ -500,6 +501,8 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
   function review() {
     if (!draft || savingRef.current || preparingPhotos.current) return;
     const next = omitTrailingUntouchedMobileQuoteWindow(draft);
+    const missingBasis = next.draftJob && !next.draftJob.submittedSpec && !next.submission.snapshot && next.windows.find(line => !supplierMeasurementBasis(line));
+    if (missingBasis) { setDraft({ ...next, activeWindowId: missingBasis.id }); setScreen('build'); setError('Choose the measurement basis or mount before entering dimensions.'); return; }
     setDraft(next); setScreen("review"); setError(""); if(!next.draftJob) void refreshPrice(next); window.scrollTo(0, 0);
   }
 
@@ -783,6 +786,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
         {draft.draftJob && workflowMode === "full-design" ? <MobileSupplierSequence key={active.id} draft={draft} line={active} products={catalog}
           chooseFamily={family => setDraft(current => current ? selectSupplierFamily(current, active.id, family) : current)}
           chooseManufacturer={manufacturer => setDraft(current => current ? selectSupplierManufacturer(current, active.id, manufacturer) : current)}
+          chooseMeasurementBasis={value => setDraft(current => current ? selectSupplierMeasurementBasis(current, active.id, value) : current)}
           chooseProduct={selectProduct} patch={patch => setDraft(current => current ? patchSupplierInputs(current, active.id, patch) : current)}
           roomEditor={supplierRoomEditor} dimensionEditor={supplierDimensionEditor} optionsEditor={supplierOptionsEditor} /> : <>
           {workflowMode === "full-design" && <div className={styles.step}><ManufacturerProductButtons key={`${draft.id}:${active.id}`} products={catalog} selectedManufacturer={manufacturer} selectedProductId={active.activeProductId} onSelectManufacturer={setManufacturer} onSelectProduct={selectProduct} loading={!catalog.length} mobileProductFamily={productFamily} onSelectMobileProductFamily={setProductFamily} compactMobile /></div>}

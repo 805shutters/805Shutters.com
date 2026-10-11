@@ -1,6 +1,6 @@
 import { describe,it,expect } from 'vitest';
 import { addMobileQuoteWindow,createMobileQuoteDraft,emptyMobileQuoteDesign,selectMobileQuoteProduct,updateMobileQuoteDesign,setMobileQuoteLinePrice,selectMobileQuoteRoom } from './mobile-quote-draft';
-import { COST_MULTIPLIERS,MOBILE_PRODUCT_FAMILIES,buildSupplierSpec,jobSettings,prepareMobileSupplierDraft,lineInputs,patchSupplierInputs,selectSupplierFamily,selectSupplierManufacturer,validateSupplierSpec,canonicalJson } from './mobile-supplier-spec';
+import { COST_MULTIPLIERS,MOBILE_PRODUCT_FAMILIES,buildSupplierSpec,jobSettings,prepareMobileSupplierDraft,lineInputs,patchSupplierInputs,supplierMeasurementBasis,selectSupplierMeasurementBasis,selectSupplierFamily,selectSupplierManufacturer,validateSupplierSpec,canonicalJson } from './mobile-supplier-spec';
 
 import { syntheticDraft } from './mobile-supplier-test-fixture';
 describe('mobile supplier spec',()=>{
@@ -25,6 +25,18 @@ describe('mobile supplier spec',()=>{
     const draft=syntheticDraft();draft.workflowMode='measure-first';draft.draftJob!.jobId='SYNTHETIC JOB';
     const next=prepareMobileSupplierDraft(draft);expect(next.draftJob).toBe(draft.draftJob);
     expect(next.draftJob!.multiplier).toBe('2');expect(next.draftJob!.requestId).toBe(draft.draftJob!.requestId);
+  });
+  it('chooses either blind mount before dimensions, clears old measurements and preserves a manual price',()=>{
+    let d=syntheticDraft(),id=d.windows[0].id;d=setMobileQuoteLinePrice(d,id,123.45);
+    d=selectSupplierMeasurementBasis(d,id,'Outside Mount');expect(supplierMeasurementBasis(d.windows[0])).toBe('Outside Mount');expect(lineInputs(d.windows[0]).mount).toBe('Outside Mount');expect(d.windows[0].manualAllInPrice).toBe('123.45');expect([d.windows[0].widthWhole,d.windows[0].heightWhole,d.windows[0].widthFraction,d.windows[0].heightFraction]).toEqual([0,0,'0','0']);
+    Object.assign(d.windows[0],{widthWhole:40,heightWhole:60});expect(selectSupplierMeasurementBasis(d,id,'Outside Mount')).toBe(d);
+    d=selectSupplierMeasurementBasis(d,id,'Inside Mount');expect(supplierMeasurementBasis(d.windows[0])).toBe('Inside Mount');expect(d.windows[0].widthWhole).toBe(0);expect(selectSupplierMeasurementBasis(d,id,'UNKNOWN')).toBe(d);
+    Object.assign(d.windows[0],{widthWhole:36,heightWhole:60});expect(buildSupplierSpec(d).lines[0].configuration.mount_type).toBe('Inside Mount');
+  });
+  it('stores window or frame-to-frame measurements for shutters without guessing dimensions',()=>{
+    let d=syntheticDraft(),id=d.windows[0].id;d=selectSupplierFamily(d,id,'Shutters');d=selectSupplierManufacturer(d,id,'Onyx');d=selectMobileQuoteProduct(d,id,{productId:'onyx_shutters',productType:'Shutters',design:{...emptyMobileQuoteDesign(id,'Shutters'),supplier:'Onyx',options_json:{frame_sides:'4'}}});
+    d=selectSupplierMeasurementBasis(d,id,'W - Window Size');expect(supplierMeasurementBasis(d.windows[0])).toBe('W - Window Size');expect(d.windows[0].widthWhole).toBe(0);d=selectSupplierMeasurementBasis(d,id,'F - Frame to Frame');expect(d.windows[0].families.onyx_shutters.design.options_json).toMatchObject({size_type:'F - Frame to Frame',frame_sides:null});Object.assign(d.windows[0],{widthWhole:36,heightWhole:60});expect(buildSupplierSpec(d).lines[0].configuration.size_type).toBe('F - Frame to Frame');
+    d.draftJob!.submittedSpec=buildSupplierSpec(d);expect(selectSupplierMeasurementBasis(d,id,'W - Window Size')).toBe(d);
   });
   it('offers exactly nine unique families and eight cost factors',()=>{
     expect(MOBILE_PRODUCT_FAMILIES).toEqual(['Shutters','Faux Wood Blinds','Wood Blinds','Roman Shades','Sheer Shades','Vertical Blinds','Roller Shades','Honeycomb Shades','Drapery']);

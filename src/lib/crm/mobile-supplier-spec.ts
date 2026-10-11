@@ -1,5 +1,5 @@
 import type { MobileQuoteDraft, MobileQuoteWindow } from './mobile-quote-draft';
-import { MOBILE_QUOTE_FRACTIONS, validateMobileQuoteMeasurement,retainMobileManualPrice } from './mobile-quote-draft';
+import { MOBILE_QUOTE_FRACTIONS, validateMobileQuoteMeasurement,retainMobileManualPrice,updateMobileQuoteDesign } from './mobile-quote-draft';
 import type { QuoteLabCatalogProduct } from '@/lib/quote-lab/types';
 
 export const MOBILE_PRODUCT_FAMILIES = ['Shutters', 'Faux Wood Blinds', 'Wood Blinds', 'Roman Shades', 'Sheer Shades', 'Vertical Blinds', 'Roller Shades', 'Honeycomb Shades', 'Drapery'] as const;
@@ -39,6 +39,33 @@ export function lineInputs(line: MobileQuoteWindow): SupplierLineInputs {
 export function jobSettings(draft: MobileQuoteDraft): DraftJobSettings {
   return draft.draftJob || { version: 1, multiplier: null, requestId: `mobile-supplier:${draft.id}:1`, jobId: null, submittedSpec: null,
     tax: { treatment: 'unresolved', amount: null, instruction: '' }, comparisonMode: 'mixed_lines' };
+}
+export const SHUTTER_MEASUREMENT_BASES = ['W - Window Size', 'F - Frame to Frame'] as const;
+export const BLIND_MOUNT_TYPES = ['Inside Mount', 'Outside Mount'] as const;
+export function supplierMeasurementBasis(line: MobileQuoteWindow): string | null {
+  const design = line.activeProductId ? line.families[line.activeProductId]?.design : null;
+  if (!design) return null;
+  const value = lineInputs(line).family === 'Shutters' ? design.options_json?.size_type : design.mount_type;
+  const choices: readonly string[] = lineInputs(line).family === 'Shutters' ? SHUTTER_MEASUREMENT_BASES : BLIND_MOUNT_TYPES;
+  return typeof value === 'string' && choices.includes(value) ? value : null;
+}
+/** Store the measurement meaning, without converting or guessing dimensions. */
+export function selectSupplierMeasurementBasis(draft: MobileQuoteDraft, id: string, value: string): MobileQuoteDraft {
+  if (draft.draftJob?.submittedSpec || draft.submission.snapshot || draft.submission.quoteId) return draft;
+  const line = draft.windows.find(line => line.id === id);
+  const design = line?.activeProductId ? line.families[line.activeProductId]?.design : null;
+  if (!line || !design) return draft;
+  const shutters = lineInputs(line).family === 'Shutters';
+  const choices: readonly string[] = shutters ? SHUTTER_MEASUREMENT_BASES : BLIND_MOUNT_TYPES;
+  if (!choices.includes(value) || supplierMeasurementBasis(line) === value) return draft;
+  const next = updateMobileQuoteDesign(draft, id, shutters
+    ? { options_json: { ...design.options_json, size_type: value, ...(value === SHUTTER_MEASUREMENT_BASES[0] ? {} : { frame_sides: null }) } }
+    : { mount_type: value });
+  const changed = next.windows.find(line => line.id === id)!;
+  if (!shutters && changed.supplierInputs) changed.supplierInputs.mount = '';
+  // A dimension entered under another or unknown basis must be remeasured.
+  changed.widthWhole = 0; changed.widthFraction = '0'; changed.heightWhole = 0; changed.heightFraction = '0';
+  return next;
 }
 /** Open editable device drafts in the current design without changing their saved content. */
 export function prepareMobileSupplierDraft(draft: MobileQuoteDraft): MobileQuoteDraft {
