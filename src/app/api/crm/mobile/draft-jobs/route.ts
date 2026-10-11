@@ -1,3 +1,4 @@
+import { supplierDraftProcessingAvailable, SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE } from '@/lib/crm/supplier-draft-availability';
 import { NextRequest,NextResponse } from 'next/server';
 import { CrmAuthError,crmAuthErrorResponse,requireCrmUser } from '@/lib/crm/auth';
 import { mobileFamily,validateSupplierSpec } from '@/lib/crm/mobile-supplier-spec';
@@ -8,7 +9,7 @@ import { getProduct } from '@/lib/quote/catalog';
 export const runtime='nodejs';
 export async function POST(request:NextRequest){
   try{
-    const {supabase,user}=await requireCrmUser(request);
+    const {supabase,user}=await requireCrmUser(request);if(!supplierDraftProcessingAvailable())throw new CrmAuthError(503,SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE);
     const raw=await request.text();if(Buffer.byteLength(raw)>1024*1024)throw new CrmAuthError(413,'Submitted specification exceeds 1 MiB.');
     let body:{requestId?:unknown;spec?:unknown};try{body=JSON.parse(raw);}catch{throw new CrmAuthError(400,'A valid JSON draft specification is required.');}
     if(!body || typeof body.requestId!=='string'|| !/^[a-zA-Z0-9:_-]{1,200}$/.test(body.requestId))throw new CrmAuthError(400,'A stable submission identity is required.');

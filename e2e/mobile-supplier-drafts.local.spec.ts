@@ -3,7 +3,7 @@ import {buildUiCatalog} from '../src/lib/quote/ui-catalog';
 import {initialDraftJobState} from '../src/lib/crm/supplier-draft-orchestrator';
 const fixture='/e2e/fixtures/mobile-window-drafts.html',catalog=buildUiCatalog();
 const customer={id:'22222222-2222-4222-8222-222222222222',job_id:'33333333-3333-4333-8333-333333333333',customer_name:'SYNTHETIC CUSTOMER',title:'SYNTHETIC consult',event_type:'sales_consult',status:'scheduled',customer_phone:'8055550100',customer_email:'synthetic@example.invalid',customer_address:'SYNTHETIC ADDRESS',start_at:new Date().toISOString(),product_interest:'Synthetic only'};
-async function setup(page:Page){const requests:any[]=[],errors:string[]=[];let queued:any=null,interrupt=true;
+async function setup(page:Page,designOnly=false){const requests:any[]=[],errors:string[]=[];let queued:any=null,interrupt=true;
  page.on('pageerror',error=>errors.push(error.message));
  await page.route('**/*',async route=>{const req=route.request(),url=new URL(req.url()),path=url.pathname.replace(/\/$/,'');if(url.hostname!=='127.0.0.1')return route.abort();
  if(path==='/__window_drafts__/query')return route.fulfill({json:{data:[],error:null}});
@@ -13,7 +13,7 @@ async function setup(page:Page){const requests:any[]=[],errors:string[]=[];let q
  if(path==='/api/crm/mobile/draft-jobs'&&req.method()==='POST'){const body=req.postDataJSON();requests.push(body);if(!queued){queued={id:'44444444-4444-4444-8444-444444444444',ownerId:'11111111-1111-4111-8111-111111111111',spec:body.spec,state:initialDraftJobState('44444444-4444-4444-8444-444444444444',body.spec,'a'.repeat(64))};queued.state.phase='blocked';queued.state.suppliers.forEach((s:any)=>{s.status='blocked';s.blockers=[{code:'adapter_unavailable',message:s.manufacturer+' draft adapter is not connected.'}];});queued.state.blockers=queued.state.suppliers.flatMap((s:any)=>s.blockers);}if(interrupt){interrupt=false;return route.abort();}return route.fulfill({json:{job:queued,replayed:true}});}
  if(path.startsWith('/api/crm/mobile/draft-jobs/')&&queued)return route.fulfill({json:{job:queued}});
  return route.fulfill({status:503,json:{message:'Isolated test: integration unavailable'}});
- });await page.goto(fixture);await page.getByRole('button',{name:'Today’s Quotes',exact:true}).click();await page.getByRole('button',{name:'Start quote',exact:true}).click();return {requests,errors,job:()=>queued};
+ });await page.goto(fixture+(designOnly?'?design-only=1':''));await page.getByRole('button',{name:'Today’s Quotes',exact:true}).click();await page.getByRole('button',{name:'Start quote',exact:true}).click();return {requests,errors,job:()=>queued};
 }
 async function roller(page:Page){await page.getByRole('group',{name:'Product family',exact:true}).getByRole('button',{name:'Roller Shades',exact:true}).click();await page.getByRole('group',{name:'Manufacturer for this opening'}).getByRole('button',{name:'Norman',exact:true}).click();await page.getByRole('group',{name:'Exact supplier product'}).getByRole('button',{name:'Soluna Roller Shades',exact:true}).click();await page.getByRole('button',{name:'Living room',exact:true}).click();await page.getByRole('button',{name:'Continue to dimensions'}).click();}
 async function dimensions(page:Page,width='36',height='60'){await page.getByLabel('width whole inches',{exact:true}).fill(width);await page.getByRole('group',{name:'width fractions',exact:true}).getByRole('button',{name:'3/16',exact:true}).click();await page.getByRole('button',{name:/^height /i}).click();await page.getByLabel('height whole inches',{exact:true}).fill(height);await page.getByRole('group',{name:'height fractions',exact:true}).getByRole('button',{name:'15/16',exact:true}).click();await page.getByRole('button',{name:'Confirm dimensions · next options'}).click();}
@@ -40,4 +40,10 @@ for(const family of ['Shutters','Faux Wood Blinds','Wood Blinds','Roman Shades',
 });
 test('existing Norman roller motor choice reveals conditional power controls',async({page})=>{
   await page.setViewportSize({width:390,height:844});await setup(page);await roller(page);await dimensions(page);await page.getByRole('button',{name:'Motorized',exact:true}).click();const label=page.getByText('Motor / Power System',{exact:true});await expect(label).toBeVisible();const power=page.locator('.quote-option-slot').filter({has:label}).locator('[data-mobile-quick-options] button').first();await expect(power).toBeVisible();expect((await power.textContent())?.trim().length).toBeGreaterThan(0);expect(await power.evaluate(el=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor)).toBe(true);await label.evaluate(el=>el.scrollIntoView({behavior:'instant',block:'center'}));await page.screenshot({path:'test-results/supplier-norman-motor-390.png',fullPage:false});
+});
+
+test('production design rollout keeps submission disabled and the saved source editable',async({page})=>{
+ await page.setViewportSize({width:390,height:844});const state=await setup(page,true);await roller(page);await dimensions(page);await minimalOptions(page);await page.getByRole('button',{name:'Review all',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Submit',exact:true})).toBeDisabled();await expect(page.getByRole('status').filter({hasText:'Supplier costing is not connected yet'})).toBeVisible();expect(state.requests).toHaveLength(0);await page.screenshot({path:'test-results/supplier-design-rollout-390.png',fullPage:true});
+ await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();await expect(page.getByRole('button',{name:/^1 family /i})).toBeVisible();expect(state.requests).toHaveLength(0);expect(state.errors).toEqual([]);
 });

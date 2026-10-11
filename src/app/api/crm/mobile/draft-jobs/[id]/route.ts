@@ -1,3 +1,4 @@
+import { supplierDraftProcessingAvailable, SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE } from '@/lib/crm/supplier-draft-availability';
 import { NextRequest,NextResponse } from 'next/server';
 import { CrmAuthError,crmAuthErrorResponse,requireCrmUser } from '@/lib/crm/auth';
 import { recordUnconnectedDraftRuntime } from '@/lib/crm/supplier-draft-runtime';
@@ -5,11 +6,11 @@ import { DRAFT_JOB_TABLE,loadSupplierDraftJob } from '@/lib/crm/supplier-draft-j
 const headers={'Cache-Control':'private, no-store'};
 export const runtime='nodejs';
 export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
-  try{const {supabase,user}=await requireCrmUser(request);const {id}=await params;return NextResponse.json({job:await loadSupplierDraftJob(supabase,id,user.id)},{headers});}catch(error){return crmAuthErrorResponse(error);}
+  try{const {supabase,user}=await requireCrmUser(request);if(!supplierDraftProcessingAvailable())throw new CrmAuthError(503,SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE);const {id}=await params;return NextResponse.json({job:await loadSupplierDraftJob(supabase,id,user.id)},{headers});}catch(error){return crmAuthErrorResponse(error);}
 }
 export async function PATCH(request:NextRequest,{params}:{params:Promise<{id:string}>}){
   try{
-    const {supabase,user}=await requireCrmUser(request);const {id}=await params;const body=await request.json().catch(()=>null);
+    const {supabase,user}=await requireCrmUser(request);if(!supplierDraftProcessingAvailable())throw new CrmAuthError(503,SUPPLIER_DRAFT_UNAVAILABLE_MESSAGE);const {id}=await params;const body=await request.json().catch(()=>null);
     if(body?.action!=='resume'||!Number.isInteger(body.expectedRevision))throw new CrmAuthError(400,'Resume requires the last observed revision.');
     const job=await loadSupplierDraftJob(supabase,id,user.id);
     if(job.state.phase==='complete')return NextResponse.json({job},{headers});
