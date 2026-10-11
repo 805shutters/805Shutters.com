@@ -14,14 +14,23 @@ describe("approved quote line item card", () => {
     expect(html).toContain("Option A");
     expect(html).toContain("Living room");
     expect(html).toContain("Honeycomb Shades");
-    expect(html).toContain("Quantity 2");
+    expect(html).toContain("Quantity <strong>2</strong>");
     expect(html).toContain("honeycomb-tdbu.webp");
     const artworkIndex = html.indexOf('data-contract-illustration="c-v1"');
     expect(html.indexOf("Living room")).toBeLessThan(artworkIndex);
-    expect(artworkIndex).toBeLessThan(html.indexOf("$498.95"));
+    expect(html).toContain("$498.95");
     expect(html.match(/Natural Tan/g)).toHaveLength(1);
-    expect(html).toContain('aria-expanded="true"');
-    expect(html).toContain("Hide details");
+    expect(html).toContain('data-contract-layout="grouped"');
+    expect(html).not.toContain("Hide details");
+    expect(html).not.toContain("Selection recap");
+  });
+
+  it("preserves actions, selection and geometry while omitting opening height", () => {
+    const html=renderToStaticMarkup(createElement(QuoteLineItemCard,{...base,productType:'Shutters',dimensions:'70" × 45"',options:['Panel Config: LR','Tilt Type: Hidden Tilt','Split Tilt: Yes','Mount Type: Inside mount'],actions:createElement('button',null,'Save price'),selection:createElement('input',{type:'checkbox','aria-label':'Select item'}),notice:'10% off applied'}));
+    for(const value of ['Save price','Select item','10% off applied','(Inside mount)','70″','shutter-hidden-split.webp','data-opening-aspect-ratio="1.5555555555555556"']) expect(html).toContain(value);
+    expect(html).not.toContain('45″');
+    expect(html).not.toContain('45&quot;');
+    expect(html).not.toContain('Width × height');
   });
 
   it("shows the complimentary shade once, only if the saved option includes it", () => {

@@ -5,8 +5,25 @@ import { describe, expect, it } from "vitest";
 import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
 import { customerQuoteOptions } from "@/lib/crm/customer-quote-branding";
 import { VALANCE_ARTWORK, valanceArtwork, valanceIllustration } from "./valance-illustrations";
+import { anatomyPreviewProduct } from './contract-anatomy-catalog';
 
 describe("manufacturer-specific valance artwork", () => {
+  it('assembles every named Soluna valance menu choice on the shade', () => {
+    const product=anatomyPreviewProduct('roller')!;
+    const choices=product.groups.find(g=>g.label==='Valance')!.choices;
+    expect(choices).toHaveLength(10);
+    const fabricMarkup=new Set<string>();
+    for(const choice of choices.filter(c=>!/^No Valance/i.test(c.label))) {
+      const options=['Manufacturer: Norman','Lift System: Motorized',...choice.options];
+      const id=valanceIllustration(product.name,options);
+      expect(id,choice.label).toBeTruthy();
+      const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:product.name,options,size:'anatomy'}));
+      expect(html,choice.label).toContain('data-roller-top-treatment="valance"');
+      expect(html,choice.label).toContain(`data-valance-artwork="${id}"`);
+      if(/Fabric Valance/.test(choice.label)) fabricMarkup.add(html.match(/--valance-height:([^;]+)/)?.[1]||'');
+    }
+    expect(fabricMarkup.size).toBe(4);
+  });
   it.each(VALANCE_ARTWORK)("ships a matching profile for $id", art => {
     expect(existsSync(`public${valanceArtwork(art.id)?.src}`)).toBe(true);
     expect(valanceIllustration(art.products[0], [`Supplier: ${art.manufacturer}`, `Valance: ${art.aliases[0]}*`])).toBe(art.id);

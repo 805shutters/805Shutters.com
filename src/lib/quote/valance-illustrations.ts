@@ -28,6 +28,16 @@ export function valanceArtwork(id: string | null | undefined) {
   return art ? { ...art, src: `${VALANCE_ART_ROOT}/${art.id}.webp` } : null;
 }
 
+/** Shared illustration geometry: anchor every cover over the fabric edge.
+ * Raster margins stay transparent through multiply compositing; heights are
+ * relative profile studies, not fabrication measurements. */
+export function rollerValanceLayout(id: string, options: readonly string[]) {
+  const value = id === 'norman-fabric' ? options.join(' ').match(/(?:^|\s)(3 1\/2|4 1\/2|6|8)["″]\s*Fabric Valance/i)?.[1] : undefined;
+  const inches = value ? ({'3 1/2':3.5,'4 1/2':4.5,'6':6,'8':8}[value] || 4.5) : 4.5;
+  const height = 31 * inches / 4.5;
+  return { height, top: 30 - height * .78 };
+}
+
 /** Match manufacturer BEFORE customer branding removes supplier attribution. */
 export function valanceIllustration(productType: string, options: readonly string[] = [], manufacturerId?: string, surchargeIds: readonly string[] = []): string | null {
   const fields = options.flatMap((option) => {

@@ -11,7 +11,7 @@ export const FRENCH_DOOR_SKETCH_TYPES = [
 export const SPECIALTY_SHUTTER_SKETCHES = [...NORMAN_SPECIALTY_SHAPES, ...FRENCH_DOOR_SKETCH_TYPES];
 export type SpecialtySketchCode = typeof SPECIALTY_SHUTTER_SKETCHES[number][0];
 export type SpecialtyShutterSketch = {
-  code: SpecialtySketchCode; label: string; tilt: 'center' | 'hidden' | 'offset' | null;
+  code: SpecialtySketchCode | 'RECTANGLE'; label: string; tilt: 'center' | 'hidden' | 'offset' | null;
   split: boolean; divider: boolean; layout: string; cutoutSide: 'left' | 'right' | null;
   top: 'rectangle' | 'arch' | 'quarter-left' | 'quarter-right'; archStyle: string;
   curvedTilt: 'rear' | 'hidden' | null; fixedTop: boolean; noFrame: boolean;

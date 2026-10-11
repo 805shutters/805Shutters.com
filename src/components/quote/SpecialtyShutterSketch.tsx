@@ -13,6 +13,7 @@ const quarter = (right=false,bottom=300,shoulder=120,x=70,w=100): Part => part(r
  * A frontal graphite study remains legible at contract and print sizes. */
 export function specialtySketchParts(sketch: Sketch): Part[] {
   const c=sketch.code;
+  if(c==='RECTANGLE')return [part('M20 20H220V300H20Z')];
   if(frenchDoorSketch(c)) {
     const p = sketch.top==='arch'?arch(65,110,20,85):sketch.top==='quarter-left'?quarter(false,300,95,65,110):sketch.top==='quarter-right'?quarter(true,300,95,65,110):part('M65 20H175V300H65Z',65,20,110,280);
     return [p];

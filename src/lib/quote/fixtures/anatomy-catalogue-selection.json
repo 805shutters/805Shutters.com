@@ -1,0 +1,340 @@
+{
+  "selection": {
+    "citylights_aluminum": {
+      "scope": "all",
+      "choices": []
+    },
+    "faux_wood": {
+      "scope": "all",
+      "choices": []
+    },
+    "honeycomb": {
+      "scope": "all",
+      "choices": []
+    },
+    "perfectsheer": {
+      "scope": "all",
+      "choices": []
+    },
+    "roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "roman": {
+      "scope": "all",
+      "choices": []
+    },
+    "smartdrape": {
+      "scope": "all",
+      "choices": []
+    },
+    "smartfold": {
+      "scope": "all",
+      "choices": []
+    },
+    "smartprivacy_faux": {
+      "scope": "all",
+      "choices": []
+    },
+    "synchrony_vertical": {
+      "scope": "all",
+      "choices": []
+    },
+    "wood_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_shutters": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_shutters": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_ultimate_faux_valance_only": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_smartprivacy_valance_only": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_roller_valance_only": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_roller_separate_valance": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_signature_roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_signature_sunscreen": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_signature_zebra": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_lux_fabric_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_lux_honeycomb": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_lux_sheerview": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_woven": {
+      "scope": "all",
+      "choices": []
+    },
+    "onyx_ash_shutters": {
+      "scope": "all",
+      "choices": []
+    },
+    "san_clemente_honeycomb": {
+      "scope": "all",
+      "choices": []
+    },
+    "san_clemente_faux_wood": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_contract_faux_wood": {
+      "scope": "all",
+      "choices": []
+    },
+    "norman_contract_vertical": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_interior_roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_elite_patio": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_titan_patio": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_mega_exterior": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_tension_shade": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_all_seasons_screen": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_awning_premium_pro": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_awning_premium_plus": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_awning_premium": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_awning_select": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_awning_drop_arm": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_exterior_clutch_unavailable": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_vinyl_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_mini_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_faux_wood_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_roller_shades": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_vertical_blinds": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_dealer_listed_mini": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_dealer_listed_vinyl": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_dealer_listed_faux": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_dealer_listed_roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "lotus_dealer_listed_vertical": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_flat_roman": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_europanels": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_louvolite_roller": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_louvolite_flat_roman": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_louvolite_europanels": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_zebra": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_louvolite_zebra": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_sheerview": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_cellular": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_verticell": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_cellular_shapes": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_advantage_ii_2": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_advantage_ii_2_5": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_premium_ii_2": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_premium_ii_2_5": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_aluminum_2": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_aluminum_1": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_basicvue": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_chateau_woods": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_vertical_essence": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_wood_shutters": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_vinyl_shutters": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_exterior_cable": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_exterior_zip": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_walden_premier": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_walden_select": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_portfolio_roman": {
+      "scope": "all",
+      "choices": []
+    },
+    "sundance_drapery_track": {
+      "scope": "all",
+      "choices": []
+    },
+    "type:Smart Drapes": {
+      "scope": "all",
+      "choices": []
+    },
+    "type:SmartFold Shades": {
+      "scope": "all",
+      "choices": []
+    },
+    "vertical_honeycomb": {
+      "scope": "all",
+      "choices": []
+    },
+    "polar_drapery_track": {
+      "scope": "all",
+      "choices": []
+    }
+  }
+}

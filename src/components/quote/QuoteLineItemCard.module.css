@@ -78,3 +78,13 @@
   .specifications, .specifications[hidden] { display: grid !important; }
   .group, .compactGroup, .detail, .included { break-inside: avoid; }
 }
+
+/* The customer and staff contracts share the approved label-only illustration. */
+.contractToolbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:18px 24px 0}
+.contractToolbar .meta{margin:0}
+.contractToolbar .cost{border:0;padding:0;display:block;text-align:right}
+.anatomy{min-width:0;padding:0 12px 12px}
+.anatomy>article{border:0;border-radius:0}
+@container(max-width:580px){.contractToolbar{padding:16px 16px 0}.anatomy{padding:0 4px 8px}}
+@media print{.contractToolbar{padding:10px 16px 0;break-inside:avoid}.anatomy{padding:0}.contractToolbar .actions{display:none!important}}
+@media print{.card{break-inside:avoid;page-break-inside:avoid}.contractToolbar{break-after:avoid}}

@@ -101,8 +101,8 @@ describe("QuoteSelection", () => {
       adjustments: { ...DEFAULT_ADJUSTMENTS, discountPercent: 10 }, subtotal: 417, discount: 30, total: 387,
       depositDue: 193.5, balanceDue: 193.5 };
     const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
-    expect(html.match(/<dt>Installation<\/dt><dd>\$25\.00 \(1 × \$25\)<\/dd>/g)).toHaveLength(3);
-    expect(html.match(/<dt>Shipping<\/dt><dd>\$14\.00 \(1 × \$14\)<\/dd>/g)).toHaveLength(3);
+    expect(html.match(/>Installation<\/span><strong>\$25\.00 \(1 × \$25\)<\/strong>/g)).toHaveLength(3);
+    expect(html.match(/>Shipping<\/span><strong>\$14\.00 \(1 × \$14\)<\/strong>/g)).toHaveLength(3);
     expect(html).toContain("$387.00");
     expect(html).not.toContain("$375.30");
     expect(html).toContain("@media print");
@@ -150,9 +150,9 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Callie");
     expect(html).toContain("Fabric");
     expect(html).toContain("Callie - Linen");
-    expect(html).toContain("Lift System");
+    expect(html).toContain("Control type");
     expect(html).toContain("Cordless");
-    expect(html).toContain("Mount Type");
+    expect(html).toContain("(Inside Mount)");
     expect(html).toContain("Inside Mount");
     expect(html).toContain("Valance");
     expect(html).toContain("Cassette");
@@ -161,7 +161,8 @@ describe("QuoteSelection", () => {
     expect(roomIndex).toBeGreaterThan(-1);
     const artworkIndex = html.indexOf('data-contract-illustration="c-v1"', roomIndex);
     expect(artworkIndex).toBeGreaterThan(roomIndex);
-    expect(linePriceIndex).toBeGreaterThan(artworkIndex);
+    expect(html).toContain("$509.40");
+    expect(html).toContain('data-contract-layout="grouped"');
     expect(html).not.toContain('48&quot; W');
   });
 

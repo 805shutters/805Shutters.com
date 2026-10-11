@@ -33,5 +33,19 @@
 
 /* Assemble the selected top treatment on the shade, at every display size. */
 .rollerAssembly { position: relative; width: 100%; }
-.rollerValance { position: absolute; top: 0; left: 10.8%; width: 78.4%; height: 31%; object-fit: fill; clip-path: inset(0 0 20% 0); }
+.rollerValance { position: absolute; top: var(--valance-top,5.82%); left: 10.8%; width: 78.4%; height: var(--valance-height,31%); object-fit: fill; mix-blend-mode: multiply; }
+.joinedValance > .product { clip-path: inset(26% 0 0); }
 .rollerLabel { padding: 4px 6px; font-size: 10px; line-height: 1.3; text-align: center; color: #333; }
+
+/* Read-only anatomy preview uses the same selected artwork at a larger size. */
+.figure.anatomy{width:100%;max-width:100%}
+.anatomy .product,.anatomy .shutterAssembly{width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+.anatomy .reference,.anatomy .rollerLabel{display:none}
+.anatomy .remote{width:72px;height:72px;position:absolute;right:-4%;bottom:-18px;mix-blend-mode:multiply}
+.anatomy .operation,.anatomy .valance{font-size:11px}
+.shadeStudy{position:relative;width:100%}
+.shadeLoop{position:absolute;width:4.8%;height:67%;overflow:visible}
+.loopRight{right:8%;top:13%}
+.loopLeft{left:9%;top:7%}
+
+.pullTab{position:absolute;width:5.5%;height:auto;transform:translateX(-50%);pointer-events:none}
