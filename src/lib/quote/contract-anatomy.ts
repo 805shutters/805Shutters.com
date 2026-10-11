@@ -18,7 +18,7 @@ export function anatomySelectionGroup(label: string): typeof ANATOMY_SELECTION_G
   const key = norm(label);
   if (/fabric|colou?r|finish|material|opacity|light control|lining|texture|weave|valance|cassette|fascia|banding|binding|top treatment/.test(key)) return 'Design & color';
   if (/tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'Operation';
-  if (/frame|mount|hinge|track|panel|louver|slat|vane|cell|fold|rail|hem|cutout|handle|guide|return|bracket|recess|shape|shutter type|width|height/.test(key)) return 'Construction & fit';
+  if (/frame|mount|hinge|track|panel|louver|slat|vane|cell|fold|rail|hem|cutout|handle|guide|return|bracket|recess|shape|shutter type|shade type|application|tube|width|height/.test(key)) return 'Construction & fit';
   return 'Additional details';
 }
 

@@ -51,7 +51,7 @@ describe("purchase details instead of manufacturing worksheets", () => {
     "Requested vane length in inches: 80", "Yards per cut: 5", "Cover size in inches: 20 × 20",
     "SKU: 12345-W", "Item: Replacement bracket", "Privacy accessory pieces: Side channels × 2",
     "Vertical component: Vanes only — 14 × 60 inches", "Aluminum Shims: 2",
-    "Installation: $25.00", "Shipping: $14.00", "Complementary temporary paper shade: Free",
+    "Installation: Ceiling Mount", "Roller Application: Dual Shades", "Tube Class: 2 inch", "Complementary temporary paper shade: Free",
     "Notes: Five-panel sliding panel track with white finish",
   ])("retains the purchased specification %s", option => {
     expect(customerQuoteOptions([option])).toEqual([option]);
@@ -169,4 +169,12 @@ describe("purchase details instead of manufacturing worksheets", () => {
     expect(JSON.stringify(output)).not.toMatch(/heightInches|80|version|panels_v1/);
     expect(selection).toEqual(original);
   });
+});
+
+it("hides automatic charges and catalog defaults, retaining notes and purchased choices", () => {
+  const source = ["Shade Type: Single Shade", "Tube Class: All Tubes", "Roller Application: Single Shade",
+    "Installation: $25.00 (1 × $25)", "Shipping: $14.00 (1 × $14)",
+    "Notes: Match adjacent shade", "Hem Bar: Fabric Covered", "Custom Option: Selected trim"];
+  expect(customerQuoteOptions(source)).toEqual(source.slice(5));
+  expect(quoteProductDetails("", source).map(d => `${d.label}: ${d.value}`)).toEqual(source.slice(5));
 });

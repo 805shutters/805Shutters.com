@@ -89,7 +89,7 @@ function quoteWithLegacyDetails(signed = true): PublicQuote {
 }
 
 describe("QuoteSelection", () => {
-  it("renders saved installation and shipping in the customer contract and print document", () => {
+  it("includes saved installation and shipping in totals without extra contract labels", () => {
     const charges = calculateCustomerCharges({ product: "roller", physicalUnitsPerWindow: 1, quantity: 3 })!;
     const savedLine = JSON.parse(JSON.stringify({
       id: "fees-line", room: "Kitchen", quantity: 3, discount_percent: 0, selected_design_id: "fees-design",
@@ -101,8 +101,8 @@ describe("QuoteSelection", () => {
       adjustments: { ...DEFAULT_ADJUSTMENTS, discountPercent: 10 }, subtotal: 417, discount: 30, total: 387,
       depositDue: 193.5, balanceDue: 193.5 };
     const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote, previewOnly: true }));
-    expect(html.match(/>Installation<\/span><strong>\$25\.00 \(1 × \$25\)<\/strong>/g)).toHaveLength(3);
-    expect(html.match(/>Shipping<\/span><strong>\$14\.00 \(1 × \$14\)<\/strong>/g)).toHaveLength(3);
+    expect(html).not.toContain(">Installation</span>");
+    expect(html).not.toContain(">Shipping</span>");
     expect(html).toContain("$387.00");
     expect(html).not.toContain("$375.30");
     expect(html).toContain("@media print");

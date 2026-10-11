@@ -26,3 +26,17 @@ describe("Quote V2 Custom Mode", () => {
     expect(JSON.stringify(retail)).not.toMatch(/manufacturerCost|freightCost|profit|margin/);
   });
 });
+
+it.each([
+  {manufacturerCost: 0, freightCost: 0, otherCost: 0, profitMode: "dollar" as const, profitValue: 0},
+  {manufacturerCost: 100, freightCost: 10, otherCost: 5, profitMode: "dollar" as const, profitValue: 0},
+  {manufacturerCost: 100, freightCost: 10, otherCost: 5, profitMode: "margin" as const, profitValue: 25},
+  {manufacturerCost: 100, freightCost: 10, otherCost: 5, profitMode: "margin" as const, profitValue: 25, finalSellPrice: 0},
+])("always includes service charges independently of custom costs and profit: %j", input => {
+  const {sellPrice} = calculateCustomMode(input);
+  const retail = customModeCustomerRetail({productId: "roller", quantity: 2}, sellPrice);
+  expect(retail.unitPrice).toBe(sellPrice + 39);
+  expect(retail.total).toBe(sellPrice * 2 + 78);
+  expect(retail.customerCharges).toMatchObject({installationTotal: 50, shippingTotal: 28, total: 78});
+  expect(customModeCustomerRetail(retail, sellPrice)).toEqual(retail);
+});

@@ -176,3 +176,21 @@
  .grouped .callout .calloutDetail+.calloutDetail{margin-top:6px}
  .grouped .lines{display:block;height:100%}
 }
+
+/* Shared grid rows keep facing headings and option boxes aligned. */
+.grouped .diagram{align-items:stretch;align-content:start;row-gap:18px;padding-top:20px}
+.grouped .labelSlot{position:relative;z-index:1;display:grid;grid-template-rows:21px 1fr;gap:12px;padding-top:0;min-width:0}
+.grouped .labelSlot h3{font:500 16px/1.3 Georgia,serif;margin:0;color:var(--ink)}
+.grouped .labelSlot .callout{position:static!important;width:100%;max-width:none;box-sizing:border-box}
+@media(max-width:680px){.grouped .diagram{padding-top:290px}}
+@container(max-width:620px){.grouped .diagram{padding-top:290px}}
+@media(max-width:380px){.grouped .labelSlot{grid-row:auto!important}}
+@container(max-width:300px){.grouped .labelSlot{grid-row:auto!important}}
+.grouped.printing .diagram{padding-top:8px;row-gap:10px}
+.grouped.printing .labelSlot{grid-template-rows:16px 1fr;gap:7px;padding-top:0}
+.grouped.printing .labelSlot h3{font-size:12px}
+@media print{
+ .grouped .diagram{padding-top:8px;row-gap:10px}
+ .grouped .labelSlot{grid-template-rows:16px 1fr;gap:7px;padding-top:0;break-inside:avoid}
+ .grouped .labelSlot h3{font-size:12px}
+}

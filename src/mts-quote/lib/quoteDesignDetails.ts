@@ -20,7 +20,6 @@ import {SUNDANCE_EUROPANEL_LAYOUT_KEY,readSundanceEuropanelLayout} from "@/lib/q
 import {SUNDANCE_PRIVACY_PIECES_KEY,sundancePrivacyPieceDescription} from "@/lib/quote/sundance/privacy-pieces";
 import {SUNDANCE_WALDEN_TWIN_KEY,sundanceWaldenTwinDescriptions} from "@/lib/quote/sundance/walden-twin-records";
 import {SUNDANCE_ASSEMBLY_KEY,sundanceAssemblyDescriptions} from "@/lib/quote/sundance/assembly-records";
-import { storedCustomerCharges, customerChargeLabels } from "@/lib/quote/customer-charges";
 import {
   PRODUCT_COLOR_CODE_DETAIL,
   PRODUCT_COLOR_COLLECTION_DETAIL,
@@ -250,10 +249,6 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   if (design.notes) details.push({ label: "Notes", value: design.notes });
 
-  for (const text of customerChargeLabels(storedCustomerCharges(options))) {
-    const [label, ...value] = text.split(":");
-    details.push({ label, value: value.join(":").trim() });
-  }
   return details;
 }
 

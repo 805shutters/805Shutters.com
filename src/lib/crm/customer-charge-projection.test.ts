@@ -8,10 +8,10 @@ import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 const charges = calculateCustomerCharges({product:"roller",physicalUnitsPerWindow:1,quantity:3})!;
 const design={id:"design",label:"A",product_id:"roller",program_id:"roller_cordless_fabric_price_group_1_pg1",price_status:"ok",unit_price:139,details:{},surcharges:[],motorization:[],price_breakdown:{customerCharges:charges,onceTotal:0}} as unknown as CrmQuoteDesign;
 const line={id:"line",quantity:3,selected_design_id:"design",designs:[design],room:"Living"} as CrmQuoteLineItem;
-it("preserves fixed fees in public whole/subset calculations and labels each expanded unit once",()=>{
+it("preserves fixed fees in public whole/subset calculations without exposing fees as product options",()=>{
   expect(quoteFixedCustomerCharges([line])).toBe(117);
   expect(computeQuoteMoney(417,{...DEFAULT_ADJUSTMENTS,discountPercent:10},117).total).toBe(387);
-  expect(describeDesign(design).options).toContain("Installation: $25.00 (1 × $25)");
+  expect(describeDesign(design).options.join("\n")).not.toMatch(/Installation:|Shipping:/);
   const expanded=expandPublicQuoteLine(projectLine(line,false));
   expect(expanded).toHaveLength(3);
   expect(expanded.map(row=>row.fixedCharges)).toEqual([39,39,39]);

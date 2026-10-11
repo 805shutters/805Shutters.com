@@ -3,7 +3,6 @@ import { loadPublicPaymentPlan, type PublicPaymentPlan } from "./in-house-plan-p
 import { customerQuoteOptionRows } from "./public-quote-options";
 import { selectedDeliveryQuoteIds } from "./quote-delivery-selection";
 import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
-import { customerChargeLabels } from "@/lib/quote/customer-charges";
 import { designCustomerCharges } from "./quote-money";
 import { valanceIllustration } from "@/lib/quote/valance-illustrations";
 // Customer-facing quote: load by unguessable share_token, project to a SAFE
@@ -657,9 +656,7 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
         ...surchargeOptions,
         ...motorizationOptions,
       ];
-  const chargeLabels = customerChargeLabels(designCustomerCharges(design));
-  const customerOptions = chargeLabels.length ? [...options.filter(option => !/^(installation|shipping):/i.test(option)), ...chargeLabels] : options;
-  return { productName, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(customerOptions), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
+  return { productName, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(options), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
 /** Geometry reads saved curve measurements before display-only filtering. Only

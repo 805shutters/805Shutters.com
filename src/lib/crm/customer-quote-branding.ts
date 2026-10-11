@@ -102,7 +102,15 @@ export function customerQuoteOptions(options: string[]): string[] {
       const cleaned = customerQuoteText(option);
       return cleaned ? [cleaned] : [];
     }
-    const track = sundanceTrackDetail(label, option.slice(separator + 1));
+    const rawValue = option.slice(separator + 1).trim();
+    const detailKey = label.trim().toLowerCase().replace(/[_-]/g, " ");
+    // Service charges stay in saved price snapshots, never in product labels.
+    // Preserve actual installation choices such as wall/ceiling mounting.
+    if (/^(installation|shipping|freight)$/.test(detailKey) && /^(?:\$|USD\s*|\d)/i.test(rawValue)) return [];
+    if (detailKey === "tube class" && /^all tubes$/i.test(rawValue)) return [];
+    // Single shade is the default assembly, not an additional purchased option.
+    if (/^(shade type|roller application)$/.test(detailKey) && /^single shade$/i.test(rawValue)) return [];
+    const track = sundanceTrackDetail(label, rawValue);
     if (track) label = track.label;
     const value = customerQuoteText(track?.value ?? option.slice(separator + 1), /\b(?:color|fabric|finish)\b/i.test(label));
     const cleanLabel = customerQuoteText(label);

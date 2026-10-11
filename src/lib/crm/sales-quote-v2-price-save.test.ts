@@ -685,6 +685,8 @@ describe("current retail-only server persistence",()=>{
    expect(response.priceStatus).toBe("authoritative");expect(response.price.ok).toBe(true);
    const saved=(rpcCalls[0].args.p_results as Array<Record<string,any>>)[0];
    expect(saved.staffPricingError).toBeNull();
+   expect(spy.mock.calls[0][0].applyCustomerCharges).toBe(true);
+   expect(saved.authoritativeSnapshot.retail.customerCharges).toMatchObject({installationPerUnit:25,shippingPerUnit:14});
    expect(saved.authoritativeSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",catalogAsOf:"2026-09-21",priceStatus:"authoritative"});
    expect(saved.internalCostSnapshot).toMatchObject({quotePricingPolicy:"grid_options_quote_v1",status:"unresolved",costStatus:"incomplete",freightStatus:"unresolved",landedCostTotal:null,freightAllocated:null,oversizeAllocated:null,processingFeeAllocated:null});
    expect(saved.validationSnapshot).toMatchObject({costStatus:"incomplete",costWarnings:["Dealer freight/option cost unresolved"]});

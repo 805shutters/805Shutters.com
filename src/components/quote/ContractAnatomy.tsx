@@ -103,10 +103,17 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     <div className={styles.diagram} ref={scene}>
       <div className={styles.art} ref={art}><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>
       <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
-      {layout==='grouped' ? (['left','right'] as const).map(side=><div key={side} className={`${styles.labelColumn} ${side==='left'?styles.designColumn:styles.operationColumn}`}>{ANATOMY_SELECTION_GROUPS.map(title=>{
-        const entries=model.callouts.map((callout,i)=>({callout,i})).filter(({callout})=>callout.side===side&&anatomySelectionGroup(callout.details[0].label)===title);
-        return entries.length?<section key={title} aria-label={title} className={styles.labelGroup}><h3>{title}</h3>{entries.map(({callout,i})=>renderCallout(callout,i))}</section>:null;
-      })}</div>) : model.callouts.map(renderCallout)}
+      {layout==='grouped' ? (['left','right'] as const).flatMap(side => {
+        const entries = ANATOMY_SELECTION_GROUPS.flatMap(title => model.callouts
+          .map((callout, i) => ({callout, i, title}))
+          .filter(({callout}) => callout.side === side && anatomySelectionGroup(callout.details[0].label) === title));
+        return entries.map(({callout, i, title}, row) => <section key={`${side}-${i}`} aria-label={title}
+          className={`${styles.labelSlot} ${side === 'left' ? styles.designColumn : styles.operationColumn}`}
+          style={{gridRow: row + 1}} data-label-row={row} data-label-side={side}>
+          {row === 0 || entries[row - 1].title !== title ? <h3>{title}</h3> : <span aria-hidden="true" />}
+          {renderCallout(callout, i)}
+        </section>);
+      }) : model.callouts.map(renderCallout)}
     </div>
     {((selected && layout!=='grouped') || model.reference) && <p className={styles.coverage} aria-live="polite">{selected ? selected.details.map(d => `${d.label}: ${d.value}`).join(' · ') : model.coverageNote}</p>}
     {showNumbers&&<section className={`${styles.selectionSummary} ${{cards:styles.summaryCards,strip:styles.summaryStrip,grid:styles.summaryGrid,legend:styles.summaryLegend,numbered:styles.summaryRows,current:'',recap:''}[summaryStyle]}`} aria-label="Numbered selection summary"><h3>Your selections</h3><ol>{numberedDetails.map((detail,i)=><li key={detailKey(detail)} data-selection-number={i+1}><span className={styles.summaryNumber}>{i+1}</span><div><span className={styles.summaryLabel}>{/^lift system$/i.test(detail.label)?'Control type':detail.label}</span><strong>{detail.value}</strong>{detail===performanceDetail&&fabricLabels.map(label=><strong className={styles.fabricPerformance} data-fabric-performance="true" key={label}>{label}</strong>)}</div></li>)}</ol></section>}
