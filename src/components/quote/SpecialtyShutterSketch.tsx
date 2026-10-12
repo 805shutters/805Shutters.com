@@ -108,7 +108,7 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
   const parts=proportionedSketchParts(sketch,geometry), isDoor=frenchDoorSketch(sketch.code), fixed=pureSunburst(sketch.code);
   const height=Math.max(...parts.map(p=>p.y+p.h))+34;
   const angleRise=11;
-  const title=[sketch.label, fixed?'Radial sunburst louvers':sketch.tilt==='hidden'?'Hidden tilt':sketch.tilt==='offset'?'Offset tilt rod':sketch.tilt==='center'?'Center tilt rod':'Tilt not recorded', ...(!fixed&&sketch.split?['Split tilt: upper louvers open, lower louvers more closed']:[]), ...(!fixed&&sketch.divider?['Divider rail']:[])].join(' · ');
+  const title=[sketch.label, ...(!fixed&&sketch.layout?[`Panel fold: ${sketch.layout}`]:[]), fixed?'Radial sunburst louvers':sketch.tilt==='hidden'?'Hidden tilt':sketch.tilt==='offset'?'Offset tilt rod':sketch.tilt==='center'?'Center tilt rod':'Tilt not recorded', ...(!fixed&&sketch.split?['Split tilt: upper louvers open, lower louvers more closed']:[]), ...(!fixed&&sketch.divider?['Divider rail']:[])].join(' · ');
   // Shape stiles may constrain a panel layout. Missing layouts are labeled as
   // references; never substitute the source thumbnail's demonstration layout.
   const tokens=sketch.layout.replace(/T/g,'');
@@ -133,7 +133,10 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
       const mid=geometry?.dividerHeightFraction&&sketch.divider?p.y+p.h*(1-geometry.dividerHeightFraction):(start+end)/2;
       // No meeting stiles are invented when the panel layout was never saved.
       const count=parts.length>1?(index===1&&totalPanels>=3?totalPanels-2:1):totalPanels||1, panelW=(p.w-20)/count;
-      const posts=new Set<number>();let panel=0;for(const token of sketch.layout){if(token==='T')posts.add(panel);else panel+=1;}
+      const firstPanel=parts.length===1||index===0?0:index===1?1:totalPanels-1;
+      const localTokens=tokens.slice(firstPanel,firstPanel+count);
+      const posts=new Set<number>();let panel=0;for(const token of sketch.layout){if(token==='T')posts.add(panel-firstPanel);else panel+=1;}
+      const hingePositions=[...new Set([...localTokens].map((token,n)=>n+(token==='R'?1:0)))];
       const innerTransform=`translate(${p.x+p.w/2} ${p.y+p.h/2}) scale(${Math.max(.2,(p.w-18)/p.w)} ${Math.max(.2,(p.h-18)/p.h)}) translate(${-p.x-p.w/2} ${-p.y-p.h/2})`;
       const openingHeight=Math.max(...parts.map(p=>p.y+p.h))-Math.min(...parts.map(p=>p.y));
       const pitch=Math.max(2,geometry?.louverPitchFraction?openingHeight*geometry.louverPitchFraction:15);
@@ -180,6 +183,11 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
           {sketch.fixedTop&&<path data-fixed-top-louver="true" d={`M${p.x+10} ${p.y+27}h${p.w-20}`} stroke="#57544c" strokeWidth="3"/>}
           </g>
         </g>
+        {!fixed&&hingePositions.flatMap(position=>[.48,.78].map(fraction=>
+          <g key={`${position}-${fraction}`} clipPath={`url(#${id}-outline-${index})`} data-panel-fold-hinge={position} data-panel-fold-part={index}>
+            <rect x={p.x+10+position*panelW-1.5} y={start+(end-start)*fraction} width={3} height={8} rx={.8} fill="#c4c2bc" stroke="#696761" strokeWidth={.65}/>
+            <path d={`M${p.x+10+position*panelW} ${start+(end-start)*fraction+1}v6`} stroke="#efeeea" strokeWidth={.7}/>
+          </g>))}
         {p.connection==='strip'&&<rect data-overhanging-divider-strip="true" x={p.x-8} y={(p.horizontalStart??120)-10} width={p.w+16} height={6} fill={`url(#${id}-grain)`} stroke="#77746b" strokeWidth=".9"/>}
         <path d={p.path} fill="none" stroke="#aaa7a0" strokeWidth=".5" opacity=".5" transform="translate(.35 -.25)"/>
         {isDoor&&sketch.cutoutSide&&<g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}><DoorCutout sketch={sketch} grain={`${id}-grain`}/></g>}

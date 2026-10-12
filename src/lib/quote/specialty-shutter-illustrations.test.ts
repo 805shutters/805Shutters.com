@@ -13,6 +13,27 @@ import type { SelectionContext } from '@/lib/quote-v2/core';
 const markup=(options:string[])=>renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options}));
 const optionsFor=(code:string,label:string)=>[...(frenchDoorSketch(code)?['Shutter type: French Door',`French-door cutout type: ${label}`,'Handle side: Left','Top shape: Rectangular','Panel configuration: L']:[`Specialty shape: ${label}`,'Panel configuration: LR']),'Tilt: Standard Tilt'];
 describe('805 specialty shutter contract sketches',()=>{
+ it.each(['L','R','LL','RR','LR','LLRR','LRTLR'])('keeps saved %s fold hardware in rectangular and arched customer sketches',layout=>{
+  const options=customerQuoteOptions(v2CustomerConfigurationOptions({manufacturerId:'onyx',selections:{panel_config:layout,tilt_type:'standard',split_tilt:'No',divider_rail:'No'}}));
+  const positions=[...new Set([...layout.replace(/T/g,'')].map((token,index)=>index+(token==='R'?1:0)))];
+  for(const shape of [[],['Specialty shape: Louvered Arch']]){
+   const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',size:'anatomy',options:[...options,...shape]}));
+   expect(html).toContain(`data-specialty-layout="${layout}"`);
+   expect(html).toContain(`Panel fold: ${layout}`);
+   expect((html.match(/data-panel-fold-hinge=/g)||[])).toHaveLength(positions.length*2);
+   for(const position of positions)expect(html).toContain(`data-panel-fold-hinge="${position}"`);
+   expect(html.includes('data-specialty-post="true"')).toBe(layout.includes('T'));
+  }
+ });
+ it('distinguishes same-count opposite folds and does not invent a missing fold',()=>{
+  const render=(layout:string)=>renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',size:'anatomy',options:[`Panel configuration: ${layout}`,'Tilt: standard','Split tilt: No','Divider rail: No']}));
+  expect(render('LL')).toContain('data-panel-fold-hinge="1"');
+  expect(render('LL')).not.toContain('data-panel-fold-hinge="2"');
+  expect(render('RR')).not.toContain('data-panel-fold-hinge="0"');
+  expect(render('RR')).toContain('data-panel-fold-hinge="2"');
+  expect(render('')).not.toContain('data-panel-fold-hinge=');
+ });
+
  it('draws imported Onyx Arch B from its saved shutter type in staff and public contracts',()=>{
   const options=['Material: Painted Basswood · Bassia','Color: 100_Pure White','Tilt Type: C - Front Center Tiltrod','Louver Size: 3 1/2"','Panel Config: LR','Frame Type: Z Crest FS','Frame Sides: 4','Shutter Type: Arch Shutters','Divider Rail Count: 0'];
   const publicOptions=customerQuoteOptions(v2CustomerConfigurationOptions({manufacturerId:'onyx',selections:{shutter_type:'Arch Shutters',panel_config:'LR',tilt_type:'C - Front Center Tiltrod',divider_rail_count:0,louver_size:'3 1/2"'}}));
