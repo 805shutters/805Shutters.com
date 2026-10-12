@@ -39,7 +39,7 @@ export function withMobileManualPrices(draft: MobileQuoteDraft, preview: MobileQ
     const design = window?.activeProductId ? window.families[window.activeProductId]?.design : null;
     if (design?.options_json?.manual_price_override !== true || !Number.isFinite(design.unit_price) || design.unit_price < 0) return line;
     return { ...line, status: "authoritative" as const, requiresManualPricing: false, blockedReason: null,
-      price: { unitPrice: design.unit_price, quantity: 1, total: design.unit_price } };
+      price: { unitPrice: design.unit_price, quantity: window?.quantity??1, total: Math.round(design.unit_price*(window?.quantity??1)*100)/100 } };
   });
   const subtotal = Math.round(lines.reduce((sum,line)=>sum+(line.status === 'authoritative' ? Number(line.price.total) : 0),0)*100)/100;
   const complete = lines.length === draft.windows.length && lines.every(line=>line.status === 'authoritative');

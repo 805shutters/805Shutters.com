@@ -17,7 +17,7 @@ export function mobileQuoteDraftOperations(snapshot: MobileQuoteSubmissionSnapsh
         productType: family?.productType || "",
         widthWhole: window.widthWhole, widthFraction: window.widthFraction,
         heightWhole: window.heightWhole, heightFraction: window.heightFraction,
-        quantity: 1, sortOrder: index,
+        quantity: window.quantity ?? 1, sortOrder: index,
       },
     }];
     if (family) operations.push({

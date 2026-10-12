@@ -1504,9 +1504,7 @@ describe("V2 exact-interface contract", () => {
     expect(designCardSource).toContain('? { side_by_side: "No" }');
     expect(designCardSource).toContain("side_by_side_match_line_id: lineItem.id");
     expect(designCardSource).toContain("side_by_side_matches: null");
-    expect(quoteBuilderSource).toContain(
-      "label: `${candidateRange?.label ?? \"#?\"} • ${candidate.room_name} • ID ${candidate.id}`",
-    );
+    expect(quoteBuilderSource).toContain("quotePairingLineOptions(item,lineItems,designs");
     expect(quoteBuilderSource).toContain(
       "authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES",
     );

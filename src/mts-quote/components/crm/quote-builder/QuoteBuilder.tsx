@@ -2,7 +2,7 @@
 import { InHousePayments } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
-import { isRollerValanceAssociationType } from "@/lib/quote/norman-roller-valance-only";
+import {quotePairingLineOptions} from '@/lib/quote/quote-option-parity';
 import { lotusVerticalMeasurementAxis } from "@/lib/quote/lotus-vertical";
 import { applyQuoteDesignEdit, captureQuoteDesignEdit, type QuoteDesignEdit } from "@mts/lib/quoteDesignEdit";
 import { remapQuoteV2RevisionOperations } from "@mts/lib/quoteV2RevisionOperations";
@@ -2791,27 +2791,7 @@ export function QuoteBuilder({
                         })
                       : undefined
                   }
-                  sideBySideLineOptions={lineItems.flatMap((candidate) => {
-                    if (
-                      candidate.id === item.id ||
-                      (item.product_type !== "Palladian Shelf" && candidate.product_type !== item.product_type && !isRollerValanceAssociationType(item.product_type, candidate.product_type))
-                    ) {
-                      return [];
-                    }
-                    const candidateDesign = designs.find(
-                      (design) =>
-                        design.line_item_id === candidate.id && design.variant === "A",
-                    );
-                    if (!candidateDesign) return [];
-                    const candidateRange = lineNumberRanges.get(candidate.id);
-                    return [
-                      {
-                        lineId: candidate.id,
-                        label: `${candidateRange?.label ?? "#?"} • ${candidate.room_name} • ID ${candidate.id}`,
-                        design: candidateDesign,
-                      },
-                    ];
-                  })}
+                  sideBySideLineOptions={quotePairingLineOptions(item,lineItems,designs,candidate=>`${lineNumberRanges.get(candidate.id)?.label??"#?"} • ${candidate.room_name} • ID ${candidate.id}`)}
                   onUpdateDesign={(design) => upsertDesign.mutate(captureQuoteDesignEdit(design,
                     designs.find(row => row.line_item_id === design.line_item_id && row.variant === design.variant)))}
                   onSaveLinePrice={(variant, price) => saveLinePrice(item.id, variant, price)}

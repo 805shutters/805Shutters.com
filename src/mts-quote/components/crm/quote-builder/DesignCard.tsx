@@ -424,6 +424,7 @@ import {
   resolveManufacturerStamp,
 } from "./manufacturerStamp";
 import { CustomModePanel } from "./CustomModePanel";
+import {mobileQuoteOptionRequirement} from '@/lib/quote/quote-option-parity';
 import type {
   ManufacturerComparisonProgram,
   ManufacturerComparisonResponse,
@@ -548,6 +549,7 @@ export async function loadQuoteBuilderCatalog() {
 
 const QuoteBuilderCatalogProductsContext = createContext<readonly QuoteLabCatalogProduct[] | null>(null);
 const MobileDesignCardContext = createContext(false);
+const MobileQuoteProductTypeContext = createContext("");
 
 export interface SideBySideLineOption {
   lineId: string;
@@ -564,7 +566,8 @@ interface DesignCardProps {
   mobilePresentation?: boolean;
   catalogProducts?: readonly QuoteLabCatalogProduct[];
   onUpdateDesign: (
-    design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
+    design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string },
+    origin?: "user",
   ) => void;
   onCopyAll: () => void;
   onCopySome: () => void;
@@ -3036,6 +3039,8 @@ function OptionSlot({
   renderSelectedDirect?: boolean;
   children: ReactNode;
 }) {
+  const mobile=useContext(MobileDesignCardContext);
+  const draftRequirement=mobileQuoteOptionRequirement(option.field,useContext(MobileQuoteProductTypeContext));
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
   const isDirectSelect = option.type === "select" || option.type === "number" || option.type === "text";
@@ -3046,6 +3051,8 @@ function OptionSlot({
     <div
       data-option-field={option.field}
       data-option-label={option.label}
+      data-option-values={'options' in option?JSON.stringify(option.options):undefined}
+      data-option-requirement={mobile?draftRequirement:requirement==='mandatory'?'required':'optional'}
       className={cn(
         "quote-option-slot",
         selected && "quote-option-slot--selected",
@@ -3055,6 +3062,7 @@ function OptionSlot({
         requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
       )}
     >
+      {mobile&&<span className="quote-option-requirement">{draftRequirement==='required'?'Required':'Optional'}</span>}
       {showConfirmedCard ? (
         <>
           <button
@@ -3181,6 +3189,9 @@ function ConfirmedOptionStrip({
           key={option.key}
           type="button"
           className="quote-confirmed-option-chip"
+          data-confirmed-option-field={option.field}
+          data-option-label={option.label}
+          data-option-values={'options' in option?JSON.stringify(option.options):undefined}
           onClick={() => onReset(option.field)}
           title={`${option.label}: ${value}`}
         >
@@ -4839,9 +4850,12 @@ function GridYesNo({
   noFirst?: boolean;
   hideLabel?: boolean;
 }) {
+  const mobile=useContext(MobileDesignCardContext);
+  const requirement=label==="Divider Rail"||label==="Split Tilt"?"required":"optional";
   const items = noFirst ? ["No", "Yes"] : ["Yes", "No"];
   return (
-    <div className="quote-style-option-field space-y-1">
+    <div data-option-requirement={mobile&&!hideLabel?requirement:undefined} className="quote-style-option-field space-y-1">
+      {mobile&&!hideLabel&&<span className="quote-option-requirement">{requirement==="required"?"Required":"Optional"}</span>}
       {!hideLabel && (
         <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
           {label}
@@ -5256,7 +5270,7 @@ export function DesignCard({
         ? { supplier: "Norman", material: "CityLights Cordless Aluminum Blinds" }
         : {}),
       ...fields,
-    });
+    }, "user");
   };
 
   const updateField = (field: string, value: unknown) => {
@@ -5882,7 +5896,7 @@ export function DesignCard({
 
   return (
     <QuoteBuilderCatalogProductsContext.Provider value={catalogProducts ?? null}>
-    <MobileDesignCardContext.Provider value={mobilePresentation}>
+    <MobileDesignCardContext.Provider value={mobilePresentation}><MobileQuoteProductTypeContext.Provider value={lineItem.product_type}>
     <Card
       data-quote-line-id={lineItem.id}
       data-line-number={lineNumber}
@@ -6395,7 +6409,7 @@ export function DesignCard({
         </div>
       </CardContent>
     </Card>
-    </MobileDesignCardContext.Provider>
+    </MobileQuoteProductTypeContext.Provider></MobileDesignCardContext.Provider>
     </QuoteBuilderCatalogProductsContext.Provider>
   );
 }
@@ -7171,7 +7185,7 @@ export function ShutterDesignOptions({
 
   const allDefiningSteps = getDefiningSteps(workingDesign, authoritativeV2);
   const definingSteps = mobilePresentation
-    ? allDefiningSteps.filter((step) => step.field !== "json:wood_route" && (!authoritativeV2 || step.key !== 'norman_program'))
+    ? allDefiningSteps.filter((step) => !authoritativeV2 || step.key !== 'norman_program')
     : allDefiningSteps;
   const standardComplete = isStandardShutterComplete(workingDesign, authoritativeV2);
   const useOldSteps = isTrackedOrSpecialty(workingDesign);
@@ -7357,10 +7371,10 @@ export function ShutterDesignOptions({
       {useOldSteps && <LegacyShutterSteps design={workingDesign} onUpdate={onUpdate} />}
 
       {splitTiltOption && (
-        <fieldset aria-label="Split Tilt" className="rounded-lg border border-[#d9d5cc] bg-[#faf9f6] px-3 py-2.5 [&_button]:min-h-11 [&_button]:min-w-14">
+        <fieldset aria-label="Split Tilt" data-option-requirement="required" className="rounded-lg border border-[#d9d5cc] bg-[#faf9f6] px-3 py-2.5 [&_button]:min-h-11 [&_button]:min-w-14">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-bold text-[#292722]">Split Tilt</p>
+              <p className="text-xs font-bold text-[#292722]"><span>Split Tilt</span> <span className="quote-option-requirement">Required</span></p>
               <p className="mt-0.5 text-[11px] text-[#6b675e]">Separate upper and lower louver control.</p>
             </div>
             <GridYesNo

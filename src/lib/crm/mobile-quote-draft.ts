@@ -58,6 +58,8 @@ export type MobileQuoteWorkflowMode = "measure-first" | "full-design";
 export type MobileQuoteWorkflowPhase = "measure" | "assign" | "groups";
 
 export type MobileQuoteWindow = {
+  /** Legacy device drafts omitted quantity and represent one item. */
+  quantity?: number;
   /** Opening-specific all-in manual price; survives configuration corrections. */
   manualAllInPrice?: string;
   supplierInputs?: import('./mobile-supplier-spec').SupplierLineInputs;
@@ -406,6 +408,7 @@ export function updateMobileQuoteDesign(
   draft: MobileQuoteDraft,
   lineId: string,
   incoming: Partial<SalesQuoteDesign>,
+  explicit = false,
 ): MobileQuoteDraft {
   if (draft.submission.snapshot || draft.draftJob?.submittedSpec) return draft;
   const next = structuredClone(draft);
@@ -417,6 +420,18 @@ export function updateMobileQuoteDesign(
   const before = family.design;
   const after = { ...before, ...incoming, options_json: incoming.options_json ? { ...incoming.options_json } : before.options_json };
   const paths = changedMobileQuoteDesignPaths(before, after);
+  // A later native control edit supersedes an earlier supplemental entry.
+  if(line.supplierInputs&&explicit){
+    if(paths.includes('mount_type')||paths.includes('options_json.onyx_mount'))line.supplierInputs.mount='';
+    if(paths.includes('fabric')||paths.includes('options_json.fabric_color_code')||paths.includes('options_json.color'))line.supplierInputs.colorFabric='';
+    if(paths.includes('lift_system')||paths.includes('tilt_type')||paths.includes('options_json.control_type')){line.supplierInputs.control='';line.supplierInputs.controlSide='';}
+    if(paths.includes('options_json.control_side')||paths.includes('options_json.chain_location'))line.supplierInputs.controlSide='';
+  }
+  // A configurator edit can change the same measurement meaning as the earlier step.
+  const basis=(d:SalesQuoteDesign)=>family.productType==='Shutters'?d.options_json?.size_type:d.mount_type;
+  if(draft.draftJob&&basis(before)&&basis(after)&&basis(before)!==basis(after)){
+    line.widthWhole=0;line.widthFraction='0';line.heightWhole=0;line.heightFraction='0';
+  }
   family.design = after;
   line.price = null;
   line.saved = false;
@@ -441,6 +456,12 @@ export function updateMobileQuoteDesign(
   next.quotePrice = null;
   next.updatedAt = new Date().toISOString();
   return next;
+}
+
+export function updateMobileQuoteQuantity(draft:MobileQuoteDraft,lineId:string,quantity:number):MobileQuoteDraft{
+  if(draft.submission.snapshot||draft.draftJob?.submittedSpec||!Number.isSafeInteger(quantity)||quantity<1)return draft;
+  const next=structuredClone(draft),line=next.windows.find(line=>line.id===lineId);if(!line||(line.quantity??1)===quantity)return draft;
+  retainMobileManualPrice(line);line.quantity=quantity;line.price=null;line.saved=false;next.quotePrice=null;next.updatedAt=new Date().toISOString();return next;
 }
 
 export function allowsNeedsPricingDraft(
@@ -588,7 +609,7 @@ export function mobileQuoteLine(draft: MobileQuoteDraft, window: MobileQuoteWind
     id: window.id, quote_id: draft.submission.quoteId || draft.id, room_name: window.room,
     product_type: family?.productType || "", width_whole: window.widthWhole,
     width_fraction: window.widthFraction, height_whole: window.heightWhole,
-    height_fraction: window.heightFraction, quantity: 1,
+    height_fraction: window.heightFraction, quantity: window.quantity ?? 1,
     sort_order: draft.windows.findIndex((candidate) => candidate.id === window.id),
     selected_design_id: family?.design.id || null, created_at: draft.updatedAt,
   };
@@ -597,7 +618,7 @@ export function mobileQuoteLine(draft: MobileQuoteDraft, window: MobileQuoteWind
 export function mobileQuoteFingerprint(window: MobileQuoteWindow) {
   const family = window.activeProductId ? window.families[window.activeProductId] : null;
   return JSON.stringify({
-    productId: window.activeProductId, dimensions: [window.widthWhole, window.widthFraction, window.heightWhole, window.heightFraction],
+    productId: window.activeProductId, quantity: window.quantity ?? 1, dimensions: [window.widthWhole, window.widthFraction, window.heightWhole, window.heightFraction],
     design: family?.design || null,
   });
 }
@@ -719,6 +740,7 @@ export function validateMobileQuoteWindow(window: MobileQuoteWindow) {
 }
 
 export function validateMobileQuoteMeasurement(window: MobileQuoteWindow) {
+  if(!Number.isSafeInteger(window.quantity??1)||(window.quantity??1)<1)return 'Quantity must be a positive whole number.';
   if (!Number.isInteger(window.widthWhole) || !Number.isInteger(window.heightWhole)) return "Measurements must use whole inches plus a fraction.";
   if (!MOBILE_QUOTE_FRACTIONS.includes(window.widthFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number]) ||
       !MOBILE_QUOTE_FRACTIONS.includes(window.heightFraction as (typeof MOBILE_QUOTE_FRACTIONS)[number])) {

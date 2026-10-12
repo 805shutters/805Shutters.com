@@ -154,7 +154,7 @@ export function buildSupplierSpec(draft: MobileQuoteDraft): SupplierQuoteSpec {
     stripComputedQuoteFields(config);
     return { id: line.id, manufacturer: input.manufacturer, family: input.family, productId: line.activeProductId, productType: line.families[line.activeProductId].productType,
       room: line.room, position: line.position, widthWhole: line.widthWhole, widthFraction: line.widthFraction, heightWhole: line.heightWhole, heightFraction: line.heightFraction,
-      quantity: 1, openingCount: input.openingCount, colorFabric: input.colorFabric, mount: input.mount, control: input.control, controlSide: input.controlSide,
+      quantity: line.quantity ?? 1, openingCount: input.openingCount, colorFabric: input.colorFabric, mount: input.mount, control: input.control, controlSide: input.controlSide,
       ...(input.feeOverride?{feeOverride:structuredClone(input.feeOverride)}:{}),shippingBasis: input.shippingBasis, notes: line.notes, designNotes: design.notes || '', configuration: config,
       manualAllInPrice: line.manualAllInPrice??(design.options_json.manual_price_override === true ? design.unit_price.toFixed(2) : null),
       photos: line.photos.map(photo => ({ id: photo.id, name: photo.name })) };
