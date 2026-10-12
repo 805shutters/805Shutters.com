@@ -328,13 +328,14 @@ describe("Norman calculation in ordinary legacy quotes", () => {
     expect(() => parseNormanPriceRequest({})).not.toThrow();
   });
 
-  it("passes the exact read state to atomic persistence and surfaces a concurrent edit", async () => {
+  it.each(["40001", "PT409"])("passes the exact read state and surfaces a %s conflict without application retries", async (code) => {
     const state = stateFor("roman");
-    const rpc = vi.fn().mockResolvedValueOnce({ data: state, error: null }).mockResolvedValueOnce({ data: null, error: { code: "40001", message: "state changed" } });
+    const rpc = vi.fn().mockResolvedValueOnce({ data: state, error: null }).mockResolvedValueOnce({ data: null, error: { code, message: "SYNTHETIC database response" } });
     await expect(saveNormanLegacyPricing({ rpc } as unknown as SupabaseClient, { quoteId, actorId, serverDate: "2026-09-22" })).rejects.toMatchObject({ status: 409 });
     expect(rpc.mock.calls[1][1].p_expected_state).toEqual(state);
     expect(rpc.mock.calls[1][1].p_results).toHaveLength(1);
     expect(rpc.mock.calls[1][1].p_results[0].selection.manufacturerId.toLowerCase()).toBe("norman");
+    expect(rpc).toHaveBeenCalledTimes(2);
   });
 });
 

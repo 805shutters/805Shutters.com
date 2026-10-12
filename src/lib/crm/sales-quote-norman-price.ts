@@ -167,7 +167,7 @@ export async function saveNormanLegacyPricing(
     p_actor_id: input.actorId,
   });
   if (saved.error) {
-    if (saved.error.code === "40001" || /changed|conflict|locked|revision/i.test(saved.error.message)) {
+    if (saved.error.code === "40001" || saved.error.code === "PT409" || /changed|conflict|locked|revision/i.test(saved.error.message)) {
       throw new CrmAuthError(409, "The quote changed while catalog pricing was calculated. Reload the current selections and try again.");
     }
     throw new CrmAuthError(502, "Catalog pricing could not be saved. Your selections have been preserved.");
