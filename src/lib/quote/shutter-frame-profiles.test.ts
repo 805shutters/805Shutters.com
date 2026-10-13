@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { ContractProductIllustration } from '@/components/quote/ContractProductIllustration';
 import { ContractAnatomy } from '@/components/quote/ContractAnatomy';
 import { SHUTTER_FRAME_PROFILES, shutterFrameProfile } from './shutter-frame-profiles';
 describe('contract Z-frame side profiles',()=>{
@@ -24,4 +25,20 @@ describe('contract Z-frame side profiles',()=>{
   expect(html.indexOf('data-frame-profile="onyx-z-crest"')).toBeLessThan(html.indexOf('data-label-side='));
   expect(html).toContain('Z Crest</strong><span>Side profile');
  });
+ it('uses a true projecting Z lip and carries the selected bullnose onto both shutter renderers',()=>{
+  const options=['Manufacturer: Norman','Panel Config: L R','Tilt Type: Invisible Tilt','Frame Type: 1 1/2" Bullnose Z Frame'];
+  const profile=shutterFrameProfile('Shutters',options)!;
+  expect(profile.src).toMatch(/\.svg$/);
+  const drawing=readFileSync(`public${profile.src}`,'utf8');
+  // Supplier section: the upper face projects beyond the 1.5-inch back leg.
+  expect(drawing).toContain('212.5 37.5H150V183');
+  for(const extra of [[],['Split Tilt: No','Divider Rail: No']]){
+   const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options:[...options,...extra],size:'anatomy'}));
+   expect(html).toContain('data-selected-frame="norman-bullnose-z-1-5"');
+   expect(html).toContain('data-frame-face="bullnose-z"');
+  }
+  const plain=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options:[...options.slice(0,3),'Frame Type: Plain L Frame'],size:'anatomy'}));
+  expect(plain).not.toContain('data-frame-face="bullnose-z"');
+ });
+
 });

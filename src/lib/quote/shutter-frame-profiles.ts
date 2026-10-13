@@ -7,7 +7,7 @@ export const SHUTTER_FRAME_PROFILES:readonly ShutterFrameProfile[] = [
     "label": "1 1/2\" Bullnose Z Frame",
     "ref": "norman-woodlore-018.png",
     "manufacturer": "Norman",
-    "src": "/images/contract-illustrations/frame-profiles-v1/norman-bullnose-z-1-5.png",
+    "src": "/images/contract-illustrations/frame-profiles-v1/norman-bullnose-z-1-5.svg",
     "source": "Norman Woodlore technical binder, page 18",
     "aquashield": false
   },
@@ -16,7 +16,7 @@ export const SHUTTER_FRAME_PROFILES:readonly ShutterFrameProfile[] = [
     "label": "2\" Bullnose Z Frame",
     "ref": "norman-woodlore-018.png",
     "manufacturer": "Norman",
-    "src": "/images/contract-illustrations/frame-profiles-v1/norman-bullnose-z-2.png",
+    "src": "/images/contract-illustrations/frame-profiles-v1/norman-bullnose-z-2.svg",
     "source": "Norman Woodlore technical binder, page 18",
     "aquashield": false
   },

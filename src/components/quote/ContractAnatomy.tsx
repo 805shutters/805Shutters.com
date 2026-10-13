@@ -49,37 +49,56 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       setPaths(model.callouts.map((callout, i) => {
         if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const text = labels.current[i] ? measure(labels.current[i]!) : undefined;
-        const shutterPanel = model.family === 'shutters' && ['control','slat','bottom'].includes(callout.part) ? art.current?.querySelector('[data-shutter-panel]:last-of-type') : null;
+        const shutterPanels = art.current!.querySelectorAll('[data-shutter-panel]');
+        const shutterPanel = model.family === 'shutters' && ['control','slat','bottom'].includes(callout.part)
+          ? shutterPanels[callout.side === 'left' ? 0 : shutterPanels.length - 1] : null;
         const shutterFrame = model.family === 'shutters' && callout.part === 'frame' ? art.current?.querySelector('[data-shutter-frame="outer"]') : null;
         const targetElement = (shutterPanel || shutterFrame || (callout.anchor ? art.current?.querySelector(`[data-anatomy-anchor="${callout.anchor}"]`) : callout.part === 'top' ? art.current?.querySelector('[data-valance-artwork]') : null));
         const target = targetElement ? measure(targetElement) : undefined;
         const bounds = target || image;
         const perimeter=lineRouting==='around'&&!callout.anchor&&callout.part!=='surface';
-        const point=shutterPanel ? [50,callout.point[1]] : shutterFrame ? [callout.side==='left'?1:99,64] : target && callout.part==='top' ? [50,50] : perimeter ? callout.part==='top' ? [50, model.family==='roman'?12:summaryStyle==='legend'?20:14] : callout.part==='bottom' ? [52,81] : [callout.side==='left'?16:84,callout.point[1]] : callout.point;
+        const point=shutterPanel ? [callout.side === 'left' ? 16 : 84,callout.point[1]] : shutterFrame ? [callout.side==='left'?1:99,64] : target && callout.part==='top' ? [50,50] : perimeter ? callout.part==='top' ? [50, model.family==='roman'?12:summaryStyle==='legend'?20:14] : callout.part==='bottom' ? [52,81] : [callout.side==='left'?16:84,callout.point[1]] : callout.point;
         if (mobile && layout === 'grouped' && callout.part === 'bottom' && !shutterPanel) point[0] = 82;
         if (mobile && layout === 'grouped' && callout.part === 'surface' && !target) point[0] = 32;
         const x = bounds.left - frame.left + bounds.width * (target && callout.anchor === 'cord-loop' ? 50 : point[0]) / 100;
         const y = bounds.top - frame.top + bounds.height * point[1] / 100;
-        if (!text || (mobile && layout !== 'grouped') || model.reference) return { part: callout.part, d: '', x, y };
-        if (mobile && layout === 'grouped') {
-          const above = text.bottom <= image.top;
-          const section = labels.current[i]?.closest('section');
-          const labelBounds = section ? measure(section) : text;
-          // Start below upper cards or above lower section headings. Direct
-          // leaders stay in the free space; controls use one outside lane.
-          const startX = text.left - frame.left + text.width * (above && callout.anchor ? .82 : .5);
-          const startY = (above ? text.bottom + 5 : labelBounds.top - 8) - frame.top;
-          const end = `L ${x} ${y}`;
-          const lane = image.right - frame.left + 8;
-          const lowerLane = callout.side === 'right' ? frame.width + 6 : -6;
-          const lowerStartX = (callout.side === 'right' ? text.right + 4 : text.left - 4) - frame.left;
-          const lowerStartY = text.top - frame.top + Math.min(24, text.height / 2);
-          const d = !above && Number(section?.getAttribute('data-label-row') || 0) > 1
-            ? `M ${lowerStartX} ${lowerStartY} L ${lowerLane} ${lowerStartY} L ${lowerLane} ${y} ${end}`
-            : above && callout.anchor
-              ? `M ${startX} ${startY} L ${lane} ${startY + 14} L ${lane} ${y - 18} ${end}`
-              : `M ${startX} ${startY} ${end}`;
-          return { part:callout.part, d, x, y };
+        if (!text || mobile || model.reference) return { part: callout.part, d: '', x, y };
+        // Grouped labels use the nearest actual part. Keep every elbow outside
+        // the product and enter only a short distance, never across the panels.
+        if (layout === 'grouped') {
+          const left = callout.side === 'left';
+          let endX = x, endY = y;
+          if (model.family === 'shutters') {
+            const selector = callout.part === 'slat' ? '[data-louver-section] svg'
+              : callout.part === 'control' ? '[data-front-tilt-rod]'
+              : callout.part === 'bottom' ? '[data-divider-rail]'
+              : (callout.part === 'frame' || callout.part === 'surface') ? '[data-shutter-frame="outer"], [data-surround-frame]'
+              : null;
+            const candidates = selector ? [...art.current!.querySelectorAll(selector)] : [];
+            const desiredY = text.top + Math.min(24, text.height / 2);
+            const desiredX = left ? image.left : image.right;
+            const physical = candidates.sort((a, b) => {
+              const distance = (element: Element) => {
+                const rect = measure(element);
+                return Math.abs(rect.top + rect.height / 2 - desiredY)
+                  + Math.abs((left ? rect.left : rect.right) - desiredX);
+              };
+              return distance(a) - distance(b);
+            })[0];
+            const partBounds = physical ? measure(physical) : shutterPanel ? measure(shutterPanel) : image;
+            endX = partBounds.left - frame.left + partBounds.width * (left ? (callout.part === 'slat' && !physical ? .25 : .08) : (callout.part === 'slat' && !physical ? .75 : .92));
+            endY = partBounds.top - frame.top + partBounds.height * (physical ? .5 : callout.part === 'surface' ? .24 : .42);
+            if (callout.part === 'control' && physical) endX = partBounds.left - frame.left + partBounds.width / 2;
+            if (callout.part === 'frame' || callout.part === 'surface') {
+              endX = partBounds.left - frame.left + partBounds.width * (left ? .02 : .98);
+              endY = partBounds.top - frame.top + partBounds.height * (callout.part === 'surface' ? .24 : .72);
+            }
+          }
+          const startX = (left ? text.right + 6 : text.left - 6) - frame.left;
+          const startY = text.top - frame.top + Math.min(24, text.height / 2);
+          const laneOffset = callout.part === 'control' ? 12 : 5;
+          const lane = left ? image.left - frame.left - laneOffset : image.right - frame.left + laneOffset;
+          return {part: callout.part, d: `M ${startX} ${startY} L ${lane} ${startY} L ${lane} ${endY} L ${endX} ${endY}`, x: endX, y: endY};
         }
         const left = callout.side === 'left';
         const startX = left ? text.right - frame.left + 8 : text.left - frame.left - 8;
@@ -125,18 +144,18 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
   return <article className={`${styles.card} ${printing ? styles.printing : ''} ${styles[layout]} ${showNumbers?styles.numbered:''} ${summaryStyle==='legend'?styles.legend:''}`} aria-labelledby={showHeader ? heading : undefined} aria-label={showHeader ? undefined : room} data-contract-anatomy={model.family} data-contract-layout={layout} data-line-routing={lineRouting} data-summary-style={summaryStyle}>
     {showHeader && <header className={styles.header}><div className={styles.identity}><h2 id={heading} className={styles.room}>{room || 'Room not specified'}</h2><p className={styles.eyebrow}>{customerQuoteProductName(productType)}</p>{layout==='classic'&&<p className={styles.subtitle}>{model.family==='shutters'?'Your shutters':/roller|roman|honeycomb|sheer|woven|pleated|dual|solar/.test(model.family)?'Your shade':'Your product'}, explained</p>}</div><div className={styles.headerMeta}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div></header>}
     <div className={styles.diagram} ref={scene} style={{'--label-rows': Math.max(1, ...(['left', 'right'] as const).map(side => model.callouts.filter(c => c.side === side).length))} as CSSProperties}>
-      <div className={`${styles.art} ${frameProfile ? styles.withFrameProfile : ''}`} ref={art}><div data-primary-product="true"><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>{frameProfile && <figure className={styles.frameProfile} data-frame-profile={frameProfile.id}><img src={frameProfile.src} alt={`${frameProfile.label} — pencil side-profile sketch`} width={128} height={90}/><figcaption><strong>{frameProfile.label}</strong><span>Side profile</span></figcaption></figure>}</div>
+      <div className={`${styles.art} ${frameProfile ? styles.withFrameProfile : ''}`} ref={art}><div data-primary-product="true"><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>{frameProfile && <figure className={styles.frameProfile} data-frame-profile={frameProfile.id}><img src={frameProfile.src} alt={`${frameProfile.label} — supplier side profile`} width={128} height={90}/><figcaption><strong>{frameProfile.label}</strong><span>Side profile</span></figcaption></figure>}</div>
       <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
       {layout==='grouped' ? (['left','right'] as const).flatMap(side => {
         const entries = ANATOMY_SELECTION_GROUPS.flatMap(title => model.callouts
           .map((callout, i) => ({callout, i, title}))
           .filter(({callout}) => callout.side === side && anatomySelectionGroup(callout.details[0].label) === title));
-        return entries.map(({callout, i, title}, row) => <section key={`${side}-${i}`} aria-label={title}
-          className={`${styles.labelSlot} ${side === 'left' ? styles.designColumn : styles.operationColumn}`}
+        return <div key={side} className={`${styles.labelColumn} ${side === 'left' ? styles.designColumn : styles.operationColumn}`}>{entries.map(({callout, i, title}, row) => <section key={`${side}-${i}`} aria-label={title}
+          className={styles.labelSlot}
           style={{gridRow: row + 1, '--phone-label-row': row === 0 ? 1 : row + 2} as CSSProperties} data-label-row={row} data-label-side={side}>
-          {row === 0 || entries[row - 1].title !== title ? <h3>{title}</h3> : <span aria-hidden="true" />}
+          {row === 0 || entries[row - 1].title !== title ? <h3>{title}</h3> : null}
           {renderCallout(callout, i)}
-        </section>);
+        </section>)}</div>;
       }) : model.callouts.map(renderCallout)}
     </div>
     {((selected && layout!=='grouped') || model.reference) && <p className={styles.coverage} aria-live="polite">{selected ? selected.details.map(d => `${d.label}: ${d.value}`).join(' · ') : model.coverageNote}</p>}

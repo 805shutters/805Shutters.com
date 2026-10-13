@@ -1,14 +1,16 @@
+import type { ShutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
 import { useId } from "react";
 import type { ShutterIllustrationGeometry } from "@/lib/quote/shutter-illustration-geometry";
 import styles from "./ContractProductIllustration.module.css";
 
 /** One opening: align the original pencil panels, frame them, then angle the whole unit. */
-export function ShutterAssembly({ src, alt, panels, layout, geometry }: {
-  src: string; alt: string; panels: number; layout: string; geometry?: ShutterIllustrationGeometry;
+export function ShutterAssembly({ src, alt, panels, layout, geometry, frameProfile }: {
+  src: string; alt: string; panels: number; layout: string; geometry?: ShutterIllustrationGeometry; frameProfile?: ShutterFrameProfile | null;
 }) {
   const grainId = `shutter-grain-${useId().replace(/:/g, "")}`;
   const panelHeight = 320;
-  const frame = 12;
+  const bullnose = /bullnose-z/.test(frameProfile?.id ?? '');
+  const frame = bullnose ? 16 : 12;
   const postWidth = 9;
   const tokens = /^[LRT]+$/.test(layout) ? [...layout] : Array<string>(panels).fill("?");
   const height = panelHeight + frame * 2;
@@ -26,9 +28,10 @@ export function ShutterAssembly({ src, alt, panels, layout, geometry }: {
   const width = cursor + frame;
   const rise = width * 0.045;
   const hingePositions = [...new Set(pieces.flatMap(({ token, x }) => token === "L" ? [x] : token === "R" ? [x + panelWidth] : []))];
-  return <svg className={styles.shutterAssembly} width={160} height={160}
+  return <svg className={styles.shutterAssembly} width={width + 15} height={height + rise + 8} style={{aspectRatio: `${width + 15} / ${height + rise + 8}`}}
     viewBox={`-3 -3 ${width + 15} ${height + rise + 8}`}
     role="img" aria-label={alt} data-shutter-assembly="shared-frame"
+    data-selected-frame={frameProfile?.id} data-frame-face={bullnose ? "bullnose-z" : undefined}
     data-panel-count={panels} data-shutter-layout={layout} data-opening-aspect-ratio={width / height}>
     <defs>
       <pattern id={grainId} width="19" height="11" patternUnits="userSpaceOnUse">
@@ -39,6 +42,10 @@ export function ShutterAssembly({ src, alt, panels, layout, geometry }: {
     <g transform={`translate(0 ${rise}) matrix(1 -.045 0 1 0 0)`}>
       <path d={`M${width} 0l8 4v${height}l-8 -4Z`} fill="#bdbcb8" stroke="#777570" strokeWidth=".8" />
       <rect data-shutter-frame="outer" width={width} height={height} fill={`url(#${grainId})`} stroke="#777570" strokeWidth="1.2" />
+      {bullnose && <>
+        <rect x={2.5} y={2.5} width={width-5} height={height-5} rx={3} fill="none" stroke="#c7c5bf" strokeWidth={2.5}/>
+        <rect x={frame-3} y={frame-3} width={width-2*frame+6} height={height-2*frame+6} fill="none" stroke="#99968e" strokeWidth={1.1}/>
+      </>}
       <path d={`M0 0l${frame} ${frame}M${width} 0l-${frame} ${frame}M0 ${height}l${frame} -${frame}M${width} ${height}l-${frame} -${frame}`} stroke="#999791" strokeWidth=".7" />
       {pieces.map(({ token, index, x }) => token === "T"
         ? <rect key={index} data-shutter-post="true" x={x} y={frame} width={postWidth} height={panelHeight} fill={`url(#${grainId})`} stroke="#8d8b85" strokeWidth=".7" />

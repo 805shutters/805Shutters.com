@@ -1,3 +1,4 @@
+import type { ShutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
 import { useId, type CSSProperties } from 'react';
 import { frenchDoorSketch, pureSunburst, type SpecialtyShutterSketch as Sketch } from '@/lib/quote/specialty-shutter-illustrations';
 import styles from './ContractProductIllustration.module.css';
@@ -103,7 +104,8 @@ export function proportionedSketchParts(sketch: Sketch, geometry?: ShutterIllust
   return result;
 }
 
-export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; geometry?: ShutterIllustrationGeometry }) {
+export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { sketch: Sketch; geometry?: ShutterIllustrationGeometry; frameProfile?: ShutterFrameProfile | null }) {
+  const bullnose = /bullnose-z/.test(frameProfile?.id ?? '');
   const id=`specialty-${useId().replace(/[^a-zA-Z0-9_-]/g,'')}`;
   const parts=proportionedSketchParts(sketch,geometry), isDoor=frenchDoorSketch(sketch.code), fixed=pureSunburst(sketch.code);
   const height=Math.max(...parts.map(p=>p.y+p.h))+34;
@@ -115,6 +117,7 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
   const totalPanels=tokens.length;
   return <svg className={styles.shutterAssembly} viewBox={`0 0 250 ${height}`} style={{'--sketch-aspect': `250 / ${height}`} as CSSProperties} width={160} height={160}
     role="img" aria-label={`${title} — 805 signature sketch`} data-specialty-sketch={sketch.code}
+    data-selected-frame={frameProfile?.id} data-frame-face={bullnose ? "bullnose-z" : undefined}
     data-sketch-tilt={fixed?'radial':sketch.tilt??'unrecorded'} data-sketch-split={!fixed&&sketch.split} data-sketch-divider={!fixed&&sketch.divider} data-arch-style={sketch.archStyle||undefined} data-specialty-layout={sketch.layout||undefined} data-opening-aspect-ratio={geometry?.aspectRatio}>
     <title>{title}</title>
     <defs>
@@ -144,6 +147,7 @@ export function SpecialtyShutterSketch({ sketch, geometry }: { sketch: Sketch; g
       const rows=Array.from({length:Math.min(300,Math.max(0,Math.floor((end-bladeStart)/pitch)))},(_,n)=>bladeStart+pitch/2+n*pitch);
       return <g key={index}>
         {!sketch.noFrame&&<path data-surround-frame="true" d={p.path} transform={`translate(${p.x+p.w/2} ${p.y+p.h/2}) scale(1.055 1.035) translate(${-p.x-p.w/2} ${-p.y-p.h/2})`} fill={`url(#${id}-grain)`} stroke="#858177" strokeWidth="1"/>}
+        {!sketch.noFrame && bullnose && <path data-bullnose-face="true" d={p.path} transform={`translate(${p.x+p.w/2} ${p.y+p.h/2}) scale(1.025 1.016) translate(${-p.x-p.w/2} ${-p.y-p.h/2})`} fill="none" stroke="#d2d0c9" strokeWidth="2.4" strokeLinejoin="round"/>}
         <path d={p.path} transform="translate(3.2 1.5)" fill="#cccac5" stroke="#9a978e" strokeWidth=".6"/>
         <path d={p.path} fill={`url(#${id}-grain)`} stroke="#85837d" strokeWidth=".8"/>
         <g clipPath={`url(#${id}-outline-${index})`}>
