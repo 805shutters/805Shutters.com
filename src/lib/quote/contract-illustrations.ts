@@ -29,7 +29,7 @@ export function contractIllustration(productType: string, options: readonly stri
     return !value ? [] : [[normalize(option.slice(0, colon)), value]];
   });
   const values = (...keys: string[]) => fields.filter(([key]) => keys.includes(key)).map(([, value]) => value);
-  const savedOperations = values("lift system", "operating system", "control type", "honeycomb operating system");
+  const savedOperations = values("lift system", "operating system", "control type", "honeycomb operating system", "lift / control");
   if (values("specialty shape").some((value) => value && !["none", "rectangle", "rectangular"].includes(value))) return null;
   const special = values("application", "shade type", "shutter type", "honeycomb application", "roller application", "specialty shape").join(" ");
   // A specialty selection must never fall through to an ordinary rectangle,

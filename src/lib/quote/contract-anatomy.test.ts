@@ -100,6 +100,19 @@ describe('visual contract catalog and saved selections', () => {
       expect(model.callouts.find(c=>c.part==='control')?.point[0]).toBe(side==='Left'?13:87);
     }
   });
+  it('connects saved Operating System selections to the actual control instead of extra details',()=>{
+    for(const label of ['Operating System','Honeycomb Operating System','Lift / Control']){
+      const options=[`${label}: Cordless`,'Hem Bar: Fabric Covered','Mount Type: Inside Mount'];
+      const model=contractAnatomyLabels('Roller Shades',options);
+      const control=model.callouts.find(c=>c.details.some(d=>d.label===label));
+      expect(anatomySelectionGroup(label)).toBe('Operation');
+      expect(control).toMatchObject({part:'control',anchor:'pull-tab'});
+      expect(control?.noLeader).not.toBe(true);
+      const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Office',layout:'grouped',options}));
+      expect(html).toContain('data-anatomy-anchor="pull-tab"');
+      expect(html).toContain('Center pull tab');
+    }
+  });
   it('omits default standard roll but retains reverse roll', () => {
     const base=['Lift System: Cordless'];
     for(const value of ['Standard','Standard Roll']) {

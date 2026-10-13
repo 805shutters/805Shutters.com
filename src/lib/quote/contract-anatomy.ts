@@ -19,7 +19,7 @@ export function anatomySelectionGroup(label: string): typeof ANATOMY_SELECTION_G
   if (/colou?r|finish/.test(key)) return 'Design & color';
   if (/valance|cassette|fascia|top treatment|head pocket/.test(key)) return 'Valance';
   if (/fabric|material|opacity|light control|lining|texture|weave|banding|binding/.test(key)) return 'Design & color';
-  if (/tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'Operation';
+  if (/operating system|tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'Operation';
   if (/frame|mount|hinge|track|panel|louver|slat|vane|cell|fold|rail|hem|cutout|handle|guide|return|bracket|recess|shape|shutter type|shade type|application|tube|width|height/.test(key)) return 'Construction & fit';
   return 'Additional details';
 }
@@ -34,7 +34,7 @@ export function anatomyPart(label: string, family: ContractProductFamily): Anato
   if (/light control/.test(key)) return 'surface';
   if (/remote/.test(key)) return 'remote';
   if (/roll type|roll direction/.test(key)) return 'roll';
-  if (/tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'control';
+  if (/operating system|tilt|lift|control|cord|chain|wand|motor|remote|power|battery|charger|draw|stack|roll type|roll direction/.test(key)) return 'control';
   if (/frame|mount|hinge|track|cutout|handle|panel|guide|return|bracket|recess/.test(key)) return 'frame';
   if (/fabric|color|colour|finish|material|opacity|light control|lining|texture|weave/.test(key)) return 'surface';
   return null;

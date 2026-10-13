@@ -8,7 +8,7 @@ import { ContractProductIllustration } from './ContractProductIllustration';
 import { fabricPerformanceLabels } from '@/lib/quote/fabric-performance-labels';
 import styles from './ContractAnatomy.module.css';
 import { shutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
-import { anatomyLeaderPath, type AnatomyLineRouting } from '@/lib/quote/anatomy-leader-path';
+import { anatomyLeaderPath, exteriorLeaderPoints, roundedLeaderPath, type AnatomyLineRouting } from '@/lib/quote/anatomy-leader-path';
 
 export type AnatomyLayout = 'compact' | 'centered' | 'bordered' | 'classic' | 'grouped';
 export type AnatomySummaryStyle = 'current' | 'recap' | 'numbered' | 'cards' | 'strip' | 'grid' | 'legend';
@@ -45,7 +45,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       const frame = measure(scene.current);
       const mobile = frame.width <= 620;
       const primaryProduct = art.current.querySelector('[data-primary-product]');
-      const image = measure(primaryProduct?.querySelector(mobile ? '[data-shade-fold], [data-roller-top-treatment], figure' : '[data-shade-fold]') || (frameProfile ? primaryProduct : null) || art.current);
+      const image = measure(primaryProduct?.querySelector('[data-shade-fold], [data-roller-top-treatment]') || (frameProfile ? primaryProduct : null) || art.current);
       setPaths(model.callouts.map((callout, i) => {
         if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const text = labels.current[i] ? measure(labels.current[i]!) : undefined;
@@ -68,6 +68,8 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
         if (layout === 'grouped') {
           const left = callout.side === 'left';
           let endX = x, endY = y;
+          let entry:'top'|'bottom'|'side'='side';
+          let outline={left:image.left-frame.left,right:image.right-frame.left,top:image.top-frame.top,bottom:image.bottom-frame.top};
           if (model.family === 'shutters') {
             const selector = callout.part === 'slat' ? '[data-louver-section] svg'
               : callout.part === 'control' ? '[data-front-tilt-rod]'
@@ -93,12 +95,47 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
               endX = partBounds.left - frame.left + partBounds.width * (left ? .02 : .98);
               endY = partBounds.top - frame.top + partBounds.height * (callout.part === 'surface' ? .24 : .72);
             }
+          } else {
+            // Raster studies include white margins. Route around the visible
+            // shade, then touch its nearest edge rather than its center.
+            outline={left:image.left-frame.left+image.width*.1,right:image.left-frame.left+image.width*.9,top:image.top-frame.top+image.height*.08,bottom:image.top-frame.top+image.height*.86};
+            if(callout.part==='top') {
+              entry='top';
+              if(target) {
+                endX=target.left-frame.left+target.width*.5;
+                const integrated=targetElement?.tagName==='IMG';
+                endY=target.top-frame.top+target.height*(integrated ? .3 : .12);
+                outline.top=target.top-frame.top+target.height*(integrated ? .15 : 0);
+              } else {
+                endX=image.left-frame.left+image.width*.5;
+                endY=image.top-frame.top+image.height*.16;
+              }
+            } else if(callout.anchor==='pull-tab'&&target) {
+              entry='bottom';
+              endX=target.left-frame.left+target.width/2;
+              endY=target.bottom-frame.top-1;
+            } else if(callout.part==='bottom') {
+              entry='bottom';
+              endX=image.left-frame.left+image.width*(left ? .17 : .84);
+              endY=image.top-frame.top+image.height*(model.family==='roller'?(left ? .76 : .83):.81);
+            } else if(callout.anchor&&target) {
+              endX=target.left-frame.left+target.width/2;
+              endY=target.top-frame.top+target.height*.5;
+            } else if(callout.anchor==='cord-loop') {
+              // Roller loop artwork is baked into the raster rather than a
+              // separate element; retain its side-specific control anchor.
+              endX=x;
+              endY=y;
+            } else {
+              endX=image.left-frame.left+image.width*(left ? .16 : .85);
+              const desiredY=text.top-frame.top+Math.min(24,text.height/2);
+              endY=Math.max(image.top-frame.top+image.height*.36,Math.min(desiredY,image.top-frame.top+image.height*.72));
+            }
           }
           const startX = (left ? text.right + 6 : text.left - 6) - frame.left;
           const startY = text.top - frame.top + Math.min(24, text.height / 2);
-          const laneOffset = callout.part === 'control' ? 12 : 5;
-          const lane = left ? image.left - frame.left - laneOffset : image.right - frame.left + laneOffset;
-          return {part: callout.part, d: `M ${startX} ${startY} L ${lane} ${startY} L ${lane} ${endY} L ${endX} ${endY}`, x: endX, y: endY};
+          const clearance = callout.part === 'control' ? 12 : model.family==='shutters'?5:10;
+          return {part: callout.part, d: roundedLeaderPath(exteriorLeaderPoints({start:{x:startX,y:startY},end:{x:endX,y:endY},left,entry,art:outline,clearance})), x: endX, y: endY};
         }
         const left = callout.side === 'left';
         const startX = left ? text.right - frame.left + 8 : text.left - frame.left - 8;
@@ -112,6 +149,9 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     if (scene.current) observer.observe(scene.current);
     if (art.current) observer.observe(art.current);
     labels.current.forEach(el => el && observer.observe(el));
+    // Absolute control artwork can finish loading without resizing its parent.
+    const artwork=art.current;
+    artwork?.addEventListener('load',draw,true);
     // Printing changes the layout synchronously, before ResizeObserver can commit.
     const beforePrint = () => {
       flushSync(() => setPrinting(true));
@@ -125,6 +165,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     printMedia.addEventListener('change', mediaChanged);
     return () => {
       observer.disconnect();
+      artwork?.removeEventListener('load',draw,true);
       window.removeEventListener('beforeprint', beforePrint);
       window.removeEventListener('afterprint', afterPrint);
       printMedia.removeEventListener('change', mediaChanged);
@@ -145,7 +186,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     {showHeader && <header className={styles.header}><div className={styles.identity}><h2 id={heading} className={styles.room}>{room || 'Room not specified'}</h2><p className={styles.eyebrow}>{customerQuoteProductName(productType)}</p>{layout==='classic'&&<p className={styles.subtitle}>{model.family==='shutters'?'Your shutters':/roller|roman|honeycomb|sheer|woven|pleated|dual|solar/.test(model.family)?'Your shade':'Your product'}, explained</p>}</div><div className={styles.headerMeta}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div></header>}
     <div className={styles.diagram} ref={scene} style={{'--label-rows': Math.max(1, ...(['left', 'right'] as const).map(side => model.callouts.filter(c => c.side === side).length))} as CSSProperties}>
       <div className={`${styles.art} ${frameProfile ? styles.withFrameProfile : ''}`} ref={art}><div data-primary-product="true"><ContractProductIllustration productType={productType} options={options} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>{frameProfile && <figure className={styles.frameProfile} data-frame-profile={frameProfile.id}><img src={frameProfile.src} alt={`${frameProfile.label} — supplier side profile`} width={128} height={90}/><figcaption><strong>{frameProfile.label}</strong><span>Side profile</span></figcaption></figure>}</div>
-      <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
+      <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`} data-leader-part={path.part}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
       {layout==='grouped' ? (['left','right'] as const).flatMap(side => {
         const entries = ANATOMY_SELECTION_GROUPS.flatMap(title => model.callouts
           .map((callout, i) => ({callout, i, title}))
