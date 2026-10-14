@@ -7,7 +7,7 @@ import { anatomyShadeStudy } from './anatomy-shade-study';
 import { anatomyControlAnchor } from './anatomy-control-anchor';
 
 export type AnatomyPart = 'top' | 'surface' | 'slat' | 'control' | 'remote' | 'roll' | 'bottom' | 'frame';
-export type AnatomyCallout = { part: AnatomyPart; title: string; details: QuoteProductDetail[]; point: [number, number]; side: 'left' | 'right'; anchor?: 'remote' | 'pull-tab' | 'cord-loop' };
+export type AnatomyCallout = { part: AnatomyPart; title: string; details: QuoteProductDetail[]; point: [number, number]; side: 'left' | 'right'; anchor?: 'remote' | 'pull-tab' | 'cord-loop' | 'wand' };
 const slatted = new Set<ContractProductFamily>(['shutters', 'wood', 'faux-wood', 'mini', 'vinyl', 'fabric-blind', 'vertical', 'vanes']);
 const titles: Record<AnatomyPart, string> = { top: 'Top treatment', surface: 'Fabric & finish', slat: 'Slats', control: 'Operation', remote: 'Remote control', roll: 'Roll direction', bottom: 'Bottom rail', frame: 'Frame & mounting' };
 const points: Record<AnatomyPart, [number, number]> = { top: [50, 25], surface: [47, 49], slat: [54, 39], control: [82, 58], remote: [50, 48], roll: [82, 27], bottom: [52, 81], frame: [20, 64] };
@@ -102,7 +102,7 @@ export function balancedAnatomyCallouts<T extends AnatomyCallout>(callouts: read
   const load = {left: 0, right: 0};
   const weight = (c: T) => c.details.reduce((sum, d) => sum + 1 + Math.ceil(d.value.length / 30), 0);
   const preference = (c: T, side: 'left' | 'right') => {
-    const physicalSide = c.anchor === 'cord-loop' ? (c.point[0] < 50 ? 'left' : 'right') : c.side;
+    const physicalSide = (c.anchor === 'cord-loop' || c.anchor === 'wand') ? (c.point[0] < 50 ? 'left' : 'right') : c.side;
     return side === physicalSide ? 0 : c.anchor ? 12 : 1;
   };
   const result: T[] = [];

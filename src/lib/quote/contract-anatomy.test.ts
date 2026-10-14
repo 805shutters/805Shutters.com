@@ -87,6 +87,23 @@ describe('visual contract catalog and saved selections', () => {
     const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Living Room',options:['Lift System: Motorized']}));
     expect(html).toContain('data-anatomy-anchor="remote"');
   });
+  it.each(['Wood Blinds', 'Faux Wood Blinds', 'Mini Blinds'])('attaches %s control leaders to the visible wand in every label layout', productType => {
+    for (const side of ['Left', 'Right']) for (const layout of ['grouped', 'centered', 'classic', 'compact', 'bordered'] as const) {
+      const options = [`Control Side: ${side}`, 'Material: 2 inch slats', 'Color: Limed White', 'Mount Type: Inside Mount'];
+      const model = contractAnatomyLabels(productType, options, undefined, layout);
+      const control = model.callouts.find(c => c.part === 'control')!;
+      expect(control.anchor).toBe('wand');
+      expect(control.point[0] < 50).toBe(side === 'Left');
+      expect(control.point[1]).toBe(40);
+      const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType, room:'Office', layout, options}));
+      expect(html).toContain('data-anatomy-anchor="wand"');
+    }
+  });
+  it('does not attach a wand leader to unrecorded or conflicting blind controls', () => {
+    for (const options of [[], ['Control Side: Both'], ['Control Side: Left', 'Wand Side: Right']]) {
+      expect(contractAnatomy('Wood Blinds', options).callouts.some(c => c.anchor === 'wand')).toBe(false);
+    }
+  });
   it('identifies small cordless pull tabs and both cord-loop sides', () => {
     for (const productType of ['Roller Shades','Honeycomb Shades','Roman Shades','Sheer Shades']) {
       const options=['Lift System: Cordless'];

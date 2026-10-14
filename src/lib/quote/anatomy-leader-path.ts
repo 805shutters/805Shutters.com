@@ -38,9 +38,9 @@ export function anatomyLeaderPath(input:{start:Point; end:Point; left:boolean; r
     if(s.y>=art.bottom)return `M ${s.x} ${s.y} L ${e.x} ${s.y} L ${e.x} ${e.y}`;
     return `M ${s.x} ${s.y} L ${lane} ${s.y} L ${lane} ${below} L ${e.x} ${below} L ${e.x} ${e.y}`;
   }
-  if(part==='top') {
+  if(part==='top'||(anchor==='wand'&&left!==(e.x<(art.left+art.right)/2))) {
     const above=Math.min(art.top,e.y)-16;
-    if(s.y<=e.y)return `M ${s.x} ${s.y} L ${e.x} ${s.y} L ${e.x} ${e.y}`;
+    if(s.y<=(anchor==='wand'?art.top:e.y))return `M ${s.x} ${s.y} L ${e.x} ${s.y} L ${e.x} ${e.y}`;
     return `M ${s.x} ${s.y} L ${lane} ${s.y} L ${lane} ${above} L ${e.x} ${above} L ${e.x} ${e.y}`;
   }
   return `M ${s.x} ${s.y} L ${lane} ${s.y} L ${e.x} ${e.y}`;

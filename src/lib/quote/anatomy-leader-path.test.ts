@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exteriorLeaderPoints, roundedLeaderPath } from './anatomy-leader-path';
+import { anatomyLeaderPath, exteriorLeaderPoints, roundedLeaderPath } from './anatomy-leader-path';
 
 describe('outside anatomy connectors',()=>{
   const art={left:100,right:300,top:50,bottom:250};
@@ -27,4 +27,14 @@ describe('outside anatomy connectors',()=>{
     const path=roundedLeaderPath([{x:0,y:0},{x:0,y:0},{x:2,y:0},{x:2,y:2}]);
     expect(path).toBe('M 0 0 L 1 0 Q 2 0 2 1 L 2 2');
   });
+});
+
+it('routes an opposite-side wand label above the blind while retaining the wand endpoint', () => {
+  const art = {left:100, right:300, top:50, bottom:250};
+  for (const left of [true, false]) for (const labelY of [100, 180]) {
+    const end = {x:left ? 270 : 130, y:140};
+    const path = anatomyLeaderPath({start:{x:left ? 20 : 380,y:labelY},end,left,routing:'around',part:'control',anchor:'wand',art,elbow:left ? 80 : 320});
+    expect(path).toContain(`L ${end.x} 34 L ${end.x} ${end.y}`);
+    expect(path).not.toMatch(/NaN|Infinity/);
+  }
 });

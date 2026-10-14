@@ -118,6 +118,13 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
               entry='bottom';
               endX=image.left-frame.left+image.width*(left ? .17 : .84);
               endY=image.top-frame.top+image.height*(model.family==='roller'?(left ? .76 : .83):.81);
+            } else if(callout.anchor==='wand'&&target) {
+              // This control is baked into the image, so retain its measured
+              // artwork coordinate even when balancing moves its label.
+              endX=x;
+              endY=y;
+              outline.top=target.top-frame.top;
+              if(left!==(callout.point[0]<50)) entry='top';
             } else if(callout.anchor&&target) {
               endX=target.left-frame.left+target.width/2;
               endY=target.top-frame.top+target.height*.5;
@@ -141,7 +148,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
         const startX = left ? text.right - frame.left + 8 : text.left - frame.left - 8;
         const startY = text.top - frame.top + Math.min(24, text.height / 2);
         const elbow = left ? Math.max(startX + 16, frame.width * .29) : Math.min(startX - 16, frame.width * .71);
-        return { part: callout.part, d: anatomyLeaderPath({start:{x:startX,y:startY},end:{x,y},left,routing:lineRouting,part:callout.part,anchor:callout.anchor,elbow,art:{left:image.left-frame.left+image.width*.1,right:image.left-frame.left+image.width*.9,top:image.top-frame.top+image.height*.14,bottom:image.top-frame.top+image.height*.84}}), x, y };
+        return { part: callout.part, d: anatomyLeaderPath({start:{x:startX,y:startY},end:{x,y},left,routing:lineRouting,part:callout.part,anchor:callout.anchor,elbow,art:{left:image.left-frame.left+image.width*.1,right:image.left-frame.left+image.width*.9,top:callout.anchor==='wand'&&target?target.top-frame.top:image.top-frame.top+image.height*.14,bottom:image.top-frame.top+image.height*.84}}), x, y };
       }));
     };
     draw();

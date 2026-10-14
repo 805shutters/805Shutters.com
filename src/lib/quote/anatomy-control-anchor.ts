@@ -6,6 +6,13 @@ export function anatomyControlAnchor(product: string, options: readonly string[]
   if (!art || art.referenceNote) return null;
   if (art.remote) return { kind: 'remote' as const, point: [50, 48] as [number, number] };
   const family = contractProductFamily(product);
+  // These assets draw the wand into the raster. Use its physical position,
+  // including the separate right-hand faux-wood asset, rather than the label side.
+  if (['wood', 'faux-wood', 'mini'].includes(family)) {
+    const baseX = family === 'faux-wood' ? 21 : family === 'wood' ? 25 : 26;
+    const x = art.src.endsWith('/faux-wood-wand-right.webp') ? 80 : art.mirror ? 100 - baseX : baseX;
+    return { kind: 'wand' as const, point: [x, 40] as [number, number] };
+  }
   if (!['roller', 'roman', 'honeycomb', 'sheer', 'woven'].includes(family)) return null;
   const operations = options.filter(o => /^(lift system|operating system|control type|honeycomb operating system|lift \/ control):/i.test(o)).map(o => o.slice(o.indexOf(':') + 1).replace(/\*/g, '').trim());
   if (operations.some(o => /cordless|^top.down.bottom.up$/i.test(o))) {
