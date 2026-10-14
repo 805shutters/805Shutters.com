@@ -1,5 +1,6 @@
 "use client";
 
+import { YelpSmsButton } from "./YelpSmsButton";
 import { CustomerEmailStatus } from "./CustomerEmailStatus";
 import { trackingJobClosed, trackingPaymentSettled } from "@/lib/crm/job-closure";
 import { useState } from "react";
@@ -28,7 +29,7 @@ export function JobRecordDetail({item,disabled,onEdit,onFulfillment}:{item:JobTr
   const credits=[...(item.row?.creditsIn||[]).map(c=>({...c,direction:"Credit",sign:"−"})),...(item.row?.creditsOut||[]).map(c=>({...c,direction:c.note?.startsWith("Added charge:")?"Added charge":"Transfer / balance increase",sign:"+"}))].sort((a,b)=>(b.credit_date||b.created_at).localeCompare(a.credit_date||a.created_at));
   return <article className={styles.record} aria-label={`Job for ${item.customerName}`}>
     <header className={styles.header}>
-      <div><span className={styles.eyebrow}>CUSTOMER FILE · {item.project}</span><h2>{item.customerName}</h2><div className={styles.contact}><span>{item.phone||"Phone not recorded"}</span><button disabled={disabled} onClick={()=>onEdit("email")}>{item.email||"Add customer email"}</button></div></div>
+      <div><span className={styles.eyebrow}>CUSTOMER FILE · {item.project}</span><h2>{item.customerName}<YelpSmsButton item={item} busy={disabled} /></h2><div className={styles.contact}><span>{item.phone||"Phone not recorded"}</span><button disabled={disabled} onClick={()=>onEdit("email")}>{item.email||"Add customer email"}</button></div></div>
       <div className={styles.status}>{financiallyClosed&&<span className={styles.complete}><Check size={15}/>Closed · Paid in full</span>}{paymentSettled&&!financiallyClosed&&<span>Active · Paid in full</span>}<button disabled={disabled} onClick={()=>onEdit("stage")}>{stage.label}<ChevronDown size={15}/></button><button disabled={disabled||!item.isSale} onClick={()=>onEdit("sold_date")}>{item.isSale?`Sold ${date(item.soldDate)}`:"Not sold"}</button></div>
     </header>
     <div className={styles.metrics}>

@@ -16,6 +16,7 @@ import { CrmLoadingScreen } from "./CrmLoadingScreen";
 import { CrmNavigation } from "./CrmNavigation";
 import { orderCostKey, productOrderCosts } from "@/lib/crm/product-order-cost";
 import { orderCostParent } from "./ProductOrderEditor";
+import { YelpSmsProvider } from "./YelpSmsButton";
 import { BackToStatus, JobStatusOverview, OperationsDashboard, type WorkflowAction } from "./OperationsOverview";
 import "./crm-platinum.css";
 import { ExistingAppointmentCustomer, type AppointmentCustomer } from "./ExistingAppointmentCustomer";
@@ -3476,8 +3477,9 @@ export function CrmApp({
 
       {financialViewBlocked ? <p role="alert" className="crm-alert">Cost or allocation sources are unavailable. Financial summaries are withheld; the complete-record reports and Job Tracking remain available. {data?.loadWarnings?.join(" ")}</p> : null}
       {data && (activeTab === "reports" || financialViewBlocked) ? <OperationsReports data={data} activity={activitySnapshot} /> : null}
-      {activeTab === "tracking" && !trackingDetailId ? <JobStatusOverview activeSnapshot={dashboardRefreshError ? null : activeJobsSnapshot} onLoadAll={ensureFullDashboard} onDeleteFileId={async id => { const dashboard = await ensureFullDashboard(); const file = dashboard.customerFiles.find(candidate => candidate.id === id); if (!file) throw new Error("Customer file could not be found. Refresh and try again."); await deleteCustomerFile(file); }} onDelete={deleteCustomerFile} data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onSaveCost={saveTrackingField} onPaymentChanged={refresh} onOpen={item => setTrackingDetailId(item.id)} onOpenAppointment={event => { openTab("calendar"); setCalendarDate(calendarEventDateValue(event)); setViewingCalendarEvent(event); }} /> : null}
-      {activeTab === "tracking" && (trackingDetailId || trackingQuickAction) ? (<>
+      {activeTab === "tracking" && session ? <YelpSmsProvider accessToken={session.access_token}>
+      {!trackingDetailId ? <JobStatusOverview activeSnapshot={dashboardRefreshError ? null : activeJobsSnapshot} onLoadAll={ensureFullDashboard} onDeleteFileId={async id => { const dashboard = await ensureFullDashboard(); const file = dashboard.customerFiles.find(candidate => candidate.id === id); if (!file) throw new Error("Customer file could not be found. Refresh and try again."); await deleteCustomerFile(file); }} onDelete={deleteCustomerFile} data={dashboardRefreshError ? null : data} busy={busy} onAction={updateWorkflowCheck} onSaveCost={saveTrackingField} onPaymentChanged={refresh} onOpen={item => setTrackingDetailId(item.id)} onOpenAppointment={event => { openTab("calendar"); setCalendarDate(calendarEventDateValue(event)); setViewingCalendarEvent(event); }} /> : null}
+      {(trackingDetailId || trackingQuickAction) ? (<>
         {trackingDetailId && <BackToStatus onClick={() => { setTrackingDetailId(null); setTrackingQuickAction(null); }} />}
         <div className={trackingDetailId ? "crm-record-detail" : undefined}><JobTrackingWorkspace focusedItemId={trackingDetailId || trackingQuickAction?.itemId}
           editorOnly={!trackingDetailId} quickAction={trackingQuickAction} onQuickClose={() => setTrackingQuickAction(null)}
@@ -3505,6 +3507,8 @@ export function CrmApp({
           onOpenCustomer={openCustomerFile}
         /></div></>
       ) : null}
+
+      </YelpSmsProvider> : null}
 
       {activeTab === "command" && !financialViewBlocked ? <div hidden={globalDrill?.metric === "closedSales"}><OperationsDashboard data={dashboardRefreshError ? null : data} busy={busy}
         onOpen={item => { openTab("tracking"); setTrackingDetailId(item.id); }} onStatus={() => openTab("tracking")}

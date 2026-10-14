@@ -1,0 +1,9 @@
+.button.button { display:inline-flex; align-items:center; justify-content:center; gap:3px; vertical-align:middle; margin-left:8px; width:auto; min-height:22px; padding:3px 7px; border:1px solid #e8b52b; border-radius:5px; background:#f5cc4b; color:#2b230b; font:600 11px/1.3 var(--crm-ui-font, sans-serif); cursor:pointer; white-space:nowrap; }
+.button.button:hover:not(:disabled) { background:#ffdf72; }
+.button.button:focus-visible { outline:2px solid #fff; outline-offset:3px; }
+.button.button:disabled { cursor:default; opacity:.55; }
+.notice,.error { padding:10px 12px; border-radius:7px; font-size:13px; overflow-wrap:anywhere; }
+.notice { background:#153d2b; color:#c7f9df; border:1px solid #3d8563; }
+.error { background:#4b2525; color:#ffe2e2; border:1px solid #a95c5c; }
+@media(pointer:coarse) { .button.button { min-height:32px; min-width:44px; } }
+@media print { .button,.notice,.error { display:none !important; } }

@@ -1,5 +1,7 @@
 "use client";
 
+import { YelpSmsButton } from "./YelpSmsButton";
+
 import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
@@ -263,7 +265,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
           const products = item.products.length ? item.products : [item.wholeJob];
           const payments = paymentsFor(item);
           return <tr key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
-            <th scope="row"><button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button></th>
+            <th scope="row"><div className={styles.customerActions}><button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><YelpSmsButton item={item.source} busy={disabled} /></div></th>
             <td>{formatOperationsDate(item.source.soldDate) || "Sale date needed"}</td>
             <td>{mark(item, "quote")}</td><td>{mark(item, "sold")}{!item.sold && !item.source.signatureRecorded && (item.source.depositReceived ?? 0) > 0 && <small>Payment received · Signature needed</small>}</td><td>{payments ? paymentCell(item, payments, 1) : mark(item, "deposit")}</td>
             {hasThreePayments && <td>{payments ? paymentCell(item, payments, 2) : <span aria-label="Second payment not applicable">—</span>}</td>}
@@ -291,7 +293,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       <header className={styles.jobHeader}>
         <div className={styles.jobHeaderContent}>
           <div className={styles.jobIdentity}>
-            <button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button>
+            <div className={styles.customerActions}><button type="button" className={styles.customerLink} title={item.source.customerName} onClick={() => onOpen(item.source)}>{item.source.customerName}</button><YelpSmsButton item={item.source} busy={disabled} /></div>
             <small title={item.source.project || "Project needed"}>{item.source.project || "Project needed"}</small>
             {payments && <small className={styles.paymentPlanBadge}>In-house payment plan · 3 payments</small>}
             {item.closed && <small className={styles.completeText}>Closed · Paid in full</small>}

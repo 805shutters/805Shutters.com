@@ -104,7 +104,7 @@
 .statusTable small { display:block; font-size:12px; font-weight:400; color:#b8b6ae; margin-top:5px; line-height:1.4; }
 .productChecks { display:flex; flex-direction:column; align-items:center; }
 .productChecks .productCount { margin-top:10px; font-size:11px; }
-.customerLink { display:block; max-width:100%; overflow:hidden; text-align:left; text-overflow:ellipsis; white-space:nowrap; background:none; border:0; padding:0; font-weight:600 !important; font-size:16px !important; }
+.customerLink { display:inline-block; width:auto; vertical-align:middle; max-width:calc(100% - 60px); overflow:hidden; text-align:left; text-overflow:ellipsis; white-space:nowrap; background:none; border:0; padding:0; font-weight:600 !important; font-size:16px !important; }
 .openLink { display:flex; align-items:center; gap:8px; background:none; border:0; padding:0; margin-top:18px; font-size:12px !important; color:#d6d5cf !important; }
 .product { min-height:148px; display:flex; flex-direction:column; align-items:center; gap:3px; width:100%; font-size:12px; line-height:16px; font-weight:400; }
 .product + .product { margin-top:0; }
@@ -237,7 +237,7 @@
 .condensedTable tbody td:last-child { border-radius:0 6px 6px 0; }
 .condensedTable tr > :first-child { position:sticky; left:0; z-index:1; box-shadow:5px 0 8px #0002; }
 .condensedTable thead tr > :first-child { z-index:3; }
-.condensedTable .customerLink { display:block; width:180px; max-width:180px; height:24px; min-height:24px; overflow:hidden; text-overflow:ellipsis; font-size:12px; padding:0; white-space:nowrap; }
+.condensedTable .customerLink { display:inline-block; width:130px; max-width:130px; height:24px; min-height:24px; overflow:hidden; text-overflow:ellipsis; font-size:12px; padding:0; white-space:nowrap; }
 .condensedTable .completionButton { width:24px; height:24px; min-height:24px; padding:2px; }
 .condensedTable .mark { width:20px; height:20px; border-width:1.5px; }
 .condensedTable .mark svg, .condensedTable .savingMark { width:14px; height:14px; }
@@ -298,3 +298,6 @@
   .threePaymentTable td:nth-child(odd) { border-left:0; }
   .paymentFooter { padding:12px 16px; }
 }
+
+.customerActions { display:flex; align-items:center; min-width:0; width:100%; }
+.customerActions .customerLink { flex:1; min-width:0; }
