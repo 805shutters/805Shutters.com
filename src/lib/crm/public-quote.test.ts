@@ -456,6 +456,23 @@ describe("projectLine (per-line discount on the contract)", () => {
     expect(line.lineTotal).toBe(190.8);
   });
 
+  it("projects original retail amounts and preserves cents when quantity expands", () => {
+    const d = design({ unit_price: 90, price_breakdown: { discountAmount: 10, onceTotal: 0.01 } });
+    const line = projectLine(lineItem({ quantity: 3, discount_percent: 10, designs: [d] }), false);
+    expect(line.originalLineTotal).toBe(300.01);
+    const expanded = expandPublicQuoteLine(line);
+    expect(expanded.map(row => Math.round((row.originalLineTotal! - row.lineTotal) * 100))).toEqual([1000, 1000, 1000]);
+    expect(expanded.reduce((sum, row) => sum + Math.round(row.originalLineTotal! * 100), 0)).toBe(30001);
+  });
+
+  it("projects saved legacy product discounts for each purchased configuration", () => {
+    const d = design({ unit_price: 80, price_breakdown: { source: "mts_805_bookkeeping", optionsJson: { discount_percent: 20, discount_amount: 20 } } });
+    const line = projectLine(lineItem({ quantity: 2, designs: [d] }), true);
+    expect(line.lineTotal).toBe(160);
+    expect(line.originalLineTotal).toBe(200);
+    expect(line.designOptions[0].originalLineTotal).toBe(200);
+  });
+
   it("defaults to 0 discount when none is set", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
     expect(projectLine(lineItem({ designs: [d] }), false).discountPercent).toBe(0);

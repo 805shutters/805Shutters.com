@@ -11,6 +11,8 @@ import {
   type FrozenCustomerContractEmail,
 } from "./customer-signed-contract-email";
 import type { SignedContractSnapshot } from "./public-quote";
+import { buildSignedContractSnapshot } from "./public-quote";
+import { contractLinePrices } from "@/lib/quote/contract-line-pricing";
 
 const snapshot: SignedContractSnapshot = {
   schema: "805_signed_quote_contract_v1",
@@ -107,6 +109,22 @@ describe("signed customer contract email", () => {
     expect(document.lines[0].designOptions).toEqual([]);
     expect(document.payment.available).toBe(false);
     expect(document.versions).toEqual([]);
+  });
+
+  it("retains original product prices and exact savings in the immutable signed copy", () => {
+    const source = signedSnapshotPublicQuote(structuredClone(snapshot));
+    source.lines[0].originalLineTotal = 2600;
+    source.adjustments.discountPercent = 10;
+    source.discount = 250; // $240 product discount plus $10 installation discount.
+    source.total = 2430;
+    source.depositDue = source.balanceDue = 1215;
+    const saved = buildSignedContractSnapshot(source, snapshot.signedAt, snapshot.customerPrintedName);
+    const restored = signedSnapshotPublicQuote(validateSignedContractSnapshot(JSON.parse(JSON.stringify(saved))));
+    expect(restored.lines[0].originalLineTotal).toBe(2600);
+    expect(restored.adjustments.discountPercent).toBe(10);
+    expect(contractLinePrices(restored.lines, restored.discount, 100, restored.adjustments.discountPercent).get("line-1"))
+      .toEqual({ originalPrice: 2600, discountedPrice: 2160, savings: 440 });
+    expect(restored.total).toBe(source.total);
   });
 
   it("filters serialized signed line and purchased-option details without changing the signed evidence or amounts", () => {

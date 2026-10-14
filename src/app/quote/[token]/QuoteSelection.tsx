@@ -1,5 +1,7 @@
 "use client";
 
+import { contractLinePrices, type ContractLinePrice } from "@/lib/quote/contract-line-pricing";
+
 import {IN_HOUSE_SCHEDULE,IN_HOUSE_TERMS,scheduleAmounts} from "@/lib/crm/payment-schedule";
 import {unpaidCents,installmentStatus} from "@/lib/crm/in-house-plan-model";
 import { customerQuoteText } from "@/lib/crm/customer-quote-branding";
@@ -123,6 +125,10 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   const allowSelection = quote.status !== "sold" && !previewOnly && !quote.superseded && !contractSigned && !quote.wholeQuoteOffer && quote.lines.length > 1;
   const selectionEmpty = mode === "some" && selected.size === 0;
   const totalPending = mode === "some" && !selectionEmpty && (computing || computedKey !== selectionKey);
+  const priceLines = quote.lines.filter(line => line.priceReady && (mode === "all" || selected.has(line.id)))
+    .flatMap<ContractLinePrice>(line => line.showDesignOptions && line.designOptions.length > 1
+      ? line.designOptions.map(option => ({ ...option, id: `${line.id}/${option.id}` })) : [line]);
+  const linePricing = contractLinePrices(totalPending || totalError ? [] : priceLines, live.discount, live.fees, quote.adjustments.discountPercent);
   const actionBlocked = totalPending || Boolean(totalError) || signingBusy;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
@@ -265,6 +271,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
                       illustrationGeometry={configuration.illustrationGeometry}
                       price={configuration.priceReady ? money(configurations.length > 1 ? configuration.lineTotal : line.lineTotal) : "Pricing in progress"}
                       priceLabel={configurations.length > 1 ? "Option total" : "Item total"}
+                      pricing={linePricing.get(configurations.length > 1 ? `${line.id}/${configuration.id}` : line.id)}
                       quantity={line.quantity}
                       notice={line.discountPercent > 0 ? `${line.discountPercent}% off applied` : undefined}
                       selection={allowSelection && mode === "some" && configurationIndex === 0 ? (

@@ -1,3 +1,4 @@
+import { originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
 import { IN_HOUSE_SCHEDULE, scheduleAmounts, type PaymentSchedule } from "./payment-schedule";
 import { loadPublicPaymentPlan, type PublicPaymentPlan } from "./in-house-plan-public";
 import { customerQuoteOptionRows } from "./public-quote-options";
@@ -116,6 +117,7 @@ export type PublicQuoteLine = {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  originalLineTotal?: number;
   /** Per-line discount percent surfaced so the contract can label it (0 = none). */
   discountPercent: number;
   priceReady: boolean;
@@ -132,6 +134,7 @@ export type PublicQuoteDesignOption = {
   valanceArtId?: string | null;
   unitPrice: number;
   lineTotal: number;
+  originalLineTotal?: number;
   priceReady: boolean;
 };
 
@@ -210,6 +213,7 @@ export type SignedContractSnapshot = {
   lines: Array<{
     showDesignOptions?: boolean;
     fixedCharges?: number;
+    originalLineTotal?: number;
     lineItemId: string;
     room: string;
     productName: string;
@@ -224,6 +228,7 @@ export type SignedContractSnapshot = {
   }>;
   totals: {
     subtotal: number;
+    discountPercent?: number;
     fees: { name: string; amount: number }[];
     discount: number;
     tax: number;
@@ -293,6 +298,7 @@ export function buildSignedContractSnapshot(
     lines: pub.lines.map((line) => ({
       showDesignOptions: line.showDesignOptions,
       fixedCharges: line.fixedCharges,
+      originalLineTotal: line.originalLineTotal,
       lineItemId: line.lineItemId,
       room: line.room,
       productName: line.productName,
@@ -307,6 +313,7 @@ export function buildSignedContractSnapshot(
     })),
     totals: {
       subtotal: pub.subtotal,
+      discountPercent: pub.adjustments.discountPercent,
       fees: pub.fees.map((fee) => ({ ...fee })),
       discount: pub.discount,
       tax: pub.tax,
@@ -682,6 +689,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number, opening?:
     ...(productName === 'Shutters' && opening ? {illustrationGeometry: designIllustrationGeometry(design, opening, options)} : {}),
     unitPrice,
     lineTotal: priceReady ? round2(unitPrice * quantity + designOnceTotal(design)) : 0,
+    originalLineTotal: priceReady ? originalContractLineTotal(round2(unitPrice * quantity + designOnceTotal(design)), quantity, design.price_breakdown) : 0,
     priceReady,
   };
 }
@@ -733,6 +741,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
       quantity: qty,
       lineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.lineTotal, 0)) : 0,
+      originalLineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + (option.originalLineTotal ?? option.lineTotal), 0)) : 0,
       discountPercent: 0,
       priceReady,
     };
@@ -777,6 +786,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     // Authoritative billed amount (unit x qty + any per-order surcharge) — matches
     // exactly what the quote/bookkeeping bill, so the customer's math reconciles.
     lineTotal,
+    originalLineTotal: priceReady ? originalContractLineTotal(lineTotal, qty, design.price_breakdown) : 0,
     discountPercent,
     priceReady,
   };
@@ -796,8 +806,12 @@ export function projectNativeFrozenLine(quote: Pick<CrmQuote, "meta">, item: Pic
   const frozen = record(record(meta.native_frozen_line_totals)[item.id]);
   const valid = frozen.quantity === item.quantity && typeof frozen.total === "number" && Number.isFinite(frozen.total) && frozen.total >= 0;
   const total = valid ? Number(frozen.total) : 0;
-  return { ...projected, lineTotal: total, priceReady: projected.priceReady && valid,
-    designOptions: projected.designOptions.map(option => ({ ...option, lineTotal: total, priceReady: option.priceReady && valid })) };
+  return { ...projected, lineTotal: total,
+    originalLineTotal: round2(total + Math.max(0, (projected.originalLineTotal ?? projected.lineTotal) - projected.lineTotal)),
+    priceReady: projected.priceReady && valid,
+    designOptions: projected.designOptions.map(option => ({ ...option, lineTotal: total,
+      originalLineTotal: round2(total + Math.max(0, (option.originalLineTotal ?? option.lineTotal) - option.lineTotal)),
+      priceReady: option.priceReady && valid })) };
 }
 
 export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] {
@@ -810,10 +824,12 @@ export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] 
     fixedCharges: (line.fixedCharges ?? 0) / quantity,
     quantity: 1,
     lineTotal: line.priceReady ? splitLineTotal(line.lineTotal, quantity, index) : 0,
+    originalLineTotal: line.priceReady && line.originalLineTotal != null ? round2(splitLineTotal(line.lineTotal, quantity, index) + splitLineTotal(round2(line.originalLineTotal - line.lineTotal), quantity, index)) : undefined,
     designOptions: line.designOptions.map((option) => ({
       ...option,
       fixedCharges: (option.fixedCharges ?? 0) / quantity,
       lineTotal: option.priceReady ? splitLineTotal(option.lineTotal, quantity, index) : 0,
+      originalLineTotal: option.priceReady && option.originalLineTotal != null ? round2(splitLineTotal(option.lineTotal, quantity, index) + splitLineTotal(round2(option.originalLineTotal - option.lineTotal), quantity, index)) : undefined,
     })),
   }));
 }

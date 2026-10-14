@@ -73,3 +73,19 @@ describe("approved quote line item card", () => {
     expect(html).not.toContain("measurement not recorded");
   });
 });
+
+describe("line item discount disclosure", () => {
+  it("prints all three amounts next to the product", () => {
+    const html = renderToStaticMarkup(createElement(QuoteLineItemCard, { ...base,
+      price: "$900.00", pricing: { originalPrice: 1000, discountedPrice: 900, savings: 100 } }));
+    for (const text of ["Original price", "$1,000.00", "Discounted price", "$900.00", "You saved", "$100.00"]) expect(html).toContain(text);
+    expect(html).toContain('data-line-savings="true"');
+  });
+  it("keeps the ordinary item total when no savings apply", () => {
+    const html = renderToStaticMarkup(createElement(QuoteLineItemCard, { ...base,
+      pricing: { originalPrice: 498.95, discountedPrice: 498.95, savings: 0 } }));
+    expect(html).toContain("Item total");
+    expect(html).not.toContain("You saved");
+    expect(html).not.toContain("Original price");
+  });
+});

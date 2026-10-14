@@ -19,6 +19,7 @@ type Props = {
   valanceArtId?: string | null;
   price: ReactNode;
   priceLabel?: string;
+  pricing?: import("@/lib/quote/contract-line-pricing").ContractPriceBreakdown;
   quantity?: number;
   dimensions?: string | null;
   illustrationGeometry?: ShutterIllustrationGeometry;
@@ -30,9 +31,11 @@ type Props = {
 /** Shared staff/customer presentation. All money and mutations belong to the caller. */
 export function QuoteLineItemCard({
   lineNumber, room, productType, optionLabel, styleName = "", options = [], valanceArtId,
-  price, priceLabel = "Item total", quantity = 1, dimensions, illustrationGeometry, actions, selection, notice,
+  price, priceLabel = "Item total", pricing, quantity = 1, dimensions, illustrationGeometry, actions, selection, notice,
 }: Props) {
   const headingId = useId();
+  const money = (amount: number) => amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  const discounted = pricing && pricing.savings > 0;
   const widthText = dimensions?.split(/[×x]/i)[0]?.replace(/W\s*$/i, '').trim();
   const width = widthText ? sketchInches(widthText) ?? undefined : undefined;
   const temporary = temporaryShadeSelected(options);
@@ -52,7 +55,12 @@ export function QuoteLineItemCard({
         </div>
         <div className={styles.measurements}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div>
         <div className={styles.cost}>
-          <p className={styles.priceLabel}>{priceLabel}</p><div className={styles.price}>{price}</div>
+          {discounted ? <div className={styles.discountBreakdown} data-line-savings="true">
+            <p className={styles.originalPrice}>Original price <s>{money(pricing.originalPrice)}</s></p>
+            <p className={styles.priceLabel}>Discounted price</p>
+            <div className={styles.price}>{money(pricing.discountedPrice)}</div>
+            <p className={styles.savings}>You saved {money(pricing.savings)}</p>
+          </div> : <><p className={styles.priceLabel}>{priceLabel}</p><div className={styles.price}>{price}</div></>}
           {actions ? <details className={`${styles.priceEditor} no-print`}><summary>Edit price</summary><div className={styles.actions}>{actions}</div></details> : null}
         </div>
       </header>

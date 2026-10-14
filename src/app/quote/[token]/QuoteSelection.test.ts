@@ -419,3 +419,38 @@ describe("contract artwork follows each saved option", () => {
     expect(html).not.toContain("rotate(");
   });
 });
+describe("customer contract line savings", () => {
+  it.each([5, 10, 20, 12.5])("shows all three amounts for a %s percent quote discount", percent => {
+    const quote = quoteWithLegacyDetails();
+    quote.lines[0].lineTotal = 1000;
+    quote.lines[0].designOptions[0].lineTotal = 1000;
+    quote.subtotal = 1000;
+    quote.discount = 1000 * percent / 100;
+    quote.adjustments = { ...DEFAULT_ADJUSTMENTS, discountPercent: percent };
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote, previewOnly: true }));
+    for (const text of ["Original price", "$1,000.00", "Discounted price", "You saved", `$${quote.discount.toFixed(2)}`]) expect(html).toContain(text);
+    expect(html).toContain(`$${(1000 - quote.discount).toFixed(2)}`);
+  });
+  it("shows saved per-product savings even without a quote-wide discount", () => {
+    const quote = quoteWithLegacyDetails();
+    quote.lines[0].lineTotal = 900;
+    quote.lines[0].originalLineTotal = 1000;
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote, previewOnly: true }));
+    expect(html).toContain("$1,000.00");
+    expect(html).toContain("$900.00");
+    expect(html).toContain("$100.00");
+  });
+  it("keeps cent allocations distinct when quantities reuse the same configuration ids", () => {
+    const quote = quoteWithLegacyDetails();
+    const line = quote.lines[0];
+    line.lineTotal = 20;
+    line.designOptions = ["a", "b"].map(id => ({ ...line.designOptions[0], id, lineTotal: 10 }));
+    quote.lines = [{ ...line, id: "line-1#1" }, { ...line, id: "line-1#2" }];
+    quote.subtotal = 40;
+    quote.discount = 0.01;
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote, previewOnly: true }));
+    expect(html.match(/data-line-savings="true"/g)).toHaveLength(1);
+    expect(html).toContain("$9.99");
+    expect(html).toContain("You saved $0.01");
+  });
+});

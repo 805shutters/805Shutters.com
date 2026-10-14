@@ -110,3 +110,16 @@
  .anatomy{padding:0 0 8px}.anatomy>article{padding:0 12px 12px}
 }
 @media print{.contractToolbar{grid-template-columns:minmax(0,1fr) auto auto;padding:10px 0 12px;margin:0 14px}.contractToolbar .room{font-size:24px}.contractToolbar .price{font-size:21px}.priceEditor{display:none!important}.anatomy>article{padding:10px 14px}}
+
+.discountBreakdown { min-width: 0; }
+.card .originalPrice { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: #5a6052; }
+.originalPrice s { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
+.card .savings { margin: 8px 0 0; font-size: 12px; line-height: 1.4; font-weight: 600; color: #365026; }
+@container (max-width: 420px) {
+  .contractToolbar:has(.discountBreakdown) .cost { grid-column: 1 / -1; grid-row: 3; border-left: 0; border-top: 1px solid #dfe2d8; padding: 12px 0 0; text-align: left; }
+  .discountBreakdown { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .card .originalPrice { grid-column: 1; grid-row: 1 / 3; margin: 0; }
+  .discountBreakdown .priceLabel, .discountBreakdown .price { grid-column: 2; }
+  .card .savings { grid-column: 1 / -1; }
+}
+@media print { .card .savings { color: #25371c; } }

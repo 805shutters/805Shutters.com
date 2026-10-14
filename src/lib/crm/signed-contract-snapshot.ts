@@ -122,7 +122,7 @@ export function signedSnapshotPublicQuote(snapshot: SignedContractSnapshot): Pub
       showDesignOptions: Boolean(line.showDesignOptions) })),
     ...snapshot.totals, allPriced: true, hasOnyxShutters: snapshot.hasOnyxShutters,
     payment: { available: false, dueType: null, amountDue: 0, outstanding: 0, depositPaid: 0, paidTotal: 0 },
-    adjustments: { ...(snapshot.paymentSchedule ? { paymentSchedule: snapshot.paymentSchedule.version } : {}), discountPercent: 0, discountFlat: 0, taxPercent: 0, depositPercent: 0,
+    adjustments: { ...(snapshot.paymentSchedule ? { paymentSchedule: snapshot.paymentSchedule.version } : {}), discountPercent: snapshot.totals.discountPercent ?? 0, discountFlat: 0, taxPercent: 0, depositPercent: 0,
       totalOverride: null, balanceDueOverride: null, balanceAdjustmentNote: null, fees: [] },
     business: snapshot.business, versions: [],
   };

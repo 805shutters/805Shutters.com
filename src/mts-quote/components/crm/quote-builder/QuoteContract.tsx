@@ -1,4 +1,5 @@
 "use client";
+import { contractLinePrices, originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
 import { SchedulePreview, InHousePayments } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
@@ -971,6 +972,23 @@ export function QuoteContract({
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
         const gqTotal = accepted.acceptedTotal ?? gqTotals.total;
+        const pricingMode = effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy";
+        const pricingLines = gqLineItems.flatMap(item => {
+          const itemDesigns = gqDesigns.filter(design => design.line_item_id === item.id);
+          if (!itemDesigns.length) return [{ id: item.id, lineTotal: accepted.lineTotals.get(item.id) ?? 0 }];
+          return itemDesigns.map(design => {
+            const lineTotal = itemDesigns.length === 1
+              ? accepted.lineTotals.get(item.id) ?? calculateLineItemDesignTotal(item, [design], { mode: pricingMode })
+              : calculateLineItemDesignTotal(item, [design], { mode: "legacy" });
+            return {
+              id: design.id, lineTotal,
+              originalLineTotal: originalContractLineTotal(lineTotal, item.quantity, design.options_json),
+              fixedCharges: calculateQuoteFixedCharges([item], [design], { mode: pricingMode }),
+            };
+          });
+        });
+        const linePricing = contractLinePrices(pricingLines, accepted.accepted ? 0 : gqDiscountAmt, gqTotals.extrasTotal, adminControls.discountPercent);
+
 
         return (
           <Card
@@ -1008,7 +1026,7 @@ export function QuoteContract({
                     </div>
                     {itemDesigns.length === 0 ? <QuoteLineItemCard
                       lineNumber={itemIndex + 1} room={item.room_name} productType={item.product_type}
-                      price={formatCurrency(itemTotal)} quantity={item.quantity} dimensions={itemDimensions}
+                      price={formatCurrency(itemTotal)} pricing={linePricing.get(item.id)} quantity={item.quantity} dimensions={itemDimensions}
                       notice={!itemDimensions ? "Size missing - add in Builder" : undefined}
                     /> : itemDesigns.map((design) => {
                       const designDimensions = formatQuoteDesignDimensions(item, design);
@@ -1020,8 +1038,9 @@ export function QuoteContract({
                         optionLabel={design.variant || "A"}
                         options={options}
                         valanceArtId={valanceIllustration(design.product_type || item.product_type, options, undefined, valanceSurchargeIds(design.options_json?.surcharges))}
-                        price={itemDesigns.length === 1 ? formatCurrency(itemTotal) : formatCurrency(design.unit_price)}
-                        priceLabel={itemDesigns.length === 1 ? "Item total" : "Option unit price"}
+                        price={itemDesigns.length === 1 ? formatCurrency(itemTotal) : formatCurrency(calculateLineItemDesignTotal(item, [design], { mode: "legacy" }))}
+                        pricing={linePricing.get(design.id)}
+                        priceLabel={itemDesigns.length === 1 ? "Item total" : "Option total"}
                         quantity={item.quantity} dimensions={designDimensions}
                         notice={!designDimensions ? "Size missing - add in Builder" : undefined}
                         actions={<>
