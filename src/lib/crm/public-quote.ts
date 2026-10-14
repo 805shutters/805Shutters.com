@@ -16,6 +16,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
 import { quoteProductDetails } from "@/lib/crm/customer-quote-details";
+import { shutterFrameProfile } from "@/lib/quote/shutter-frame-profiles";
 import { customerQuoteOptions, customerQuoteProductName, customerQuoteStyleName, customerQuoteText } from "@/lib/crm/customer-quote-branding";
 import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
 import {
@@ -112,6 +113,7 @@ export type PublicQuoteLine = {
   styleName: string;
   options: string[];
   valanceArtId?: string | null;
+  frameProfileId?: string | null;
   designOptions: PublicQuoteDesignOption[];
   showDesignOptions: boolean;
   unitPrice: number;
@@ -132,6 +134,7 @@ export type PublicQuoteDesignOption = {
   styleName: string;
   options: string[];
   valanceArtId?: string | null;
+  frameProfileId?: string | null;
   unitPrice: number;
   lineTotal: number;
   originalLineTotal?: number;
@@ -220,6 +223,7 @@ export type SignedContractSnapshot = {
     styleName: string;
     options: string[];
     valanceArtId?: string | null;
+    frameProfileId?: string | null;
     unitPrice: number;
     quantity: number;
     lineTotal: number;
@@ -305,6 +309,7 @@ export function buildSignedContractSnapshot(
       styleName: line.styleName,
       options: [...line.options],
       valanceArtId: line.valanceArtId,
+      frameProfileId: line.frameProfileId,
       unitPrice: line.unitPrice,
       quantity: line.quantity,
       lineTotal: line.lineTotal,
@@ -602,7 +607,7 @@ function customerReadableLegacyDetail(label: string, value: string): string {
 }
 
 /** Customer-readable description of a design from the catalog (no prices leaked beyond unit_price). */
-export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[]; valanceArtId: string | null } {
+export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[]; valanceArtId: string | null; frameProfileId: string | null } {
   const legacy = legacyDesignSnapshot(design);
   const product = getProduct(design.product_id);
   const productName = customerQuoteProductName(legacy?.productType || product?.name);
@@ -663,7 +668,10 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
         ...surchargeOptions,
         ...motorizationOptions,
       ];
-  return { productName, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(options), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
+  // Resolve before brand removal: shared frame names can have a different AquaShield section.
+  const frameIdentity = options.some(option => /^(supplier|manufacturer):/i.test(option)) ? options : [...options, `Manufacturer: ${product?.manufacturer ?? ''}`];
+  const frameProfileId = shutterFrameProfile(productName, frameIdentity, styleName)?.id ?? null;
+  return { productName, frameProfileId, styleName: customerQuoteStyleName(styleName), options: customerQuoteOptions(options), valanceArtId: valanceIllustration(productName, options, options.some((option) => /^(supplier|manufacturer|manufacturer selection):/i.test(option)) ? undefined : product?.manufacturer, (design.surcharges ?? []).map((entry) => entry.id)) };
 }
 
 /** Geometry reads saved curve measurements before display-only filtering. Only
@@ -675,7 +683,7 @@ function designIllustrationGeometry(design: CrmQuoteDesign, opening: Pick<CrmQuo
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number, opening?: Pick<CrmQuoteLineItem, 'width_in'|'height_in'>): PublicQuoteDesignOption {
-  const { productName, styleName, options, valanceArtId } = describeDesign(design);
+  const { productName, styleName, options, valanceArtId, frameProfileId } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   return {
@@ -686,6 +694,7 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number, opening?:
     styleName,
     options,
     valanceArtId,
+    frameProfileId,
     ...(productName === 'Shutters' && opening ? {illustrationGeometry: designIllustrationGeometry(design, opening, options)} : {}),
     unitPrice,
     lineTotal: priceReady ? round2(unitPrice * quantity + designOnceTotal(design)) : 0,
@@ -765,7 +774,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       priceReady: false
     };
   }
-  const { productName, styleName, options, valanceArtId } = describeDesign(design);
+  const { productName, styleName, options, valanceArtId, frameProfileId } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   const lineTotal = priceReady ? lineItemSubtotal(li) : 0;
@@ -777,6 +786,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     styleName,
     options,
     valanceArtId,
+    frameProfileId,
     ...(productName === 'Shutters' ? {illustrationGeometry: designIllustrationGeometry(design, li, options)} : {}),
     designOptions: [projectDesignOption(design, qty, li)],
     fixedCharges: designCustomerCharges(design, qty)?.total ?? 0,

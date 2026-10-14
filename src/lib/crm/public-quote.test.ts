@@ -76,6 +76,16 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
 }
 
 describe("describeDesign (customer-readable, no internal data leaked)", () => {
+  it("resolves approved AquaShield artwork before supplier and program branding is removed", () => {
+    const source = design({product_id:"norman_shutters",program_id:"woodlore_aquashield",price_breakdown:{source:"mts_805_bookkeeping",productType:"Shutters",details:[{label:"Supplier",value:"Norman"},{label:"Product style",value:"Woodlore Aquashield"},{label:"Frame Type",value:"Vintage L Frame"}]}});
+    const projected=describeDesign(source);
+    expect(projected.frameProfileId).toBe("norman-aquashield-vintage-l");
+    expect(projected.options).toContain("Frame Type: Vintage L Frame");
+    expect(projected.options.join(" ")).not.toMatch(/Norman|Aquashield/i);
+    const line=projectLine({id:"frame-line",selected_design_id:"d",room:"Office",quantity:1,discount_percent:0,designs:[source]} as CrmQuoteLineItem,false);
+    expect(line.frameProfileId).toBe(projected.frameProfileId);
+    expect(line.designOptions[0].frameProfileId).toBe(projected.frameProfileId);
+  });
   it("removes imported dealer cost and option pricing from the public contract payload", () => {
     const source = design({
       product_id: "roller",

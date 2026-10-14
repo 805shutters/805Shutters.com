@@ -2,6 +2,7 @@ import { emptyValanceOnly, ULTIMATE_VALANCE } from "@/lib/quote/norman-valance-o
 import { emptyRollerValance } from "@/lib/quote/norman-roller-valance-only";
 import { emptyReplacementRequest } from "@/lib/quote/norman-smartdrape-replacement";
 import { describe, expect, it } from "vitest";
+import { shutterFrameProfile } from "@/lib/quote/shutter-frame-profiles";
 import { getQuoteDesignDetails } from "./quoteDesignDetails";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
@@ -39,6 +40,14 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
+  it("retains the selected shutter program so staff and customer contracts use the approved AquaShield frame", () => {
+    for (const [program, id] of [["woodlore", "N05"], ["woodlore_aquashield", "A01"]]) {
+      const design = {...miniBlindDesign(), product_type:"Shutters", options_json:{catalog_product_id:"norman_shutters",catalog_program_id:program,frame_type:"Vintage L Frame"}};
+      const options = getQuoteDesignDetails(design).map(row=>`${row.label}: ${row.value}`);
+      expect(shutterFrameProfile("Shutters",options)?.approvalId).toBe(id);
+
+    }
+  });
   it("labels area-priced options as square feet while retaining per-item quantities", () => {
     const design = {...miniBlindDesign(), product_type: "Shutters", supplier: "Onyx", options_json: {
       surcharges: [

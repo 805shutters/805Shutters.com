@@ -1,3 +1,4 @@
+import { normanShutterProgram } from "@/lib/quote/norman-shutter-assortment";
 import { catalog } from "@/lib/quote/catalog";
 import { customerShutterDetails } from "@/lib/crm/customer-shutter-details";
 import { lotusObservedOffering } from "@/lib/quote/lotus-observed-offerings";
@@ -136,6 +137,10 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  if (options.catalog_product_id === "norman_shutters" || options.quote_lab_product_id === "norman_shutters") {
+    const program = normanShutterProgram(options.catalog_program_id ?? options.quote_lab_program_id);
+    if (program) details.push({ label: "Product style", value: program.name });
+  }
   details.push(...structuredCommercialDetails(design, options));
   const rollerGuard=parseRollerLightGuard(options[ROLLER_LIGHT_GUARD_KEY]);
   if(rollerGuard&&rollerGuard.kind!=="None"){details.push({label:"Light Guard",value:`${rollerGuard.kind} — ${rollerGuard.color}`});details.push({label:"Light Guard Channel Lengths",value:`Left ${rollerGuard.leftLength} inches; Right ${rollerGuard.rightLength} inches`});}

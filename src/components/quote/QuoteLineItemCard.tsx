@@ -17,6 +17,7 @@ type Props = {
   styleName?: string;
   options?: string[];
   valanceArtId?: string | null;
+  frameProfileId?: string | null;
   price: ReactNode;
   priceLabel?: string;
   pricing?: import("@/lib/quote/contract-line-pricing").ContractPriceBreakdown;
@@ -30,7 +31,7 @@ type Props = {
 
 /** Shared staff/customer presentation. All money and mutations belong to the caller. */
 export function QuoteLineItemCard({
-  lineNumber, room, productType, optionLabel, styleName = "", options = [], valanceArtId,
+  lineNumber, room, productType, optionLabel, styleName = "", options = [], valanceArtId, frameProfileId,
   price, priceLabel = "Item total", pricing, quantity = 1, dimensions, illustrationGeometry, actions, selection, notice,
 }: Props) {
   const headingId = useId();
@@ -66,7 +67,7 @@ export function QuoteLineItemCard({
       </header>
       <div className={styles.anatomy}>
         <ContractAnatomy productType={productType} room={room} options={options} styleName={styleName}
-          width={width} quantity={quantity} valanceArtId={valanceArtId}
+          width={width} quantity={quantity} valanceArtId={valanceArtId} frameProfileId={frameProfileId}
           illustrationGeometry={illustrationGeometry ?? shutterGeometryFromDimensions(dimensions, options)}
           showHeader={false} layout="grouped" lineRouting="around" summaryStyle="current"
           afterIllustration={temporary ? <footer className={styles.included} data-temporary-shade="included">

@@ -119,7 +119,7 @@
 .grouped .dot{r:2.5;stroke:#8b9383;stroke-width:1;fill:#fff}
 .art.withFrameProfile{display:flex;flex-direction:column;gap:14px}
 .frameProfile{margin:0;display:flex;flex-direction:column;align-items:center;break-inside:avoid;text-align:center}
-.frameProfile img{display:block;width:100px;height:84px;object-fit:contain}
+.frameProfile img{display:block;width:144px;height:108px;object-fit:contain}
 .frameProfile figcaption{font-size:10px;line-height:1.4;color:#686c61;margin-top:5px}
 .frameProfile strong,.frameProfile span{display:block}
 .frameProfile strong{font-weight:600;color:#30332c}
@@ -134,7 +134,7 @@
   .grouped .labelSlot .callout{padding:9px 10px}
   .grouped .callout strong{font-size:12px}
   .grouped .lines{display:none}
-  .frameProfile img{width:86px;height:68px}
+  .frameProfile img{width:116px;height:90px}
  }
  @container(max-width:250px){
   .grouped .diagram{grid-template-columns:minmax(0,1fr)}
@@ -148,7 +148,7 @@
 .grouped.printing .labelSlot .callout{padding:7px 9px}
 .grouped.printing .callout strong{font-size:10px}
 .grouped.printing .callout .calloutCategory{font-size:8px}
-.grouped.printing .frameProfile img{width:80px;height:60px}
+.grouped.printing .frameProfile img{width:104px;height:78px}
 @media print{
  .grouped{padding:10px 14px;width:668px;max-width:none;box-sizing:border-box;border:0;break-inside:avoid;print-color-adjust:exact}
  .grouped .header{padding:4px 0 10px;break-after:avoid}.grouped .room{font-size:26px}
@@ -158,7 +158,7 @@
  .grouped .labelSlot{break-inside:avoid}.grouped .labelSlot h3{font-size:12px}
  .grouped .labelSlot .callout{padding:7px 9px}.grouped .callout strong{font-size:10px}
  .grouped .callout .calloutCategory{font-size:8px}.grouped .lines{display:block;height:100%}
- .frameProfile img{width:80px;height:60px}.frameProfile figcaption{font-size:9px}
+ .frameProfile img{width:104px;height:78px}.frameProfile figcaption{font-size:9px}
 }
 
 @media print{.grouped .art [data-shutter-assembly],.grouped .art [data-specialty-sketch]{max-height:230px}}

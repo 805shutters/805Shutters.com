@@ -12,11 +12,11 @@ import { anatomyReferenceArtwork } from '@/lib/quote/anatomy-reference-artwork';
 import { anatomyShutterStudy } from '@/lib/quote/anatomy-shutter-study';
 import { anatomyShadeStudy, OPTION_ART_ROOT } from '@/lib/quote/anatomy-shade-study';
 import { anatomyControlAnchor } from '@/lib/quote/anatomy-control-anchor';
-import { shutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
+import { shutterFrameProfile, type ShutterFrameProfile } from '@/lib/quote/shutter-frame-profiles';
 import type { CSSProperties } from 'react';
 
-export function ContractProductIllustration({ productType, options = [], valanceArtId, showTemporaryShade = true, illustrationGeometry, size = "compact" }: { productType: string; options?: readonly string[]; valanceArtId?: string | null; showTemporaryShade?: boolean; illustrationGeometry?: ShutterIllustrationGeometry; size?: "compact" | "anatomy" }) {
-  const frameProfile = shutterFrameProfile(productType, options);
+export function ContractProductIllustration({ productType, options = [], frameProfile: selectedFrameProfile, valanceArtId, showTemporaryShade = true, illustrationGeometry, size = "compact" }: { productType: string; options?: readonly string[]; frameProfile?: ShutterFrameProfile | null; valanceArtId?: string | null; showTemporaryShade?: boolean; illustrationGeometry?: ShutterIllustrationGeometry; size?: "compact" | "anatomy" }) {
+  const frameProfile = selectedFrameProfile === undefined ? shutterFrameProfile(productType, options) : selectedFrameProfile;
   const displayProductType = customerQuoteProductName(productType);
   const specialty = specialtyShutterSketch(productType, options) || (size === 'anatomy' ? anatomyShutterStudy(productType, options) : null);
   const shadeStudy = size === 'anatomy' && !specialty ? anatomyShadeStudy(productType, options) : null;

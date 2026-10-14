@@ -1,4 +1,5 @@
 "use client";
+import { SHUTTER_FRAME_PROFILES, shutterFrameProfile } from "@/lib/quote/shutter-frame-profiles";
 import { VALANCE_ARTWORK, valanceIllustration } from "@/lib/quote/valance-illustrations";
 import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { TemporaryShadeOption } from "@/components/quote/TemporaryShadeOption";
@@ -27,18 +28,20 @@ export function ArtworkPreview() {
   const valances=VALANCE_ARTWORK.filter(a=>a.manufacturer===manufacturer && (a.products as readonly string[]).includes(product.toLowerCase()));
   const selectedValance=valances.find(a=>a.id===valance);
   const [temporary,setTemporary]=useState(false);
+  const [frame,setFrame]=useState("");
+  const selectedFrame=SHUTTER_FRAME_PROFILES.find(profile=>profile.id===frame);
   const [track,setTrack]=useState("");
   const [panels,setPanels]=useState(2);
   const [layout,setLayout]=useState("LR");
   const [tilt,setTilt]=useState("Standard Tilt");
   const [split,setSplit]=useState(false);
   const [divider,setDivider]=useState(false);
-  const shutterOptions = [...(track ? [`Shutter Type: Tracked Shutter`, `Track System: ${track}`] : []),`Panel Config: ${layout}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
+  const shutterOptions = [...(selectedFrame ? [`Frame Type: ${selectedFrame.label}`] : []),...(track ? [`Shutter Type: Tracked Shutter`, `Track System: ${track}`] : []),`Panel Config: ${layout}`, `Tilt Type: ${tilt}`, `Split Tilt: ${split ? "Yes" : "No"}`, `Divider Rail: ${divider ? "Yes" : "No"}`];
   const productOptions = product === "Shutters" ? shutterOptions : [`Lift System: ${operation}`, ...((operation === "Continuous Cord Loop" || ["Faux Wood Blinds", "Wood Blinds", "Mini Blinds"].includes(product)) ? [`Control Side: ${side}`] : [])];
-  const options = [...productOptions, ...(temporary ? ["Complementary temporary paper shade: Free"] : []), `Manufacturer: ${manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
+  const options = [...productOptions, ...(temporary ? ["Complementary temporary paper shade: Free"] : []), `Manufacturer: ${product === "Shutters" && selectedFrame ? selectedFrame.manufacturer : manufacturer}`, ...(selectedValance ? [`Valance: ${selectedValance.aliases[0]}`] : [])];
   const lines: PublicQuoteLine[] = [[product, options] as [string,string[]], ...examples].map(([productName,opts],i)=>({
     id:`sample-${i}`,lineItemId:`sample-${i}`,room:i===0?"Interactive sample":`Product ${i}`,productName,styleName:"",options:opts.filter(o=>!o.startsWith("Manufacturer:")),
-    valanceArtId:valanceIllustration(productName,opts),designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
+    frameProfileId:shutterFrameProfile(productName,opts)?.id ?? null, valanceArtId:valanceIllustration(productName,opts),designOptions:[],showDesignOptions:false,unitPrice:500,quantity:1,lineTotal:500,discountPercent:0,priceReady:true,
   }));
   const quote: PublicQuote = {
     token:"preview-only",id:"preview-only",quoteNumber:"ARTWORK REVIEW",customerName:"Sample customer",customerAddress:null,customerPhone:null,customerEmail:null,
@@ -58,6 +61,7 @@ export function ArtworkPreview() {
         <label>Side <select aria-label="Preview control side" value={side} onChange={e=>setSide(e.target.value)}>{["Left","Right",""].map(p=><option key={p} value={p}>{p||"Unspecified"}</option>)}</select></label>
       </> : null}
       {product === "Shutters" ? <>
+        <label>Frame <select aria-label="Preview shutter frame" value={frame} onChange={e=>setFrame(e.target.value)}><option value="">No frame selected</option>{SHUTTER_FRAME_PROFILES.map(profile=><option key={profile.id} value={profile.id}>{profile.manufacturer} · {profile.label}</option>)}</select></label>
         <label>System <select aria-label="Preview shutter system" value={track} onChange={e=>setTrack(e.target.value)}>{["","Bypass Track","Bifold 180"].map(t=><option key={t} value={t}>{t||"Hinged"}</option>)}</select></label>
         <label>Panels <select aria-label="Preview shutter panels" value={panels} onChange={e=>{const n=Number(e.target.value);setPanels(n);setLayout("L".repeat(Math.floor(n/2))+"R".repeat(Math.ceil(n/2)));}}>{[1,2,3,4,5,6,7,8].map(n=><option key={n}>{n}</option>)}</select></label>
         <label>Layout <select aria-label="Preview shutter layout" value={layout} onChange={e=>setLayout(e.target.value)}>{Array.from(new Set([layout,...Array.from({length:panels+1},(_,n)=>"L".repeat(n)+"R".repeat(panels-n))])).map(l=><option key={l}>{l}</option>)}</select></label>

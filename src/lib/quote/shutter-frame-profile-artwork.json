@@ -1,0 +1,486 @@
+[
+  {
+    "id": "norman-beaded-l",
+    "approvalId": "N01",
+    "label": "Beaded L Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-beaded-l.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-beaded-l-light-block",
+    "approvalId": "N02",
+    "label": "Beaded L - 1/4\" Light Block",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-beaded-l-light-block.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-beaded-l-buildout-half",
+    "approvalId": "N03",
+    "label": "Beaded L - 1/2\" Buildout",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-beaded-l-buildout-half.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-beaded-l-buildout-one",
+    "approvalId": "N04",
+    "label": "Beaded L - 1\" Buildout",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-beaded-l-buildout-one.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-vintage-l",
+    "approvalId": "N05",
+    "label": "Vintage L Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-vintage-l.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-vintage-l-light-block",
+    "approvalId": "N06",
+    "label": "Vintage L - 1/4\" Light Block",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-vintage-l-light-block.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-vintage-l-buildout-half",
+    "approvalId": "N07",
+    "label": "Vintage L - 1/2\" Buildout",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-vintage-l-buildout-half.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-vintage-l-buildout-one",
+    "approvalId": "N08",
+    "label": "Vintage L - 1\" Buildout",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-vintage-l-buildout-one.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-colonial-l",
+    "approvalId": "N09",
+    "label": "Colonial L Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-colonial-l.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-colonial-l-light-block",
+    "approvalId": "N10",
+    "label": "Colonial L - 1/4\" Light Block",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-colonial-l-light-block.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-colonial-l-buildout-half",
+    "approvalId": "N11",
+    "label": "Colonial L - 1/2\" Buildout",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-colonial-l-buildout-half.webp",
+    "source": "Norman Woodlore technical binder, page 16; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-16",
+    "aliases": []
+  },
+  {
+    "id": "norman-plain-l",
+    "approvalId": "N12",
+    "label": "Plain L Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-plain-l.webp",
+    "source": "Norman Woodlore technical binder, page 17; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-17",
+    "aliases": []
+  },
+  {
+    "id": "norman-camber-deco",
+    "approvalId": "N13",
+    "label": "2\" Camber Deco Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-camber-deco.webp",
+    "source": "Norman Woodlore technical binder, page 17; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-17",
+    "aliases": []
+  },
+  {
+    "id": "norman-classic-deco",
+    "approvalId": "N14",
+    "label": "2\" Classic Deco Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-classic-deco.webp",
+    "source": "Norman Woodlore technical binder, page 17; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-17",
+    "aliases": []
+  },
+  {
+    "id": "norman-ridge-deco",
+    "approvalId": "N15",
+    "label": "3\" Ridge Deco Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-ridge-deco.webp",
+    "source": "Norman Woodlore technical binder, page 17; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-17",
+    "aliases": []
+  },
+  {
+    "id": "norman-mission-deco",
+    "approvalId": "N16",
+    "label": "2 1/2\" Mission Deco Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-mission-deco.webp",
+    "source": "Norman Woodlore technical binder, page 17; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-17",
+    "aliases": []
+  },
+  {
+    "id": "norman-bullnose-z-1-5",
+    "approvalId": "N17",
+    "label": "1 1/2\" Bullnose Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-bullnose-z-1-5.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-bullnose-z-2",
+    "approvalId": "N18",
+    "label": "2\" Bullnose Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-bullnose-z-2.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-beaded-z",
+    "approvalId": "N19",
+    "label": "1 1/4\" Beaded Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-beaded-z.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-bel-air-z",
+    "approvalId": "N20",
+    "label": "2\" Bel Air Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-bel-air-z.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-crown-z",
+    "approvalId": "N21",
+    "label": "3\" Crown Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-crown-z.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-tilt-out-z",
+    "approvalId": "N22",
+    "label": "Tilt Out Z Frame",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-tilt-out-z.webp",
+    "source": "Norman Woodlore technical binder, page 18; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-18",
+    "aliases": []
+  },
+  {
+    "id": "norman-vintage-hang-strip",
+    "approvalId": "N23",
+    "label": "7/8\" Vintage Hang Strip",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-vintage-hang-strip.webp",
+    "source": "Norman Woodlore technical binder, page 19; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "wl-page-19",
+    "aliases": []
+  },
+  {
+    "id": "norman-aquashield-vintage-l",
+    "approvalId": "A01",
+    "label": "Vintage L Frame - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-aquashield-vintage-l.webp",
+    "source": "Norman Woodlore Plus technical binder, page 21; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-21",
+    "aliases": [
+      "Vintage L Frame"
+    ]
+  },
+  {
+    "id": "norman-aquashield-vintage-l-buildout-half",
+    "approvalId": "A02",
+    "label": "Vintage L - 1/2\" Buildout - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-aquashield-vintage-l-buildout-half.webp",
+    "source": "Norman Woodlore Plus technical binder, page 21; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-21",
+    "aliases": [
+      "Vintage L - 1/2\" Buildout"
+    ]
+  },
+  {
+    "id": "norman-aquashield-deep-plain-l",
+    "approvalId": "A03",
+    "label": "Deep Plain L Frame - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-aquashield-deep-plain-l.webp",
+    "source": "Norman Woodlore Plus technical binder, page 21; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-21",
+    "aliases": [
+      "Deep Plain L Frame"
+    ]
+  },
+  {
+    "id": "norman-aquashield-camber-deco",
+    "approvalId": "A04",
+    "label": "2\" Camber Deco Frame - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-aquashield-camber-deco.webp",
+    "source": "Norman Woodlore Plus technical binder, page 21; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-21",
+    "aliases": [
+      "2\" Camber Deco Frame"
+    ]
+  },
+  {
+    "id": "norman-deep-bullnose-z",
+    "approvalId": "A05",
+    "label": "1 1/2\" Deep Bullnose Z - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-deep-bullnose-z.webp",
+    "source": "Norman Woodlore Plus technical binder, page 23; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-23",
+    "aliases": [
+      "1 1/2\" Deep Bullnose Z",
+      "1 1/2\" Deep Bullnose Z Frame"
+    ]
+  },
+  {
+    "id": "norman-aquashield-traditional-hang-strip",
+    "approvalId": "A06",
+    "label": "7/8\" Traditional Hang Strip - AquaShield",
+    "manufacturer": "Norman",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/norman-aquashield-traditional-hang-strip.webp",
+    "source": "Norman Woodlore Plus technical binder, page 23; pencil artwork approved October 14, 2026",
+    "aquashield": true,
+    "ref": "wlp-page-23",
+    "aliases": [
+      "7/8\" Traditional Hang Strip"
+    ]
+  },
+  {
+    "id": "onyx-z-trim",
+    "approvalId": "O01",
+    "label": "Z Trim",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-z-trim.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Z Frame Trim"
+    ]
+  },
+  {
+    "id": "onyx-z-fine",
+    "approvalId": "O02",
+    "label": "Z Fine",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-z-fine.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Z Frame Fine"
+    ]
+  },
+  {
+    "id": "onyx-z-crown",
+    "approvalId": "O03",
+    "label": "Z Crown",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-z-crown.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Z Frame Crown"
+    ]
+  },
+  {
+    "id": "onyx-decor-2",
+    "approvalId": "O04",
+    "label": "Decor 2",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-decor-2.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Decor Frame 2"
+    ]
+  },
+  {
+    "id": "onyx-decor-3",
+    "approvalId": "O05",
+    "label": "Decor 3",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-decor-3.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Decor Frame 3"
+    ]
+  },
+  {
+    "id": "onyx-z-crest",
+    "approvalId": "O06",
+    "label": "Z Crest",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-z-crest.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "Z Frame Crest"
+    ]
+  },
+  {
+    "id": "onyx-l-outside",
+    "approvalId": "O07",
+    "label": "L Frame - Outside Mount",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-l-outside.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "L Outside",
+      "L Frame"
+    ]
+  },
+  {
+    "id": "onyx-l-bullnose",
+    "approvalId": "O08",
+    "label": "L Bullnose - Outside / Inside Mount",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-l-bullnose.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "L Bullnose Outside",
+      "L Bullnose Inside",
+      "L Frame Bullnose"
+    ]
+  },
+  {
+    "id": "onyx-vinyl-l",
+    "approvalId": "O09",
+    "label": "Vinyl L - Outside / Inside Mount",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-vinyl-l.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "VL Outside",
+      "VL Inside",
+      "Vinyl L Frame"
+    ]
+  },
+  {
+    "id": "onyx-vinyl-z-small",
+    "approvalId": "O10",
+    "label": "Vinyl Z Small (VZ Small)",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-vinyl-z-small.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "VZ Small",
+      "Vinyl Z Frame Small",
+      "Vinyl Z Small"
+    ]
+  },
+  {
+    "id": "onyx-vinyl-z-large",
+    "approvalId": "O11",
+    "label": "Vinyl Z Large (VZ Large)",
+    "manufacturer": "Onyx",
+    "src": "/images/contract-illustrations/frame-profiles-approved-v1/onyx-vinyl-z-large.webp",
+    "source": "Onyx Reference Manual, page 4; pencil artwork approved October 14, 2026",
+    "aquashield": false,
+    "ref": "onyx-page-4",
+    "aliases": [
+      "VZ Large",
+      "Vinyl Z Frame Large",
+      "Vinyl Z Large"
+    ]
+  }
+]
