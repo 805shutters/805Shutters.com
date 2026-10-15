@@ -179,9 +179,10 @@ describe("roller shade assembled top treatment", () => {
     expect(html).not.toContain("Open roll, no valance");
   });
 
-  it("keeps blind valances as their separate references", () => {
+  it("installs the selected blind valance with a compact profile detail", () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: "Faux Wood Blinds", options: ["Control Side: Left"], valanceArtId: "lotus-crown" }));
     expect(html).not.toContain("data-roller-top-treatment");
-    expect(html).toMatch(/<figcaption[^]*data-valance-artwork="lotus-crown"/);
+    expect(html).toContain('data-valance-detail="lotus-crown"');
+    expect(html).toContain('data-valance-artwork="lotus-crown"');
   });
 });

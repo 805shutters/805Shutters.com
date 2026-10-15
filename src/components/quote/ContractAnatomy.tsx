@@ -45,7 +45,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       const frame = measure(scene.current);
       const mobile = frame.width <= 620;
       const primaryProduct = art.current.querySelector('[data-primary-product]');
-      const image = measure(primaryProduct?.querySelector('[data-shade-fold], [data-roller-top-treatment]') || (frameProfile ? primaryProduct : null) || art.current);
+      const image = measure(primaryProduct?.querySelector('[data-valance-body], [data-shade-fold], [data-roller-top-treatment]') || (frameProfile ? primaryProduct : null) || art.current);
       setPaths(model.callouts.map((callout, i) => {
         if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const text = labels.current[i] ? measure(labels.current[i]!) : undefined;

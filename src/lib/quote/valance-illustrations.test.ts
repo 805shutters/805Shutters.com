@@ -8,6 +8,34 @@ import { VALANCE_ARTWORK, valanceArtwork, valanceIllustration } from "./valance-
 import { anatomyPreviewProduct } from './contract-anatomy-catalog';
 
 describe("manufacturer-specific valance artwork", () => {
+  it.each(VALANCE_ARTWORK)("shows the selected $id with its compact detail", art => {
+    expect(existsSync(`public/images/contract-illustrations/valances-installed-v1/${art.id}.webp`)).toBe(true);
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {
+      productType: art.products[0], valanceArtId: art.id, size: 'anatomy',
+      options: (art.products as readonly string[]).includes('roller shades') ? ['Control Side: Left', 'Lift System: Continuous Cord Loop'] : ['Control Side: Left'],
+    }));
+    expect(html).toContain(`data-valance-detail="${art.id}"`);
+    expect(html).toContain(`Enlarge ${art.label} detail`);
+    expect(html).toContain(`data-valance-artwork="${art.id}"`);
+  });
+  it('keeps unknown controls unspecified and rejects a profile from another product family', () => {
+    const unknown = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Wood Blinds', valanceArtId:'norman-contempo', size:'anatomy'}));
+    expect(unknown).toContain('Wand side not recorded');
+    expect(unknown).not.toContain('data-anatomy-anchor="wand"');
+    expect(unknown).not.toContain('src="/images/contract-illustrations/valances-installed-v1/norman-contempo.webp"');
+    for (const id of [null, 'norman-contempo']) {
+      const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Roller Shades', valanceArtId:id, options:['Lift System: Cordless']}));
+      expect(html).not.toContain('data-valance-detail=');
+    }
+  });
+  it('mirrors the installed blind and its detail for a recorded right control', () => {
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Wood Blinds', valanceArtId:'norman-designer-crown', options:['Control Side: Right'], size:'anatomy'}));
+    expect(html).toContain('scaleX(-1)');
+    expect(html).toContain('translate(180 0) scale(-1 1)');
+    expect(html).toContain('data-anatomy-anchor="wand"');
+    expect(html).toContain('left:75.5%');
+  });
+
   it('assembles every named Soluna valance menu choice on the shade', () => {
     const product=anatomyPreviewProduct('roller')!;
     const choices=product.groups.find(g=>g.label==='Valance')!.choices;

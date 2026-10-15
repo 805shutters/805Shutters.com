@@ -49,3 +49,7 @@
 .loopLeft{left:9%;top:7%}
 
 .pullTab{position:absolute;width:5.5%;height:auto;transform:translateX(-50%);pointer-events:none}
+
+.installedWand{position:absolute;top:20%;height:48%;width:.6%;pointer-events:none}
+.installedHead{position:absolute;top:6%;left:11%;width:78%;height:16%;pointer-events:none}
+.blindValance{position:absolute;top:1%;left:10%;width:80%;height:22%;object-fit:fill}
