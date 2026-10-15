@@ -74,6 +74,8 @@ beforeAll(async()=>{
  await db.exec(migration('20260921231841_native_delivery_customer_configuration_fields'));
  await db.exec(migration('20260923195631_native_delivery_split_tilt_configuration'));
  await db.exec(migration('20260923215906_native_delivery_customer_configuration_parity'));
+ await db.exec(migration('20261015035119_drapery_customer_contract_fields'));
+ await db.exec(migration('20261015035119_drapery_customer_contract_fields'));
  await db.exec(migration('20261009002558_specialty_shutter_customer_sketch_fields'));
  await db.exec(migration('20261009002558_specialty_shutter_customer_sketch_fields'));
  await db.exec(migration('20260925141722_native_quote_explicit_resends'));

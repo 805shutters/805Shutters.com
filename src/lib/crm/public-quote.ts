@@ -1,3 +1,4 @@
+import { draperyStyle } from '@/lib/quote/drapery';
 import { originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
 import { IN_HOUSE_SCHEDULE, scheduleAmounts, type PaymentSchedule } from "./payment-schedule";
 import { loadPublicPaymentPlan, type PublicPaymentPlan } from "./in-house-plan-public";
@@ -610,7 +611,9 @@ function customerReadableLegacyDetail(label: string, value: string): string {
 export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[]; valanceArtId: string | null; frameProfileId: string | null } {
   const legacy = legacyDesignSnapshot(design);
   const product = getProduct(design.product_id);
-  const productName = customerQuoteProductName(legacy?.productType || product?.name);
+  const draperySelections = record(record(record(design.details)[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL]).selections);
+  const drapery = draperyStyle(draperySelections.drapery_style);
+  const productName = drapery ? 'Drapery' : customerQuoteProductName(legacy?.productType || product?.name);
   let styleName = "";
   if (design.program_id) {
     styleName = product?.programs.find((p) => p.id === design.program_id)?.name ?? "";
@@ -634,6 +637,7 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   const fabricColorOption = colorRow ? productColorLabel(colorRow) : null;
   if (fabricColorOption && (colorRow?.selectionMode === "fabric" || !styleName)) styleName = fabricColorOption;
   if (!styleName && design.fabric) styleName = design.fabric;
+  if (drapery) styleName = typeof draperySelections.fabric === "string" ? draperySelections.fabric : drapery.title;
   const legacyOptions = legacy?.details
     ?.filter((detail) => customerSelectedLegacyValue(detail.value))
     .map((detail) => customerReadableLegacyDetail(detail.label, detail.value)) ?? [];

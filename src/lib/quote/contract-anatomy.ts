@@ -88,7 +88,7 @@ export function contractAnatomy(productType: string, options: readonly string[],
     callouts.push({ part, title: part === 'slat' && family === 'shutters' ? 'Louvers' : part === 'surface' && slatted.has(family) ? 'Material & finish' : titles[part], details, point, ...(part === 'remote' ? { anchor: 'remote' as const } : part === 'control' && controlAnchor ? { anchor: controlAnchor.kind } : {}), side: ['top', 'surface', 'frame'].includes(part) ? 'left' : 'right' });
   }
   return { family, callouts, specifications, reference,
-    coverageNote: reference ? 'Product reference · selected details appear in the labels. Exact configuration artwork is not yet available.' : 'Pencil illustration · selected details shown in the labels. Finish names identify the ordered color; artwork remains graphite.' };
+    coverageNote: productType.trim().toLowerCase() === 'drapery' && art?.referenceNote ? art.referenceNote : reference ? 'Product reference · selected details appear in the labels. Exact configuration artwork is not yet available.' : 'Pencil illustration · selected details shown in the labels. Finish names identify the ordered color; artwork remains graphite.' };
 }
 
 export const isFinishDetail = (detail: { label: string }) => /fabric|colou?r|finish|material|opacity|light control|lining|texture|weave/i.test(detail.label);

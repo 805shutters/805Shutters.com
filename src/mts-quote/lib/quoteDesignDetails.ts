@@ -400,6 +400,13 @@ function formatOptionValue(value: unknown): string {
 
 function humanizeKey(key: string): string {
   const labels: Record<string, string> = {
+    drapery_style: "Drapery style",
+    drapery_description: "Description",
+    drapery_hardware: "Hardware",
+    drapery_lining: "Lining",
+    drapery_fullness: "Fullness",
+    drapery_draw: "Draw / stack",
+    drapery_details: "Drapery details",
     onyx_order_type: "Shutter Type",
     french_door_cutout_type: "French-door cutout type",
     handle_side: "Handle side",

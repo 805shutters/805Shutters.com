@@ -207,3 +207,29 @@ it('prepares an uncatalogued manual price for delivery after the production RPC 
    expect(JSON.stringify(payload)).not.toMatch(/costResolution|internalCost|landedCost/);
  }
 });
+
+it('delivers each drapery selection with a database-saved manual price and editable description', async () => {
+ const { DRAPERY_STYLES, draperyStyleOptions } = await import('@/lib/quote/drapery');
+ const { v2CustomerConfigurationOptions } = await import('./sales-quote-v2-customer-configuration');
+ const { contractIllustration } = await import('@/lib/quote/contract-illustrations');
+ for (const [index,style] of DRAPERY_STYLES.entries()) {
+   const q=1000+index*10,l=q+1,d=q+2;
+   await db.query('insert into sales_quotes(id,quote_v2_backend) values($1,true)',[id(q)]);
+   await db.query("insert into sales_quote_line_items(id,quote_id,product_type,quantity,width_whole,height_whole,selected_design_id) values($1,$2,'Drapery',2,72,96,$3)",[id(l),id(q),id(d)]);
+   const opts={...draperyStyleOptions(style.id,{}),drapery_description:'Natural linen with custom hem',drapery_lining:'Privacy lining'};
+   await db.query("insert into sales_quote_designs(id,line_item_id,variant,product_type,options_json) values($1,$2,'A','Drapery',$3)",[id(d),id(l),opts]);
+   await save(q,l,index===0 ? 0 : 567.89,1);
+   // Later descriptive edits use the same persisted options and keep staff price.
+   await db.query("update sales_quote_designs set options_json=options_json || '{\"drapery_fullness\":\"2.5x\"}' where id=$1",[id(d)]);
+   const quote=(await db.query<any>('select * from sales_quotes where id=$1',[id(q)])).rows[0];
+   const lines=(await db.query<any>('select * from sales_quote_line_items where quote_id=$1',[id(q)])).rows;
+   const designs=(await db.query<any>('select * from sales_quote_designs where line_item_id=$1',[id(l)])).rows;
+   const snapshots=(await db.query<any>('select * from sales_quote_v2_price_snapshots where quote_id=$1',[id(q)])).rows;
+   const payload=prepareV2CustomerSendPayload({quote,lineItems:lines,designs,snapshots});
+   expect(payload.total).toBe(index===0 ? 0 : 1135.78);
+   const options=v2CustomerConfigurationOptions(payload.lines[0].configuration);
+   expect(options).toContain('Description: Natural linen with custom hem');
+   expect(options).toContain('Fullness: 2.5x');
+   expect(contractIllustration('Drapery',options)?.src).toContain(`${style.id}.webp`);
+ }
+});

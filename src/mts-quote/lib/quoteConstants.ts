@@ -91,6 +91,7 @@ export const PRODUCT_TYPES = [
   "Smart Drapes",
   "SmartFold Shades",
   "Palladian Shelf",
+  "Drapery",
   "Drapery Tracks",
   "Tension Shades",
   "Retractable Screens",

@@ -1,3 +1,4 @@
+import { draperyStyleFromOptions, draperySketch } from './drapery';
 import { shutterIllustration } from "./shutter-illustrations";
 import { contractProductFamily } from "./contract-product-family";
 
@@ -19,6 +20,10 @@ const normalize = (value: string) => value.replace(/([a-z])([A-Z])/g, "$1 $2").t
 
 /** Consume the same labeled specifications printed alongside the drawing. */
 export function contractIllustration(productType: string, options: readonly string[] = []): ContractIllustration | null {
+  if (productType.trim().toLowerCase() === 'drapery') {
+    const style = draperyStyleFromOptions(options);
+    return style ? { src: draperySketch(style), alt: `${style.title} drapery — pencil style reference`, remote: false, mirror: false, referenceNote: 'Heading style reference; fabric, dimensions and hardware are specified in the selections.' } : null;
+  }
   const product = contractProductFamily(productType);
   if (!["shutters", "roller", "roman", "honeycomb", "sheer", "faux-wood", "wood", "mini", "vertical", "smart-drapes"].includes(product)) return null;
   // Product titles can carry a specialty identity even before options exist.

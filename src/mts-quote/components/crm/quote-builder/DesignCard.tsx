@@ -1,3 +1,5 @@
+import { DRAPERY_CATALOG_PRODUCT } from '@/lib/quote/drapery';
+import { DraperyDesignCard } from './DraperyDesignCard';
 import { baseConfiguration, clearBaseFabricOptions, resolveBaseFabricProgram, baseProgramMaterial } from '@/lib/quote-v2/base-configuration';
 import { NormanRollerAdditionalOptions } from "@/components/crm/NormanRollerAdditionalOptions";
 import {normanBifold90Layouts} from '@/lib/quote/norman-shutter-bifold90';
@@ -538,13 +540,17 @@ export async function loadQuoteBuilderCatalog() {
         )
       : (await response.json()) as QuoteBuilderCatalogResponse;
   });
-  quoteBuilderCatalogPromises.set(mode, request);
-  request.catch(() => {
-    if (quoteBuilderCatalogPromises.get(mode) === request) {
+  const withDrapery = request.then(catalog => ({ ...catalog, products: [
+    ...catalog.products.filter(product => product.id !== DRAPERY_CATALOG_PRODUCT.id),
+    DRAPERY_CATALOG_PRODUCT,
+  ] }));
+  quoteBuilderCatalogPromises.set(mode, withDrapery);
+  withDrapery.catch(() => {
+    if (quoteBuilderCatalogPromises.get(mode) === withDrapery) {
       quoteBuilderCatalogPromises.delete(mode);
     }
   });
-  return request;
+  return withDrapery;
 }
 
 const QuoteBuilderCatalogProductsContext = createContext<readonly QuoteLabCatalogProduct[] | null>(null);
@@ -557,7 +563,7 @@ export interface SideBySideLineOption {
   design: SalesQuoteDesign;
 }
 
-interface DesignCardProps {
+export interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
   lineNumber: number;
   lineNumberLabel?: string;
@@ -2350,6 +2356,10 @@ export function buildCatalogSelectionPatch(
   requestedProgramId?: string | null,
   withBaseDefaults = current.quote_v2_backend === true || current.base_configuration_version != null,
 ): Partial<SalesQuoteDesign> {
+  if (product.id === DRAPERY_CATALOG_PRODUCT.id) return {
+    supplier: null, material: null, fabric: null, unit_price: 0,
+    options_json: {},
+  };
   const base = withBaseDefaults ? baseConfiguration(product.id) : undefined;
   const programs = usableCatalogPrograms(product);
   const program =
@@ -4903,7 +4913,11 @@ export function ShutterBillableAreaLabel({
   );
 }
 
-export function DesignCard({
+export function DesignCard(props: DesignCardProps) {
+  return props.lineItem.product_type === "Drapery" ? <DraperyDesignCard {...props} /> : <StandardDesignCard {...props} />;
+}
+
+function StandardDesignCard({
   lineItem,
   lineNumber,
   lineNumberLabel,
