@@ -8,14 +8,15 @@ import { VALANCE_ARTWORK, valanceArtwork, valanceIllustration } from "./valance-
 import { anatomyPreviewProduct } from './contract-anatomy-catalog';
 
 describe("manufacturer-specific valance artwork", () => {
-  it.each(VALANCE_ARTWORK)("shows the selected $id with its compact detail", art => {
+  it.each(VALANCE_ARTWORK)("shows the selected $id with its full profile below", art => {
     expect(existsSync(`public/images/contract-illustrations/valances-installed-v1/${art.id}.webp`)).toBe(true);
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {
       productType: art.products[0], valanceArtId: art.id, size: 'anatomy',
       options: (art.products as readonly string[]).includes('roller shades') ? ['Control Side: Left', 'Lift System: Continuous Cord Loop'] : ['Control Side: Left'],
     }));
     expect(html).toContain(`data-valance-detail="${art.id}"`);
-    expect(html).toContain(`Enlarge ${art.label} detail`);
+    expect(html).toContain('data-valance-layout="below"');
+    expect(html).toContain(`${art.label} — full pencil profile`);
     expect(html).toContain(`data-valance-artwork="${art.id}"`);
   });
   it('keeps unknown controls unspecified and rejects a profile from another product family', () => {
@@ -28,14 +29,22 @@ describe("manufacturer-specific valance artwork", () => {
       expect(html).not.toContain('data-valance-detail=');
     }
   });
-  it('mirrors the installed blind and its detail for a recorded right control', () => {
+  it('keeps the right control installed while showing the full profile below', () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Wood Blinds', valanceArtId:'norman-designer-crown', options:['Control Side: Right'], size:'anatomy'}));
     expect(html).toContain('scaleX(-1)');
-    expect(html).toContain('translate(180 0) scale(-1 1)');
+    expect(html).toContain('Designer crown valance — full pencil profile');
     expect(html).toContain('data-anatomy-anchor="wand"');
     expect(html).toContain('left:75.5%');
   });
 
+  it('installs the selected crown even when the blind operating system lacks a drawing', () => {
+    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:'Wood Blinds', valanceArtId:'norman-designer-crown', size:'anatomy', options:['Lift System: Continuous Cord Loop', 'Control Side: Left']}));
+    expect(html).toContain('data-family-reference="true"');
+    expect(html).toContain('data-valance-artwork="norman-designer-crown"');
+    expect(html).toContain('data-valance-layout="below"');
+    expect(html).not.toContain('data-anatomy-anchor="wand"');
+    expect(html).not.toContain('<dialog');
+  });
   it('assembles every named Soluna valance menu choice on the shade', () => {
     const product=anatomyPreviewProduct('roller')!;
     const choices=product.groups.find(g=>g.label==='Valance')!.choices;
