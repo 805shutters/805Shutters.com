@@ -52,14 +52,7 @@ export type ContractAnatomy = {
  * Unknown and nonvisual options always remain in the specification list. */
 export function contractAnatomy(productType: string, options: readonly string[], styleName = ''): ContractAnatomy {
   const family = contractProductFamily(productType);
-  const specifications = quoteProductDetails(styleName, [...options]).filter(detail => !(family === 'roller' && /^(roll type|roll direction|fabric roll)$/i.test(detail.label) && /^(standard|standard roll)$/i.test(detail.value.replace(/\*/g, '').trim())));
-  // Explicit absence is useful in an anatomy contract (no divider/no split).
-  for (const option of options) {
-    const colon = option.indexOf(':');
-    if (colon < 0) continue;
-    const label = option.slice(0, colon).trim(), value = option.slice(colon + 1).trim();
-    if (/^(split tilt|divider rail|valance|top treatment)$/i.test(label) && /^(no|none)$/i.test(value) && !specifications.some(d => norm(d.label) === norm(label))) specifications.push({ label, value });
-  }
+  const specifications = quoteProductDetails(styleName, [...options]).filter(detail => !/^(no|none|false|not applicable|not selected)$/i.test(detail.value.trim()) && !(/count|quantity|qty/i.test(detail.label) && /^0(?:\.0+)?$/.test(detail.value.trim()))).filter(detail => !(family === 'roller' && /^(roll type|roll direction|fabric roll)$/i.test(detail.label) && /^(standard|standard roll)$/i.test(detail.value.replace(/\*/g, '').trim())));
   const shade = anatomyShadeStudy(productType, options);
   const art = shade || contractIllustration(productType, options);
   const specialty = specialtyShutterSketch(productType, options) || anatomyShutterStudy(productType, options);

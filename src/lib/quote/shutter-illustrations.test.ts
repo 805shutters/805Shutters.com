@@ -3,22 +3,27 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ContractProductIllustration } from "@/components/quote/ContractProductIllustration";
+import { ShutterAssembly } from "@/components/quote/ShutterAssembly";
 import { contractIllustration } from "./contract-illustrations";
 import { customerQuoteOptions } from "@/lib/crm/customer-quote-branding";
 import { v2CustomerConfigurationOptions } from "@/lib/crm/sales-quote-v2-customer-configuration";
 
+const legacyAssembly = (options: string[]) => {
+  const art = contractIllustration('Shutters', options)!;
+  return createElement(ShutterAssembly, {src:art.src,alt:art.alt,panels:art.panels!,layout:art.shutterLayout || ''});
+};
 describe("configured shutter pencil catalog", () => {
   it.each([["L",1],["R",1],["L R",2],["LLRR",4],["LLRRR",5],["LLLRRR",6],["LLLRRRR",7],["LLLLRRRR",8],["LRTLR",4],["LTLRTR",4],["LRR",3],["3SP",3],["3FC",3],["3 Invert",3]] as const)("shows %s as %i joined panels in one frame", (config, count) => {
     const options = [`Panel Config: ${config}`, "Tilt Type: Standard Tilt"];
     expect(contractIllustration("Shutters", options)?.panels).toBe(count);
-    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters",options}));
+    const html = renderToStaticMarkup(legacyAssembly(options));
     expect((html.match(/data-shutter-panel=/g)||[])).toHaveLength(count);
     expect((html.match(/data-shutter-frame="outer"/g)||[])).toHaveLength(1);
     expect(html).toContain('data-shutter-assembly="shared-frame"');
     expect(html).toContain(`data-panel-count="${count}"`);
   });
   it("retains LRR versus LLR hinge positions", () => {
-    const render = (layout: string) => renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters", options:[`Panel Config: ${layout}`, "Tilt Type: Standard Tilt"]}));
+    const render = (layout: string) => renderToStaticMarkup(legacyAssembly([`Panel Config: ${layout}`, "Tilt Type: Standard Tilt"]));
     const lrr = render("LRR");
     const llr = render("LLR");
     expect(lrr).toContain('data-shutter-layout="LRR"');
@@ -28,7 +33,7 @@ describe("configured shutter pencil catalog", () => {
     expect(llr).not.toContain('data-shutter-hinge="212"');
   });
   it("preserves T-posts without counting them as panels", () => {
-    const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters", options:["Panel Config: LRTLR", "Tilt Type: Invisible Tilt"]}));
+    const html = renderToStaticMarkup(legacyAssembly(["Panel Config: LRTLR", "Tilt Type: Invisible Tilt"]));
     expect((html.match(/data-shutter-panel=/g)||[])).toHaveLength(4);
     expect((html.match(/data-shutter-post=/g)||[])).toHaveLength(1);
   });
@@ -88,12 +93,9 @@ describe("saved Onyx split tilt contracts", () => {
     expect(art?.src).toContain("shutter-center-split.webp");
     expect(art?.src).not.toContain("divider");
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters", options, illustrationGeometry:{aspectRatio:34.25/58.5}}));
-    expect(html).toContain('shutter-center-split.webp');
-    expect(html).toContain('Split tilt: upper louvers open, lower louvers closed');
-    expect(html).toContain(`data-shutter-layout="${layout}"`);
-    const ratio = Number(/data-opening-aspect-ratio="([^"]+)"/.exec(html)?.[1]);
-    expect(ratio).toBeCloseTo(34.25/58.5, 8);
-    expect(html).not.toContain("Product reference");
+    expect(html).toContain('/c-v1/shutters.webp');
+    expect(html).not.toContain('data-shutter-assembly');
+    expect(html).toContain('Original shutter artwork. Selected configuration is specified in the labels.');
   });
   it("continues rejecting conflicting or unknown tilt selections", () => {
     expect(contractIllustration("Shutters", ["Tilt: standard", "Tilt: hidden", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();

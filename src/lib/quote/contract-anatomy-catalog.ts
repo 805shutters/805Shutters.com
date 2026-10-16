@@ -6,6 +6,7 @@ import { SPECIALTY_SHUTTER_SKETCHES } from './specialty-shutter-illustrations';
 import * as quoteOptions from '@mts/lib/quoteConstants';
 import { onyxBaselineProfiles, onyxBaselineFields, onyxBaselineLabels, onyxBaselineControl } from './onyx-baseline-options';
 import { onyxWovenOptions } from './onyx-woven-options';
+import { SHUTTER_FRAME_PROFILES } from './shutter-frame-profiles';
 import { VALANCE_ARTWORK } from './valance-illustrations';
 
 export type AnatomyChoice = { id: string; label: string; options: string[]; source?:string };
@@ -88,6 +89,7 @@ export function anatomyPreviewProduct(id: string): AnatomyPreviewProduct | null 
     add(`builder:${key}`, label, 'Quote builder reference choices', [...new Set(list as string[])].map(v => choice(v,v,label)));
   }
   if (family === 'shutters') {
+    add('approved-frames','Frame selection','Approved manufacturer pencil profiles',SHUTTER_FRAME_PROFILES.filter(p=>!summary.manufacturer || p.manufacturer.toLowerCase()===summary.manufacturer.toLowerCase()).map(p=>({id:p.id,label:p.label,options:[`Manufacturer: ${p.manufacturer}`,`Frame Type: ${p.label}`, ...(p.aquashield ? ['Product style: Woodlore Aquashield'] : [])]})));
     add('split','Split tilt','Saved contract options',['No','Yes'].map(v => choice(v,v,'Split Tilt')));
     add('divider','Divider rail','Saved contract options',['No','Yes'].map(v => choice(v,v,'Divider Rail')));
     add('shape','Specialty shape','Sketch library · availability depends on supplier',SPECIALTY_SHUTTER_SKETCHES.map(([code,label]) => ({id:code,label,options:[`Specialty Shape: ${code}`]})));

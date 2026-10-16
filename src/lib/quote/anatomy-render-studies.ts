@@ -1,3 +1,4 @@
+import { shutterFrameProfile } from './shutter-frame-profiles';
 import type { AnatomyChoice, AnatomyChoiceGroup, AnatomyPreviewProduct } from './contract-anatomy-catalog';
 import { catalogueChoiceKey, type ProductRenderSelection } from './anatomy-catalogue-selection';
 import { contractProductFamily } from './contract-product-family';
@@ -46,7 +47,7 @@ export function applyRenderStudy(base:readonly string[], replacement:readonly st
 
 export function scopedRenderProduct(product:AnatomyPreviewProduct, scope?:ProductRenderSelection):AnatomyPreviewProduct {
   if(!scope || scope.scope==='all')return product;
-  return {...product,groups:product.groups.map(g=>({...g,choices:g.choices.filter(c=>scope.choices.includes(catalogueChoiceKey(g.id,c.id)))})).filter(g=>g.choices.length)};
+  return {...product,groups:product.groups.map(g=>({...g,choices:g.id==='approved-frames'?g.choices:g.choices.filter(c=>scope.choices.includes(catalogueChoiceKey(g.id,c.id)))})).filter(g=>g.choices.length)};
 }
 
 export function renderStudyDefaults(product:AnatomyPreviewProduct):string[] {
@@ -97,6 +98,7 @@ export function optionRenderStudy(product:AnatomyPreviewProduct, group:AnatomyCh
   const art=contractIllustration(product.name,options),specialty=specialtyShutterSketch(product.name,options)||anatomyShutterStudy(product.name,options);
   const standalone=family==='valance'?anatomyReferenceArtwork(product.name,options):null;
   const shade=anatomyShadeStudy(product.name,options);
+  if(group.id==='approved-frames' && shutterFrameProfile(product.name,options))return {options,identity,source,coverage:'drawing',note:'Selected manufacturer frame pencil profile shown below the shutter.'};
   if(shade && (fields.every(f=>f==='fold style') || (shade.controlDrawn && fields.every(f=>['lift system','control type','control side'].includes(f)))))return {options,identity,source,coverage:'drawing',note:'Custom pencil fold and control components shown. Supplier combination rules still apply.'};
   if(standalone&&'configured' in standalone&&standalone.configured&&fields.every(f=>f==='valance'))return {options,identity,source,coverage:'drawing',note:'Selected valance profile shown.'};
   const named=fields.every(f=>/color|colour|fabric|material|finish|lining|opacity|light control/.test(f)) && !/fold|size|pattern orientation/.test(key);

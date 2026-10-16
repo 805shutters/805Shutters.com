@@ -46,3 +46,12 @@ describe('selected option render studies',()=>{
     }
   },60000);
 });
+
+it('retains supplier frame selections even when the saved preview scope omits them',()=>{
+ const p=anatomyPreviewProduct('norman_shutters')!;
+ const limited=scopedRenderProduct(p,{scope:'selected',choices:[]});
+ const frames=limited.groups.find(g=>g.id==='approved-frames')!;
+ expect(frames.choices.length).toBeGreaterThan(0);
+ expect(frames.choices.every(c=>c.options.includes('Manufacturer: Norman'))).toBe(true);
+ expect(frames.choices.some(c=>c.label.includes('Bullnose'))).toBe(true);
+});

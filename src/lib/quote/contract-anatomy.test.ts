@@ -71,9 +71,9 @@ describe('visual contract catalog and saved selections', () => {
     const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType:'Roller Shades', room:'Office', layout:'grouped', options:['Color: Pure White']}));
     expect(html).not.toContain('data-contract-notes=');
   });
-  it('retains negative options and emphasized fabric performance in label-only layouts', () => {
+  it('omits absent options while retaining fabric performance in label-only layouts', () => {
     const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Roller Shades',room:'Bedroom',layout:'grouped',summaryStyle:'cards',options:['Valance: None','Fabric: Amelia RD (Room Darkening)','Lift System: Motorized','Mount Type: Outside mount']}));
-    expect(html).toContain('>Valance</span><strong>None</strong>');
+    expect(html).not.toContain('>Valance</span><strong>None</strong>');
     expect(html).toContain('Room-darkening fabric');
     expect(html).toContain('Remote control');
     expect(html).toContain('>Outside mount</strong>');
@@ -168,11 +168,10 @@ describe('visual contract catalog and saved selections', () => {
     for (const p of catalog.products) expect(index.some(i => i.id === p.id)).toBe(true);
     for (const type of PRODUCT_TYPES) expect(index.some(i => i.productType === type)).toBe(true);
   });
-  it('retains unfamiliar options and explicit negative structural selections', () => {
+  it('retains unfamiliar options and omits absent structural selections', () => {
     const options = ['Split Tilt: No','Divider Rail: No','Valance: None','Custom treatment note: Customer selection','Pricing Source: internal'];
     const model = contractAnatomy('Shutters',options);
     expect(model.specifications).toEqual(expect.arrayContaining([
-      {label:'Split Tilt',value:'No'},{label:'Divider Rail',value:'No'},{label:'Valance',value:'None'},
       {label:'Custom treatment note',value:'Customer selection'},
     ]));
     expect(model.specifications.some(d => /pricing/i.test(d.label))).toBe(false);
@@ -185,9 +184,9 @@ describe('visual contract catalog and saved selections', () => {
   });
   it('keeps split tilt and divider independent through the real sketch', () => {
     const html = renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Shutters',room:'Bedroom',width:70,height:45,options:['Panel Config: LR','Tilt Type: Standard Tilt','Split Tilt: Yes','Divider Rail: No']}));
-    expect(html).toContain('data-sketch-split="true"');
-    expect(html).toContain('data-louver-section="lower-more-closed"');
-    expect(html).toContain('data-louver-close-direction="up"');
+    expect(html).toContain('/c-v1/shutters.webp');
+    expect(html).toContain('Standard Tilt · Yes');
+    expect(html).not.toContain('shutter-center-split-divider.webp');
     expect(html).not.toContain('data-divider-rail="true"');
     expect(html).toContain('70″');
     expect(html).not.toContain('45″');
@@ -219,4 +218,15 @@ describe('visual contract catalog and saved selections', () => {
     mkdirSync('artifacts/visual-contract',{recursive:true});
     writeFileSync('artifacts/visual-contract/coverage.json',JSON.stringify({products:audit.length,choices:audit.reduce((n,p)=>n+p.choices,0),audit},null,2));
   },60000);
+});
+
+it('omits absent features from all sketch detail layouts without changing saved options',()=>{
+ const options=['Panel Config: LR','Tilt Type: Hidden Tilt','Split Tilt: No','Divider Rail: No','Divider Rail Count: 0','Frame: None'];
+ for(const layout of ['grouped','centered','compact','classic','bordered'] as const){
+ const html=renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Shutters',room:'Office',options,layout}));
+ expect(html).not.toContain('Divider Rail');
+ expect(html).not.toContain('Split Tilt');
+ expect(html).not.toContain('<dd>No</dd>');
+ }
+ expect(options).toContain('Divider Rail: No');
 });

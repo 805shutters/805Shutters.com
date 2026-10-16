@@ -4,7 +4,6 @@ import { temporaryShadeSelected } from "@/lib/quote/temporary-shades";
 import styles from "./ContractProductIllustration.module.css";
 import { specialtyShutterSketch } from "@/lib/quote/specialty-shutter-illustrations";
 import { SpecialtyShutterSketch } from "./SpecialtyShutterSketch";
-import { ShutterAssembly } from "./ShutterAssembly";
 import { ProductReferenceSketch } from './ProductReferenceSketch';
 import { customerQuoteProductName, customerQuoteText } from '@/lib/crm/customer-quote-branding';
 import type { ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
@@ -20,9 +19,23 @@ import type { CSSProperties } from 'react';
 export function ContractProductIllustration({ productType, options = [], frameProfile: selectedFrameProfile, valanceArtId, showTemporaryShade = true, illustrationGeometry, size = "compact" }: { productType: string; options?: readonly string[]; frameProfile?: ShutterFrameProfile | null; valanceArtId?: string | null; showTemporaryShade?: boolean; illustrationGeometry?: ShutterIllustrationGeometry; size?: "compact" | "anatomy" }) {
   const frameProfile = selectedFrameProfile === undefined ? shutterFrameProfile(productType, options) : selectedFrameProfile;
   const displayProductType = customerQuoteProductName(productType);
-  const specialty = specialtyShutterSketch(productType, options) || (size === 'anatomy' ? anatomyShutterStudy(productType, options) : null);
+  // Prefer the original graphite panels at every size; procedural studies are
+  // reserved for configurations without matching approved pencil artwork.
+  const pencilArt = contractIllustration(displayProductType, options);
+  const rectangleStudy = size === 'anatomy' ? anatomyShutterStudy(productType, options) : null;
+  const specialty = specialtyShutterSketch(productType, options) || (!pencilArt?.panels || rectangleStudy?.noFrame ? rectangleStudy : null);
   const shadeStudy = size === 'anatomy' && !specialty ? anatomyShadeStudy(productType, options) : null;
-  const art = specialty ? null : shadeStudy || contractIllustration(displayProductType, options);
+  const resolvedArt = specialty ? null : shadeStudy || pencilArt;
+  // Restore the complete approved September 5 drawing. Never stretch individual
+  // panel crops into a replacement assembly; selected specifications remain below.
+  const art = resolvedArt?.panels ? {
+    ...resolvedArt,
+    src: `${CONTRACT_ART_ROOT}/shutters.webp`,
+    alt: 'Shutters — original pencil illustration',
+    panels: undefined,
+    operationReference: undefined,
+    referenceNote: 'Original shutter artwork. Selected configuration is specified in the labels.',
+  } : resolvedArt;
   const selectedValance = valanceArtwork(valanceArtId === undefined ? valanceIllustration(productType, options) : valanceArtId);
   const valance = selectedValance && (selectedValance.products as readonly string[]).includes(contractProductType(productType).toLowerCase()) ? selectedValance : null;
   const installedBlind = !!valance && !(valance.products as readonly string[]).includes('roller shades') && !!art && !art.referenceNote;
@@ -36,7 +49,6 @@ export function ContractProductIllustration({ productType, options = [], framePr
   const productSrc = coveredRoller && !integratedValance ? art!.src.replace("roller-open-roll", "roller") : art?.src;
   const controlAnchor = size === 'anatomy' ? anatomyControlAnchor(productType, options, art) : null;
   const temporary = showTemporaryShade && temporaryShadeSelected(options);
-  const panels = art?.panels || 0;
   const pencilReference = size === 'anatomy' && !specialty && !art ? anatomyReferenceArtwork(productType, options) : null;
   return (
     <div className={temporary ? styles.companions : undefined}>
@@ -46,7 +58,7 @@ export function ContractProductIllustration({ productType, options = [], framePr
         {valance ? <img src={valance.src} alt={`${valance.label} — pencil illustration`} className={rollerProfile ? styles.rollerValance : styles.blindValance} data-valance-artwork={valance.id} /> : null}
       </div></ValanceDetail> : null}
       {specialty ? <><SpecialtyShutterSketch sketch={specialty} geometry={illustrationGeometry} frameProfile={frameProfile} /><figcaption className={styles.reference}><strong>{specialty.label}</strong><span>{illustrationGeometry ? 'Proportioned to opening · shape reference' : 'Shape & control illustration · measurements pending'}</span>{specialty.curvedTilt === "rear" ? <span>Curved section: rear tilt rod</span> : null}{specialty.referenceNote ? <span>{specialty.referenceNote}</span> : null}</figcaption></> : null}
-      {art ? panels ? <ShutterAssembly src={art.src} alt={art.alt} panels={panels} layout={art.shutterLayout || ""} geometry={illustrationGeometry} frameProfile={frameProfile} /> : <ValanceDetail id={valance?.id ?? null}><div data-valance-body={valance ? true : undefined} className={roller ? `${styles.rollerAssembly} ${integratedValance ? styles.joinedValance : ''}` : styles.shadeStudy} style={valanceStyle} data-shade-fold={shadeStudy?.fold} data-roller-top-treatment={roller ? coveredRoller ? "valance" : "open-roll" : undefined}>
+      {art ? <ValanceDetail id={valance?.id ?? null}><div data-valance-body={valance ? true : undefined} className={roller ? `${styles.rollerAssembly} ${integratedValance ? styles.joinedValance : ''}` : styles.shadeStudy} style={valanceStyle} data-shade-fold={shadeStudy?.fold} data-roller-top-treatment={roller ? coveredRoller ? "valance" : "open-roll" : undefined}>
         <img src={installedBlind ? `/images/contract-illustrations/valances-installed-v1/${valance!.id}.webp` : productSrc} data-anatomy-anchor={!installedBlind && controlAnchor?.kind === 'wand' ? 'wand' : undefined} alt={roller ? `${art.alt} · ${integratedValance ? integratedValance.label : coveredRoller ? "Valance / top cover" : "Open roll, no valance"}` : customerQuoteText(art.alt)} width={160} height={160} className={styles.product} style={(installedBlind ? blindRight : art.mirror) ? { transform: "scaleX(-1)" } : undefined} />
         {installedBlind ? <><span data-anatomy-anchor="wand" className={styles.installedWand} style={{left: `${(blindRight ? 1-(valance!.manufacturer === 'lotus' ? .215 : .245) : valance!.manufacturer === 'lotus' ? .215 : .245)*100}%`}} /><span data-valance-artwork={valance!.id} className={styles.installedHead} /></> : null}
         {valance && !roller && !installedBlind ? <img src={valance.src} alt={`${valance.label} over the blind`} className={rollerProfile ? styles.rollerValance : styles.blindValance} data-valance-artwork={valance.id} /> : null}

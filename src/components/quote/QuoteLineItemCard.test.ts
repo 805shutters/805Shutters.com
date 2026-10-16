@@ -25,9 +25,9 @@ describe("approved quote line item card", () => {
     expect(html).not.toContain("Selection recap");
   });
 
-  it("preserves actions, selection and geometry while omitting opening height", () => {
+  it("preserves actions and selection with original artwork while omitting opening height", () => {
     const html=renderToStaticMarkup(createElement(QuoteLineItemCard,{...base,productType:'Shutters',dimensions:'70" × 45"',options:['Panel Config: LR','Tilt Type: Hidden Tilt','Split Tilt: Yes','Mount Type: Inside mount'],actions:createElement('button',null,'Save price'),selection:createElement('input',{type:'checkbox','aria-label':'Select item'}),notice:'10% off applied'}));
-    for(const value of ['Save price','Select item','10% off applied','Inside mount','70″','shutter-hidden-split.webp','data-opening-aspect-ratio="1.5555555555555556"']) expect(html).toContain(value);
+    for(const value of ['Save price','Select item','10% off applied','Inside mount','70″','/c-v1/shutters.webp']) expect(html).toContain(value);
     expect(html).toContain('<summary>Edit price</summary>');
     expect(html).not.toContain('details open');
     expect(html.match(/<h2/g)).toHaveLength(1);
