@@ -110,18 +110,32 @@ test('existing Norman roller motor choice reveals conditional power controls',as
   await page.setViewportSize({width:390,height:844});await setup(page);await roller(page);await dimensions(page);await page.getByRole('button',{name:'Motorized',exact:true}).click();const label=page.getByText('Motor / Power System',{exact:true});await expect(label).toBeVisible();const power=page.locator('.quote-option-slot').filter({has:label}).locator('[data-mobile-quick-options] button').first();await expect(power).toBeVisible();expect((await power.textContent())?.trim().length).toBeGreaterThan(0);expect(await power.evaluate(el=>getComputedStyle(el).color!==getComputedStyle(el).backgroundColor)).toBe(true);await label.evaluate(el=>el.scrollIntoView({behavior:'instant',block:'center'}));await page.screenshot({path:'test-results/supplier-norman-motor-390.png',fullPage:false});
 });
 
-test('production design rollout keeps submission disabled and the saved source editable',async({page})=>{
- await page.setViewportSize({width:390,height:844});const state=await setup(page,true);await roller(page);await dimensions(page);await minimalOptions(page);await page.getByRole('button',{name:'Review all',exact:true}).click();await page.getByLabel('Tax treatment').selectOption('included_confirmed');await page.getByLabel('Decision / instruction').fill('SYNTHETIC tax decision');await page.getByLabel('Verified tax amount').fill('1.00');await finalMultiplier(page);
- await expect(page.getByRole('button',{name:'Submit',exact:true})).toBeDisabled();await expect(page.getByRole('status').filter({hasText:'Supplier costing is not connected yet'})).toBeVisible();expect(state.requests).toHaveLength(0);await page.screenshot({path:'test-results/supplier-design-rollout-390.png',fullPage:true});
- await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();await expect(page.getByRole('button',{name:/^1 family /i})).toBeVisible();expect(state.requests).toHaveLength(0);expect(state.errors).toEqual([]);
+test('supplier costing does not block saving a configured quote to the CRM',async({page})=>{
+ await page.setViewportSize({width:390,height:844});const state=await setup(page,true);await roller(page);await dimensions(page);
+ await page.getByRole('button',{name:'Review all',exact:true}).click();
+ const save=page.getByRole('button',{name:'Submit for pricing',exact:true});await expect(save).toBeEnabled();
+ await expect(page.getByText('Submit your windows, selections and photos to the CRM for pricing.',{exact:false})).toBeVisible();
+ await expect(page.getByText('Supplier costing is not connected yet',{exact:false})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Submit',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await save.scrollIntoViewIfNeeded();await page.screenshot({path:'test-results/mobile-save-without-costing-390.png',fullPage:false});
+ await page.context().setOffline(true);await expect(save).toBeDisabled();await page.context().setOffline(false);await expect(save).toBeEnabled();
+ await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();await page.getByRole('button',{name:'Review all',exact:true}).click();await expect(save).toBeEnabled();
+ const creates:any[]=[],structures:any[]=[];
+ await page.route('**/api/crm/sales-quotes/v2',route=>{creates.push(route.request().postDataJSON());return route.fulfill({json:{backend:'authoritative_v2',quoteId:'55555555-5555-4555-8555-555555555555',quoteNumber:'LOCAL-805',revision:1,status:'draft',quoteV2Status:'draft',lineCount:0}});});
+ await page.route('**/api/crm/sales-quotes/*/v2/structure',route=>{structures.push(route.request().postDataJSON());return route.fulfill({json:{backend:'authoritative_v2',quoteId:'55555555-5555-4555-8555-555555555555',revision:2,status:'draft',quoteV2Status:'stale',lineCount:1,selectedDesigns:{},operations:[]}});});
+ await save.click();await expect(page.getByRole('heading',{name:'Quote saved',exact:true})).toBeVisible();
+ expect(creates).toHaveLength(1);expect(creates[0].idempotencyKey).toMatch(/^mobile-create:/);
+ expect(structures).toHaveLength(1);expect(structures[0].operations.map((op:any)=>op.type)).toEqual(['line.create','design.upsert']);
+ expect(structures[0].operations[1].patch.supplier).toBe('Norman');
+ expect(state.requests).toHaveLength(0);expect(state.errors).toEqual([]);
 });
 
 test('an older device draft resumes in the new design with measurements and manual price intact',async({page})=>{
  await page.setViewportSize({width:390,height:844});const state=await setup(page,true);await roller(page);await dimensions(page);await minimalOptions(page);
  const readSaved=()=>page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('805-mobile-quotes',2);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});return await new Promise<any[]>((resolve,reject)=>{const tx=db.transaction('drafts','readonly'),request=tx.objectStore('drafts').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);tx.oncomplete=()=>db.close();});});
  await expect.poll(async()=>{const rows=await readSaved();return rows[0]?.value.windows[0].heightFraction;}).toBe('15/16');
- await page.getByRole('button',{name:'Review all',exact:true}).click();await finalMultiplier(page);
- await expect.poll(async()=>{const rows=await readSaved();return rows[0]?.value.draftJob?.multiplier;}).toBe('2');
+ await page.getByRole('button',{name:'Review all',exact:true}).click();await expect(page.getByRole('button',{name:'Submit for pricing',exact:true})).toBeEnabled();
  const before=await page.evaluate(async()=>{const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('805-mobile-quotes',2);request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});const tx=db.transaction('drafts','readwrite'),store=tx.objectStore('drafts');const request=store.getAll();let draft:any;request.onsuccess=()=>{const row=request.result[0];draft=row.value;delete draft.draftJob;draft.windows[0].manualAllInPrice='123.45';draft.windows[0].notes='SYNTHETIC preserved draft note';store.put(row);};await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();return draft;});
  await page.reload();await page.getByRole('button',{name:/SYNTHETIC CUSTOMER.*window/}).click();
  await expect(page.getByRole('button',{name:/^1 family /i})).toBeVisible();await expect(page.getByRole('button',{name:/36 3\/16″ × 60 15\/16″/})).toBeVisible();

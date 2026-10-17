@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMobileQuoteDraft, saveMobileQuoteWindowAndAdvance, emptyMobileQuoteDesign, isQuoteEditorHandoffReady, type MobileQuoteDraft } from "./mobile-quote-draft";
+import { prepareMobileSupplierDraft } from "./mobile-supplier-spec";
 import { saveMobileQuoteForLater } from "./mobile-quote-save";
 
 function fixture() {
@@ -32,6 +33,36 @@ describe("save unfinished mobile quote", () => {
     expect(result.submission.finalTotal).toBeNull();
     expect(isQuoteEditorHandoffReady(result)).toBe(true);
     expect(f.deps.saveManualPrice).not.toHaveBeenCalled();
+  });
+
+  it("saves five supplier-configured openings without costing or a multiplier", async () => {
+    const f = fixture();
+    const draft = prepareMobileSupplierDraft(f.source);
+    draft.windows = Array.from({ length: 5 }, (_, index) => {
+      const line = structuredClone(f.source.windows[0]);
+      line.id = `opening-${index}`;
+      line.room = ["Family room", "Dining room", "Kitchen", "Primary", "Office"][index];
+      line.photos = index === 0 ? line.photos : [];
+      line.activeProductId = "roller";
+      const design = emptyMobileQuoteDesign(line.id, "Roller Shades");
+      Object.assign(design, { supplier: "Norman", fabric: "F2199 Taupe", mount_type: "Inside Mount", lift_system: "Cordless" });
+      line.families.roller = { productId: "roller", productType: "Roller Shades", design, overriddenPaths: [] };
+      return line;
+    });
+    const result = await saveMobileQuoteForLater(draft, f.deps);
+    const operations = f.deps.structure.mock.calls[0][2] as any[];
+    expect(operations.filter(op => op.type === "line.create")).toHaveLength(5);
+    const designs = operations.filter(op => op.type === "design.upsert");
+    expect(designs).toHaveLength(5);
+    expect(designs.every(op => op.patch.supplier === "Norman" && op.patch.fabric === "F2199 Taupe" && op.patch.mountType === "Inside Mount")).toBe(true);
+    expect(result.windows).toEqual(draft.windows);
+    expect(result.draftJob?.multiplier).toBeNull();
+    expect(result.draftJob?.submittedSpec).toBeNull();
+    expect(result.submission.finalTotal).toBeNull();
+    expect(isQuoteEditorHandoffReady(result)).toBe(true);
+    await saveMobileQuoteForLater(result, f.deps);
+    expect(f.deps.create).toHaveBeenCalledTimes(1);
+    expect(f.deps.structure).toHaveBeenCalledTimes(1);
   });
 
   it("retries an interrupted photo upload without recreating the quote or its lines", async () => {
