@@ -63,3 +63,24 @@ it('describes held natural quantities and ignores unselected alternatives', () =
   expect(html).not.toContain('windows');
   expect(html).not.toContain('$726.78');
 });
+
+it("combines savings only for the billed designs and multiplies quantities", () => {
+  const html = render({ authoritativeV2: false, lineItems: [{ id: "one", quantity: 3 }], designs: [
+    { line_item_id: "one", unit_price: 80, [QUOTE_V2_SELECTED_DESIGN_MARKER]: true, options_json: { discount_percent: 20, discount_amount: 20 } },
+    { line_item_id: "one", unit_price: 50, options_json: { discount_percent: 50, discount_amount: 50 } },
+  ], adminControls: { showDiscount: true, discountPercent: 10 } });
+  expect(html).toContain("Contract Total $216.00");
+  expect(html).toContain("Total You Save $84.00");
+});
+it("does not show savings for incomplete pricing or original contract locks", () => {
+  expect(render()).not.toContain("Total You Save");
+  expect(render({ useHistoricalTotal: true, historicalTotal: 1200 })).not.toContain("Total You Save");
+});
+
+it("does not apply a quote discount a second time to the stored final total when summarizing savings", () => {
+  const html = render({ authoritativeV2: false, preferStoredTotal: true, storedTotal: 216,
+    lineItems: [{ id: "one", quantity: 3 }], designs: [{ line_item_id: "one", unit_price: 80, options_json: { discount_percent: 20, discount_amount: 20 } }],
+    adminControls: { showDiscount: true, discountPercent: 10 } });
+  expect(html).toContain("Contract Total $216.00");
+  expect(html).toContain("Total You Save $84.00");
+});

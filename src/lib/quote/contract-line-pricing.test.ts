@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contractLinePrices, originalContractLineTotal } from "./contract-line-pricing";
+import { contractTotalSavings, contractLinePrices, originalContractLineTotal } from "./contract-line-pricing";
 
 describe("contract line savings", () => {
   it.each([5, 10, 20, 12.5, 100])("shows original, discounted price and savings for %s percent", percent => {
@@ -35,5 +35,19 @@ describe("contract line savings", () => {
   it("does not invent savings on an undiscounted line", () => {
     expect(contractLinePrices([{ id: "line", lineTotal: 100 }]).get("line"))
       .toEqual({ originalPrice: 100, discountedPrice: 100, savings: 0 });
+  });
+});
+
+describe("combined contract savings", () => {
+  it("combines quantity-adjusted product savings and the full quote discount including fees", () => {
+    const lines = [{ id: "a", lineTotal: 240, originalLineTotal: originalContractLineTotal(240, 3, { discountAmount: 20 }) }];
+    expect(contractTotalSavings(lines, 34)).toBe(94);
+    expect(lines[0].lineTotal).toBe(240);
+  });
+  it("handles free products, cents, undiscounted rows and invalid amounts", () => {
+    expect(contractTotalSavings([{ id: "free", lineTotal: 0, originalLineTotal: 100 }], 0)).toBe(100);
+    expect(contractTotalSavings([{ id: "a", lineTotal: 9.99, originalLineTotal: 10 }], 0.01)).toBe(0.02);
+    expect(contractTotalSavings([{ id: "a", lineTotal: 100 }])).toBe(0);
+    expect(contractTotalSavings([{ id: "a", lineTotal: 100, originalLineTotal: 90 }], NaN)).toBe(0);
   });
 });

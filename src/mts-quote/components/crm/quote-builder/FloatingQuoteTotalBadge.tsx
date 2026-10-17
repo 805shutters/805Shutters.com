@@ -1,9 +1,13 @@
+import { contractTotalSavings, originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
+import { billableQuoteDesigns } from "@/lib/quote/quote-completeness";
 import { incompleteQuantityLabel } from "@/lib/quote/quantity-label";
 import { incompleteQuoteLineIds } from "@/lib/quote/quote-completeness";
 import { calculateQuoteFixedCharges } from "@/mts-quote/lib/quoteTotals";
 import {
   resolveQuoteDisplayTotal,
   calculateQuoteTotalBreakdown,
+  calculateLineItemDesignTotal,
+  calculateQuoteDesignSubtotal,
   type QuoteAdminControls,
   type QuoteTotalDesign,
   type QuoteTotalLineItem,
@@ -52,6 +56,12 @@ export function FloatingQuoteTotalBadge({
   const incompleteIds = checkPricingCompleteness && !fromHistoricalLock ? incompleteQuoteLineIds(lineItems, designs, authoritativeV2) : [];
   const missingPrices = incompleteIds.length;
   const incomplete = checkPricingCompleteness && !fromHistoricalLock && (missingPrices > 0 || lineItems.length === 0);
+  const savingsLines = lineItems.flatMap(item => billableQuoteDesigns(designs.filter(design => design.line_item_id === item.id), authoritativeV2).map((design, index) => {
+    const lineTotal = calculateLineItemDesignTotal(item, [design], { mode: authoritativeV2 ? "authoritative_v2" : "legacy" });
+    return { id: `${item.id}/${index}`, lineTotal, originalLineTotal: originalContractLineTotal(lineTotal, item.quantity ?? 1, design.options_json) };
+  }));
+  const quoteDiscount = calculateQuoteTotalBreakdown(calculateQuoteDesignSubtotal(lineItems, designs, { mode: authoritativeV2 ? "authoritative_v2" : "legacy" }), adminControls, calculateQuoteFixedCharges(lineItems, designs, { mode: authoritativeV2 ? "authoritative_v2" : "legacy" })).discountAmount;
+  const savings = incomplete || fromHistoricalLock ? 0 : contractTotalSavings(savingsLines, quoteDiscount);
   const label = fromHistoricalLock ? "Original Contract Total" : incomplete ? "Pricing incomplete" : "Contract Total";
 
   return (
@@ -66,6 +76,7 @@ export function FloatingQuoteTotalBadge({
       <div className="text-base font-black leading-tight text-slate-950 tabular-nums">
         {incomplete ? "Total unavailable" : formatCurrency(total)}
       </div>
+      {savings > 0 && <div className="mt-1 text-xs font-semibold text-emerald-700" data-total-savings>Total You Save {formatCurrency(savings)}</div>}
       {incomplete && <p className="mt-1 text-xs font-semibold text-amber-800">
         {missingPrices ? <>{missingPrices} quote {missingPrices === 1 ? "line" : "lines"}: {incompleteQuantityLabel(lineItems, designs, incompleteIds)}</> : "Add a window to price this quote"}
       </p>}

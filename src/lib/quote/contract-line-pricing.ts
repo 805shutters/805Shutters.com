@@ -55,3 +55,9 @@ export function contractLinePrices(
     return [line.id, { originalPrice: original / 100, discountedPrice: discounted / 100, savings: (original - discounted) / 100 }];
   }));
 }
+
+/** Combined saved line discounts plus the quote discount, counted once.
+ * Include fee discounts here even though they are not allocated to product rows. */
+export function contractTotalSavings(lines: readonly ContractLinePrice[], discount = 0): number {
+  return (lines.reduce((sum, line) => sum + Math.max(0, cents(line.originalLineTotal ?? line.lineTotal) - cents(line.lineTotal)), 0) + cents(discount)) / 100;
+}

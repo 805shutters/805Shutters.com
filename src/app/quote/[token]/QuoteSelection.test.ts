@@ -454,3 +454,18 @@ describe("customer contract line savings", () => {
     expect(html).toContain("You saved $0.01");
   });
 });
+
+it("summarizes item savings and the quote discount at the bottom without changing the total", () => {
+  const quote = quoteWithLegacyDetails();
+  quote.lines[0].originalLineTotal = 600;
+  quote.discount = 50.94;
+  quote.total = 458.46;
+  const html = renderToStaticMarkup(createElement(QuoteSelection, { quote, previewOnly: true }));
+  expect(html).toContain('data-total-savings="true"');
+  expect(html).toContain("Total You Save");
+  expect(html).toContain("$141.54");
+  expect(html).toContain("$458.46");
+});
+it("hides the combined savings row when no discounts apply", () => {
+  expect(renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails(), previewOnly: true }))).not.toContain("Total You Save");
+});

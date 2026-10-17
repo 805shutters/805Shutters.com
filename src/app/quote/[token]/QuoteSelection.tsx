@@ -1,6 +1,6 @@
 "use client";
 
-import { contractLinePrices, type ContractLinePrice } from "@/lib/quote/contract-line-pricing";
+import { contractTotalSavings, contractLinePrices, type ContractLinePrice } from "@/lib/quote/contract-line-pricing";
 
 import {IN_HOUSE_SCHEDULE,IN_HOUSE_TERMS,scheduleAmounts} from "@/lib/crm/payment-schedule";
 import {unpaidCents,installmentStatus} from "@/lib/crm/in-house-plan-model";
@@ -129,6 +129,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
     .flatMap<ContractLinePrice>(line => line.showDesignOptions && line.designOptions.length > 1
       ? line.designOptions.map(option => ({ ...option, id: `${line.id}/${option.id}` })) : [line]);
   const linePricing = contractLinePrices(totalPending || totalError ? [] : priceLines, live.discount, live.fees, quote.adjustments.discountPercent);
+  const totalSavings = totalPending || totalError ? 0 : contractTotalSavings(priceLines, live.discount);
   const actionBlocked = totalPending || Boolean(totalError) || signingBusy;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
@@ -294,7 +295,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
           </div>
 
           <div className={styles.orderTotals}>
-            <PricingSummary quote={quote} live={live} computing={totalPending && !totalError} />
+            <PricingSummary quote={quote} live={live} computing={totalPending && !totalError} totalSavings={totalSavings} />
             {totalError ? <div role="alert"><p>{totalError}</p><button type="button" onClick={() => setTotalRetry(value => value + 1)}>Try updating total again</button></div> : null}
           </div>
         </section>
@@ -460,7 +461,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
   );
 }
 
-function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: LiveMoney; computing: boolean }) {
+function PricingSummary({ quote, live, computing, totalSavings }: { quote: PublicQuote; live: LiveMoney; computing: boolean; totalSavings: number }) {
   const depositSatisfied = live.payment.available && live.depositDue > 0 && live.payment.depositPaid >= live.depositDue;
   return <div style={pricingSummary}>
     <Row label="Subtotal" value={money(live.subtotal)} />
@@ -471,6 +472,7 @@ function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: 
     <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}><Row label="Total" value={money(live.total)} strong /></div>
     {live.depositDue > 0 ? <Row label={depositSatisfied ? "Deposit paid" : "Deposit"} value={money(live.depositDue)} highlight={!depositSatisfied && live.payment.dueType === "deposit"} /> : null}
     {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
+    {totalSavings > 0 ? <div style={{ color: "#047857", borderTop: "1px solid #d1d5db", marginTop: 8, paddingTop: 8 }} data-total-savings><Row label="Total You Save" value={money(totalSavings)} strong /></div> : null}
     {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
   </div>;
 }

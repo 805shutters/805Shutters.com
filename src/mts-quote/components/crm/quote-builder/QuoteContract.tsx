@@ -1,5 +1,5 @@
 "use client";
-import { contractLinePrices, originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
+import { contractTotalSavings, contractLinePrices, originalContractLineTotal } from "@/lib/quote/contract-line-pricing";
 import { SchedulePreview, InHousePayments } from "@/components/crm/InHousePayments";
 import { QuoteWindowPhotos } from "@/components/crm/QuoteWindowPhotos";
 import { incompleteQuoteLineIds, shouldCheckQuoteCompleteness } from "@/lib/quote/quote-completeness";
@@ -987,6 +987,7 @@ export function QuoteContract({
             };
           });
         });
+        const totalSavings = contractTotalSavings(pricingLines, accepted.accepted ? 0 : gqDiscountAmt);
         const linePricing = contractLinePrices(pricingLines, accepted.accepted ? 0 : gqDiscountAmt, gqTotals.extrasTotal, adminControls.discountPercent);
 
 
@@ -1116,6 +1117,10 @@ export function QuoteContract({
                   <span>{hasMultipleQuotes ? `Quote ${gq.quote_letter} Total` : "Total"}</span>
                   <span>${gqTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
                 </div>
+                {totalSavings > 0 && <div className="flex justify-between text-sm font-semibold text-emerald-700" data-total-savings>
+                  <span>Total You Save</span>
+                  <span>${totalSavings.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>}
               </div>
             </CardContent>
           </Card>
