@@ -426,6 +426,7 @@ import {
   resolveManufacturerStamp,
 } from "./manufacturerStamp";
 import { CustomModePanel } from "./CustomModePanel";
+import {mobileQuoteFieldPurpose,mobileFieldLabels} from '@/lib/quote/mobile-quote-field-policy';
 import {mobileQuoteOptionRequirement} from '@/lib/quote/quote-option-parity';
 import type {
   ManufacturerComparisonProgram,
@@ -556,6 +557,7 @@ export async function loadQuoteBuilderCatalog() {
 const QuoteBuilderCatalogProductsContext = createContext<readonly QuoteLabCatalogProduct[] | null>(null);
 const MobileDesignCardContext = createContext(false);
 const MobileQuoteProductTypeContext = createContext("");
+const MobileQuotePolicyContext = createContext<{manufacturer?:string|null;productId?:string;control?:string}>({});
 
 export interface SideBySideLineOption {
   lineId: string;
@@ -3050,15 +3052,19 @@ function OptionSlot({
   children: ReactNode;
 }) {
   const mobile=useContext(MobileDesignCardContext);
-  const draftRequirement=mobileQuoteOptionRequirement(option.field,useContext(MobileQuoteProductTypeContext));
+  const productType=useContext(MobileQuoteProductTypeContext);
+  const draftRequirement=mobileQuoteOptionRequirement(option.field,productType);
+  const purpose=mobileQuoteFieldPurpose(option.field,{productType,...useContext(MobileQuotePolicyContext)});
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
   const isDirectSelect = option.type === "select" || option.type === "number" || option.type === "text";
   const isInlineChoice = (!isDirectSelect && renderSelectedDirect) || isYesNo || (option.type === "buttons" && option.options.length <= 2);
-  const showConfirmedCard = selected && !renderSelectedDirect && !isOpen;
+  const showConfirmedCard = selected && (mobile || !renderSelectedDirect) && !isOpen;
+  if(mobile && purpose === "build") return null;
 
   return (
     <div
+      data-field-purpose={mobile?purpose:undefined}
       data-option-field={option.field}
       data-option-label={option.label}
       data-option-values={'options' in option?JSON.stringify(option.options):undefined}
@@ -3072,7 +3078,7 @@ function OptionSlot({
         requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
       )}
     >
-      {mobile&&<span className="quote-option-requirement">{draftRequirement==='required'?'Required':'Optional'}</span>}
+      {mobile&&<span className="quote-option-requirement">{mobileFieldLabels[purpose]}</span>}
       {showConfirmedCard ? (
         <>
           <button
@@ -5910,7 +5916,7 @@ function StandardDesignCard({
 
   return (
     <QuoteBuilderCatalogProductsContext.Provider value={catalogProducts ?? null}>
-    <MobileDesignCardContext.Provider value={mobilePresentation}><MobileQuoteProductTypeContext.Provider value={lineItem.product_type}>
+    <MobileDesignCardContext.Provider value={mobilePresentation}><MobileQuoteProductTypeContext.Provider value={lineItem.product_type}><MobileQuotePolicyContext.Provider value={{manufacturer:designs[0]?.supplier,productId:String(designs[0]?.options_json?.catalog_product_id??""),control:designs[0]?.lift_system??undefined}}>
     <Card
       data-quote-line-id={lineItem.id}
       data-line-number={lineNumber}
@@ -6224,11 +6230,11 @@ function StandardDesignCard({
           <LotusObservedDesignOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />
         ) : manufacturerOptionsRoute.status === "manual_quote" ? (
           <>
-            <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />
-            {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
+            {!mobilePresentation && <ManualQuoteOnlyBadge manufacturer={manufacturerOptionsRoute.manufacturer ?? "Manufacturer"} />}
+            {hasSundanceConfiguration(manufacturerOptionsRoute.productId) && <SundanceDesignOptions quickQuote={mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />}
           </>
         ) : manufacturerOptionsRoute.status === "supported" ? (
-          hasSundanceConfiguration(manufacturerOptionsRoute.productId) ? (<SundanceDesignOptions design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />) :
+          hasSundanceConfiguration(manufacturerOptionsRoute.productId) ? (<SundanceDesignOptions quickQuote={mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId!} onUpdateFields={updateFields} widthInches={widthIn} heightInches={heightIn} />) :
           manufacturerOptionsRoute.productId && isRollerValance(manufacturerOptionsRoute.productId) ? (<NormanRollerValanceOptions pricingOnly={!mobilePresentation} design={currentDesign} productId={manufacturerOptionsRoute.productId} lineOptions={sideBySideLineOptions} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId && isNormanValanceOnly(manufacturerOptionsRoute.productId) ? (<NormanValanceOnlyOptions design={currentDesign} productId={manufacturerOptionsRoute.productId} onUpdateFields={updateFields} />) :
           manufacturerOptionsRoute.productId === SMARTDRAPE_REPLACEMENT ? (<NormanSmartdrapeReplacementOptions pricingOnly={!mobilePresentation} design={currentDesign} onUpdateFields={updateFields} />) :
@@ -6423,7 +6429,7 @@ function StandardDesignCard({
         </div>
       </CardContent>
     </Card>
-    </MobileQuoteProductTypeContext.Provider></MobileDesignCardContext.Provider>
+    </MobileQuotePolicyContext.Provider></MobileQuoteProductTypeContext.Provider></MobileDesignCardContext.Provider>
     </QuoteBuilderCatalogProductsContext.Provider>
   );
 }

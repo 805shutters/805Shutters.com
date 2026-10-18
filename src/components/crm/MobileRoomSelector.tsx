@@ -13,11 +13,13 @@ import styles from "./MobileQuoteWalkthrough.module.css";
 
 export function MobileRoomSelector({
   window,
+  buttonsOnly = false,
   onSelectRoom,
   onSelectBedroom,
   onCustomRoomChange,
   onSelectLetter,
 }: {
+  buttonsOnly?: boolean;
   window: MobileQuoteWindow;
   onSelectRoom: (room: MobileQuoteRoomChoice) => void;
   onSelectBedroom: (room: string) => void;
@@ -37,7 +39,7 @@ export function MobileRoomSelector({
   useEffect(() => { if (concreteRoom && !selectedLetter) setLetterOpen(true); }, [concreteRoom, selectedLetter]);
 
   const roomSummary = choice === "Custom" && window.room.trim() ? window.room : choice;
-  const roomChoices = choice && !roomOpen ? [choice] : MOBILE_QUOTE_ROOM_PRESETS;
+  const roomChoices = choice && !roomOpen ? [choice] : MOBILE_QUOTE_ROOM_PRESETS.filter(room=>!buttonsOnly||room!=="Custom");
   const bedroomChoices = selectedBedroom && !bedroomOpen ? [selectedBedroom] : [1, 2, 3, 4, 5].map((number) => `Bedroom ${number}`);
   const letterChoices = selectedLetter && !letterOpen ? [selectedLetter] : MOBILE_QUOTE_WINDOW_LETTERS;
 
@@ -81,7 +83,7 @@ export function MobileRoomSelector({
         >{room}</button>;
       })}
     </div>}
-    {choice === "Custom" && roomOpen && <div className={styles.customRoom}><div><label htmlFor={`custom-room-${window.id}`}>Room name</label><input
+    {!buttonsOnly && choice === "Custom" && roomOpen && <div className={styles.customRoom}><div><label htmlFor={`custom-room-${window.id}`}>Room name</label><input
       id={`custom-room-${window.id}`}
       value={window.room}
       onChange={(event) => onCustomRoomChange(event.target.value)}

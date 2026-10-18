@@ -62,6 +62,7 @@ export type MobileQuoteWindow = {
   quantity?: number;
   /** Opening-specific all-in manual price; survives configuration corrections. */
   manualAllInPrice?: string;
+  inheritedSelections?: boolean;
   supplierInputs?: import('./mobile-supplier-spec').SupplierLineInputs;
   id: string;
   room: string;
@@ -424,8 +425,8 @@ export function updateMobileQuoteDesign(
   if(line.supplierInputs&&explicit){
     if(paths.includes('mount_type')||paths.includes('options_json.onyx_mount'))line.supplierInputs.mount='';
     if(paths.includes('fabric')||paths.includes('options_json.fabric_color_code')||paths.includes('options_json.color'))line.supplierInputs.colorFabric='';
-    if(paths.includes('lift_system')||paths.includes('tilt_type')||paths.includes('options_json.control_type')){line.supplierInputs.control='';line.supplierInputs.controlSide='';}
-    if(paths.includes('options_json.control_side')||paths.includes('options_json.chain_location'))line.supplierInputs.controlSide='';
+    if(paths.includes('lift_system')||paths.includes('tilt_type')||paths.includes('options_json.control_type')||paths.some(path=>/^options_json\.sundance_(cellular_system|sheerview_control|portfolio_control|walden_control|zebra_control|shade_control)$/.test(path))){line.supplierInputs.control='';line.supplierInputs.controlSide='';}
+    if(paths.includes('options_json.control_side')||paths.includes('options_json.chain_location')||paths.includes('options_json.sundance_blind_wand')||paths.includes('options_json.wand_side'))line.supplierInputs.controlSide='';
   }
   // A configurator edit can change the same measurement meaning as the earlier step.
   const basis=(d:SalesQuoteDesign)=>family.productType==='Shutters'?d.options_json?.size_type:d.mount_type;
@@ -576,6 +577,7 @@ function hasBlankMobileQuoteOpeningDetails(window: MobileQuoteWindow) {
 function isReusableMobileQuotePlaceholder(draft: MobileQuoteDraft, window: MobileQuoteWindow) {
   if (!hasBlankMobileQuoteOpeningDetails(window)) return false;
   if (isUntouchedMobileQuoteWindow(window)) return true;
+  if(draft.draftJob?.selectionMode==='all'&&window.inheritedSelections)return true;
   const defaults = draft.firstLineDefaults;
   const family = window.activeProductId ? window.families[window.activeProductId] : null;
   return mobileQuoteWorkflowMode(draft) === "full-design" && Boolean(

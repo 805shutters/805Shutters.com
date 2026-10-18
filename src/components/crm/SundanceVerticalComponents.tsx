@@ -1,4 +1,5 @@
 'use client';
+import {QuickQuoteSelect} from "./QuickQuoteSelect";
 import{SUNDANCE_VERTICAL_COMPONENT_KEY as KEY,readSundanceVerticalComponent,sundanceVerticalComponentEvidence,sundanceVerticalStackReference,type SundanceVerticalComponent}from'@/lib/quote/sundance/vertical-components';
 export function SundanceVerticalComponents({options:c,widthInches,onChange}:{options:Record<string,unknown>;widthInches:number;onChange:(options:Record<string,unknown>)=>void}){
  const kind=c.sundance_vertical_fulfillment,r=readSundanceVerticalComponent(c[KEY]),stack=sundanceVerticalStackReference(widthInches),classes='w-full rounded border p-2',e=sundanceVerticalComponentEvidence(c);
@@ -9,7 +10,7 @@ export function SundanceVerticalComponents({options:c,widthInches,onChange}:{opt
  {active&&<section aria-label="Vertical component measurements" className="space-y-2 rounded border p-3"><p>Component-only measurements are separate from the opening. Quantities below are per line unit. The complete-blind grid is not a component price.</p>
  <label>{kind==='Track only'?'Track length':'Vane length'} (inches)<input aria-label="Sundance vertical component length" type="number" min="0" step="0.0625" className={classes} value={base.lengthInches??''} onChange={ev=>patch({lengthInches:ev.target.value===''?null:Number(ev.target.value)})}/></label>
  <label>Component quantity<input aria-label="Sundance vertical component quantity" type="number" min="1" step="1" className={classes} value={base.quantity??''} onChange={ev=>patch({quantity:ev.target.value===''?null:Number(ev.target.value)})}/></label>
- <label>Size instructions<select aria-label="Sundance vertical component size basis" className={classes} value={base.sizeBasis} onChange={ev=>patch({sizeBasis:ev.target.value as SundanceVerticalComponent['sizeBasis']})}><option value="">Select</option><option>Net component size</option><option>Opening size — factory deduction required</option></select></label>
+ <label>Size instructions<QuickQuoteSelect aria-label="Sundance vertical component size basis" className={classes} value={base.sizeBasis} onChange={ev=>patch({sizeBasis:ev.target.value as SundanceVerticalComponent['sizeBasis']})}><option value="">Select</option><option>Net component size</option><option>Opening size — factory deduction required</option></QuickQuoteSelect></label>
  {base.fabricId!==c.fabric_color_id&&kind==='Vanes only'&&<button type="button" onClick={()=>patch({fabricId:String(c.fabric_color_id??'')})}>Reconfirm vane measurements for selected material</button>}
  {e.sourceAmount!==null&&<p>Published component source amount: ${e.sourceAmount.toFixed(2)} {e.sourceBasis==='net'?'net':'(vane-column retail/net basis requires confirmation)'} (PDF{e.page}{e.gridHeight?`, ${e.gridHeight}-inch height row`:''}). Not a customer price.</p>}
  {e.issues.map((text,i)=><p role="alert" key={i}>{text}</p>)}

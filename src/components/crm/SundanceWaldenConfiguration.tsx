@@ -1,4 +1,5 @@
 'use client';
+import {QuickQuoteSelect} from "./QuickQuoteSelect";
 import { nonNormanQuoteIssues } from "@/lib/quote/non-norman-ordering-only";
 import {SundanceWaldenTwinOptions} from './SundanceWaldenTwinOptions';
 import type {SalesQuoteDesign} from '@mts/types/quote';
@@ -8,13 +9,13 @@ import {sundanceWaldenAccessories,sundanceWaldenAccessoryKey,sundanceWaldenContr
 export function SundanceWaldenConfiguration({productId,options,widthInches,heightInches,onUpdateFields, pricingOnly = true}:{ pricingOnly?: boolean; productId:string;options:Record<string,unknown>;widthInches:number;heightInches:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
  const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm',p=productId,valanceOnly=options.sundance_walden_style==='Valance Only',control=String(options.sundance_walden_control??'');
  const field=(key:string,value:string)=>onUpdateFields(key==='sundance_walden_style'?{options_json:sundanceWaldenStylePatch(options,value)}:{...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null}});
- const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance Walden ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</select></label>;
+ const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<QuickQuoteSelect field={key} aria-label={`Sundance Walden ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(v=><option key={v}>{v}</option>)}</QuickQuoteSelect></label>;
  const number=(key:string,label:string,step='1')=><label className="block text-sm">{label}<input aria-label={`Sundance Walden ${label}`} type="number" min="0" step={step} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}/></label>;
  const issues=nonNormanQuoteIssues(validateSundanceWaldenConfiguration({productId:p,programId:String(options.catalog_program_id??''),widthInches,heightInches,configuration:options as SelectionRecord}), pricingOnly);
  const evidence=sundanceWaldenOptionEvidence(p,options,widthInches,heightInches);
  return <>
  {select('sundance_walden_style','Style',['Standard','Waterfall','Valance Only'])}
- {!valanceOnly&&<label className="block text-sm">Operating system<select aria-label="Sundance Walden operating system" className={classes} value={control} onChange={e=>onUpdateFields({options_json:sundanceWaldenControlPatch(options,e.target.value)})}><option value="">Select system</option>{sundanceWaldenControls(p).map(v=><option key={v}>{v}</option>)}</select></label>}
+ {!valanceOnly&&<label className="block text-sm">Operating system<QuickQuoteSelect aria-label="Sundance Walden operating system" className={classes} value={control} onChange={e=>onUpdateFields({options_json:sundanceWaldenControlPatch(options,e.target.value)})}><option value="">Select system</option>{sundanceWaldenControls(p).map(v=><option key={v}>{v}</option>)}</QuickQuoteSelect></label>}
  {!valanceOnly&&control==='Pro Wand'&&select('sundance_walden_wand_length','White Pro Wand length',['24','36','48','60'])}
  {!valanceOnly&&control==='Clutch and Loop'&&select('sundance_walden_chain','Chain',p==='sundance_walden_select'?['Nickel-plated standard','Stainless Steel']:['Metal standard'])}
  {!valanceOnly&&options.sundance_walden_style==='Waterfall'&&<>{select('sundance_walden_back_valance','Back valance',['None','Shade fabric',...(options.catalog_sundance_liner_grid_id?['Liner fabric']:[])])}{select('sundance_walden_interior_valance','Interior valance',['Standard when unlined or light-filtering','Requested interior valance'])}</>}

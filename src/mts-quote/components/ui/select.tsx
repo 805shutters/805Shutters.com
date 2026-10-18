@@ -43,6 +43,7 @@ type QuickSelectState = {
 
 type QuickSelectPresentation = { enabled: boolean; collapseSelected: boolean };
 const QuickSelectPresentationContext = React.createContext<QuickSelectPresentation>({ enabled: false, collapseSelected: false });
+export function useQuickSelectPresentation() { return React.useContext(QuickSelectPresentationContext); }
 const QuickSelectStateContext = React.createContext<QuickSelectState | null>(null);
 
 function optionCount(node: React.ReactNode): number {

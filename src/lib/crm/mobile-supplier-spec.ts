@@ -1,3 +1,4 @@
+import {mobileControlSidePolicy} from '@/lib/quote/mobile-control-side';
 import type { MobileQuoteDraft, MobileQuoteWindow } from './mobile-quote-draft';
 import { MOBILE_QUOTE_FRACTIONS, validateMobileQuoteMeasurement,retainMobileManualPrice,updateMobileQuoteDesign } from './mobile-quote-draft';
 import type { QuoteLabCatalogProduct } from '@/lib/quote-lab/types';
@@ -9,7 +10,7 @@ export type CostMultiplier = typeof COST_MULTIPLIERS[number];
 export type ShippingBasis = 'line' | 'opening' | 'physical_unit';
 export type FeeOverride = {installationAmount:string|null;shippingAmount:string|null;instruction:string};
 export type SupplierLineInputs = { feeOverride?:FeeOverride; family: MobileProductFamily | null; manufacturer: string | null; colorFabric: string; mount: string; control: string; controlSide: string; shippingBasis: ShippingBasis | null; openingCount: number };
-export type DraftJobSettings = { version: number; multiplier: CostMultiplier | null; requestId: string; jobId: string | null; submittedSpec: SupplierQuoteSpec | null; tax: { treatment: 'unresolved' | 'excluded_confirmed' | 'included_confirmed'; amount: string | null; instruction: string }; comparisonMode: 'mixed_lines' };
+export type DraftJobSettings = { version: number; selectionMode?: 'all'|'individual'; multiplier: CostMultiplier | null; requestId: string; jobId: string | null; submittedSpec: SupplierQuoteSpec | null; tax: { treatment: 'unresolved' | 'excluded_confirmed' | 'included_confirmed'; amount: string | null; instruction: string }; comparisonMode: 'mixed_lines' };
 export type SupplierSpecLine = {
   id: string; manufacturer: string; family: MobileProductFamily; productId: string; productType: string;
   room: string; position: string; widthWhole: number; widthFraction: string; heightWhole: number; heightFraction: string;
@@ -17,7 +18,7 @@ export type SupplierSpecLine = {
   shippingBasis: ShippingBasis | null; notes: string; designNotes: string; configuration: Record<string, unknown>;
   feeOverride?:FeeOverride; manualAllInPrice: string | null; photos: { id: string; name: string }[];
 };
-export type SupplierQuoteSpec = { schemaVersion: '805-mobile-supplier-draft/v1'; draftId: string; version: number; multiplier: CostMultiplier; comparisonMode: 'mixed_lines'; customer: MobileQuoteDraft['customer']; lines: SupplierSpecLine[]; tax: DraftJobSettings['tax'] };
+export type SupplierQuoteSpec = { schemaVersion: '805-mobile-supplier-draft/v1'; draftId: string; version: number; selectionMode?: 'all'|'individual'; multiplier: CostMultiplier; comparisonMode: 'mixed_lines'; customer: MobileQuoteDraft['customer']; lines: SupplierSpecLine[]; tax: DraftJobSettings['tax'] };
 
 export function mobileFamily(productType: string): MobileProductFamily | null {
   if (productType === 'Drapery Tracks' || productType === 'Smart Drapes') return 'Drapery';
@@ -28,13 +29,18 @@ export function productsInMobileFamily(products: QuoteLabCatalogProduct[], famil
 }
 export function lineInputs(line: MobileQuoteWindow): SupplierLineInputs {
   const design = line.activeProductId ? line.families[line.activeProductId]?.design : null;
+  const o=design?.options_json??{};
+  const value=(...keys:string[])=>keys.map(key=>o[key]).find(v=>typeof v==='string'&&v.trim()) as string|undefined;
   const defaults:SupplierLineInputs = { family: mobileFamily(design?.product_type || ''), manufacturer: design?.supplier || null,
-    colorFabric: design?.fabric || '', mount: design?.mount_type || '', control: design?.lift_system || design?.tilt_type || '',
-    controlSide: typeof design?.options_json?.control_side === 'string' ? design.options_json.control_side : '', shippingBasis: null, openingCount: 1 };
+    colorFabric: value('fabric_color_code','color') || design?.fabric || '', mount: design?.mount_type || '',
+    control: value('sundance_cellular_system','sundance_sheerview_control','sundance_portfolio_control','sundance_walden_control','sundance_zebra_control','sundance_shade_control','control_type','operating_system') || design?.lift_system || design?.tilt_type || '',
+    controlSide: value('sundance_blind_wand','control_side','chain_location','wand_side') || '', shippingBasis: null, openingCount: 1 };
+  if(!defaults.control&&design?.supplier==='Sundance'&&/^sundance_(?:advantage_ii|premium_ii|basicvue|chateau_woods|aluminum_)/.test(String(o.catalog_product_id??o.quote_lab_product_id??'')))defaults.control='Cordless';
+  const sidePolicy=design?mobileControlSidePolicy(design,defaults.control):null;
+  if(!defaults.controlSide&&sidePolicy?.choices.length===1&&!sidePolicy.required)defaults.controlSide=sidePolicy.choices[0];
   const explicit=line.supplierInputs;
   if(!explicit)return defaults;
-  const value=(key:string)=>typeof design?.options_json?.[key]==='string'?String(design.options_json[key]):'';
-  return {...explicit,colorFabric:explicit.colorFabric||value('fabric_color_code')||value('color')||defaults.colorFabric,mount:explicit.mount||defaults.mount,control:explicit.control||defaults.control,controlSide:explicit.controlSide||defaults.controlSide};
+  return {...explicit,colorFabric:explicit.colorFabric||defaults.colorFabric,mount:explicit.mount||defaults.mount,control:explicit.control||defaults.control,controlSide:explicit.controlSide||defaults.controlSide};
 }
 export function jobSettings(draft: MobileQuoteDraft): DraftJobSettings {
   return draft.draftJob || { version: 1, multiplier: null, requestId: `mobile-supplier:${draft.id}:1`, jobId: null, submittedSpec: null,
@@ -87,7 +93,7 @@ export function selectSupplierFamily(draft: MobileQuoteDraft, id: string, family
   const index = draft.windows.findIndex(line => line.id === id); if (index < 0) return draft;
   const next = structuredClone(draft); const line = next.windows[index]; const previous = draft.windows[index - 1];
   if (lineInputs(line).family === family) return draft;
-  const repeat = !line.activeProductId && previous && lineInputs(previous).family === family && previous.activeProductId;
+  const repeat = draft.draftJob?.selectionMode!=='individual' && !line.activeProductId && previous && lineInputs(previous).family === family && previous.activeProductId;
   retainMobileManualPrice(line);line.families = {}; line.activeProductId = null;
   line.supplierInputs = { family, manufacturer: null, colorFabric: '', mount: '', control: '', controlSide: '', shippingBasis: null, openingCount: 1 };
   if (repeat) {

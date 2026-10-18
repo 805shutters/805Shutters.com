@@ -1,4 +1,5 @@
 'use client';
+import {QuickQuoteSelect} from "./QuickQuoteSelect";
 import type{SalesQuoteDesign}from'@mts/types/quote';
 import type{SelectionRecord}from'@/lib/quote-v2/core';
 import{SUNDANCE_WALDEN_TWIN_KEY,createSundanceWaldenTwin,readSundanceWaldenTwin,type SundanceWaldenTwin}from'@/lib/quote/sundance/walden-twin-records';
@@ -8,7 +9,7 @@ export function SundanceWaldenTwinOptions({productId,options,widthInches,heightI
  const stored=options[SUNDANCE_WALDEN_TWIN_KEY],t=readSundanceWaldenTwin(stored);if(options.walden_movable_liner!=='Yes'&&stored==null)return null;
  const save=(value:unknown)=>onUpdateFields({options_json:{...options,[SUNDANCE_WALDEN_TWIN_KEY]:value}}),cls='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const update=(patch:Partial<SundanceWaldenTwin['liner']>)=>{if(t)save({...t,liner:{...t.liner,...patch}});};
- const select=(label:string,value:string,choices:string[],change:(v:string)=>void)=><label className="block text-sm">{label}<select className={cls} aria-label={`Sundance twin ${label}`} value={value} onChange={e=>change(e.target.value)}><option value="">Select</option>{choices.map(v=><option key={v}>{v}</option>)}</select></label>;
+ const select=(label:string,value:string,choices:string[],change:(v:string)=>void)=><label className="block text-sm">{label}<QuickQuoteSelect className={cls} aria-label={`Sundance twin ${label}`} value={value} onChange={e=>change(e.target.value)}><option value="">Select</option>{choices.map(v=><option key={v}>{v}</option>)}</QuickQuoteSelect></label>;
  const issues=validateSundanceWaldenTwin({productId,widthInches,heightInches,configuration:options as SelectionRecord}),e=t?sundanceWaldenTwinLinerEvidence(t):null,depth=t?sundanceWaldenTwinFlushDepth(productId,t):null;
  return<section className="space-y-3 rounded border border-amber-300 p-3" aria-label="Sundance Walden twin components">
  <h4 className="font-semibold">Woven shade and separate movable liner</h4>

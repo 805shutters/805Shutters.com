@@ -1,4 +1,5 @@
 "use client";
+import {QuickQuoteSelect} from "./QuickQuoteSelect";
 import type { SalesQuoteDesign } from '@mts/types/quote';
 import type { SelectionRecord } from '@/lib/quote-v2/core';
 import { SUNDANCE_STOCK_VERTICAL_PROGRAM } from '@/lib/quote/sundance/supplemental-configuration';
@@ -6,7 +7,7 @@ import { sundanceStockVerticalEvidence,validateSundanceStockVerticalConfiguratio
 export function SundanceStockVerticalConfiguration({options,onUpdateFields,widthInches,heightInches}:{options:Record<string,unknown>;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void;widthInches:number;heightInches:number}) {
  const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const update=(key:string,value:unknown)=>onUpdateFields({options_json:{...options,[key]:value,...(key==='stock_vertical_width_cut_down'?{stock_vertical_before_width:null}:{}),...(key==='stock_vertical_height_cut_down'?{stock_vertical_before_height:null}:{})}});
- const select=(key:string,label:string,values:string[])=><label className="block text-sm" key={key}>{label}<select aria-label={`Sundance ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>update(key,e.target.value||null)}><option value="">Select</option>{values.map(value=><option key={value}>{value}</option>)}</select></label>;
+ const select=(key:string,label:string,values:string[])=><label className="block text-sm" key={key}>{label}<QuickQuoteSelect field={key} aria-label={`Sundance ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>update(key,e.target.value||null)}><option value="">Select</option>{values.map(value=><option key={value}>{value}</option>)}</QuickQuoteSelect></label>;
  const context={programId:SUNDANCE_STOCK_VERTICAL_PROGRAM,widthInches,heightInches,configuration:options as SelectionRecord};
  const evidence=sundanceStockVerticalEvidence(context),issues=validateSundanceStockVerticalConfiguration(context);
  return <section aria-label="Sundance stock vertical configuration" className="space-y-2">

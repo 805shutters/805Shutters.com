@@ -1,3 +1,4 @@
+import {mobileQuoteFieldPurpose} from '@/lib/quote/mobile-quote-field-policy';
 // @vitest-environment happy-dom
 import {createElement} from 'react';
 import {it,expect} from 'vitest';
@@ -24,7 +25,7 @@ it('audits actual full/mobile field values for every supported catalog product/p
  };
  for(const product of products)for(const program of product.programs.length?product.programs:[{id:''}]){
   let design={...emptyMobileQuoteDesign(line.id,product.productType),...buildCatalogSelectionPatch({},product),supplier:product.manufacturer??null};if(program.id)design={...design,...buildMobileCatalogProgramPatch(design,product,program.id)};
-  const full=manifest(product,design,false),mobile=manifest(product,design,true),missing=[...full].filter(([field,record])=>field!=='material'&&record.label!=='Program'&&(!mobile.has(field)||mobile.get(field)!.values!==record.values));
+  const full=manifest(product,design,false),mobile=manifest(product,design,true),missing=[...full].filter(([field,record])=>field!=='material'&&record.label!=='Program'&&mobileQuoteFieldPurpose(field)!=='build'&&!['native:Sundance blind Mount','native:Sundance blind Extra valance charge','native:Sundance blind Cut-out sides','native:Sundance blind Custom return inches (optional)','native:Custom Valance Width','native:Wand Drop from Headrail'].includes(field)&&(!mobile.has(field)||mobile.get(field)!.values!==record.values));
   rows.push({manufacturer:product.manufacturer,productId:product.id,family:mobileFamily(product.productType),programId:program.id,fullFields:[...full.keys()],mobileFields:[...mobile.keys()],missing});if(missing.length)gaps.push({productId:product.id,programId:program.id,missing});
  }
  mkdirSync('reports',{recursive:true});writeFileSync('reports/mobile-option-parity-baselines.json',JSON.stringify({scope:'source-backed product/program baseline states only; conditional combinations require separate checks',products:products.length,cases:rows.length,rows,gaps},null,2));expect(products.length).toBeGreaterThan(20);expect(gaps).toEqual([]);

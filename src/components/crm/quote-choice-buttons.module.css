@@ -20,3 +20,10 @@
 
 .accessories { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 8px; }
 .accessories .accessory { margin: 0; }
+
+.confirmed{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:46px;padding:10px 12px;border:1px solid #7aa7c9;border-radius:8px;background:transparent;color:inherit;text-align:left;gap:12px}.confirmed span:last-child{font-size:12px}
+
+/* Mobile quick quotes keep alternatives side by side, including narrow phones. */
+.field[data-mobile-choice] .choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.field[data-mobile-choice] .choice{width:100%;min-width:0;overflow-wrap:anywhere;padding:10px;justify-content:flex-start}
+.field[data-mobile-choice] .choices>input,.field[data-mobile-choice] .choices>p{grid-column:1/-1}

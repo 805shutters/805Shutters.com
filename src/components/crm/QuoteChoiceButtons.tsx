@@ -1,6 +1,7 @@
 "use client";
 
 import { Children, isValidElement, useState, type ReactNode } from "react";
+import { useQuickSelectPresentation } from "@mts/components/ui/select";
 import styles from "./quote-choice-buttons.module.css";
 
 /** Button-based presentation of the same catalog values used by quote selects. */
@@ -10,6 +11,8 @@ export function QuoteChoiceButtons({ value, onChange, children, "aria-label": la
   children: ReactNode;
   "aria-label": string;
 }) {
+  const presentation = useQuickSelectPresentation();
+  const [expanded, setExpanded] = useState(false);
   const [search, setSearch] = useState("");
   const choices = Children.toArray(children).flatMap(child => {
     if (!isValidElement<{ value?: string; children: ReactNode; disabled?: boolean }>(child)) return [];
@@ -20,12 +23,13 @@ export function QuoteChoiceButtons({ value, onChange, children, "aria-label": la
   const selected = choices.find(choice => choice.value === value && value !== "");
   const searchable = choices.length > 12;
   const visible = choices.filter(choice => !searchable || choice.value === value || choice.label.toLowerCase().includes(search.trim().toLowerCase()));
-  return <div className={styles.field}>
+  if (presentation.collapseSelected && selected && !expanded) return <button type="button" data-choice-confirmed="true" aria-label={`Change ${label}: ${selected.label}`} className={styles.confirmed} onClick={()=>setExpanded(true)}><span>✓ {selected.label}</span><span>Change</span></button>;
+  return <div data-mobile-choice={presentation.enabled || undefined} className={styles.field}>
     {!value && placeholder && <p className={styles.selected}>{placeholder.label}</p>}
     {searchable && <input type="search" aria-label={`Search ${label}`} placeholder="Search choices…" value={search} onChange={event => setSearch(event.target.value)} className={styles.search} />}
     {searchable && selected && <p className={styles.selected}>Selected: {selected.label}</p>}
     <div role="group" aria-label={label} className={`${styles.choices} ${searchable ? styles.scrollChoices : ""}`}>
-      {visible.filter(choice => choice.value !== "" || choice.label.startsWith("All ")).map(choice => <button key={choice.value} type="button" aria-pressed={value === choice.value} disabled={choice.disabled} className={styles.choice} onClick={() => { if (choice.value !== value) onChange(choice.value); }}>
+      {visible.filter(choice => choice.value !== "" || choice.label.startsWith("All ")).map(choice => <button key={choice.value} type="button" aria-pressed={value === choice.value} disabled={choice.disabled} className={styles.choice} onClick={() => { if (choice.value !== value) onChange(choice.value); setExpanded(false); }}>
         <span className={styles.mark} aria-hidden="true">{value === choice.value ? "✓" : ""}</span>{choice.label}
       </button>)}
       {!visible.some(choice => choice.value !== "") && <p className={styles.selected}>No choices match your search.</p>}

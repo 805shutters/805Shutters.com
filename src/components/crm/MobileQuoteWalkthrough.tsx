@@ -1,6 +1,7 @@
 "use client";
 import { saveMobileQuoteForLater } from "@/lib/crm/mobile-quote-save";
 import { setMobileQuoteLinePrice, updateMobileQuoteQuantity } from "@/lib/crm/mobile-quote-draft";
+import {applyMobileSharedSelections} from '@/lib/crm/mobile-quote-shared-selections';
 import {MobileQuoteRequiredDetails} from "./MobileQuoteRequiredDetails";
 import {quotePairingLineOptions} from '@/lib/quote/quote-option-parity';
 
@@ -373,7 +374,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     if (!product) return;
     const base = emptyMobileQuoteDesign(active.id, product.productType);
     const patch = buildCatalogSelectionPatch({}, product);
-    setDraft(selectMobileQuoteProduct(draft, active.id, { productId: product.id, productType: product.productType, design: { ...base, ...patch, options_json: patch.options_json || {} } }));
+    setDraft(applyMobileSharedSelections(selectMobileQuoteProduct(draft, active.id, { productId: product.id, productType: product.productType, design: { ...base, ...patch, options_json: patch.options_json || {} } }),active.id));
   }
 
   function chooseAssignmentProduct(productId: string | null) {
@@ -409,12 +410,13 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
 
   async function saveAndNext() {
     if (!draft || !active || draft.submission.snapshot || savingRef.current || preparingPhotos.current) return;
+    if(draft.draftJob&&(!draft.draftJob.multiplier||!draft.draftJob.selectionMode)){setError('Choose a multiplier and Apply to All or Individual first.');return;}
     if (draft.draftJob && !supplierMeasurementBasis(active)) { setError('Choose the measurement basis or mount before entering dimensions.'); return; }
     const issue = validateMobileQuoteMeasurement(active);
     if (issue) { setError(issue); return; }
     savingRef.current = true; setBusy(true);
     try {
-      const next = saveMobileQuoteWindowAndAdvance(draft, active.id);
+      const next = applyMobileSharedSelections(saveMobileQuoteWindowAndAdvance(draft, active.id),active.id);
       await persistDraft(next, ++saveRevision.current);
       setDraft(next); setError(""); void refreshPrice(next); window.scrollTo(0, 0);
     } catch (reason) {
@@ -730,11 +732,11 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     })}
   </div>;
 
-  const supplierOptionsEditor = <div className={styles.step}><p className={styles.optionLegend}><span data-requirement="required">Required</span> quote selections · <span data-requirement="optional">Optional</span> additional details. Supplier entry may need additional selections.</p><label className={styles.quantity}>Quantity · Required<input aria-label="Opening quantity" type="number" min="1" step="1" value={active.quantity??1} disabled={Boolean(draft.submission.snapshot||draft.draftJob?.submittedSpec)} onChange={event=>setDraft(current=>current?updateMobileQuoteQuantity(current,active.id,Number(event.target.value)):current)}/></label>{activeFamily ? <SelectQuickButtonsProvider collapseSelected key={`${draft.id}:${active.id}:${active.activeProductId}`}><div className={styles.designCard}><DesignCard lineItem={mobileQuoteLine(draft, active)} lineNumber={draft.windows.findIndex((line) => line.id === active.id) + 1} designs={[activeFamily.design]} onSaveLinePrice={async (_variant, price) => {
+  const supplierOptionsEditor = <div className={styles.step}><p className={styles.optionLegend}><span data-state="required">Required</span> · <span data-state="confirmed">Confirmed</span> · <span data-state="optional">Optional</span></p><label className={styles.quantity}>Quantity · Required<input aria-label="Opening quantity" type="number" min="1" step="1" value={active.quantity??1} disabled={Boolean(draft.submission.snapshot||draft.draftJob?.submittedSpec)} onChange={event=>setDraft(current=>current?updateMobileQuoteQuantity(current,active.id,Number(event.target.value)):current)}/></label>{activeFamily ? <SelectQuickButtonsProvider collapseSelected key={`${draft.id}:${active.id}:${active.activeProductId}`}><div className={styles.designCard}><DesignCard lineItem={mobileQuoteLine(draft, active)} lineNumber={draft.windows.findIndex((line) => line.id === active.id) + 1} designs={[activeFamily.design]} onSaveLinePrice={async (_variant, price) => {
         if (draft.submission.snapshot || draft.draftJob?.submittedSpec) throw new Error("Finish the current submission before changing prices.");
         setDraft(setMobileQuoteLinePrice(draft, active.id, price));
-      }} authoritativeV2 mobilePresentation catalogProducts={catalog} sideBySideLineOptions={quotePairingLineOptions(mobileQuoteLine(draft,active),draft.windows.map(line=>mobileQuoteLine(draft,line)),draft.windows.flatMap(line=>line.activeProductId?[line.families[line.activeProductId].design]:[]))} onUpdateQuantity={quantity=>setDraft(current=>current?updateMobileQuoteQuantity(current,active.id,quantity):current)} onUpdateDesign={(design,origin) => { if (draft.submission.snapshot || draft.draftJob?.submittedSpec) { setError("Submission is in progress. Configuration is frozen until this submission completes."); return; } setDraft(current=>current?updateMobileQuoteDesign(current,design.line_item_id,design,origin==="user"):current); }} onCopyAll={() => undefined} onCopySome={() => undefined} onStack={() => undefined} copyMode="none" isCopyTarget={false} isSelectedTarget={false} onToggleCopyTarget={() => undefined} /></div></SelectQuickButtonsProvider> : <p className={styles.notice}>Choose an exact product above to load its current production configuration controls.</p>}<MobileQuoteRequiredDetails line={active} onDesign={patch=>setDraft(current=>current?updateMobileQuoteDesign(current,active.id,patch):current)} onInputs={patch=>setDraft(current=>current?patchSupplierInputs(current,active.id,patch):current)}/><label className={styles.notes}>Window notes · Optional<textarea value={active.notes} onChange={(event) => updateWindow({ notes: event.target.value })} /></label></div>;
-  const supplierRoomEditor = <MobileRoomSelector
+      }} authoritativeV2 mobilePresentation catalogProducts={catalog} sideBySideLineOptions={quotePairingLineOptions(mobileQuoteLine(draft,active),draft.windows.map(line=>mobileQuoteLine(draft,line)),draft.windows.flatMap(line=>line.activeProductId?[line.families[line.activeProductId].design]:[]))} onUpdateQuantity={quantity=>setDraft(current=>current?updateMobileQuoteQuantity(current,active.id,quantity):current)} onUpdateDesign={(design,origin) => { if (draft.submission.snapshot || draft.draftJob?.submittedSpec) { setError("Submission is in progress. Configuration is frozen until this submission completes."); return; } setDraft(current=>current?(origin==="user"?applyMobileSharedSelections(updateMobileQuoteDesign(current,design.line_item_id,design,true),design.line_item_id):updateMobileQuoteDesign(current,design.line_item_id,design)):current); }} onCopyAll={() => undefined} onCopySome={() => undefined} onStack={() => undefined} copyMode="none" isCopyTarget={false} isSelectedTarget={false} onToggleCopyTarget={() => undefined} /></div></SelectQuickButtonsProvider> : <p className={styles.notice}>Choose an exact product above to load its current production configuration controls.</p>}<SelectQuickButtonsProvider collapseSelected><MobileQuoteRequiredDetails line={active} onDesign={patch=>setDraft(current=>current?applyMobileSharedSelections(updateMobileQuoteDesign(current,active.id,patch,true),active.id):current)} onInputs={patch=>setDraft(current=>current?applyMobileSharedSelections(patchSupplierInputs(current,active.id,patch),active.id):current)}/></SelectQuickButtonsProvider><label className={styles.notes}>Window notes · Optional<textarea value={active.notes} onChange={(event) => updateWindow({ notes: event.target.value })} /></label></div>;
+  const supplierRoomEditor = <MobileRoomSelector buttonsOnly
     key={`room-editor:${draft.id}:${active.id}`}
     window={active}
     onSelectRoom={(room) => { setDraft((current) => current ? selectMobileQuoteRoom(current, active.id, room) : current); setError(""); }}
@@ -742,7 +744,7 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
     onCustomRoomChange={(room) => { setDraft((current) => current ? updateMobileQuoteCustomRoom(current, active.id, room) : current); setError(""); }}
     onSelectLetter={(letter) => { setDraft((current) => current ? selectMobileQuoteWindowLetter(current, active.id, letter) : current); setError(""); }}
   />;
-  const supplierDimensionEditor = <MobileMeasurementKeypad blankZero
+  const supplierDimensionEditor = <MobileMeasurementKeypad keypadOnly blankZero
     key={`measurement-keypad:${draft.id}:${active.id}`}
     widthWhole={active.widthWhole}
     widthFraction={active.widthFraction}
@@ -789,10 +791,10 @@ export function MobileQuoteWalkthrough({ session, onSessionExpired }: { session:
       }} authoritativeV2 mobilePresentation catalogProducts={catalog} sideBySideLineOptions={quotePairingLineOptions(mobileQuoteLine(draft,groupReference),draft.windows.map(line=>mobileQuoteLine(draft,line)),draft.windows.flatMap(line=>line.activeProductId?[line.families[line.activeProductId].design]:[]))} onUpdateDesign={(design) => { setDraft(current=>{if(!current)return current;const pairing=design.line_item_id!==groupReference.id||design.options_json?.side_by_side_match_line_id!==groupFamily.design.options_json?.side_by_side_match_line_id;return pairing?updateMobileQuoteDesign(current,design.line_item_id,design):updateMobileQuoteDesignBatch(current,groupFamily.productId,validGroupIds,groupFamily.design,design);}); }} onCopyAll={() => undefined} onCopySome={() => undefined} onStack={() => undefined} copyMode="none" isCopyTarget={false} isSelectedTarget={false} onToggleCopyTarget={() => undefined} /></div></SelectQuickButtonsProvider>}</div>}
       </> : <>
         {confirmedStack}
-        {draft.draftJob && workflowMode === "full-design" ? <MobileSupplierSequence key={active.id} draft={draft} line={active} products={catalog}
+        {draft.draftJob && workflowMode === "full-design" ? <MobileSupplierSequence key={active.id} draft={draft} line={active} products={catalog} onSettings={patch=>setDraft(current=>current?.draftJob?applyMobileSharedSelections({...current,draftJob:{...current.draftJob,...patch}},active.id):current)}
           chooseFamily={family => setDraft(current => current ? selectSupplierFamily(current, active.id, family) : current)}
           chooseManufacturer={manufacturer => setDraft(current => current ? selectSupplierManufacturer(current, active.id, manufacturer) : current)}
-          chooseMeasurementBasis={value => setDraft(current => current ? selectSupplierMeasurementBasis(current, active.id, value) : current)}
+          chooseMeasurementBasis={value => setDraft(current => current ? applyMobileSharedSelections(selectSupplierMeasurementBasis(current, active.id, value),active.id) : current)}
           chooseProduct={selectProduct} patch={patch => setDraft(current => current ? patchSupplierInputs(current, active.id, patch) : current)}
           roomEditor={supplierRoomEditor} dimensionEditor={supplierDimensionEditor} optionsEditor={supplierOptionsEditor} /> : <>
           {workflowMode === "full-design" && <div className={styles.step}><ManufacturerProductButtons key={`${draft.id}:${active.id}`} products={catalog} selectedManufacturer={manufacturer} selectedProductId={active.activeProductId} onSelectManufacturer={setManufacturer} onSelectProduct={selectProduct} loading={!catalog.length} mobileProductFamily={productFamily} onSelectMobileProductFamily={setProductFamily} compactMobile /></div>}

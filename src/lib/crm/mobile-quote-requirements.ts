@@ -1,3 +1,4 @@
+import {mobileControlSidePolicy} from '@/lib/quote/mobile-control-side';
 import type {MobileQuoteWindow} from './mobile-quote-draft';
 import {validateMobileQuoteMeasurement} from './mobile-quote-draft';
 import {lineInputs} from './mobile-supplier-spec';
@@ -31,7 +32,7 @@ export function mobileRequiredQuoteIssues(line:MobileQuoteWindow):string[]{
   if(['Faux Wood Blinds','Wood Blinds','Vertical Blinds'].includes(input.family??''))required('louver/slat size',text(o.slat_size,design.louver_size));
   if(input.family==='Roller Shades')required('fabric',text(input.colorFabric,design.fabric,o.fabric_color_code));
   const system=text(input.control,design.lift_system,design.tilt_type,o.control_type,o.operating_system)??'';required('operating system',system);
-  const side=text(input.controlSide,o.control_side,o.chain_location)??'';required('operating/control side',side);
+  const side=text(input.controlSide,o.control_side,o.chain_location)??'';const sidePolicy=mobileControlSidePolicy(design,system);if(sidePolicy.required){required('operating/control side',side);if(side&&sidePolicy.choices.length&&!sidePolicy.choices.some(choice=>choice.toLowerCase()===side.toLowerCase()))missing.push('manufacturer-supported control side');}
   if(/^(?:not applicable|n\/?a)$/i.test(side)&&!allowsNoOperatingSide(input.family,system))missing.push('applicable operating/control side');
  }
  return missing;

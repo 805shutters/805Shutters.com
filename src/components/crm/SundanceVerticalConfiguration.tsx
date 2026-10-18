@@ -1,4 +1,5 @@
 'use client';
+import {QuickQuoteSelect} from "./QuickQuoteSelect";
 import { nonNormanQuoteIssues } from "@/lib/quote/non-norman-ordering-only";
 import {SundanceVerticalComponents} from './SundanceVerticalComponents';
 import type { SalesQuoteDesign } from '@mts/types/quote';
@@ -7,7 +8,7 @@ import { sundanceVerticalDraws, sundanceVerticalBrackets, validateSundanceVertic
 export function SundanceVerticalConfiguration({options,widthInches,heightInches,onUpdateFields, pricingOnly = true}:{ pricingOnly?: boolean; options:Record<string,unknown>;widthInches:number;heightInches:number;onUpdateFields:(fields:Partial<SalesQuoteDesign>)=>void}){
  const classes='w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm';
  const field=(key:string,value:string)=>onUpdateFields({...(key==='mount_type'?{mount_type:value}:{}),options_json:{...options,[key]:value||null,...(key==='sundance_vertical_fulfillment'?{sundance_vertical_component_v1:null}:{})}});
- const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<select aria-label={`Sundance vertical ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(value=><option key={value}>{value}</option>)}</select></label>;
+ const select=(key:string,label:string,values:string[])=><label className="block text-sm">{label}<QuickQuoteSelect field={key} aria-label={`Sundance vertical ${label}`} className={classes} value={String(options[key]??'')} onChange={e=>field(key,e.target.value)}><option value="">Select</option>{values.map(value=><option key={value}>{value}</option>)}</QuickQuoteSelect></label>;
  const issues=nonNormanQuoteIssues(validateSundanceVerticalConfiguration({widthInches,heightInches,programId:String(options.catalog_program_id??''),configuration:options as SelectionRecord}), pricingOnly);
  const evidence=sundanceVerticalOptionEvidence(options,widthInches);
  return <>

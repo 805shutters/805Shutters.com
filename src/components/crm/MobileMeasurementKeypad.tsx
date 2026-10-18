@@ -102,7 +102,9 @@ export function MobileMeasurementKeypad({
   fractions = MOBILE_QUOTE_FRACTIONS,
   dimensionLabel,
   blankZero = false,
+  keypadOnly = false,
 }: {
+  keypadOnly?: boolean;
   widthWhole: number;
   widthFraction: string;
   heightWhole: number;
@@ -184,7 +186,8 @@ export function MobileMeasurementKeypad({
       <div className={styles.entryRow} style={!onOpenGrid ? { gridTemplateColumns: "minmax(0, 1fr)" } : undefined}>
         <label><span>{dimensionLabel ?? activeSide} whole inches</span><input
           type="text"
-          inputMode="numeric"
+          readOnly={keypadOnly}
+          inputMode={keypadOnly ? "none" : "numeric"}
           enterKeyHint={activeSide === "width" && !measurementAxis ? "next" : "done"}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
