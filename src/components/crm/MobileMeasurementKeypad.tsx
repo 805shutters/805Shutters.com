@@ -3,6 +3,7 @@
 import { DeleteIcon, Grid3X3 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MOBILE_QUOTE_FRACTIONS } from "@/lib/crm/mobile-quote-draft";
+import { useMobileQuoteStepCompletion } from "./MobileQuoteStepCompletion";
 import styles from "./MobileMeasurementKeypad.module.css";
 
 export type MobileMeasurementSide = "width" | "height";
@@ -121,6 +122,7 @@ export function MobileMeasurementKeypad({
   dimensionLabel?: string;
   blankZero?: boolean;
 }) {
+  const completeStep = useMobileQuoteStepCompletion();
   const [activeSide, setActiveSide] = useState<MobileMeasurementSide>(measurementAxis ?? initialSide);
   const [open, setOpen] = useState(true);
   const [replaceNext, setReplaceNext] = useState(true);
@@ -144,6 +146,7 @@ export function MobileMeasurementKeypad({
 
   function advanceOrDone() {
     if (activeSide === "width" && !measurementAxis) selectSide("height");
+    else if (completeStep && isMeasurementFilled(widthWhole, widthFraction) && isMeasurementFilled(heightWhole, heightFraction)) completeStep();
     else if (onDone) onDone();
     else setOpen(false);
   }
@@ -211,9 +214,15 @@ export function MobileMeasurementKeypad({
         </MeasurementKey>)}
       </div>
       <div className={styles.allFractions} role="group" aria-label={`${activeSide} fractions`}>
-        {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => onFractionChange(activeSide, value)}>{value === "0" ? "Even" : value}</button>)}
+        {fractions.map((value) => <button type="button" key={value} aria-pressed={fraction === value} disabled={whole >= 1000 && value !== "0"} onClick={() => {
+          onFractionChange(activeSide, value);
+          if (completeStep && isMeasurementFilled(whole, value)) {
+            if (activeSide === "width" && !measurementAxis) selectSide("height");
+            else if (isMeasurementFilled(widthWhole, widthFraction)) completeStep();
+          }
+        }}>{value === "0" ? "Even" : value}</button>)}
       </div>
-      <button type="button" className={styles.nextButton} onClick={advanceOrDone}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>
+      {!completeStep && <button type="button" className={styles.nextButton} onClick={advanceOrDone}>{activeSide === "width" && !measurementAxis ? "Next: height" : doneLabel}</button>}
     </div>}
   </section>;
 }

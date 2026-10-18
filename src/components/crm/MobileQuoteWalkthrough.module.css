@@ -74,3 +74,12 @@
 
 .shell .roomSelector .quickButtons,.shell .roomSelector .bedroomButtons,.shell .roomSelector .windowLetters>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .shell :global([data-quote-requirement=required] button[aria-pressed=true]){background:#173d2c!important;border-color:#79d8a3!important;color:#d8ffe9!important;box-shadow:none!important}
+
+/* Keep the mobile workspace dark even when the desktop quote stylesheet loads later. */
+.shell:global(.mts-quote-scope){--background:0 0% 0%;--foreground:0 0% 100%;--card:197 12% 11%;--card-foreground:0 0% 100%;--popover:197 12% 11%;--popover-foreground:0 0% 100%;background:#000;color:#fff;color-scheme:dark}
+.shell .header h1,.shell .sectionTitle h2,.shell .homeContent h3{color:#fff}
+.shell .header>a,.shell .header>button,.shell .tabs button{color:#fff}
+.shell .tabs button[aria-current=true]{background:#b7efd0;color:#102019}
+.shell .search input{color:#fff;caret-color:#fff}
+.shell .search input::placeholder{color:#aebbb5;opacity:1}
+.shell .customer{color:#fff;background:#000}

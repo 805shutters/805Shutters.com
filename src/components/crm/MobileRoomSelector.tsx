@@ -9,6 +9,7 @@ import {
   type MobileQuoteRoomChoice,
   type MobileQuoteWindow,
 } from "@/lib/crm/mobile-quote-draft";
+import { useMobileQuoteStepCompletion } from "./MobileQuoteStepCompletion";
 import styles from "./MobileQuoteWalkthrough.module.css";
 
 export function MobileRoomSelector({
@@ -26,6 +27,7 @@ export function MobileRoomSelector({
   onCustomRoomChange: (room: string) => void;
   onSelectLetter: (letter: string) => void;
 }) {
+  const completeStep = useMobileQuoteStepCompletion();
   const choice = mobileQuoteRoomChoice(window);
   const concreteRoom = hasConcreteMobileQuoteRoom(window);
   const selectedBedroom = choice === "Bedroom" && /^Bedroom [1-5]$/.test(window.room) ? window.room : "";
@@ -104,8 +106,8 @@ export function MobileRoomSelector({
             aria-expanded={selected ? letterOpen : undefined}
             aria-label={selected ? `${letter} selected. ${letterOpen ? "Choose a window letter" : "Show window letters"}` : undefined}
             onClick={() => {
-              if (selected) setLetterOpen((open) => !open);
-              else { onSelectLetter(letter); setLetterOpen(false); }
+              if (selected && !letterOpen) setLetterOpen(true);
+              else { onSelectLetter(letter); setLetterOpen(false); completeStep?.(); }
             }}
           >{letter}</button>;
         })}
