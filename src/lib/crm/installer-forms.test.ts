@@ -11,8 +11,8 @@ import {
 } from "./installer-forms";
 import { pendingInstallationHandoffDeliveryState } from "./installation-handoff";
 
-it("routes installer packets to MTS Agent 101", () => {
-  expect(INSTALLER_FORM_RECIPIENT).toBe("mtsinstallations@gmail.com");
+it("routes signed-contract installer packets to the approved Grok inbox", () => {
+  expect(INSTALLER_FORM_RECIPIENT).toBe("wcbot@mail.grokbot.com");
 });
 
 describe("installer COD adjustment", () => {

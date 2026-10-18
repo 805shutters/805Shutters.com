@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
 export const INSTALLATION_HANDOFF_SCHEMA_VERSION = "805-mts-installation-handoff-v1";
-export const INSTALLATION_HANDOFF_RECIPIENT = "mtsinstallations@gmail.com";
+export const INSTALLATION_HANDOFF_RECIPIENT = "wcbot@mail.grokbot.com";
+const PREVIOUS_INSTALLATION_HANDOFF_RECIPIENT = "mtsinstallations@gmail.com";
 // Read historical delivery receipts without changing who received them.
 const LEGACY_INSTALLATION_HANDOFF_RECIPIENT = "mtsagent101@gmail.com";
 
@@ -50,7 +51,7 @@ export type InstallationHandoffDeliveryState = {
   source_version: string;
   source_sha256: string;
   status: "pending_delivery" | "sent" | "email_failed";
-  email_recipient: typeof INSTALLATION_HANDOFF_RECIPIENT | typeof LEGACY_INSTALLATION_HANDOFF_RECIPIENT;
+  email_recipient: typeof INSTALLATION_HANDOFF_RECIPIENT | typeof PREVIOUS_INSTALLATION_HANDOFF_RECIPIENT | typeof LEGACY_INSTALLATION_HANDOFF_RECIPIENT;
   email_message_id: string | null;
   email_error: string | null;
   sent_at: string | null;
@@ -235,6 +236,7 @@ export function installationHandoffDeliveryState(
     !["technical_measure", "no_measure"].includes(String(row.handoff_kind)) ||
     !["pending_delivery", "sent", "email_failed"].includes(String(row.status)) ||
     (row.email_recipient !== INSTALLATION_HANDOFF_RECIPIENT &&
+      row.email_recipient !== PREVIOUS_INSTALLATION_HANDOFF_RECIPIENT &&
       row.email_recipient !== LEGACY_INSTALLATION_HANDOFF_RECIPIENT)
   ) {
     return null;
