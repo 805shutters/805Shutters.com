@@ -1,18 +1,20 @@
 # 805 Shutters phone service
 
-Production target: the existing dedicated 805 Supabase project, Twilio, and an xAI hosted voice agent. No Render deployment or always-running audio bridge is required by this design. **Activation is disabled until provider bindings and a temporary-number pilot are verified.**
+Production target: the existing dedicated 805 Supabase project, Twilio Media Streams, and the Grok Voice API. No Render deployment is required. **Activation stays off until the flags below are set. This change does not configure the phone number.**
 
 ## Runtime
 
-`supabase/functions/voice-805/index.ts` serves short signed webhooks. Twilio sends audio directly to xAI over SIP. PostgreSQL stores call state, messages, shared follow-up status, caller links and the provider outbox. The CRM's Call Center proxies authenticated staff actions using an explicit Mike/Jessica role mapping and a signed, replay-protected request.
+`supabase/functions/voice-805/index.ts` serves short signed webhooks. Twilio plays the greeting, then rings Mike and Jessica together. If neither person answers, a signed Media Stream connects the caller to Grok. PostgreSQL stores call state, messages, and the provider outbox. The CRM Call Center proxies authenticated staff actions with an explicit Mike/Jessica role mapping and a signed, replay-protected request.
 
-`supabase-store.mjs` uses optimistic compare-and-swap transactions. No carrier request occurs inside a retried database transaction. Outbox claims commit before network submission. Unknown carrier outcomes stay uncertain for reconciliation; they are never blindly redialed or resent. Both initial staff dial requests start in the same parallel batch. Press 1 acceptance chooses one owner atomically; answered status requires a signed caller conference join after staff connection and AI removal.
+`supabase-store.mjs` uses optimistic compare-and-swap transactions. No carrier request occurs inside a retried database transaction. Outbox claims commit before network submission. Unknown carrier outcomes stay uncertain for reconciliation; they are never blindly redialed or resent. Both initial staff dial requests start in the same parallel batch. Answering-machine detection chooses one human owner atomically; a machine or recorded greeting is not an answer. Answered status requires a signed caller conference join after staff connection and AI removal.
 
 The pilot stores each dataset in a single JSON document with a 16 MiB ceiling. This is a bounded pilot implementation, not an unlimited archive. Inspect database size before and during the pilot; normalize/archive records with a reviewed retention policy before general production cutover. No automatic data deletion is enabled. PostgreSQL backups apply; the old SQLite backup tool does not back up Supabase.
 
 ## Call behavior
 
-Every caller hears exactly **Hi, thank you for calling 805 Shutters.** Incoming CRM lookup starts before returning the SIP response but does not delay that response. A unique customer gets a first-name greeting and a status-specific conversational hint. Shared numbers require clarification. Unknown callers hear the hold/connection line and go straight to simultaneous Mike/Jessica ringing during configured hours. No scheduling or lead questionnaire precedes their transfer.
+Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.** Mike and Jessica then ring at the same time. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
+
+If both legs are no-answer, or the offer window (default 20 seconds) expires, Grok apologizes and asks whether the caller wants to leave a message or schedule a consultation. Messages and appointments are read back and saved only after a spoken yes. Scheduling asks when first, then uses the existing calendar, address geocoding, and travel checks. A missing requested time offers the closest open times. If nothing fits, the caller can leave a message. If Grok fails, Twilio records a voicemail.
 
 Caller ID is not identity verification. The agent receives no balances, addresses, appointments or private notes. It routes sensitive requests to staff. A failed lookup also routes to staff instead of inventing customer context. Outside configured hours, or on no-answer/provider failure, Twilio collects a callback message. Partial messages survive hangup and remain explicitly unconfirmed.
 

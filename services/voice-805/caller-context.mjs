@@ -1,4 +1,13 @@
-export const COMMON_GREETING = 'Hi, thank you for calling 805 Shutters.';
+export const COMMON_GREETING = 'Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.';
+export function phaseInstruction(phase, callerId = '') {
+  const idText = callerId && callerId !== 'anonymous' ? ` The caller ID is ${callerId}.` : ' There is no caller ID.';
+  if (phase === 'greeting') return `The carrier already says exactly: ${COMMON_GREETING} Staff are offered as soon as that sentence finishes. Do not ask questions first.`;
+  if (phase === 'followup') return 'Nobody answered. Apologize, then offer exactly two choices: leave a message, or schedule a consultation.';
+  if (phase === 'message') return `The team is unavailable. Apologize and ask whether the caller wants to leave a message or schedule a consultation.${idText} Ask when a consultation is wanted before city or address. Read the message or appointment back and wait for a spoken yes. Silence, ambiguity, or a correction does not save.`;
+  if (phase === 'schedule') return `Ask when they want the consultation before city or address. Use returned open times only. If the requested time is unavailable, offer the closest returned times. Confirm with a spoken yes, then save. If nothing fits, take a message.${idText}`;
+  if (phase === 'human' || phase === 'handoff' || phase === 'offering') return 'The team is being connected. Do not schedule, and do not stay on a private staff call.';
+  return 'Wait for the calling service.';
+}
 // These are the actual CRM job/quote statuses. Hints guide conversation; they do
 // not authorize disclosure of balances, addresses, dates, notes, or identities.
 export const STATUS_TOPICS = Object.freeze({
@@ -21,15 +30,13 @@ export const STATUS_TOPICS = Object.freeze({
 });
 export function callerContext(result, overrides = {}) {
   if (!result || !['matched','unmatched','ambiguous'].includes(result.match)) return { match: 'unavailable', action: 'transfer', instruction: 'Lookup unavailable. Offer a team connection without assuming this is a new customer.' };
-  if (result.match === 'unmatched') return { match: 'unmatched', action: 'transfer', instruction: 'Say: Please hold while I connect you with a team member. Then request both staff members. Do not ask intake or booking questions.' };
-  if (result.match === 'ambiguous') return { match: 'ambiguous', action: 'clarify', instruction: 'Ask who is calling. Never list matching customer names or expose their records. Offer a team member to identify the correct file.' };
+  if (result.match === 'unmatched') return { match: 'unmatched', action: 'transfer', instruction: 'Say the company greeting exactly, then call greeting_complete so both team members ring. Do not interview this caller first. Caller ID is not identity verification.' };
+  if (result.match === 'ambiguous') return { match: 'ambiguous', action: 'transfer', instruction: 'Say the company greeting exactly, then call greeting_complete so both team members ring. Do not list matching customer names. Caller ID is not identity verification.' };
   const firstName = typeof result.first_name === 'string' && /^[\p{L}][\p{L} .’-]{0,39}$/u.test(result.first_name) ? result.first_name : null;
   const statuses = [...new Set((result.statuses || []).filter(s => Object.hasOwn(STATUS_TOPICS,s)))];
   const status = statuses.length === 1 && (result.statuses || []).every(s => Object.hasOwn(STATUS_TOPICS,s)) ? statuses[0] : null;
-  return { match: 'matched', action: 'assist', firstName, status,
-    instruction: [firstName ? `After the common greeting, say: Hi, ${firstName}.` : 'Ask how you can help today.',
-      status ? (typeof overrides[status] === 'string' ? overrides[status] : STATUS_TOPICS[status]) : 'There may be several projects or no clear current status. Ask which project or question they are calling about.',
-      'Caller ID is not identity verification. Do not disclose balances, payment history, addresses, installation dates, or private notes. A request to confirm installation or discuss a balance goes to a team member. Never claim a booking or payment changed.'].join(' ') };
+  return { match: 'matched', action: 'transfer', firstName, status,
+    instruction: 'Say the company greeting exactly, then call greeting_complete so both team members ring. Do not keep a known caller in a conversation first. Caller ID is not identity verification. Do not disclose balances, payment history, addresses, installation dates, or private notes. Never claim a booking or payment changed.' };
 }
 export async function prefetchContext(state, callId, client, overrides) {
   const call = await state.transact((_e,s) => s.get('call', callId));

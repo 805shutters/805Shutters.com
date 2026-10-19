@@ -57,7 +57,7 @@ async function ringing(s) {
 async function human(s) {
   let c = await ringing(s);
   const o = c.offers[0];
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   await s.worker.drain();
   c = s.store.get("call", c.id);
   s.engine.joined(c.id, c.ownerSid, "main", "CFmain", id());
@@ -72,6 +72,9 @@ async function message(s) {
     Date.parse("2026-10-07T05:00:00Z"),
   );
   s.engine.greeted(c.id, id());
+  s.engine.tick(Date.now() + 30000);
+  await s.worker.drain();
+  s.engine.beginMessage(c.id, id());
   return s.engine.saveMessage(
     c.id,
     {
@@ -104,7 +107,7 @@ test("Pacific schedule covers DST and holidays with exclusive close boundary", (
   assert.equal(isOpen(c, new Date("2026-10-06T18:00:00Z")), false);
   assert.equal(isOpen({ ...c, hours: null }), false);
 });
-test("both offers start after greeting; pickup without press 1 never wins", async (t) => {
+test("both offers start after greeting; a machine answer never wins", async (t) => {
   const s = setup(t);
   const c = await ringing(s);
   assert.equal(c.offers.length, 2);
@@ -112,7 +115,7 @@ test("both offers start after greeting; pickup without press 1 never wins", asyn
     s.provider.operations.filter((o) => o.type === "dial").map((o) => o.staff),
     ["mike", "jessica"],
   );
-  s.engine.accept(c.id, c.offers[0].id, c.offers[0].sid, "");
+  s.engine.accept(c.id, c.offers[0].id, c.offers[0].sid, "machine_start");
   assert.equal(s.store.get("call", c.id).owner, null);
 });
 test("competing acceptances atomically pick one; losing and late-created legs are canceled", async (t) => {
@@ -120,8 +123,8 @@ test("competing acceptances atomically pick one; losing and late-created legs ar
   const c = await ringing(s),
     [a, b] = c.offers;
   await Promise.all([
-    Promise.resolve().then(() => s.engine.accept(c.id, a.id, a.sid, "1")),
-    Promise.resolve().then(() => s.engine.accept(c.id, b.id, b.sid, "1")),
+    Promise.resolve().then(() => s.engine.accept(c.id, a.id, a.sid, "human")),
+    Promise.resolve().then(() => s.engine.accept(c.id, b.id, b.sid, "human")),
   ]);
   await s.worker.drain();
   assert.equal(s.store.get("call", c.id).owner, a.staff);
@@ -139,16 +142,16 @@ test("duplicate inbound and duplicate acceptance do not create extra calls or di
     c = await ringing(s),
     o = c.offers[0];
   assert.equal(s.engine.inbound(c.sid, c.from).id, c.id);
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   const count = s.store.list("effect").length;
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   assert.equal(s.store.list("effect").length, count);
 });
 test("caller is not routed to human conference before staff join and AI disconnect", async (t) => {
   const s = setup(t),
     c = await ringing(s),
     o = c.offers[0];
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   await s.worker.drain();
   assert.equal(
     s.provider.operations.some((x) => x.type === "route" && x.sid === c.sid),
@@ -173,7 +176,7 @@ test("hold precedes private consultation; transfer waits for target join before 
   assert.equal(s.provider.operations[0].hold, true);
   assert.ok(s.provider.operations.findIndex((o) => o.room === "consult") > 0);
   const target = c.offers.find((o) => o.purpose === "consult");
-  s.engine.accept(c.id, target.id, target.sid, "1");
+  s.engine.accept(c.id, target.id, target.sid, "human");
   await s.worker.drain();
   c = s.store.get("call", c.id);
   s.engine.joined(c.id, c.ownerSid, "consult", "CFconsult", id());
@@ -214,7 +217,7 @@ test("watchdog recovers handoff; caller hangup prevents pending outbound work", 
   const s = setup(t),
     c = await ringing(s),
     o = c.offers[0];
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   s.engine.tick(Date.now() + 30000);
   assert.equal(s.store.get("call", c.id).phase, "message");
   s.engine.ended(c.id, c.sid, id());
@@ -259,6 +262,8 @@ test("database error rolls back both saved message and recipient intents", async
     Date.parse("2026-10-07T05:00:00Z"),
   );
   s.engine.greeted(c.id, id());
+  s.engine.tick(Date.now() + 30000);
+  s.engine.beginMessage(c.id, id());
   const put = s.store.put.bind(s.store);
   s.store.put = (kind, value) => {
     if (kind === "notification" && value.recipient === "jessica")
@@ -309,6 +314,8 @@ test("durable store survives restart with message, badge count, customer link an
       Date.parse("2026-10-07T05:00:00Z"),
     );
     engine.greeted(c.id, id());
+    engine.tick(Date.now() + 30000);
+    engine.beginMessage(c.id, id());
     const m = engine.saveMessage(
       c.id,
       {
@@ -357,7 +364,7 @@ test("callback dials staff first and customer only after staff accepts and joins
     false,
   );
   const o = c.offers[0];
-  s.engine.accept(c.id, o.id, o.sid, "1");
+  s.engine.accept(c.id, o.id, o.sid, "human");
   await s.worker.drain();
   c = s.store.get("call", c.id);
   s.engine.joined(c.id, c.ownerSid, "main", "CFmain", id());
@@ -444,6 +451,8 @@ test("partial message survives caller hangup but cannot initiate an unconfirmed 
       Date.parse("2026-10-07T05:00:00Z"),
     );
   s.engine.greeted(c.id, id());
+  s.engine.tick(Date.now() + 30000);
+  s.engine.beginMessage(c.id, id());
   s.engine.updateDraft(c.id, {
     name: "Caller",
     callback: "+15555550100",

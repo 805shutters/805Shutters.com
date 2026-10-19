@@ -8,9 +8,35 @@ export class ProviderError extends Error {
   }
 }
 export const roomName = (call, room) => `805-${call.id}-${room}`;
+export function staffDialParams(config, call, offer) {
+  const base = `${config.origin}/twilio/offer/${call.id}/${offer.id}`;
+  // Enable returns human or machine_start within a few seconds. DetectMessageEnd
+  // waits for a beep and can outlast the 20s offer, so machine_end_* is accepted
+  // if the carrier sends it but is not what we ask Twilio to wait for.
+  return [
+    ["To", config.staff[offer.staff].destination],
+    ["From", config.number],
+    ["Url", base],
+    ["StatusCallback", base + "/status"],
+    ["StatusCallbackEvent", "initiated"],
+    ["StatusCallbackEvent", "ringing"],
+    ["StatusCallbackEvent", "answered"],
+    ["StatusCallbackEvent", "completed"],
+    ["MachineDetection", "Enable"],
+    ["AsyncAmd", "true"],
+    ["AsyncAmdStatusCallback", base + "/amd"],
+    ["AsyncAmdStatusCallbackMethod", "POST"],
+    ["MachineDetectionTimeout", "8"],
+    ["Timeout", String(config.offerSeconds)],
+  ];
+}
 export function conferenceXml(config, call, room) {
+  const wait =
+    room === "main"
+      ? ` waitUrl="${xml(config.origin + "/twilio/ringback")}" waitMethod="POST"`
+      : "";
   return twiml(
-    `<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false" statusCallback="${xml(config.origin + "/twilio/conference/" + call.id + "/" + room)}" statusCallbackEvent="join leave end">${xml(roomName(call, room))}</Conference></Dial>`,
+    `<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false"${wait} statusCallback="${xml(config.origin + "/twilio/conference/" + call.id + "/" + room)}" statusCallbackEvent="join leave end">${xml(roomName(call, room))}</Conference></Dial>`,
   );
 }
 export class TwilioProvider {
@@ -20,7 +46,7 @@ export class TwilioProvider {
   }
   async request(path, params, method = "POST") {
     const c = this.config;
-    if (c.mode !== "live" || !c.liveAuthorized)
+    if (!((c.mode === "live" && c.liveAuthorized) || (c.mode === "pilot" && c.pilotAuthorized)))
       throw new ProviderError("Live provider operations disabled");
     let response;
     try {
@@ -52,21 +78,11 @@ export class TwilioProvider {
     }
   }
   async dial(call, offer) {
-    const c = this.config,
-      base = `${c.origin}/twilio/offer/${call.id}/${offer.id}`;
-    return this.request("Calls.json", [
-      ["To", c.staff[offer.staff].destination],
-      ["From", c.number],
-      ["Url", base],
-      ["StatusCallback", base + "/status"],
-      ["StatusCallbackEvent", "initiated"],
-      ["StatusCallbackEvent", "ringing"],
-      ["StatusCallbackEvent", "answered"],
-      ["StatusCallbackEvent", "completed"],
-      ["Timeout", String(c.offerSeconds)],
-    ]);
+    return this.request("Calls.json", staffDialParams(this.config, call, offer));
   }
   dialCustomer(call) {
+    if (this.config.mode === "pilot")
+      throw new ProviderError("Customer callbacks disabled during pilot");
     return this.request("Calls.json", [
       ["To", call.outboundTarget],
       ["From", this.config.number],
@@ -95,12 +111,41 @@ export class TwilioProvider {
     return this.request(`Calls/${sid}.json`, { Status: "completed" });
   }
   fallback(call) {
+    const agent =
+      this.config.transport === "media" &&
+      !call.mediaFailed &&
+      !call.mediaStreamSid;
     return this.request(`Calls/${call.sid}.json`, {
-      Url: `${this.config.origin}/twilio/fallback/${call.id}/name`,
+      Url: agent
+        ? `${this.config.origin}/twilio/agent/${call.id}`
+        : `${this.config.origin}/twilio/fallback/${call.id}/voicemail`,
       Method: "POST",
     });
   }
+  connectAgent(call) {
+    return this.request(`Calls/${call.sid}.json`, {
+      Url: `${this.config.origin}/twilio/agent/${call.id}`,
+      Method: "POST",
+    });
+  }
+  ringback(call) {
+    return this.route(call, call.sid, "main");
+  }
+  resumeAgent(call) {
+    return this.request(`Calls/${call.sid}.json`, {
+      Url: `${this.config.origin}/twilio/resume/${call.id}`,
+      Method: "POST",
+    });
+  }
+  record(call) {
+    return this.request(`Calls/${call.sid}/Recordings.json`, {
+      RecordingStatusCallback: `${this.config.origin}/twilio/recording/${call.id}`,
+      RecordingStatusCallbackEvent: "completed",
+    });
+  }
   send(item, message) {
+    if (this.config.mode === "pilot")
+      throw new ProviderError("SMS disabled during pilot");
     return this.request("Messages.json", {
       To: item.destination,
       From: this.config.number,
@@ -155,6 +200,18 @@ export class SimulationProvider {
   }
   fallback(call) {
     return this.run("fallback", { callId: call.id });
+  }
+  ringback(call) {
+    return this.run("ringback", { callId: call.id });
+  }
+  resumeAgent(call) {
+    return this.run("resume-agent", { callId: call.id });
+  }
+  connectAgent(call) {
+    return this.run("connect-agent", { callId: call.id });
+  }
+  record(call) {
+    return this.run("record", { callId: call.id });
   }
   send(item, message) {
     return this.run("sms", { itemId: item.id, messageId: message.id });
@@ -254,6 +311,19 @@ export class Worker {
       case "hangup":
         await p.hangup(d.sid);
         break;
+      case "ringback":
+        if (c.phase === "offering") await p.ringback(c);
+        break;
+      case "reconnect-agent":
+        if (c.phase === "followup") await p.resumeAgent(c);
+        break;
+      case "connect-agent":
+        if (c.phase === "message" && !c.mediaStreamSid && !c.mediaFailed)
+          await p.connectAgent(c);
+        break;
+      case "record":
+        if (c.phase === "message") await p.record(c);
+        break;
       case "fallback":
         this.media?.disconnect(c.id);
         this.engine.aiDisconnected(c.id, `fallback-ai:${item.id}`);
@@ -336,7 +406,7 @@ export class Worker {
       }
       if (
         kind === "effect" &&
-        !["hangup", "fallback", "disconnect-ai"].includes(item.type) &&
+        !["hangup", "fallback", "disconnect-ai", "record"].includes(item.type) &&
         !retry
       )
         this.engine.failed(

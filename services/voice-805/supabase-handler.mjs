@@ -1,17 +1,17 @@
 import { Conflict } from './engine.mjs';
 import { equal, hmac, twilioSignature, twiml, xml } from './security.mjs';
 import { e164 } from './config.mjs';
-import { prefetchContext } from './caller-context.mjs';
-import { supabaseReadiness } from './supabase-config.mjs';
+import { phaseInstruction, prefetchContext } from './caller-context.mjs';
+import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
-import { fallback } from './fallback.mjs';
+import { fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
+import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
 const json = (value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const xmlResponse = value=>new Response(value,{headers:{'content-type':'text/xml','cache-control':'no-store'}});
-const say = value=>`<Say>${xml(value)}</Say>`;
 export function callToken(c,call) { const value=`${call.id}.${call.createdAt+2*60*60*1000}`;return `${value}.${hmac(c.toolsKey,value).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}`; }
 function verifyToken(c,token) { if(typeof token!=='string')return null;const [id,expires,signature]=token.split('.');if(!/^[0-9a-f-]{36}$/.test(id||'')||Number(expires)<Date.now()||!Number.isFinite(Number(expires)))return null;return equal(hmac(c.toolsKey,`${id}.${expires}`).replaceAll('+','-').replaceAll('/','_').replaceAll('=',''),signature)?id:null; }
-export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
+export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUntil=()=>{}}) {
  const c=state.config;
  const run=fn=>state.transact(fn);
  const queue=()=>waitUntil(worker.drain().catch(()=>{}));
@@ -27,6 +27,15 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
    if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
    const path=u.pathname.slice(prefix.length)||'/';
    if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
+   if(path.startsWith('/twilio/media/')) {
+    if(!canOperate(c))return json({error:'805 calling is in standby'},503);
+    const id=path.slice('/twilio/media/'.length);
+    if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
+    if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
+    const call=await run((_e,s)=>s.get('call',id));
+    if(!call||call.phase!=='message'||call.mediaStreamSid||call.mediaFailed||Date.now()>call.deadline)return json({error:'Call unavailable'},409);
+    return upgradeMedia(request,call);
+   }
    if(!['GET','POST'].includes(request.method))return json({error:'Method rejected'},405);
    if(Number(request.headers.get('content-length')||0)>65536)return json({error:'Body too large'},413);
    const raw=await request.text();if(new TextEncoder().encode(raw).length>65536)return json({error:'Body too large'},413);
@@ -49,7 +58,8 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
      if(parts[1]==='calls'&&parts[3]==='link')return e.link(parts[2],data,actor,true);
      if(parts[1]==='messages'&&parts[3]==='ack')return e.acknowledge(parts[2],actor);
      if(parts[1]==='messages'&&parts[3]==='followup')return e.followup(parts[2],actor,data.status,data.note);
-     if(!supabaseReadiness(c).ready)throw new Conflict('Calling is not activated');
+     if(!canOperate(c))throw new Conflict('Calling is not activated');
+     if(c.mode==='pilot'&&parts[1]==='messages'&&['callback','text'].includes(parts[3]))throw new Conflict('Outbound contact is disabled during the pilot');
      if(parts[1]==='calls'&&parts[3]==='command')return e.command(parts[2],actor,data.revision,data.command,data.commandId);
      if(parts[1]==='messages'&&parts[3]==='callback')return e.callback(parts[2],actor,data.commandId);
      if(parts[1]==='messages'&&parts[3]==='text')return e.sendText(parts[2],actor,data.text,data.consent,data.commandId);
@@ -58,30 +68,50 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
    }
    if(path==='/worker'&&request.method==='POST') {
     if(c.workerKey.length<32||!equal(request.headers.get('authorization'),`Bearer ${c.workerKey}`))return json({error:'Rejected'},401);
-    await worker.drain();return json({ok:true,callingEnabled:supabaseReadiness(c).ready});
+    await worker.drain();return json({ok:true,callingEnabled:canOperate(c)});
    }
-   if(!supabaseReadiness(c).ready)return json({error:'805 calling is in standby'},503);
+   if(path==='/twilio/fallback.xml'||path==='/twilio/fallback-recording'||path==='/twilio/fallback-transcription') {
+    if(request.method!=='POST')return json({error:'POST required'},405);
+    if(!request.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded'))return json({error:'Form required'},415);
+    const fp=new URLSearchParams(raw);
+    if(fp.get('AccountSid')!==c.accountSid||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,fp,request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
+    if(path==='/twilio/fallback.xml')return xmlResponse(voicemailXml(c.origin));
+    try { await saveCallback(client,callbackFields(fp,fp.get('TranscriptionText')||'')); }
+    catch(error){ await logFailure(client,'crm_write_failed',null,error.message).catch(()=>{}); }
+    return xmlResponse(twiml(''));
+   }
+   if(!canOperate(c))return json({error:'805 calling is in standby'},503);
    if(request.method!=='POST')return json({error:'POST required'},405);
    if(path==='/agent') {
+    if(c.transport==='media')return json({error:'Hosted agent tools disabled'},403);
     if(!equal(request.headers.get('authorization'),`Bearer ${c.toolsKey}`))return json({error:'Rejected'},401);
     const data=JSON.parse(raw);const id=verifyToken(c,data.callToken);if(!id)return json({error:'Invalid call token'},401);
     if(data.action==='context') {
      let call=await run((_e,s)=>s.get('call',id));if(!call||call.phase==='ended')return json({error:'Call unavailable'},404);
      if(!call.context)await prefetchContext(state,id,client,c.statusTopics);
-     call=await run((_e,s)=>s.get('call',id));return json(call.context);
+     call=await run((_e,s)=>s.get('call',id));
+     return json({...call.context,phase:call.phase,callerId:call.from,greeting:c.greeting,instruction:phaseInstruction(call.phase,call.from)});
+    }
+    if(data.action==='save_message') {
+     const saved=await run((e,s)=>{const message=e.saveMessage(id,data.message,`agent-message:${id}`);return {message,call:s.get('call',id)};});
+     try { const row=await saveCallback(client,callbackFields({get:(k)=>({CallSid:saved.call.sid,From:saved.call.from,RecordingUrl:''}[k])},data.message?.transcript||'',saved.call,data.message)); queue(); return json({saved:true,callback:row}); }
+     catch(error){ await logFailure(client,'crm_write_failed',id,error.message).catch(()=>{}); queue(); return json({saved:false,error:'The message was kept on the call, but the callback list could not be updated.'}); }
     }
     const value=await run((e,s)=>{
      const call=s.get('call',id);if(!call||call.phase==='ended')throw new Conflict('Call unavailable');
      if(data.action==='greeting_complete') {
-      if(!call.context)throw new Conflict('Caller context still pending');
       e.greeted(id,`greeting:${id}`);return {ok:true,phase:s.get('call',id).phase};
+     }
+     if(data.action==='choose') {
+      if(data.choice==='message'){const next=e.beginMessage(id,`choose-message:${id}`);return {ok:next.phase==='message',phase:next.phase,callerId:next.from};}
+      if(data.choice==='schedule'){const next=e.beginSchedule(id,`choose-schedule:${id}`);if(next.phase!=='schedule')throw new Conflict('Scheduling is only offered when nobody answers. 805 will call the customer back.');return {ok:true,phase:'schedule'};}
+      throw new Conflict('Choose message or schedule');
      }
      if(data.action==='transfer') {
       if(call.phase==='greeting')throw new Conflict('Complete the audible greeting first');
       e.requestStaff(id,`agent-transfer:${id}`);return {ok:true,phase:s.get('call',id).phase,answered:false};
      }
      if(data.action==='draft')return e.updateDraft(id,data.message);
-     if(data.action==='save_message')return {saved:!!e.saveMessage(id,data.message,`agent-message:${id}`)};
      throw new Conflict('Unsupported agent action');
     });queue();return json(value);
    }
@@ -91,11 +121,10 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
    if(p.get('AccountSid')!==c.accountSid||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,p,request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
    if(path==='/twilio/inbound') {
     if(p.get('To')!==c.number||!/^CA[0-9a-f]{32}$/i.test(sid||''))return json({error:'Wrong call'},403);
+    if(c.mode==='pilot'&&!c.pilotCallers.includes(p.get('From')))return xmlResponse(twiml('<Say>This test line is not available.</Say><Hangup/>'));
     const call=await run(e=>e.inbound(sid,e164.test(p.get('From')||'')?p.get('From'):'anonymous'));
-    // Start the lookup now; do not await it before returning the SIP connection.
     waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(()=>{}));
-    const sip=`${c.sipUri}?X-805-Call-Token=${encodeURIComponent(callToken(c,call))}`;
-    return xmlResponse(twiml(`<Dial action="${xml(c.origin+'/twilio/continue/'+call.id)}" method="POST"><Sip>${xml(sip)}</Sip></Dial>`));
+    return xmlResponse(twiml(`<Say>${xml(c.greeting)}</Say><Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
    }
    if(path==='/twilio/text') {
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
@@ -108,6 +137,8 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
     await run((e,s)=>{const id=s.state.inbound[sid];if(!id)throw new Conflict('Unknown caller');if(terminal.includes(p.get('CallStatus')))e.ended(id,sid,`parent-status:${sid}:${p.get('CallStatus')}`);});queue();return xmlResponse(twiml(''));
    }
+   if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml());
+   let downId=null;
    const response=await run((e,s)=>{
     const call=s.get('call',parts[2]);if(!call)throw new Conflict('Unknown call');
     const eventId=[parts[1],call.id,sid,p.get('SequenceNumber'),p.get('StatusCallbackEvent'),p.get('CallStatus'),p.get('ConferenceSid')].join(':');
@@ -115,8 +146,8 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
      const offer=call.offers.find(o=>o.id===parts[3]);if(!offer||p.get('To')!==c.staff[offer.staff].destination||p.get('From')!==c.number)throw new Conflict('Wrong staff leg');
      e.bind(call.id,offer.id,sid);
      if(parts[4]==='status') {if(terminal.includes(p.get('CallStatus')))e.ended(call.id,sid,eventId);return twiml('');}
-     if(parts[4]==='accept') {const next=e.accept(call.id,offer.id,sid,p.get('Digits'));return next.offers.find(o=>o.id===offer.id)?.status==='accepted'?twiml('<Pause length="60"/>'):twiml('<Hangup/>');}
-     return ['pending','ringing'].includes(s.get('call',call.id).offers.find(o=>o.id===offer.id).status)?twiml(`<Gather input="dtmf" numDigits="1" timeout="${c.offerSeconds}" action="${xml(c.origin+path+'/accept')}">${say('805 Shutters call. Press 1 to accept.')}</Gather><Hangup/>`):twiml('<Hangup/>');
+     if(parts[4]==='amd') {const next=e.accept(call.id,offer.id,sid,p.get('AnsweredBy')||'unknown');return next.offers.find(o=>o.id===offer.id)?.status==='accepted'?twiml('<Pause length="60"/>'):twiml('<Hangup/>');}
+     return ['pending','ringing'].includes(s.get('call',call.id).offers.find(o=>o.id===offer.id).status)?twiml(`<Pause length="${c.offerSeconds}"/><Hangup/>`):twiml('<Hangup/>');
     }
     if(parts[1]==='conference') {
      const room=parts[3];if(!['main','consult'].includes(room)||![call.sid,...call.offers.map(o=>o.sid)].includes(sid)||p.get('FriendlyName')!==`805-${call.id}-${room}`)throw new Conflict('Wrong conference');
@@ -133,14 +164,61 @@ export function createSupabaseHandler({state,client,worker,waitUntil=()=>{}}) {
     }
     if(sid!==call.sid)throw new Conflict('Wrong caller leg');
     if(parts[1]==='status'){if(terminal.includes(p.get('CallStatus')))e.ended(call.id,sid,eventId);return twiml('');}
-    if(parts[1]==='fallback')return fallback(e,call,parts[3],p,c);
-    if(parts[1]==='continue') {
+    if(parts[1]==='greeted'){
+     e.greeted(call.id,`carrier-greeting:${call.id}`);
+     const current=s.get('call',call.id);
+     if(current.phase==='ended')return twiml('<Hangup/>');
+     if(['offering','handoff','human','held'].includes(current.phase))return conferenceXml(c,current,'main');
+     return twiml('<Hangup/>');
+    }
+    if(parts[1]==='agent'){
      if(call.phase==='ended')return twiml('<Hangup/>');
-     if(call.phase==='handoff'&&!call.ai)return conferenceXml(c,call,'main');
-     e.failed(call.id,'AI SIP call ended',eventId);for(const effect of s.list('effect'))if(effect.callId===call.id&&effect.type==='fallback'&&effect.status==='pending')s.put('effect',{...effect,status:'done',reason:'Fallback returned directly in TwiML'});return twiml(`<Redirect>${xml(c.origin+'/twilio/fallback/'+call.id+'/name')}</Redirect>`);
+     if(call.phase!=='message'||c.transport!=='media'||call.mediaFailed||call.mediaStreamSid)return fallback(e,call,'voicemail',p,c);
+     const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+call.id;
+     return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+call.id)}</Redirect>`);
+    }
+    if(parts[1]==='fallback')return fallback(e,call,parts[3],p,c);
+    if(parts[1]==='recording'||parts[1]==='transcription'){
+     const transcript=p.get('TranscriptionText')||'';
+     if(parts[1]==='recording'&&p.get('RecordingStatus')&&p.get('RecordingStatus')!=='completed')return twiml('');
+     if(parts[1]==='transcription'&&!transcript)return twiml('');
+     return {callback:callbackFields(p,transcript,call)};
+    }
+    if(parts[1]==='resume'){
+     if(call.phase==='ended')return twiml('<Hangup/>');
+     if(c.transport==='media')return twiml(`<Redirect method="POST">${xml(c.origin+'/twilio/agent/'+call.id)}</Redirect>`);
+     if(!['followup','message','schedule'].includes(call.phase))return twiml('<Hangup/>');
+     const sip=`${c.sipUri}?X-805-Call-Token=${encodeURIComponent(callToken(c,call))}`;
+     return twiml(`<Dial action="${xml(c.origin+'/twilio/continue/'+call.id)}" method="POST"><Sip>${xml(sip)}</Sip></Dial>`);
+    }
+    if(parts[1]==='continue') {
+     const mail=()=>voicemailXml(c.origin,`/twilio/recording/${call.id}`,`/twilio/transcription/${call.id}`);
+     if(call.phase==='ended')return twiml('<Hangup/>');
+     if(call.phase==='voicemail'||(call.phase==='message'&&call.mediaFailed))return mail();
+     if(['offering','handoff','human','held'].includes(call.phase))return conferenceXml(c,call,'main');
+     if(call.phase==='greeting'||call.phase==='followup'){const before=call.phase;const next=e.agentDown(call.id,eventId);if(before!=='voicemail'&&next.phase==='voicemail')downId=next.id;return mail();}
+     e.failed(call.id,'AI SIP call ended',eventId);for(const effect of s.list('effect'))if(effect.callId===call.id&&effect.type==='fallback'&&effect.status==='pending')s.put('effect',{...effect,status:'done',reason:'Fallback returned directly in TwiML'});return mail();
     }
     throw new Conflict('Unknown callback');
-   });queue();return xmlResponse(response);
-  } catch(error) {return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
+   });
+   if(response&&response.callback){try{await saveCallback(client,response.callback);}catch(error){await logFailure(client,'crm_write_failed',null,error.message).catch(()=>{});}queue();return xmlResponse(twiml(''));}
+   if(downId)waitUntil(logFailure(client,'agent_down',downId,'The voice agent disconnected.').catch(()=>{}));
+   queue();return xmlResponse(response);
+  } catch(error) {if(!(error instanceof Conflict))waitUntil(logFailure(client,'webhook_error',null,error.message).catch(()=>{}));return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
+ };
+}
+function callbackFields(p, transcript, call, message) {
+ const read=key=>typeof p?.get==='function'?p.get(key)||'':'';
+ return {
+  p_call_sid:read('CallSid')||call?.sid,
+  p_caller_name:message?.name||'',
+  p_callback_number:message?.callback||read('From')||call?.from||'',
+  p_reason:message?.reason||message?.message||(read('RecordingUrl')?'Voicemail recording':''),
+  p_transcript:transcript||message?.transcript||'',
+  p_recording_url:read('RecordingUrl'),
+  p_call_time:call?.createdAt?new Date(call.createdAt).toISOString():new Date().toISOString(),
+  p_phone:call?.from||read('From')||'',
+  p_status:'needs_callback',
+  p_appointment_id:null,
  };
 }

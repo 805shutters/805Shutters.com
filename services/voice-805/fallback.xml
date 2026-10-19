@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Thank you for calling 805 Shutters. Our phone system is temporarily unavailable. We are unable to save a message right now. Please try your call again shortly.</Say>
+  <Say>Thank you for calling 805 Shutters. We appreciate you supporting local business. No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.</Say>
+  <Record maxLength="120" playBeep="true" timeout="5" transcribe="true" transcribeCallback="ORIGIN/twilio/fallback-transcription" recordingStatusCallback="ORIGIN/twilio/fallback-recording" recordingStatusCallbackEvent="completed"/>
   <Hangup/>
 </Response>
