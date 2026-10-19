@@ -15,6 +15,7 @@ import {
 } from "./provider.mjs";
 import { MediaBridge } from "./media.mjs";
 import { authorizeControl, twilioSignature, xml, twiml } from "./security.mjs";
+import { fallback } from "./fallback.mjs";
 
 async function body(req) {
   let raw = "";
@@ -245,26 +246,24 @@ export function createService(config = loadConfig(), options = {}) {
               )
             )
               engine.ended(call.id, sid, eventId);
-          } else if (parts[4] === "accept") {
+          } else if (parts[4] === "amd") {
             const next = engine.accept(
               call.id,
               offer.id,
               sid,
-              params.get("Digits"),
+              params.get("AnsweredBy") || "unknown",
             );
             const accepted =
               next.offers.find((o) => o.id === offer.id)?.status === "accepted";
             response = accepted
               ? twiml('<Pause length="60"/>')
-              : twiml(say("This call is no longer available.") + "<Hangup/>");
+              : twiml("<Hangup/>");
           } else {
             const current = store
               .get("call", call.id)
               .offers.find((o) => o.id === offer.id);
             response = ["ringing", "pending"].includes(current.status)
-              ? twiml(
-                  `<Gather input="dtmf" numDigits="1" timeout="${config.offerSeconds}" action="${xml(config.origin + req.url + "/accept")}">${say("805 Shutters call. Press 1 to accept.")}</Gather><Hangup/>`,
-                )
+              ? twiml(`<Pause length="${config.offerSeconds}"/><Hangup/>`)
               : twiml("<Hangup/>");
           }
         } else if (parts[1] === "customer") {
@@ -394,63 +393,6 @@ function streamXml(config, media, call) {
     `<Connect><Stream url="${xml(config.origin.replace(/^https:/, "wss:") + "/media")}"><Parameter name="callId" value="${call.id}"/><Parameter name="token" value="${xml(media.token(call))}"/></Stream></Connect><Redirect>${xml(config.origin + "/twilio/continue/" + call.id)}</Redirect>`,
   );
 }
-function fallback(engine, call, step, p, config) {
-  if (call.phase === "ended") return twiml("<Hangup/>");
-  const url = (next) =>
-    xml(`${config.origin}/twilio/fallback/${call.id}/${next}`);
-  const gather = (next, prompt, input = "speech", extra = "") =>
-    twiml(
-      `<Gather input="${input}" actionOnEmptyResult="true" action="${url(next)}" timeout="7" speechTimeout="auto" ${extra}>${say(prompt)}</Gather>`,
-    );
-  const current = engine.store.get("draft", call.id) || { id: call.id };
-  if (step === "name")
-    return gather("number", config.fallbackGreeting + " Please say your name.");
-  if (step === "number") {
-    current.name = (p.get("SpeechResult") || "").slice(0, 120);
-    engine.store.put("draft", current);
-    return gather(
-      "message",
-      "Enter your callback number including country code, followed by the pound key.",
-      "dtmf",
-      'finishOnKey="#"',
-    );
-  }
-  if (step === "message") {
-    current.callback = "+" + (p.get("Digits") || "");
-    engine.store.put("draft", current);
-    return gather("confirm", "Please say your short message.");
-  }
-  if (step === "confirm") {
-    current.message = (p.get("SpeechResult") || "").slice(0, 2000);
-    engine.store.put("draft", current);
-    return gather(
-      "save",
-      `Your name is ${current.name}. Your callback number is ${[...(current.callback || "")].join(" ")}. Your message is ${current.message}. Press 1 to confirm and save, or any other key to start again.`,
-      "dtmf",
-      'numDigits="1"',
-    );
-  }
-  if (step === "save" && p.get("Digits") === "1") {
-    try {
-      engine.saveMessage(
-        call.id,
-        { ...current, confirmed: true },
-        `fallback:${call.id}`,
-      );
-      return twiml(
-        say(
-          "Your message has been saved for the 805 Shutters team. Thank you.",
-        ) + "<Hangup/>",
-      );
-    } catch {
-      return twiml(
-        say("Your message could not be saved. Please try again.") +
-          `<Redirect>${url("name")}</Redirect>`,
-      );
-    }
-  }
-  return twiml(`<Redirect>${url("name")}</Redirect>`);
-}
 function simulate(engine, provider, action, d) {
   const id = d.id,
     call = id ? engine.store.get("call", id) : null;
@@ -469,7 +411,7 @@ function simulate(engine, provider, action, d) {
       (o) => o.staff === d.staff && o.status === "ringing",
     );
     if (!offer) throw new Conflict("No ringing offer");
-    return engine.accept(id, offer.id, offer.sid, "1");
+    return engine.accept(id, offer.id, offer.sid, "human");
   }
   if (action === "join") {
     const sid =

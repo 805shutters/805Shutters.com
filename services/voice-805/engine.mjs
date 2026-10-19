@@ -246,18 +246,42 @@ export class Engine {
   greeted(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (c.phase !== "greeting") return;
-      if (c.context && ["matched", "ambiguous"].includes(c.context.match)) {
-        c.phase = "assistant"; c.deadline = Date.now() + 300000; return;
-      }
-      if (c.open) {
-        c.phase = "offering";
-        c.deadline = Date.now() + this.config.offerSeconds * 1000;
-        for (const staff of staffIds) this.offer(c, staff);
-      } else {
-        c.phase = "message";
-        c.deadline = Date.now() + 300000;
-        this.effect(c, "collect");
-      }
+      // Every caller, known or not, is offered to both people after the greeting.
+      c.phase = "offering";
+      c.deadline = Date.now() + this.config.offerSeconds * 1000;
+      for (const staff of staffIds) this.offer(c, staff);
+      this.effect(c, "ringback");
+    });
+  }
+  beginMessage(id, eventId) {
+    return this.change(id, eventId, (c) => {
+      if (c.owner || !["followup", "schedule"].includes(c.phase)) return;
+      c.phase = "message";
+      c.deadline = Date.now() + 300000;
+      this.effect(c, "record");
+    });
+  }
+  beginSchedule(id, eventId) {
+    return this.change(id, eventId, (c) => {
+      if (c.owner || c.phase !== "followup") return;
+      c.phase = "schedule";
+      c.deadline = Date.now() + 300000;
+    });
+  }
+  markScheduled(id, eventId, appointment) {
+    return this.change(id, eventId, (c) => {
+      if (c.owner || c.phase !== "schedule") return;
+      c.phase = "booked";
+      c.appointmentId = appointment.appointmentId;
+      c.deadline = Date.now() + 45000;
+    });
+  }
+  agentDown(id, eventId) {
+    return this.change(id, eventId, (c) => {
+      if (!["greeting", "followup"].includes(c.phase)) return;
+      c.phase = "voicemail";
+      c.alert = "agent_down";
+      c.deadline = Date.now() + 180000;
     });
   }
   requestStaff(id, eventId) {
@@ -281,23 +305,28 @@ export class Engine {
         this.effect(c, "hangup", { sid });
     });
   }
-  accept(id, offerId, sid, digits, now = Date.now()) {
-    return this.change(id, `accept:${offerId}:${sid}:${digits}`, (c) => {
+  accept(id, offerId, sid, answeredBy, now = Date.now()) {
+    const result = String(answeredBy || "unknown").trim().toLowerCase();
+    return this.change(id, `amd:${offerId}:${sid}:${result}`, (c) => {
       const o = c.offers.find((o) => o.id === offerId);
       if (!o || o.sid !== sid) throw new Conflict("Unbound staff callback");
       if (o.status === "accepted") return;
-      if (
-        digits !== "1" ||
-        now >= o.expiresAt ||
-        o.status !== "ringing" ||
+      const human = result === "human";
+      const eligible =
+        human &&
+        now < o.expiresAt &&
+        o.status === "ringing" &&
         (o.purpose === "initial"
-          ? c.phase !== "offering" || c.owner
+          ? c.phase === "offering" && !c.owner
           : o.purpose === "callback"
-            ? c.phase !== "callback-offering"
-            : c.phase !== "consult-ringing")
-      ) {
-        o.status = "canceled";
-        this.effect(c, "hangup", { sid });
+            ? c.phase === "callback-offering"
+            : c.phase === "consult-ringing");
+      if (!eligible) {
+        if (["pending", "ringing"].includes(o.status)) {
+          o.status = human ? "canceled" : "no-answer";
+          this.effect(c, "hangup", { sid });
+        }
+        if (o.purpose === "initial") this.followIfUnanswered(c, now);
         return;
       }
       o.status = "accepted";
@@ -335,8 +364,16 @@ export class Engine {
           c.deadline = Date.now() + 60000;
           this.effect(c, "dial-customer");
         }
-        if (sid === c.ownerSid && c.phase === "handoff")
+        if (sid === c.sid && c.phase === "offering") c.callerJoined = true;
+        if (sid === c.ownerSid && c.phase === "handoff") {
           this.effect(c, "disconnect-ai");
+          if (c.callerJoined) {
+            c.ai = false;
+            c.answeredAt = Date.now();
+            c.phase = "human";
+            c.deadline = null;
+          }
+        }
         if (sid === c.sid && c.phase === "handoff" && !c.ai) {
           c.callerJoined = true;
           c.answeredAt = Date.now();
@@ -469,7 +506,7 @@ export class Engine {
   }
   end(c) {
     const draft = this.store.get("draft", c.id);
-    if (!c.messageId && draft?.message) {
+    if (!c.messageId && !c.booking?.verified && draft?.message) {
       const m = this.store.put("message", {
         id: randomUUID(),
         callId: c.id,
@@ -535,7 +572,12 @@ export class Engine {
         return;
       }
       const offer = c.offers.find((o) => o.sid === sid);
-      if (offer) offer.status = "ended";
+      if (offer) {
+        const answered = offer.status === "accepted";
+        offer.status = "ended";
+        if (!answered && offer.purpose === "initial")
+          this.followIfUnanswered(c, Date.now());
+      }
       if (
         sid === c.targetSid &&
         ["consult-ringing", "consult", "completing"].includes(c.phase)
@@ -567,6 +609,27 @@ export class Engine {
     // A fresh AI stream or Twilio speech/DTMF fallback removes caller from any held conference.
     this.effect(c, "fallback", { sid: c.sid });
   }
+  startFollowup(c, now = Date.now()) {
+    if (c.phase !== "offering") return;
+    c.phase = "message";
+    c.deadline = now + 180000;
+    for (const o of c.offers)
+      if (["pending", "ringing"].includes(o.status)) {
+        o.status = "expired";
+        if (o.sid) this.effect(c, "hangup", { sid: o.sid });
+      }
+    this.effect(c, "connect-agent");
+  }
+  followIfUnanswered(c, now) {
+    if (c.phase !== "offering" || c.owner) return;
+    const initial = c.offers.filter((o) => o.purpose === "initial");
+    if (
+      !initial.length ||
+      initial.some((o) => ["pending", "ringing", "accepted"].includes(o.status))
+    )
+      return;
+    this.startFollowup(c, now);
+  }
   failed(id, reason, eventId) {
     return this.change(id, eventId, (c) => this.recover(c, reason));
   }
@@ -574,21 +637,23 @@ export class Engine {
     for (const call of this.store.list("call"))
       if (call.deadline && call.deadline <= now && call.phase !== "ended")
         this.change(call.id, `timeout:${call.revision}`, (c) => {
-          if (c.phase === "offering") {
+          if (c.phase === "offering") this.startFollowup(c, now);
+          else if (c.phase === "followup") {
             c.phase = "message";
-            c.deadline = now + 300000;
-            for (const o of c.offers) {
-              o.status = "expired";
-              if (o.sid) this.effect(c, "hangup", { sid: o.sid });
-            }
-            this.effect(c, "collect");
+            c.deadline = now + 180000;
+            this.effect(c, "fallback");
           } else if (
             ["consult", "consult-ringing", "completing", "held"].includes(
               c.phase,
             )
           )
             this.resume(c);
-          else if (c.phase === "message" || c.direction === "outbound")
+          else if (
+            c.phase === "message" ||
+            c.phase === "booked" ||
+            c.phase === "voicemail" ||
+            c.direction === "outbound"
+          )
             this.end(c);
           else this.recover(c, "Call transition timed out");
         });

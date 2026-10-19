@@ -1,5 +1,5 @@
 import { applyDelivery } from './provider.mjs';
-import { supabaseReadiness } from './supabase-config.mjs';
+import { canOperate } from './supabase-config.mjs';
 
 // At-most-once submission: an expired claim becomes uncertain, never pending.
 // Provider callbacks may bind SIDs before REST returns; merge fresh state only.
@@ -40,6 +40,10 @@ export class SupabaseWorker {
             if (allowed) { await p.hold(c,d.hold); await change(e=>e.holdApplied(c.id,d.hold,`effect:${item.id}`)); } break;
           }
           case 'hangup': await p.hangup(d.sid); break;
+          case 'ringback': if (c.phase==='offering') await p.ringback(c); break;
+          case 'reconnect-agent': if (c.phase==='followup') await p.resumeAgent(c); break;
+          case 'connect-agent': if (c.phase==='message' && !c.mediaStreamSid && !c.mediaFailed) await p.connectAgent(c); break;
+          case 'record': if (c.phase==='message') await p.record(c); break;
           case 'disconnect-ai':
             // Redirecting the parent Twilio leg terminates its SIP child. The signed
             // caller conference-join callback confirms this before marking human.
@@ -62,7 +66,7 @@ export class SupabaseWorker {
     }
   }
   async drain() {
-    if(!supabaseReadiness(this.state.config).ready) return;
+    if(!canOperate(this.state.config)) return;
     await this.state.transact((e,s)=>{s.recover();e.tick();});
     // Batch claims commit before IO; both initial ringing requests start together.
     for(let round=0;round<4;round++) {

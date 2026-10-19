@@ -12,6 +12,8 @@ type Call = {
   held: boolean;
   revision: number;
   recovery?: string;
+  booking?: { verified?: boolean; calendarEventId?: string };
+  bookingAttention?: string;
   answeredAt?: number;
   createdAt: number;
   customerId?: string;
@@ -481,6 +483,8 @@ export function PhoneDesk({
                           ? "Message saved"
                           : "No message saved"}
                       </p>
+                      {c.booking?.verified && <p className="mt-2 text-sm text-emerald-800">Consultation saved in the CRM calendar.</p>}
+                      {c.bookingAttention && <p className="mt-2 text-sm text-amber-800">Booking needs review: check the calendar before making another appointment.</p>}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           className={button}
