@@ -29,7 +29,7 @@ export type JobTrackingViewItem = {
   signedAt: string | null; signatureRecorded: boolean; contractUrl: string | null; contracts: CrmCustomerContract[];
   orderEmails: CrmOrderCogsEmail[]; installEmails: CrmInstallationInvoiceEmail[]; pendingQuotes: CrmQuote[];
   vendor: string | null; orderReference: string | null; orderedAt: string | null; installedAt: string | null;
-  measureStatus: string; notes: string; nextAction: string; manualStage: boolean;
+  technicalMeasureUrl?: string | null; measureStatus: string; notes: string; nextAction: string; manualStage: boolean;
 };
 
 export type JobTrackingViewInput = { fulfillment?: import("./fulfillment").FulfillmentData; ownedActions?: import("./owned-actions").OwnedAction[]; jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[]; files: CrmCustomerFile[]; installerOutcomes?: InstallerOutcomeEvidence[]; sourceHealth?: ProgressSourceHealth[]; orderCogsEmails?: CrmOrderCogsEmail[]; installationInvoiceEmails?: CrmInstallationInvoiceEmail[] };
@@ -163,6 +163,7 @@ export function buildJobTrackingView(input: JobTrackingViewInput): JobTrackingVi
       vendor: row?.manufacturerName || quote?.manufacturer_name || null,
       orderReference: row?.manufacturerOrderRef || quote?.manufacturer_order_ref || null,
       orderedAt: validDate(recordedDates.ordered_at) || validDate(quote?.ordered_at), installedAt: validDate(recordedDates.installed_at) || validDate(quote?.installed_at),
+      technicalMeasureUrl: measure.form_status === "submitted" && typeof measure.form_id === "string" && measure.form_id.trim() ? `/crm/technical-measures/${encodeURIComponent(measure.form_id.trim())}` : null,
       measureStatus: measure.status === "measured" ? "Measured" : measure.status === "not_needed" ? "Not needed" : measure.status === "needed" ? "Needed" : "Not recorded",
       notes: [...new Set([row?.notes, quote?.notes, job?.notes].filter(Boolean))].join("\n"), nextAction: job?.next_action || "", manualStage: Boolean(override),
     };

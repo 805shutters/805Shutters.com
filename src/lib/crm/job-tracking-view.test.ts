@@ -20,6 +20,16 @@ function orderEmail(overrides: Partial<CrmOrderCogsEmail> = {}): CrmOrderCogsEma
 }
 
 describe("job tracking projection", () => {
+  it("links only a submitted technical measure from the exact job", () => {
+    const meta = { measure_needed: { status: "measured", form_status: "submitted", form_id: "form-1" } };
+    expect(view({ jobs: [job({ meta })], quotes: [quote()] })[0].technicalMeasureUrl).toBe("/crm/technical-measures/form-1");
+    for (const measure of [undefined, { status: "not_needed" }, { status: "measured" }, { form_status: "draft", form_id: "form-1" }, { form_status: "awaiting_signature", form_id: "form-1" }, { form_status: "submitted", form_id: " " }]) {
+      expect(view({ jobs: [job({ meta: { measure_needed: measure } })], quotes: [quote()] })[0].technicalMeasureUrl).toBeNull();
+    }
+    const items = view({ jobs: [job({ meta }), job({ id: "job-2" })], quotes: [quote(), quote({ id: "quote-2", job_id: "job-2" })] });
+    expect(items.find(item => item.job?.id === "job-2")?.technicalMeasureUrl).toBeNull();
+  });
+
   it("does not turn an unsold quote into a purchased order from the parent label", () => {
     const item = view({ jobs: [job()], quotes: [quote({ status: "sent", sold_at: null, signed_at: null })] })[0];
     expect(item.isSale).toBe(false);
