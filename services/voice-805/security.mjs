@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { Buffer } from "node:buffer";
 export const hmac = (key, value, algorithm = "sha256") =>
   createHmac(algorithm, key).update(value).digest("base64");
 export function equal(a, b) {
@@ -50,6 +51,22 @@ export function authorizeControl(store, config, req, raw) {
     .run(nonce, Date.now()).changes
     ? actor
     : null;
+}
+export function publicError(error) {
+  const errorClass =
+    (error && (error.name || error.constructor?.name)) || "Error";
+  const message = String(error?.message || "")
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/\b[A-Za-z0-9+/_=-]{32,}\b/g, "[redacted]")
+    .slice(0, 300);
+  return { errorClass, message };
+}
+export function reportFailure(where, error) {
+  const failure = publicError(error);
+  console.error(
+    JSON.stringify({ event: "voice-805-failure", where, ...failure }),
+  );
+  return failure;
 }
 export function xml(value) {
   return String(value).replace(

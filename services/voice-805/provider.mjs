@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { xml, twiml } from "./security.mjs";
+import { Buffer } from "node:buffer";
+import { xml, twiml, reportFailure } from "./security.mjs";
 export class ProviderError extends Error {
   constructor(message, uncertain = false, retryable = false) {
     super(message);
@@ -62,7 +63,8 @@ export class TwilioProvider {
           signal: AbortSignal.timeout(12000),
         },
       );
-    } catch {
+    } catch (error) {
+      reportFailure("twilio-request", error);
       throw new ProviderError("Provider request outcome unknown", true);
     }
     if (!response.ok)
@@ -358,6 +360,7 @@ export class Worker {
         );
       }
     } catch (error) {
+      reportFailure("worker-effect", error);
       const current = this.store.get(kind, item.id);
       if (
         kind === "notification" &&

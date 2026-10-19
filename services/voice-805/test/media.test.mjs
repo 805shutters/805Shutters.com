@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { Buffer } from "node:buffer";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Store } from "../store.mjs";

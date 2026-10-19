@@ -1,3 +1,4 @@
+import { reportFailure } from './security.mjs';
 export const COMMON_GREETING = 'Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.';
 export function phaseInstruction(phase, callerId = '') {
   const idText = callerId && callerId !== 'anonymous' ? ` The caller ID is ${callerId}.` : ' There is no caller ID.';
@@ -42,7 +43,7 @@ export async function prefetchContext(state, callId, client, overrides) {
   const call = await state.transact((_e,s) => s.get('call', callId));
   if (!call || call.phase === 'ended') return;
   let value;
-  try { const { data, error } = await client.rpc('voice_805_caller_context', { p_phone: call.from }); if (error) throw error; value = data; } catch { value = null; }
+  try { const { data, error } = await client.rpc('voice_805_caller_context', { p_phone: call.from }); if (error) throw error; value = data; } catch (error) { reportFailure('caller-lookup', error); value = null; }
   const context = callerContext(value, overrides);
   await state.transact((e) => e.change(callId, `lookup:${callId}`, c => {
     c.context = context; c.matchStatus = context.match;
