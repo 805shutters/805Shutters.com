@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { reportFailure } from './security.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
@@ -25,13 +26,13 @@ export class GrokMediaSession {
     socket.onmessage = event => {
       let data;
       try { data = JSON.parse(event.data); } catch { return this.enqueue(() => this.fail('Invalid carrier event')); }
-      if (data.event === 'stop' && this.streamSid && data.streamSid === this.streamSid) { void this.carrier(data).catch(() => this.finish()); return; }
+      if (data.event === 'stop' && this.streamSid && data.streamSid === this.streamSid) { void this.carrier(data).catch(error => { reportFailure('media-stop', error); this.finish(); }); return; }
       this.enqueue(() => this.carrier(data));
     };
     socket.onclose = () => this.enqueue(() => this.fail('Carrier connection closed'));
     socket.onerror = () => this.enqueue(() => this.fail('Carrier audio connection failed'));
   }
-  enqueue(task) { this.chain = this.chain.then(async () => { if (!this.closed) await task(); }).catch(() => this.fail('Voice session unavailable')); return this.chain; }
+  enqueue(task) { this.chain = this.chain.then(async () => { if (!this.closed) await task(); }).catch(error => { reportFailure('media-session', error); this.fail('Voice session unavailable'); }); return this.chain; }
   sendAI(value) { if (this.ai?.readyState === 1) this.ai.send(JSON.stringify(value)); }
   sendCarrier(value) { if (this.socket.readyState === 1) this.socket.send(JSON.stringify({ ...value, streamSid: this.streamSid })); }
   async current() { return this.state.transact((_e, s) => s.get('call', this.call.id)); }

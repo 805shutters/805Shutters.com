@@ -1,5 +1,6 @@
 import { applyDelivery } from './provider.mjs';
 import { canOperate } from './supabase-config.mjs';
+import { reportFailure } from './security.mjs';
 
 // At-most-once submission: an expired claim becomes uncertain, never pending.
 // Provider callbacks may bind SIDs before REST returns; merge fresh state only.
@@ -56,6 +57,7 @@ export class SupabaseWorker {
       }
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
+      reportFailure('worker-effect', error);
       await change((_e,s)=>{
         const fresh=s.get(kind,item.id);
         if(kind==='notification' && fresh.sid) return fresh;

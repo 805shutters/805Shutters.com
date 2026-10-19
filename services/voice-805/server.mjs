@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { Buffer } from "node:buffer";
 import { WebSocketServer } from "ws";
 import { loadConfig, readiness } from "./config.mjs";
 import { Store } from "./store.mjs";
@@ -14,7 +15,7 @@ import {
   conferenceXml,
 } from "./provider.mjs";
 import { MediaBridge } from "./media.mjs";
-import { authorizeControl, twilioSignature, xml, twiml } from "./security.mjs";
+import { authorizeControl, twilioSignature, xml, twiml, reportFailure } from "./security.mjs";
 import { fallback } from "./fallback.mjs";
 
 async function body(req) {
@@ -338,7 +339,8 @@ export function createService(config = loadConfig(), options = {}) {
     } catch (error) {
       if (error instanceof Conflict)
         return reply(res, 409, { error: error.message });
-      // Never log caller text, credentials, or raw provider bodies.
+      // Class and redacted message only: never caller text, credentials, or provider bodies.
+      reportFailure("phone-server", error);
       reply(res, 500, {
         error: "Phone operation could not be completed. Refresh or retry.",
       });
@@ -366,12 +368,12 @@ export function createService(config = loadConfig(), options = {}) {
   const timer =
     config.mode === "standby"
       ? null
-      : setInterval(() => void worker.drain().catch(() => {}), 1000);
+      : setInterval(() => void worker.drain().catch((error) => reportFailure("phone-server-drain", error)), 1000);
   timer?.unref();
   const reconciliation =
     config.mode === "standby"
       ? null
-      : setInterval(() => void worker.reconcile().catch(() => {}), 60000);
+      : setInterval(() => void worker.reconcile().catch((error) => reportFailure("phone-server-reconcile", error)), 60000);
   reconciliation?.unref();
   return {
     server,

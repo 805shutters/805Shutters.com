@@ -1,5 +1,5 @@
 import { Conflict } from './engine.mjs';
-import { equal, hmac, twilioSignature, twiml, xml } from './security.mjs';
+import { equal, hmac, reportFailure, twilioSignature, twiml, xml } from './security.mjs';
 import { e164 } from './config.mjs';
 import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
@@ -14,7 +14,7 @@ function verifyToken(c,token) { if(typeof token!=='string')return null;const [id
 export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUntil=()=>{}}) {
  const c=state.config;
  const run=fn=>state.transact(fn);
- const queue=()=>waitUntil(worker.drain().catch(()=>{}));
+ const queue=()=>waitUntil(worker.drain().catch(error=>reportFailure('worker-drain',error)));
  return async request=>{
   try {
    const u=new URL(request.url),base=new URL(c.origin);
@@ -77,7 +77,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(fp.get('AccountSid')!==c.accountSid||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,fp,request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
     if(path==='/twilio/fallback.xml')return xmlResponse(voicemailXml(c.origin));
     try { await saveCallback(client,callbackFields(fp,fp.get('TranscriptionText')||'')); }
-    catch(error){ await logFailure(client,'crm_write_failed',null,error.message).catch(()=>{}); }
+    catch(error){ const failure=reportFailure('crm-callback',error); await logFailure(client,'crm_write_failed',null,failure.message).catch(logError=>reportFailure('failure-log',logError)); }
     return xmlResponse(twiml(''));
    }
    if(!canOperate(c))return json({error:'805 calling is in standby'},503);
@@ -95,7 +95,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(data.action==='save_message') {
      const saved=await run((e,s)=>{const message=e.saveMessage(id,data.message,`agent-message:${id}`);return {message,call:s.get('call',id)};});
      try { const row=await saveCallback(client,callbackFields({get:(k)=>({CallSid:saved.call.sid,From:saved.call.from,RecordingUrl:''}[k])},data.message?.transcript||'',saved.call,data.message)); queue(); return json({saved:true,callback:row}); }
-     catch(error){ await logFailure(client,'crm_write_failed',id,error.message).catch(()=>{}); queue(); return json({saved:false,error:'The message was kept on the call, but the callback list could not be updated.'}); }
+     catch(error){ const failure=reportFailure('crm-callback',error); await logFailure(client,'crm_write_failed',id,failure.message).catch(logError=>reportFailure('failure-log',logError)); queue(); return json({saved:false,error:'The message was kept on the call, but the callback list could not be updated.'}); }
     }
     const value=await run((e,s)=>{
      const call=s.get('call',id);if(!call||call.phase==='ended')throw new Conflict('Call unavailable');
@@ -123,7 +123,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(p.get('To')!==c.number||!/^CA[0-9a-f]{32}$/i.test(sid||''))return json({error:'Wrong call'},403);
     if(c.mode==='pilot'&&!c.pilotCallers.includes(p.get('From')))return xmlResponse(twiml('<Say>This test line is not available.</Say><Hangup/>'));
     const call=await run(e=>e.inbound(sid,e164.test(p.get('From')||'')?p.get('From'):'anonymous'));
-    waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(()=>{}));
+    waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(error=>reportFailure('caller-lookup',error)));
     return xmlResponse(twiml(`<Say>${xml(c.greeting)}</Say><Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
    }
    if(path==='/twilio/text') {
@@ -201,10 +201,10 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     }
     throw new Conflict('Unknown callback');
    });
-   if(response&&response.callback){try{await saveCallback(client,response.callback);}catch(error){await logFailure(client,'crm_write_failed',null,error.message).catch(()=>{});}queue();return xmlResponse(twiml(''));}
-   if(downId)waitUntil(logFailure(client,'agent_down',downId,'The voice agent disconnected.').catch(()=>{}));
+   if(response&&response.callback){try{await saveCallback(client,response.callback);}catch(error){const failure=reportFailure('crm-callback',error);await logFailure(client,'crm_write_failed',null,failure.message).catch(logError=>reportFailure('failure-log',logError));}queue();return xmlResponse(twiml(''));}
+   if(downId)waitUntil(logFailure(client,'agent_down',downId,'The voice agent disconnected.').catch(error=>reportFailure('failure-log',error)));
    queue();return xmlResponse(response);
-  } catch(error) {if(!(error instanceof Conflict))waitUntil(logFailure(client,'webhook_error',null,error.message).catch(()=>{}));return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
+  } catch(error) {if(!(error instanceof Conflict)){const failure=reportFailure('handler',error);waitUntil(logFailure(client,'webhook_error',null,failure.message).catch(logError=>reportFailure('failure-log',logError)));}return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
  };
 }
 function callbackFields(p, transcript, call, message) {
