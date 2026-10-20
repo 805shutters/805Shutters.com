@@ -26,8 +26,10 @@ export class SupabaseWorker {
       if (c && (c.phase !== 'ended' || ['hangup','disconnect-ai'].includes(item.type))) {
         const d = item.data;
         // A staff answer owns the call and must interrupt the welcome now.
-        // Other caller moves still wait until a blocking greeting finishes.
-        if (kind === 'effect' && c.greetingPlayed === false && !c.owner && c.phase !== 'ended' && interruptsGreeting(item, c)) {
+        // A listening welcome is already on the media stream, so its fallback,
+        // collect, and failure redirects must not wait for greetingPlayed.
+        // Only an older blocking greeting still defers those caller moves.
+        if (kind === 'effect' && !c.listeningWelcome && c.greetingPlayed === false && !c.owner && c.phase !== 'ended' && interruptsGreeting(item, c)) {
           const delay = Number(this.state.config.greetingRedirectDelayMs);
           const wait = Number.isFinite(delay) ? delay : 400;
           await change((_e, s) => {

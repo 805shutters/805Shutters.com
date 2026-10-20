@@ -3,6 +3,36 @@ import { e164, incomingRingStaff, isOpen, staffIds } from "./config.mjs";
 
 export const MESSAGE_WINDOW_MS = 300000;
 
+// Scheduling intake can run during the listening welcome, while staff are still ringing.
+// A human owner or any later phase stops it. Booking still requires the played spoken yes.
+export function intakeActive(call) {
+  return Boolean(
+    call &&
+      !call.owner &&
+      (call.phase === "message" ||
+        (call.phase === "offering" && call.listeningWelcome === true)),
+  );
+}
+
+// The published scheduling route accepts phase "message" only.
+// A choice during the welcome moves there without dropping the ringing offer.
+export function retainRingingIntake(call) {
+  if (!call || call.owner || call.phase !== "offering" || call.listeningWelcome !== true) return false;
+  call.phase = "message";
+  call.ringingIntake = true;
+  call.deadline = Date.now() + MESSAGE_WINDOW_MS;
+  return true;
+}
+
+export function initialRingOpen(call) {
+  return Boolean(
+    call &&
+      !call.owner &&
+      (call.phase === "offering" ||
+        (call.phase === "message" && call.ringingIntake === true)),
+  );
+}
+
 export class Conflict extends Error {}
 function requireCommandId(value) {
   if (typeof value !== "string" || !/^[0-9a-f-]{36}$/i.test(value))
@@ -323,7 +353,7 @@ export class Engine {
       // If the caller has already left the offer, hang that late leg up.
       if (!offer.sid && offer.status === "no-answer") {
         offer.sid = sid;
-        if (c.phase === "offering" && !c.owner) {
+        if (initialRingOpen(c)) {
           offer.status = "ringing";
           delete offer.error;
           return;
@@ -381,7 +411,7 @@ export class Engine {
         now < o.expiresAt &&
         o.status === "ringing" &&
         (o.purpose === "initial"
-          ? c.phase === "offering" && !c.owner
+          ? initialRingOpen(c)
           : o.purpose === "callback"
             ? c.phase === "callback-offering"
             : c.phase === "consult-ringing");
@@ -619,7 +649,7 @@ export class Engine {
   }
   updateDraft(id, data) {
     const call = this.store.get("call", id);
-    if (!call || call.phase !== "message")
+    if (!intakeActive(call))
       throw new Conflict("Message collection is not active");
     return this.store.put("draft", {
       id,
@@ -734,7 +764,7 @@ export class Engine {
   saveMessage(id, data, toolId) {
     return this.store.tx(() => {
       const call = this.store.get("call", id);
-      if (!call || call.phase !== "message")
+      if (!intakeActive(call))
         throw new Conflict("Message collection is not active");
       const existing = this.store.list("message").find((m) => m.callId === id);
       if (existing) return existing;

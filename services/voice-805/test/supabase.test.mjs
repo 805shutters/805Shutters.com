@@ -86,6 +86,26 @@ test('provider timeout stays uncertain and is never dialed again by retrying wor
  await f.worker.drain();const before=f.provider.operations.length;await f.worker.drain();assert.equal(f.provider.operations.length,before);
  assert.equal((await f.state.transact(e=>e.snapshot())).attention.filter(x=>x.status==='uncertain').length,1);
 });
+test('a listening welcome failure runs fallback while greetingPlayed is still false',async()=>{
+ const blocked=fixture();
+ const blockedCall=await blocked.state.transact(e=>e.inbound('CA'+'c'.repeat(32),'+18055550199'));
+ await blocked.state.transact((e,s)=>{const call=s.get('call',blockedCall.id);s.put('call',{...call,phase:'message',greetingPlayed:false});e.effect(call,'fallback',{sid:call.sid});});
+ await blocked.worker.drain();
+ assert.equal(blocked.provider.operations.some(item=>item.type==='fallback'),false);
+ assert.equal((await blocked.state.transact((_e,s)=>s.list('effect').find(item=>item.type==='fallback'))).status,'pending');
+ const f=fixture();
+ const created=await f.state.transact(e=>e.inbound('CA'+'d'.repeat(32),'+18055550199'));
+ await f.state.transact(e=>e.greeted(created.id,'welcome'));
+ await f.worker.drain();
+ const welcome=await f.state.transact((_e,s)=>s.get('call',created.id));
+ assert.equal(welcome.listeningWelcome,true);assert.equal(welcome.greetingPlayed,false);assert.equal(welcome.phase,'offering');
+ await f.state.transact(e=>e.failed(created.id,'Voice session duration reached','media-recover:test'));
+ await f.worker.drain();
+ const next=await f.state.transact((_e,s)=>s.get('call',created.id));
+ assert.equal(next.phase,'message');assert.equal(next.greetingPlayed,false);assert.equal(next.owner,null);
+ assert.equal(f.provider.operations.some(item=>item.type==='fallback'),true);
+ assert.equal((await f.state.transact((_e,s)=>s.list('effect').find(item=>item.type==='fallback'))).status,'done');
+});
 test('no answer falls back without answered evidence; saved message and both alerts are atomic',async()=>{
  const f=fixture(),call=await incoming(f);await f.state.transact(e=>{e.greeted(call.id,'greet');e.markGreetingPlayed(call.id,'played');});await f.worker.drain();
  await f.state.transact(e=>e.tick(Date.now()+30000));await f.worker.drain();
