@@ -40,11 +40,11 @@ test('no-answer opening apologizes and offers a message or consultation',async()
  const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');
  assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
  assert.equal(RECEPTIONIST_OPENING,'Apologies, but team members are tied up at the moment. Would you like to leave a message for a callback, or would you like to schedule an appointment?');
- assert.match(RECEPTIONIST_PROMPT,/city and the day and time/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
+ assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one recommendation/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
  assert.doesNotMatch(RECEPTIONIST_PROMPT,/Thank you for calling 805 Shutters/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);
- assert.equal(tools[0].parameters.required.includes('time'),true);assert.equal(tools[0].parameters.required.includes('city'),true);f.session.finish();
+ assert.equal(tools[0].parameters.required.includes('time'),false);assert.equal(tools[0].parameters.required.includes('city'),true);assert.equal(tools[1].parameters.required.includes('time'),true);f.session.finish();
 });
 async function ready(f){await f.begin();await f.audio();await f.mark();}
 async function tool(f,name,data,id='t1'){await f.grok({type:'response.created',response:{id}});await f.grok({type:'response.function_call_arguments.done',name,call_id:id,arguments:JSON.stringify(data)});await f.grok({type:'response.done',response:{id,status:'completed'}});}

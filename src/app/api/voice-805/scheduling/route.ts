@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { processBookingOutbox } from '@/lib/booking/delivery';
 import { getSupabaseServiceClient } from '@/lib/supabase-server';
 import { BookingError } from '@/lib/booking/scheduling';
 import { commitVoiceVisit, prepareVoiceVisit, VoiceReplan } from '@/lib/voice-805/scheduling';
@@ -25,7 +26,12 @@ export async function POST(request:Request){
   if(error||!call||!call.mediaStreamSid||(call.phase!=='message'&&!(action==='commit'&&call.booking?.verified)))return reply({error:'Call unavailable'},409);
   // Pilot calls may inspect availability but cannot create real CRM appointments.
   if(action!=='find_appointments'&&(dataset!=='production'||process.env.VOICE_805_BOOKING_AUTHORIZED!=='true'))return reply({error:'Booking activation required; offer a callback.'},503);
-  if(action==='commit')return reply(await commitVoiceVisit(db,callId,call));
+  if(action==='commit'){
+   const booked=await commitVoiceVisit(db,callId,call);
+   // Calendar verification already happened. Sending stays after the response; a failed handoff leaves the outbox row queued for the booking worker.
+   try{after(()=>{void processBookingOutbox(db,callId).catch(()=>console.error('Agent staff notice remains queued'));});}catch{/* cron drains pending notices outside a request scope */}
+   return reply(booked);
+  }
   if(action==='prepare_appointment'&&(call.bookingIntent?.confirmedAt||call.bookingAttention||call.booking?.verified))return reply({error:'Verify the existing booking outcome first.'},409);
   return reply(await prepareVoiceVisit(db,callId,input,action==='prepare_appointment'));
  }catch(error){return reply({replan:error instanceof VoiceReplan,error:error instanceof BookingError?error.message:'Scheduling could not be verified; offer a callback.'},error instanceof BookingError?error.status:503);}

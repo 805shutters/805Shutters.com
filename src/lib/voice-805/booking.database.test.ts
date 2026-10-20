@@ -9,7 +9,7 @@ const db=new PGlite();
 const date='2035-10-01',month='2035-10';
 beforeAll(async()=>{
  const phone=readFileSync('supabase/migrations/20261011014441_voice_805_supabase_call_center.sql','utf8').split('create function public.voice_805_normalize_phone')[0];
- await db.exec(bookingDatabaseFixture()+phone+readFileSync('supabase/migrations/20261019230000_voice_805_confirmed_booking.sql','utf8'));
+ await db.exec(bookingDatabaseFixture()+phone+readFileSync('supabase/migrations/20261019230000_voice_805_confirmed_booking.sql','utf8')+readFileSync('supabase/migrations/20261020035500_voice_805_agent_staff_notice.sql','utf8'));
 },30000);
 beforeEach(async()=>{
  await db.exec("truncate booking_travel_buffer_exceptions,booking_outbox,booking_requests,booking_route_protections,crm_quotes,crm_calendar_events,crm_jobs,leads,sales_805_appointments,crm_availability_slots cascade; update voice_805_state set body='{\"entities\":{\"call\":{}},\"events\":{},\"inbound\":{}}',revision=0;");
@@ -27,11 +27,15 @@ async function fixture(patch:Record<string,unknown>={},dataset='production'){
  return {id,intentId,args,call};
 }
 const commit=(args:unknown[])=>db.query<{result:Record<string,unknown>}>('select voice_805_book_confirmed($1,$2,$3,$4,$5,$6,$7,$8,$9) result',args);
-it('atomic booking saves a verified call outcome, one CRM appointment, no external notifications and replays safely',async()=>{
+it('atomic booking saves one CRM appointment, attributes it to the agent, and queues one staff text per recipient',async()=>{
  const f=await fixture();const first=await commit(f.args);const replay=await commit(f.args);
  expect(replay.rows[0].result.calendarEventId).toBe(first.rows[0].result.calendarEventId);
  expect((await db.query<{n:number}>('select count(*)::int n from crm_calendar_events')).rows[0].n).toBe(1);
- expect((await db.query<{n:number}>('select count(*)::int n from booking_outbox')).rows[0].n).toBe(0);
+ const event=(await db.query<{notes:string;meta:{bookedVia:string;bookingSource:string}}>('select notes,meta from crm_calendar_events')).rows[0];
+ expect(event.notes).toContain('via agent');expect(event.meta).toMatchObject({bookedVia:'agent',bookingSource:'805_phone'});
+ const notices=(await db.query<{kind:string;status:string;payload:{recipient:string;bookedVia:string}}>('select kind,status,payload from booking_outbox order by kind')).rows;
+ expect(notices.map(row=>[row.kind,row.status,row.payload.recipient,row.payload.bookedVia])).toEqual([['agent_staff_sms_jessica','pending','Jessica','agent'],['agent_staff_sms_mike','pending','Mike','agent']]);
+ expect((await db.query<{n:number}>("select count(*)::int n from booking_outbox where kind in ('customer_sms','customer_email')")).rows[0].n).toBe(0);
  const state=(await db.query<{body:any,revision:number}>("select body,revision from voice_805_state where id='production'")).rows[0];
  expect(state.body.entities.call[f.id].booking.verified).toBe(true);expect(Number(state.revision)).toBe(1);
  const stale=await db.query<{accepted:boolean}>("select voice_805_commit('production',0,'{}') accepted");expect(stale.rows[0].accepted).toBe(false);

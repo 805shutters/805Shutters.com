@@ -3,6 +3,7 @@ import { createHmac,randomUUID } from 'node:crypto';
 const mock=vi.hoisted(()=>({client:vi.fn(),prepare:vi.fn(),commit:vi.fn()}));
 vi.mock('@/lib/supabase-server',()=>({getSupabaseServiceClient:mock.client}));
 vi.mock('@/lib/voice-805/scheduling',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/voice-805/scheduling')>(),prepareVoiceVisit:mock.prepare,commitVoiceVisit:mock.commit}));
+vi.mock('@/lib/booking/delivery',()=>({processBookingOutbox:vi.fn(async()=>({processed:0}))}));
 import { POST } from './route';
 const callId='11111111-1111-4111-8111-111111111111',key='test-key-'.repeat(8);
 let call:any;

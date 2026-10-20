@@ -518,6 +518,63 @@ export async function deliverBookingEffect(
     throw new Error("Provider did not confirm delivery");
   return "sent";
 }
+
+const agentStaffKinds = {
+  agent_staff_sms_jessica: "Jessica",
+  agent_staff_sms_mike: "Mike",
+} as const;
+
+export async function settleAgentStaffSms(
+  supabase: SupabaseClient,
+  kind: string,
+  payload: BookingAutomationDetails & { recipient?: string; bookedVia?: string; calendarEventId?: string },
+) {
+  const recipient = agentStaffKinds[kind as keyof typeof agentStaffKinds];
+  if (!recipient || payload.recipient !== recipient || payload.bookedVia !== "agent") {
+    return { status: "failed" as const, lastError: "Agent staff notice is missing its recipient or attribution", completed: true };
+  }
+  const { data: event, error } = await supabase
+    .from("crm_calendar_events")
+    .select("start_at,end_at,status,notes,meta")
+    .eq("id", payload.calendarEventId)
+    .maybeSingle();
+  if (error) return { status: "uncertain" as const, lastError: "Calendar row could not be read; reconcile before retry", completed: false };
+  if (!event || ["canceled", "cancelled"].includes(String(event.status || "").toLowerCase())) {
+    return { status: "skipped" as const, lastError: "Calendar appointment is missing or canceled", completed: true };
+  }
+  if (Date.parse(event.start_at) !== Date.parse(payload.startAt) || Date.parse(event.end_at) !== Date.parse(payload.endAt)) {
+    return { status: "skipped" as const, lastError: "Calendar appointment moved; reconcile before notifying", completed: true };
+  }
+  const meta = (event.meta || {}) as { bookedVia?: string };
+  if (meta.bookedVia !== "agent" || !String(event.notes || "").toLowerCase().includes("via agent")) {
+    return { status: "failed" as const, lastError: "Calendar source is not attributed to the agent", completed: true };
+  }
+  const to = salesRepSmsNumberForName(recipient);
+  if (!to) return { status: "failed" as const, lastError: `${recipient} SMS number is not configured`, completed: true };
+  const body = [
+    "805 Shutters: booked VIA AGENT.",
+    `${payload.name || "Customer"}, ${formatAppointmentForSms(payload.startAt)}.`,
+    payload.address ? `Address: ${payload.address}.` : null,
+    payload.phone ? `Phone: ${payload.phone}.` : null,
+    "Assigned to Jessica.",
+  ].filter(Boolean).join(" ");
+  const result = await sendSms({ to, body, ownerAlert: recipient === "Mike", timeoutMs: 15_000 });
+  if (result.sent && result.sid) {
+    const providerStatus = result.providerStatus || "accepted";
+    return {
+      status: "sent" as const,
+      lastError: null,
+      completed: true,
+      payload: {
+        ...payload,
+        smsProvider: { sid: result.sid, status: providerStatus },
+        noticePhase: providerStatus === "delivered" ? "delivered" : "accepted",
+      },
+    };
+  }
+  if (result.uncertain) return { status: "uncertain" as const, lastError: "Provider outcome unknown; reconcile before retry", completed: false };
+  return { status: "failed" as const, lastError: result.error || result.skipped || "Provider did not accept the staff text", completed: true };
+}
 export async function processBookingOutbox(
   supabase: SupabaseClient,
   bookingKey?: string,
@@ -558,6 +615,17 @@ export async function processBookingOutbox(
     if (claimError) throw claimError;
     if (!effect) continue;
     try {
+      if (effect.kind in agentStaffKinds) {
+        const outcome = await settleAgentStaffSms(supabase, effect.kind, effect.payload);
+        const { error: noticeError } = await supabase.from("booking_outbox").update({
+          status: outcome.status,
+          last_error: outcome.lastError,
+          ...(outcome.completed ? { completed_at: new Date().toISOString() } : {}),
+          ...(outcome.payload ? { payload: outcome.payload } : {}),
+        }).eq("id", item.id).eq("status", "processing");
+        if (noticeError) throw noticeError;
+        continue;
+      }
       if (effect.kind === "meta_schedule") {
         try {
           const receipt = await sendMetaScheduleEvent(effect.payload);

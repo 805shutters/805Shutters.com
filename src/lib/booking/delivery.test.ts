@@ -1,12 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 const mocks = vi.hoisted(() => ({ assignment: vi.fn(), metaBooking: vi.fn() }));
-vi.mock("@/lib/crm/calendar-notifications", () => ({
+vi.mock("@/lib/crm/calendar-notifications", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/lib/crm/calendar-notifications")>(),
   sendCalendarAssignmentSms: mocks.assignment,
-  salesRepSmsNumberForName: () => process.env.MIKE_805_SALES_SMS_NUMBER || null,
 }));
 vi.mock("@/lib/notify/meta-booking-sms", () => ({ sendMetaBookingSms: mocks.metaBooking }));
-import { deliverBookingEffect, processBookingOutbox } from "./delivery";
+import { deliverBookingEffect, processBookingOutbox, settleAgentStaffSms } from "./delivery";
 const client = {} as SupabaseClient;
 const details = {
   leadId: "test",
@@ -243,4 +243,111 @@ it("pins only Mike within existing staff booking alerts", async () => {
   expect(forms.map(form => form.get("To"))).toEqual(["+18058069344", "+18055550102", "+18055550103"]);
   expect(forms.map(form => form.get("From"))).toEqual([null, "+18057931853", null]);
   expect(new Set(forms.map(form => form.get("Body"))).size).toBe(1);
+});
+
+const agentCalendar = {
+  start_at: details.startAt,
+  end_at: details.endAt,
+  status: "scheduled",
+  notes: "Booked via agent on the 805 phone line.",
+  meta: { bookedVia: "agent", bookingSource: "805_phone" },
+};
+function agentPayload(recipient: "Jessica" | "Mike") {
+  return { ...details, recipient, bookedVia: "agent" as const, calendarEventId: details.calendarEventId };
+}
+function memoryOutbox(rows: { id: string; kind: string; status: string; payload: Record<string, unknown> }[]) {
+  const state = rows.map((row) => ({ ...row }));
+  const from = (table: string) => {
+    const filters: Record<string, string> = {};
+    let patch: Record<string, unknown> | null = null;
+    const api = {
+      select() { return api; },
+      update(value: Record<string, unknown>) { patch = value; return api; },
+      eq(key: string, value: string) { filters[key] = value; return api; },
+      neq() { return api; },
+      lt() { return api; },
+      order() { return api; },
+      limit() { return api; },
+      maybeSingle: async () => ({ data: table === "crm_calendar_events" ? agentCalendar : null, error: null }),
+      then(resolve: (value: { data: unknown; error: null }) => void) {
+        if (table === "booking_outbox" && patch) {
+          for (const row of state) if (Object.entries(filters).every(([key, value]) => row[key as "id"] === value)) Object.assign(row, patch);
+          resolve({ data: null, error: null });
+          return;
+        }
+        const pending = state.filter((row) => row.status === "pending" && (!filters.kind || row.kind === filters.kind));
+        resolve({ data: table === "booking_outbox" ? pending.map((row) => ({ id: row.id })) : null, error: null });
+      },
+    };
+    return api;
+  };
+  const rpc = async (_name: string, args: { p_id: string }) => {
+    const row = state.find((item) => item.id === args.p_id && item.status === "pending");
+    if (!row) return { data: null, error: null };
+    row.status = "processing";
+    return { data: { kind: row.kind, payload: row.payload }, error: null };
+  };
+  return { supabase: { from, rpc } as unknown as SupabaseClient, state };
+}
+
+it("texts Jessica and Mike separately and does not resend the recipient that already succeeded", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
+  vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055552222");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account");
+  vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token");
+  vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  const fetch = vi.fn(async (_url: string, init: { body: string }) => {
+    const form = new URLSearchParams(init.body);
+    if (form.get("To") === "+18055552222") throw new Error("Provider timeout");
+    return new Response(JSON.stringify({ sid: "SMjessica", status: "queued" }), { status: 201 });
+  });
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, state } = memoryOutbox([
+    { id: "1", kind: "agent_staff_sms_jessica", status: "pending", payload: agentPayload("Jessica") },
+    { id: "2", kind: "agent_staff_sms_mike", status: "pending", payload: agentPayload("Mike") },
+  ]);
+  await processBookingOutbox(supabase);
+  const jessica = state.find((row) => row.kind === "agent_staff_sms_jessica");
+  const mike = state.find((row) => row.kind === "agent_staff_sms_mike");
+  expect(jessica).toMatchObject({ status: "sent", payload: { smsProvider: { sid: "SMjessica", status: "queued" }, noticePhase: "accepted" } });
+  expect(mike).toMatchObject({ status: "uncertain", last_error: expect.stringContaining("unknown") });
+  const bodies = fetch.mock.calls.map((call) => new URLSearchParams(call[1].body));
+  expect(bodies.map((form) => form.get("To"))).toEqual(["+18055551111", "+18055552222"]);
+  expect(bodies.map((form) => form.get("From"))).toEqual(["+18055550101", "+18057931853"]);
+  expect(bodies.every((form) => form.get("Body")?.includes("booked VIA AGENT"))).toBe(true);
+  await processBookingOutbox(supabase);
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(state.find((row) => row.kind === "agent_staff_sms_jessica")?.status).toBe("sent");
+});
+
+it("keeps a missing staff number visible and does not call Twilio", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
+  vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "");
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, updates } = outboxClient("agent_staff_sms_jessica", agentCalendar, null, agentPayload("Jessica"));
+  await processBookingOutbox(supabase);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(updates).toContainEqual(expect.objectContaining({ status: "failed", last_error: expect.stringContaining("not configured") }));
+});
+
+it("leaves agent staff notices queued while booking delivery is paused", async () => {
+  vi.stubEnv("BOOKING_DELIVERY_ENABLED", "false");
+  const fetch = vi.fn();
+  vi.stubGlobal("fetch", fetch);
+  const { supabase, rpc } = outboxClient("agent_staff_sms_mike", agentCalendar, null, agentPayload("Mike"));
+  expect(await processBookingOutbox(supabase)).toEqual({ processed: 0 });
+  expect(rpc).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it("records provider delivery only when the carrier status is delivered", async () => {
+  vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
+  vi.stubEnv("TWILIO_ACCOUNT_SID", "test-account");
+  vi.stubEnv("TWILIO_AUTH_TOKEN", "test-token");
+  vi.stubEnv("TWILIO_FROM_PHONE", "+18055550101");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ sid: "SMdelivered", status: "delivered" }), { status: 201 })));
+  const outcome = await settleAgentStaffSms({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: agentCalendar, error: null }) }) }) }) } as unknown as SupabaseClient, "agent_staff_sms_jessica", agentPayload("Jessica"));
+  expect(outcome).toMatchObject({ status: "sent", payload: { noticePhase: "delivered", smsProvider: { sid: "SMdelivered", status: "delivered" } } });
 });
