@@ -169,9 +169,11 @@ test('stored greeting audio plays immediately and a storage miss says the line w
  const miss=await cold.handler(carrierRequest(cold,'/twilio/inbound',{CallSid:'CA'+'7'.repeat(32),To:cold.c.number,From:'+18055550199'}));
  assert.ok(Date.now()-started<500);const missXml=await miss.text();assert.match(missXml,/<Say>Thank you for calling 805 Shutters/);assert.doesNotMatch(missXml,/<Play>/);
  for(let i=0;i<8;i++){const pending=cold.tasks.splice(0);if(!pending.length)break;await Promise.all(pending);}
- assert.ok(bodies.some(body=>body.text===COMMON_GREETING&&body.voice_id==='eve'&&body.language==='en'&&body.output_format.codec==='wav'&&body.output_format.sample_rate===8000));
+  assert.ok(bodies.some(body=>body.text===COMMON_GREETING&&body.voice_id==='ara'&&body.language==='en'&&body.output_format.codec==='wav'&&body.output_format.sample_rate===8000));
  assert.equal(cold.c.promptMemory.get('greeting').durable,true);
  const empty=fixture();
- assert.equal((await empty.handler(new Request(empty.c.origin+'/twilio/prompts/hold.wav'))).status,404);
- assert.equal((await empty.handler(new Request(empty.c.origin+'/twilio/prompts/hold.wav',{method:'POST'}))).status,405);
+ assert.equal((await empty.handler(new Request(empty.c.origin+'/twilio/prompts/hold.wav'))).status,405);
+ const ring=await empty.handler(carrierRequest(empty,'/twilio/ringback',{CallSid:'CA'+'8'.repeat(32),To:empty.c.number,From:'+18055550199'}));
+ const ringXml=await ring.text();
+ assert.equal(ring.status,200);assert.match(ringXml,/<Pause length="40"\/>/);assert.doesNotMatch(ringXml,/Play|Say|hold/);
 });

@@ -13,6 +13,7 @@ import {
   fillPrompt,
   normalizeWavHeader,
   promptIsReady,
+  promptObjectName,
   promptVerb,
   renderPrompt,
   storePrompt,
@@ -30,7 +31,8 @@ const wavResponse = (bytes = wav(), status = 200, type = "audio/wav") =>
   new Response(bytes, { status, headers: { "content-type": type } });
 
 test("realtime and tts contracts match the current xAI voice API", () => {
-  assert.equal(VOICE_ID, "eve");
+  assert.equal(VOICE_ID, "ara");
+  assert.equal(promptObjectName("greeting"), "ara-greeting.wav");
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
@@ -96,7 +98,7 @@ test("streaming wav header sizes are rewritten before storage", async () => {
   const rendered = await renderPrompt(c, "greeting", async () => wavResponse(streamingWav()));
   assert.equal(u32(rendered, 4), rendered.length - 8);
   assert.equal(u32(rendered, 40), rendered.length - 44);
-  await fillPrompt(config(), "hold", { put: async (_name, bytes) => { stored = Uint8Array.from(bytes); } }, async () => wavResponse(streamingWav()));
+  await fillPrompt(config(), "voicemail", { put: async (_name, bytes) => { stored = Uint8Array.from(bytes); } }, async () => wavResponse(streamingWav()));
   assert.equal(u32(stored, 4), stored.length - 8);
   assert.equal(u32(stored, 40), stored.length - 44);
 });
@@ -112,7 +114,7 @@ test("say is the fallback and play is used only for durable audio", () => {
   assert.equal(promptIsReady(other, "greeting"), false);
 });
 
-test("render posts eve wav at 8 kHz, dedupes, and rejects non-wav", async () => {
+test("render posts ara wav at 8 kHz, dedupes, and rejects non-wav", async () => {
   const c = config();
   let calls = 0;
   let release;
@@ -124,20 +126,20 @@ test("render posts eve wav at 8 kHz, dedupes, and rejects non-wav", async () => 
     assert.equal(url, TTS_URL);
     assert.match(init.headers.authorization, /^Bearer x{20}$/);
     const body = JSON.parse(init.body);
-    assert.equal(body.voice_id, "eve");
+    assert.equal(body.voice_id, "ara");
     assert.equal(body.language, "en");
-    assert.equal(body.text, PROMPTS.hold);
+    assert.equal(body.text, PROMPTS.voicemail);
     assert.deepEqual(body.output_format, { codec: "wav", sample_rate: 8000 });
     await gate;
     return wavResponse();
   };
-  const first = renderPrompt(c, "hold", fetcher);
-  const second = renderPrompt(c, "hold", fetcher);
+  const first = renderPrompt(c, "voicemail", fetcher);
+  const second = renderPrompt(c, "voicemail", fetcher);
   release();
   const [a, b] = await Promise.all([first, second]);
   assert.equal(calls, 1);
   assert.equal(a, b);
-  assert.equal(promptIsReady(c, "hold"), false);
+  assert.equal(promptIsReady(c, "voicemail"), false);
   const encoded = config();
   const json = await renderPrompt(encoded, "greeting", async () =>
     new Response(JSON.stringify({ audio: Buffer.from(wav()).toString("base64") }), {
@@ -174,7 +176,7 @@ test("warm stores wavs once and a slow read does not block the spoken fallback",
   };
   await warmPrompts(c, store, async () => wavResponse());
   assert.equal(buckets, 1);
-  assert.deepEqual(puts.sort(), ["greeting", "hold", "unavailable", "voicemail"]);
+  assert.deepEqual(puts.sort(), ["greeting", "unavailable", "voicemail"]);
   assert.equal(promptIsReady(c, "greeting"), true);
   const cold = config();
   cold.promptFetch = async () => wavResponse();
@@ -214,7 +216,7 @@ test("supabase prompt storage ignores an existing private bucket and rejects a b
     assert.equal(error.message.includes("Bearer"), false);
     return true;
   });
-  assert.equal(uploads[0].path, "greeting.wav");
+  assert.equal(uploads[0].path, "ara-greeting.wav");
   assert.equal(uploads[0].options.contentType, "audio/wav");
   assert.equal(uploads[0].options.upsert, true);
   const broken = createSupabasePromptStore({

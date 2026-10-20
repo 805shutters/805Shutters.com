@@ -36,7 +36,7 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
  assert.equal(spokenDecision(''),'silence');assert.equal(spokenDecision('maybe'),'ambiguous');assert.equal(spokenDecision('confirmed true'),'ambiguous');
 });
 test('no-answer opening apologizes and offers a message or consultation',async()=>{
- const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'eve');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');assert.match(f.ai.sent.at(-1).item.content[0].text,/sorry, our team is unavailable/);
+ const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');assert.match(f.ai.sent.at(-1).item.content[0].text,/sorry, our team is unavailable/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);
  assert.equal(tools[0].parameters.required.includes('time'),true);f.session.finish();
@@ -119,11 +119,28 @@ test('missing audio and the worker deadline fall back without confirmation',asyn
  const f=fixture();await f.begin();await f.grok({type:'response.done',response:{id:'silent',status:'completed'}});assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
  const g=fixture();await g.begin();await g.timers.find(timer=>timer.ms===110000).fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(g.store.list('message').length,0);
 });
-test('media handshake verifies the canonical signature and allows only an unclaimed message',async()=>{
- const f=fixture();let upgrades=0;const handler=createSupabaseHandler({state:f.state,client:{},worker:f.worker,upgradeMedia:()=>{upgrades++;return new Response('upgraded');}});const path='/twilio/media/'+f.call.id;
+test('media handshake upgrades before the call lookup and closes an ineligible socket',async()=>{
+ const f=fixture();const gates=[];const upgraded={status:101};
+ const handler=createSupabaseHandler({state:f.state,client:{},worker:f.worker,upgradeMedia:(_request,gate)=>{gates.push(gate);return upgraded;}});const path='/twilio/media/'+f.call.id;
  const signed=(signature=hmac(f.c.authToken,f.c.origin+path,'sha1'),suffix='')=>new Request('http://runtime/voice-805'+path+suffix,{headers:{upgrade:'websocket','x-twilio-signature':signature}});
  assert.equal((await handler(signed('bad'))).status,401);assert.equal((await handler(signed(undefined,'?foo=1'))).status,400);
- assert.equal((await handler(signed())).status,200);await f.begin();assert.equal((await handler(signed())).status,409);assert.equal(upgrades,1);f.session.finish();
+ const blocked=new Promise(()=>{});
+ const original=f.state.transact.bind(f.state);
+ f.state.transact=()=>blocked;
+ const waiting=createSupabaseHandler({state:f.state,client:{},worker:f.worker,upgradeMedia:()=>upgraded});
+ const raced=Promise.race([waiting(signed()),new Promise(resolve=>setTimeout(()=>resolve({status:'blocked'}),30))]);
+ assert.equal((await raced).status,101);
+ f.state.transact=original;
+ assert.equal((await handler(signed())).status,101);assert.equal(gates[0].eligible(f.store.get('call',f.call.id)),true);
+ await f.begin();assert.equal((await handler(signed())).status,101);assert.equal(gates[1].eligible(await gates[1].load()),false);
+ const closed=[];const socket={readyState:1,onmessage:null,close(code,reason){this.readyState=3;closed.push({code,reason});}};
+ const {attachMediaSocket}=await import('../supabase-handler.mjs');
+ await attachMediaSocket(socket,{load:async()=>f.call,eligible:()=>false,start(){throw new Error('started');}});
+ assert.deepEqual(closed,[{code:1008,reason:'unavailable'}]);
+ const replayed=[];const open={readyState:1,onmessage:null,close(){}};
+ await attachMediaSocket(open,{load:async()=>f.call,eligible:()=>true,start(){open.onmessage=event=>replayed.push(event.data);}});
+ assert.deepEqual(replayed,[]);
+ f.session.finish();
 });
 test('carrier greeting starts both offers and a second greeting callback does not dial again',async()=>{
  const f=fixture('matched');f.store.put('call',{...f.store.get('call',f.call.id),phase:'greeting'});

@@ -17,8 +17,10 @@ export function voicemailXml(
   );
 }
 
-export function ringbackTwiml(config = {}) {
-  return twiml(`${promptVerb(config, "hold", PROMPTS.hold)}<Pause length="5"/>`);
+// The conference waitUrl is fetched again whenever this document ends.
+// Speech here would repeat until a staff member joins, so the caller hears silence.
+export function ringbackTwiml() {
+  return twiml('<Pause length="40"/>');
 }
 
 export function fallback(_engine, call, _step, _params, config) {
