@@ -32,7 +32,7 @@ Read back `cron.job`, recent `cron.job_run_details`, and `net._http_response` st
 
 ## 3. Grok media receptionist
 
-The carrier says the greeting, then both staff legs ring with answering-machine detection. After no answer, Twilio opens a signed Media Stream to `/twilio/media/<call id>`. Grok apologizes and offers a message or a consultation. Scheduling and message tools run through `POST /api/voice-805/scheduling` on www.805shutters.com. A spoken yes after the played readback is the only save. See [the media pilot note](grok-api-pilot.md). Do not enable `VOICE_805_AGENT_CONTRACT_VERIFIED` until a real call proves greeting audio, both handsets, machine detection, spoken confirmation, and a verified CRM save.
+The carrier plays the cached Grok greeting and both staff legs start ringing at answer, with answering-machine detection. The first call can create the private Storage bucket `voice-805-prompts` and fill its wavs; no database migration and no number change are required for that cache. `<Say>` remains the fallback when a wav is missing. After no answer, Twilio opens a signed Media Stream to `/twilio/media/<call id>`. Grok apologizes and offers a message or a consultation. Scheduling and message tools run through `POST /api/voice-805/scheduling` on www.805shutters.com. A spoken yes after the played readback is the only save. See [the media pilot note](grok-api-pilot.md). Do not enable `VOICE_805_AGENT_CONTRACT_VERIFIED` until a real call proves greeting audio, both handsets, machine detection, spoken confirmation, and a verified CRM save.
 
 ## 4. Temporary Twilio number only
 

@@ -4,7 +4,7 @@ Production target: the existing dedicated 805 Supabase project, Twilio Media Str
 
 ## Runtime
 
-`supabase/functions/voice-805/index.ts` serves short signed webhooks. Twilio plays the greeting, then rings Mike and Jessica together. If neither person answers, a signed Media Stream connects the caller to Grok. PostgreSQL stores call state, messages, and the provider outbox. The CRM Call Center proxies authenticated staff actions with an explicit Mike/Jessica role mapping and a signed, replay-protected request.
+`supabase/functions/voice-805/index.ts` serves short signed webhooks. Twilio plays the greeting in Grok's cached `eve` voice and rings Mike and Jessica at the same time. `<Say>` is only the fallback when that audio is not stored yet. If neither person answers, a signed Media Stream connects the caller to Grok. PostgreSQL stores call state, messages, and the provider outbox. The CRM Call Center proxies authenticated staff actions with an explicit Mike/Jessica role mapping and a signed, replay-protected request.
 
 `supabase-store.mjs` uses optimistic compare-and-swap transactions. No carrier request occurs inside a retried database transaction. Outbox claims commit before network submission. Unknown carrier outcomes stay uncertain for reconciliation; they are never blindly redialed or resent. Both initial staff dial requests start in the same parallel batch. Answering-machine detection chooses one human owner atomically; a machine or recorded greeting is not an answer. Answered status requires a signed caller conference join after staff connection and AI removal.
 
@@ -12,7 +12,7 @@ The pilot stores each dataset in a single JSON document with a 16 MiB ceiling. T
 
 ## Call behavior
 
-Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.** Mike and Jessica then ring at the same time. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
+Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.** That line is Grok's `eve` voice when the cached wav is ready. Mike and Jessica ring at the same time, while it plays. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
 
 If both legs are no-answer, or the offer window (default 20 seconds) expires, Grok apologizes and asks whether the caller wants to leave a message or schedule a consultation. Messages and appointments are read back and saved only after a spoken yes. Scheduling asks when first, then uses the existing calendar, address geocoding, and travel checks. A missing requested time offers the closest open times. If nothing fits, the caller can leave a message. If Grok fails, Twilio records a voicemail.
 

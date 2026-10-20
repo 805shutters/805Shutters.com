@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
+import { VOICE_ID } from './prompts.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
@@ -50,7 +51,7 @@ export class GrokMediaSession {
       if (!claimed) return this.finish();
       this.streamSid = s.streamSid;
       this.ai = this.connect();
-      this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: { voice: 'eve', instructions: RECEPTIONIST_PROMPT, turn_detection: null, audio: { input: { format: { type: 'audio/pcmu' } }, output: { format: { type: 'audio/pcmu' } } }, tools: [] } }));
+      this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: { voice: VOICE_ID, instructions: RECEPTIONIST_PROMPT, turn_detection: null, audio: { input: { format: { type: 'audio/pcmu' } }, output: { format: { type: 'audio/pcmu' } } }, tools: [] } }));
       this.ai.onmessage = e => this.enqueue(() => this.grok(JSON.parse(typeof e.data === 'string' ? e.data : e.data.toString())));
       this.ai.onerror = () => this.enqueue(() => this.fail('Grok audio connection failed'));
       this.ai.onclose = () => this.enqueue(() => this.fail('Grok audio connection closed'));

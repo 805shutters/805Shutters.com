@@ -2,6 +2,11 @@ import { applyDelivery } from './provider.mjs';
 import { canOperate } from './supabase-config.mjs';
 import { reportFailure } from './security.mjs';
 
+function interruptsGreeting(item, call) {
+  if (['ringback', 'connect-agent', 'fallback', 'collect', 'disconnect-ai'].includes(item.type)) return true;
+  return item.type === 'route' && item.data?.sid === call.sid;
+}
+
 // At-most-once submission: an expired claim becomes uncertain, never pending.
 // Provider callbacks may bind SIDs before REST returns; merge fresh state only.
 export class SupabaseWorker {
@@ -20,6 +25,16 @@ export class SupabaseWorker {
       }
       if (c && (c.phase !== 'ended' || ['hangup','disconnect-ai'].includes(item.type))) {
         const d = item.data;
+        if (kind === 'effect' && c.greetingPlayed === false && c.phase !== 'ended' && interruptsGreeting(item, c)) {
+          const delay = Number(this.state.config.greetingRedirectDelayMs);
+          const wait = Number.isFinite(delay) ? delay : 400;
+          await change((_e, s) => {
+            const fresh = s.get(kind, item.id);
+            if (!fresh || fresh.status !== 'sending') return fresh;
+            return s.put(kind, { ...fresh, status: 'pending', nextAt: Date.now() + wait, attempts: Math.max(0, (fresh.attempts || 1) - 1) });
+          });
+          return;
+        }
         switch (item.type) {
           case 'dial': {
             const offer = c.offers.find(o=>o.id===d.offerId);

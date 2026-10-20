@@ -2,7 +2,7 @@ import { reportFailure } from './security.mjs';
 export const COMMON_GREETING = 'Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.';
 export function phaseInstruction(phase, callerId = '') {
   const idText = callerId && callerId !== 'anonymous' ? ` The caller ID is ${callerId}.` : ' There is no caller ID.';
-  if (phase === 'greeting') return `The carrier already says exactly: ${COMMON_GREETING} Staff are offered as soon as that sentence finishes. Do not ask questions first.`;
+  if (phase === 'greeting') return `The carrier already says exactly: ${COMMON_GREETING} Staff ring when the call is answered, while the greeting plays. Do not ask questions first.`;
   if (phase === 'followup') return 'Nobody answered. Apologize, then offer exactly two choices: leave a message, or schedule a consultation.';
   if (phase === 'message') return `The team is unavailable. Apologize and ask whether the caller wants to leave a message or schedule a consultation.${idText} Ask when a consultation is wanted before city or address. Read the message or appointment back and wait for a spoken yes. Silence, ambiguity, or a correction does not save.`;
   if (phase === 'schedule') return `Ask when they want the consultation before city or address. Use returned open times only. If the requested time is unavailable, offer the closest returned times. Confirm with a spoken yes, then save. If nothing fits, take a message.${idText}`;

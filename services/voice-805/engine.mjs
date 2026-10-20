@@ -246,11 +246,17 @@ export class Engine {
   greeted(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (c.phase !== "greeting") return;
-      // Every caller, known or not, is offered to both people after the greeting.
+      // Both people ring while the greeting plays. The parent leg stays on that
+      // audio until Twilio finishes it; do not move the caller into the conference yet.
       c.phase = "offering";
+      c.greetingPlayed = false;
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
       for (const staff of staffIds) this.offer(c, staff);
-      this.effect(c, "ringback");
+    });
+  }
+  markGreetingPlayed(id, eventId) {
+    return this.change(id, eventId, (c) => {
+      c.greetingPlayed = true;
     });
   }
   beginMessage(id, eventId) {
@@ -618,7 +624,9 @@ export class Engine {
         o.status = "expired";
         if (o.sid) this.effect(c, "hangup", { sid: o.sid });
       }
-    this.effect(c, "connect-agent");
+    // Undefined means an older call whose greeting already finished. False means
+    // the caller is still hearing it, so the greeting redirect connects the agent.
+    if (c.greetingPlayed !== false) this.effect(c, "connect-agent");
   }
   followIfUnanswered(c, now) {
     if (c.phase !== "offering" || c.owner) return;

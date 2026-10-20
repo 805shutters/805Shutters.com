@@ -5,13 +5,14 @@ import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
 import { fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
+import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
 const json = (value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const xmlResponse = value=>new Response(value,{headers:{'content-type':'text/xml','cache-control':'no-store'}});
 export function callToken(c,call) { const value=`${call.id}.${call.createdAt+2*60*60*1000}`;return `${value}.${hmac(c.toolsKey,value).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}`; }
 function verifyToken(c,token) { if(typeof token!=='string')return null;const [id,expires,signature]=token.split('.');if(!/^[0-9a-f-]{36}$/.test(id||'')||Number(expires)<Date.now()||!Number.isFinite(Number(expires)))return null;return equal(hmac(c.toolsKey,`${id}.${expires}`).replaceAll('+','-').replaceAll('/','_').replaceAll('=',''),signature)?id:null; }
-export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUntil=()=>{}}) {
+export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=null,waitUntil=()=>{}}) {
  const c=state.config;
  const run=fn=>state.transact(fn);
  const queue=()=>waitUntil(worker.drain().catch(error=>reportFailure('worker-drain',error)));
@@ -27,6 +28,14 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
    if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
    const path=u.pathname.slice(prefix.length)||'/';
    if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
+   const promptName=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail|hold)\.wav$/)?.[1];
+   if(promptName){
+    if(request.method!=='GET')return json({error:'Method rejected'},405);
+    await ensureSpoken(c,[promptName],prompts,waitUntil);
+    const bytes=promptSource(c,promptName);
+    if(!bytes)return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
+    return new Response(bytes,{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
+   }
    if(path.startsWith('/twilio/media/')) {
     if(!canOperate(c))return json({error:'805 calling is in standby'},503);
     const id=path.slice('/twilio/media/'.length);
@@ -75,7 +84,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(!request.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded'))return json({error:'Form required'},415);
     const fp=new URLSearchParams(raw);
     if(fp.get('AccountSid')!==c.accountSid||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,fp,request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
-    if(path==='/twilio/fallback.xml')return xmlResponse(voicemailXml(c.origin));
+    if(path==='/twilio/fallback.xml'){await ensureSpoken(c,['voicemail'],prompts,waitUntil);return xmlResponse(voicemailXml(c.origin,'/twilio/fallback-recording','/twilio/fallback-transcription',c));}
     try { await saveCallback(client,callbackFields(fp,fp.get('TranscriptionText')||'')); }
     catch(error){ const failure=reportFailure('crm-callback',error); await logFailure(client,'crm_write_failed',null,failure.message).catch(logError=>reportFailure('failure-log',logError)); }
     return xmlResponse(twiml(''));
@@ -121,10 +130,13 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
    if(p.get('AccountSid')!==c.accountSid||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,p,request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
    if(path==='/twilio/inbound') {
     if(p.get('To')!==c.number||!/^CA[0-9a-f]{32}$/i.test(sid||''))return json({error:'Wrong call'},403);
-    if(c.mode==='pilot'&&!c.pilotCallers.includes(p.get('From')))return xmlResponse(twiml('<Say>This test line is not available.</Say><Hangup/>'));
-    const call=await run(e=>e.inbound(sid,e164.test(p.get('From')||'')?p.get('From'):'anonymous'));
+    if(c.mode==='pilot'&&!c.pilotCallers.includes(p.get('From'))){await ensureSpoken(c,['unavailable'],prompts,waitUntil);return xmlResponse(twiml(`${promptVerb(c,'unavailable',PROMPTS.unavailable)}<Hangup/>`));}
+    const call=await run(e=>{const created=e.inbound(sid,e164.test(p.get('From')||'')?p.get('From'):'anonymous');e.greeted(created.id,`answer:${sid}`);return created;});
+    queue();
     waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(error=>reportFailure('caller-lookup',error)));
-    return xmlResponse(twiml(`<Say>${xml(c.greeting)}</Say><Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
+    await ensureSpoken(c,['greeting'],prompts,waitUntil);
+    waitUntil(ensureSpoken(c,['unavailable','voicemail','hold'],prompts,waitUntil));
+    return xmlResponse(twiml(`${promptVerb(c,'greeting',c.greeting)}<Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
    }
    if(path==='/twilio/text') {
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
@@ -137,7 +149,8 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
     await run((e,s)=>{const id=s.state.inbound[sid];if(!id)throw new Conflict('Unknown caller');if(terminal.includes(p.get('CallStatus')))e.ended(id,sid,`parent-status:${sid}:${p.get('CallStatus')}`);});queue();return xmlResponse(twiml(''));
    }
-   if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml());
+   if(path==='/twilio/ringback'){await ensureSpoken(c,['hold'],prompts,waitUntil);return xmlResponse(ringbackTwiml(c));}
+   if(['greeted','agent','continue','fallback'].includes(parts[1]))await ensureSpoken(c,['voicemail','hold'],prompts,waitUntil);
    let downId=null;
    const response=await run((e,s)=>{
     const call=s.get('call',parts[2]);if(!call)throw new Conflict('Unknown call');
@@ -165,9 +178,15 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
     if(sid!==call.sid)throw new Conflict('Wrong caller leg');
     if(parts[1]==='status'){if(terminal.includes(p.get('CallStatus')))e.ended(call.id,sid,eventId);return twiml('');}
     if(parts[1]==='greeted'){
-     e.greeted(call.id,`carrier-greeting:${call.id}`);
+     if(call.phase==='greeting')e.greeted(call.id,`carrier-greeting:${call.id}`);
+     e.markGreetingPlayed(call.id,`greeting-played:${call.id}`);
      const current=s.get('call',call.id);
      if(current.phase==='ended')return twiml('<Hangup/>');
+     if(current.phase==='voicemail'||(current.phase==='message'&&current.mediaFailed))return voicemailXml(c.origin,`/twilio/recording/${current.id}`,`/twilio/transcription/${current.id}`,c);
+     if(current.phase==='message'&&c.transport==='media'&&!current.mediaStreamSid&&!current.mediaFailed){
+      const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+current.id;
+      return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+current.id)}</Redirect>`);
+     }
      if(['offering','handoff','human','held'].includes(current.phase))return conferenceXml(c,current,'main');
      return twiml('<Hangup/>');
     }
@@ -192,7 +211,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,waitUnti
      return twiml(`<Dial action="${xml(c.origin+'/twilio/continue/'+call.id)}" method="POST"><Sip>${xml(sip)}</Sip></Dial>`);
     }
     if(parts[1]==='continue') {
-     const mail=()=>voicemailXml(c.origin,`/twilio/recording/${call.id}`,`/twilio/transcription/${call.id}`);
+     const mail=()=>voicemailXml(c.origin,`/twilio/recording/${call.id}`,`/twilio/transcription/${call.id}`,c);
      if(call.phase==='ended')return twiml('<Hangup/>');
      if(call.phase==='voicemail'||(call.phase==='message'&&call.mediaFailed))return mail();
      if(['offering','handoff','human','held'].includes(call.phase))return conferenceXml(c,call,'main');
