@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { e164, isOpen, staffIds } from "./config.mjs";
 
+const MESSAGE_WINDOW_MS = 300000;
+
 export class Conflict extends Error {}
 function requireCommandId(value) {
   if (typeof value !== "string" || !/^[0-9a-f-]{36}$/i.test(value))
@@ -263,7 +265,7 @@ export class Engine {
     return this.change(id, eventId, (c) => {
       if (c.owner || !["followup", "schedule"].includes(c.phase)) return;
       c.phase = "message";
-      c.deadline = Date.now() + 300000;
+      c.deadline = Date.now() + MESSAGE_WINDOW_MS;
       this.effect(c, "record");
     });
   }
@@ -271,7 +273,7 @@ export class Engine {
     return this.change(id, eventId, (c) => {
       if (c.owner || c.phase !== "followup") return;
       c.phase = "schedule";
-      c.deadline = Date.now() + 300000;
+      c.deadline = Date.now() + MESSAGE_WINDOW_MS;
     });
   }
   markScheduled(id, eventId, appointment) {
@@ -293,7 +295,7 @@ export class Engine {
   requestStaff(id, eventId) {
     return this.change(id, eventId, c => {
       if (!["assistant", "greeting"].includes(c.phase)) return;
-      if (!c.open) { c.phase = "message"; c.deadline = Date.now() + 300000; this.effect(c, "collect"); return; }
+      if (!c.open) { c.phase = "message"; c.deadline = Date.now() + MESSAGE_WINDOW_MS; this.effect(c, "collect"); return; }
       c.phase = "offering";
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
       for (const staff of staffIds) this.offer(c, staff);
@@ -651,7 +653,7 @@ export class Engine {
     c.target = null;
     c.targetSid = null;
     c.held = false;
-    c.deadline = Date.now() + 300000;
+    c.deadline = Date.now() + MESSAGE_WINDOW_MS;
     for (const o of c.offers) {
       o.status = "canceled";
       if (o.sid) this.effect(c, "hangup", { sid: o.sid });
@@ -662,7 +664,7 @@ export class Engine {
   startFollowup(c, now = Date.now()) {
     if (c.phase !== "offering") return;
     c.phase = "message";
-    c.deadline = now + 180000;
+    c.deadline = now + MESSAGE_WINDOW_MS;
     for (const o of c.offers)
       if (["pending", "ringing"].includes(o.status)) {
         o.status = "expired";
@@ -692,7 +694,7 @@ export class Engine {
           if (c.phase === "offering") this.startFollowup(c, now);
           else if (c.phase === "followup") {
             c.phase = "message";
-            c.deadline = now + 180000;
+            c.deadline = now + MESSAGE_WINDOW_MS;
             this.effect(c, "fallback");
           } else if (
             ["consult", "consult-ringing", "completing", "held"].includes(

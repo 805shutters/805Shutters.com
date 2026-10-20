@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GrokMediaSession } from '../grok-media.mjs';
+import { GrokMediaSession, MEDIA_SESSION_MS } from '../grok-media.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
 import { callerContext } from '../caller-context.mjs';
@@ -40,19 +40,23 @@ test('no-answer opening apologizes and offers a message or consultation',async()
  const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');
  assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
  assert.equal(RECEPTIONIST_OPENING,'Apologies, but team members are tied up at the moment. Would you like to leave a message for a callback, or would you like to schedule an appointment?');
- assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one recommendation/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
+ assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one server-supplied scheduling line/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
  assert.match(RECEPTIONIST_PROMPT,/currently open published CRM slot/);assert.match(RECEPTIONIST_PROMPT,/Never suggest or book a time that is not open on the CRM calendar/);
+ assert.match(RECEPTIONIST_PROMPT,/Generally about one hour|generally about one hour/);
  assert.doesNotMatch(RECEPTIONIST_PROMPT,/Thank you for calling 805 Shutters/);
- await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
- const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);
- assert.equal(tools[0].parameters.required.includes('time'),false);assert.equal(tools[0].parameters.required.includes('city'),true);assert.equal(tools[1].parameters.required.includes('time'),true);f.session.finish();
+ await f.audio();await f.mark();assert.equal(f.session.stage,'collect');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
+ const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools,[]);
+ assert.equal(MEDIA_SESSION_MS,270000);assert.ok(MEDIA_SESSION_MS<300000);f.session.finish();
 });
-async function ready(f){await f.begin();await f.audio();await f.mark();}
+function lastLine(f){return [...f.ai.sent].reverse().find(item=>item.item?.content?.[0]?.text)?.item.content[0].text||'';}
+async function ready(f){await f.begin();await f.audio();await f.mark();assert.equal(f.session.stage,'collect');}
+async function messageMode(f){await ready(f);await f.say('I would like to leave a message');assert.match(lastLine(f),/May I have your name/);await f.audio('name');await f.mark();assert.equal(f.session.stage,'assist');assert.deepEqual(f.ai.sent.at(-1).session.tools.map(tool=>tool.name),['draft_message','prepare_message']);}
+async function speak(f,text){const id='spoken-'+Math.random();await f.say(text,'turn-'+id);if(f.session.stage==='result'||f.session.stage==='readback'){await f.audio(id);await f.mark();}}
 async function tool(f,name,data,id='t1'){await f.grok({type:'response.created',response:{id}});await f.grok({type:'response.function_call_arguments.done',name,call_id:id,arguments:JSON.stringify(data)});await f.grok({type:'response.done',response:{id,status:'completed'}});}
 const message={name:'Test Caller',callback:'+18055550199',message:'Please call me back'};
 test('message requires played readback and one spoken yes, then verifies the CRM row',async()=>{
  const f=fixture();const saved=[];f.session.saveCrm=async row=>{saved.push(row);return {verified:true,id:'cb-1',call_sid:f.call.sid};};
- await ready(f);await tool(f,'prepare_message',message);
+ await messageMode(f);await tool(f,'prepare_message',message);
  await f.say('yes');assert.equal(f.store.list('message').length,0);
  await f.audio('readback');await f.say('yes');assert.equal(f.store.list('message').length,0);
  await f.mark();await f.say('yes','yes-1');await f.say('yes','yes-1');await f.say('yes please','yes-2');
@@ -60,62 +64,81 @@ test('message requires played readback and one spoken yes, then verifies the CRM
  assert.equal(saved.length,1);assert.match(f.ai.sent.at(-1).item.content[0].text,/has been saved/);f.session.finish();
 });
 test('negative, ambiguous, silence, and a failed CRM verify do not announce a save',async()=>{
- for(const text of ['no','maybe later']){const f=fixture();await ready(f);await tool(f,'prepare_message',message);await f.audio('readback');await f.mark();await f.say(text);assert.equal(f.store.list('message').length,0);assert.equal(f.store.get('call',f.call.id).intent,null);f.session.finish();}
- const silent=fixture();await ready(silent);await tool(silent,'prepare_message',message);await silent.audio('readback');await silent.mark();
+ for(const text of ['no','maybe later']){const f=fixture();await messageMode(f);await tool(f,'prepare_message',message);await f.audio('readback');await f.mark();await f.say(text);assert.equal(f.store.list('message').length,0);assert.equal(f.store.get('call',f.call.id).intent,null);f.session.finish();}
+ const silent=fixture();await messageMode(silent);await tool(silent,'prepare_message',message);await silent.audio('readback');await silent.mark();
  await silent.timers.filter(timer=>timer.ms===12000).at(-1).fn();await silent.session.chain;assert.equal(silent.store.list('message').length,0);silent.session.finish();
- const failed=fixture();failed.session.saveCrm=async()=>({verified:false});await ready(failed);await tool(failed,'prepare_message',message);await failed.audio('readback');await failed.mark();await failed.say('yes');
+ const failed=fixture();failed.session.saveCrm=async()=>({verified:false});await messageMode(failed);await tool(failed,'prepare_message',message);await failed.audio('readback');await failed.mark();await failed.say('yes');
  assert.equal(failed.store.list('message')[0].crmVerified,undefined);assert.match(failed.ai.sent.at(-1).item.content[0].text,/could not verify/);failed.session.finish();
 });
 test('model confirmation, foreign stream, interruption, and a late yes cannot save',async()=>{
- const f=fixture();await ready(f);await tool(f,'prepare_message',{...message,confirmed:true});assert.equal(f.store.get('call',f.call.id).intent,undefined);
+ const f=fixture();await messageMode(f);await tool(f,'prepare_message',{...message,confirmed:true});assert.equal(f.store.get('call',f.call.id).intent,undefined);
  await tool(f,'prepare_message',message,'t2');await f.audio('readback');
  await f.grok({type:'input_audio_buffer.speech_started'});await f.mark();assert.equal(f.store.list('message').length,0);assert.equal(f.store.get('call',f.call.id).intent,null);f.session.finish();
- const late=fixture();await ready(late);await tool(late,'prepare_message',message,'t3');await late.audio('again');await late.mark();
+ const late=fixture();await messageMode(late);await tool(late,'prepare_message',message,'t3');await late.audio('again');await late.mark();
  await late.carrier({event:'mark',streamSid:'MZ'+'9'.repeat(32),mark:late.socket.sent.at(-1).mark});
  const stale=late.store.get('call',late.call.id);late.store.put('call',{...stale,intent:{...stale.intent,playedAt:Date.now()-61000}});
  await late.say('yes','late');assert.equal(late.store.list('message').length,0);late.session.finish();
 });
 test('a changed message invalidates the earlier yes until the new readback plays',async()=>{
- const f=fixture();await ready(f);await tool(f,'prepare_message',message);await f.audio('readback');await f.mark();await f.say('no');
+ const f=fixture();await messageMode(f);await tool(f,'prepare_message',message);await f.audio('readback');await f.mark();await f.say('no');
  await f.audio('correction');await f.mark();
  await tool(f,'prepare_message',{...message,message:'Call after five'},'t2');await f.say('yes','old');assert.equal(f.store.list('message').length,0);
  await f.audio('next');await f.mark();await f.say('yes','new');assert.equal(f.store.list('message')[0].text,'Call after five');f.session.finish();
 });
+const openSlot={exact:true,date:'2026-10-23',requested:'15:00',slots:['15:00'],fit:true,saved:false,searchComplete:true};
+function proposal(input){return {intent:{id:'proposal',kind:'appointment',payload:input,readback:'Consultation details. Please say yes to book this appointment.'}};}
+async function collectVisit(f){const lines=[];for(const text of ['I want to schedule an appointment','Friday','3 pm','123 Oak Street, Camarillo','yes','my home','Pat Example']){await speak(f,text);lines.push(lastLine(f));}return lines;}
 test('exact booking is announced only after spoken yes and a verified save',async()=>{
- const f=fixture();const requests=[];f.session.schedule=async(_config,id,action,input)=>{requests.push({id,action,input});return action==='commit'?{verified:true,date:'2035-10-01',time:'10:00'}:{intent:{id:'proposal',kind:'appointment',payload:{date:'2035-10-01',time:'10:00',name:'Test',phone:'+18055550199',address:'123 Test St'},readback:'Consultation details. Please say yes to book this appointment.'}};};
- await ready(f);await tool(f,'find_appointments',{time:'10:00'});await tool(f,'prepare_appointment',{},'t2');
- await f.audio('readback');await f.mark();await f.say('yes');
- assert.deepEqual(requests.map(item=>item.action),['find_appointments','prepare_appointment','commit']);assert(requests.every(item=>item.id===f.call.id));
- assert(f.store.get('call',f.call.id).bookingIntent.confirmedAt);assert.match(f.ai.sent.at(-1).item.content[0].text,/is booked for 2035-10-01 at 10:00/);f.session.finish();
+ const f=fixture();const requests=[];const order=[];const original=f.state.transact.bind(f.state);f.state.transact=async fn=>{const result=await original(fn);order.push('saved');return result;};const send=f.session.sendAI.bind(f.session);f.session.sendAI=value=>{if(value.item?.type==='force_message')order.push('asked:'+value.item.content[0].text);return send(value);};
+ f.session.schedule=async(_config,id,action,input)=>{requests.push({id,action,input});if(action==='find_appointments')return openSlot;if(action==='prepare_appointment')return proposal(input);if(action==='commit')return {verified:true,date:'2026-10-23',time:'15:00'};throw Error(action);};
+ await ready(f);const lines=await collectVisit(f);
+ assert.equal(f.store.get('call',f.call.id).schedule.weekday,'friday');assert.equal(f.store.get('call',f.call.id).schedule.phone,'+18055550199');
+ assert.equal(lines[1],'What time on Friday works for you?');assert.match(lines[2],/I'll check Friday at 3:00\. May I please get your address\?/);
+ assert.equal(lines.some(line=>/we.?re confirmed|is booked/i.test(line)),false);assert.equal(requests.map(item=>item.action).includes('commit'),false);
+ const savedBeforeAsk=order.findIndex(item=>item==='saved'),askedFriday=order.findIndex(item=>item==="asked:What time on Friday works for you?");
+ assert.ok(savedBeforeAsk>=0&&askedFriday>savedBeforeAsk);
+ await speak(f,'yes');assert.equal(requests.at(-1).action,'prepare_appointment');assert.equal(requests.at(-1).input.phone,'+18055550199');assert.equal(requests.at(-1).input.address,'123 Oak Street, Camarillo');
+ await f.say('yes','book-yes');assert.deepEqual(requests.map(item=>item.action),['find_appointments','prepare_appointment','commit']);
+ assert(f.store.get('call',f.call.id).bookingIntent.confirmedAt);assert.match(lastLine(f),/Absolutely, we're confirmed for Friday at 3:00/);f.session.finish();
 });
 test('nearby times and no-fit results are returned to the caller without saving',async()=>{
  const nearby=fixture();nearby.session.schedule=async()=>({exact:false,slots:[],alternatives:[{date:'2035-10-01',time:'10:30',minutesAway:30}],fit:true,saved:false});
- await ready(nearby);await tool(nearby,'find_appointments',{time:'10:00'});
- assert.match(JSON.stringify(nearby.ai.sent),/10:30/);assert.equal(nearby.store.list('message').length,0);nearby.session.finish();
+ await ready(nearby);await collectVisit(nearby);
+ assert.match(lastLine(nearby),/10:30 is open on our calendar/);assert.doesNotMatch(lastLine(nearby),/we.?re confirmed/);assert.equal(nearby.store.list('message').length,0);nearby.session.finish();
  const none=fixture();none.session.schedule=async()=>({exact:false,slots:[],alternatives:[],fit:false,saved:false});
- await ready(none);await tool(none,'find_appointments',{time:'10:00'},'t9');
- assert.match(JSON.stringify(none.ai.sent),/Take a callback message/);assert.equal(none.store.get('call',none.call.id).booking,undefined);none.session.finish();
+ await ready(none);await collectVisit(none);
+ assert.match(lastLine(none),/No open CRM time fits/);assert.equal(none.store.get('call',none.call.id).booking,undefined);none.session.finish();
 });
 test('a stale slot can be replanned, and an uncertain save blocks another proposal',async()=>{
- const stale=fixture();let step=0;stale.session.schedule=async(_c,_id,action)=>action==='commit'?{replan:true}:{intent:{id:'p'+step++,kind:'appointment',payload:{},readback:'Please say yes to book this appointment.'}};
- await ready(stale);await tool(stale,'prepare_appointment',{});await stale.audio('readback');await stale.mark();await stale.say('yes');
- assert.equal(stale.store.get('call',stale.call.id).bookingIntent,null);assert.match(stale.ai.sent.at(-1).item.content[0].text,/no longer fits/);
- await stale.audio('replan');await stale.mark();
- await tool(stale,'prepare_appointment',{},'t2');assert.equal(stale.store.get('call',stale.call.id).intent.kind,'appointment');stale.session.finish();
- const uncertain=fixture();uncertain.session.schedule=async(_c,_id,action)=>{if(action==='commit')throw Error('timeout');return {intent:{id:'proposal',kind:'appointment',payload:{},readback:'Please say yes to book this appointment.'}};};
- await ready(uncertain);await tool(uncertain,'prepare_appointment',{});await uncertain.audio('readback');await uncertain.mark();await uncertain.say('yes');
+ const stale=fixture();stale.session.schedule=async(_c,_id,action,input)=>action==='commit'?{replan:true}:action==='find_appointments'?openSlot:proposal(input);
+ await ready(stale);await collectVisit(stale);await speak(stale,'yes');await stale.say('yes','book');
+ assert.equal(stale.store.get('call',stale.call.id).bookingIntent,null);assert.match(lastLine(stale),/no longer fits/);
+ await stale.audio('replan');await stale.mark();await speak(stale,'yes');assert.equal(stale.store.get('call',stale.call.id).intent.kind,'appointment');stale.session.finish();
+ const uncertain=fixture();uncertain.session.schedule=async(_c,_id,action,input)=>{if(action==='commit')throw Error('timeout');return action==='find_appointments'?openSlot:proposal(input);};
+ await ready(uncertain);await collectVisit(uncertain);await speak(uncertain,'yes');await uncertain.say('yes','book');
  assert(uncertain.store.get('call',uncertain.call.id).bookingAttention);assert(uncertain.store.get('call',uncertain.call.id).bookingIntent.confirmedAt);
- await tool(uncertain,'prepare_appointment',{},'t2');assert.equal(uncertain.store.get('call',uncertain.call.id).bookingIntent.id,'proposal');uncertain.session.finish();
+ await uncertain.audio('uncertain');await uncertain.mark();await speak(uncertain,'yes');assert.equal(uncertain.store.get('call',uncertain.call.id).bookingIntent.id,'proposal');uncertain.session.finish();
 });
 test('hangup during save does not announce a booking and keeps an unconfirmed draft',async()=>{
- const f=fixture();let release;f.session.schedule=(_c,_id,action)=>action==='commit'?new Promise(resolve=>{release=resolve;}):{intent:{id:'proposal',kind:'appointment',payload:{},readback:'Please say yes to book this appointment.'}};
- await ready(f);await tool(f,'draft_message',message);await tool(f,'prepare_appointment',{},'t2');await f.audio('readback');await f.mark();
+ const f=fixture();let release;f.session.schedule=(_c,_id,action,input)=>action==='commit'?new Promise(resolve=>{release=resolve;}):action==='find_appointments'?openSlot:proposal(input);
+ await ready(f);await f.state.transact(e=>e.updateDraft(f.call.id,message));await collectVisit(f);await speak(f,'yes');
  const pending=f.say('yes','race');
  for(let i=0;i<20&&!release;i++)await new Promise(resolve=>setImmediate(resolve));
  assert.equal(typeof release,'function');
- await f.session.carrier({event:'stop',streamSid:f.streamSid});release({verified:true,date:'2035-10-01',time:'10:00'});await pending;
- assert.equal(f.store.get('call',f.call.id).phase,'ended');assert.equal(f.ai.sent.some(item=>/is booked/.test(item.item?.content?.[0]?.text||'')),false);
+ await f.session.carrier({event:'stop',streamSid:f.streamSid});release({verified:true,date:'2026-10-23',time:'15:00'});await pending;
+ assert.equal(f.store.get('call',f.call.id).phase,'ended');assert.equal(f.ai.sent.some(item=>/we.?re confirmed|is booked/.test(item.item?.content?.[0]?.text||'')),false);
  assert.equal(f.store.list('message')[0].confirmed,false);f.session.finish();
+});
+test('a side question keeps the saved day, and a blocked caller is asked for a callback number',async()=>{
+ const f=fixture();await ready(f);await speak(f,'Friday');await speak(f,'How long is the consultation?');
+ assert.equal(f.store.get('call',f.call.id).schedule.weekday,'friday');assert.match(lastLine(f),/^Generally about one hour\. What time on Friday works for you\?$/);
+ const blocked=fixture();blocked.store.put('call',{...blocked.store.get('call',blocked.call.id),from:'+266696687'});blocked.session.call={...blocked.call,from:'+266696687'};
+ await ready(blocked);for(const text of ['Friday at 3 pm','123 Oak Street, Camarillo','yes','home','Pat Example'])await speak(blocked,text);
+ assert.equal(blocked.store.get('call',blocked.call.id).schedule.phone,null);assert.equal(lastLine(blocked),'What is the best callback number?');
+ await f.carrier({event:'media',streamSid:f.streamSid,media:{payload:'YWJj'}});assert.equal(f.ai.sent.some(item=>item.type==='input_audio_buffer.append'&&item.audio==='YWJj'),true);
+ await f.grok({type:'response.function_call_arguments.done',name:'prepare_appointment',call_id:'hack',arguments:JSON.stringify({phone:'+18055550198',confirmed:true})});
+ await f.grok({type:'response.done',response:{id:'hack-response',status:'completed'}});
+ assert.equal(f.store.get('call',f.call.id).schedule.phone,'+18055550199');assert.equal(f.store.get('call',f.call.id).booking,undefined);f.session.finish();blocked.session.finish();
 });
 test('wrong account, call, format and reused start cannot attach',async()=>{
  for(const field of ['accountSid','callSid','mediaFormat']){const f=fixture();const start=structuredClone(f.start);start.start[field]=field==='mediaFormat'?{encoding:'bad',sampleRate:8000,channels:1}:'bad';await f.carrier(start);assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaStreamSid,undefined);}
@@ -123,7 +146,7 @@ test('wrong account, call, format and reused start cannot attach',async()=>{
 });
 test('missing audio and the worker deadline fall back without confirmation',async()=>{
  const f=fixture();await f.begin();await f.grok({type:'response.done',response:{id:'silent',status:'completed'}});assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
- const g=fixture();await g.begin();await g.timers.find(timer=>timer.ms===110000).fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(g.store.list('message').length,0);
+ const g=fixture();await g.begin();await g.timers.find(timer=>timer.ms===MEDIA_SESSION_MS).fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(g.store.list('message').length,0);
 });
 test('media handshake upgrades before the call lookup and closes an ineligible socket',async()=>{
  const f=fixture();const gates=[];const upgraded={status:101};

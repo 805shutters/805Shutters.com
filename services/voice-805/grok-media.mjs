@@ -2,10 +2,13 @@ import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
+import { applyFindResult, applyScheduleTurn, findPayload, initialSchedule, preparePayload, speakClock } from './schedule-intake.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
 const SILENCE_MS = 12000;
+// The no-answer call watchdog remains 5 minutes. This cap ends the socket first so a long answer-by-answer booking still falls back instead of running without a limit.
+export const MEDIA_SESSION_MS = 270000;
 
 // The carrier socket is authenticated before construction. The model can propose.
 // A spoken yes counts only after the exact readback has played on this call.
@@ -23,7 +26,7 @@ export class GrokMediaSession {
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
     this.startTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice connection timed out')), 10000);
-    this.limitTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice session duration reached')), 110000);
+    this.limitTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice session duration reached')), MEDIA_SESSION_MS);
     socket.onmessage = event => {
       let data;
       try { data = JSON.parse(event.data); } catch { return this.enqueue(() => this.fail('Invalid carrier event')); }
@@ -63,7 +66,7 @@ export class GrokMediaSession {
       await this.worker.drain();
       return this.finish();
     }
-    if (event.event === 'media' && this.stage === 'assist' && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
+    if (event.event === 'media' && ['assist', 'collect', 'confirm'].includes(this.stage) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
     if (event.event === 'mark') {
       const next = this.marks.get(event.mark?.name);
       if (!next) return;
@@ -79,7 +82,13 @@ export class GrokMediaSession {
     this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: false, content: [{ type: 'output_text', text }] } });
   }
   mark(next) { const name = randomUUID(); this.marks.set(name, next); this.sendCarrier({ event: 'mark', mark: { name } }); }
-  assist() { this.stage = 'assist'; this.clearSilence(); this.sendAI({ type: 'session.update', session: { turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS } }); }
+  assist() { this.assistMessages(); }
+  collect() {
+    this.stage = 'collect';
+    this.clearSilence();
+    this.sendAI({ type: 'session.update', session: { instructions: 'Stay silent. Do not speak, ask questions, or call tools. The server records each answer and supplies the next line.', turn_detection: { type: 'server_vad' }, tools: [], input_audio_transcription: { model: 'grok' } } });
+  }
+  assistMessages() { this.stage = 'assist'; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: { instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS } }); }
   output(id, result) { this.sendAI({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output: JSON.stringify(result) } }); }
   clearSilence() { if (this.silenceTimer) { this.clock.clearTimeout(this.silenceTimer); this.silenceTimer = null; } }
   armConfirm() {
@@ -99,9 +108,12 @@ export class GrokMediaSession {
     if (event.type === 'session.updated' && this.stage === 'starting') { this.clock.clearTimeout(this.startTimer); this.force(RECEPTIONIST_OPENING, 'opening'); return; }
     if (event.type === 'error') return this.fail('Grok rejected the voice session');
     const turn = this.callerTurn(event);
-    if (turn) return this.hear(turn);
+    if (turn && this.stage === 'confirm') return this.hear(turn);
+    if (turn && this.stage === 'collect') return this.collectTurn(turn);
+    if (turn) return;
     if (event.type === 'response.created') { this.audioBytes = 0; return; }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
+      if (this.stage === 'collect' || this.stage === 'confirm') return;
       if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) { this.audioBytes += event.delta.length; this.sendCarrier({ event: 'media', media: { payload: event.delta } }); }
       return;
     }
@@ -140,7 +152,7 @@ export class GrokMediaSession {
             return true;
           });
           if (armed) this.armConfirm(); else this.finish();
-        } else this.assist();
+        } else if (this.messageOnly) this.assistMessages(); else this.collect();
       });
     } else if (this.stage === 'assist' && this.pendingTool) {
       const task = this.pendingTool;
@@ -154,6 +166,55 @@ export class GrokMediaSession {
     this.intent = null;
     await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null }); });
     this.force('I did not hear a clear yes, so nothing was saved. You can leave a message or tell me another time.', 'result');
+  }
+  async saveSchedule(schedule) {
+    await this.state.transact((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (c?.phase === 'message') s.put('call', { ...c, schedule });
+    });
+  }
+  async collectTurn(turn) {
+    if (this.heard.has(turn.id)) return;
+    this.heard.add(turn.id);
+    const current = await this.current();
+    if (current?.phase !== 'message') return this.finish();
+    const prior = current.schedule || initialSchedule(current.from, this.config.number);
+    const applied = applyScheduleTurn(prior, turn.text, current.from, this.config.number);
+    await this.saveSchedule(applied.state);
+    if (applied.handoff === 'message') { this.messageOnly = true; this.force(applied.say, 'result'); return; }
+    if (applied.prepare) return this.prepareFromSchedule(applied.state);
+    if (applied.search) return this.searchSchedule(applied.state);
+    this.force(applied.say, 'result');
+  }
+  async searchSchedule(state) {
+    this.stage = 'tool';
+    try {
+      const result = await this.schedule(this.config, this.call.id, 'find_appointments', findPayload(state));
+      const offered = applyFindResult(state, result);
+      await this.saveSchedule(offered.state);
+      this.force(offered.say, 'result');
+    } catch {
+      const offered = applyFindResult(state, { fit: false, saved: false });
+      await this.saveSchedule(offered.state);
+      this.force(offered.say, 'result');
+    }
+  }
+  async prepareFromSchedule(state) {
+    const current = await this.current();
+    if (current?.bookingAttention || current?.booking?.verified) { this.force('I could not verify the save. I can take a callback message so our team can check it.', 'result'); return; }
+    this.stage = 'tool';
+    let result;
+    try { result = await this.schedule(this.config, this.call.id, 'prepare_appointment', preparePayload(state)); }
+    catch { this.force('I could not verify that opening. May I take a callback message so our team can check it?', 'result'); return; }
+    if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) { this.force('I could not verify that opening. May I take a callback message so our team can check it?', 'result'); return; }
+    this.intent = result.intent;
+    await this.state.transact((e, s) => {
+      const c = s.get('call', this.call.id);
+      if (c?.phase !== 'message' || c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention) throw new Error('Call unavailable');
+      s.put('call', { ...c, intent: this.intent, schedule: state });
+      e.updateDraft(this.call.id, { name: state.name, callback: state.phone, message: `Consultation requested for ${state.offer.date} at ${state.offer.time} Pacific, ${state.address}. Booking not verified; check calendar before following up.` });
+    });
+    this.force(this.intent.readback, 'readback');
   }
   async hear(turn) {
     if (this.stage !== 'confirm' || this.heard.has(turn.id)) return;
@@ -210,7 +271,10 @@ export class GrokMediaSession {
       return;
     }
     if (!result?.verified) throw Error('Booking not verified');
-    this.force(`Your consultation is booked for ${result.date} at ${result.time} Pacific time. Is there anything else I can help with?`, 'result');
+    const saved = await this.current();
+    const clock = speakClock(result.time) || result.time;
+    const when = saved?.schedule?.weekday ? `${saved.schedule.weekday.charAt(0).toUpperCase()}${saved.schedule.weekday.slice(1)} at ${clock}` : `${result.date} at ${clock}`;
+    this.force(`Absolutely, we're confirmed for ${when}. Is there anything else I can help with?`, 'result');
   }
   async tool(event) {
     try {

@@ -113,6 +113,7 @@ test('both machine answers and a 20 second timeout each return the caller to the
  await Promise.all(machines.tasks);
  let call=await machines.state.transact((_e,s)=>s.get('call',first.call.id));
  assert.equal(call.phase,'message');assert.equal(call.owner,null);assert.equal(machines.provider.operations.some(item=>item.type==='connect-agent'),true);
+ assert.ok(call.deadline-Date.now()<=300000);assert.ok(call.deadline-Date.now()>=290000);
  const quiet=fixture();const second=await offered(quiet,'CA'+'9'.repeat(32));
  await quiet.state.transact(e=>e.tick(Date.now()+20000));await quiet.worker.drain();
  call=await quiet.state.transact((_e,s)=>s.get('call',second.call.id));
