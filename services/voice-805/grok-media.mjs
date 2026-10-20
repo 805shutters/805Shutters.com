@@ -91,16 +91,19 @@ export class GrokMediaSession {
   async current() {
     if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
     const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
-    if (this.closed || !loaded) return null;
-    if (loaded.value) return loaded.value;
-    return loaded.timeout ? this.call : null;
+    // A missed read must not reuse the call captured at construction. That snapshot
+    // can still say the caller is unowned after staff have taken the call.
+    if (this.closed || !loaded?.value) return null;
+    return loaded.value;
   }
   async startupCall() {
     if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
     const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
     if (this.closed) return null;
     if (loaded?.value) return loaded.value;
-    return this.call;
+    // Only the first greeting may use the call that was eligible when the socket attached.
+    if (loaded?.timeout) return this.call;
+    return null;
   }
   async boundRead(task) {
     if (this.closed) return null;
@@ -126,11 +129,15 @@ export class GrokMediaSession {
       if (this.closed) return this.finish();
       let accepted = claimed === true;
       // The CAS response can outlive the bound after Postgres has stored the stream id.
+      // The start timer can close the session while that confirmation is still waiting.
       if (!accepted && claimed?.timeout && typeof this.state.readCall === 'function') {
-        const fresh = await this.state.readCall(this.call.id).catch(() => null);
-        accepted = fresh?.mediaStreamSid === s.streamSid;
+        const fresh = await this.boundRead(() => this.state.readCall(this.call.id));
+        if (this.closed) return;
+        accepted = fresh?.value?.mediaStreamSid === s.streamSid;
       }
+      if (this.closed) return;
       if (!accepted) return claimed?.timeout ? this.recoverNow('Voice stream was not claimed') : this.finish();
+      if (this.closed) return;
       this.streamSid = s.streamSid;
       this.ai = this.connect();
       this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: null }, tools: [] }) }));
@@ -406,7 +413,8 @@ export class GrokMediaSession {
       this.clock.clearTimeout(this.startTimer);
       const call = await this.startupCall();
       if (this.closed || !call) return;
-      if (call.phase === 'offering' && !call.owner) this.force(COMMON_GREETING, 'welcome', { listen: true, interruptible: true });
+      if (call.owner || !['offering', 'message'].includes(call.phase)) return this.finish();
+      if (call.phase === 'offering') this.force(COMMON_GREETING, 'welcome', { listen: true, interruptible: true });
       else this.force(RECEPTIONIST_OPENING, 'opening');
       return;
     }

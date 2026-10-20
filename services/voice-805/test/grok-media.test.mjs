@@ -745,3 +745,65 @@ test('a startup read that does not return still speaks from the attached call', 
  assert.equal(f.ai.sent.at(-1).item.content[0].text, COMMON_GREETING);
  f.session.finish();
 });
+test('a claim confirmation that arrives after close does not connect', async () => {
+ const f = fixture();
+ f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'offering', listeningWelcome: true, greetingPlayed: false, deadline: Date.now() + 20000 });
+ const original = f.state.transact.bind(f.state);
+ f.state.transact = async fn => {
+  const value = await original(fn);
+  if (f.store.get('call', f.call.id).mediaStreamSid) return new Promise(() => {});
+  return value;
+ };
+ let releaseRead = () => {};
+ f.state.readCall = () => new Promise(resolve => { releaseRead = () => resolve(f.store.get('call', f.call.id)); });
+ let connections = 0;
+ f.session.connect = () => { connections += 1; return f.ai; };
+ const pending = f.carrier(f.start);
+ for (let i = 0; i < 20 && !f.timers.some(timer => !timer.cleared && timer.ms === STATE_BOUND_MS); i++) await new Promise(resolve => setImmediate(resolve));
+ await f.timers.find(timer => !timer.cleared && timer.ms === STATE_BOUND_MS).fn();
+ for (let i = 0; i < 20 && !f.timers.some(timer => !timer.cleared && timer.ms === STATE_BOUND_MS); i++) await new Promise(resolve => setImmediate(resolve));
+ const startTimer = f.timers.find(timer => !timer.cleared && timer.ms === 10000);
+ assert.equal(typeof startTimer?.fn, 'function');
+ await startTimer.fn();
+ assert.equal(f.session.closed, true);
+ releaseRead();
+ await pending;
+ assert.equal(connections, 0);
+ assert.equal(f.session.streamSid, null);
+ assert.equal(f.ai.sent.some(item => item.item?.type === 'force_message'), false);
+});
+test('startup does not speak when the call is already owned, ended, or in handoff', async () => {
+ for (const phase of ['handoff', 'ended', 'human']) {
+  const f = fixture();
+  f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'offering', listeningWelcome: true, greetingPlayed: false, deadline: Date.now() + 20000 });
+  await f.carrier(f.start);
+  f.store.put('call', { ...f.store.get('call', f.call.id), phase, owner: phase === 'ended' ? null : 'mike' });
+  f.ai.onopen();
+  await f.session.chain;
+  await f.grok({ type: 'session.updated' });
+  assert.equal(f.ai.sent.some(item => item.item?.type === 'force_message'), false);
+  assert.equal(f.session.closed, true);
+ }
+});
+test('a read timeout after staff takeover does not speak the apology', async () => {
+ const f = fixture();
+ f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'offering', listeningWelcome: true, greetingPlayed: false, deadline: Date.now() + 20000 });
+ await f.begin();
+ await f.audio('welcome');
+ await f.mark();
+ assert.equal(f.session.stage, 'collect');
+ f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'handoff', owner: 'mike' });
+ Object.assign(f.call, { phase: 'offering', owner: null, deadline: Date.now() - 1 });
+ f.state.readCall = () => new Promise(() => {});
+ const before = f.ai.sent.filter(item => item.item?.content?.[0]?.text === RECEPTIONIST_OPENING).length;
+ const pending = f.session.offerWatch();
+ for (let i = 0; i < 20 && !f.timers.some(timer => !timer.cleared && timer.ms === STATE_BOUND_MS); i++) await new Promise(resolve => setImmediate(resolve));
+ const bound = f.timers.filter(timer => !timer.cleared && timer.ms === STATE_BOUND_MS).at(-1);
+ assert.equal(typeof bound?.fn, 'function');
+ await bound.fn();
+ await pending;
+ assert.equal(f.ai.sent.filter(item => item.item?.content?.[0]?.text === RECEPTIONIST_OPENING).length, before);
+ assert.notEqual(f.session.stage, 'opening');
+ assert.equal(f.store.get('call', f.call.id).booking, undefined);
+ f.session.finish();
+});
