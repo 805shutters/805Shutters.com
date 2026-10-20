@@ -13,7 +13,7 @@ export class SupabaseWorker {
   constructor(state, provider) { this.state = state; this.provider = provider; }
   async handle(kind, item) {
     const p = this.provider;
-    const read = () => this.state.transact((_e,s) => s.get('call', item.callId));
+    const read = () => typeof this.state.readCall === 'function' ? this.state.readCall(item.callId) : this.state.transact((_e,s) => s.get('call', item.callId));
     const change = fn => this.state.transact(fn);
     try {
       const c = await read();

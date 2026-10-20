@@ -88,7 +88,30 @@ export class GrokMediaSession {
       ...extra,
     };
   }
-  async current() { return this.commitBounded((_e, s) => s.get('call', this.call.id)); }
+  async current() {
+    if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
+    const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
+    if (this.closed || !loaded) return null;
+    if (loaded.value) return loaded.value;
+    return loaded.timeout ? this.call : null;
+  }
+  async startupCall() {
+    if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
+    const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
+    if (this.closed) return null;
+    if (loaded?.value) return loaded.value;
+    return this.call;
+  }
+  async boundRead(task) {
+    if (this.closed) return null;
+    let timer;
+    const op = Promise.resolve().then(task).then(value => ({ value }), error => ({ error }));
+    const timeout = new Promise(resolve => { timer = this.clock.setTimeout(() => resolve({ timeout: true }), STATE_BOUND_MS); });
+    const result = await Promise.race([op, timeout]);
+    this.clock.clearTimeout(timer);
+    if (this.closed) return null;
+    return result;
+  }
   async carrier(event) {
     if (event.event === 'connected') return;
     if (event.event === 'start') {
@@ -99,8 +122,15 @@ export class GrokMediaSession {
         if (!c || !['message', 'offering'].includes(c.phase) || c.mediaStreamSid || c.mediaFailed) return false;
         store.put('call', { ...c, mediaStreamSid: s.streamSid });
         return true;
-      });
-      if (this.closed || !claimed) return this.finish();
+      }, false);
+      if (this.closed) return this.finish();
+      let accepted = claimed === true;
+      // The CAS response can outlive the bound after Postgres has stored the stream id.
+      if (!accepted && claimed?.timeout && typeof this.state.readCall === 'function') {
+        const fresh = await this.state.readCall(this.call.id).catch(() => null);
+        accepted = fresh?.mediaStreamSid === s.streamSid;
+      }
+      if (!accepted) return claimed?.timeout ? this.recoverNow('Voice stream was not claimed') : this.finish();
       this.streamSid = s.streamSid;
       this.ai = this.connect();
       this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: null }, tools: [] }) }));
@@ -228,7 +258,7 @@ export class GrokMediaSession {
       }
     }).catch(() => {});
   }
-  async commitBounded(fn) {
+  async commitBounded(fn, fatal = true) {
     if (this.closed) return null;
     let timer;
     const op = Promise.resolve(this.state.transact(fn)).then(value => ({ value }), error => ({ error }));
@@ -237,8 +267,8 @@ export class GrokMediaSession {
     this.clock.clearTimeout(timer);
     if (this.closed) return null;
     if (result.timeout) {
-      this.recoverNow('State save timed out');
-      return null;
+      if (fatal) this.recoverNow('State save timed out');
+      return fatal ? null : { timeout: true };
     }
     if (result.error) throw result.error;
     return result.value;
@@ -374,7 +404,7 @@ export class GrokMediaSession {
   async grok(event) {
     if (event.type === 'session.updated' && this.stage === 'starting') {
       this.clock.clearTimeout(this.startTimer);
-      const call = await this.commitBounded((_e, s) => s.get('call', this.call.id));
+      const call = await this.startupCall();
       if (this.closed || !call) return;
       if (call.phase === 'offering' && !call.owner) this.force(COMMON_GREETING, 'welcome', { listen: true, interruptible: true });
       else this.force(RECEPTIONIST_OPENING, 'opening');

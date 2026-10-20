@@ -70,7 +70,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
     if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignatureMatches(c.authToken,mediaStreamSignatureUrls(c.origin,path),new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
     return upgradeMedia(request,{
-     load:()=>run((_e,s)=>s.get('call',id)),
+     load:()=>state.readCall(id),
      eligible:call=>!!(call&&['message','offering'].includes(call.phase)&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
     });
    }
@@ -273,5 +273,6 @@ function callbackFields(p, transcript, call, message) {
   p_phone:call?.from||read('From')||'',
   p_status:'needs_callback',
   p_appointment_id:null,
+  p_customer_id:call?.customerId||null,
  };
 }

@@ -4,7 +4,15 @@ import { Engine } from './engine.mjs';
 // Each short transaction is pure until PostgreSQL accepts its revision. Network
 // effects are claimed and committed separately, before contacting the carrier.
 export class SnapshotStore {
-  constructor(state = {}) { this.state = structuredClone({ entities: {}, events: {}, inbound: {}, ...state }); }
+  constructor(state = {}) {
+    const source = state && typeof state === 'object' ? state : {};
+    // Keep the loaded key order. Rebuilding the object changes JSON equality and
+    // turns a read into a full-document CAS write after Postgres stores jsonb.
+    this.state = structuredClone(source);
+    this.state.entities ??= {};
+    this.state.events ??= {};
+    this.state.inbound ??= {};
+  }
   tx(fn) { const before = structuredClone(this.state); try { return fn(); } catch (e) { this.state = before; throw e; } }
   get(kind, id) { return structuredClone(this.state.entities[kind]?.[id] ?? null); }
   put(kind, value) { (this.state.entities[kind] ??= {})[value.id] = structuredClone(value); return value; }
@@ -18,15 +26,22 @@ export class SnapshotStore {
 export class SupabaseState {
   constructor(client, config) { this.client = client; this.config = config; this.dataset = config.dataset || 'pilot'; }
   async read() { const { data, error } = await this.client.from('voice_805_state').select('revision,body').eq('id', this.dataset).single(); if (error) throw new Error('805 phone database unavailable'); return data; }
+  // One select. No engine, no stringify, and no voice_805_commit.
+  async readCall(id) {
+    const row = await this.read();
+    const call = row?.body?.entities?.call?.[id] ?? null;
+    return call ? structuredClone(call) : null;
+  }
   async transact(fn) {
     for (let attempt = 0; attempt < 12; attempt++) {
       const row = await this.read(); const store = new SnapshotStore(row.body); const engine = new Engine(store, this.config);
       for (const [key, value] of Object.entries(store.state.events)) {
         if (key.startsWith('control:') && value.at < Date.now() - 120000) delete store.state.events[key];
       }
+      const before = JSON.stringify(store.state);
       const value = fn(engine, store);
       if (value && typeof value.then === 'function') throw new Error('Network IO cannot run inside a state transaction');
-      if (JSON.stringify(row.body) === JSON.stringify(store.state)) return value;
+      if (JSON.stringify(store.state) === before) return value;
       const { data, error } = await this.client.rpc('voice_805_commit', { p_id: this.dataset, p_revision: row.revision, p_body: store.state });
       if (error) throw new Error('805 phone state could not be saved');
       if (data === true) return value;

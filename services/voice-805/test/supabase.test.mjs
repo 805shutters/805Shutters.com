@@ -206,3 +206,37 @@ test('stored greeting audio plays immediately and a storage miss says the line w
  const ringXml=await ring.text();
  assert.equal(ring.status,200);assert.match(ringXml,/<Play loop="0">https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/ringback\.wav<\/Play>/);assert.doesNotMatch(ringXml,/Say|Pause|hold/);
 });
+test('a pure read does not CAS-commit when jsonb key order differs',async()=>{
+ const f=fixture();
+ const call=await f.state.transact(e=>e.inbound('CA'+'b'.repeat(32),'+18055550199'));
+ await f.state.transact(e=>e.greeted(call.id,'greet-read'));
+ const body=f.client.row.body;
+ f.client.row.body={events:body.events,inbound:body.inbound,entities:body.entities};
+ const revision=f.client.row.revision;
+ let commits=0;
+ const rpc=f.client.rpc.bind(f.client);
+ f.client.rpc=async(name,p)=>{if(name==='voice_805_commit')commits++;return rpc(name,p);};
+ const loaded=await f.state.readCall(call.id);
+ assert.equal(loaded.phase,'offering');assert.equal(loaded.listeningWelcome,true);assert.equal(commits,0);
+ const peeked=await f.state.transact((_e,s)=>s.get('call',call.id));
+ assert.equal(peeked.id,call.id);assert.equal(commits,0);assert.equal(f.client.row.revision,revision);
+ await f.state.transact((_e,s)=>{const current=s.get('call',call.id);s.put('call',{...current,mediaStreamSid:'MZ'+'1'.repeat(32)});});
+ assert.equal(commits,1);assert.equal(f.client.row.revision,revision+1);
+ const again=await f.state.readCall(call.id);
+ assert.equal(again.mediaStreamSid,'MZ'+'1'.repeat(32));assert.equal(commits,1);
+});
+test('voicemail callback includes the customer id the database function requires',async()=>{
+ const f=fixture();
+ const call=await f.state.transact(e=>e.inbound('CA'+'e'.repeat(32),'+18055550199'));
+ await f.state.transact((_e,s)=>{const current=s.get('call',call.id);s.put('call',{...current,phase:'message',customerId:'11111111-1111-4111-8111-111111111111'});});
+ const seen=[];
+ const rpc=f.client.rpc.bind(f.client);
+ f.client.rpc=async(name,p)=>{seen.push({name,p});return rpc(name,p);};
+ const fields={CallSid:call.sid,To:f.c.number,From:'+18055550199',RecordingStatus:'completed',RecordingUrl:'https://example.test/recording'};
+ assert.equal((await f.handler(carrierRequest(f,`/twilio/recording/${call.id}`,fields))).status,200);
+ await Promise.all(f.tasks);
+ const saved=seen.find(item=>item.name==='voice_805_save_callback')?.p;
+ assert.equal(saved?.p_customer_id,'11111111-1111-4111-8111-111111111111');
+ assert.equal(saved?.p_appointment_id,null);
+ assert.equal(saved?.p_call_sid,call.sid);
+});
