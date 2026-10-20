@@ -18,7 +18,8 @@ Privately configure these Edge secrets without logging values:
 - `VOICE_805_TRANSPORT`: `media` (the live path). Hosted SIP is not the answer path.
 - `VOICE_805_CONTROL_KEY`, `VOICE_805_TOOLS_KEY`, `VOICE_805_WORKER_KEY`: separate random secrets, each at least 32 characters.
 - `VOICE_805_BOOKING_AUTHORIZED`: leave unset or `false` until a reviewed production booking release. Pilot calls may inspect slots and cannot create CRM appointments.
-- `VOICE_805_STAFF_JSON`: `mike` and `jessica`, each with `kind:cell`, `destination`, and `sms`. Reuse independently verified existing workflow numbers; never commit them.
+- `VOICE_805_STAFF_JSON`: `mike` and `jessica`, each with `kind:cell`, `destination`, and `sms`. Reuse independently verified existing workflow numbers; never commit them. Do not remove Jessica from this object while testing a smaller ring list.
+- `VOICE_805_RING_STAFF_JSON`: who rings on a new inbound call. Unset, or `["mike","jessica"]`, rings both. `["mike"]` rings only Mike. Callback, consult, message notices, and booking SMS still use both staff contacts. An empty array, a duplicate, an unknown name, or invalid JSON fails readiness and does not dial Jessica. Restore both rings by unsetting this secret or setting it to `["mike","jessica"]`.
 - `VOICE_805_HOURS_JSON`: explicit day keys 0–6 (Sunday first), each containing minute-of-day intervals. Pacific timezone, exclusive closing time; split overnight intervals at midnight. `VOICE_805_HOLIDAYS_JSON`: date-specific interval overrides. Hours remain a user decision.
 - `VOICE_805_OFFER_SECONDS`: 20 when unset. Optional `VOICE_805_STATUS_TOPICS_JSON` overrides the distinct stage hints.
 
@@ -32,7 +33,7 @@ Read back `cron.job`, recent `cron.job_run_details`, and `net._http_response` st
 
 ## 3. Grok media receptionist
 
-The carrier plays the cached Grok greeting and both staff legs start ringing at answer, with answering-machine detection. The first call can create the private Storage bucket `voice-805-prompts` and fill its wavs; no database migration and no number change are required for that cache. `<Say>` remains the fallback when a wav is missing. After no answer, Twilio opens a signed Media Stream to `/twilio/media/<call id>`. Grok apologizes and offers a message or a consultation. Scheduling and message tools run through `POST /api/voice-805/scheduling` on www.805shutters.com. A spoken yes after the played readback is the only save. See [the media pilot note](grok-api-pilot.md). Do not enable `VOICE_805_AGENT_CONTRACT_VERIFIED` until a real call proves greeting audio, both handsets, machine detection, spoken confirmation, and a verified CRM save.
+The carrier plays the cached Grok greeting and the incoming ring list starts at answer, with answering-machine detection. Unset, that list is Mike and Jessica. The first call can create the private Storage bucket `voice-805-prompts` and fill its wavs; no database migration and no number change are required for that cache. `<Say>` remains the fallback when a wav is missing. After no answer, Twilio opens a signed Media Stream to `/twilio/media/<call id>`. Grok apologizes and offers a message or a consultation. Scheduling and message tools run through `POST /api/voice-805/scheduling` on www.805shutters.com. A spoken yes after the played readback is the only save. See [the media pilot note](grok-api-pilot.md). Do not enable `VOICE_805_AGENT_CONTRACT_VERIFIED` until a real call proves greeting audio, both handsets, machine detection, spoken confirmation, and a verified CRM save.
 
 ## 4. Temporary Twilio number only
 

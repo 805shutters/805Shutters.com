@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { e164, isOpen, staffIds } from "./config.mjs";
+import { e164, incomingRingStaff, isOpen, staffIds } from "./config.mjs";
 
 export const MESSAGE_WINDOW_MS = 300000;
 
@@ -248,12 +248,12 @@ export class Engine {
   greeted(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (c.phase !== "greeting") return;
-      // Both people ring while the greeting plays. The parent leg stays on that
-      // audio until Twilio finishes it; do not move the caller into the conference yet.
+      // The incoming ring list rings while the greeting plays. The parent leg stays
+      // on that audio until Twilio finishes it; do not move the caller yet.
       c.phase = "offering";
       c.greetingPlayed = false;
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
-      for (const staff of staffIds) this.offer(c, staff);
+      this.offerIncoming(c);
     });
   }
   markGreetingPlayed(id, eventId) {
@@ -298,8 +298,17 @@ export class Engine {
       if (!c.open) { c.phase = "message"; c.deadline = Date.now() + MESSAGE_WINDOW_MS; this.effect(c, "collect"); return; }
       c.phase = "offering";
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
-      for (const staff of staffIds) this.offer(c, staff);
+      this.offerIncoming(c);
     });
+  }
+  // Initial inbound offers only. Consult, callback, and SMS keep every staff contact.
+  offerIncoming(c) {
+    const ringing = incomingRingStaff(this.config);
+    if (!ringing.length) {
+      this.startFollowup(c, Date.now());
+      return;
+    }
+    for (const staff of ringing) this.offer(c, staff);
   }
   bind(id, offerId, sid) {
     return this.change(id, `bind:${offerId}:${sid}`, (c) => {

@@ -1,5 +1,34 @@
 export const staffIds = ["mike", "jessica"];
 export const e164 = /^\+[1-9]\d{7,14}$/;
+// Unset rings both people. Invalid JSON stays invalid so readiness can fail closed.
+export function loadRingStaff(env = process.env) {
+  const raw = env.VOICE_805_RING_STAFF_JSON;
+  if (raw == null || raw === "") return undefined;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return false;
+  }
+}
+// A missing value is the default pair. Anything else must be a unique nonempty
+// subset of staffIds. An empty or invalid list dials nobody, never Jessica.
+export function incomingRingStaff(config) {
+  const configured = config?.ringStaff;
+  if (configured === undefined) return staffIds.slice();
+  if (
+    !Array.isArray(configured) ||
+    configured.length === 0 ||
+    configured.length > staffIds.length
+  )
+    return [];
+  const seen = new Set();
+  for (const id of configured) {
+    if (typeof id !== "string" || !staffIds.includes(id) || seen.has(id))
+      return [];
+    seen.add(id);
+  }
+  return configured.slice();
+}
 export function loadConfig(env = process.env) {
   const json = (key, fallback) => (env[key] ? JSON.parse(env[key]) : fallback);
   return {
@@ -14,6 +43,7 @@ export function loadConfig(env = process.env) {
     agentId: env.VOICE_805_XAI_AGENT_ID || "",
     controlKey: env.VOICE_805_CONTROL_KEY || "",
     staff: json("VOICE_805_STAFF_JSON", {}),
+    ringStaff: loadRingStaff(env),
     hours: json("VOICE_805_HOURS_JSON", null),
     holidays: json("VOICE_805_HOLIDAYS_JSON", null),
     offerSeconds: Number(env.VOICE_805_OFFER_SECONDS || 0),
@@ -92,6 +122,7 @@ export function readiness(c) {
     missing.push("distinct staff ring endpoints");
   if (c.staff.mike?.sms && c.staff.mike.sms === c.staff.jessica?.sms)
     missing.push("distinct staff SMS destinations");
+  if (!incomingRingStaff(c).length) missing.push("incoming ring staff");
   if (!c.liveAuthorized) missing.push("live provider authorization");
   if (!c.agentReviewed) missing.push("reviewed published agent version");
   if (!c.notificationsApproved)
