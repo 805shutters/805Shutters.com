@@ -10,6 +10,7 @@ import { loadSupabaseConfig } from '../supabase-config.mjs';
 const config=()=>({...loadSupabaseConfig({}),mode:'live',liveAuthorized:true,agentReviewed:true,agentContractVerified:true,workerVerified:true,transport:'media',xaiKey:'x'.repeat(20),
  origin:'https://example.supabase.co/functions/v1/voice-805',accountSid:'AC'+'a'.repeat(32),authToken:'t'.repeat(32),number:'+18055550100',
  toolsKey:'t'.repeat(32),controlKey:'c'.repeat(32),workerKey:'w'.repeat(32),offerSeconds:20,
+ sipUri:'sip:+18055908050@sip.voice.x.ai;transport=tls',
  hours:Object.fromEntries(Array.from({length:7},(_,i)=>[i,[[0,1440]]])),holidays:{},
  staff:{mike:{kind:'cell',destination:'+18055550101',sms:'+18055550101'},jessica:{kind:'cell',destination:'+18055550102',sms:'+18055550102'}}});
 class FakeClient{constructor(){this.row={revision:0,body:{entities:{},events:{},inbound:{}}};this.lookup={match:'unmatched'};}
@@ -72,8 +73,8 @@ test('an offer timeout during the greeting does not cut the caller off',async()=
  assert.equal(f.provider.operations.some(item=>item.type==='route'&&item.sid===sid),false);
  const greeted=await f.handler(carrier(f,`/twilio/greeted/${mid.id}`,{CallSid:sid,To:f.c.number,From:'+18055550199'}));
  const xml=await greeted.text();await Promise.all(f.tasks);
- assert.match(xml,/<Connect><Stream url="wss:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/media\//);
- assert.doesNotMatch(xml,/Conference|<Say>/);
+ assert.match(xml,/<Dial action="https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/continue\/[^"]+" method="POST" timeout="30"><Sip>sip:\+18055908050@sip\.voice\.x\.ai;transport=tls\?X-805-Call-Id=[0-9a-f-]{36}<\/Sip><\/Dial>/);
+ assert.doesNotMatch(xml,/Stream|Conference|<Say>|<Record/);
  assert.equal(f.provider.operations.filter(item=>item.type==='connect-agent').length,0);
  assert.equal(f.provider.operations.some(item=>item.type==='route'&&item.sid===sid),false);
 });

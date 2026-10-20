@@ -20,6 +20,30 @@ export function parseVisit(input: unknown, complete=false):VoiceVisit {
 const duration=(p:VoiceVisit)=>p.kind==='residential'?bookingSlotDurationMinutes:bookingDurationForWindowCount(p.windowCount);
 const clock=(time:string)=>{const [h,m]=time.split(':').map(Number);return h*60+m;};
 const dayNumber=(date:string)=>Math.round(Date.parse(date+'T00:00:00Z')/86400000);
+export async function slotsForPreferredTime(db:SupabaseClient, preferred:unknown) {
+ const text=typeof preferred==='string'?preferred.trim():'';
+ const match=/^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(00|30)$/.exec(text);
+ if(!match)throw new BookingError(400,'preferred_time must be Pacific YYYY-MM-DD HH:mm on the hour or half hour.');
+ const date=match[1], time=`${match[2]}:${match[3]}`;
+ if(new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw new BookingError(400,'preferred_time must be a real date.');
+ const snapshot=await readSchedule(db,date.slice(0,7));
+ const days=buildBookingAvailability(date.slice(0,7),snapshot.events,snapshot.slots,{now:new Date(),appointmentDurationMinutes:bookingSlotDurationMinutes}).days;
+ const pool:{date:string;time:string;minutesAway:number}[]=[];
+ for(const day of days){
+  const gap=Math.abs(dayNumber(day.date)-dayNumber(date));
+  if(gap>3)continue;
+  for(const slot of day.slots||[]){
+   if(!slot.available)continue;
+   const delta=Math.abs(clock(slot.time)-clock(time));
+   if(delta>(gap===0?180:60))continue;
+   pool.push({date:day.date,time:slot.time,minutesAway:gap*24*60+delta});
+  }
+ }
+ pool.sort((a,b)=>a.minutesAway-b.minutesAway||a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+ const exact=pool.some(slot=>slot.date===date&&slot.time===time);
+ const alternatives=pool.filter(slot=>!(slot.date===date&&slot.time===time)).slice(0,3);
+ return {date,timezone:'America/Los_Angeles',requested:time,exact,slots:exact?[time]:[],alternatives,fit:exact||alternatives.length>0,saved:false};
+}
 export async function prepareVoiceVisit(db:SupabaseClient,callId:string,input:unknown,complete=false) {
  const p=parseVisit(input,complete);
  // Full address, including the caller supplied city, must geocode unambiguously.
