@@ -15,7 +15,7 @@ export const PROMPTS = Object.freeze({
   greeting: COMMON_GREETING,
   unavailable: "This test line is not available.",
   voicemail:
-    "No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.",
+    "Apologies, but team members are tied up at the moment. After the tone, please leave your name, your phone number, and the reason for your call.",
 });
 
 const NAMES = Object.keys(PROMPTS);
@@ -101,7 +101,7 @@ export function storePrompt(config, name, bytes, durable = false) {
 export function promptVerb(config, name, text) {
   if (promptSource(config, name)) {
     const origin = String(config.origin || "").replace(/\/$/, "");
-    return `<Play>${xml(`${origin}/twilio/prompts/${name}.wav`)}</Play>`;
+    return `<Play>${xml(`${origin}${promptPublicPath(name)}`)}</Play>`;
   }
   return `<Say>${xml(text)}</Say>`;
 }
@@ -208,15 +208,21 @@ export async function warmPrompts(config, store, fetcher = config.promptFetch ||
   }
 }
 
-// The public Play URL stays /twilio/prompts/{name}.wav. The object key includes
-// the voice and a hash of the spoken text, so an edited prompt cannot keep
-// playing the previous recording stored at ara-{name}.wav.
-export function promptObjectName(name, text = PROMPTS[name]) {
-  const digest = createHash("sha256")
+// Storage and the public Play path both include the voice and spoken text.
+// A changed line gets a new URL, so Twilio cannot keep the previous wav at
+// /twilio/prompts/{name}.wav for max-age=86400. The unversioned path remains
+// for compatibility and is not given that long cache.
+export function promptDigest(name, text = PROMPTS[name]) {
+  return createHash("sha256")
     .update(`${VOICE_ID}\0${text || ""}`)
     .digest("hex")
     .slice(0, 16);
-  return `${VOICE_ID}-${name}-${digest}.wav`;
+}
+export function promptObjectName(name, text = PROMPTS[name]) {
+  return `${VOICE_ID}-${name}-${promptDigest(name, text)}.wav`;
+}
+export function promptPublicPath(name, text = PROMPTS[name]) {
+  return `/twilio/prompts/${name}-${promptDigest(name, text)}.wav`;
 }
 export function createSupabasePromptStore(client) {
   const bucket = () => client.storage.from(PROMPT_BUCKET);

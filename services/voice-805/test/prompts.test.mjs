@@ -14,6 +14,7 @@ import {
   normalizeWavHeader,
   promptIsReady,
   promptObjectName,
+  promptPublicPath,
   promptVerb,
   renderPrompt,
   storePrompt,
@@ -34,10 +35,13 @@ test("realtime and tts contracts match the current xAI voice API", () => {
   assert.equal(VOICE_ID, "ara");
   assert.match(promptObjectName("greeting"), /^ara-greeting-[0-9a-f]{16}\.wav$/);
   assert.equal(promptObjectName("greeting"), promptObjectName("greeting", PROMPTS.greeting));
-  assert.notEqual(promptObjectName("voicemail"), promptObjectName("voicemail", `${PROMPTS.voicemail} changed`));
+  assert.equal(promptPublicPath("greeting"), promptPublicPath("greeting", PROMPTS.greeting));
+  assert.notEqual(promptPublicPath("voicemail"), promptPublicPath("voicemail", `${PROMPTS.voicemail} changed`));
+  assert.match(promptPublicPath("voicemail"), /^\/twilio\/prompts\/voicemail-[0-9a-f]{16}\.wav$/);
+  assert.equal(promptPublicPath("voicemail").includes("?"), false);
   assert.equal(PROMPTS.voicemail.includes("Thank you for calling"), false);
   assert.equal(PROMPTS.voicemail.includes("Would you like"), false);
-  assert.match(PROMPTS.voicemail, /No one can take your call right now\. After the tone/);
+  assert.match(PROMPTS.voicemail, /^Apologies, but team members are tied up at the moment\. After the tone/);
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
@@ -114,7 +118,7 @@ test("say is the fallback and play is used only for durable audio", () => {
   assert.equal(storePrompt(c, "greeting", Uint8Array.from([1, 2, 3, 4]), true), false);
   assert.equal(promptIsReady(c, "greeting"), false);
   c.promptAudio = { greeting: wav() };
-  assert.match(promptVerb(c, "greeting", PROMPTS.greeting), /<Play>https:\/\/example\.test\/voice-805\/twilio\/prompts\/greeting\.wav<\/Play>/);
+  assert.match(promptVerb(c, "greeting", PROMPTS.greeting), new RegExp(`<Play>https://example\\.test/voice-805${promptPublicPath("greeting")}</Play>`));
   const other = config();
   assert.equal(promptIsReady(other, "greeting"), false);
 });

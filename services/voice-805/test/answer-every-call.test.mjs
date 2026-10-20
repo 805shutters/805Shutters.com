@@ -5,6 +5,7 @@ import { SupabaseWorker } from '../supabase-worker.mjs';
 import { createSupabaseHandler } from '../supabase-handler.mjs';
 import { SimulationProvider, TwilioProvider, staffDialParams } from '../provider.mjs';
 import { hmac } from '../security.mjs';
+import { promptDigest, promptPublicPath } from '../prompts.mjs';
 import { loadSupabaseConfig } from '../supabase-config.mjs';
 
 const config=()=>({...loadSupabaseConfig({}),mode:'live',liveAuthorized:true,agentReviewed:true,agentContractVerified:true,workerVerified:true,transport:'media',xaiKey:'x'.repeat(20),
@@ -52,14 +53,22 @@ test('both handsets ring while the greeting plays, with no keypad',async()=>{
 test('cached Grok audio is played for the greeting and the offer window is unchanged',async()=>{
  const f=fixture();const wav=sampleWav();f.c.promptAudio={greeting:wav,unavailable:wav,voicemail:wav};
  const {greeting,atAnswer}=await offered(f,'CA'+'a'.repeat(32));
- assert.match(greeting,/<Play>https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/prompts\/greeting\.wav<\/Play>/);
+ const greetingPath=promptPublicPath('greeting');
+ assert.match(greeting,new RegExp(`<Play>https://example\\.supabase\\.co/functions/v1/voice-805${greetingPath}</Play>`));
  assert.doesNotMatch(greeting,/<Say>|Gather|Stream|Sip/);
  assert.deepEqual(atAnswer.dials,['jessica','mike']);assert.equal(atAnswer.parentMoves,0);
- const audio=await f.handler(new Request(f.c.origin+'/twilio/prompts/greeting.wav'));
+ const audio=await f.handler(new Request(f.c.origin+greetingPath));
  assert.equal(audio.status,200);assert.equal(audio.headers.get('content-type'),'audio/wav');
  assert.equal(audio.headers.get('cache-control'),'public, max-age=86400');
  assert.equal((await audio.arrayBuffer()).byteLength,wav.byteLength);
- assert.equal((await f.handler(new Request(f.c.origin+'/twilio/prompts/greeting.wav',{method:'POST'}))).status,405);
+ const stale=promptPublicPath('greeting','Thank you for calling 805 Shutters. We appreciate you supporting local business.');
+ assert.notEqual(stale,greetingPath);
+ assert.equal((await f.handler(new Request(f.c.origin+stale))).status,404);
+ assert.equal((await f.handler(new Request(f.c.origin+greetingPath+'?v=1'))).status,400);
+ assert.equal((await f.handler(new Request(f.c.origin+'/twilio/prompts/greeting.wav'))).status,200);
+ assert.equal((await f.handler(new Request(f.c.origin+'/twilio/prompts/greeting.wav'))).headers.get('cache-control'),'no-store');
+ assert.equal((await f.handler(new Request(f.c.origin+greetingPath,{method:'POST'}))).status,405);
+ assert.equal(promptDigest('greeting'),greetingPath.match(/greeting-([0-9a-f]{16})/)[1]);
 });
 test('an offer timeout during the greeting does not cut the caller off',async()=>{
  const f=fixture();const sid='CA'+'b'.repeat(32);
@@ -339,20 +348,31 @@ test('a failed media attach records the stream error and does not replay the gre
  const continued = await f.handler(carrier(f, `/twilio/continue/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199' }));
  const continuedXml = await continued.text();
  assert.match(continuedXml, /<Record/);
- assert.match(continuedXml, /No one can take your call right now/);
+ assert.match(continuedXml, /Apologies, but team members are tied up at the moment\. After the tone/);
  assert.doesNotMatch(continuedXml, /Thank you for calling|Would you like|greeting\.wav|<Connect>/);
  assert.equal((await callAfter(f, before.sid)).streamError, 'Media stream did not attach');
+ const streamSid = 'MZ' + '3'.repeat(32);
+ const official = (fields) => carrier(f, `/twilio/stream/${call.id}`, { CallSid: before.sid, AccountSid: f.c.accountSid, StreamSid: streamSid, StreamName: streamSid, Timestamp: '2026-10-20T02:27:36Z', ...fields });
+ const started = await f.handler(official({ StreamEvent: 'stream-started' }));
+ assert.equal(started.status, 200);
+ const startedCall = await callAfter(f, before.sid);
+ assert.equal(startedCall.lastStreamEvent, 'stream-started');
+ assert.equal(startedCall.streamError, 'Media stream did not attach');
  const secret = `Bearer ${'s'.repeat(40)}`;
- const stream = await f.handler(carrier(f, `/twilio/stream/${call.id}`, {
-  CallSid: before.sid, To: f.c.number, From: '+18055550199', StreamEvent: 'stream-error', StreamSid: 'MZ' + '3'.repeat(32), StreamError: `Handshake Error 31920 ${secret}`,
- }));
+ const stream = await f.handler(official({ StreamEvent: 'stream-error', StreamError: `Handshake Error 31920 ${secret}`, Timestamp: '2026-10-20T02:27:37Z' }));
  assert.equal(stream.status, 200);
  const recorded = await callAfter(f, before.sid);
  assert.equal(recorded.mediaFailed, true);
  assert.equal(recorded.mediaStreamSid, undefined);
+ assert.equal(recorded.lastStreamEvent, 'stream-error');
  assert.match(recorded.streamError, /Handshake Error 31920/);
  assert.equal(recorded.streamError.includes(secret), false);
  assert.equal(recorded.streamError.includes('s'.repeat(40)), false);
+ const duplicate = await f.handler(official({ StreamEvent: 'stream-error', StreamError: 'a different later error', Timestamp: '2026-10-20T02:27:38Z' }));
+ assert.equal(duplicate.status, 200);
+ const deduped = await callAfter(f, before.sid);
+ assert.equal(deduped.revision, recorded.revision);
+ assert.equal(deduped.streamError, recorded.streamError);
  const unsigned = await f.handler(new Request(f.c.origin + `/twilio/stream/${call.id}`, {
   method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'StreamEvent=stream-error',
  }));

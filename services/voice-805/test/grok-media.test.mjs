@@ -7,6 +7,7 @@ import { callerContext } from '../caller-context.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, spokenDecision } from '../receptionist.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
 import { createSupabaseHandler } from '../supabase-handler.mjs';
+import { promptPublicPath } from '../prompts.mjs';
 import { hmac } from '../security.mjs';
 class Socket {readyState=1;sent=[];send(s){this.sent.push(JSON.parse(s));}close(){this.readyState=3;this.onclose?.();}}
 function fixture(match='unmatched') {
@@ -185,7 +186,7 @@ test('pilot rejects a non-allowlisted caller before creating another call',async
  f.c.promptAudio={unavailable:wav};const againBody=new URLSearchParams({AccountSid:f.c.accountSid,CallSid:'CA'+'4'.repeat(32),To:f.c.number,From:'+18055550197'});
  const againSig=hmac(f.c.authToken,f.c.origin+path+[...againBody.keys()].sort().map(k=>k+againBody.get(k)).join(''),'sha1');
  const played=await handler(new Request(f.c.origin+path,{method:'POST',headers:{'x-twilio-signature':againSig,'content-type':'application/x-www-form-urlencoded'},body:againBody}));
- const playedXml=await played.text();assert.match(playedXml,/<Play>[^<]+\/twilio\/prompts\/unavailable\.wav<\/Play><Hangup\/>/);assert.doesNotMatch(playedXml,/<Say>/);assert.equal(f.store.list('call').length,1);f.session.finish();
+ const playedXml=await played.text();assert.match(playedXml,new RegExp(`<Play>[^<]+${promptPublicPath('unavailable')}</Play><Hangup/>`));assert.doesNotMatch(playedXml,/<Say>/);assert.equal(f.store.list('call').length,1);f.session.finish();
 });
 test('pilot carrier allows staff offers but blocks customer callbacks and SMS',async()=>{
  const {TwilioProvider}=await import('../provider.mjs');const f=fixture();Object.assign(f.c,{mode:'pilot',liveAuthorized:false,pilotAuthorized:true});let requests=0;

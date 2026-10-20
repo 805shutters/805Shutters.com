@@ -5,7 +5,7 @@ import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
 import { fallback, mediaStreamTwiml, ringbackTwiml, ringbackWav, voicemailXml } from './fallback.mjs';
-import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
+import { PROMPTS, ensureSpoken, promptDigest, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
 // The hosted Supabase gateway records 502 for an Upgrade request that does not
@@ -52,13 +52,17 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(request.method!=='GET')return json({error:'Method rejected'},405);
     return new Response(ringbackWav(),{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
    }
-   const promptName=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail)\.wav$/)?.[1];
-   if(promptName){
+   const versionedPrompt=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail)-([0-9a-f]{16})\.wav$/);
+   const plainPrompt=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail)\.wav$/);
+   if(versionedPrompt||plainPrompt){
     if(request.method!=='GET')return json({error:'Method rejected'},405);
+    const promptName=(versionedPrompt||plainPrompt)[1];
+    if(versionedPrompt&&versionedPrompt[2]!==promptDigest(promptName))return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
     await ensureSpoken(c,[promptName],prompts,waitUntil);
     const bytes=promptSource(c,promptName);
     if(!bytes)return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
-    return new Response(bytes,{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
+    const cache=versionedPrompt?'public, max-age=86400':'no-store';
+    return new Response(bytes,{headers:{'content-type':'audio/wav','cache-control':cache}});
    }
    if(path.startsWith('/twilio/media/')) {
     if(!canOperate(c))return json({error:'805 calling is in standby'},503);
@@ -219,9 +223,10 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     }
     if(parts[1]==='stream'){
      const streamEvent=p.get('StreamEvent')||'';
-     if(!['stream-started','stream-stopped','stream-error'].includes(streamEvent))throw new Conflict('Unknown stream event');
+     const streamSid=p.get('StreamSid')||'';
+     if(!['stream-started','stream-stopped','stream-error'].includes(streamEvent)||!/^MZ[0-9a-f]{32}$/i.test(streamSid))throw new Conflict('Unknown stream event');
      const detail=streamEvent==='stream-error'?publicError({message:p.get('StreamError')||''}).message:'';
-     e.recordStream(call.id,streamEvent,detail,eventId);
+     e.recordStream(call.id,streamEvent,detail,`stream:${call.id}:${sid}:${streamEvent}:${streamSid}`);
      return twiml('');
     }
     if(parts[1]==='fallback')return fallback(e,call,parts[3],p,c);

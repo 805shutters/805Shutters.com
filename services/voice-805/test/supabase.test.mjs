@@ -9,6 +9,7 @@ import { createSupabaseHandler, callToken } from '../supabase-handler.mjs';
 import { SimulationProvider, ProviderError } from '../provider.mjs';
 import { hmac } from '../security.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
+import { promptPublicPath } from '../prompts.mjs';
 
 const config=()=>({...loadSupabaseConfig({}), mode:'live', liveAuthorized:true, agentReviewed:true,agentContractVerified:true, workerVerified:true,
  origin:'https://example.supabase.co/functions/v1/voice-805',accountSid:'AC'+'a'.repeat(32),authToken:'t'.repeat(32),
@@ -159,8 +160,8 @@ test('stored greeting audio plays immediately and a storage miss says the line w
  f.c.promptFetch=async()=>new Response(wav,{headers:{'content-type':'audio/wav'}});
  f.handler=createSupabaseHandler({state:f.state,client:f.client,worker:f.worker,prompts:{get:async name=>stored.get(name)||null,put:async(name,bytes)=>{stored.set(name,bytes);}},waitUntil:p=>f.tasks.push(p)});
  const hit=await f.handler(carrierRequest(f,'/twilio/inbound',{CallSid:'CA'+'6'.repeat(32),To:f.c.number,From:'+18055550199'}));
- const hitXml=await hit.text();assert.match(hitXml,/<Play>https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/prompts\/greeting\.wav<\/Play>/);assert.doesNotMatch(hitXml,/<Say>/);
- const audio=await f.handler(new Request(f.c.origin+'/twilio/prompts/greeting.wav'));
+ const hitXml=await hit.text();assert.match(hitXml,new RegExp(`<Play>https://example\\.supabase\\.co/functions/v1/voice-805${promptPublicPath('greeting')}</Play>`));assert.doesNotMatch(hitXml,/<Say>/);
+ const audio=await f.handler(new Request(f.c.origin+promptPublicPath('greeting')));
  assert.equal(audio.status,200);assert.equal(audio.headers.get('content-type'),'audio/wav');assert.equal((await audio.arrayBuffer()).byteLength,wav.byteLength);
  assert.equal((await f.handler(new Request(f.c.origin+'/twilio/prompts/missing.wav'))).status,405);
  const cold=fixture();const bodies=[];cold.c.promptReadMs=20;cold.c.promptFetch=async(_url,init)=>{bodies.push(JSON.parse(init.body));return new Response(wav,{headers:{'content-type':'audio/wav'}});};

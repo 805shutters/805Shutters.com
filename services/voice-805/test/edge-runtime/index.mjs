@@ -7,6 +7,7 @@ import { SupabaseWorker } from "../../supabase-worker.mjs";
 import { SimulationProvider, TwilioProvider } from "../../provider.mjs";
 import { hmac } from "../../security.mjs";
 import { loadSupabaseConfig } from "../../supabase-config.mjs";
+import { promptPublicPath } from "../../prompts.mjs";
 
 const logged = [];
 const originalError = console.error.bind(console);
@@ -216,7 +217,7 @@ await settle(down);
 const downNext = await down.state.transact((_e, s) => s.get("call", downCall.id));
 check(
   "voice agent down",
-  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /No one can take your call right now/.test(downXml) && !/Thank you for calling/.test(downXml) && !/Would you like/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
+  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /Apologies, but team members are tied up at the moment/.test(downXml) && !/Thank you for calling/.test(downXml) && !/Would you like/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
   `status=${downResponse.status} phase=${downNext.phase} alert=${downNext.alert} failureLog=${down.client.failures.map((item) => item.p_action).join(",")}`,
 );
 
@@ -244,11 +245,11 @@ const playedInbound = await played.handler(carrier(played, "/twilio/inbound", { 
 const playedXml = await playedInbound.text();
 await settle(played);
 const playedDials = played.provider.operations.filter((item) => item.type === "dial").map((item) => item.staff).sort().join(",");
-const playedAudio = await played.handler(new Request(played.c.origin + "/twilio/prompts/greeting.wav"));
+const playedAudio = await played.handler(new Request(played.c.origin + promptPublicPath("greeting")));
 const playedBytes = new Uint8Array(await playedAudio.arrayBuffer());
 check(
   "cached greeting is Grok audio",
-  playedInbound.status === 200 && playedXml.includes("/twilio/prompts/greeting.wav") && playedXml.includes("<Play>") && !playedXml.includes("<Say>") && playedDials === "jessica,mike" && playedAudio.status === 200 && playedAudio.headers.get("content-type") === "audio/wav" && playedBytes.length === wav.length,
+  playedInbound.status === 200 && playedXml.includes(promptPublicPath("greeting")) && playedXml.includes("<Play>") && !playedXml.includes("<Say>") && playedDials === "jessica,mike" && playedAudio.status === 200 && playedAudio.headers.get("content-type") === "audio/wav" && playedAudio.headers.get("cache-control") === "public, max-age=86400" && playedBytes.length === wav.length,
   `status=${playedInbound.status} audio=${playedAudio.status} dials=${playedDials} xml=${playedXml.replaceAll("\n", " ")}`,
 );
 const denied = await played.handler(carrier(played, "/twilio/inbound", { CallSid: "CA" + "f".repeat(32), To: played.c.number, From: "+18055550198" }));
@@ -256,7 +257,7 @@ const deniedXml = await denied.text();
 const deniedCalls = await played.state.transact((_e, s) => s.list("call").length);
 check(
   "not available line uses cached Grok audio",
-  denied.status === 200 && deniedXml.includes("/twilio/prompts/unavailable.wav") && deniedXml.includes("<Hangup/>") && !deniedXml.includes("<Say>") && deniedCalls === 1,
+  denied.status === 200 && deniedXml.includes(promptPublicPath("unavailable")) && deniedXml.includes("<Hangup/>") && !deniedXml.includes("<Say>") && deniedCalls === 1,
   `status=${denied.status} calls=${deniedCalls} xml=${deniedXml.replaceAll("\n", " ")}`,
 );
 const mail = await played.handler(carrier(played, "/twilio/fallback.xml", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
@@ -265,7 +266,7 @@ const hold = await played.handler(carrier(played, "/twilio/ringback", { CallSid:
 const holdXml = await hold.text();
 check(
   "voicemail uses cached Grok audio and ringback is a tone",
-  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Play loop=\"0\">") && holdXml.includes("/twilio/ringback.wav") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Pause"),
+  mail.status === 200 && mailXml.includes(promptPublicPath("voicemail")) && !mailXml.includes("/twilio/prompts/voicemail.wav<") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Play loop=\"0\">") && holdXml.includes("/twilio/ringback.wav") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Pause"),
   `mail=${mail.status} ${mailXml.replaceAll("\n", " ")} hold=${hold.status} ${holdXml.replaceAll("\n", " ")}`,
 );
 
