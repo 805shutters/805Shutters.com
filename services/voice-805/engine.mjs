@@ -337,6 +337,24 @@ export class Engine {
       return true;
     });
   }
+  // The media socket never reached 101, or Twilio reported stream-error.
+  // Record that and stop. Do not dial, transfer, or connect the agent again.
+  mediaAttachFailed(id, error, eventId) {
+    return this.change(id, eventId, (c) => {
+      if (c.phase === "ended" || c.mediaStreamSid) return false;
+      c.mediaFailed = true;
+      if (!c.streamError) c.streamError = String(error || "").slice(0, 300);
+      return true;
+    });
+  }
+  recordStream(id, event, error, eventId) {
+    return this.change(id, eventId, (c) => {
+      c.lastStreamEvent = event;
+      if (event !== "stream-error") return;
+      c.mediaFailed = true;
+      c.streamError = String(error || "").slice(0, 300);
+    });
+  }
   accept(id, offerId, sid, answeredBy, now = Date.now()) {
     const result = String(answeredBy || "unknown").trim().toLowerCase();
     return this.change(id, `amd:${offerId}:${sid}:${result}`, (c) => {

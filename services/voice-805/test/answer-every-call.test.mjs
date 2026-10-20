@@ -319,3 +319,51 @@ test('conference ringback is an audible tone without a spoken line', async () =>
  assert.match(xml, /<Play loop="0">https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/ringback\.wav<\/Play>/);
  assert.doesNotMatch(xml, /<Say>|<Pause>|hold/);
 });
+test('a failed media attach records the stream error and does not replay the greeting', async () => {
+ const f = fixture();
+ const { greeting, call } = await offered(f, 'CA' + 'b'.repeat(32));
+ assert.match(greeting, /Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\./);
+ await f.state.transact(e => e.tick(Date.now() + 20000));
+ await f.worker.drain();
+ const before = await callAfter(f, 'CA' + 'b'.repeat(32));
+ assert.equal(before.phase, 'message');
+ assert.equal(before.greetingPlayed, true);
+ const dials = (await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'dial'))).length;
+ const connects = (await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'))).length;
+ assert.equal(connects, 1);
+ const agent = await f.handler(carrier(f, `/twilio/agent/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199' }));
+ const agentXml = await agent.text();
+ const streamUrl = `wss://example.supabase.co/functions/v1/voice-805/twilio/media/${call.id}`;
+ assert.match(agentXml, new RegExp(`<Stream url="${streamUrl}" statusCallback="https://example\\.supabase\\.co/functions/v1/voice-805/twilio/stream/${call.id}" statusCallbackMethod="POST" />`));
+ assert.doesNotMatch(agentXml, /Thank you for calling|Gather|<Say>/);
+ const continued = await f.handler(carrier(f, `/twilio/continue/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199' }));
+ const continuedXml = await continued.text();
+ assert.match(continuedXml, /<Record/);
+ assert.match(continuedXml, /No one can take your call right now/);
+ assert.doesNotMatch(continuedXml, /Thank you for calling|Would you like|greeting\.wav|<Connect>/);
+ assert.equal((await callAfter(f, before.sid)).streamError, 'Media stream did not attach');
+ const secret = `Bearer ${'s'.repeat(40)}`;
+ const stream = await f.handler(carrier(f, `/twilio/stream/${call.id}`, {
+  CallSid: before.sid, To: f.c.number, From: '+18055550199', StreamEvent: 'stream-error', StreamSid: 'MZ' + '3'.repeat(32), StreamError: `Handshake Error 31920 ${secret}`,
+ }));
+ assert.equal(stream.status, 200);
+ const recorded = await callAfter(f, before.sid);
+ assert.equal(recorded.mediaFailed, true);
+ assert.equal(recorded.mediaStreamSid, undefined);
+ assert.match(recorded.streamError, /Handshake Error 31920/);
+ assert.equal(recorded.streamError.includes(secret), false);
+ assert.equal(recorded.streamError.includes('s'.repeat(40)), false);
+ const unsigned = await f.handler(new Request(f.c.origin + `/twilio/stream/${call.id}`, {
+  method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'StreamEvent=stream-error',
+ }));
+ assert.equal(unsigned.status, 401);
+ await f.handler(carrier(f, `/twilio/continue/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199', SequenceNumber: '2' }));
+ await f.worker.drain();
+ const after = await callAfter(f, before.sid);
+ assert.equal(after.phase, 'message');
+ assert.equal(after.mediaFailed, true);
+ const effects = await f.state.transact((_e, s) => s.list('effect'));
+ assert.equal(effects.filter(item => item.type === 'dial').length, dials);
+ assert.equal(effects.filter(item => item.type === 'connect-agent').length, connects);
+ assert.equal(effects.filter(item => item.type === 'route').length, 0);
+});

@@ -1,10 +1,10 @@
 import { Conflict } from './engine.mjs';
-import { equal, hmac, reportFailure, twilioSignature, twiml, xml } from './security.mjs';
+import { equal, hmac, mediaStreamSignatureUrls, publicError, reportFailure, twilioSignature, twilioSignatureMatches, twiml, xml } from './security.mjs';
 import { e164 } from './config.mjs';
 import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
-import { fallback, ringbackTwiml, ringbackWav, voicemailXml } from './fallback.mjs';
+import { fallback, mediaStreamTwiml, ringbackTwiml, ringbackWav, voicemailXml } from './fallback.mjs';
 import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
@@ -64,7 +64,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(!canOperate(c))return json({error:'805 calling is in standby'},503);
     const id=path.slice('/twilio/media/'.length);
     if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
-    if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
+    if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignatureMatches(c.authToken,mediaStreamSignatureUrls(c.origin,path),new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
     return upgradeMedia(request,{
      load:()=>run((_e,s)=>s.get('call',id)),
      eligible:call=>!!(call&&call.phase==='message'&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
@@ -208,18 +208,21 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      const current=s.get('call',call.id);
      if(current.phase==='ended')return twiml('<Hangup/>');
      if(current.phase==='voicemail'||(current.phase==='message'&&current.mediaFailed))return voicemailXml(c.origin,`/twilio/recording/${current.id}`,`/twilio/transcription/${current.id}`,c);
-     if(current.phase==='message'&&c.transport==='media'&&!current.mediaStreamSid&&!current.mediaFailed){
-      const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+current.id;
-      return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+current.id)}</Redirect>`);
-     }
+     if(current.phase==='message'&&c.transport==='media'&&!current.mediaStreamSid&&!current.mediaFailed)return mediaStreamTwiml(c.origin,current.id);
      if(['offering','handoff','human','held'].includes(current.phase))return conferenceXml(c,current,'main');
      return twiml('<Hangup/>');
     }
     if(parts[1]==='agent'){
      if(call.phase==='ended')return twiml('<Hangup/>');
      if(call.phase!=='message'||c.transport!=='media'||call.mediaFailed||call.mediaStreamSid)return fallback(e,call,'voicemail',p,c);
-     const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+call.id;
-     return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+call.id)}</Redirect>`);
+     return mediaStreamTwiml(c.origin,call.id);
+    }
+    if(parts[1]==='stream'){
+     const streamEvent=p.get('StreamEvent')||'';
+     if(!['stream-started','stream-stopped','stream-error'].includes(streamEvent))throw new Conflict('Unknown stream event');
+     const detail=streamEvent==='stream-error'?publicError({message:p.get('StreamError')||''}).message:'';
+     e.recordStream(call.id,streamEvent,detail,eventId);
+     return twiml('');
     }
     if(parts[1]==='fallback')return fallback(e,call,parts[3],p,c);
     if(parts[1]==='recording'||parts[1]==='transcription'){
@@ -241,6 +244,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      if(call.phase==='voicemail'||(call.phase==='message'&&call.mediaFailed))return mail();
      if(['offering','handoff','human','held'].includes(call.phase))return conferenceXml(c,call,'main');
      if(call.phase==='greeting'||call.phase==='followup'){const before=call.phase;const next=e.agentDown(call.id,eventId);if(before!=='voicemail'&&next.phase==='voicemail')downId=next.id;return mail();}
+     if(call.phase==='message'&&!call.mediaStreamSid){e.mediaAttachFailed(call.id,'Media stream did not attach',eventId);return mail();}
      e.failed(call.id,'AI SIP call ended',eventId);for(const effect of s.list('effect'))if(effect.callId===call.id&&effect.type==='fallback'&&effect.status==='pending')s.put('effect',{...effect,status:'done',reason:'Fallback returned directly in TwiML'});return mail();
     }
     throw new Conflict('Unknown callback');

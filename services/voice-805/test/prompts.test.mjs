@@ -32,7 +32,12 @@ const wavResponse = (bytes = wav(), status = 200, type = "audio/wav") =>
 
 test("realtime and tts contracts match the current xAI voice API", () => {
   assert.equal(VOICE_ID, "ara");
-  assert.equal(promptObjectName("greeting"), "ara-greeting.wav");
+  assert.match(promptObjectName("greeting"), /^ara-greeting-[0-9a-f]{16}\.wav$/);
+  assert.equal(promptObjectName("greeting"), promptObjectName("greeting", PROMPTS.greeting));
+  assert.notEqual(promptObjectName("voicemail"), promptObjectName("voicemail", `${PROMPTS.voicemail} changed`));
+  assert.equal(PROMPTS.voicemail.includes("Thank you for calling"), false);
+  assert.equal(PROMPTS.voicemail.includes("Would you like"), false);
+  assert.match(PROMPTS.voicemail, /No one can take your call right now\. After the tone/);
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
@@ -216,7 +221,7 @@ test("supabase prompt storage ignores an existing private bucket and rejects a b
     assert.equal(error.message.includes("Bearer"), false);
     return true;
   });
-  assert.equal(uploads[0].path, "ara-greeting.wav");
+  assert.equal(uploads[0].path, promptObjectName("greeting"));
   assert.equal(uploads[0].options.contentType, "audio/wav");
   assert.equal(uploads[0].options.upsert, true);
   const broken = createSupabasePromptStore({

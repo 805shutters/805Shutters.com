@@ -216,7 +216,7 @@ await settle(down);
 const downNext = await down.state.transact((_e, s) => s.get("call", downCall.id));
 check(
   "voice agent down",
-  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /No one can take your call right now/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
+  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /No one can take your call right now/.test(downXml) && !/Thank you for calling/.test(downXml) && !/Would you like/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
   `status=${downResponse.status} phase=${downNext.phase} alert=${downNext.alert} failureLog=${down.client.failures.map((item) => item.p_action).join(",")}`,
 );
 

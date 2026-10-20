@@ -24,6 +24,21 @@ export function twilioSignature(token, url, params, signature) {
       .join("");
   return !!token && equal(hmac(token, payload, "sha1"), signature);
 }
+// Twilio signs the Stream url it dials. That url is wss, while the HTTP
+// handshake is the same path. Voice WSS validation can also require a trailing
+// slash. The public origin is reconstructed so a gateway path rewrite does not
+// change the signed URL. Every candidate is checked; a missing signature fails.
+export function mediaStreamSignatureUrls(origin, mediaPath) {
+  const https = String(origin || "").replace(/\/$/, "") + mediaPath;
+  if (!https.startsWith("https://") || !mediaPath.startsWith("/")) return [];
+  const wss = `wss://${https.slice("https://".length)}`;
+  return [wss, `${wss}/`, https, `${https}/`];
+}
+export function twilioSignatureMatches(token, urls, params, signature) {
+  let ok = false;
+  for (const url of urls) ok = twilioSignature(token, url, params, signature) || ok;
+  return ok;
+}
 export function authorizeControl(store, config, req, raw) {
   const at = req.headers["x-805-time"],
     nonce = req.headers["x-805-nonce"],

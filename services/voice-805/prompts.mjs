@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { COMMON_GREETING } from "./caller-context.mjs";
 import { reportFailure, xml } from "./security.mjs";
@@ -14,7 +15,7 @@ export const PROMPTS = Object.freeze({
   greeting: COMMON_GREETING,
   unavailable: "This test line is not available.",
   voicemail:
-    "Thank you for calling 805 Shutters. We appreciate you supporting local business. No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.",
+    "No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.",
 });
 
 const NAMES = Object.keys(PROMPTS);
@@ -208,9 +209,14 @@ export async function warmPrompts(config, store, fetcher = config.promptFetch ||
 }
 
 // The public Play URL stays /twilio/prompts/{name}.wav. The object key includes
-// the voice id so a voice change does not keep serving the previous recording.
-export function promptObjectName(name) {
-  return `${VOICE_ID}-${name}.wav`;
+// the voice and a hash of the spoken text, so an edited prompt cannot keep
+// playing the previous recording stored at ara-{name}.wav.
+export function promptObjectName(name, text = PROMPTS[name]) {
+  const digest = createHash("sha256")
+    .update(`${VOICE_ID}\0${text || ""}`)
+    .digest("hex")
+    .slice(0, 16);
+  return `${VOICE_ID}-${name}-${digest}.wav`;
 }
 export function createSupabasePromptStore(client) {
   const bucket = () => client.storage.from(PROMPT_BUCKET);

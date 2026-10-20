@@ -4,7 +4,7 @@ import { GrokMediaSession } from '../grok-media.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
 import { callerContext } from '../caller-context.mjs';
-import { spokenDecision } from '../receptionist.mjs';
+import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, spokenDecision } from '../receptionist.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
 import { createSupabaseHandler } from '../supabase-handler.mjs';
 import { hmac } from '../security.mjs';
@@ -36,10 +36,14 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
  assert.equal(spokenDecision(''),'silence');assert.equal(spokenDecision('maybe'),'ambiguous');assert.equal(spokenDecision('confirmed true'),'ambiguous');
 });
 test('no-answer opening apologizes and offers a message or consultation',async()=>{
- const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');assert.match(f.ai.sent.at(-1).item.content[0].text,/sorry, our team is unavailable/);
+ const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');
+ assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
+ assert.equal(RECEPTIONIST_OPENING,'Apologies, but team members are tied up at the moment. Would you like to leave a message for a callback, or would you like to schedule an appointment?');
+ assert.match(RECEPTIONIST_PROMPT,/city and the day and time/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
+ assert.doesNotMatch(RECEPTIONIST_PROMPT,/Thank you for calling 805 Shutters/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);
- assert.equal(tools[0].parameters.required.includes('time'),true);f.session.finish();
+ assert.equal(tools[0].parameters.required.includes('time'),true);assert.equal(tools[0].parameters.required.includes('city'),true);f.session.finish();
 });
 async function ready(f){await f.begin();await f.audio();await f.mark();}
 async function tool(f,name,data,id='t1'){await f.grok({type:'response.created',response:{id}});await f.grok({type:'response.function_call_arguments.done',name,call_id:id,arguments:JSON.stringify(data)});await f.grok({type:'response.done',response:{id,status:'completed'}});}
@@ -124,6 +128,15 @@ test('media handshake upgrades before the call lookup and closes an ineligible s
  const handler=createSupabaseHandler({state:f.state,client:{},worker:f.worker,upgradeMedia:(_request,gate)=>{gates.push(gate);return upgraded;}});const path='/twilio/media/'+f.call.id;
  const signed=(signature=hmac(f.c.authToken,f.c.origin+path,'sha1'),suffix='')=>new Request('http://runtime/voice-805'+path+suffix,{headers:{upgrade:'websocket','x-twilio-signature':signature}});
  assert.equal((await handler(signed('bad'))).status,401);assert.equal((await handler(signed(undefined,'?foo=1'))).status,400);
+ const wss=f.c.origin.replace(/^https:/,'wss:')+path;
+ assert.equal((await handler(signed(hmac(f.c.authToken,wss,'sha1')))).status,101);
+ assert.equal((await handler(signed(hmac(f.c.authToken,`${wss}/`,'sha1')))).status,101);
+ const rewritten=new Request(`https://example.supabase.co/voice-805${path}`,{headers:{upgrade:'websocket','x-twilio-signature':hmac(f.c.authToken,wss,'sha1')}});
+ assert.equal((await handler(rewritten)).status,101);
+ assert.equal((await handler(signed(hmac(f.c.authToken,`http://example.supabase.co/functions/v1/voice-805${path}`,'sha1')))).status,401);
+ assert.equal((await handler(signed(hmac(f.c.authToken,`wss://example.supabase.co/voice-805${path}`,'sha1')))).status,401);
+ assert.equal((await handler(signed(hmac(f.c.authToken,wss.replace(f.call.id,'00000000-0000-4000-8000-000000000000'),'sha1')))).status,401);
+ assert.equal((await handler(new Request(`http://runtime/voice-805${path}`,{headers:{upgrade:'websocket'}}))).status,401);
  const blocked=new Promise(()=>{});
  const original=f.state.transact.bind(f.state);
  f.state.transact=()=>blocked;

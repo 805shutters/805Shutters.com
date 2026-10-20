@@ -55,6 +55,13 @@ export function ringbackWav() {
 export function ringbackTwiml(origin) {
   return twiml(`<Play loop="0">${xml(origin + "/twilio/ringback.wav")}</Play>`);
 }
+export function mediaStreamTwiml(origin, callId) {
+  const base = String(origin || "").replace(/\/$/, "");
+  const url = `${base.replace(/^https:/, "wss:")}/twilio/media/${callId}`;
+  return twiml(
+    `<Connect><Stream url="${xml(url)}" statusCallback="${xml(`${base}/twilio/stream/${callId}`)}" statusCallbackMethod="POST" /></Connect><Redirect method="POST">${xml(`${base}/twilio/continue/${callId}`)}</Redirect>`,
+  );
+}
 
 export function fallback(_engine, call, _step, _params, config) {
   if (call.phase === "ended") return twiml("<Hangup/>");
