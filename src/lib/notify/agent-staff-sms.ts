@@ -1,13 +1,22 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { OWNER_ALERT_FROM_PHONE } from "./owner-alert-routing";
 import { toE164 } from "./phone";
 import type { SmsResult } from "./twilio";
 
+/** SHA-256 of the verified 805 account SID. The raw SID stays in the website env. */
+export const DEDICATED_805_STAFF_SMS_ACCOUNT_SHA256 = "1516fe83fa4addc9bcac21f94a4b82e69b1715156cefbc3b134049139230cec0";
 /** Messaging service prepared for the approved 805 Low Volume Standard brand. The campaign is not approved. */
 export const DEDICATED_805_STAFF_SMS_SERVICE_SID = "MG60d4038bf54bffa0690cce85a6e49147";
 /** Sole sender on that service. */
 export const DEDICATED_805_STAFF_SMS_FROM = "+18055908050";
 
 const ACCOUNT_SID = /^AC[0-9a-f]{32}$/i;
+
+export function dedicatedAccountMatches(accountSid: string) {
+  const digest = createHash("sha256").update(accountSid.trim()).digest();
+  const expected = Buffer.from(DEDICATED_805_STAFF_SMS_ACCOUNT_SHA256, "hex");
+  return digest.length === expected.length && timingSafeEqual(digest, expected);
+}
 
 export function readAgentStaffSmsConfig(env: Record<string, string | undefined> = process.env) {
   const accountSid = env.VOICE_805_STAFF_SMS_ACCOUNT_SID?.trim() || "";
@@ -20,15 +29,13 @@ export function readAgentStaffSmsConfig(env: Record<string, string | undefined> 
   if (messagingServiceSid.toUpperCase() !== DEDICATED_805_STAFF_SMS_SERVICE_SID.toUpperCase()) {
     return { ok: false as const, reason: "dedicated 805 staff SMS service is not the 805 staff booking service" };
   }
-  if (fromPhone === OWNER_ALERT_FROM_PHONE) {
-    return { ok: false as const, reason: "dedicated 805 staff SMS sender is not allowed" };
+  if (fromPhone === OWNER_ALERT_FROM_PHONE || fromPhone !== DEDICATED_805_STAFF_SMS_FROM) {
+    return { ok: false as const, reason: fromPhone === OWNER_ALERT_FROM_PHONE
+      ? "dedicated 805 staff SMS sender is not allowed"
+      : "dedicated 805 staff SMS sender is not the 805 number" };
   }
-  if (fromPhone !== DEDICATED_805_STAFF_SMS_FROM) {
-    return { ok: false as const, reason: "dedicated 805 staff SMS sender is not the 805 number" };
-  }
-  const sharedAccount = env.TWILIO_ACCOUNT_SID?.trim() || "";
-  if (sharedAccount && accountSid.toUpperCase() === sharedAccount.toUpperCase()) {
-    return { ok: false as const, reason: "dedicated 805 staff SMS account matches the shared Twilio account" };
+  if (!dedicatedAccountMatches(accountSid)) {
+    return { ok: false as const, reason: "dedicated 805 staff SMS account is not the 805 account" };
   }
   return {
     ok: true as const,

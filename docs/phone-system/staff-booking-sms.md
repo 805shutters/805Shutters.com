@@ -14,12 +14,12 @@ The staff consent method for Mike and Jessica is pending. This release does not 
 
 Agent staff booking SMS uses only these website environment variables, all required:
 
-- `VOICE_805_STAFF_SMS_ACCOUNT_SID` — dedicated 805 Twilio account. It must not equal `TWILIO_ACCOUNT_SID`.
+- `VOICE_805_STAFF_SMS_ACCOUNT_SID` — the verified 805 account. Any other account fails closed. Do not commit that SID.
 - `VOICE_805_STAFF_SMS_AUTH_TOKEN` — auth token for that account. Do not commit or log it.
 - `VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID` — must be `MG60d4038bf54bffa0690cce85a6e49147`.
 - `VOICE_805_STAFF_SMS_FROM` — must be `+18055908050`. Any other from number, including `+18057931853`, fails closed.
 
-If any value is missing, the service SID does not match, the from number is not `+18055908050`, or the account SID matches the shared Twilio account, the notice fails and Twilio is not called. The outbox status is `failed`, not `sent`. Customer SMS, MTS SMS, calendar assignment SMS, and other owner alerts keep their existing `TWILIO_*` route and may still pin Mike to `+18057931853`.
+If any value is missing, or the account, service, or from number is not the verified 805 identifier above, the notice fails and Twilio is not called. The outbox status is `failed`, not `sent`. Customer SMS, MTS SMS, calendar assignment SMS, and other owner alerts keep their existing `TWILIO_*` route and may still pin Mike to `+18057931853`.
 
 Every agent staff alert ends with this line: `Reply STOP to unsubscribe; HELP for help.` Campaign samples must use that same ending.
 
@@ -36,7 +36,7 @@ These pages are in the review branch. They are not the live site until a later w
 After the website publish, open both addresses with no login and confirm HTTP 200:
 
 - `https://www.805shutters.com/privacy-policy/` includes “We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes” and still describes Google and Meta analytics.
-- `https://www.805shutters.com/staff-booking-sms/` names SNS Interiors dba 805 Shutters, staff-only confirmed consultation alerts, “Message frequency varies.”, “Message and data rates may apply.”, **STOP**, **HELP**, `805@805shutters.com`, `805-590-8050`, and the carrier delay notice. It states that consent evidence is pending.
+- `https://www.805shutters.com/staff-booking-sms/` has the heading Terms & Conditions and an SMS Terms section. That section names SNS Interiors dba 805 Shutters, staff-only confirmed consultation alerts, “Message frequency varies.”, “Message and data rates may apply.”, **STOP**, **HELP**, `805@805shutters.com`, `805-590-8050`, the carrier delay notice, and that enrollment requires staff consent. It does not describe a consent collection method or say that consent evidence is pending.
 
 Use those two production URLs in the campaign. Do not submit the campaign from this change.
 

@@ -6,8 +6,11 @@ vi.mock("@/lib/crm/calendar-notifications", async (importOriginal) => ({
   sendCalendarAssignmentSms: mocks.assignment,
 }));
 vi.mock("@/lib/notify/meta-booking-sms", () => ({ sendMetaBookingSms: mocks.metaBooking }));
+import { dedicatedAccountMatches } from "@/lib/notify/agent-staff-sms";
 import { AGENT_STAFF_SMS_FOOTER } from "@/lib/sms/staff-booking-notice";
-import { deliverBookingEffect, processBookingOutbox, settleAgentStaffSms } from "./delivery";
+import { agentStaffBookingText, deliverBookingEffect, processBookingOutbox, settleAgentStaffSms, staffSmsNoticePhase } from "./delivery";
+const pinnedAccount = process.env.VOICE_805_STAFF_SMS_ACCOUNT_SID_FIXTURE || "";
+const hasPinnedAccount = Boolean(pinnedAccount) && dedicatedAccountMatches(pinnedAccount);
 const client = {} as SupabaseClient;
 const details = {
   leadId: "test",
@@ -291,11 +294,20 @@ function memoryOutbox(rows: { id: string; kind: string; status: string; payload:
   return { supabase: { from, rpc } as unknown as SupabaseClient, state };
 }
 
-it("texts Jessica and Mike separately and does not resend the recipient that already succeeded", async () => {
+it("ends the staff alert with the STOP and HELP footer and does not treat acceptance as delivery", () => {
+  const text = agentStaffBookingText({ name: "Local Test", startAt: details.startAt, address: details.address, phone: details.phone });
+  expect(text).toContain("booked VIA AGENT");
+  expect(text.endsWith(`\n${AGENT_STAFF_SMS_FOOTER}`)).toBe(true);
+  expect(staffSmsNoticePhase("queued")).toBe("accepted");
+  expect(staffSmsNoticePhase(undefined)).toBe("accepted");
+  expect(staffSmsNoticePhase("delivered")).toBe("delivered");
+});
+
+it.skipIf(!hasPinnedAccount)("texts Jessica and Mike separately and does not resend the recipient that already succeeded", async () => {
   vi.stubEnv("BOOKING_DELIVERY_ENABLED", "true");
   vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
   vi.stubEnv("MIKE_805_SALES_SMS_NUMBER", "+18055552222");
-  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", `AC${"1".repeat(32)}`);
+  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", pinnedAccount);
   vi.stubEnv("VOICE_805_STAFF_SMS_AUTH_TOKEN", "dedicated-token");
   vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", "MG60d4038bf54bffa0690cce85a6e49147");
   vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055908050");
@@ -323,7 +335,7 @@ it("texts Jessica and Mike separately and does not resend the recipient that alr
   expect(bodies.map((call) => call.form.get("To"))).toEqual(["+18055551111", "+18055552222"]);
   expect(bodies.map((call) => call.form.get("From"))).toEqual(["+18055908050", "+18055908050"]);
   expect(bodies.every((call) => call.form.get("MessagingServiceSid") === "MG60d4038bf54bffa0690cce85a6e49147")).toBe(true);
-  expect(bodies.every((call) => call.url.includes(`AC${"1".repeat(32)}`) && !call.url.includes(`AC${"2".repeat(32)}`))).toBe(true);
+  expect(bodies.every((call) => call.url.includes(pinnedAccount) && !call.url.includes(`AC${"2".repeat(32)}`))).toBe(true);
   expect(bodies.every((call) => call.form.get("Body")?.includes("booked VIA AGENT"))).toBe(true);
   expect(bodies.every((call) => call.form.get("Body")?.endsWith(`\n${AGENT_STAFF_SMS_FOOTER}`))).toBe(true);
   await processBookingOutbox(supabase);
@@ -374,9 +386,9 @@ it("fails a staff booking text when dedicated 805 SMS config is missing and does
   ]);
 });
 
-it("records provider delivery only when the carrier status is delivered", async () => {
+it.skipIf(!hasPinnedAccount)("records provider delivery only when the carrier status is delivered", async () => {
   vi.stubEnv("JESSICA_805_SALES_SMS_NUMBER", "+18055551111");
-  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", `AC${"1".repeat(32)}`);
+  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", pinnedAccount);
   vi.stubEnv("VOICE_805_STAFF_SMS_AUTH_TOKEN", "dedicated-token");
   vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", "MG60d4038bf54bffa0690cce85a6e49147");
   vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055908050");

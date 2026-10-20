@@ -1405,8 +1405,8 @@ const supportPages: SitePage[] = [
       {
         heading: "Staff booking text messages",
         body:
-          `${SMS_OPT_IN_NO_SHARING_STATEMENT}. ${staffBookingSmsNotice.legalName} may text designated staff when a consultation is confirmed. ${staffBookingSmsNotice.frequency} ${staffBookingSmsNotice.rates} Reply STOP to unsubscribe. Reply HELP or contact ${staffBookingSmsNotice.email} or ${staffBookingSmsNotice.phoneDisplay}. ${staffBookingSmsNotice.carrierNotice} ${staffBookingSmsNotice.consentGap}`,
-        links: [{ label: "Staff booking text terms", href: STAFF_BOOKING_SMS_PATH }]
+          `${SMS_OPT_IN_NO_SHARING_STATEMENT}. ${staffBookingSmsNotice.legalName} may text designated staff when a consultation is confirmed. ${staffBookingSmsNotice.frequency} ${staffBookingSmsNotice.rates} Reply STOP to unsubscribe. Reply HELP or contact ${staffBookingSmsNotice.email} or ${staffBookingSmsNotice.phoneDisplay}. ${staffBookingSmsNotice.carrierNotice} ${staffBookingSmsNotice.enrollment}`,
+        links: [{ label: "Terms & Conditions", href: STAFF_BOOKING_SMS_PATH }]
       },
       {
         heading: "Your Choices",

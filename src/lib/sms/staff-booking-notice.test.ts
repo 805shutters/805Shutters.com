@@ -19,8 +19,8 @@ describe("staff booking SMS public notice", () => {
     expect(sms?.body).toContain("805@805shutters.com");
     expect(sms?.body).toContain("805-590-8050");
     expect(sms?.body).toContain("Carriers are not liable for delayed or undelivered messages.");
-    expect(sms?.body).toContain("still pending");
-    expect(sms?.body).not.toContain("consent was collected");
+    expect(sms?.body).toContain(staffBookingSmsNotice.enrollment);
+    expect(sms?.body).not.toMatch(/pending|not recorded|consent method/i);
     expect(sms?.body).not.toMatch(/checkbox|opt in by texting|customers opt in/i);
     expect(analytics?.body).toBe(
       "The website may use analytics and advertising tools, including Google and Meta technologies, to understand campaign performance and show relevant ads. These tools may use cookies or similar identifiers.",
@@ -29,10 +29,13 @@ describe("staff booking SMS public notice", () => {
 
   it("publishes staff terms with bold STOP and HELP and no consent claim", () => {
     const source = readFileSync(new URL("../../app/staff-booking-sms/page.tsx", import.meta.url), "utf8");
+    expect(source).toContain("<h1>{\"Terms & Conditions\"}</h1>");
+    expect(source).toContain("<h2>SMS Terms</h2>");
     expect(source).toContain("<strong>STOP</strong>");
     expect(source).toContain("<strong>HELP</strong>");
     expect(source).toContain("SMS_OPT_IN_NO_SHARING_STATEMENT");
-    expect(staffBookingSmsNotice.consentGap).toContain("still pending");
+    expect(source).not.toMatch(/consentGap|still pending|not recorded/);
+    expect(staffBookingSmsNotice.enrollment).toBe("Enrollment in these staff alerts requires consent from the staff recipient.");
     expect(AGENT_STAFF_SMS_FOOTER).toBe("Reply STOP to unsubscribe; HELP for help.");
     expect(staffBookingSmsNotice.program).toBe("staff-only confirmed consultation alerts");
   });

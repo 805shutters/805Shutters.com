@@ -16,6 +16,5 @@ export const staffBookingSmsNotice = {
   phoneDisplay: "805-590-8050",
   phoneHref: "tel:+18055908050",
   carrierNotice: "Carriers are not liable for delayed or undelivered messages.",
-  consentGap:
-    "This page is not an opt-in form. The website does not collect customer SMS marketing consent. The method used for Mike and Jessica staff-alert consent is still pending and is not recorded here.",
+  enrollment: "Enrollment in these staff alerts requires consent from the staff recipient.",
 } as const;

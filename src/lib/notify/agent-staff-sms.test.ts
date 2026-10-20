@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OWNER_ALERT_FROM_PHONE } from "./owner-alert-routing";
-import { DEDICATED_805_STAFF_SMS_FROM, DEDICATED_805_STAFF_SMS_SERVICE_SID, readAgentStaffSmsConfig, sendAgentStaffBookingSms } from "./agent-staff-sms";
+import { DEDICATED_805_STAFF_SMS_FROM, DEDICATED_805_STAFF_SMS_SERVICE_SID, dedicatedAccountMatches, readAgentStaffSmsConfig, sendAgentStaffBookingSms } from "./agent-staff-sms";
 
-const dedicatedAccount = `AC${"1".repeat(32)}`;
+const dedicatedAccount = process.env.VOICE_805_STAFF_SMS_ACCOUNT_SID_FIXTURE || "";
 const sharedAccount = `AC${"2".repeat(32)}`;
 const sharedService = `MG${"3".repeat(32)}`;
 const dedicatedFrom = DEDICATED_805_STAFF_SMS_FROM;
 
 function dedicatedEnv() {
-  vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", dedicatedAccount);
+    vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", dedicatedAccount || `AC${"4".repeat(32)}`);
   vi.stubEnv("VOICE_805_STAFF_SMS_AUTH_TOKEN", "dedicated-token");
   vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", DEDICATED_805_STAFF_SMS_SERVICE_SID);
   vi.stubEnv("VOICE_805_STAFF_SMS_FROM", dedicatedFrom);
@@ -35,17 +35,16 @@ describe("dedicated 805 staff SMS configuration", () => {
     vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", DEDICATED_805_STAFF_SMS_SERVICE_SID);
     vi.stubEnv("VOICE_805_STAFF_SMS_FROM", OWNER_ALERT_FROM_PHONE);
     expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("not allowed") });
-    vi.stubEnv("VOICE_805_STAFF_SMS_FROM", dedicatedFrom);
     vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055550199");
     expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("not the 805 number") });
     vi.stubEnv("VOICE_805_STAFF_SMS_FROM", dedicatedFrom);
     vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", sharedAccount);
-    expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("shared Twilio account") });
+    expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("not the 805 account") });
   });
 });
 
 describe("sendAgentStaffBookingSms", () => {
-  it("posts both staff recipients through the dedicated account, service, and from number", async () => {
+  it.skipIf(!dedicatedAccount || !dedicatedAccountMatches(dedicatedAccount))("posts both staff recipients through the dedicated account, service, and from number", async () => {
     dedicatedEnv();
     const fetch = vi.fn(async (url: string, init: { headers: { Authorization: string }; body: string }) => {
       if (!url.startsWith("https://api.twilio.com/") || !init.body) throw new Error("missing request");
@@ -86,7 +85,18 @@ describe("sendAgentStaffBookingSms", () => {
     expect(result.uncertain).toBeUndefined();
   });
 
-  it("keeps a provider timeout or a response without a Message SID unsuccessful", async () => {
+  it("does not call Twilio when the account is not the pinned 805 account", async () => {
+    dedicatedEnv();
+    vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", `AC${"4".repeat(32)}`);
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const result = await sendAgentStaffBookingSms({ to: "+18055551111", body: "booked VIA AGENT" });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ sent: false, skipped: expect.stringContaining("not the 805 account") });
+    expect(result.uncertain).toBeUndefined();
+  });
+
+  it.skipIf(!dedicatedAccount || !dedicatedAccountMatches(dedicatedAccount))("keeps a provider timeout or a response without a Message SID unsuccessful", async () => {
     dedicatedEnv();
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("The operation was aborted"); }));
     const timedOut = await sendAgentStaffBookingSms({ to: "+18055552222", body: "booked VIA AGENT" });
