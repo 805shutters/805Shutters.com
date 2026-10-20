@@ -8,6 +8,26 @@ import { fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
 import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
+// The hosted Supabase gateway records 502 for an Upgrade request that does not
+// return 101 on the first turn (plain GET /health is 200; the same path with
+// Upgrade: websocket is 502 and never reaches a JSON response). Load the call
+// after the socket is upgraded, and close it if this call cannot take audio.
+export function attachMediaSocket(socket, { load, eligible, start }) {
+ const early = [];
+ socket.onmessage = event => early.push(event);
+ return (async () => {
+  let call = null;
+  try { call = await load(); }
+  catch { try { socket.close(1011, 'unavailable'); } catch { /* already closed */ } return; }
+  if (!eligible(call) || (typeof socket.readyState === 'number' && socket.readyState > 1)) {
+   try { socket.close(1008, 'unavailable'); } catch { /* already closed */ }
+   return;
+  }
+  start(call);
+  const deliver = socket.onmessage;
+  for (const event of early) deliver?.(event);
+ })();
+}
 const json = (value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const xmlResponse = value=>new Response(value,{headers:{'content-type':'text/xml','cache-control':'no-store'}});
 export function callToken(c,call) { const value=`${call.id}.${call.createdAt+2*60*60*1000}`;return `${value}.${hmac(c.toolsKey,value).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}`; }
@@ -28,7 +48,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
    if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
    const path=u.pathname.slice(prefix.length)||'/';
    if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
-   const promptName=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail|hold)\.wav$/)?.[1];
+   const promptName=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail)\.wav$/)?.[1];
    if(promptName){
     if(request.method!=='GET')return json({error:'Method rejected'},405);
     await ensureSpoken(c,[promptName],prompts,waitUntil);
@@ -41,9 +61,10 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     const id=path.slice('/twilio/media/'.length);
     if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
     if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
-    const call=await run((_e,s)=>s.get('call',id));
-    if(!call||call.phase!=='message'||call.mediaStreamSid||call.mediaFailed||Date.now()>call.deadline)return json({error:'Call unavailable'},409);
-    return upgradeMedia(request,call);
+    return upgradeMedia(request,{
+     load:()=>run((_e,s)=>s.get('call',id)),
+     eligible:call=>!!(call&&call.phase==='message'&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
+    });
    }
    if(!['GET','POST'].includes(request.method))return json({error:'Method rejected'},405);
    if(Number(request.headers.get('content-length')||0)>65536)return json({error:'Body too large'},413);
@@ -135,7 +156,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     queue();
     waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(error=>reportFailure('caller-lookup',error)));
     await ensureSpoken(c,['greeting'],prompts,waitUntil);
-    waitUntil(ensureSpoken(c,['unavailable','voicemail','hold'],prompts,waitUntil));
+    waitUntil(ensureSpoken(c,['unavailable','voicemail'],prompts,waitUntil));
     return xmlResponse(twiml(`${promptVerb(c,'greeting',c.greeting)}<Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
    }
    if(path==='/twilio/text') {
@@ -149,8 +170,8 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
     await run((e,s)=>{const id=s.state.inbound[sid];if(!id)throw new Conflict('Unknown caller');if(terminal.includes(p.get('CallStatus')))e.ended(id,sid,`parent-status:${sid}:${p.get('CallStatus')}`);});queue();return xmlResponse(twiml(''));
    }
-   if(path==='/twilio/ringback'){await ensureSpoken(c,['hold'],prompts,waitUntil);return xmlResponse(ringbackTwiml(c));}
-   if(['greeted','agent','continue','fallback'].includes(parts[1]))await ensureSpoken(c,['voicemail','hold'],prompts,waitUntil);
+   if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml());
+   if(['greeted','agent','continue','fallback'].includes(parts[1]))await ensureSpoken(c,['voicemail'],prompts,waitUntil);
    let downId=null;
    const response=await run((e,s)=>{
     const call=s.get('call',parts[2]);if(!call)throw new Conflict('Unknown call');

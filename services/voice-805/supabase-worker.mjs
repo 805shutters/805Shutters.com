@@ -72,13 +72,13 @@ export class SupabaseWorker {
       }
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
-      reportFailure('worker-effect', error);
+      const failure = reportFailure('worker-effect', error);
       await change((_e,s)=>{
         const fresh=s.get(kind,item.id);
         if(kind==='notification' && fresh.sid) return fresh;
         const call=s.get('call',item.callId);
         if(kind==='effect' && item.type==='dial' && call?.offers.find(o=>o.id===item.data.offerId)?.sid) return s.put(kind,{...fresh,status:'done'});
-        return s.put(kind,{...fresh,status:error.uncertain?'uncertain':'failed',error:error.uncertain?'Carrier outcome unknown; reconcile before retry.':'Carrier action failed; staff review needed.'});
+        return s.put(kind,{...fresh,status:error.uncertain?'uncertain':'failed',error:error.uncertain?'Carrier outcome unknown; reconcile before retry.':failure.message});
       });
     }
   }

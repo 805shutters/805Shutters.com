@@ -4,11 +4,35 @@ import { xml, twiml, reportFailure } from "./security.mjs";
 export class ProviderError extends Error {
   constructor(message, uncertain = false, retryable = false) {
     super(message);
+    this.name = "ProviderError";
     this.uncertain = uncertain;
     this.retryable = retryable;
   }
 }
 export const roomName = (call, room) => `805-${call.id}-${room}`;
+// Twilio's error JSON is {code, message, more_info, status}. The HTTP status alone
+// hid why both staff Creates returned 400.
+async function twilioFailure(response) {
+  let payload = null;
+  try {
+    payload = JSON.parse(await response.text());
+  } catch {
+    payload = null;
+  }
+  const code = Number(payload?.code);
+  const message = typeof payload?.message === "string" ? payload.message : "";
+  const detail =
+    Number.isInteger(code) && message
+      ? `Twilio ${code}: ${message}`
+      : `Twilio HTTP ${response.status}`;
+  const error = new ProviderError(
+    detail,
+    response.status >= 500,
+    response.status === 429,
+  );
+  if (Number.isInteger(code)) error.code = code;
+  return error;
+}
 export function staffDialParams(config, call, offer) {
   const base = `${config.origin}/twilio/offer/${call.id}/${offer.id}`;
   // Enable returns human or machine_start within a few seconds. DetectMessageEnd
@@ -59,7 +83,7 @@ export class TwilioProvider {
             Authorization: `Basic ${Buffer.from(c.accountSid + ":" + c.authToken).toString("base64")}`,
             "Content-Type": "application/x-www-form-urlencoded",
           },
-          body: method === "POST" ? new URLSearchParams(params) : undefined,
+          body: method === "POST" ? new URLSearchParams(params).toString() : undefined,
           signal: AbortSignal.timeout(12000),
         },
       );
@@ -67,12 +91,7 @@ export class TwilioProvider {
       reportFailure("twilio-request", error);
       throw new ProviderError("Provider request outcome unknown", true);
     }
-    if (!response.ok)
-      throw new ProviderError(
-        `Twilio HTTP ${response.status}`,
-        response.status >= 500,
-        response.status === 429,
-      );
+    if (!response.ok) throw await twilioFailure(response);
     try {
       return await response.json();
     } catch {

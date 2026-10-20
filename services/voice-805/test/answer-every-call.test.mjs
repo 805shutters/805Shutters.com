@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SnapshotStore, SupabaseState } from '../supabase-store.mjs';
 import { SupabaseWorker } from '../supabase-worker.mjs';
 import { createSupabaseHandler } from '../supabase-handler.mjs';
-import { SimulationProvider, staffDialParams } from '../provider.mjs';
+import { SimulationProvider, TwilioProvider, staffDialParams } from '../provider.mjs';
 import { hmac } from '../security.mjs';
 import { loadSupabaseConfig } from '../supabase-config.mjs';
 
@@ -50,7 +50,7 @@ test('both handsets ring while the greeting plays, with no keypad',async()=>{
  assert.equal(params.some(([key])=>/digit/i.test(key)),false);
 });
 test('cached Grok audio is played for the greeting and the offer window is unchanged',async()=>{
- const f=fixture();const wav=sampleWav();f.c.promptAudio={greeting:wav,unavailable:wav,voicemail:wav,hold:wav};
+ const f=fixture();const wav=sampleWav();f.c.promptAudio={greeting:wav,unavailable:wav,voicemail:wav};
  const {greeting,atAnswer}=await offered(f,'CA'+'a'.repeat(32));
  assert.match(greeting,/<Play>https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/prompts\/greeting\.wav<\/Play>/);
  assert.doesNotMatch(greeting,/<Say>|Gather|Stream|Sip/);
@@ -108,4 +108,53 @@ test('both machine answers and a 20 second timeout each return the caller to the
  await quiet.state.transact(e=>e.tick(Date.now()+20000));await quiet.worker.drain();
  call=await quiet.state.transact((_e,s)=>s.get('call',second.call.id));
  assert.equal(call.phase,'message');assert.equal(call.answeredAt,undefined);assert.equal(quiet.provider.operations.filter(item=>item.type==='connect-agent').length,1);
+});
+function assertCallsApiBody(body, c) {
+ const parsed = new URLSearchParams(body);
+ assert.deepEqual(parsed.getAll('StatusCallbackEvent'), ['initiated', 'ringing', 'answered', 'completed']);
+ assert.equal(body.includes(','), false);
+ assert.equal(/\s/.test(body), false);
+ for (const key of ['Twiml', 'waitUrl', 'Conference', 'ApplicationSid', 'IfMachine']) assert.equal(parsed.has(key), false);
+ for (const key of ['Url', 'StatusCallback', 'AsyncAmdStatusCallback']) {
+  const url = new URL(parsed.get(key));
+  assert.equal(url.protocol, 'https:');
+  assert.equal(url.search, '');
+ }
+ assert.equal(parsed.get('From'), c.number);
+ assert.match(parsed.get('From'), /^\+1\d{10}$/);
+ assert.match(parsed.get('To'), /^\+1\d{10}$/);
+ assert.notEqual(parsed.get('To'), parsed.get('From'));
+ assert.equal(parsed.get('MachineDetection'), 'Enable');
+ assert.equal(parsed.get('AsyncAmd'), 'true');
+ assert.equal(parsed.get('AsyncAmdStatusCallbackMethod'), 'POST');
+ const amd = Number(parsed.get('MachineDetectionTimeout'));
+ const timeout = Number(parsed.get('Timeout'));
+ assert.equal(Number.isInteger(amd) && amd >= 3 && amd <= 59, true);
+ assert.equal(Number.isInteger(timeout) && timeout >= 10 && timeout <= 600, true);
+ assert.equal(amd < timeout, true);
+}
+test('staff dial matches the Calls API and a Twilio 400 keeps the code and message', async () => {
+ const f = fixture();
+ const bodies = [];
+ f.worker.provider = new TwilioProvider(f.c, async (url, options) => {
+  bodies.push(String(options.body));
+  assert.match(String(url), /\/Calls\.json$/);
+  assert.equal(options.headers['Content-Type'], 'application/x-www-form-urlencoded');
+  return new Response(JSON.stringify({ code: 21626, message: "Invalid 'StatusCallbackEvent'", status: 400 }), { status: 400 });
+ });
+ const sid = 'CA' + 'c'.repeat(32);
+ assert.equal((await f.handler(carrier(f, '/twilio/inbound', { CallSid: sid, To: f.c.number, From: '+18055550199' }))).status, 200);
+ await Promise.all(f.tasks);
+ const call = await f.state.transact((_e, s) => s.list('call').find(item => item.sid === sid));
+ const effects = await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'dial'));
+ assert.equal(bodies.length, 2);
+ for (const body of bodies) assertCallsApiBody(body, f.c);
+ assert.equal(effects.length, 2);
+ assert.equal(effects.every(item => item.status === 'failed' && item.error === "Twilio 21626: Invalid 'StatusCallbackEvent'"), true);
+ assert.equal(call.offers.every(item => !item.sid), true);
+ const plain = new TwilioProvider(f.c, async () => new Response('nope', { status: 400 }));
+ const offer = call.offers[0];
+ await assert.rejects(() => plain.dial(call, offer), { message: 'Twilio HTTP 400' });
+ const params = staffDialParams(f.c, call, offer);
+ assertCallsApiBody(new URLSearchParams(params).toString(), f.c);
 });

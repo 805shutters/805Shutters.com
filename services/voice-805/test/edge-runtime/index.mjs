@@ -239,7 +239,7 @@ check(
 
 const played = fixture();
 const wav = sampleWav();
-played.c.promptAudio = { greeting: wav, unavailable: wav, voicemail: wav, hold: wav };
+played.c.promptAudio = { greeting: wav, unavailable: wav, voicemail: wav };
 const playedInbound = await played.handler(carrier(played, "/twilio/inbound", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
 const playedXml = await playedInbound.text();
 await settle(played);
@@ -264,8 +264,8 @@ const mailXml = await mail.text();
 const hold = await played.handler(carrier(played, "/twilio/ringback", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
 const holdXml = await hold.text();
 check(
-  "voicemail and hold prompts use cached Grok audio",
-  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("/twilio/prompts/hold.wav") && holdXml.includes("<Pause") && !holdXml.includes("<Say>"),
+  "voicemail uses cached Grok audio and ringback is silence",
+  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Pause") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Play>"),
   `mail=${mail.status} ${mailXml.replaceAll("\n", " ")} hold=${hold.status} ${holdXml.replaceAll("\n", " ")}`,
 );
 
@@ -302,16 +302,22 @@ check(
 );
 
 let dialAuth = "";
+let dialBody = "";
 const dialer = new TwilioProvider(config(), async (_url, options) => {
   dialAuth = options.headers.Authorization;
+  dialBody = String(options.body);
   return { ok: true, json: async () => ({ sid: "CA" + "8".repeat(32) }) };
 });
-const dialed = await dialer.request("Calls.json", []);
+const dialed = await dialer.dial(
+  { id: "29f2554b-df46-4b8b-9ce8-89898e62bbbb" },
+  { id: "11111111-1111-4111-8111-111111111111", staff: "mike" },
+);
 const decoded = Buffer.from(dialAuth.slice("Basic ".length), "base64").toString();
+const events = [...dialBody.matchAll(/StatusCallbackEvent=([^&]+)/g)].map((match) => match[1]);
 check(
   "staff dial builds Basic auth without a global Buffer",
-  dialed.sid === "CA" + "8".repeat(32) && decoded === config().accountSid + ":" + config().authToken,
-  `sid=${dialed.sid} decodedAccount=${decoded.slice(0, 4)}`,
+  dialed.sid === "CA" + "8".repeat(32) && decoded === config().accountSid + ":" + config().authToken && events.join(",") === "initiated,ringing,answered,completed" && dialBody.includes("MachineDetection=Enable") && dialBody.includes("AsyncAmd=true") && dialBody.includes("MachineDetectionTimeout=8") && dialBody.includes("Timeout=20") && dialBody.includes("From=%2B18055550100") && !dialBody.includes("Twiml") && !dialBody.includes("waitUrl") && !dialBody.includes(","),
+  `sid=${dialed.sid} body=${dialBody}`,
 );
 
 const report = {

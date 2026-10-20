@@ -2,9 +2,9 @@ import { Buffer } from "node:buffer";
 import { COMMON_GREETING } from "./caller-context.mjs";
 import { reportFailure, xml } from "./security.mjs";
 
-// Same built-in voice the realtime receptionist uses. xAI documents `eve` for
-// both POST /v1/tts and the realtime session.update voice field.
-export const VOICE_ID = "eve";
+// Same built-in voice the realtime receptionist uses. ara is a documented xAI
+// voice for POST /v1/tts and the realtime session.update voice field.
+export const VOICE_ID = "ara";
 export const TTS_URL = "https://api.x.ai/v1/tts";
 export const REALTIME_MODEL = "grok-voice-3.0";
 export const REALTIME_URL = "wss://api.x.ai/v1/realtime?model=grok-voice-3.0";
@@ -15,7 +15,6 @@ export const PROMPTS = Object.freeze({
   unavailable: "This test line is not available.",
   voicemail:
     "Thank you for calling 805 Shutters. We appreciate you supporting local business. No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.",
-  hold: "Please hold while we connect you to an 805 Shutters team member.",
 });
 
 const NAMES = Object.keys(PROMPTS);
@@ -208,6 +207,11 @@ export async function warmPrompts(config, store, fetcher = config.promptFetch ||
   }
 }
 
+// The public Play URL stays /twilio/prompts/{name}.wav. The object key includes
+// the voice id so a voice change does not keep serving the previous recording.
+export function promptObjectName(name) {
+  return `${VOICE_ID}-${name}.wav`;
+}
 export function createSupabasePromptStore(client) {
   const bucket = () => client.storage.from(PROMPT_BUCKET);
   return {
@@ -218,13 +222,13 @@ export function createSupabasePromptStore(client) {
       }
     },
     async get(name) {
-      const { data, error } = await bucket().download(`${name}.wav`);
+      const { data, error } = await bucket().download(promptObjectName(name));
       if (error || !data) return null;
       const bytes = new Uint8Array(await data.arrayBuffer());
       return isWav(bytes) ? bytes : null;
     },
     async put(name, bytes) {
-      const { error } = await bucket().upload(`${name}.wav`, bytes, {
+      const { error } = await bucket().upload(promptObjectName(name), bytes, {
         upsert: true,
         contentType: "audio/wav",
       });
