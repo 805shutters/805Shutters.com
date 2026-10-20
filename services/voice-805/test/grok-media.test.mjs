@@ -41,6 +41,7 @@ test('no-answer opening apologizes and offers a message or consultation',async()
  assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
  assert.equal(RECEPTIONIST_OPENING,'Apologies, but team members are tied up at the moment. Would you like to leave a message for a callback, or would you like to schedule an appointment?');
  assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one recommendation/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
+ assert.match(RECEPTIONIST_PROMPT,/currently open published CRM slot/);assert.match(RECEPTIONIST_PROMPT,/Never suggest or book a time that is not open on the CRM calendar/);
  assert.doesNotMatch(RECEPTIONIST_PROMPT,/Thank you for calling 805 Shutters/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);

@@ -244,7 +244,7 @@ export class GrokMediaSession {
         return;
       }
       const fit = result?.fit;
-      this.output(event.call_id, fit === false ? { ...result, saved: false, next: 'No nearby time fits. Take a callback message.' } : result);
+      this.output(event.call_id, fit === false ? { ...result, saved: false, next: 'No open CRM time fits. Take a callback message so staff can see whether they can accommodate.' } : result);
       this.assist();
       this.sendAI({ type: 'response.create' });
     } catch {

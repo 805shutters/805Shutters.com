@@ -1,9 +1,10 @@
 import { beforeEach,afterEach,it,expect,vi } from 'vitest';
 import { createHmac,randomUUID } from 'node:crypto';
-const mock=vi.hoisted(()=>({client:vi.fn(),prepare:vi.fn(),commit:vi.fn()}));
+const mock=vi.hoisted(()=>({client:vi.fn(),prepare:vi.fn(),commit:vi.fn(),after:vi.fn(),deliver:vi.fn(async(_db?:unknown,_key?:unknown)=>({processed:0}))}));
+vi.mock('next/server',async(importOriginal)=>({...await importOriginal<typeof import('next/server')>(),after:(task:unknown)=>{mock.after(task);}}));
 vi.mock('@/lib/supabase-server',()=>({getSupabaseServiceClient:mock.client}));
 vi.mock('@/lib/voice-805/scheduling',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/voice-805/scheduling')>(),prepareVoiceVisit:mock.prepare,commitVoiceVisit:mock.commit}));
-vi.mock('@/lib/booking/delivery',()=>({processBookingOutbox:vi.fn(async()=>({processed:0}))}));
+vi.mock('@/lib/booking/delivery',()=>({processBookingOutbox:(db:unknown,bookingKey:unknown)=>mock.deliver(db,bookingKey)}));
 import { POST } from './route';
 const callId='11111111-1111-4111-8111-111111111111',key='test-key-'.repeat(8);
 let call:any;
@@ -32,10 +33,27 @@ it('accepts signed bound availability and only sends caller input to scheduler',
 it('pilot can inspect slots but cannot prepare or commit actual bookings',async()=>{
  expect((await POST(request('find_appointments','pilot'))).status).toBe(200);
  for(const action of ['prepare_appointment','commit'])expect((await POST(request(action,'pilot'))).status).toBe(503);expect(mock.commit).not.toHaveBeenCalled();
+ expect(mock.after).not.toHaveBeenCalled();
 });
 it('commit is gated by explicit activation and uses persisted call state',async()=>{
- vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','false');expect((await POST(request('commit'))).status).toBe(503);
+ vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','false');expect((await POST(request('commit'))).status).toBe(503);expect(mock.after).not.toHaveBeenCalled();
  vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','true');expect((await POST(request('commit'))).status).toBe(200);expect(mock.commit.mock.calls[0].slice(1)).toEqual([callId,call]);
+});
+it('awaits staff delivery inside the after callback',async()=>{
+ let release:(value:{processed:number})=>void=()=>{};
+ const gate=new Promise<{processed:number}>(resolve=>{release=resolve;});
+ mock.deliver.mockImplementation(()=>gate);
+ expect((await POST(request('commit'))).status).toBe(200);
+ const task=mock.after.mock.calls.at(-1)?.[0] as (()=>Promise<void>)|undefined;
+ expect(typeof task).toBe('function');
+ let settled=false;
+ const running=task!().then(()=>{settled=true;});
+ await new Promise(resolve=>setTimeout(resolve,30));
+ expect(settled).toBe(false);
+ expect(mock.deliver).toHaveBeenCalledWith(mock.client.mock.results.at(-1)?.value,callId);
+ release({processed:1});
+ await running;
+ expect(settled).toBe(true);
 });
 it('ended, missing stream, prior confirmation and uncertain outcome block new proposals',async()=>{
  for(const patch of [{phase:'ended'},{mediaStreamSid:null},{bookingIntent:{confirmedAt:1}},{bookingAttention:'uncertain'}]){

@@ -29,7 +29,7 @@ export async function POST(request:Request){
   if(action==='commit'){
    const booked=await commitVoiceVisit(db,callId,call);
    // Calendar verification already happened. Sending stays after the response; a failed handoff leaves the outbox row queued for the booking worker.
-   try{after(()=>{void processBookingOutbox(db,callId).catch(()=>console.error('Agent staff notice remains queued'));});}catch{/* cron drains pending notices outside a request scope */}
+   try{after(async()=>{try{await processBookingOutbox(db,callId);}catch{console.error('Agent staff notice remains queued');}});}catch{/* cron drains pending notices outside a request scope */}
    return reply(booked);
   }
   if(action==='prepare_appointment'&&(call.bookingIntent?.confirmedAt||call.bookingAttention||call.booking?.verified))return reply({error:'Verify the existing booking outcome first.'},409);
