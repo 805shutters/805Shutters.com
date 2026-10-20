@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
-import { applyFindResult, applyScheduleTurn, findPayload, initialSchedule, preparePayload, speakClock } from './schedule-intake.mjs';
+import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload } from './schedule-intake.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
@@ -13,6 +13,14 @@ const SILENCE_MS = 12000;
 export const HOST_WALL_MS = 400000;
 export const FALLBACK_RESERVE_MS = 30000;
 export const MEDIA_SESSION_MS = 270000;
+// https://docs.x.ai/developers/model-capabilities/audio/speech-to-speech
+// Final captions are emitted only when this nested model is set. `grok` at the top level is not the documented field.
+export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', language_hint: 'en' });
+const PREPARE_FAIL = 'I could not verify that opening. May I take a callback message so our team can check it?';
+const SAVE_FAIL = 'I could not verify the save. May I take a callback message so our team can check it?';
+const REPLAN_QUESTION = 'That time no longer fits. What day or time should I check instead?';
+const CHANGE_QUESTION = 'Nothing new was saved. Tell me what you would like to change.';
+const SILENCE_QUESTION = 'I did not hear a clear yes, so nothing was saved. May I take a callback message so our team can check it?';
 
 // The carrier socket is authenticated before construction. The model can propose.
 // A spoken yes counts only after the exact readback has played on this call.
@@ -27,6 +35,12 @@ export class GrokMediaSession {
     this.responses = new Set();
     this.tools = new Set();
     this.heard = new Set();
+    this.stray = new Set();
+    this.prompt = null;
+    this.pending = [];
+    this.buffers = new Map();
+    this.vadTurn = false;
+    this.promptTranscripts = new Map();
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
     this.startTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice connection timed out')), 10000);
@@ -43,6 +57,14 @@ export class GrokMediaSession {
   enqueue(task) { this.chain = this.chain.then(async () => { if (!this.closed) await task(); }).catch(error => { reportFailure('media-session', error); this.fail('Voice session unavailable'); }); return this.chain; }
   sendAI(value) { if (this.ai?.readyState === 1) this.ai.send(JSON.stringify(value)); }
   sendCarrier(value) { if (this.socket.readyState === 1) this.socket.send(JSON.stringify({ ...value, streamSid: this.streamSid })); }
+  now() { return typeof this.clock.now === 'function' ? this.clock.now() : new Date(); }
+  voiceSession(extra = {}) {
+    return {
+      voice: VOICE_ID,
+      audio: { input: { format: { type: 'audio/pcmu' }, transcription: INPUT_TRANSCRIPTION }, output: { format: { type: 'audio/pcmu' } } },
+      ...extra,
+    };
+  }
   async current() { return this.state.transact((_e, s) => s.get('call', this.call.id)); }
   async carrier(event) {
     if (event.event === 'connected') return;
@@ -58,7 +80,7 @@ export class GrokMediaSession {
       if (!claimed) return this.finish();
       this.streamSid = s.streamSid;
       this.ai = this.connect();
-      this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: { voice: VOICE_ID, instructions: RECEPTIONIST_PROMPT, turn_detection: null, audio: { input: { format: { type: 'audio/pcmu' } }, output: { format: { type: 'audio/pcmu' } } }, tools: [] } }));
+      this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: null }, tools: [] }) }));
       this.ai.onmessage = e => this.enqueue(() => this.grok(JSON.parse(typeof e.data === 'string' ? e.data : e.data.toString())));
       this.ai.onerror = () => this.enqueue(() => this.fail('Grok audio connection failed'));
       this.ai.onclose = () => this.enqueue(() => this.fail('Grok audio connection closed'));
@@ -81,30 +103,79 @@ export class GrokMediaSession {
   force(text, stage) {
     this.stage = stage;
     this.audioBytes = 0;
+    this.prompt = { text, responseId: null };
+    this.pending = [];
+    this.buffers = new Map();
+    this.promptTranscripts = new Map();
     this.clearSilence();
-    this.sendAI({ type: 'session.update', session: { turn_detection: null, tools: [] } });
+    // server_vad may already be generating a response for the caller turn. That id stays ineligible.
+    if (this.openResponseId) this.stray.add(this.openResponseId);
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: null }, tools: [] }) });
     this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: false, content: [{ type: 'output_text', text }] } });
   }
   mark(next) { const name = randomUUID(); this.marks.set(name, next); this.sendCarrier({ event: 'mark', mark: { name } }); }
   assist() { this.assistMessages(); }
   collect() {
     this.stage = 'collect';
+    this.prompt = null;
+    this.pending = [];
+    this.vadTurn = false;
     this.clearSilence();
-    this.sendAI({ type: 'session.update', session: { instructions: 'Stay silent. Do not speak, ask questions, or call tools. The server records each answer and supplies the next line.', turn_detection: { type: 'server_vad' }, tools: [], input_audio_transcription: { model: 'grok' } } });
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: 'Stay silent. Do not speak, ask questions, or call tools. The server records each answer and supplies the next line.', turn_detection: { type: 'server_vad' }, tools: [] }) });
   }
-  assistMessages() { this.stage = 'assist'; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: { instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS } }); }
+  assistMessages() { this.stage = 'assist'; this.prompt = null; this.pending = []; this.vadTurn = false; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS }) }); }
   output(id, result) { this.sendAI({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output: JSON.stringify(result) } }); }
   clearSilence() { if (this.silenceTimer) { this.clock.clearTimeout(this.silenceTimer); this.silenceTimer = null; } }
   armConfirm() {
     this.stage = 'confirm';
-    this.sendAI({ type: 'session.update', session: { turn_detection: { type: 'server_vad' }, tools: [], input_audio_transcription: { model: 'grok' } } });
+    this.prompt = null;
+    this.pending = [];
+    this.vadTurn = false;
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: 'server_vad' }, tools: [] }) });
     this.silenceTimer = this.clock.setTimeout(() => this.enqueue(() => this.silence()), SILENCE_MS);
   }
+  playDelta(delta) {
+    this.audioBytes += delta.length;
+    this.sendCarrier({ event: 'media', media: { payload: delta } });
+  }
+  // A forced line is accepted from its own response lifecycle, never from another response.done.
+  // While server_vad still owes an automatic response, only a matching output transcript may claim the line.
+  acceptResponse(id) {
+    if (!this.prompt || !id || this.stray.has(id) || (this.prompt.responseId && this.prompt.responseId !== id)) return;
+    this.prompt.responseId = id;
+    this.vadTurn = false;
+    for (const other of this.pending) {
+      if (other === id) continue;
+      this.stray.add(other);
+      if (!this.responses.has(other)) this.sendAI({ type: 'response.cancel', response_id: other });
+    }
+    this.pending = [id];
+    for (const delta of this.buffers.get(id) || []) this.playDelta(delta);
+    this.buffers.delete(id);
+  }
+  judgeTranscript(id, heard) {
+    if (!this.prompt || !id || this.stray.has(id)) return;
+    const sample = heard.trim().toLowerCase();
+    const script = this.prompt.text.trim().toLowerCase();
+    if (!sample || !script) return;
+    const prefix = script.slice(0, Math.min(24, script.length));
+    const matches = sample.length >= 16 && (script.startsWith(sample) || sample.startsWith(prefix));
+    if (matches) { this.acceptResponse(id); return; }
+    if (sample.length >= 16) {
+      this.stray.add(id);
+      this.buffers.delete(id);
+      if (this.prompt.responseId === id) this.prompt.responseId = null;
+      this.sendAI({ type: 'response.cancel', response_id: id });
+    }
+  }
   callerTurn(event) {
-    if (event.type === 'conversation.item.input_audio_transcription.completed' && typeof event.transcript === 'string') return { id: String(event.item_id || event.transcript), text: event.transcript };
-    if (event.type === 'conversation.item.created' && event.item?.role === 'user') {
-      const text = event.item.transcript || event.item.content?.find(part => typeof part?.transcript === 'string')?.transcript || event.item.content?.find(part => typeof part?.text === 'string')?.text;
-      if (typeof text === 'string') return { id: String(event.item.id || text), text };
+    if (event.type === 'conversation.item.input_audio_transcription.updated') return null;
+    if (event.type === 'conversation.item.input_audio_transcription.completed' && typeof event.transcript === 'string' && event.transcript.trim()) return { id: String(event.item_id || event.transcript), text: event.transcript.trim() };
+    if (event.type === 'conversation.item.added' && event.item?.role === 'user' && event.item.status === 'completed') {
+      const part = event.item.content?.find(content => typeof content?.transcript === 'string' && content.transcript.trim())
+        || event.item.content?.find(content => content?.type === 'input_text' && typeof content?.text === 'string' && content.text.trim());
+      const text = part?.transcript || part?.text;
+      if (typeof text === 'string' && text.trim()) return { id: String(event.item.id || text), text: text.trim() };
     }
     return null;
   }
@@ -115,10 +186,61 @@ export class GrokMediaSession {
     if (turn && this.stage === 'confirm') return this.hear(turn);
     if (turn && this.stage === 'collect') return this.collectTurn(turn);
     if (turn) return;
-    if (event.type === 'response.created') { this.audioBytes = 0; return; }
+    if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
+      if (['collect', 'confirm', 'assist'].includes(this.stage)) this.vadTurn = true;
+      return;
+    }
+    if (event.type === 'response.created' && event.response?.id) {
+      const id = String(event.response.id);
+      this.openResponseId = id;
+      if (this.stage === 'assist' && !this.prompt) { this.audioBytes = 0; return; }
+      if (!this.prompt || this.stray.has(id)) {
+        this.stray.add(id);
+        this.vadTurn = false;
+        this.sendAI({ type: 'response.cancel', response_id: id });
+        return;
+      }
+      if (this.prompt.responseId && this.prompt.responseId !== id) {
+        this.stray.add(id);
+        this.sendAI({ type: 'response.cancel', response_id: id });
+        return;
+      }
+      if (!this.pending.includes(id)) this.pending.push(id);
+      if (!this.vadTurn) this.acceptResponse(id);
+      return;
+    }
+    if (event.type === 'response.output_audio_transcript.delta' && this.prompt && typeof event.delta === 'string' && event.response_id) {
+      const id = String(event.response_id);
+      const heard = `${this.promptTranscripts.get(id) || ''}${event.delta}`;
+      this.promptTranscripts.set(id, heard);
+      this.judgeTranscript(id, heard);
+      return;
+    }
+    if (event.type === 'response.output_audio_transcript.done' && this.prompt && event.response_id) {
+      const id = String(event.response_id);
+      const heard = typeof event.transcript === 'string' ? event.transcript : (this.promptTranscripts.get(id) || '');
+      this.promptTranscripts.set(id, heard);
+      this.judgeTranscript(id, heard);
+      return;
+    }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
       if (this.stage === 'collect' || this.stage === 'confirm') return;
-      if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) { this.audioBytes += event.delta.length; this.sendCarrier({ event: 'media', media: { payload: event.delta } }); }
+      const id = event.response_id ? String(event.response_id) : '';
+      if (id && this.stray.has(id)) return;
+      if (this.prompt?.responseId && id && id !== this.prompt.responseId) return;
+      if (this.prompt && !this.prompt.responseId && (this.vadTurn || (id && this.pending.includes(id)))) {
+        if (id && validAudio(event.delta)) {
+          const queued = this.buffers.get(id) || [];
+          queued.push(event.delta);
+          this.buffers.set(id, queued);
+        }
+        return;
+      }
+      if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) {
+        if (this.prompt && !this.prompt.responseId && id && !this.vadTurn) this.acceptResponse(id);
+        if (this.prompt && !this.prompt.responseId) return;
+        this.playDelta(event.delta);
+      }
       return;
     }
     if (event.type === 'input_audio_buffer.speech_started') {
@@ -126,8 +248,8 @@ export class GrokMediaSession {
         this.marks.clear();
         this.sendCarrier({ event: 'clear' });
         this.intent = null;
-        await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') s.put('call', { ...c, intent: null }); });
-        this.force('I did not finish the readback, so nothing was saved. Tell me what you want changed.', 'result');
+        await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION } }); });
+        this.force(CHANGE_QUESTION, 'result');
         return;
       }
       if (this.stage === 'assist') { this.marks.clear(); this.sendCarrier({ event: 'clear' }); }
@@ -141,7 +263,30 @@ export class GrokMediaSession {
       return;
     }
     if (event.type !== 'response.done' || !event.response?.id || this.responses.has(event.response.id)) return;
-    this.responses.add(event.response.id);
+    const responseId = String(event.response.id);
+    this.responses.add(responseId);
+    if (this.openResponseId === responseId) this.openResponseId = null;
+    if (this.stray.has(responseId)) {
+      this.buffers.delete(responseId);
+      this.pending = this.pending.filter(id => id !== responseId);
+      if (this.vadTurn) this.vadTurn = false;
+      return;
+    }
+    let accepted = this.prompt?.responseId === responseId;
+    if (!accepted) {
+      const uncreated = this.prompt && !this.prompt.responseId && !this.vadTurn && this.pending.length === 0;
+      if (uncreated) {
+        this.prompt.responseId = responseId;
+        accepted = true;
+      } else if (!(this.stage === 'assist' && !this.prompt && this.pendingTool)) {
+        this.stray.add(responseId);
+        this.buffers.delete(responseId);
+        this.pending = this.pending.filter(id => id !== responseId);
+        if (this.vadTurn) this.vadTurn = false;
+        return;
+      }
+    }
+    if (!this.prompt && this.stage !== 'assist') return;
     if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
     if (['opening', 'readback', 'result'].includes(this.stage)) {
       if (!this.audioBytes) return this.fail('Required audio missing');
@@ -168,8 +313,11 @@ export class GrokMediaSession {
   async silence() {
     if (this.stage !== 'confirm') return;
     this.intent = null;
-    await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null }); });
-    this.force('I did not hear a clear yes, so nothing was saved. You can leave a message or tell me another time.', 'result');
+    await this.state.transact((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null, schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SILENCE_QUESTION) });
+    });
+    this.force(SILENCE_QUESTION, 'result');
   }
   async saveSchedule(schedule) {
     await this.state.transact((_e, s) => {
@@ -183,9 +331,13 @@ export class GrokMediaSession {
     const current = await this.current();
     if (current?.phase !== 'message') return this.finish();
     const prior = current.schedule || initialSchedule(current.from, this.config.number);
-    const applied = applyScheduleTurn(prior, turn.text, current.from, this.config.number);
+    const applied = applyScheduleTurn(prior, turn.text, current.from, this.config.number, this.now());
+    if (applied.invalidate) {
+      this.intent = null;
+      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null }); });
+    }
     await this.saveSchedule(applied.state);
-    if (applied.handoff === 'message') { this.messageOnly = true; this.force(applied.say, 'result'); return; }
+    if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
     if (applied.prepare) return this.prepareFromSchedule(applied.state);
     if (applied.search) return this.searchSchedule(applied.state);
     this.force(applied.say, 'result');
@@ -203,19 +355,31 @@ export class GrokMediaSession {
       this.force(offered.say, 'result');
     }
   }
+  async offerCallback(state, say) {
+    this.intent = null;
+    await this.saveSchedule(callbackSchedule(state, say));
+    this.force(say, 'result');
+  }
+  async readbackMessage(state) {
+    this.intent = messageIntent({ name: state.name, callback: state.phone, message: state.messageText });
+    const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
+    await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') s.put('call', { ...c, intent: this.intent, schedule: next }); });
+    this.force(this.intent.readback, 'readback');
+  }
   async prepareFromSchedule(state) {
     const current = await this.current();
-    if (current?.bookingAttention || current?.booking?.verified) { this.force('I could not verify the save. I can take a callback message so our team can check it.', 'result'); return; }
+    if (current?.bookingAttention || current?.booking?.verified) return this.offerCallback(state, SAVE_FAIL);
     this.stage = 'tool';
     let result;
     try { result = await this.schedule(this.config, this.call.id, 'prepare_appointment', preparePayload(state)); }
-    catch { this.force('I could not verify that opening. May I take a callback message so our team can check it?', 'result'); return; }
-    if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) { this.force('I could not verify that opening. May I take a callback message so our team can check it?', 'result'); return; }
+    catch { return this.offerCallback(state, PREPARE_FAIL); }
+    if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) return this.offerCallback(state, PREPARE_FAIL);
     this.intent = result.intent;
+    const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
     await this.state.transact((e, s) => {
       const c = s.get('call', this.call.id);
       if (c?.phase !== 'message' || c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention) throw new Error('Call unavailable');
-      s.put('call', { ...c, intent: this.intent, schedule: state });
+      s.put('call', { ...c, intent: this.intent, schedule: next });
       e.updateDraft(this.call.id, { name: state.name, callback: state.phone, message: `Consultation requested for ${state.offer.date} at ${state.offer.time} Pacific, ${state.address}. Booking not verified; check calendar before following up.` });
     });
     this.force(this.intent.readback, 'readback');
@@ -228,11 +392,22 @@ export class GrokMediaSession {
     const intentId = this.intent?.id;
     if (decision !== 'affirmative') {
       this.intent = null;
+      const current = await this.current();
+      const schedule = current?.schedule || initialSchedule(current?.from, this.config.number);
+      const applied = applyScheduleTurn({ ...schedule, awaiting: 'correction' }, turn.text, current?.from, this.config.number, this.now());
       await this.state.transact((_e, s) => {
         const c = s.get('call', this.call.id);
         if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
       });
-      this.force('Nothing new was saved. Tell me what you would like to change.', 'result');
+      if (applied.changed) {
+        await this.saveSchedule(applied.state);
+        if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
+        if (applied.search) return this.searchSchedule(applied.state);
+        this.force(applied.say, 'result');
+        return;
+      }
+      await this.saveSchedule({ ...schedule, awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] });
+      this.force(CHANGE_QUESTION, 'result');
       return;
     }
     const intent = await this.state.transact((_e, s) => {
@@ -242,14 +417,23 @@ export class GrokMediaSession {
       s.put('call', { ...c, intent: next, lastCallerTurn: { id: turn.id, decision, at: next.confirmedAt }, ...(next.kind === 'appointment' ? { bookingIntent: next } : {}) });
       return next;
     });
-    if (!intent) { this.intent = null; this.force('Nothing new was saved. Tell me what you would like to change.', 'result'); return; }
+    if (!intent) {
+      this.intent = null;
+      const current = await this.current();
+      await this.saveSchedule({ ...(current?.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] });
+      this.force(CHANGE_QUESTION, 'result');
+      return;
+    }
     this.stage = 'committing';
     try {
       if (intent.kind === 'message') await this.persistMessage(intent);
       else await this.persistAppointment(intent);
     } catch {
-      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c) s.put('call', { ...c, bookingAttention: 'Confirmation outcome requires verification before another booking.' }); });
-      this.force('I could not verify the save. I can take a callback message so our team can check it.', 'result');
+      await this.state.transact((_e, s) => {
+        const c = s.get('call', this.call.id);
+        if (c) s.put('call', { ...c, bookingAttention: 'Confirmation outcome requires verification before another booking.', schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SAVE_FAIL) });
+      });
+      this.force(SAVE_FAIL, 'result');
     }
     this.intent = null;
   }
@@ -263,22 +447,25 @@ export class GrokMediaSession {
     }
     const current = await this.current();
     if (current?.phase !== 'message' || current.messageId !== message.id) return;
-    this.force('Your message has been saved for our team to review. Is there anything else I can help with?', 'result');
+    const say = 'Your message has been saved for our team to review. Is there anything else I can help with?';
+    await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'help', asked: say });
+    this.force(say, 'result');
   }
   async persistAppointment(intent) {
     const result = await this.schedule(this.config, this.call.id, 'commit', {});
     const current = await this.current();
     if (current?.phase !== 'message') return;
     if (result?.replan === true) {
-      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.bookingIntent?.id === intent.id && !c.booking?.verified) s.put('call', { ...c, bookingIntent: null, intent: null }); });
-      this.force('That time no longer fits. We can check another time, or I can take a callback message.', 'result');
+      const schedule = { ...(current.schedule || {}), awaiting: 'replan', asked: REPLAN_QUESTION, offer: null, alternatives: [] };
+      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.bookingIntent?.id === intent.id && !c.booking?.verified) s.put('call', { ...c, bookingIntent: null, intent: null, schedule }); });
+      this.force(REPLAN_QUESTION, 'result');
       return;
     }
     if (!result?.verified) throw Error('Booking not verified');
     const saved = await this.current();
-    const clock = speakClock(result.time) || result.time;
-    const when = saved?.schedule?.weekday ? `${saved.schedule.weekday.charAt(0).toUpperCase()}${saved.schedule.weekday.slice(1)} at ${clock}` : `${result.date} at ${clock}`;
-    this.force(`Absolutely, we're confirmed for ${when}. Is there anything else I can help with?`, 'result');
+    const schedule = bookedSchedule(saved?.schedule || current.schedule, result.date, result.time);
+    await this.saveSchedule(schedule);
+    this.force(schedule.asked, 'result');
   }
   async tool(event) {
     try {
@@ -288,10 +475,13 @@ export class GrokMediaSession {
       if (current?.phase !== 'message') return this.finish();
       if (current.bookingAttention || current.booking?.verified) throw Error('Verify the existing booking outcome first.');
       if (event.name === 'prepare_message' && current.messageId) throw Error('A message is already saved for this call.');
+      const trusted = callerPhone(current.from, this.config.number);
+      const spoken = current.schedule?.phoneSource === 'spoken' && current.schedule.phone ? current.schedule.phone : null;
+      const messageData = { ...data, callback: spoken || trusted || data.callback };
       let result;
-      if (event.name === 'draft_message') result = await this.state.transact(e => ({ retained: true, confirmed: false, draft: e.updateDraft(this.call.id, data) }));
+      if (event.name === 'draft_message') result = await this.state.transact(e => ({ retained: true, confirmed: false, draft: e.updateDraft(this.call.id, messageData) }));
       else if (event.name === 'prepare_message') {
-        this.intent = messageIntent(data);
+        this.intent = messageIntent(messageData);
         await this.state.transact(e => e.updateDraft(this.call.id, this.intent.payload));
       } else {
         result = await this.schedule(this.config, this.call.id, event.name, data);
