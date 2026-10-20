@@ -94,13 +94,21 @@ function carrier(f, path, fields) {
     body: p,
   });
 }
+const sampleWav = () => Uint8Array.from([0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x07, 0x00, 0x01, 0x00, 0x40, 0x1f, 0x00, 0x00, 0x40, 0x1f, 0x00, 0x00, 0x01, 0x00, 0x08, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00]);
 async function offered(f, sid) {
   const inbound = await f.handler(carrier(f, "/twilio/inbound", { CallSid: sid, To: f.c.number, From: "+18055550199" }));
   const greeting = await inbound.text();
-  const call = await f.state.transact((_e, s) => s.list("call").find((item) => item.sid === sid));
-  const greeted = await f.handler(carrier(f, `/twilio/greeted/${call.id}`, { CallSid: sid, To: f.c.number, From: "+18055550199" }));
   await Promise.all(f.tasks);
-  return { status: inbound.status, greeting, conference: await greeted.text(), call: await f.state.transact((_e, s) => s.get("call", call.id)) };
+  const ringing = await f.state.transact((_e, s) => s.list("call").find((item) => item.sid === sid));
+  const atAnswer = {
+    phase: ringing.phase,
+    greetingPlayed: ringing.greetingPlayed,
+    dials: f.provider.operations.filter((item) => item.type === "dial").map((item) => item.staff).sort(),
+    parentMoves: f.provider.operations.filter((item) => item.type === "ringback" || item.type === "connect-agent" || (item.type === "route" && item.sid === ringing.sid)).length,
+  };
+  const greeted = await f.handler(carrier(f, `/twilio/greeted/${ringing.id}`, { CallSid: sid, To: f.c.number, From: "+18055550199" }));
+  await Promise.all(f.tasks);
+  return { status: inbound.status, greeting, conference: await greeted.text(), call: await f.state.transact((_e, s) => s.get("call", ringing.id)), atAnswer };
 }
 function amd(f, call, offer, answeredBy) {
   return carrier(f, `/twilio/offer/${call.id}/${offer.id}/amd`, {
@@ -125,8 +133,13 @@ check("worker right key is 200", right.status === 200 && rightBody.includes('"ok
 const inbound = await offered(http, "CA" + "1".repeat(32));
 check(
   "signed inbound is accepted",
-  inbound.status === 200 && inbound.greeting.includes("Thank you for calling 805 Shutters"),
+  inbound.status === 200 && inbound.greeting.includes("Thank you for calling 805 Shutters") && inbound.greeting.includes("<Say>") && !inbound.greeting.includes("<Play>"),
   `status=${inbound.status} greeting=${inbound.greeting.replaceAll("\n", " ")}`,
+);
+check(
+  "staff ring while the greeting plays",
+  inbound.atAnswer.phase === "offering" && inbound.atAnswer.greetingPlayed === false && inbound.atAnswer.dials.join(",") === "jessica,mike" && inbound.atAnswer.parentMoves === 0 && !/Gather|Stream|Sip/.test(inbound.greeting),
+  `phase=${inbound.atAnswer.phase} played=${inbound.atAnswer.greetingPlayed} dials=${inbound.atAnswer.dials.join(",")} parentMoves=${inbound.atAnswer.parentMoves}`,
 );
 
 const mike = inbound.call.offers.find((o) => o.staff === "mike");
@@ -196,17 +209,64 @@ check(
 );
 
 const down = fixture();
-const downSid = "CA" + "6".repeat(32);
-const downInbound = await down.handler(carrier(down, "/twilio/inbound", { CallSid: downSid, To: down.c.number, From: "+18055550199" }));
-const downCall = await down.state.transact((_e, s) => s.list("call").find((item) => item.sid === downSid));
-const downResponse = await down.handler(carrier(down, `/twilio/continue/${downCall.id}`, { CallSid: downSid, To: down.c.number, From: "+18055550199" }));
+const downCall = await down.state.transact((e) => e.inbound("CA" + "6".repeat(32), "+18055550199"));
+const downResponse = await down.handler(carrier(down, `/twilio/continue/${downCall.id}`, { CallSid: downCall.sid, To: down.c.number, From: "+18055550199" }));
 const downXml = await downResponse.text();
 await settle(down);
 const downNext = await down.state.transact((_e, s) => s.get("call", downCall.id));
 check(
   "voice agent down",
-  downInbound.status === 200 && downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
+  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /No one can take your call right now/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
   `status=${downResponse.status} phase=${downNext.phase} alert=${downNext.alert} failureLog=${down.client.failures.map((item) => item.p_action).join(",")}`,
+);
+
+const during = fixture();
+const duringSid = "CA" + "d".repeat(32);
+const duringInbound = await during.handler(carrier(during, "/twilio/inbound", { CallSid: duringSid, To: during.c.number, From: "+18055550199" }));
+await settle(during);
+await during.state.transact((e) => e.tick(Date.now() + 20000));
+await during.worker.drain();
+const duringCall = await during.state.transact((_e, s) => s.list("call").find((item) => item.sid === duringSid));
+const duringAgents = during.provider.operations.filter((item) => item.type === "connect-agent").length;
+const duringGreeted = await during.handler(carrier(during, `/twilio/greeted/${duringCall.id}`, { CallSid: duringSid, To: during.c.number, From: "+18055550199" }));
+const duringXml = await duringGreeted.text();
+await settle(during);
+check(
+  "offer timeout during the greeting does not cut it off",
+  duringInbound.status === 200 && duringCall.phase === "message" && duringCall.greetingPlayed === false && duringAgents === 0 && duringGreeted.status === 200 && /<Stream /.test(duringXml) && !/Conference/.test(duringXml) && during.provider.operations.filter((item) => item.type === "connect-agent").length === 0,
+  `phase=${duringCall.phase} played=${duringCall.greetingPlayed} agents=${duringAgents} xml=${duringXml.replaceAll("\n", " ")}`,
+);
+
+const played = fixture();
+const wav = sampleWav();
+played.c.promptAudio = { greeting: wav, unavailable: wav, voicemail: wav, hold: wav };
+const playedInbound = await played.handler(carrier(played, "/twilio/inbound", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
+const playedXml = await playedInbound.text();
+await settle(played);
+const playedDials = played.provider.operations.filter((item) => item.type === "dial").map((item) => item.staff).sort().join(",");
+const playedAudio = await played.handler(new Request(played.c.origin + "/twilio/prompts/greeting.wav"));
+const playedBytes = new Uint8Array(await playedAudio.arrayBuffer());
+check(
+  "cached greeting is Grok audio",
+  playedInbound.status === 200 && playedXml.includes("/twilio/prompts/greeting.wav") && playedXml.includes("<Play>") && !playedXml.includes("<Say>") && playedDials === "jessica,mike" && playedAudio.status === 200 && playedAudio.headers.get("content-type") === "audio/wav" && playedBytes.length === wav.length,
+  `status=${playedInbound.status} audio=${playedAudio.status} dials=${playedDials} xml=${playedXml.replaceAll("\n", " ")}`,
+);
+const denied = await played.handler(carrier(played, "/twilio/inbound", { CallSid: "CA" + "f".repeat(32), To: played.c.number, From: "+18055550198" }));
+const deniedXml = await denied.text();
+const deniedCalls = await played.state.transact((_e, s) => s.list("call").length);
+check(
+  "not available line uses cached Grok audio",
+  denied.status === 200 && deniedXml.includes("/twilio/prompts/unavailable.wav") && deniedXml.includes("<Hangup/>") && !deniedXml.includes("<Say>") && deniedCalls === 1,
+  `status=${denied.status} calls=${deniedCalls} xml=${deniedXml.replaceAll("\n", " ")}`,
+);
+const mail = await played.handler(carrier(played, "/twilio/fallback.xml", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
+const mailXml = await mail.text();
+const hold = await played.handler(carrier(played, "/twilio/ringback", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
+const holdXml = await hold.text();
+check(
+  "voicemail and hold prompts use cached Grok audio",
+  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("/twilio/prompts/hold.wav") && holdXml.includes("<Pause") && !holdXml.includes("<Say>"),
+  `mail=${mail.status} ${mailXml.replaceAll("\n", " ")} hold=${hold.status} ${holdXml.replaceAll("\n", " ")}`,
 );
 
 const crm = fixture();

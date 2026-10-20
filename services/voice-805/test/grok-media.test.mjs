@@ -36,7 +36,7 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
  assert.equal(spokenDecision(''),'silence');assert.equal(spokenDecision('maybe'),'ambiguous');assert.equal(spokenDecision('confirmed true'),'ambiguous');
 });
 test('no-answer opening apologizes and offers a message or consultation',async()=>{
- const f=fixture();await f.begin();assert.match(f.ai.sent.at(-1).item.content[0].text,/sorry, our team is unavailable/);
+ const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'eve');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');assert.match(f.ai.sent.at(-1).item.content[0].text,/sorry, our team is unavailable/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'assist');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools.map(t=>t.name),['find_appointments','prepare_appointment','draft_message','prepare_message']);
  assert.equal(tools[0].parameters.required.includes('time'),true);f.session.finish();
@@ -125,12 +125,14 @@ test('media handshake verifies the canonical signature and allows only an unclai
  assert.equal((await handler(signed('bad'))).status,401);assert.equal((await handler(signed(undefined,'?foo=1'))).status,400);
  assert.equal((await handler(signed())).status,200);await f.begin();assert.equal((await handler(signed())).status,409);assert.equal(upgrades,1);f.session.finish();
 });
-test('carrier greeting precedes both offers and a second greeting callback does not dial again',async()=>{
+test('carrier greeting starts both offers and a second greeting callback does not dial again',async()=>{
  const f=fixture('matched');f.store.put('call',{...f.store.get('call',f.call.id),phase:'greeting'});
  const tasks=[];const handler=createSupabaseHandler({state:f.state,client:{rpc:async()=>({data:{match:'matched'}})},worker:f.worker,waitUntil:p=>tasks.push(p)});
  const request=path=>{const p=new URLSearchParams({AccountSid:f.c.accountSid,CallSid:f.call.sid,To:f.c.number,From:f.call.from});const sig=hmac(f.c.authToken,f.c.origin+path+[...p.keys()].sort().map(k=>k+p.get(k)).join(''),'sha1');return new Request(f.c.origin+path,{method:'POST',headers:{'x-twilio-signature':sig,'content-type':'application/x-www-form-urlencoded'},body:p});};
- const response=await handler(request('/twilio/inbound'));assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<Say>Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\.<\/Say>/);assert(!xml.includes('<Stream'));assert(!xml.includes('Gather'));
- for(let i=0;i<2;i++)assert.equal((await handler(request('/twilio/greeted/'+f.call.id))).status,200);
+ const response=await handler(request('/twilio/inbound'));assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<Say>Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\.<\/Say>/);assert(!xml.includes('<Stream'));assert(!xml.includes('Gather'));assert(!xml.includes('<Play>'));
+ assert.equal(f.store.get('call',f.call.id).phase,'offering');assert.equal(f.store.get('call',f.call.id).greetingPlayed,false);assert.equal(f.store.list('effect').filter(e=>e.type==='dial').length,2);assert.equal(f.store.list('effect').some(e=>e.type==='ringback'),false);
+ const finished=await handler(request('/twilio/greeted/'+f.call.id));assert.equal(finished.status,200);assert.match(await finished.text(),/Conference/);assert.equal(f.store.get('call',f.call.id).greetingPlayed,true);
+ assert.equal((await handler(request('/twilio/greeted/'+f.call.id))).status,200);
  assert.equal(f.store.get('call',f.call.id).phase,'offering');assert.equal(f.store.list('effect').filter(e=>e.type==='dial').length,2);await Promise.all(tasks);f.session.finish();
 });
 test('media readiness needs the Grok key, and an invalid transport fails closed',()=>{
@@ -148,7 +150,12 @@ test('pilot rejects a non-allowlisted caller before creating another call',async
  const p=new URLSearchParams({AccountSid:f.c.accountSid,CallSid:'CA'+'3'.repeat(32),To:f.c.number,From:'+18055550199'});
  const sig=hmac(f.c.authToken,f.c.origin+path+[...p.keys()].sort().map(k=>k+p.get(k)).join(''),'sha1');
  const response=await handler(new Request(f.c.origin+path,{method:'POST',headers:{'x-twilio-signature':sig,'content-type':'application/x-www-form-urlencoded'},body:p}));
- assert.equal(response.status,200);assert.match(await response.text(),/<Hangup\/>/);assert.equal(f.store.list('call').length,1);f.session.finish();
+ const denied=await response.text();assert.equal(response.status,200);assert.match(denied,/<Say>This test line is not available\.<\/Say><Hangup\/>/);assert.equal(f.store.list('call').length,1);
+ const wav=Uint8Array.from([0x52,0x49,0x46,0x46,0x24,0x00,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6d,0x74,0x20,0x10,0x00,0x00,0x00,0x07,0x00,0x01,0x00,0x40,0x1f,0x00,0x00,0x40,0x1f,0x00,0x00,0x01,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x00,0x00,0x00,0x00]);
+ f.c.promptAudio={unavailable:wav};const againBody=new URLSearchParams({AccountSid:f.c.accountSid,CallSid:'CA'+'4'.repeat(32),To:f.c.number,From:'+18055550197'});
+ const againSig=hmac(f.c.authToken,f.c.origin+path+[...againBody.keys()].sort().map(k=>k+againBody.get(k)).join(''),'sha1');
+ const played=await handler(new Request(f.c.origin+path,{method:'POST',headers:{'x-twilio-signature':againSig,'content-type':'application/x-www-form-urlencoded'},body:againBody}));
+ const playedXml=await played.text();assert.match(playedXml,/<Play>[^<]+\/twilio\/prompts\/unavailable\.wav<\/Play><Hangup\/>/);assert.doesNotMatch(playedXml,/<Say>/);assert.equal(f.store.list('call').length,1);f.session.finish();
 });
 test('pilot carrier allows staff offers but blocks customer callbacks and SMS',async()=>{
  const {TwilioProvider}=await import('../provider.mjs');const f=fixture();Object.assign(f.c,{mode:'pilot',liveAuthorized:false,pilotAuthorized:true});let requests=0;
