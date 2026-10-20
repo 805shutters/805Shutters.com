@@ -39,6 +39,8 @@ export class GrokMediaSession {
     this.prompt = null;
     this.pending = [];
     this.buffers = new Map();
+    this.settled = new Map();
+    this.cancelSent = false;
     this.vadTurn = false;
     this.promptTranscripts = new Map();
     this.chain = Promise.resolve();
@@ -106,10 +108,19 @@ export class GrokMediaSession {
     this.prompt = { text, responseId: null };
     this.pending = [];
     this.buffers = new Map();
-    this.promptTranscripts = new Map();
+    this.settled = new Map();
+    this.cancelSent = false;
     this.clearSilence();
-    // server_vad may already be generating a response for the caller turn. That id stays ineligible.
-    if (this.openResponseId) this.stray.add(this.openResponseId);
+    // A response already created for this caller turn is the automatic server_vad turn. Cancel that id.
+    // If speech has ended and no id has arrived yet, cancel whatever is in progress, then speak the scripted line.
+    if (this.openResponseId && !this.responses.has(this.openResponseId)) {
+      this.stray.add(this.openResponseId);
+      this.cancel(this.openResponseId);
+    } else if (this.vadTurn) {
+      this.cancelSent = true;
+      this.cancel();
+    }
+    this.vadTurn = false;
     this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: null }, tools: [] }) });
     this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: false, content: [{ type: 'output_text', text }] } });
   }
@@ -138,35 +149,51 @@ export class GrokMediaSession {
     this.audioBytes += delta.length;
     this.sendCarrier({ event: 'media', media: { payload: delta } });
   }
-  // A forced line is accepted from its own response lifecycle, never from another response.done.
-  // While server_vad still owes an automatic response, only a matching output transcript may claim the line.
+  cancel(id) {
+    this.ignoreCancelError = true;
+    this.sendAI(id ? { type: 'response.cancel', response_id: id } : { type: 'response.cancel' });
+  }
+  // The scripted line is the force_message lifecycle: response.created, audio deltas, response.done.
+  // A response created before that send, or one the server reports as cancelled, is not that line.
   acceptResponse(id) {
     if (!this.prompt || !id || this.stray.has(id) || (this.prompt.responseId && this.prompt.responseId !== id)) return;
     this.prompt.responseId = id;
-    this.vadTurn = false;
-    for (const other of this.pending) {
-      if (other === id) continue;
-      this.stray.add(other);
-      if (!this.responses.has(other)) this.sendAI({ type: 'response.cancel', response_id: other });
-    }
+    this.cancelSent = false;
+    for (const other of this.pending) if (other !== id) this.stray.add(other);
     this.pending = [id];
     for (const delta of this.buffers.get(id) || []) this.playDelta(delta);
     this.buffers.delete(id);
   }
-  judgeTranscript(id, heard) {
-    if (!this.prompt || !id || this.stray.has(id)) return;
-    const sample = heard.trim().toLowerCase();
-    const script = this.prompt.text.trim().toLowerCase();
-    if (!sample || !script) return;
-    const prefix = script.slice(0, Math.min(24, script.length));
-    const matches = sample.length >= 16 && (script.startsWith(sample) || sample.startsWith(prefix));
-    if (matches) { this.acceptResponse(id); return; }
-    if (sample.length >= 16) {
-      this.stray.add(id);
-      this.buffers.delete(id);
-      if (this.prompt.responseId === id) this.prompt.responseId = null;
-      this.sendAI({ type: 'response.cancel', response_id: id });
+  advancePrompt() {
+    if (!['opening', 'readback', 'result'].includes(this.stage)) return;
+    if (!this.audioBytes) return this.fail('Required audio missing');
+    const stage = this.stage;
+    this.stage = stage + '-playback';
+    this.mark(async () => {
+      if (stage === 'readback') {
+        const armed = await this.state.transact((_e, s) => {
+          const c = s.get('call', this.call.id);
+          if (c?.phase !== 'message' || c.intent?.id !== this.intent?.id || c.intent.confirmedAt) return false;
+          s.put('call', { ...c, intent: { ...c.intent, playedAt: Date.now() } });
+          return true;
+        });
+        if (armed) this.armConfirm(); else this.finish();
+      } else if (this.messageOnly) this.assistMessages(); else this.collect();
+    });
+  }
+  noteCancelled(id) {
+    this.stray.add(id);
+    this.buffers.delete(id);
+    this.pending = this.pending.filter(item => item !== id);
+    this.settled.set(id, 'cancelled');
+    const rest = this.pending.filter(item => !this.stray.has(item));
+    if (this.prompt?.responseId === id) return this.fail('Grok response incomplete');
+    if (this.prompt && !this.prompt.responseId && rest.length === 1) {
+      this.acceptResponse(rest[0]);
+      if (this.settled.get(rest[0]) === 'completed') this.advancePrompt();
+      return;
     }
+    if (rest.length === 0) this.cancelSent = false;
   }
   callerTurn(event) {
     if (event.type === 'conversation.item.input_audio_transcription.updated') return null;
@@ -181,7 +208,17 @@ export class GrokMediaSession {
   }
   async grok(event) {
     if (event.type === 'session.updated' && this.stage === 'starting') { this.clock.clearTimeout(this.startTimer); this.force(RECEPTIONIST_OPENING, 'opening'); return; }
-    if (event.type === 'error') return this.fail('Grok rejected the voice session');
+    if (event.type === 'error') {
+      if (this.ignoreCancelError) {
+        this.ignoreCancelError = false;
+        if (this.cancelSent && this.prompt && !this.prompt.responseId) {
+          this.cancelSent = false;
+          if (this.pending.length === 1) this.acceptResponse(this.pending[0]);
+        }
+        return;
+      }
+      return this.fail('Grok rejected the voice session');
+    }
     const turn = this.callerTurn(event);
     if (turn && this.stage === 'confirm') return this.hear(turn);
     if (turn && this.stage === 'collect') return this.collectTurn(turn);
@@ -197,50 +234,33 @@ export class GrokMediaSession {
       if (!this.prompt || this.stray.has(id)) {
         this.stray.add(id);
         this.vadTurn = false;
-        this.sendAI({ type: 'response.cancel', response_id: id });
+        this.cancel(id);
         return;
       }
       if (this.prompt.responseId && this.prompt.responseId !== id) {
         this.stray.add(id);
-        this.sendAI({ type: 'response.cancel', response_id: id });
         return;
       }
       if (!this.pending.includes(id)) this.pending.push(id);
-      if (!this.vadTurn) this.acceptResponse(id);
-      return;
-    }
-    if (event.type === 'response.output_audio_transcript.delta' && this.prompt && typeof event.delta === 'string' && event.response_id) {
-      const id = String(event.response_id);
-      const heard = `${this.promptTranscripts.get(id) || ''}${event.delta}`;
-      this.promptTranscripts.set(id, heard);
-      this.judgeTranscript(id, heard);
-      return;
-    }
-    if (event.type === 'response.output_audio_transcript.done' && this.prompt && event.response_id) {
-      const id = String(event.response_id);
-      const heard = typeof event.transcript === 'string' ? event.transcript : (this.promptTranscripts.get(id) || '');
-      this.promptTranscripts.set(id, heard);
-      this.judgeTranscript(id, heard);
+      if (!this.cancelSent) this.acceptResponse(id);
       return;
     }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
       if (this.stage === 'collect' || this.stage === 'confirm') return;
       const id = event.response_id ? String(event.response_id) : '';
       if (id && this.stray.has(id)) return;
-      if (this.prompt?.responseId && id && id !== this.prompt.responseId) return;
-      if (this.prompt && !this.prompt.responseId && (this.vadTurn || (id && this.pending.includes(id)))) {
-        if (id && validAudio(event.delta)) {
-          const queued = this.buffers.get(id) || [];
-          queued.push(event.delta);
-          this.buffers.set(id, queued);
-        }
+      if (this.prompt?.responseId) {
+        if (id && id !== this.prompt.responseId) return;
+        if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
         return;
       }
-      if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) {
-        if (this.prompt && !this.prompt.responseId && id && !this.vadTurn) this.acceptResponse(id);
-        if (this.prompt && !this.prompt.responseId) return;
-        this.playDelta(event.delta);
+      if (this.prompt && id && validAudio(event.delta)) {
+        const queued = this.buffers.get(id) || [];
+        queued.push(event.delta);
+        this.buffers.set(id, queued);
+        return;
       }
+      if (this.stage === 'assist' && !this.prompt && validAudio(event.delta)) this.playDelta(event.delta);
       return;
     }
     if (event.type === 'input_audio_buffer.speech_started') {
@@ -269,41 +289,26 @@ export class GrokMediaSession {
     if (this.stray.has(responseId)) {
       this.buffers.delete(responseId);
       this.pending = this.pending.filter(id => id !== responseId);
-      if (this.vadTurn) this.vadTurn = false;
       return;
     }
-    let accepted = this.prompt?.responseId === responseId;
-    if (!accepted) {
-      const uncreated = this.prompt && !this.prompt.responseId && !this.vadTurn && this.pending.length === 0;
-      if (uncreated) {
-        this.prompt.responseId = responseId;
-        accepted = true;
-      } else if (!(this.stage === 'assist' && !this.prompt && this.pendingTool)) {
-        this.stray.add(responseId);
-        this.buffers.delete(responseId);
-        this.pending = this.pending.filter(id => id !== responseId);
-        if (this.vadTurn) this.vadTurn = false;
+    if (event.response.status === 'cancelled') return this.noteCancelled(responseId);
+    if (this.prompt?.responseId === responseId) {
+      if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
+      return this.advancePrompt();
+    }
+    if (this.prompt && !this.prompt.responseId) {
+      const open = this.pending.filter(id => !this.stray.has(id));
+      if (this.cancelSent && open.length > 1) {
+        this.settled.set(responseId, event.response.status || 'completed');
         return;
       }
+      if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
+      this.acceptResponse(responseId);
+      return this.advancePrompt();
     }
     if (!this.prompt && this.stage !== 'assist') return;
     if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
-    if (['opening', 'readback', 'result'].includes(this.stage)) {
-      if (!this.audioBytes) return this.fail('Required audio missing');
-      const stage = this.stage;
-      this.stage = stage + '-playback';
-      this.mark(async () => {
-        if (stage === 'readback') {
-          const armed = await this.state.transact((_e, s) => {
-            const c = s.get('call', this.call.id);
-            if (c?.phase !== 'message' || c.intent?.id !== this.intent?.id || c.intent.confirmedAt) return false;
-            s.put('call', { ...c, intent: { ...c.intent, playedAt: Date.now() } });
-            return true;
-          });
-          if (armed) this.armConfirm(); else this.finish();
-        } else if (this.messageOnly) this.assistMessages(); else this.collect();
-      });
-    } else if (this.stage === 'assist' && this.pendingTool) {
+    if (this.stage === 'assist' && this.pendingTool) {
       const task = this.pendingTool;
       this.pendingTool = null;
       this.stage = 'tool';

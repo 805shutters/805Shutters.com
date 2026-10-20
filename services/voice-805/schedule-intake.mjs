@@ -31,7 +31,15 @@ function weekdayLabel(day) { return day ? day.charAt(0).toUpperCase() + day.slic
 function textOf(value) { return String(value || '').toLowerCase().replace(/[^a-z0-9:' ]/g, ' ').replace(/\s+/g, ' ').trim(); }
 function clean(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
 function clockValue(hour, minute) { return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`; }
-function validDate(value) { return typeof value === 'string' && /^20\d{2}-\d{2}-\d{2}$/.test(value) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value; }
+function validDate(value) {
+  if (typeof value !== 'string' || !/^20\d{2}-\d{2}-\d{2}$/.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
 function validGrid(value) { return typeof value === 'string' && /^\d{2}:(00|30)$/.test(value); }
 function validClock(value) { return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value); }
 
@@ -315,7 +323,8 @@ export function applyScheduleTurn(input, transcript, from = '', businessNumber =
   if (state.awaiting === 'offer' && spokenDecision(raw) === 'affirmative' && state.offer && !/\b(address|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow)\b/.test(text)) return resultOf({ ...state, lastAnswer: text }, { prepare: true });
   const dated = resolveDate(dateText(raw), today);
   if (dated.past) return noted(state, 'That date has already passed. What day works for you?');
-  if (dated.invalid || dated.ambiguousDay) return clarify(state);
+  if (dated.invalid) return noted(state, 'That is not a valid date. What day works for you?');
+  if (dated.ambiguousDay) return clarify(state);
   if (dated.mismatch) return noted(state, `${MONTH_LABELS[Number(dated.mismatch.slice(5, 7)) - 1]} ${Number(dated.mismatch.slice(8, 10))} is a ${weekdayLabel(dated.weekday)}, not ${weekdayLabel(dated.named)}. What day works for you?`);
   const clock = duration ? null : parseTime(dateText(raw), ['time', 'replan', 'correction', 'ampm', 'offer', 'help'].includes(state.awaiting) || Boolean(dated.date) || /\bat\b|\b\d{1,2}(?::\d{2})?\s*[ap]\s*m\b/.test(text));
   const address = !duration && !looksLikeQuestion(raw) ? extractAddress(raw) : null;

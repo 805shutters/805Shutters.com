@@ -12,6 +12,18 @@ function turn(state, text, from = caller) {
   return applied;
 }
 
+test('an impossible calendar date asks once and then offers a callback', () => {
+  const start = turn(initialSchedule(caller), 'I want to schedule an appointment').state;
+  const first = turn(start, '2026-13-01');
+  assert.equal(first.state.date, null);
+  assert.match(first.say, /not a valid date/);
+  assert.match(first.say, /What day works for you/);
+  assert.equal(first.state.clarifyCount, 1);
+  const second = turn(first.state, '2026-02-31');
+  assert.equal(second.state.date, null);
+  assert.equal(second.state.awaiting, 'callback');
+  assert.match(second.say, /callback message/);
+});
 test('records Friday before asking the single time question', () => {
   const first = turn(initialSchedule(caller), 'I would like to schedule an appointment');
   assert.equal(first.state.purpose, 'appointment');
