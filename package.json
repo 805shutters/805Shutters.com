@@ -14,6 +14,7 @@
     "test": "vitest run --passWithNoTests",
     "test:quote-v2-golden": "vitest run src/lib/quote-v2/norman-roller-400-line-golden.test.ts",
     "test:e2e": "playwright test",
+    "test:anatomy": "playwright test --config playwright.anatomy.config.ts",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
     "audit:site": "python3 scripts/audit_site.py --base-url https://www.805shutters.com --output reports/site-audit.json --markdown reports/site-audit.md --post-sample 20 --workers 8",

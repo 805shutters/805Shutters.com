@@ -162,3 +162,11 @@
 }
 
 @media print{.grouped .art [data-shutter-assembly],.grouped .art [data-specialty-sketch]{max-height:230px}}
+
+/* Shutter image leaders stay attached when the labels stack below the drawing. */
+@media screen{
+ @container(max-width:620px){
+  .grouped[data-contract-anatomy="shutters"] .lines{display:block;height:100%}
+  .grouped[data-contract-anatomy="shutters"] .labelColumn{margin-inline:10px}
+ }
+}

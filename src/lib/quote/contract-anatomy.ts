@@ -1,3 +1,4 @@
+import { shutterDetailTarget, type ShutterAnatomyTarget } from './shutter-anatomy-targets';
 import { quoteProductDetails, type QuoteProductDetail } from '@/lib/crm/customer-quote-details';
 import { contractProductFamily, type ContractProductFamily } from './contract-product-family';
 import { contractIllustration } from './contract-illustrations';
@@ -7,7 +8,7 @@ import { anatomyShadeStudy } from './anatomy-shade-study';
 import { anatomyControlAnchor } from './anatomy-control-anchor';
 
 export type AnatomyPart = 'top' | 'surface' | 'slat' | 'control' | 'remote' | 'roll' | 'bottom' | 'frame';
-export type AnatomyCallout = { part: AnatomyPart; title: string; details: QuoteProductDetail[]; point: [number, number]; side: 'left' | 'right'; anchor?: 'remote' | 'pull-tab' | 'cord-loop' | 'wand' };
+export type AnatomyCallout = { part: AnatomyPart; title: string; details: QuoteProductDetail[]; point: [number, number]; side: 'left' | 'right'; shutterTarget?: ShutterAnatomyTarget; anchor?: 'remote' | 'pull-tab' | 'cord-loop' | 'wand' };
 const slatted = new Set<ContractProductFamily>(['shutters', 'wood', 'faux-wood', 'mini', 'vinyl', 'fabric-blind', 'vertical', 'vanes']);
 const titles: Record<AnatomyPart, string> = { top: 'Top treatment', surface: 'Fabric & finish', slat: 'Slats', control: 'Operation', remote: 'Remote control', roll: 'Roll direction', bottom: 'Bottom rail', frame: 'Frame & mounting' };
 const points: Record<AnatomyPart, [number, number]> = { top: [50, 25], surface: [47, 49], slat: [54, 39], control: [82, 58], remote: [50, 48], roll: [82, 27], bottom: [52, 81], frame: [20, 64] };
@@ -154,7 +155,18 @@ export function contractAnatomyLabels(productType: string, options: readonly str
         const details = c.details.filter(d => anatomySelectionGroup(d.label) === group);
         return details.length ? [{...c, details, side: (group === 'Design & color' || group === 'Valance' ? 'left' : 'right') as 'left' | 'right'}] : [];
       }));
-      callouts.splice(0, callouts.length, ...balancedAnatomyCallouts(separated));
+      const componentCards: typeof callouts = [];
+      for (const callout of separated) {
+        if (anatomy.family !== 'shutters') { componentCards.push(callout); continue; }
+        for (const detail of callout.details) {
+          const target = shutterDetailTarget(detail);
+          const group = anatomySelectionGroup(detail.label);
+          const existing = componentCards.find(c => (c.shutterTarget || null) === target && anatomySelectionGroup(c.details[0].label) === group);
+          if (existing) existing.details.push(detail);
+          else componentCards.push({...callout, details:[detail], shutterTarget:target || undefined, noLeader:!target});
+        }
+      }
+      callouts.splice(0, callouts.length, ...balancedAnatomyCallouts(componentCards));
     }
     return { ...anatomy, callouts, notes };
 }

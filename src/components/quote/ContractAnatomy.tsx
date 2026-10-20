@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type R
 import { contractAnatomyLabels, anatomySelectionGroup, ANATOMY_SELECTION_GROUPS, isFinishDetail } from '@/lib/quote/contract-anatomy';
 import { customerQuoteProductName } from '@/lib/crm/customer-quote-branding';
 import { shutterIllustrationGeometry, type ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
+import { shutterDetailTarget } from '@/lib/quote/shutter-anatomy-targets';
 import { ContractProductIllustration } from './ContractProductIllustration';
 import { fabricPerformanceLabels } from '@/lib/quote/fabric-performance-labels';
 import styles from './ContractAnatomy.module.css';
@@ -28,7 +29,7 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
   const showNumbers=layout!=='grouped'&&summaryStyle!=='current'&&summaryStyle!=='recap';
   const scene = useRef<HTMLDivElement>(null), art = useRef<HTMLDivElement>(null);
   const labels = useRef<(HTMLElement | null)[]>([]);
-  const [paths, setPaths] = useState<{ part: string; d: string; x: number; y: number }[]>([]);
+  const [paths, setPaths] = useState<{ part: string; d: string; x: number; y: number; target?: string }[]>([]);
   const [printing, setPrinting] = useState(false);
   const [active, setActive] = useState<string | null>(null);
   const heading = useId();
@@ -47,8 +48,35 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
       const primaryProduct = art.current.querySelector('[data-primary-product]');
       const image = measure(primaryProduct?.querySelector('[data-valance-body], [data-shade-fold], [data-roller-top-treatment]') || (frameProfile ? primaryProduct : null) || art.current);
       setPaths(model.callouts.map((callout, i) => {
-        if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const text = labels.current[i] ? measure(labels.current[i]!) : undefined;
+        const originalShutter = art.current!.querySelector('[data-shutter-reference]');
+        if (originalShutter) {
+          const kind = callout.shutterTarget || shutterDetailTarget(callout.details[0]);
+          if (!kind || !text) return {part:callout.part,d:'',x:0,y:0};
+          const panelConfig = callout.details.find(d => /^panel config(?:uration)?$/i.test(d.label))?.value.trim().toUpperCase();
+          const physicalSide = kind === 'panel' && /^[LR]$/.test(panelConfig || '') ? (panelConfig === 'R' ? 'right' : 'left') : callout.side;
+          const name = kind.endsWith('-detail') ? kind : `${kind}-${physicalSide}`;
+          const region = art.current!.querySelector(`[data-shutter-target="${name}"]`);
+          // Missing artwork targets must never fall back to a container percentage.
+          if (!region) return {part:callout.part,d:'',x:0,y:0,target:`missing:${name}`};
+          const bounds = measure(region);
+          const drawing = measure(originalShutter);
+          const left = callout.side === 'left';
+          const x = bounds.left - frame.left + bounds.width * (left ? .15 : .85);
+          const y = bounds.top - frame.top + bounds.height / 2;
+          const start = {
+            x: (mobile ? (left ? text.left : text.right) : (left ? text.right : text.left)) - frame.left,
+            y: text.top - frame.top + Math.min(24, text.height / 2),
+          };
+          const outline = {
+            left: mobile ? 0 : drawing.left - frame.left + drawing.width * 133 / 627,
+            right: mobile ? frame.width : drawing.left - frame.left + drawing.width * 528 / 627,
+            top: drawing.top - frame.top + drawing.height * 20 / 627,
+            bottom: drawing.top - frame.top + drawing.height * 586 / 627,
+          };
+          return {part:callout.part,x,y,target:name,d:roundedLeaderPath(exteriorLeaderPoints({start,end:{x,y},left,entry:physicalSide !== callout.side || kind.endsWith('-detail') ? 'bottom' : 'side',art:outline,clearance:mobile?0:8}))};
+        }
+        if (callout.noLeader) return {part:callout.part,d:'',x:0,y:0};
         const shutterPanels = art.current!.querySelectorAll('[data-shutter-panel]');
         const shutterPanel = model.family === 'shutters' && ['control','slat','bottom'].includes(callout.part)
           ? shutterPanels[callout.side === 'left' ? 0 : shutterPanels.length - 1] : null;
@@ -159,6 +187,8 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     // Absolute control artwork can finish loading without resizing its parent.
     const artwork=art.current;
     artwork?.addEventListener('load',draw,true);
+    let disposed = false;
+    document.fonts?.ready.then(() => { if (!disposed) draw(); });
     // Printing changes the layout synchronously, before ResizeObserver can commit.
     const beforePrint = () => {
       flushSync(() => setPrinting(true));
@@ -171,29 +201,30 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
     const mediaChanged = (event: MediaQueryListEvent) => event.matches ? beforePrint() : afterPrint();
     printMedia.addEventListener('change', mediaChanged);
     return () => {
+      disposed = true;
       observer.disconnect();
       artwork?.removeEventListener('load',draw,true);
       window.removeEventListener('beforeprint', beforePrint);
       window.removeEventListener('afterprint', afterPrint);
       printMedia.removeEventListener('change', mediaChanged);
     };
-  }, [model, layout, lineRouting, summaryStyle, frameProfile]);
+  }, [model, layout, lineRouting, summaryStyle, frameProfile, width, height, illustrationGeometry, valanceArtId]);
   const selected = model.callouts.find(c => c.part === active);
   const renderCallout = (callout: typeof model.callouts[number], i: number) => {
         const CalloutTag = layout === 'grouped' ? 'div' : 'button';
         const siblings = model.callouts.filter(c => c.side === callout.side), index = siblings.indexOf(callout);
         const labelTop=layout==='grouped' ? (callout.side==='right'?96:32)+index*130 : layout==='classic' ? (callout.side==='right'?190:70)+index*116 : lineRouting==='around'&&(callout.anchor==='pull-tab'||callout.part==='bottom')?230:24 + index * (layout === 'bordered' ? 108 : 96);
-        return <CalloutTag type={layout === 'grouped' ? undefined : "button"} key={`${callout.part}-${i}`} data-callout-part={callout.part} data-no-leader={callout.noLeader || undefined} ref={(el: HTMLDivElement | HTMLButtonElement | null) => { labels.current[i] = el; }} style={{ top: `${labelTop}px` }} className={`${styles.callout} ${styles[callout.side]} ${active === callout.part ? styles.selected : ''}`} aria-pressed={layout === 'grouped' ? undefined : active === callout.part} onClick={() => {if(layout!=='grouped')setActive(active === callout.part ? null : callout.part);}}>
+        return <CalloutTag type={layout === 'grouped' ? undefined : "button"} key={`${callout.part}-${i}`} data-callout-part={callout.part} data-shutter-callout-target={model.family === 'shutters' ? callout.shutterTarget || shutterDetailTarget(callout.details[0]) || undefined : undefined} data-no-leader={callout.noLeader || undefined} ref={(el: HTMLDivElement | HTMLButtonElement | null) => { labels.current[i] = el; }} style={{ top: `${labelTop}px` }} className={`${styles.callout} ${styles[callout.side]} ${active === callout.part ? styles.selected : ''}`} aria-pressed={layout === 'grouped' ? undefined : active === callout.part} onClick={() => {if(layout!=='grouped')setActive(active === callout.part ? null : callout.part);}}>
           {layout==='grouped'?callout.details.map(detail=><span className={styles.calloutDetail} key={detailKey(detail)}><span className={styles.calloutCategory}>{showNumbers?`${detailNumber(detail)} · `:''}{/^lift system$/i.test(detail.label)?'Control type':detail.label}</span><strong>{detail.value}</strong>{detail===performanceDetail&&fabricLabels.map(label=><strong className={styles.fabricPerformance} data-fabric-performance="true" key={label}>{label}</strong>)}</span>):<><strong>{showNumbers?<span className={styles.referenceNumbers}>{callout.details.map(d=><b key={detailKey(d)}>{detailNumber(d)}</b>)}</span>:<span className={styles.number}>{i + 1}.</span>}{callout.anchor === 'remote' ? 'Remote control' : callout.anchor === 'pull-tab' ? 'Cordless pull tab' : callout.anchor === 'cord-loop' ? 'Continuous cord loop' : callout.details.length === 1 ? callout.details[0].value : callout.title}</strong><span>{callout.details.length === 1 ? callout.details[0].label : callout.details.slice(0, 2).map(d => d.value).join(' · ') + (callout.details.length > 2 ? ` · +${callout.details.length - 2} details` : '')}</span></>}
           {layout==='grouped'&&callout.anchor==='remote'&&!callout.details.some(d=>/remote/i.test(`${d.label} ${d.value}`))&&<span className={styles.controlTarget}>Remote control</span>}
           {layout==='grouped'&&callout.anchor==='pull-tab'&&<span className={styles.controlTarget}>Center pull tab</span>}
         </CalloutTag>;
   };
-  return <article className={`${styles.card} ${printing ? styles.printing : ''} ${styles[layout]} ${showNumbers?styles.numbered:''} ${summaryStyle==='legend'?styles.legend:''}`} aria-labelledby={showHeader ? heading : undefined} aria-label={showHeader ? undefined : room} data-contract-anatomy={model.family} data-contract-layout={layout} data-line-routing={lineRouting} data-summary-style={summaryStyle}>
+  return <article className={`${styles.card} ${printing ? styles.printing : ''} ${styles[layout]} ${showNumbers?styles.numbered:''} ${summaryStyle==='legend'?styles.legend:''}`} aria-labelledby={showHeader ? heading : undefined} aria-label={showHeader ? undefined : room} data-contract-anatomy={model.family} data-attachment-errors={paths.filter(path => path.target?.startsWith('missing:')).length} data-contract-layout={layout} data-line-routing={lineRouting} data-summary-style={summaryStyle}>
     {showHeader && <header className={styles.header}><div className={styles.identity}><h2 id={heading} className={styles.room}>{room || 'Room not specified'}</h2><p className={styles.eyebrow}>{customerQuoteProductName(productType)}</p>{layout==='classic'&&<p className={styles.subtitle}>{model.family==='shutters'?'Your shutters':/roller|roman|honeycomb|sheer|woven|pleated|dual|solar/.test(model.family)?'Your shade':'Your product'}, explained</p>}</div><div className={styles.headerMeta}>{width ? <span>Width <strong>{width}″</strong></span> : null}<span>Quantity <strong>{quantity}</strong></span></div></header>}
     <div className={styles.diagram} ref={scene} style={{'--label-rows': Math.max(1, ...(['left', 'right'] as const).map(side => model.callouts.filter(c => c.side === side).length))} as CSSProperties}>
       <div className={`${styles.art} ${frameProfile ? styles.withFrameProfile : ''}`} ref={art}><div data-primary-product="true"><ContractProductIllustration productType={productType} options={options} frameProfile={frameProfile} valanceArtId={valanceArtId} illustrationGeometry={illustrationGeometry ?? shutterIllustrationGeometry(width, height, options)} showTemporaryShade={false} size="anatomy" /></div>{frameProfile && <figure className={styles.frameProfile} data-frame-profile={frameProfile.id}><img src={frameProfile.src} alt={`${frameProfile.label} — pencil side profile`} width={128} height={90}/><figcaption><strong>{frameProfile.label}</strong><span>Side profile</span></figcaption></figure>}</div>
-      <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`} data-leader-part={path.part}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
+      <svg className={styles.lines} aria-hidden="true">{paths.map((path, i) => path.d ? <g key={`${path.part}-${i}`} data-leader-part={path.part} data-leader-target={path.target}><path d={path.d} className={`${styles.line} ${active === path.part ? styles.active : ''}`} /><circle cx={path.x} cy={path.y} r="3" className={styles.dot}/></g> : null)}</svg>
       {layout==='grouped' ? (['left','right'] as const).flatMap(side => {
         const entries = ANATOMY_SELECTION_GROUPS.flatMap(title => model.callouts
           .map((callout, i) => ({callout, i, title}))

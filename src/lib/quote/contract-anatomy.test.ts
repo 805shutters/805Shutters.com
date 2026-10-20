@@ -14,12 +14,12 @@ describe('visual contract catalog and saved selections', () => {
     const options = ['Material: Bassia','Color: 100_Pure White','Hinge Color: Match','Tilt: standard','Split Tilt: No','Louver Size: 3 1/2 inch','Frame: Z Crest FS','Panel Configuration: LR','Mount Type: Inside mount','Shutter Type: arch_shutters','Divider Rail Count: 0','Divider Rail: No','T-post Count: 0','Style: Basswood'];
     const model = contractAnatomyLabels('Shutters', options);
     const left = model.callouts.filter(c => c.side === 'left'), right = model.callouts.filter(c => c.side === 'right');
-    expect(left.length).toBe(right.length);
+    expect(Math.abs(left.length - right.length)).toBeLessThanOrEqual(1);
     expect(left.length).toBeGreaterThan(1);
     const details = model.callouts.flatMap(c => c.details);
     for (const detail of model.specifications) expect(details).toContainEqual(detail);
     const html = renderToStaticMarkup(createElement(ContractAnatomy, {productType:'Shutters',room:'Primary Bedroom',layout:'grouped',options}));
-    for (const side of ['left','right']) for (let row = 0; row < left.length; row++) expect(html).toContain(`data-label-row="${row}" data-label-side="${side}"`);
+    for (const [side, cards] of [['left', left], ['right', right]] as const) for (let row = 0; row < cards.length; row++) expect(html).toContain(`data-label-row="${row}" data-label-side="${side}"`);
   });
   it('balances all catalog product configurations while preserving complete category cards', () => {
     for (const product of anatomyProductIndex()) {
