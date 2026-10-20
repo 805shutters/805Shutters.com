@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
 import type { MetaSource } from "@/lib/meta-booking-alert";
+import { sendAgentStaffBookingSms } from "@/lib/notify/agent-staff-sms";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendAppointmentConfirmation } from "./confirmation-message";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -558,7 +559,7 @@ export async function settleAgentStaffSms(
     payload.phone ? `Phone: ${payload.phone}.` : null,
     "Assigned to Jessica.",
   ].filter(Boolean).join(" ");
-  const result = await sendSms({ to, body, ownerAlert: recipient === "Mike", timeoutMs: 15_000 });
+  const result = await sendAgentStaffBookingSms({ to, body });
   if (result.sent && result.sid) {
     const providerStatus = result.providerStatus || "accepted";
     return {
