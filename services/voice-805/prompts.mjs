@@ -40,6 +40,29 @@ function asAudio(bytes) {
   return bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
 }
 
+// xAI returns a streaming wav: RIFF size 0x80000023 and data size 0x7fffffff.
+// Twilio <Play> needs the real lengths, so rewrite both before the bytes are stored.
+export function normalizeWavHeader(bytes) {
+  const source = asAudio(bytes);
+  if (!source || source.length < 20 || source.length > 0xffffffff) return null;
+  const copy = Uint8Array.from(source);
+  const view = new DataView(copy.buffer);
+  view.setUint32(4, copy.length - 8, true);
+  let offset = 12;
+  while (offset + 8 <= copy.length) {
+    const id = String.fromCharCode(copy[offset], copy[offset + 1], copy[offset + 2], copy[offset + 3]);
+    if (id === "data") {
+      view.setUint32(offset + 4, copy.length - (offset + 8), true);
+      return copy;
+    }
+    const size = view.getUint32(offset + 4, true);
+    const next = offset + 8 + size + (size & 1);
+    if (size > copy.length || next > copy.length) return null;
+    offset = next;
+  }
+  return null;
+}
+
 function memoryOf(config) {
   if (!config.promptMemory) config.promptMemory = new Map();
   return config.promptMemory;
@@ -65,7 +88,7 @@ export function promptIsReady(config, name) {
 }
 
 export function storePrompt(config, name, bytes, durable = false) {
-  const audio = asAudio(bytes);
+  const audio = normalizeWavHeader(bytes);
   if (!audio || !PROMPTS[name]) return false;
   const existing = memoryOf(config).get(name);
   memoryOf(config).set(name, {

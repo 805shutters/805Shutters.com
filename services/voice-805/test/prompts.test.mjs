@@ -10,6 +10,8 @@ import {
   VOICE_ID,
   createSupabasePromptStore,
   ensureSpoken,
+  fillPrompt,
+  normalizeWavHeader,
   promptIsReady,
   promptVerb,
   renderPrompt,
@@ -36,6 +38,67 @@ test("realtime and tts contracts match the current xAI voice API", () => {
   const entry = readFileSync(new URL("../../../supabase/functions/voice-805/index.ts", import.meta.url), "utf8");
   assert.match(entry, /new WebSocket\(REALTIME_URL/);
   assert.doesNotMatch(entry, /grok-voice-latest/);
+});
+
+function u32(bytes, offset) {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(offset, true);
+}
+// Live POST /v1/tts wav: PCM 16-bit mono 8000 Hz, streaming RIFF and data sizes.
+function streamingWav(extraChunk = false) {
+  const payload = Uint8Array.from([0x00, 0x01, 0xff, 0x7f, 0x00, 0x00, 0x34, 0x12]);
+  const before = extraChunk ? 12 : 0;
+  const bytes = new Uint8Array(44 + before + payload.length);
+  const view = new DataView(bytes.buffer);
+  bytes.set([0x52, 0x49, 0x46, 0x46], 0);
+  view.setUint32(4, 0x80000023, true);
+  bytes.set([0x57, 0x41, 0x56, 0x45], 8);
+  bytes.set([0x66, 0x6d, 0x74, 0x20], 12);
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 16000, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  let dataAt = 36;
+  if (extraChunk) {
+    bytes.set([0x66, 0x61, 0x63, 0x74], 36);
+    view.setUint32(40, 4, true);
+    view.setUint32(44, payload.length / 2, true);
+    dataAt = 48;
+  }
+  bytes.set([0x64, 0x61, 0x74, 0x61], dataAt);
+  view.setUint32(dataAt + 4, 0x7fffffff, true);
+  bytes.set(payload, dataAt + 8);
+  return bytes;
+}
+
+test("streaming wav header sizes are rewritten before storage", async () => {
+  const streaming = streamingWav();
+  const untouched = Uint8Array.from(streaming);
+  assert.equal(u32(streaming, 4), 0x80000023);
+  assert.equal(u32(streaming, 40), 0x7fffffff);
+  const fixed = normalizeWavHeader(streaming);
+  assert.deepEqual(streaming, untouched);
+  assert.equal(fixed.length, streaming.length);
+  assert.equal(u32(fixed, 4), fixed.length - 8);
+  assert.equal(u32(fixed, 40), fixed.length - 44);
+  assert.equal(fixed[20], 1);
+  assert.equal(fixed[22], 1);
+  assert.equal(u32(fixed, 24), 8000);
+  assert.deepEqual(fixed.subarray(44), streaming.subarray(44));
+  const shifted = streamingWav(true);
+  const shiftedFixed = normalizeWavHeader(shifted);
+  assert.equal(u32(shiftedFixed, 4), shiftedFixed.length - 8);
+  assert.equal(u32(shiftedFixed, 52), shiftedFixed.length - 56);
+  const c = config();
+  let stored = null;
+  const rendered = await renderPrompt(c, "greeting", async () => wavResponse(streamingWav()));
+  assert.equal(u32(rendered, 4), rendered.length - 8);
+  assert.equal(u32(rendered, 40), rendered.length - 44);
+  await fillPrompt(config(), "hold", { put: async (_name, bytes) => { stored = Uint8Array.from(bytes); } }, async () => wavResponse(streamingWav()));
+  assert.equal(u32(stored, 4), stored.length - 8);
+  assert.equal(u32(stored, 40), stored.length - 44);
 });
 
 test("say is the fallback and play is used only for durable audio", () => {
