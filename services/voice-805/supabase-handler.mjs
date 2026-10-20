@@ -4,7 +4,7 @@ import { e164 } from './config.mjs';
 import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
-import { fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
+import { fallback, ringbackTwiml, ringbackWav, voicemailXml } from './fallback.mjs';
 import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
@@ -48,6 +48,10 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
    if(prefix===undefined||u.search)return json({error:'Invalid route'},400);
    const path=u.pathname.slice(prefix.length)||'/';
    if(path==='/health'&&request.method==='GET')return json({service:'805-phone',...supabaseReadiness(c)});
+   if(path==='/twilio/ringback.wav'){
+    if(request.method!=='GET')return json({error:'Method rejected'},405);
+    return new Response(ringbackWav(),{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
+   }
    const promptName=path.match(/^\/twilio\/prompts\/(greeting|unavailable|voicemail)\.wav$/)?.[1];
    if(promptName){
     if(request.method!=='GET')return json({error:'Method rejected'},405);
@@ -170,7 +174,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
     await run((e,s)=>{const id=s.state.inbound[sid];if(!id)throw new Conflict('Unknown caller');if(terminal.includes(p.get('CallStatus')))e.ended(id,sid,`parent-status:${sid}:${p.get('CallStatus')}`);});queue();return xmlResponse(twiml(''));
    }
-   if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml());
+   if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml(c.origin));
    if(['greeted','agent','continue','fallback'].includes(parts[1]))await ensureSpoken(c,['voicemail'],prompts,waitUntil);
    let downId=null;
    const response=await run((e,s)=>{

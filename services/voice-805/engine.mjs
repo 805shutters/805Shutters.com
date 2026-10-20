@@ -305,10 +305,36 @@ export class Engine {
       if (!offer) throw new Conflict("Unknown offer");
       if (offer.sid && offer.sid !== sid)
         throw new Conflict("Mismatched staff call");
+      // A status callback that already has a CallSid wins over a Create error.
+      // If the caller has already left the offer, hang that late leg up.
+      if (!offer.sid && offer.status === "no-answer") {
+        offer.sid = sid;
+        if (c.phase === "offering" && !c.owner) {
+          offer.status = "ringing";
+          delete offer.error;
+          return;
+        }
+        this.effect(c, "hangup", { sid });
+        return;
+      }
       offer.sid = sid;
       if (offer.status === "pending") offer.status = "ringing";
       if (["canceled", "expired"].includes(offer.status) || c.phase === "ended")
         this.effect(c, "hangup", { sid });
+    });
+  }
+  // Twilio returned a terminal Create failure and no CallSid. The matching
+  // initial offer is no-answer in the same transaction, then followIfUnanswered
+  // moves the caller only when every initial offer is finished.
+  rejectInitialDial(id, offerId, error, eventId) {
+    return this.change(id, eventId, (c) => {
+      const offer = c.offers.find((o) => o.id === offerId);
+      if (!offer || offer.purpose !== "initial" || offer.sid) return false;
+      if (!["pending", "ringing"].includes(offer.status)) return false;
+      offer.status = "no-answer";
+      offer.error = String(error || "").slice(0, 300);
+      this.followIfUnanswered(c, Date.now());
+      return true;
     });
   }
   accept(id, offerId, sid, answeredBy, now = Date.now()) {
