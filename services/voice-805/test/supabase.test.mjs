@@ -175,5 +175,5 @@ test('stored greeting audio plays immediately and a storage miss says the line w
  assert.equal((await empty.handler(new Request(empty.c.origin+'/twilio/prompts/hold.wav'))).status,405);
  const ring=await empty.handler(carrierRequest(empty,'/twilio/ringback',{CallSid:'CA'+'8'.repeat(32),To:empty.c.number,From:'+18055550199'}));
  const ringXml=await ring.text();
- assert.equal(ring.status,200);assert.match(ringXml,/<Pause length="40"\/>/);assert.doesNotMatch(ringXml,/Play|Say|hold/);
+ assert.equal(ring.status,200);assert.match(ringXml,/<Play loop="0">https:\/\/example\.supabase\.co\/functions\/v1\/voice-805\/twilio\/ringback\.wav<\/Play>/);assert.doesNotMatch(ringXml,/Say|Pause|hold/);
 });

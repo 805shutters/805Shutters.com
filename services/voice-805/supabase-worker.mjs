@@ -1,4 +1,4 @@
-import { applyDelivery } from './provider.mjs';
+import { applyDelivery, ProviderError } from './provider.mjs';
 import { canOperate } from './supabase-config.mjs';
 import { reportFailure } from './security.mjs';
 
@@ -73,11 +73,19 @@ export class SupabaseWorker {
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
       const failure = reportFailure('worker-effect', error);
-      await change((_e,s)=>{
+      await change((e,s)=>{
         const fresh=s.get(kind,item.id);
         if(kind==='notification' && fresh.sid) return fresh;
         const call=s.get('call',item.callId);
-        if(kind==='effect' && item.type==='dial' && call?.offers.find(o=>o.id===item.data.offerId)?.sid) return s.put(kind,{...fresh,status:'done'});
+        if(kind==='effect' && item.type==='dial') {
+          const offer=call?.offers.find(o=>o.id===item.data?.offerId);
+          if(offer?.sid) return s.put(kind,{...fresh,status:'done',reconciled:'signed callback bound call SID'});
+          // 4xx Create failures such as 21215 never produce a CallSid. Uncertain
+          // and retryable results stay untouched so a possible live leg is not
+          // redialed and the other offer can still be answered.
+          if(error instanceof ProviderError && !error.uncertain && !error.retryable && offer?.purpose==='initial')
+            e.rejectInitialDial(call.id,offer.id,failure.message,`dial-rejected:${item.id}`);
+        }
         return s.put(kind,{...fresh,status:error.uncertain?'uncertain':'failed',error:error.uncertain?'Carrier outcome unknown; reconcile before retry.':failure.message});
       });
     }

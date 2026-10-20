@@ -12,7 +12,7 @@ The pilot stores each dataset in a single JSON document with a 16 MiB ceiling. T
 
 ## Call behavior
 
-Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.** That line is Grok's `ara` voice when the cached wav is ready. Mike and Jessica ring at the same time, while it plays. Until one of them joins, the caller hears silence rather than a repeated hold message. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
+Every caller hears exactly: **Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.** That line is Grok's `ara` voice when the cached wav is ready. Mike and Jessica ring at the same time, while it plays. Until one of them joins, the caller hears ringing rather than a repeated hold message. Staff legs use Twilio answering-machine detection. A human bridges and cancels the other leg. A machine, beep, silence, fax, or unknown result is not an answer. Nobody presses a key.
 
 If both legs are no-answer, or the offer window (default 20 seconds) expires, Grok apologizes and asks whether the caller wants to leave a message or schedule a consultation. Messages and appointments are read back and saved only after a spoken yes. Scheduling asks when first, then uses the existing calendar, address geocoding, and travel checks. A missing requested time offers the closest open times. If nothing fits, the caller can leave a message. If Grok fails, Twilio records a voicemail.
 

@@ -264,8 +264,8 @@ const mailXml = await mail.text();
 const hold = await played.handler(carrier(played, "/twilio/ringback", { CallSid: "CA" + "e".repeat(32), To: played.c.number, From: "+18055550199" }));
 const holdXml = await hold.text();
 check(
-  "voicemail uses cached Grok audio and ringback is silence",
-  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Pause") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Play>"),
+  "voicemail uses cached Grok audio and ringback is a tone",
+  mail.status === 200 && mailXml.includes("/twilio/prompts/voicemail.wav") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Play loop=\"0\">") && holdXml.includes("/twilio/ringback.wav") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Pause"),
   `mail=${mail.status} ${mailXml.replaceAll("\n", " ")} hold=${hold.status} ${holdXml.replaceAll("\n", " ")}`,
 );
 
