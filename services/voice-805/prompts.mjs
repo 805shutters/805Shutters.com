@@ -2,12 +2,11 @@ import { Buffer } from "node:buffer";
 import { COMMON_GREETING } from "./caller-context.mjs";
 import { reportFailure, xml } from "./security.mjs";
 
-// Same built-in voice the realtime receptionist uses. ara is a documented xAI
-// voice for POST /v1/tts and the realtime session.update voice field.
+// ara is a documented xAI voice for POST /v1/tts. The greeting, unavailable
+// line, and voicemail prompt use it. The no-answer conversation is the console
+// agent over SIP, not a websocket opened by this service.
 export const VOICE_ID = "ara";
 export const TTS_URL = "https://api.x.ai/v1/tts";
-export const REALTIME_MODEL = "grok-voice-3.0";
-export const REALTIME_URL = "wss://api.x.ai/v1/realtime?model=grok-voice-3.0";
 export const PROMPT_BUCKET = "voice-805-prompts";
 
 export const PROMPTS = Object.freeze({

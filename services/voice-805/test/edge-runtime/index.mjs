@@ -37,6 +37,7 @@ function config() {
     authToken: "t".repeat(32),
     number: "+18055550100",
     xaiKey: "x".repeat(20),
+    sipUri: "sip:+18055908050@sip.voice.x.ai;transport=tls",
     toolsKey: "t".repeat(32),
     controlKey: "c".repeat(32),
     workerKey: "w".repeat(32),
@@ -233,7 +234,7 @@ const duringXml = await duringGreeted.text();
 await settle(during);
 check(
   "offer timeout during the greeting does not cut it off",
-  duringInbound.status === 200 && duringCall.phase === "message" && duringCall.greetingPlayed === false && duringAgents === 0 && duringGreeted.status === 200 && /<Stream /.test(duringXml) && !/Conference/.test(duringXml) && during.provider.operations.filter((item) => item.type === "connect-agent").length === 0,
+  duringInbound.status === 200 && duringCall.phase === "message" && duringCall.greetingPlayed === false && duringAgents === 0 && duringGreeted.status === 200 && /<Sip>sip:\+18055908050@sip\.voice\.x\.ai;transport=tls\?X-805-Call-Id=/.test(duringXml) && !/Stream|Conference/.test(duringXml) && during.provider.operations.filter((item) => item.type === "connect-agent").length === 0,
   `phase=${duringCall.phase} played=${duringCall.greetingPlayed} agents=${duringAgents} xml=${duringXml.replaceAll("\n", " ")}`,
 );
 

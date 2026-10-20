@@ -6,6 +6,7 @@ export function loadSupabaseConfig(env) {
     pilotAuthorized:env.VOICE_805_PILOT_AUTHORIZED==='true', pilotCallers:JSON.parse(env.VOICE_805_PILOT_CALLERS_JSON || '[]'),
     greeting:COMMON_GREETING, transport:env.VOICE_805_TRANSPORT || 'media', offerSeconds:Number(env.VOICE_805_OFFER_SECONDS || 20),
     sipUri:env.VOICE_805_XAI_SIP_URI || '', toolsKey:env.VOICE_805_TOOLS_KEY || '',
+    agentToolToken:env.VOICE_805_AGENT_TOOL_TOKEN || '', bookingAuthorized:env.VOICE_805_BOOKING_AUTHORIZED==='true',
     workerKey:env.VOICE_805_WORKER_KEY || '', workerVerified:env.VOICE_805_WORKER_VERIFIED==='true', agentContractVerified:env.VOICE_805_AGENT_CONTRACT_VERIFIED==='true',
     fallbackGreeting:'Our team could not answer. Please leave a callback message.',
     statusTopics:JSON.parse(env.VOICE_805_STATUS_TOPICS_JSON || '{}')};

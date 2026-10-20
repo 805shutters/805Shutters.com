@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getSupabaseServiceClient } from '@/lib/supabase-server';
 import { BookingError } from '@/lib/booking/scheduling';
-import { commitVoiceVisit, prepareVoiceVisit, VoiceReplan } from '@/lib/voice-805/scheduling';
+import { commitVoiceVisit, prepareVoiceVisit, slotsForPreferredTime, VoiceReplan } from '@/lib/voice-805/scheduling';
 export const runtime='nodejs';
 export const maxDuration=60;
 export const dynamic='force-dynamic';
@@ -18,11 +18,12 @@ export async function POST(request:Request){
   const expected=createHmac('sha256',key).update(`${at}\n${nonce}\n${raw}`).digest('base64');
   if(!timingSafeEqual(Buffer.from(expected),Buffer.from(sig)))return reply({error:'Rejected'},401);
   const {callId,dataset,action,input}=JSON.parse(raw);
-  if(!/^[0-9a-f-]{36}$/.test(callId)||!['pilot','production'].includes(dataset)||!['find_appointments','prepare_appointment','commit'].includes(action))return reply({error:'Invalid action'},400);
+  if(!/^[0-9a-f-]{36}$/.test(callId)||!['pilot','production'].includes(dataset)||!['find_appointments','prepare_appointment','commit','check_availability'].includes(action))return reply({error:'Invalid action'},400);
   const db=getSupabaseServiceClient();if(!db)return reply({error:'Unavailable'},503);
   const {data,error}=await db.from('voice_805_state').select('body').eq('id',dataset).single();
   const call=data?.body?.entities?.call?.[callId];
-  if(error||!call||!call.mediaStreamSid||(call.phase!=='message'&&!(action==='commit'&&call.booking?.verified)))return reply({error:'Call unavailable'},409);
+  if(error||!call||(call.phase!=='message'&&!(action==='commit'&&call.booking?.verified)))return reply({error:'Call unavailable'},409);
+  if(action==='check_availability')return reply(await slotsForPreferredTime(db,input?.preferred_time));
   // Pilot calls may inspect availability but cannot create real CRM appointments.
   if(action!=='find_appointments'&&(dataset!=='production'||process.env.VOICE_805_BOOKING_AUTHORIZED!=='true'))return reply({error:'Booking activation required; offer a callback.'},503);
   if(action==='commit')return reply(await commitVoiceVisit(db,callId,call));

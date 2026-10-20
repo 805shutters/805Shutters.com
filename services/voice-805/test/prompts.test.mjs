@@ -4,8 +4,6 @@ import { readFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
 import {
   PROMPTS,
-  REALTIME_MODEL,
-  REALTIME_URL,
   TTS_URL,
   VOICE_ID,
   createSupabasePromptStore,
@@ -30,16 +28,13 @@ const config = () => ({ xaiKey: "x".repeat(20), origin: "https://example.test/vo
 const wavResponse = (bytes = wav(), status = 200, type = "audio/wav") =>
   new Response(bytes, { status, headers: { "content-type": type } });
 
-test("realtime and tts contracts match the current xAI voice API", () => {
+test("greeting tts stays on ara and the function does not open a Grok websocket", () => {
   assert.equal(VOICE_ID, "ara");
   assert.equal(promptObjectName("greeting"), "ara-greeting.wav");
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
-  assert.equal(REALTIME_MODEL, "grok-voice-3.0");
-  assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
   assert.equal(PROMPTS.greeting, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.");
   const entry = readFileSync(new URL("../../../supabase/functions/voice-805/index.ts", import.meta.url), "utf8");
-  assert.match(entry, /new WebSocket\(REALTIME_URL/);
-  assert.doesNotMatch(entry, /grok-voice-latest/);
+  assert.doesNotMatch(entry, /WebSocket|GrokMediaSession|REALTIME_URL|grok-voice-latest/);
 });
 
 function u32(bytes, offset) {

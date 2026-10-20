@@ -4,35 +4,17 @@ import { e164 } from './config.mjs';
 import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
-import { fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
+import { consoleAgentTwiml, fallback, ringbackTwiml, voicemailXml } from './fallback.mjs';
 import { PROMPTS, ensureSpoken, promptSource, promptVerb } from './prompts.mjs';
-import { logFailure, saveCallback } from './callbacks.mjs';
+import { logFailure, matchCustomerByPhone, saveCallback } from './callbacks.mjs';
+import { schedulingRequest } from './receptionist.mjs';
+import { randomUUID } from 'node:crypto';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
-// The hosted Supabase gateway records 502 for an Upgrade request that does not
-// return 101 on the first turn (plain GET /health is 200; the same path with
-// Upgrade: websocket is 502 and never reaches a JSON response). Load the call
-// after the socket is upgraded, and close it if this call cannot take audio.
-export function attachMediaSocket(socket, { load, eligible, start }) {
- const early = [];
- socket.onmessage = event => early.push(event);
- return (async () => {
-  let call = null;
-  try { call = await load(); }
-  catch { try { socket.close(1011, 'unavailable'); } catch { /* already closed */ } return; }
-  if (!eligible(call) || (typeof socket.readyState === 'number' && socket.readyState > 1)) {
-   try { socket.close(1008, 'unavailable'); } catch { /* already closed */ }
-   return;
-  }
-  start(call);
-  const deliver = socket.onmessage;
-  for (const event of early) deliver?.(event);
- })();
-}
 const json = (value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 const xmlResponse = value=>new Response(value,{headers:{'content-type':'text/xml','cache-control':'no-store'}});
 export function callToken(c,call) { const value=`${call.id}.${call.createdAt+2*60*60*1000}`;return `${value}.${hmac(c.toolsKey,value).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}`; }
 function verifyToken(c,token) { if(typeof token!=='string')return null;const [id,expires,signature]=token.split('.');if(!/^[0-9a-f-]{36}$/.test(id||'')||Number(expires)<Date.now()||!Number.isFinite(Number(expires)))return null;return equal(hmac(c.toolsKey,`${id}.${expires}`).replaceAll('+','-').replaceAll('/','_').replaceAll('=',''),signature)?id:null; }
-export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=null,waitUntil=()=>{}}) {
+export function createSupabaseHandler({state,client,worker,prompts=null,waitUntil=()=>{},schedule=schedulingRequest}) {
  const c=state.config;
  const run=fn=>state.transact(fn);
  const queue=()=>waitUntil(worker.drain().catch(error=>reportFailure('worker-drain',error)));
@@ -55,16 +37,6 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     const bytes=promptSource(c,promptName);
     if(!bytes)return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
     return new Response(bytes,{headers:{'content-type':'audio/wav','cache-control':'public, max-age=86400'}});
-   }
-   if(path.startsWith('/twilio/media/')) {
-    if(!canOperate(c))return json({error:'805 calling is in standby'},503);
-    const id=path.slice('/twilio/media/'.length);
-    if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
-    if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignature(c.authToken,c.origin.replace(/\/$/,'')+path,new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
-    return upgradeMedia(request,{
-     load:()=>run((_e,s)=>s.get('call',id)),
-     eligible:call=>!!(call&&call.phase==='message'&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
-    });
    }
    if(!['GET','POST'].includes(request.method))return json({error:'Method rejected'},405);
    if(Number(request.headers.get('content-length')||0)>65536)return json({error:'Body too large'},413);
@@ -112,6 +84,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
    }
    if(!canOperate(c))return json({error:'805 calling is in standby'},503);
    if(request.method!=='POST')return json({error:'POST required'},405);
+   if(path.startsWith('/tools/'))return toolRequest(c,client,run,schedule,request,path,raw);
    if(path==='/agent') {
     if(c.transport==='media')return json({error:'Hosted agent tools disabled'},403);
     if(!equal(request.headers.get('authorization'),`Bearer ${c.toolsKey}`))return json({error:'Rejected'},401);
@@ -204,18 +177,14 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      const current=s.get('call',call.id);
      if(current.phase==='ended')return twiml('<Hangup/>');
      if(current.phase==='voicemail'||(current.phase==='message'&&current.mediaFailed))return voicemailXml(c.origin,`/twilio/recording/${current.id}`,`/twilio/transcription/${current.id}`,c);
-     if(current.phase==='message'&&c.transport==='media'&&!current.mediaStreamSid&&!current.mediaFailed){
-      const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+current.id;
-      return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+current.id)}</Redirect>`);
-     }
+     if(current.phase==='message'&&!current.mediaStreamSid&&!current.mediaFailed)return consoleAgentTwiml(c,current);
      if(['offering','handoff','human','held'].includes(current.phase))return conferenceXml(c,current,'main');
      return twiml('<Hangup/>');
     }
     if(parts[1]==='agent'){
      if(call.phase==='ended')return twiml('<Hangup/>');
-     if(call.phase!=='message'||c.transport!=='media'||call.mediaFailed||call.mediaStreamSid)return fallback(e,call,'voicemail',p,c);
-     const url=c.origin.replace(/^https:/,'wss:')+'/twilio/media/'+call.id;
-     return twiml(`<Connect><Stream url="${xml(url)}" /></Connect><Redirect method="POST">${xml(c.origin+'/twilio/continue/'+call.id)}</Redirect>`);
+     if(call.phase!=='message'||call.mediaFailed||call.mediaStreamSid)return fallback(e,call,'voicemail',p,c);
+     return consoleAgentTwiml(c,call);
     }
     if(parts[1]==='fallback')return fallback(e,call,parts[3],p,c);
     if(parts[1]==='recording'||parts[1]==='transcription'){
@@ -226,14 +195,19 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     }
     if(parts[1]==='resume'){
      if(call.phase==='ended')return twiml('<Hangup/>');
-     if(c.transport==='media')return twiml(`<Redirect method="POST">${xml(c.origin+'/twilio/agent/'+call.id)}</Redirect>`);
      if(!['followup','message','schedule'].includes(call.phase))return twiml('<Hangup/>');
-     const sip=`${c.sipUri}?X-805-Call-Token=${encodeURIComponent(callToken(c,call))}`;
-     return twiml(`<Dial action="${xml(c.origin+'/twilio/continue/'+call.id)}" method="POST"><Sip>${xml(sip)}</Sip></Dial>`);
+     return consoleAgentTwiml(c,call);
     }
     if(parts[1]==='continue') {
      const mail=()=>voicemailXml(c.origin,`/twilio/recording/${call.id}`,`/twilio/transcription/${call.id}`,c);
+     const dialStatus=p.get('DialCallStatus');
      if(call.phase==='ended')return twiml('<Hangup/>');
+     if(dialStatus==='completed'||dialStatus==='answered')return twiml('<Hangup/>');
+     if(['failed','no-answer','busy','canceled'].includes(dialStatus||'')){
+      if(call.phase==='greeting'||call.phase==='followup'){const next=e.agentDown(call.id,eventId);if(next?.phase==='voicemail')downId=next.id;}
+      else if(call.phase==='message'){e.failed(call.id,'xAI SIP agent did not answer',eventId);for(const effect of s.list('effect'))if(effect.callId===call.id&&effect.type==='fallback'&&effect.status==='pending')s.put('effect',{...effect,status:'done',reason:'Voicemail returned directly in TwiML'});}
+      return mail();
+     }
      if(call.phase==='voicemail'||(call.phase==='message'&&call.mediaFailed))return mail();
      if(['offering','handoff','human','held'].includes(call.phase))return conferenceXml(c,call,'main');
      if(call.phase==='greeting'||call.phase==='followup'){const before=call.phase;const next=e.agentDown(call.id,eventId);if(before!=='voicemail'&&next.phase==='voicemail')downId=next.id;return mail();}
@@ -261,4 +235,65 @@ function callbackFields(p, transcript, call, message) {
   p_status:'needs_callback',
   p_appointment_id:null,
  };
+}
+function toolAuthorized(config, request) {
+ const token=config.agentToolToken||'';
+ return token.length>=32&&equal(request.headers.get('authorization'),`Bearer ${token}`);
+}
+async function toolRequest(config, client, run, schedule, request, path, raw) {
+ if(!toolAuthorized(config,request))return json({error:'Rejected'},401);
+ let data;
+ try { data=raw?JSON.parse(raw):{}; }
+ catch { return json({error:'Invalid JSON'},400); }
+ if(!data||typeof data!=='object'||Array.isArray(data))return json({error:'Invalid JSON'},400);
+ try {
+  if(path==='/tools/save_message')return await saveToolMessage(client,run,data);
+  if(path==='/tools/check_availability')return await checkTool(config,run,schedule,data);
+  if(path==='/tools/book_consultation')return await bookTool(config,run,schedule,data);
+  return json({error:'Not found'},404);
+ } catch(error) {
+  if(error instanceof Conflict)return json({error:error.message},409);
+  const failure=reportFailure('agent-tool',error);
+  return json({error:failure.message},503);
+ }
+}
+async function saveToolMessage(client, run, data) {
+ const name=typeof data.name==='string'?data.name.trim():'';
+ const reason=typeof data.reason==='string'?data.reason.trim():'';
+ if(data.transcript!=null&&typeof data.transcript!=='string')return json({error:'transcript must be text'},400);
+ const transcript=data.transcript||'';
+ const caller=data.caller_number, callback=data.callback_number;
+ if(!e164.test(caller||'')||!e164.test(callback||'')||!name||name.length>120||!reason||reason.length>2000||transcript.length>8000)return json({error:'caller_number, name, callback_number, and reason are required'},400);
+ if(data.call_id!=null&&!/^[0-9a-f-]{36}$/.test(data.call_id))return json({error:'call_id must be the X-805-Call-Id'},400);
+ const call=await run((_e,s)=>{
+  if(data.call_id)return s.get('call',data.call_id);
+  const open=s.list('call').filter(item=>item.from===caller&&item.phase==='message');
+  return open.length===1?open[0]:null;
+ });
+ if(!call?.sid||call.phase!=='message')return json({error:'Call unavailable'},409);
+ const customerId=await matchCustomerByPhone(client,caller);
+ const row=await saveCallback(client,{
+  p_call_sid:call.sid,p_caller_name:name,p_callback_number:callback,p_reason:reason,p_transcript:transcript,
+  p_recording_url:'',p_call_time:new Date(call.createdAt).toISOString(),p_phone:caller,p_status:'needs_callback',
+  p_appointment_id:null,p_customer_id:customerId,
+ });
+ if(!row?.id||row.call_sid!==call.sid||row.status!=='needs_callback')throw new Error('Callback save was not verified');
+ return json({id:row.id,verified:true,customer_id:customerId});
+}
+async function checkTool(config, run, schedule, data) {
+ if(!/^[0-9a-f-]{36}$/.test(data.call_id||'')||typeof data.preferred_time!=='string')return json({error:'call_id and preferred_time are required'},400);
+ const call=await run((_e,s)=>s.get('call',data.call_id));
+ if(!call||call.phase!=='message')return json({error:'Call unavailable'},409);
+ return json(await schedule(config,call.id,'check_availability',{preferred_time:data.preferred_time}));
+}
+async function bookTool(config, run, schedule, data) {
+ if(config.dataset!=='production'||!config.bookingAuthorized)return json({booked:false,error:'Booking activation required; offer a callback.'},403);
+ if(!/^[0-9a-f-]{36}$/.test(data.call_id||''))return json({error:'call_id is required'},400);
+ const payload={city:data.city,address:data.address,date:data.date,time:data.time,kind:data.kind,windowCount:data.window_count??null,name:data.name,phone:data.phone};
+ await run((_e,s)=>{
+  const call=s.get('call',data.call_id);
+  if(!call||call.phase!=='message')throw new Conflict('Call unavailable');
+  s.put('call',{...call,bookingIntent:{id:randomUUID(),kind:'appointment',payload,confirmedAt:Date.now()}});
+ });
+ return json(await schedule(config,data.call_id,'commit',{}));
 }

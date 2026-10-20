@@ -1,8 +1,8 @@
 import { beforeEach,afterEach,it,expect,vi } from 'vitest';
 import { createHmac,randomUUID } from 'node:crypto';
-const mock=vi.hoisted(()=>({client:vi.fn(),prepare:vi.fn(),commit:vi.fn()}));
+const mock=vi.hoisted(()=>({client:vi.fn(),prepare:vi.fn(),commit:vi.fn(),slots:vi.fn()}));
 vi.mock('@/lib/supabase-server',()=>({getSupabaseServiceClient:mock.client}));
-vi.mock('@/lib/voice-805/scheduling',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/voice-805/scheduling')>(),prepareVoiceVisit:mock.prepare,commitVoiceVisit:mock.commit}));
+vi.mock('@/lib/voice-805/scheduling',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/voice-805/scheduling')>(),prepareVoiceVisit:mock.prepare,commitVoiceVisit:mock.commit,slotsForPreferredTime:mock.slots}));
 import { POST } from './route';
 const callId='11111111-1111-4111-8111-111111111111',key='test-key-'.repeat(8);
 let call:any;
@@ -10,7 +10,7 @@ beforeEach(()=>{
  vi.clearAllMocks();vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL','https://evuxqsaucmvgyuvjpqlo.supabase.co');vi.stubEnv('VERCEL_ENV','production');vi.stubEnv('VOICE_805_TOOLS_KEY',key);vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','true');
  call={id:callId,phase:'message',mediaStreamSid:'MZ'+'1'.repeat(32)};
  mock.client.mockReturnValue({from:()=>({select:()=>({eq:()=>({single:async()=>({data:{body:{entities:{call:{[callId]:call}}}}})})})})});
- mock.prepare.mockResolvedValue({slots:['10:00'],saved:false});mock.commit.mockResolvedValue({verified:true});
+ mock.prepare.mockResolvedValue({slots:['10:00'],saved:false});mock.commit.mockResolvedValue({verified:true});mock.slots.mockResolvedValue({exact:true,slots:['10:00'],alternatives:[],fit:true,saved:false});
 });
 afterEach(()=>vi.unstubAllEnvs());
 function request(action='find_appointments',dataset='production',patch:Record<string,string>={}){
@@ -36,9 +36,19 @@ it('commit is gated by explicit activation and uses persisted call state',async(
  vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','false');expect((await POST(request('commit'))).status).toBe(503);
  vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','true');expect((await POST(request('commit'))).status).toBe(200);expect(mock.commit.mock.calls[0].slice(1)).toEqual([callId,call]);
 });
-it('ended, missing stream, prior confirmation and uncertain outcome block new proposals',async()=>{
- for(const patch of [{phase:'ended'},{mediaStreamSid:null},{bookingIntent:{confirmedAt:1}},{bookingAttention:'uncertain'}]){
+it('ended, prior confirmation and uncertain outcome block new proposals',async()=>{
+ for(const patch of [{phase:'ended'},{bookingIntent:{confirmedAt:1}},{bookingAttention:'uncertain'}]){
   call={id:callId,phase:'message',mediaStreamSid:'MZtest',...patch};expect((await POST(request('prepare_appointment'))).status).toBe(409);
  }
  expect(mock.prepare).not.toHaveBeenCalled();
+ call={id:callId,phase:'message',mediaStreamSid:null};
+ expect((await POST(request('prepare_appointment'))).status).toBe(200);
+});
+it('check_availability reads slots while booking is off and does not commit',async()=>{
+ vi.stubEnv('VOICE_805_BOOKING_AUTHORIZED','false');
+ call={id:callId,phase:'message',mediaStreamSid:null};
+ expect((await POST(request('check_availability'))).status).toBe(200);
+ expect(mock.slots).toHaveBeenCalled();
+ expect(mock.prepare).not.toHaveBeenCalled();
+ expect(mock.commit).not.toHaveBeenCalled();
 });
