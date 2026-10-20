@@ -15,6 +15,15 @@ export const FALLBACK_RESERVE_MS = 30000;
 export const MEDIA_SESSION_MS = 270000;
 // A scripted line that never reaches playback must not wait for the whole media session.
 export const FORCE_DEADLINE_MS = 10000;
+// Queued G.711 is 8000 bytes per second. The Twilio mark may trail the whole buffer.
+export const PLAYBACK_MARGIN_MS = 5000;
+export function pcmByteLength(payload) {
+  const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
+}
+export function playbackWaitMs(pcmBytes) {
+  return Math.ceil(pcmBytes / 8) + PLAYBACK_MARGIN_MS;
+}
 // https://docs.x.ai/developers/model-capabilities/audio/speech-to-speech
 // Final captions are emitted only when this nested model is set. `grok` at the top level is not the documented field.
 export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', language_hint: 'en' });
@@ -46,6 +55,8 @@ export class GrokMediaSession {
     this.vadTurn = false;
     this.forceRetries = 0;
     this.promptTimer = null;
+    this.playbackToken = 0;
+    this.pcmBytes = 0;
     this.trace = [];
     this.promptTranscripts = new Map();
     this.chain = Promise.resolve();
@@ -110,6 +121,7 @@ export class GrokMediaSession {
   force(text, stage) {
     this.stage = stage;
     this.audioBytes = 0;
+    this.pcmBytes = 0;
     this.prompt = { text, responseId: null };
     this.pending = [];
     this.buffers = new Map();
@@ -117,7 +129,8 @@ export class GrokMediaSession {
     this.cancelSent = false;
     this.forceRetries = 0;
     this.clearSilence();
-    this.clearPromptTimer();
+    this.releasePlayback();
+    this.marks.clear();
     // A response already created for this caller turn is the automatic server_vad turn. Cancel that id.
     // If speech has ended and no id has arrived yet, cancel whatever is in progress, then speak the scripted line.
     if (this.openResponseId && !this.responses.has(this.openResponseId)) {
@@ -143,6 +156,23 @@ export class GrokMediaSession {
   clearPromptTimer() {
     if (this.promptTimer) { this.clock.clearTimeout(this.promptTimer); this.promptTimer = null; }
   }
+  releasePlayback() {
+    this.playbackToken += 1;
+    this.clearPromptTimer();
+  }
+  armPlaybackDeadline() {
+    this.clearPromptTimer();
+    const token = ++this.playbackToken;
+    const wait = playbackWaitMs(this.pcmBytes);
+    this.note('playback', { wait });
+    this.promptTimer = this.clock.setTimeout(() => this.enqueue(() => this.playbackExpired(token)), wait);
+  }
+  playbackExpired(token) {
+    if (this.closed || token !== this.playbackToken || !String(this.stage).endsWith('-playback')) return;
+    this.note('playback-timeout');
+    this.logLifecycle('Playback mark did not arrive');
+    return this.fail('Playback mark did not arrive');
+  }
   promptExpired() {
     if (this.closed || !this.prompt || String(this.stage).endsWith('-playback')) return;
     this.note('timeout');
@@ -154,7 +184,7 @@ export class GrokMediaSession {
     if (this.trace.length > 12) this.trace.shift();
   }
   logLifecycle(message) {
-    console.error(JSON.stringify({ event: 'voice-805-lifecycle', message, stage: this.stage, pending: this.pending.length, cancel: this.cancelSent, audio: this.audioBytes > 0, retries: this.forceRetries, trace: this.trace }));
+    console.error(JSON.stringify({ event: 'voice-805-lifecycle', call: this.call.id, message, stage: this.stage, pending: this.pending.length, cancel: this.cancelSent, audio: this.audioBytes > 0, retries: this.forceRetries, trace: this.trace }));
   }
   // Two completed responses means the automatic turn and the scripted line both finished.
   // Neither may play: metadata is null for both, so the audio cannot be assigned safely.
@@ -166,13 +196,18 @@ export class GrokMediaSession {
     this.buffers = new Map();
     this.settled = new Map();
     this.audioBytes = 0;
+    this.pcmBytes = 0;
     this.cancelSent = false;
     this.prompt.responseId = null;
     this.note('retry');
     this.logLifecycle('Scripted line overlapped an automatic response');
     this.speakLine();
   }
-  mark(next) { const name = randomUUID(); this.marks.set(name, next); this.sendCarrier({ event: 'mark', mark: { name } }); }
+  mark(next) {
+    const name = randomUUID();
+    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); await next(); });
+    this.sendCarrier({ event: 'mark', mark: { name } });
+  }
   assist() { this.assistMessages(); }
   collect() {
     this.stage = 'collect';
@@ -195,6 +230,7 @@ export class GrokMediaSession {
   }
   playDelta(delta) {
     this.audioBytes += delta.length;
+    this.pcmBytes += pcmByteLength(delta);
     this.sendCarrier({ event: 'media', media: { payload: delta } });
   }
   cancel(id) {
@@ -215,9 +251,9 @@ export class GrokMediaSession {
   advancePrompt() {
     if (!['opening', 'readback', 'result'].includes(this.stage)) return;
     if (!this.audioBytes) return this.fail('Required audio missing');
-    this.clearPromptTimer();
     const stage = this.stage;
     this.stage = stage + '-playback';
+    this.armPlaybackDeadline();
     this.mark(async () => {
       if (stage === 'readback') {
         const armed = await this.state.transact((_e, s) => {
@@ -595,7 +631,7 @@ export class GrokMediaSession {
     this.clock.clearTimeout(this.startTimer);
     this.clock.clearTimeout(this.limitTimer);
     this.clearSilence();
-    this.clearPromptTimer();
+    this.releasePlayback();
     this.marks.clear();
     if (this.ai) { this.ai.onclose = null; this.ai.onerror = null; this.ai.close(); }
     this.socket.onclose = null;
