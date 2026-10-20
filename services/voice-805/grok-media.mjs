@@ -115,9 +115,14 @@ export class GrokMediaSession {
     const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
     if (this.closed) return null;
     if (loaded?.value) return loaded.value;
-    // Only the first greeting may use the call that was eligible when the socket attached.
+    // Only a timeout may use the call that was eligible when the socket attached.
     if (loaded?.timeout) return this.call;
-    if (loaded && !loaded.error) this.finish();
+    // A rejected read is not a timeout. session.updated has already cleared the start timer.
+    if (loaded?.error) {
+      this.recoverNow('Startup call read failed');
+      return null;
+    }
+    if (loaded) this.finish();
     return null;
   }
   async boundRead(task) {

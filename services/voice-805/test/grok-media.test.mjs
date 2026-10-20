@@ -745,6 +745,37 @@ test('a startup read that does not return still speaks from the attached call', 
  assert.equal(f.ai.sent.at(-1).item.content[0].text, COMMON_GREETING);
  f.session.finish();
 });
+test('a rejected startup read closes and a late continuation cannot speak or book', async () => {
+ const f = fixture();
+ f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'offering', listeningWelcome: true, greetingPlayed: false, deadline: Date.now() + 20000 });
+ Object.assign(f.call, { phase: 'offering', owner: null, listeningWelcome: true });
+ await f.carrier(f.start);
+ let rejectRead = () => {};
+ f.state.readCall = () => new Promise((_resolve, reject) => { rejectRead = () => reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' })); });
+ f.ai.onopen();
+ await f.session.chain;
+ const pending = f.grok({ type: 'session.updated' });
+ for (let i = 0; i < 20 && !f.timers.some(timer => !timer.cleared && timer.ms === STATE_BOUND_MS); i++) await new Promise(resolve => setImmediate(resolve));
+ const bound = f.timers.filter(timer => !timer.cleared && timer.ms === STATE_BOUND_MS).at(-1);
+ assert.equal(typeof bound?.fn, 'function');
+ assert.equal(f.timers.find(timer => timer.ms === 10000).cleared, true);
+ assert.equal(f.session.closed, false);
+ rejectRead();
+ await pending;
+ assert.equal(f.session.closed, true);
+ assert.equal(f.timers.find(timer => timer.ms === MEDIA_SESSION_MS).cleared, true);
+ assert.equal(bound.cleared, true);
+ assert.equal(f.store.get('call', f.call.id).recovery, 'Startup call read failed');
+ assert.equal(f.store.get('call', f.call.id).mediaFailed, true);
+ assert.equal(f.store.list('effect').some(item => item.type === 'fallback'), true);
+ assert.equal(f.ai.sent.some(item => item.item?.type === 'force_message'), false);
+ assert.equal(f.store.get('call', f.call.id).booking, undefined);
+ await f.grok({ type: 'session.updated' });
+ await f.session.chain;
+ assert.equal(f.session.closed, true);
+ assert.equal(f.ai.sent.some(item => item.item?.type === 'force_message'), false);
+ assert.equal(f.store.get('call', f.call.id).booking, undefined);
+});
 test('a claim confirmation that arrives after close does not connect', async () => {
  const f = fixture();
  f.store.put('call', { ...f.store.get('call', f.call.id), phase: 'offering', listeningWelcome: true, greetingPlayed: false, deadline: Date.now() + 20000 });
