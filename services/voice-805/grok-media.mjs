@@ -89,11 +89,25 @@ export class GrokMediaSession {
     };
   }
   async current() {
-    if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
+    if (typeof this.state.readCall !== 'function') {
+      const call = await this.commitBounded((_e, s) => s.get('call', this.call.id));
+      if (this.closed) return null;
+      if (!call) this.finish();
+      return call || null;
+    }
     const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
-    // A missed read must not reuse the call captured at construction. That snapshot
-    // can still say the caller is unowned after staff have taken the call.
-    if (this.closed || !loaded?.value) return null;
+    if (this.closed) return null;
+    // Close before returning. Waiting here would leave the caller silent until the media limit.
+    // Persistence is not awaited: finish() has already run, and a handoff is not rewritten.
+    if (!loaded || loaded.timeout || loaded.error) {
+      this.recoverNow('Call read failed');
+      return null;
+    }
+    // A row that is already gone must close. The call captured at construction can be stale.
+    if (!loaded.value) {
+      this.finish();
+      return null;
+    }
     return loaded.value;
   }
   async startupCall() {
@@ -103,6 +117,7 @@ export class GrokMediaSession {
     if (loaded?.value) return loaded.value;
     // Only the first greeting may use the call that was eligible when the socket attached.
     if (loaded?.timeout) return this.call;
+    if (loaded && !loaded.error) this.finish();
     return null;
   }
   async boundRead(task) {
