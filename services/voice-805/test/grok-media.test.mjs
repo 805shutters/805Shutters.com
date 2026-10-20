@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FALLBACK_RESERVE_MS, GrokMediaSession, HOST_WALL_MS, INPUT_TRANSCRIPTION, MEDIA_SESSION_MS } from '../grok-media.mjs';
+import { FALLBACK_RESERVE_MS, FORCE_DEADLINE_MS, GrokMediaSession, HOST_WALL_MS, INPUT_TRANSCRIPTION, MEDIA_SESSION_MS } from '../grok-media.mjs';
 import { MESSAGE_WINDOW_MS } from '../engine.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
@@ -328,6 +328,58 @@ test('an overlapping automatic response does not take the scripted question in e
  await stale.grok({type:'response.done',response:{id:'forced-stale',status:'completed'}});
  assert.equal(stale.session.stage,'result-playback');assert.equal(stale.socket.sent.some(item=>item.media?.payload==='U1RBTEVT'),true);
  ahead.session.finish();behind.session.finish();stale.session.finish();
+});
+test('a completed automatic response does not take the day question in either order',async()=>{
+ for(const order of [['auto-choice','forced-choice'],['forced-choice','auto-choice']]){
+  const f=fixture();await ready(f);await f.grok({type:'input_audio_buffer.speech_stopped'});await f.say('schedule an appointment');
+  assert.equal(f.store.get('call',f.call.id).schedule.purpose,'appointment');
+  assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'day');
+  assert.match(lastLine(f),/What day works for you/);
+  const media=f.socket.sent.filter(item=>item.event==='media').length;
+  const marks=f.socket.sent.filter(item=>item.event==='mark').length;
+  for(const id of order)await f.grok({type:'response.created',response:{id}});
+  await f.grok({type:'response.output_audio.delta',response_id:'forced-choice',delta:'Rk9SQ0U'});
+  await f.grok({type:'response.output_audio.delta',response_id:'auto-choice',delta:'QVVUTw'});
+  for(const id of order)await f.grok({type:'response.done',response:{id,status:'completed'}});
+  assert.equal(f.session.stage,'result');
+  assert.equal(f.session.cancelSent,false);
+  assert.equal(f.session.pending.length,0);
+  assert.equal(f.socket.sent.filter(item=>item.event==='media').length,media);
+  assert.equal(f.ai.sent.filter(item=>item.item?.type==='force_message'&&/What day works for you/.test(item.item.content[0].text||'')).length,2);
+  await f.grok({type:'response.created',response:{id:'retry-choice'}});
+  await f.grok({type:'response.output_audio.delta',response_id:'retry-choice',delta:'REFUUlk'});
+  await f.grok({type:'response.done',response:{id:'retry-choice',status:'completed'}});
+  assert.equal(f.session.stage,'result-playback');
+  assert.equal(f.session.prompt.responseId,'retry-choice');
+  assert.equal(f.socket.sent.some(item=>item.media?.payload==='REFUUlk'),true);
+  assert.equal(f.socket.sent.some(item=>item.media?.payload==='Rk9SQ0U'||item.media?.payload==='QVVUTw'),false);
+  assert.equal(f.socket.sent.filter(item=>item.event==='mark').length,marks+1);
+  const trace=JSON.stringify(f.session.trace);
+  assert.equal(trace.includes('schedule an appointment'),false);
+  assert.equal(trace.includes('+1805'),false);
+  assert.equal(trace.includes(f.c.authToken),false);
+  assert.match(trace,/"event":"retry"/);
+  f.session.finish();
+ }
+ const stuck=fixture();await ready(stuck);await stuck.grok({type:'input_audio_buffer.speech_stopped'});await stuck.say('schedule an appointment');
+ for(const id of ['auto-stuck','forced-stuck'])await stuck.grok({type:'response.created',response:{id}});
+ await stuck.grok({type:'response.output_audio.delta',response_id:'forced-stuck',delta:'Rk9SQ0U'});
+ for(const id of ['forced-stuck','auto-stuck'])await stuck.grok({type:'response.done',response:{id,status:'completed'}});
+ const deadline=stuck.timers.filter(timer=>timer.ms===FORCE_DEADLINE_MS&&!timer.cleared).at(-1);
+ await deadline.fn();await stuck.session.chain;
+ assert.equal(stuck.session.closed,true);
+ assert.equal(stuck.store.get('call',stuck.call.id).mediaFailed,true);
+ assert.equal(stuck.socket.sent.some(item=>item.media?.payload==='Rk9SQ0U'),false);
+ assert.equal(stuck.store.get('call',stuck.call.id).schedule.awaiting,'day');
+ const again=fixture();await ready(again);await again.grok({type:'input_audio_buffer.speech_stopped'});await again.say('schedule an appointment');
+ for(const id of ['auto-again','forced-again'])await again.grok({type:'response.created',response:{id}});
+ for(const id of ['auto-again','forced-again'])await again.grok({type:'response.done',response:{id,status:'completed'}});
+ for(const id of ['auto-second','forced-second'])await again.grok({type:'response.created',response:{id}});
+ await again.grok({type:'response.output_audio.delta',response_id:'forced-second',delta:'U0VDT05E'});
+ for(const id of ['forced-second','auto-second'])await again.grok({type:'response.done',response:{id,status:'completed'}});
+ assert.equal(again.session.closed,true);
+ assert.equal(again.store.get('call',again.call.id).mediaFailed,true);
+ assert.equal(again.socket.sent.some(item=>item.media?.payload==='U0VDT05E'),false);
 });
 test('published voice events deliver the transcript the collector stores',async()=>{
  const spec=await (await fetch('https://docs.x.ai/voice-realtime.ws.json')).json();
