@@ -22,7 +22,7 @@ The red Call Center badge counts unresolved saved voice messages, including part
 
 ## Deployment and provider contract
 
-Follow [the Supabase deployment runbook](../../docs/phone-system/supabase-deployment.md). The HTTP tool adapter exists, but the hosted xAI agent's per-call SIP-header binding and audible greeting completion have **not** been verified. Keep `VOICE_805_AGENT_CONTRACT_VERIFIED=false` until actual provider evidence proves both. If the hosted builder cannot supply that contract, adapt to a supported provider interface before activation; do not pretend that simulated tools prove it.
+Follow [the Supabase deployment runbook](../../docs/phone-system/supabase-deployment.md). The HTTP tool adapter exists, but the hosted xAI agent's per-call SIP-header binding and audible greeting completion have **not** been verified. Keep `VOICE_805_AGENT_CONTRACT_VERIFIED=false` until actual provider evidence proves both. Media-stream welcome carrier playback is a separate observation: call `5a39f34c-7053-499a-afb0-b0f80c84eb55` confirmed it on v24 (`94444563`) and does not set that flag. Scheduling, a CRM booking, and both staff SMS acceptances remain pending. A stored `greetingPlayed=false` on the listening-welcome path is not evidence that the welcome did not play. If the hosted builder cannot supply that contract, adapt to a supported provider interface before activation; do not pretend that simulated tools prove it.
 
 All provider work remains guarded by `supabaseReadiness`, including work triggered by CRM reads. `/worker` supports an authenticated standby heartbeat without dialing. Configure the durable watchdog before enabling calls. SMS has an additional independent approval gate.
 

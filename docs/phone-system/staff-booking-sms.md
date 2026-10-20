@@ -1,6 +1,6 @@
 # Staff booking SMS activation
 
-This checklist is not authorization to send, to set live secrets, or to redeploy voice. Voice v24 (`94444563`) is already live. Real handset audio, a confirmed CRM booking, and delivery of both staff texts are still unverified.
+This checklist is not authorization to send, to set live secrets, or to redeploy voice. Voice v24 (`94444563`) is already live. Call `5a39f34c-7053-499a-afb0-b0f80c84eb55` reached that release at `2026-10-20T21:05:26Z`. Runtime logs show welcome speaking at `21:05:28.118` and the Twilio playback mark played at `21:05:46.364`, so welcome carrier playback is confirmed. Opening speech started at `21:05:46.902`. The carrier disconnected at `21:05:53.172` during opening playback. The call captured no scheduling intent and created no CRM booking. A stored `greetingPlayed=false` is the listening-welcome flag and is not, by itself, evidence that the welcome did not play. Scheduling intake, a verified CRM save, and provider acceptance of both staff texts remain pending.
 
 ## Program
 
