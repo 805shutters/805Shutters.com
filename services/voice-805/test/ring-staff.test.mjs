@@ -109,7 +109,9 @@ test('unset ring config is both people and a valid subset stays ready', () => {
   assert.deepEqual(incomingRingStaff(liveConfig({ VOICE_805_RING_STAFF_JSON: '["mike"]' })), ['mike']);
   assert.deepEqual(incomingRingStaff(liveConfig({ VOICE_805_RING_STAFF_JSON: '["jessica","mike"]' })), ['jessica', 'mike']);
   assert.equal(supabaseReadiness(liveConfig()).ready, true);
+  assert.deepEqual(supabaseReadiness(liveConfig()).ringStaff, ['mike', 'jessica']);
   assert.equal(supabaseReadiness(liveConfig({ VOICE_805_RING_STAFF_JSON: '["mike"]' })).ready, true);
+  assert.deepEqual(supabaseReadiness(liveConfig({ VOICE_805_RING_STAFF_JSON: '["mike"]' })).ringStaff, ['mike']);
   assert.equal(readiness(legacyReady()).ready, true);
   assert.equal(readiness(legacyReady({ VOICE_805_RING_STAFF_JSON: '["mike"]' })).ready, true);
   const withoutJessica = liveConfig({ VOICE_805_RING_STAFF_JSON: '["mike"]' });
@@ -126,11 +128,40 @@ test('empty or invalid ring config fails closed and does not become Jessica', ()
   for (const raw of ['[]', '["mike","mike"]', '["pat"]', '"jessica"', 'null', '{', '["mike","jessica","mike"]']) {
     const loaded = liveConfig({ VOICE_805_RING_STAFF_JSON: raw });
     assert.deepEqual(incomingRingStaff(loaded), [], raw);
+    assert.deepEqual(supabaseReadiness(loaded).ringStaff, [], raw);
     assert.equal(supabaseReadiness(loaded).ready, false);
     assert.ok(supabaseReadiness(loaded).missing.includes('Incoming ring staff'));
     assert.equal(readiness(legacyReady({ VOICE_805_RING_STAFF_JSON: raw })).ready, false);
     assert.ok(readiness(legacyReady({ VOICE_805_RING_STAFF_JSON: raw })).missing.includes('incoming ring staff'));
   }
+});
+
+function assertNoSecrets(body, f) {
+  const text = JSON.stringify(body);
+  for (const secret of [
+    f.c.authToken, f.c.xaiKey, f.c.controlKey, f.c.toolsKey, f.c.workerKey, f.c.accountSid, f.c.number,
+    f.c.staff.mike.destination, f.c.staff.jessica.destination, f.c.staff.mike.sms, f.c.staff.jessica.sms,
+  ]) assert.equal(text.includes(secret), false);
+  assert.deepEqual(body.ringStaff.filter((id) => id === 'mike' || id === 'jessica'), body.ringStaff);
+}
+
+test('health reports the loaded ring ids and no handset numbers', async () => {
+  const mike = fixture('["mike"]');
+  const health = await mike.handler(new Request(mike.c.origin + '/health'));
+  assert.equal(health.status, 200);
+  const body = await health.json();
+  assert.deepEqual(body.ringStaff, ['mike']);
+  assert.equal(body.service, '805-phone');
+  assertNoSecrets(body, mike);
+  const unsigned = await mike.handler(new Request(mike.c.origin + '/twilio/inbound', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'AccountSid=' + mike.c.accountSid }));
+  assert.equal(unsigned.status, 401);
+  const both = fixture();
+  assert.deepEqual((await (await both.handler(new Request(both.c.origin + '/health'))).json()).ringStaff, ['mike', 'jessica']);
+  const invalid = fixture('[]');
+  const closed = await (await invalid.handler(new Request(invalid.c.origin + '/health'))).json();
+  assert.deepEqual(closed.ringStaff, []);
+  assert.equal(closed.ready, false);
+  assertNoSecrets(closed, invalid);
 });
 
 test('the default inbound greeting rings Mike and Jessica', async () => {

@@ -35,6 +35,6 @@ export function supabaseReadiness(c) {
     if(c.dataset!=='pilot'||c.transport!=='media'||c.notificationsApproved)pilotMissing.push('Isolated incoming-only media pilot');
     if(!Array.isArray(c.pilotCallers)||!c.pilotCallers.length||c.pilotCallers.length>2||!c.pilotCallers.every(n=>e164.test(n)&&n!==c.number))pilotMissing.push('Explicit pilot caller allowlist');
   }
-  return {mode:c.mode,ready:missing.length===0,pilotReady:c.mode==='pilot'&&pilotMissing.length===0,missing,...(c.mode==='pilot'?{pilotMissing}:{})};
+  return {mode:c.mode,ready:missing.length===0,pilotReady:c.mode==='pilot'&&pilotMissing.length===0,missing,...(c.mode==='pilot'?{pilotMissing}:{}),ringStaff:incomingRingStaff(c)};
 }
 export function canOperate(c){const readiness=supabaseReadiness(c);return readiness.ready||readiness.pilotReady;}
