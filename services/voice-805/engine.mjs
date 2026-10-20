@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { e164, isOpen, staffIds } from "./config.mjs";
 
-const MESSAGE_WINDOW_MS = 300000;
+export const MESSAGE_WINDOW_MS = 300000;
 
 export class Conflict extends Error {}
 function requireCommandId(value) {

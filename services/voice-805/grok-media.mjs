@@ -7,7 +7,11 @@ import { applyFindResult, applyScheduleTurn, findPayload, initialSchedule, prepa
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
 const SILENCE_MS = 12000;
-// The no-answer call watchdog remains 5 minutes. This cap ends the socket first so a long answer-by-answer booking still falls back instead of running without a limit.
+// Paid Supabase Edge workers, including this Pro project, are stopped at 400s of wall clock.
+// Free is 150s. https://supabase.com/docs/guides/functions/limits
+// The socket ends first and leaves time for the state write, worker drain, and voicemail fallback.
+export const HOST_WALL_MS = 400000;
+export const FALLBACK_RESERVE_MS = 30000;
 export const MEDIA_SESSION_MS = 270000;
 
 // The carrier socket is authenticated before construction. The model can propose.

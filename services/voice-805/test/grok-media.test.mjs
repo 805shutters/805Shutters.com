@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { GrokMediaSession, MEDIA_SESSION_MS } from '../grok-media.mjs';
+import { FALLBACK_RESERVE_MS, GrokMediaSession, HOST_WALL_MS, MEDIA_SESSION_MS } from '../grok-media.mjs';
+import { MESSAGE_WINDOW_MS } from '../engine.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
 import { callerContext } from '../caller-context.mjs';
@@ -19,7 +20,7 @@ function fixture(match='unmatched') {
  store.put('call',{...call,phase:'message',deadline:Date.now()+300000,context:callerContext({match,first_name:'Alex',statuses:['ordered']})});
  const state={config:c,transact:async fn=>fn(engine,store)};const socket=new Socket(),ai=new Socket();
  let drains=0;const worker={drain:async()=>{drains++;}};
- const timers=[];const clock={setTimeout:(fn,ms)=>{timers.push({fn,ms});return timers.length;},clearTimeout:()=>{}};
+ const timers=[];const clock={setTimeout:(fn,ms)=>{const timer={fn,ms,cleared:false,id:timers.length+1};timers.push(timer);return timer.id;},clearTimeout:id=>{const timer=timers.find(item=>item.id===id);if(timer)timer.cleared=true;}};
  const session=new GrokMediaSession({socket,call,state,worker,connect:()=>ai,clock});
  const streamSid='MZ'+'2'.repeat(32);
  const start={event:'start',start:{accountSid:c.accountSid,callSid:call.sid,streamSid,mediaFormat:{encoding:'audio/x-mulaw',sampleRate:8000,channels:1}}};
@@ -46,7 +47,8 @@ test('no-answer opening apologizes and offers a message or consultation',async()
  assert.doesNotMatch(RECEPTIONIST_PROMPT,/Thank you for calling 805 Shutters/);
  await f.audio();await f.mark();assert.equal(f.session.stage,'collect');assert.equal(f.store.list('effect').filter(item=>item.type==='dial').length,0);
  const tools=f.ai.sent.at(-1).session.tools;assert.deepEqual(tools,[]);
- assert.equal(MEDIA_SESSION_MS,270000);assert.ok(MEDIA_SESSION_MS<300000);f.session.finish();
+ assert.equal(HOST_WALL_MS,400000);assert.equal(MEDIA_SESSION_MS,270000);assert.ok(MEDIA_SESSION_MS+FALLBACK_RESERVE_MS<=HOST_WALL_MS);assert.ok(MEDIA_SESSION_MS<MESSAGE_WINDOW_MS);
+ assert.equal(f.timers.find(timer=>timer.ms===10000).cleared,true);f.session.finish();assert.equal(f.timers.find(timer=>timer.ms===MEDIA_SESSION_MS).cleared,true);
 });
 function lastLine(f){return [...f.ai.sent].reverse().find(item=>item.item?.content?.[0]?.text)?.item.content[0].text||'';}
 async function ready(f){await f.begin();await f.audio();await f.mark();assert.equal(f.session.stage,'collect');}
@@ -146,7 +148,11 @@ test('wrong account, call, format and reused start cannot attach',async()=>{
 });
 test('missing audio and the worker deadline fall back without confirmation',async()=>{
  const f=fixture();await f.begin();await f.grok({type:'response.done',response:{id:'silent',status:'completed'}});assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
- const g=fixture();await g.begin();await g.timers.find(timer=>timer.ms===MEDIA_SESSION_MS).fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(g.store.list('message').length,0);
+ const g=fixture();await g.begin();const limit=g.timers.find(timer=>timer.ms===MEDIA_SESSION_MS);await limit.fn();await g.session.chain;assert.equal(g.session.closed,true);assert.equal(limit.cleared,true);assert.equal(g.drains,1);
+ const expired=g.store.get('call',g.call.id);assert.equal(expired.mediaFailed,true);assert.equal(expired.bookingIntent,undefined);assert.equal(expired.booking,undefined);assert.equal(g.store.list('message').length,0);
+ await limit.fn();await g.session.chain;assert.equal(g.drains,1);
+ const stopped=fixture();await stopped.begin();await stopped.carrier({event:'stop',streamSid:stopped.streamSid});const ended=stopped.store.get('call',stopped.call.id);
+ assert.equal(ended.phase,'ended');assert.equal(ended.bookingIntent,undefined);assert.equal(ended.booking,undefined);assert.equal(stopped.store.list('message').filter(item=>item.confirmed).length,0);stopped.session.finish();
 });
 test('media handshake upgrades before the call lookup and closes an ineligible socket',async()=>{
  const f=fixture();const gates=[];const upgraded={status:101};
