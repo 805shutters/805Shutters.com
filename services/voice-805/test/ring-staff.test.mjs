@@ -215,7 +215,8 @@ test('Mike-only ringing does not dial Jessica and one no-answer returns to Grok'
   await Promise.all(after.tasks);
   const next = await after.state.transact((_e, s) => s.get('call', first.call.id));
   assert.equal(next.phase, 'message');
-  assert.equal(after.provider.operations.filter((item) => item.type === 'connect-agent').length, 1);
+  assert.equal(after.provider.operations.filter((item) => item.type === 'connect-agent').length, 0);
+  assert.equal(after.provider.operations.some((item) => item.type === 'ringback'), false);
   assert.deepEqual(dials(after), ['mike']);
   const saved = await after.state.transact((e) => e.saveMessage(next.id, {
     name: 'Pat Example', callback: '+18055550199', message: 'Please call me back.', confirmed: true,

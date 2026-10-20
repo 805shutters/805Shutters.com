@@ -20,6 +20,7 @@ import {
   storePrompt,
   warmPrompts,
 } from "../prompts.mjs";
+import { xml } from "../security.mjs";
 
 const wav = () =>
   Uint8Array.from([
@@ -45,7 +46,7 @@ test("realtime and tts contracts match the current xAI voice API", () => {
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
-  assert.equal(PROMPTS.greeting, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me get you over to one of our team members immediately.");
+  assert.equal(PROMPTS.greeting, "Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. I can also help you schedule an appointment. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.");
   const entry = readFileSync(new URL("../../../supabase/functions/voice-805/index.ts", import.meta.url), "utf8");
   assert.match(entry, /new WebSocket\(REALTIME_URL/);
   assert.doesNotMatch(entry, /grok-voice-latest/);
@@ -114,7 +115,7 @@ test("streaming wav header sizes are rewritten before storage", async () => {
 
 test("say is the fallback and play is used only for durable audio", () => {
   const c = config();
-  assert.match(promptVerb(c, "greeting", PROMPTS.greeting), new RegExp(`<Say>${PROMPTS.greeting}</Say>`));
+  assert.equal(promptVerb(c, "greeting", PROMPTS.greeting), `<Say>${xml(PROMPTS.greeting)}</Say>`);
   assert.equal(storePrompt(c, "greeting", Uint8Array.from([1, 2, 3, 4]), true), false);
   assert.equal(promptIsReady(c, "greeting"), false);
   c.promptAudio = { greeting: wav() };

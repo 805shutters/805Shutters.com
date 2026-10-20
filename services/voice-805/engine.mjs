@@ -248,10 +248,13 @@ export class Engine {
   greeted(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (c.phase !== "greeting") return;
-      // The incoming ring list rings while the greeting plays. The parent leg stays
-      // on that audio until Twilio finishes it; do not move the caller yet.
+      // Staff ring while the listening welcome plays. greetingPlayed stays false
+      // until that audio finishes; a human answer still pulls the caller immediately.
       c.phase = "offering";
       c.greetingPlayed = false;
+      // The caller is already on the listening welcome, so a later no-answer
+      // must not redirect them onto a second stream.
+      c.listeningWelcome = true;
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
       this.offerIncoming(c);
     });
@@ -402,6 +405,10 @@ export class Engine {
             if (other.sid) this.effect(c, "hangup", { sid: other.sid });
           }
         this.effect(c, "route", { sid, room: "main" });
+        // Pull the caller as soon as a person answers. Do not wait for the
+        // welcome audio to finish or for this staff leg to join.
+        c.callerPulled = true;
+        this.effect(c, "disconnect-ai");
       } else if (o.purpose === "callback") {
         c.owner = o.staff;
         c.ownerSid = sid;
@@ -425,9 +432,13 @@ export class Engine {
           c.deadline = Date.now() + 60000;
           this.effect(c, "dial-customer");
         }
-        if (sid === c.sid && c.phase === "offering") c.callerJoined = true;
+        if (sid === c.sid && ["offering", "handoff"].includes(c.phase)) c.callerJoined = true;
         if (sid === c.ownerSid && c.phase === "handoff") {
-          this.effect(c, "disconnect-ai");
+          c.ownerJoined = true;
+          if (!c.callerPulled) {
+            c.callerPulled = true;
+            this.effect(c, "disconnect-ai");
+          }
           if (c.callerJoined) {
             c.ai = false;
             c.answeredAt = Date.now();
@@ -435,8 +446,7 @@ export class Engine {
             c.deadline = null;
           }
         }
-        if (sid === c.sid && c.phase === "handoff" && !c.ai) {
-          c.callerJoined = true;
+        if (sid === c.sid && c.phase === "handoff" && c.ownerJoined && !c.ai) {
           c.answeredAt = Date.now();
           c.phase = "human";
           c.deadline = null;
@@ -679,9 +689,9 @@ export class Engine {
         o.status = "expired";
         if (o.sid) this.effect(c, "hangup", { sid: o.sid });
       }
-    // Undefined means an older call whose greeting already finished. False means
-    // the caller is still hearing it, so the greeting redirect connects the agent.
-    if (c.greetingPlayed !== false) this.effect(c, "connect-agent");
+    // A listening welcome is already the caller's audio. Redirecting it would
+    // restart the greeting. An older call still uses the greeting redirect.
+    if (!c.listeningWelcome && !c.mediaStreamSid && c.greetingPlayed !== false) this.effect(c, "connect-agent");
   }
   followIfUnanswered(c, now) {
     if (c.phase !== "offering" || c.owner) return;

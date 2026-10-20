@@ -147,22 +147,31 @@ test("duplicate inbound and duplicate acceptance do not create extra calls or di
   s.engine.accept(c.id, o.id, o.sid, "human");
   assert.equal(s.store.list("effect").length, count);
 });
-test("caller is not routed to human conference before staff join and AI disconnect", async (t) => {
+test("a human answer pulls the caller before staff join and does not mark the call answered", async (t) => {
   const s = setup(t),
     c = await ringing(s),
     o = c.offers[0];
+  assert.equal(c.greetingPlayed, false);
   s.engine.accept(c.id, o.id, o.sid, "human");
   await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "handoff");
+  assert.equal(s.store.get("call", c.id).answeredAt, undefined);
   assert.equal(
-    s.provider.operations.some((x) => x.type === "route" && x.sid === c.sid),
-    false,
+    s.provider.operations.filter((x) => x.type === "route" && x.sid === c.sid).length,
+    1,
   );
   s.engine.joined(c.id, o.sid, "main", "CFmain", id());
   await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "handoff");
   assert.equal(s.store.get("call", c.id).ai, false);
-  assert.ok(
-    s.provider.operations.some((x) => x.type === "route" && x.sid === c.sid),
+  assert.equal(
+    s.provider.operations.filter((x) => x.type === "route" && x.sid === c.sid).length,
+    1,
   );
+  s.engine.joined(c.id, c.sid, "main", "CFmain", id());
+  await s.worker.drain();
+  assert.equal(s.store.get("call", c.id).phase, "human");
+  assert.ok(s.store.get("call", c.id).answeredAt);
 });
 test("hold precedes private consultation; transfer waits for target join before unhold and owner removal", async (t) => {
   const s = setup(t);

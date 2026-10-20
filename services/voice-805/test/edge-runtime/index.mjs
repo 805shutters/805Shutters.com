@@ -134,12 +134,12 @@ check("worker right key is 200", right.status === 200 && rightBody.includes('"ok
 const inbound = await offered(http, "CA" + "1".repeat(32));
 check(
   "signed inbound is accepted",
-  inbound.status === 200 && inbound.greeting.includes("Thank you for calling 805 Shutters") && inbound.greeting.includes("<Say>") && !inbound.greeting.includes("<Play>"),
+  inbound.status === 200 && inbound.greeting.includes("<Connect><Stream ") && !inbound.greeting.includes("<Say>") && !inbound.greeting.includes("<Play>") && !inbound.greeting.includes("ringback"),
   `status=${inbound.status} greeting=${inbound.greeting.replaceAll("\n", " ")}`,
 );
 check(
   "staff ring while the greeting plays",
-  inbound.atAnswer.phase === "offering" && inbound.atAnswer.greetingPlayed === false && inbound.atAnswer.dials.join(",") === "jessica,mike" && inbound.atAnswer.parentMoves === 0 && !/Gather|Stream|Sip/.test(inbound.greeting),
+  inbound.atAnswer.phase === "offering" && inbound.atAnswer.greetingPlayed === false && inbound.atAnswer.dials.join(",") === "jessica,mike" && inbound.atAnswer.parentMoves === 0 && /<Connect><Stream /.test(inbound.greeting) && !/Gather|Sip|ringback/.test(inbound.greeting),
   `phase=${inbound.atAnswer.phase} played=${inbound.atAnswer.greetingPlayed} dials=${inbound.atAnswer.dials.join(",")} parentMoves=${inbound.atAnswer.parentMoves}`,
 );
 
@@ -192,7 +192,7 @@ await quiet.worker.drain();
 const quietCall = await quiet.state.transact((_e, s) => s.get("call", quietOffered.call.id));
 check(
   "nobody answers",
-  quietCall.phase === "message" && quietCall.answeredAt === undefined && quietCall.owner === null && quiet.provider.operations.filter((item) => item.type === "connect-agent").length === 1,
+  quietCall.phase === "message" && quietCall.answeredAt === undefined && quietCall.owner === null && quiet.provider.operations.filter((item) => item.type === "connect-agent").length === 0 && quiet.provider.operations.every((item) => item.type !== "ringback"),
   `phase=${quietCall.phase} owner=${quietCall.owner} answeredAt=${quietCall.answeredAt} connect-agent=${quiet.provider.operations.filter((item) => item.type === "connect-agent").length}`,
 );
 
@@ -249,7 +249,7 @@ const playedAudio = await played.handler(new Request(played.c.origin + promptPub
 const playedBytes = new Uint8Array(await playedAudio.arrayBuffer());
 check(
   "cached greeting is Grok audio",
-  playedInbound.status === 200 && playedXml.includes(promptPublicPath("greeting")) && playedXml.includes("<Play>") && !playedXml.includes("<Say>") && playedDials === "jessica,mike" && playedAudio.status === 200 && playedAudio.headers.get("content-type") === "audio/wav" && playedAudio.headers.get("cache-control") === "public, max-age=86400" && playedBytes.length === wav.length,
+  playedInbound.status === 200 && playedXml.includes("<Connect><Stream ") && !playedXml.includes("<Play>") && !playedXml.includes("<Say>") && playedDials === "jessica,mike" && playedAudio.status === 200 && playedAudio.headers.get("content-type") === "audio/wav" && playedAudio.headers.get("cache-control") === "public, max-age=86400" && playedBytes.length === wav.length,
   `status=${playedInbound.status} audio=${playedAudio.status} dials=${playedDials} xml=${playedXml.replaceAll("\n", " ")}`,
 );
 const denied = await played.handler(carrier(played, "/twilio/inbound", { CallSid: "CA" + "f".repeat(32), To: played.c.number, From: "+18055550198" }));

@@ -36,26 +36,63 @@ test('unsigned carrier requests are rejected',async()=>{
  const response=await f.handler(new Request(f.c.origin+'/twilio/inbound',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'AccountSid='+f.c.accountSid}));
  assert.equal(response.status,401);
 });
-test('both handsets ring while the greeting plays, with no keypad',async()=>{
+test('both handsets ring while the welcome plays, with no keypad or customer ring tone',async()=>{
  const f=fixture();const {greeting,conference,call,atAnswer}=await offered(f);
- assert.match(greeting,/Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\./);
- assert.match(greeting,/<Say>/);assert.doesNotMatch(greeting,/Gather|Stream|Sip|<Play>/);
- assert.equal(atAnswer.phase,'offering');assert.equal(atAnswer.greetingPlayed,false);
+ assert.match(greeting,/<Connect><Stream /);
+ assert.doesNotMatch(greeting,/<Say>|<Play>|Gather|Sip|ringback/);
+ assert.equal(atAnswer.phase,'offering');assert.equal(atAnswer.greetingPlayed,false);assert.equal(call.listeningWelcome,true);
  assert.deepEqual(atAnswer.dials,['jessica','mike']);assert.equal(atAnswer.parentMoves,0);
  assert.ok(call.deadline-call.createdAt<=21000);assert.ok(call.deadline-call.createdAt>=20000);
- assert.match(conference,/Conference/);assert.equal(call.phase,'offering');assert.equal(call.greetingPlayed,true);
+ assert.match(conference,/Conference/);assert.match(conference,/\/twilio\/wait/);assert.doesNotMatch(conference,/ringback/);
+ assert.equal(call.phase,'offering');assert.equal(call.greetingPlayed,true);
  assert.deepEqual(f.provider.operations.filter(item=>item.type==='dial').map(item=>item.staff).sort(),['jessica','mike']);
  const params=staffDialParams(f.c,call,call.offers[0]);
  assert.equal(params.find(([key])=>key==='MachineDetection')[1],'Enable');
  assert.equal(params.find(([key])=>key==='AsyncAmd')[1],'true');
  assert.equal(params.some(([key])=>/digit/i.test(key)),false);
 });
-test('cached Grok audio is played for the greeting and the offer window is unchanged',async()=>{
+test('a human answer during the welcome connects the caller without a ring tone',async()=>{
+ const f=fixture();const sid='CA'+'c'.repeat(32);
+ const inbound=await f.handler(carrier(f,'/twilio/inbound',{CallSid:sid,To:f.c.number,From:'+18055550199'}));
+ const xml=await inbound.text();
+ assert.match(xml,/<Connect><Stream /);assert.doesNotMatch(xml,/<Say>|<Play>|Gather|ringback/);
+ await Promise.all(f.tasks);
+ const call=await callAfter(f,sid);
+ assert.equal(call.phase,'offering');assert.equal(call.greetingPlayed,false);assert.equal(call.listeningWelcome,true);
+ const mike=call.offers.find(item=>item.staff==='mike');
+ assert.match(await (await f.handler(amd(f,call,mike,'human'))).text(),/<Pause/);
+ await Promise.all(f.tasks);
+ const next=await callAfter(f,sid);
+ assert.equal(next.owner,'mike');assert.equal(next.phase,'handoff');assert.equal(next.greetingPlayed,false);assert.equal(next.answeredAt,undefined);
+ assert.equal(f.provider.operations.filter(item=>item.type==='route'&&item.sid===sid).length,1);
+ assert.equal(f.provider.operations.some(item=>item.type==='ringback'||item.type==='connect-agent'),false);
+ assert.equal(next.offers.find(item=>item.staff==='jessica').status,'canceled');
+ const wait=await f.handler(carrier(f,'/twilio/wait',{CallSid:sid,To:f.c.number,From:'+18055550199'}));
+ const waitXml=await wait.text();
+ assert.match(waitXml,/<Pause length="40"\/>/);assert.doesNotMatch(waitXml,/<Play>|<Say>|ringback/);
+});
+test('no answer leaves the listening stream and does not restart the welcome',async()=>{
+ const f=fixture();const sid='CA'+'7'.repeat(32);
+ const inbound=await f.handler(carrier(f,'/twilio/inbound',{CallSid:sid,To:f.c.number,From:'+18055550199'}));
+ const xml=await inbound.text();
+ assert.match(xml,/<Connect><Stream /);assert.doesNotMatch(xml,/Thank you for calling|<Say>|<Play>|ringback/);
+ await Promise.all(f.tasks);
+ await f.state.transact(e=>e.tick(Date.now()+20000));await f.worker.drain();
+ const call=await callAfter(f,sid);
+ assert.equal(call.phase,'message');assert.equal(call.owner,null);assert.equal(call.greetingPlayed,false);assert.equal(call.listeningWelcome,true);
+ assert.equal(f.provider.operations.filter(item=>item.type==='connect-agent').length,0);
+ assert.equal(f.provider.operations.some(item=>item.type==='ringback'||(item.type==='route'&&item.sid===sid)),false);
+ const continued=await f.handler(carrier(f,`/twilio/continue/${call.id}`,{CallSid:sid,To:f.c.number,From:'+18055550199'}));
+ const continuedXml=await continued.text();
+ assert.match(continuedXml,/<Record/);assert.match(continuedXml,/Apologies, but team members are tied up/);
+ assert.doesNotMatch(continuedXml,/Thank you for calling|<Connect>/);
+});
+test('cached greeting audio stays available while the welcome is a listening stream',async()=>{
  const f=fixture();const wav=sampleWav();f.c.promptAudio={greeting:wav,unavailable:wav,voicemail:wav};
  const {greeting,atAnswer}=await offered(f,'CA'+'a'.repeat(32));
  const greetingPath=promptPublicPath('greeting');
- assert.match(greeting,new RegExp(`<Play>https://example\\.supabase\\.co/functions/v1/voice-805${greetingPath}</Play>`));
- assert.doesNotMatch(greeting,/<Say>|Gather|Stream|Sip/);
+ assert.match(greeting,/<Connect><Stream /);
+ assert.doesNotMatch(greeting,/<Say>|<Play>|Gather|Sip|ringback/);
  assert.deepEqual(atAnswer.dials,['jessica','mike']);assert.equal(atAnswer.parentMoves,0);
  const audio=await f.handler(new Request(f.c.origin+greetingPath));
  assert.equal(audio.status,200);assert.equal(audio.headers.get('content-type'),'audio/wav');
@@ -112,12 +149,14 @@ test('both machine answers and a 20 second timeout each return the caller to the
  for(const offer of first.call.offers)assert.match(await (await machines.handler(amd(machines,first.call,offer,'machine_start'))).text(),/<Hangup\/>/);
  await Promise.all(machines.tasks);
  let call=await machines.state.transact((_e,s)=>s.get('call',first.call.id));
- assert.equal(call.phase,'message');assert.equal(call.owner,null);assert.equal(machines.provider.operations.some(item=>item.type==='connect-agent'),true);
+ assert.equal(call.phase,'message');assert.equal(call.owner,null);assert.equal(machines.provider.operations.some(item=>item.type==='connect-agent'),false);
+ assert.equal(machines.provider.operations.some(item=>item.type==='ringback'),false);
  assert.ok(call.deadline-Date.now()<=300000);assert.ok(call.deadline-Date.now()>=290000);
  const quiet=fixture();const second=await offered(quiet,'CA'+'9'.repeat(32));
  await quiet.state.transact(e=>e.tick(Date.now()+20000));await quiet.worker.drain();
  call=await quiet.state.transact((_e,s)=>s.get('call',second.call.id));
- assert.equal(call.phase,'message');assert.equal(call.answeredAt,undefined);assert.equal(quiet.provider.operations.filter(item=>item.type==='connect-agent').length,1);
+ assert.equal(call.phase,'message');assert.equal(call.answeredAt,undefined);assert.equal(quiet.provider.operations.filter(item=>item.type==='connect-agent').length,0);
+ assert.equal(quiet.provider.operations.some(item=>item.type==='ringback'||(item.type==='route'&&item.sid===second.call.sid)),false);
 });
 function assertCallsApiBody(body, c) {
  const parsed = new URLSearchParams(body);
@@ -183,8 +222,8 @@ test('both 21215 rejects during the greeting finish the greeting before Grok', a
  const sid = 'CA' + 'd'.repeat(32);
  const inbound = await f.handler(carrier(f, '/twilio/inbound', { CallSid: sid, To: f.c.number, From: '+18055550199' }));
  const greeting = await inbound.text();
- assert.match(greeting, /Thank you for calling 805 Shutters/);
- assert.doesNotMatch(greeting, /Stream|Conference|Pause/);
+ assert.match(greeting, /<Connect><Stream /);
+ assert.doesNotMatch(greeting, /<Say>|<Play>|Conference|Pause|ringback/);
  await Promise.all(f.tasks);
  const call = await callAfter(f, sid);
  assert.equal(call.phase, 'message');
@@ -204,7 +243,7 @@ test('both 21215 rejects during the greeting finish the greeting before Grok', a
  assert.equal(after.phase, 'message');
  assert.equal((await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'))).length, 0);
 });
-test('both 21215 rejects after the greeting return to Grok once', async () => {
+test('both 21215 rejects after the welcome stay on the listening stream', async () => {
  const f = fixture();
  let release;
  const gate = new Promise(resolve => { release = resolve; });
@@ -221,9 +260,9 @@ test('both 21215 rejects after the greeting return to Grok once', async () => {
  assert.equal(call.phase, 'message');
  assert.equal(call.offers.every(item => item.status === 'no-answer' && item.error.startsWith('Twilio 21215:')), true);
  const connects = await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'));
- assert.equal(connects.length, 1);
+ assert.equal(connects.length, 0);
  await f.worker.drain();
- assert.equal((await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'))).length, 1);
+ assert.equal((await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'))).length, 0);
  assert.equal((await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'route'))).length, 0);
 });
 test('one 21215 reject leaves the other offer free to ring and answer', async () => {
@@ -332,7 +371,8 @@ test('conference ringback is an audible tone without a spoken line', async () =>
 test('a failed media attach records the stream error and does not replay the greeting', async () => {
  const f = fixture();
  const { greeting, call } = await offered(f, 'CA' + 'b'.repeat(32));
- assert.match(greeting, /Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\./);
+ assert.match(greeting, /<Connect><Stream /);
+ assert.doesNotMatch(greeting, /<Say>|<Play>|ringback/);
  await f.state.transact(e => e.tick(Date.now() + 20000));
  await f.worker.drain();
  const before = await callAfter(f, 'CA' + 'b'.repeat(32));
@@ -340,7 +380,7 @@ test('a failed media attach records the stream error and does not replay the gre
  assert.equal(before.greetingPlayed, true);
  const dials = (await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'dial'))).length;
  const connects = (await f.state.transact((_e, s) => s.list('effect').filter(item => item.type === 'connect-agent'))).length;
- assert.equal(connects, 1);
+ assert.equal(connects, 0);
  const agent = await f.handler(carrier(f, `/twilio/agent/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199' }));
  const agentXml = await agent.text();
  const streamUrl = `wss://example.supabase.co/functions/v1/voice-805/twilio/media/${call.id}`;

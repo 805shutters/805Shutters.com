@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FALLBACK_RESERVE_MS, FORCE_DEADLINE_MS, GrokMediaSession, HOST_WALL_MS, INPUT_TRANSCRIPTION, MEDIA_SESSION_MS, pcmByteLength, playbackWaitMs } from '../grok-media.mjs';
+import { FALLBACK_RESERVE_MS, FORCE_DEADLINE_MS, GrokMediaSession, HOST_WALL_MS, INPUT_TRANSCRIPTION, MEDIA_SESSION_MS, pcmByteLength, playbackWaitMs, STATE_BOUND_MS } from '../grok-media.mjs';
+import { COMMON_GREETING } from '../caller-context.mjs';
 import { MESSAGE_WINDOW_MS } from '../engine.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
@@ -193,7 +194,7 @@ test('carrier greeting starts both offers and a second greeting callback does no
  const f=fixture('matched');f.store.put('call',{...f.store.get('call',f.call.id),phase:'greeting'});
  const tasks=[];const handler=createSupabaseHandler({state:f.state,client:{rpc:async()=>({data:{match:'matched'}})},worker:f.worker,waitUntil:p=>tasks.push(p)});
  const request=path=>{const p=new URLSearchParams({AccountSid:f.c.accountSid,CallSid:f.call.sid,To:f.c.number,From:f.call.from});const sig=hmac(f.c.authToken,f.c.origin+path+[...p.keys()].sort().map(k=>k+p.get(k)).join(''),'sha1');return new Request(f.c.origin+path,{method:'POST',headers:{'x-twilio-signature':sig,'content-type':'application/x-www-form-urlencoded'},body:p});};
- const response=await handler(request('/twilio/inbound'));assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<Say>Thank you for calling 805 Shutters\. We appreciate you supporting local business\. Let me get you over to one of our team members immediately\.<\/Say>/);assert(!xml.includes('<Stream'));assert(!xml.includes('Gather'));assert(!xml.includes('<Play>'));
+ const response=await handler(request('/twilio/inbound'));assert.equal(response.status,200);const xml=await response.text();assert.match(xml,/<Connect><Stream /);assert(!xml.includes('<Say>'));assert(!xml.includes('Gather'));assert(!xml.includes('ringback'));
  assert.equal(f.store.get('call',f.call.id).phase,'offering');assert.equal(f.store.get('call',f.call.id).greetingPlayed,false);assert.equal(f.store.list('effect').filter(e=>e.type==='dial').length,2);assert.equal(f.store.list('effect').some(e=>e.type==='ringback'),false);
  const finished=await handler(request('/twilio/greeted/'+f.call.id));assert.equal(finished.status,200);assert.match(await finished.text(),/Conference/);assert.equal(f.store.get('call',f.call.id).greetingPlayed,true);
  assert.equal((await handler(request('/twilio/greeted/'+f.call.id))).status,200);
@@ -526,4 +527,88 @@ test('published voice events deliver the transcript the collector stores',async(
  assert.equal(f.store.get('call',f.call.id).schedule.date,'2026-10-23');
  assert.equal(f.ai.sent.some(item=>item.session?.audio?.input?.transcription?.model==='grok-transcribe'),true);
  assert.equal(f.ai.sent.some(item=>item.session?.input_audio_transcription),false);f.session.finish();
+});
+function checkpoints(lines, callId) {
+ return lines.filter(line => line.includes('voice-805-checkpoint') && line.includes(callId)).map(line => JSON.parse(line));
+}
+test('a saved time turn speaks the address line, and a held commit cannot block fallback', async () => {
+ const spoken = fixture();
+ await ready(spoken);
+ await speak(spoken, 'I want to schedule an appointment');
+ await speak(spoken, 'Friday');
+ const logs = [];
+ const original = console.error;
+ console.error = (...args) => { logs.push(args.map(String).join(' ')); original(...args); };
+ try { await speak(spoken, '10 a.m.'); }
+ finally { console.error = original; }
+ assert.match(lastLine(spoken), /May I please get your address/);
+ assert.equal(spoken.session.stage, 'collect');
+ assert.equal(spoken.store.get('call', spoken.call.id).schedule.awaiting, 'address');
+ const saved = checkpoints(logs, spoken.call.id).find(item => item.step === 'saved');
+ assert.equal(saved.awaiting, 'address');
+ assert.equal(saved.call, spoken.call.id);
+ assert.equal(JSON.stringify(saved).includes('10 a'), false);
+ assert.equal(JSON.stringify(saved).includes(spoken.call.from), false);
+ assert.equal(JSON.stringify(saved).includes('Oak'), false);
+ spoken.session.finish();
+
+ const held = fixture();
+ await ready(held);
+ await speak(held, 'I want to schedule an appointment');
+ await speak(held, 'Friday');
+ const originalTransact = held.state.transact.bind(held.state);
+ let release;
+ let heldSave = false;
+ held.state.transact = async (fn) => {
+  const value = await originalTransact(fn);
+  if (!heldSave && held.store.get('call', held.call.id).schedule?.awaiting === 'address') {
+   heldSave = true;
+   await new Promise(resolve => { release = resolve; });
+  }
+  return value;
+ };
+ const pending = held.say('10 a.m.');
+ for (let i = 0; i < 20 && !release; i++) await new Promise(resolve => setImmediate(resolve));
+ assert.equal(typeof release, 'function');
+ assert.equal(held.session.stage, 'collect');
+ assert.equal(held.store.get('call', held.call.id).schedule.awaiting, 'address');
+ assert.equal(held.ai.sent.some(item => /May I please get your address/.test(item.item?.content?.[0]?.text || '')), false);
+ const sessionTimer = held.timers.find(timer => timer.ms === MEDIA_SESSION_MS && !timer.cleared);
+ await sessionTimer.fn();
+ assert.equal(held.session.closed, true);
+ assert.equal(held.store.get('call', held.call.id).mediaFailed, true);
+ assert.equal(held.store.list('effect').some(item => item.type === 'fallback'), true);
+ assert.equal(held.ai.sent.some(item => /May I please get your address/.test(item.item?.content?.[0]?.text || '')), false);
+ release();
+ await pending;
+ await held.session.chain;
+ assert.equal(held.ai.sent.some(item => /May I please get your address/.test(item.item?.content?.[0]?.text || '')), false);
+ assert.equal(held.store.get('call', held.call.id).booking, undefined);
+
+ const welcome = fixture();
+ welcome.store.put('call', { ...welcome.store.get('call', welcome.call.id), phase: 'offering', deadline: Date.now() + 20000, listeningWelcome: true });
+ await welcome.begin();
+ assert.equal(welcome.ai.sent.at(-1).item.content[0].text, COMMON_GREETING);
+ const interruptible = [...welcome.ai.sent].reverse().find(item => item.item?.type === 'force_message');
+ assert.equal(interruptible.item.interruptible, true);
+ assert.equal(welcome.session.listening, true);
+ await welcome.carrier({ event: 'media', streamSid: welcome.streamSid, media: { payload: 'YWJj' } });
+ assert.equal(welcome.ai.sent.some(item => item.type === 'input_audio_buffer.append'), true);
+ await welcome.say('I want to schedule an appointment');
+ assert.match(lastLine(welcome), /What day works for you/);
+ assert.equal(welcome.ai.sent.filter(item => item.item?.content?.[0]?.text === COMMON_GREETING).length, 1);
+ assert.equal(welcome.ai.sent.some(item => item.item?.content?.[0]?.text === RECEPTIONIST_OPENING), false);
+ assert.equal(STATE_BOUND_MS < MEDIA_SESSION_MS, true);
+ welcome.session.finish();
+
+ const quiet = fixture();
+ quiet.store.put('call', { ...quiet.store.get('call', quiet.call.id), phase: 'offering', deadline: Date.now() - 1000, listeningWelcome: true });
+ await quiet.begin();
+ await quiet.audio('welcome');
+ assert.equal(quiet.socket.sent.some(item => item.event === 'media' && item.media?.payload === 'YWJj'), true);
+ await quiet.mark();
+ assert.equal(lastLine(quiet), RECEPTIONIST_OPENING);
+ assert.equal(quiet.ai.sent.filter(item => item.item?.content?.[0]?.text === COMMON_GREETING).length, 1);
+ assert.equal(quiet.ai.sent.filter(item => item.item?.content?.[0]?.text === RECEPTIONIST_OPENING).length, 1);
+ quiet.session.finish();
 });

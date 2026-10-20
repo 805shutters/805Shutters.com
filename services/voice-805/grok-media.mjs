@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
+import { COMMON_GREETING } from './caller-context.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
 import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload } from './schedule-intake.mjs';
@@ -15,6 +16,8 @@ export const FALLBACK_RESERVE_MS = 30000;
 export const MEDIA_SESSION_MS = 270000;
 // A scripted line that never reaches playback must not wait for the whole media session.
 export const FORCE_DEADLINE_MS = 10000;
+// A state commit that has already been sent must not pin the media queue.
+export const STATE_BOUND_MS = 8000;
 // Queued G.711 is 8000 bytes per second. The Twilio mark may trail the whole buffer.
 export const PLAYBACK_MARGIN_MS = 5000;
 export function pcmByteLength(payload) {
@@ -61,8 +64,8 @@ export class GrokMediaSession {
     this.promptTranscripts = new Map();
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
-    this.startTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice connection timed out')), 10000);
-    this.limitTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice session duration reached')), MEDIA_SESSION_MS);
+    this.startTimer = clock.setTimeout(() => this.recoverNow('Voice connection timed out'), 10000);
+    this.limitTimer = clock.setTimeout(() => this.recoverNow('Voice session duration reached'), MEDIA_SESSION_MS);
     socket.onmessage = event => {
       let data;
       try { data = JSON.parse(event.data); } catch { return this.enqueue(() => this.fail('Invalid carrier event')); }
@@ -83,7 +86,7 @@ export class GrokMediaSession {
       ...extra,
     };
   }
-  async current() { return this.state.transact((_e, s) => s.get('call', this.call.id)); }
+  async current() { return this.commitBounded((_e, s) => s.get('call', this.call.id)); }
   async carrier(event) {
     if (event.event === 'connected') return;
     if (event.event === 'start') {
@@ -91,7 +94,7 @@ export class GrokMediaSession {
       if (this.streamSid || s?.accountSid !== this.config.accountSid || s?.callSid !== this.call.sid || !/^MZ[0-9a-f]{32}$/i.test(s?.streamSid || '') || s?.mediaFormat?.encoding !== 'audio/x-mulaw' || s.mediaFormat.sampleRate !== 8000 || s.mediaFormat.channels !== 1) return this.finish();
       const claimed = await this.state.transact((_e, store) => {
         const c = store.get('call', this.call.id);
-        if (!c || c.phase !== 'message' || c.mediaStreamSid || c.mediaFailed) return false;
+        if (!c || !['message', 'offering'].includes(c.phase) || c.mediaStreamSid || c.mediaFailed) return false;
         store.put('call', { ...c, mediaStreamSid: s.streamSid });
         return true;
       });
@@ -110,7 +113,7 @@ export class GrokMediaSession {
       await this.worker.drain();
       return this.finish();
     }
-    if (event.event === 'media' && ['assist', 'collect', 'confirm'].includes(this.stage) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
+    if (event.event === 'media' && (this.listening || ['assist', 'collect', 'confirm', 'welcome', 'welcome-playback'].includes(this.stage)) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
     if (event.event === 'mark') {
       const next = this.marks.get(event.mark?.name);
       if (!next) return;
@@ -118,10 +121,16 @@ export class GrokMediaSession {
       await next();
     }
   }
-  force(text, stage) {
+  force(text, stage, options = {}) {
+    if (this.closed) return;
+    this.listening = Boolean(options.listen);
+    this.interruptible = Boolean(options.interruptible);
     this.stage = stage;
     this.audioBytes = 0;
     this.pcmBytes = 0;
+    if (this.prompt?.responseId) this.stray.add(this.prompt.responseId);
+    for (const id of this.pending) this.stray.add(id);
+    if (this.openResponseId) this.stray.add(this.openResponseId);
     this.prompt = { text, responseId: null };
     this.pending = [];
     this.buffers = new Map();
@@ -141,17 +150,19 @@ export class GrokMediaSession {
       this.cancel();
     }
     this.vadTurn = false;
-    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: null }, tools: [] }) });
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: this.listening ? { type: 'server_vad' } : { type: null }, tools: [] }) });
     this.speakLine();
   }
   speakLine() {
+    if (this.closed || !this.prompt?.text) return;
     this.note('force');
+    this.logCheckpoint('speaking');
     this.armPromptDeadline();
-    this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: false, content: [{ type: 'output_text', text: this.prompt.text }] } });
+    this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: this.interruptible === true, content: [{ type: 'output_text', text: this.prompt.text }] } });
   }
   armPromptDeadline() {
     this.clearPromptTimer();
-    this.promptTimer = this.clock.setTimeout(() => this.enqueue(() => this.promptExpired()), FORCE_DEADLINE_MS);
+    this.promptTimer = this.clock.setTimeout(() => this.promptExpired(), FORCE_DEADLINE_MS);
   }
   clearPromptTimer() {
     if (this.promptTimer) { this.clock.clearTimeout(this.promptTimer); this.promptTimer = null; }
@@ -165,7 +176,7 @@ export class GrokMediaSession {
     const token = ++this.playbackToken;
     const wait = playbackWaitMs(this.pcmBytes);
     this.note('playback', { wait });
-    this.promptTimer = this.clock.setTimeout(() => this.enqueue(() => this.playbackExpired(token)), wait);
+    this.promptTimer = this.clock.setTimeout(() => this.playbackExpired(token), wait);
   }
   playbackExpired(token) {
     if (this.closed || token !== this.playbackToken || !String(this.stage).endsWith('-playback')) return;
@@ -186,6 +197,49 @@ export class GrokMediaSession {
   logLifecycle(message) {
     console.error(JSON.stringify({ event: 'voice-805-lifecycle', call: this.call.id, message, stage: this.stage, pending: this.pending.length, cancel: this.cancelSent, audio: this.audioBytes > 0, retries: this.forceRetries, trace: this.trace }));
   }
+  logCheckpoint(step, awaiting) {
+    const body = { event: 'voice-805-checkpoint', call: this.call.id, step, stage: this.stage };
+    if (typeof awaiting === 'string' && awaiting) body.awaiting = awaiting;
+    console.error(JSON.stringify(body));
+  }
+  // Deadlines run here, not on the serial queue. A state save can stay unresolved
+  // after it has committed, and that wait must not block fallback.
+  recoverNow(reason) {
+    if (this.closed) return Promise.resolve();
+    this.note('recover');
+    this.logCheckpoint('recover');
+    this.logLifecycle(reason);
+    const persist = this.persistFailure(reason).then(() => this.worker?.drain?.()).catch(() => {});
+    this.finish();
+    return persist;
+  }
+  persistFailure(reason) {
+    if (!this.streamSid) return Promise.resolve();
+    return this.state.transact((e, s) => {
+      const c = s.get('call', this.call.id);
+      if (!c || c.phase === 'ended') return;
+      if (c.phase === 'message' || c.phase === 'offering') {
+        e.failed(c.id, reason, `media-recover:${this.streamSid}`);
+        const next = s.get('call', this.call.id);
+        if (next) s.put('call', { ...next, mediaFailed: true, intent: next.intent?.confirmedAt ? next.intent : null });
+      }
+    }).catch(() => {});
+  }
+  async commitBounded(fn) {
+    if (this.closed) return null;
+    let timer;
+    const op = Promise.resolve(this.state.transact(fn)).then(value => ({ value }), error => ({ error }));
+    const timeout = new Promise(resolve => { timer = this.clock.setTimeout(() => resolve({ timeout: true }), STATE_BOUND_MS); });
+    const result = await Promise.race([op, timeout]);
+    this.clock.clearTimeout(timer);
+    if (this.closed) return null;
+    if (result.timeout) {
+      this.recoverNow('State save timed out');
+      return null;
+    }
+    if (result.error) throw result.error;
+    return result.value;
+  }
   // Two completed responses means the automatic turn and the scripted line both finished.
   // Neither may play: metadata is null for both, so the audio cannot be assigned safely.
   retryScript() {
@@ -205,7 +259,7 @@ export class GrokMediaSession {
   }
   mark(next) {
     const name = randomUUID();
-    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); await next(); });
+    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); this.logCheckpoint('played'); await next(); });
     this.sendCarrier({ event: 'mark', mark: { name } });
   }
   assist() { this.assistMessages(); }
@@ -249,12 +303,13 @@ export class GrokMediaSession {
     this.buffers.delete(id);
   }
   advancePrompt() {
-    if (!['opening', 'readback', 'result'].includes(this.stage)) return;
+    if (!['opening', 'readback', 'result', 'welcome'].includes(this.stage)) return;
     if (!this.audioBytes) return this.fail('Required audio missing');
     const stage = this.stage;
     this.stage = stage + '-playback';
     this.armPlaybackDeadline();
     this.mark(async () => {
+      if (stage === 'welcome') return this.afterWelcome();
       if (stage === 'readback') {
         const armed = await this.state.transact((_e, s) => {
           const c = s.get('call', this.call.id);
@@ -292,7 +347,14 @@ export class GrokMediaSession {
     return null;
   }
   async grok(event) {
-    if (event.type === 'session.updated' && this.stage === 'starting') { this.clock.clearTimeout(this.startTimer); this.force(RECEPTIONIST_OPENING, 'opening'); return; }
+    if (event.type === 'session.updated' && this.stage === 'starting') {
+      this.clock.clearTimeout(this.startTimer);
+      const call = await this.commitBounded((_e, s) => s.get('call', this.call.id));
+      if (this.closed || !call) return;
+      if (call.phase === 'offering' && !call.owner) this.force(COMMON_GREETING, 'welcome', { listen: true, interruptible: true });
+      else this.force(RECEPTIONIST_OPENING, 'opening');
+      return;
+    }
     if (event.type === 'error') {
       if (this.ignoreCancelError) {
         this.ignoreCancelError = false;
@@ -306,6 +368,12 @@ export class GrokMediaSession {
     }
     const turn = this.callerTurn(event);
     if (turn && this.stage === 'confirm') return this.hear(turn);
+    if (turn && (this.stage === 'welcome' || this.stage === 'welcome-playback')) {
+      this.callerChose = true;
+      this.vadTurn = true;
+      this.sendCarrier({ event: 'clear' });
+      return this.collectTurn(turn);
+    }
     if (turn && this.stage === 'collect') return this.collectTurn(turn);
     if (turn) return;
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
@@ -339,7 +407,7 @@ export class GrokMediaSession {
       if (id && this.stray.has(id)) return;
       if (this.prompt?.responseId) {
         if (id && id !== this.prompt.responseId) return;
-        if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
+        if (['opening', 'readback', 'result', 'assist', 'welcome', 'welcome-playback'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
         return;
       }
       if (this.prompt && id && validAudio(event.delta)) {
@@ -424,21 +492,43 @@ export class GrokMediaSession {
     });
   }
   async collectTurn(turn) {
-    if (this.heard.has(turn.id)) return;
+    if (this.heard.has(turn.id) || this.closed) return;
     this.heard.add(turn.id);
-    const current = await this.current();
-    if (current?.phase !== 'message') return this.finish();
-    const prior = current.schedule || initialSchedule(current.from, this.config.number);
-    const applied = applyScheduleTurn(prior, turn.text, current.from, this.config.number, this.now());
-    if (applied.invalidate) {
-      this.intent = null;
-      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null }); });
-    }
-    await this.saveSchedule(applied.state);
+    const applied = await this.commitBounded((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (!c || !['message', 'offering'].includes(c.phase)) return null;
+      const prior = c.schedule || initialSchedule(c.from, this.config.number);
+      const next = applyScheduleTurn(prior, turn.text, c.from, this.config.number, this.now());
+      const saved = { ...c, schedule: next.state };
+      if (next.invalidate && !c.intent?.confirmedAt) saved.intent = null;
+      s.put('call', saved);
+      return next;
+    });
+    if (this.closed || !applied) return;
+    if (applied.invalidate) this.intent = null;
+    this.logCheckpoint('saved', applied.state?.awaiting);
     if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
     if (applied.prepare) return this.prepareFromSchedule(applied.state);
     if (applied.search) return this.searchSchedule(applied.state);
     this.force(applied.say, 'result');
+  }
+  async afterWelcome() {
+    if (this.closed || this.callerChose) return;
+    const call = await this.current();
+    if (this.closed || !call) return;
+    if (call.owner || !['offering', 'message'].includes(call.phase)) return this.finish();
+    const unanswered = call.phase === 'message' || (typeof call.deadline === 'number' && call.deadline <= Date.now());
+    if (unanswered) return this.force(RECEPTIONIST_OPENING, 'opening');
+    this.collect();
+    const wait = Math.max(0, call.deadline - Date.now());
+    this.offerTimer = this.clock.setTimeout(() => this.offerWatch(), wait);
+  }
+  async offerWatch() {
+    if (this.closed || this.callerChose || this.stage !== 'collect') return;
+    const call = await this.current();
+    if (this.closed || !call || call.owner || !['offering', 'message'].includes(call.phase)) return;
+    if (call.phase === 'offering' && call.deadline > Date.now()) return;
+    this.force(RECEPTIONIST_OPENING, 'opening');
   }
   async searchSchedule(state) {
     this.stage = 'tool';
@@ -630,6 +720,7 @@ export class GrokMediaSession {
     this.closed = true;
     this.clock.clearTimeout(this.startTimer);
     this.clock.clearTimeout(this.limitTimer);
+    if (this.offerTimer) this.clock.clearTimeout(this.offerTimer);
     this.clearSilence();
     this.releasePlayback();
     this.marks.clear();
