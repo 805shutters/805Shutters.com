@@ -4,6 +4,7 @@ import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendMetaBookingSms } from "@/lib/notify/meta-booking-sms";
 import type { MetaSource } from "@/lib/meta-booking-alert";
 import { sendAgentStaffBookingSms } from "@/lib/notify/agent-staff-sms";
+import { AGENT_STAFF_SMS_FOOTER } from "@/lib/sms/staff-booking-notice";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendAppointmentConfirmation } from "./confirmation-message";
 import { salesRepSmsNumberForName, sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -558,7 +559,7 @@ export async function settleAgentStaffSms(
     payload.address ? `Address: ${payload.address}.` : null,
     payload.phone ? `Phone: ${payload.phone}.` : null,
     "Assigned to Jessica.",
-  ].filter(Boolean).join(" ");
+  ].filter(Boolean).join(" ") + `\n${AGENT_STAFF_SMS_FOOTER}`;
   const result = await sendAgentStaffBookingSms({ to, body });
   if (result.sent && result.sid) {
     const providerStatus = result.providerStatus || "accepted";

@@ -4,6 +4,9 @@ export const SMS_OPT_IN_NO_SHARING_STATEMENT =
 
 export const STAFF_BOOKING_SMS_PATH = "/staff-booking-sms/";
 
+/** Exact ending of every agent staff booking text. Campaign samples must use this string. */
+export const AGENT_STAFF_SMS_FOOTER = "Reply STOP to unsubscribe; HELP for help.";
+
 export const staffBookingSmsNotice = {
   legalName: "SNS Interiors dba 805 Shutters",
   program: "staff-only confirmed consultation alerts",
@@ -14,5 +17,5 @@ export const staffBookingSmsNotice = {
   phoneHref: "tel:+18055908050",
   carrierNotice: "Carriers are not liable for delayed or undelivered messages.",
   consentGap:
-    "This page is not an opt-in form. The website does not collect customer SMS marketing consent, and it does not store Mike or Jessica staff-alert consent. That consent evidence is still pending.",
+    "This page is not an opt-in form. The website does not collect customer SMS marketing consent. The method used for Mike and Jessica staff-alert consent is still pending and is not recorded here.",
 } as const;

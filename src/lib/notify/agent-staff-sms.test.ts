@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OWNER_ALERT_FROM_PHONE } from "./owner-alert-routing";
-import { DEDICATED_805_STAFF_SMS_SERVICE_SID, readAgentStaffSmsConfig, sendAgentStaffBookingSms } from "./agent-staff-sms";
+import { DEDICATED_805_STAFF_SMS_FROM, DEDICATED_805_STAFF_SMS_SERVICE_SID, readAgentStaffSmsConfig, sendAgentStaffBookingSms } from "./agent-staff-sms";
 
 const dedicatedAccount = `AC${"1".repeat(32)}`;
 const sharedAccount = `AC${"2".repeat(32)}`;
 const sharedService = `MG${"3".repeat(32)}`;
-const dedicatedFrom = "+18055908050";
+const dedicatedFrom = DEDICATED_805_STAFF_SMS_FROM;
 
 function dedicatedEnv() {
   vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", dedicatedAccount);
@@ -35,6 +35,9 @@ describe("dedicated 805 staff SMS configuration", () => {
     vi.stubEnv("VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID", DEDICATED_805_STAFF_SMS_SERVICE_SID);
     vi.stubEnv("VOICE_805_STAFF_SMS_FROM", OWNER_ALERT_FROM_PHONE);
     expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("not allowed") });
+    vi.stubEnv("VOICE_805_STAFF_SMS_FROM", dedicatedFrom);
+    vi.stubEnv("VOICE_805_STAFF_SMS_FROM", "+18055550199");
+    expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("not the 805 number") });
     vi.stubEnv("VOICE_805_STAFF_SMS_FROM", dedicatedFrom);
     vi.stubEnv("VOICE_805_STAFF_SMS_ACCOUNT_SID", sharedAccount);
     expect(readAgentStaffSmsConfig()).toMatchObject({ ok: false, reason: expect.stringContaining("shared Twilio account") });

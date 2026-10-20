@@ -6,6 +6,7 @@ vi.mock("@/lib/crm/calendar-notifications", async (importOriginal) => ({
   sendCalendarAssignmentSms: mocks.assignment,
 }));
 vi.mock("@/lib/notify/meta-booking-sms", () => ({ sendMetaBookingSms: mocks.metaBooking }));
+import { AGENT_STAFF_SMS_FOOTER } from "@/lib/sms/staff-booking-notice";
 import { deliverBookingEffect, processBookingOutbox, settleAgentStaffSms } from "./delivery";
 const client = {} as SupabaseClient;
 const details = {
@@ -316,6 +317,7 @@ it("texts Jessica and Mike separately and does not resend the recipient that alr
   const jessica = state.find((row) => row.kind === "agent_staff_sms_jessica");
   const mike = state.find((row) => row.kind === "agent_staff_sms_mike");
   expect(jessica).toMatchObject({ status: "sent", payload: { smsProvider: { sid: "SMjessica", status: "queued" }, noticePhase: "accepted" } });
+  expect(jessica).not.toMatchObject({ payload: { noticePhase: "delivered" } });
   expect(mike).toMatchObject({ status: "uncertain", last_error: expect.stringContaining("unknown") });
   const bodies = fetch.mock.calls.map((call) => ({ url: String(call[0]), form: new URLSearchParams(call[1].body) }));
   expect(bodies.map((call) => call.form.get("To"))).toEqual(["+18055551111", "+18055552222"]);
@@ -323,6 +325,7 @@ it("texts Jessica and Mike separately and does not resend the recipient that alr
   expect(bodies.every((call) => call.form.get("MessagingServiceSid") === "MG60d4038bf54bffa0690cce85a6e49147")).toBe(true);
   expect(bodies.every((call) => call.url.includes(`AC${"1".repeat(32)}`) && !call.url.includes(`AC${"2".repeat(32)}`))).toBe(true);
   expect(bodies.every((call) => call.form.get("Body")?.includes("booked VIA AGENT"))).toBe(true);
+  expect(bodies.every((call) => call.form.get("Body")?.endsWith(`\n${AGENT_STAFF_SMS_FOOTER}`))).toBe(true);
   await processBookingOutbox(supabase);
   expect(fetch).toHaveBeenCalledTimes(2);
   expect(state.find((row) => row.kind === "agent_staff_sms_jessica")?.status).toBe("sent");

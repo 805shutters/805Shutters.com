@@ -4,6 +4,8 @@ import type { SmsResult } from "./twilio";
 
 /** Messaging service prepared for the approved 805 Low Volume Standard brand. The campaign is not approved. */
 export const DEDICATED_805_STAFF_SMS_SERVICE_SID = "MG60d4038bf54bffa0690cce85a6e49147";
+/** Sole sender on that service. */
+export const DEDICATED_805_STAFF_SMS_FROM = "+18055908050";
 
 const ACCOUNT_SID = /^AC[0-9a-f]{32}$/i;
 
@@ -20,6 +22,9 @@ export function readAgentStaffSmsConfig(env: Record<string, string | undefined> 
   }
   if (fromPhone === OWNER_ALERT_FROM_PHONE) {
     return { ok: false as const, reason: "dedicated 805 staff SMS sender is not allowed" };
+  }
+  if (fromPhone !== DEDICATED_805_STAFF_SMS_FROM) {
+    return { ok: false as const, reason: "dedicated 805 staff SMS sender is not the 805 number" };
   }
   const sharedAccount = env.TWILIO_ACCOUNT_SID?.trim() || "";
   if (sharedAccount && accountSid.toUpperCase() === sharedAccount.toUpperCase()) {
