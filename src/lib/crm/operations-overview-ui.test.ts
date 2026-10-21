@@ -3,7 +3,7 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { JobStatusOverview, ProductChecks } from "@/components/crm/OperationsOverview";
+import { ClosedPaidJobDrawer, JobStatusOverview, ProductChecks } from "@/components/crm/OperationsOverview";
 import { buildOperationsItems } from "./operations-overview";
 import type { CrmDashboardData, CrmQuote } from "./types";
 
@@ -19,6 +19,40 @@ function productlessQuote(meta: Record<string, unknown> = {}) {
 function render(step: "ordered" | "shipped", meta: Record<string, unknown> = {}) {
   return renderToStaticMarkup(createElement(ProductChecks, { item: productlessQuote(meta), step, disabled: false, pending: null, onAction: vi.fn() }));
 }
+
+describe("closed and paid job drawers", () => {
+  it("starts collapsed with identity, status and total, preserving the full contents", () => {
+    const item = productlessQuote();
+    item.closed = true; item.paid = true;
+    item.source.total = 1254; item.source.project = "805-0204";
+    const html = renderToStaticMarkup(createElement(ClosedPaidJobDrawer, { item, children: createElement("button", null, "Open original job") }));
+    const container = document.createElement("div"); container.innerHTML = html;
+    const details = container.querySelector("details")!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")?.textContent).toContain("Productless customer805-0204Closed · Paid in fullContract total $1,254.00");
+    expect(details.querySelector("button")?.textContent).toBe("Open original job");
+  });
+
+  it.each([[false, false], [false, true], [true, false]])("keeps closed=%s paid=%s jobs expanded", (closed, paid) => {
+    const item = { ...productlessQuote(), closed, paid };
+    const html = renderToStaticMarkup(createElement(ClosedPaidJobDrawer, { item, children: createElement("p", null, "Existing job details") }));
+    expect(html).toBe("<p>Existing job details</p>");
+  });
+
+  it("reveals reopened jobs and resets the drawer when they close again", () => {
+    const container = document.createElement("div"); const root = createRoot(container);
+    const item = { ...productlessQuote(), closed: true, paid: true };
+    const renderItem = () => act(() => root.render(createElement(ClosedPaidJobDrawer, { item, children: createElement("button", null, "Job action") })));
+    renderItem();
+    container.querySelector("details")!.open = true;
+    item.closed = false; renderItem();
+    expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector("button")?.textContent).toBe("Job action");
+    item.closed = true; renderItem();
+    expect(container.querySelector("details")!.open).toBe(false);
+    act(() => root.unmount());
+  });
+});
 
 describe("productless workflow circles", () => {
   it.each(["ordered", "shipped"] as const)("renders a pressable whole-job %s circle", step => {

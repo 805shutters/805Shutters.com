@@ -6,7 +6,7 @@ import { type ActiveJobsSnapshot } from "@/lib/crm/active-jobs";
 import { shipmentDateLabel, type ShipmentEvidence } from "@/lib/crm/shipment-evidence";
 import { installationCost } from "@/lib/crm/installation-estimate";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Ruler, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Check, ChevronRight, Circle, FileClock, FileText, LoaderCircle, PackagePlus, Ruler, Search, Trash2 } from "lucide-react";
 import { canDeleteCustomerFile } from "@/lib/crm/customer-file-deletion";
 import { monthlyGrossSales, monthlySalesAverage } from "@/lib/crm/monthly-sales";
 import { weeklySalesAverage } from "@/lib/crm/weekly-sales-average";
@@ -131,6 +131,20 @@ export function ShipmentDates({ product }: { product: ProductProgress }) {
   const dates = [...new Set((product.shipments || []).map(shipment => shipment.shippedOn).filter((date): date is string => Boolean(date)))].sort();
   return <small className={styles.shipmentDates}>{product.completionFromInstallation?.shipped && <span>Completed from installation · </span>}{dates.map(date => <time key={date} dateTime={date}>Shipped {shipmentDateLabel(date)}</time>)}{dates.length > 0 && (product.undatedShipments || 0) > 0 ? "Some ship dates unconfirmed" : product.shipped && !dates.length ? "Ship date unconfirmed" : !product.shipped ? dates.length ? "Partially shipped" : "Awaiting shipment" : null}{[...new Map((product.shipments || []).filter(shipment => shipment.trackingNumber).map(shipment => [shipment.orderReference, shipment])).values()].map(shipment => <span key={shipment.orderReference}>{[shipment.carrier, shipment.trackingNumber].filter(Boolean).join(" · ")}</span>)}</small>;
 }
+export function ClosedPaidJobDrawer({ item, children }: { item: OperationsItem; children: React.ReactNode }) {
+  if (!item.closed || !item.paid) return <>{children}</>;
+  return <details className={styles.closedJobDrawer}>
+    <summary className={styles.closedJobSummary}>
+      <span className={styles.closedJobName}>{item.source.customerName}</span>
+      <span className={styles.closedJobNumber}>{item.source.project || "Project needed"}</span>
+      <span className={styles.closedJobStatus}><Check size={14} aria-hidden="true" />Closed · Paid in full</span>
+      <span className={styles.closedJobTotal}><span className={styles.srOnly}>Contract total </span>{item.source.total === null ? "—" : currency(item.source.total)}</span>
+      <ChevronRight className={styles.closedJobArrow} size={18} aria-hidden="true" />
+    </summary>
+    <div className={styles.closedJobContents}>{children}</div>
+  </details>;
+}
+
 export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFileId, busy, onOpen, onOpenAppointment, onAction, onDelete, onPaymentChanged }: Props & { activeSnapshot?: ActiveJobsSnapshot | null; onLoadAll?: () => Promise<unknown>; onDeleteFileId?: (id: string) => Promise<void>; onOpenAppointment?: (event: CrmCalendarEvent) => void; onAction: WorkflowAction; onSaveCost: SaveJobCost; onDelete?: (file: CrmCustomerFile) => Promise<void>; onPaymentChanged?: () => Promise<unknown> }) {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [plansAvailable, setPlansAvailable] = useState(false);
@@ -290,6 +304,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       const payments = paymentsFor(item);
       const contactLine = `${item.source.phone || "Phone needed"} · ${item.source.email || "Email needed"}`;
       return <article className={styles.jobCard} key={item.source.id} aria-label={`Job status for ${item.source.customerName}`}>
+      <ClosedPaidJobDrawer item={item}>
       <header className={styles.jobHeader}>
         <div className={styles.jobHeaderContent}>
           <div className={styles.jobIdentity}>
@@ -332,6 +347,7 @@ export function JobStatusOverview({ data, activeSnapshot, onLoadAll, onDeleteFil
       {contractId === item.source.id && <div className={styles.contractRow} id={`job-contract-${item.source.id}`}><InlineJobContract key={jobContractPreviewUrl(item.source)} url={jobContractPreviewUrl(item.source)} customerName={item.source.customerName} onClose={closeContract} /></div>}
       {onDelete && item.source.file && !item.sold && canDeleteCustomerFile(item.source.file) && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => onDelete(item.source.file!)}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
       {!data && onDeleteFileId && activeSnapshot?.deletableFiles[item.source.id] && <div className={styles.cardActions}><button type="button" className={styles.deleteFile} aria-label={`Delete customer file for ${item.source.customerName}`} title="Delete customer file" disabled={disabled} onClick={() => { void onDeleteFileId(activeSnapshot.deletableFiles[item.source.id]).catch(cause => { setFeedbackId(null); setError(cause instanceof Error ? cause.message : "Customer file could not be loaded."); }); }}><Trash2 size={17} strokeWidth={1.7} aria-hidden="true" /></button></div>}
+      </ClosedPaidJobDrawer>
     </article>;
     })}</div>}
     {condensed && contractId && visible.some(item => item.source.id === contractId) && <CondensedContract item={visible.find(item => item.source.id === contractId)!} onClose={closeContract} />}
