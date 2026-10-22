@@ -156,6 +156,9 @@ export function QuoteWorkspace({
                     </Fragment>
                   );
                 })}
+                <a href="/quote/sketch-catalog/" target="_blank" rel="noopener noreferrer" className="rounded-md border border-[#b9b7b0] px-4 py-2 text-sm font-semibold text-[#1c1c1a] hover:border-[#0b0b0b]">
+                  Sketch catalog
+                </a>
                 <div
                   role="search"
                   aria-label="Quote search"

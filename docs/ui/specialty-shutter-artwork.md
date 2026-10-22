@@ -23,3 +23,7 @@ Use case: stylized-concept. Asset type: reusable SUNBURST shutter pencil artwork
 ## Measurement boundary
 
 A 70 × 45 opening is drawn at 70:45 proportions; fractional dimensions are retained. Recorded leg heights locate the arch spring line. Width and overall height alone cannot determine an irregular/custom arch curve or an unrecorded rake angle, split position or cutout measurement. These remain shape references until appropriate outline measurements/template geometry are available. The artwork is a customer illustration, not a manufacturing template.
+
+## French-door recovery, October 22, 2026
+
+After rejecting the prior plain panel and white-notch overlay, the owner explicitly authorized recreating any missing catalog pencil illustrations. `french-door-v1/curved-cutout.webp` is the finished category reference for a French door without a recorded A–F selection. It recreates the same graphite style with a visibly shaped wooden handle-clearance stile; it does not populate factory choices. The six exact selected profiles continue using the configurable renderer, now with true transparent clearances and a shaped graphite stile. The full collection and individually saved exports are available at `/quote/sketch-catalog/`. This supersedes the earlier prohibition on using a recreated finished panel for this missing category reference.

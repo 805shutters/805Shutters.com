@@ -29,7 +29,7 @@ describe('every catalog product has a contract sketch', () => {
         expect(html).toContain(`data-official-sketch-family="${contractProductFamily(name)}"`);
         for (const src of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
           if (src[1].startsWith('#')) continue;
-          expect(src[1]).toMatch(/^\/images\/contract-illustrations\/(c-v1|anatomy-v1|specialty-v1|options-v1|drapery-v1|valances-c-v1|valances-installed-v1)\//);
+          expect(src[1]).toMatch(/^\/images\/contract-illustrations\/(c-v1|anatomy-v1|specialty-v1|french-door-v1|options-v1|drapery-v1|valances-c-v1|valances-installed-v1)\//);
           expect(existsSync(`public${src[1]}`), src[1]).toBe(true);
         }
       }

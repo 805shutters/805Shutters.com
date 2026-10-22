@@ -90,7 +90,7 @@ export function specialtyShutterSketch(productType: string, options: readonly st
     if (!layout) missing.push('Panel layout not recorded');
   }
   if (['YS63','YS64','YS65','YS66','YS67'].includes(code) && layout && (layout.match(/[LR]/g)||[]).length < 3) missing.push('Compound shape layout reference');
-  if (code === 'FRENCH_DOOR') missing.push('Official Type A cutout shown as a reference only', 'Cutout type not recorded');
+  if (code === 'FRENCH_DOOR') missing.push('Cutout type not recorded; product illustration');
   if (door && !side) missing.push('Cutout side not recorded; shown for reference only');
   if (door && !topValue) missing.push('Top shape not recorded');
   const tilt = tiltEntries.size ? [...tiltEntries][0] as SpecialtyShutterSketch['tilt'] : null;

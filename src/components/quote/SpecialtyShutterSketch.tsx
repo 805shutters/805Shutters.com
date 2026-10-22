@@ -3,6 +3,7 @@ import { useId, type CSSProperties } from 'react';
 import { frenchDoorSketch, pureSunburst, type SpecialtyShutterSketch as Sketch } from '@/lib/quote/specialty-shutter-illustrations';
 import styles from './ContractProductIllustration.module.css';
 import type { ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
+import { FRENCH_DOOR_CATEGORY_SKETCH } from '@/lib/quote/french-door-artwork';
 
 type Part = { path: string; x: number; y: number; w: number; h: number; fan?: {x:number;y:number;full?:boolean}; horizontalStart?: number; connection?: 'strip'|'post'|'rail'; };
 const polygon = (points: number[][]) => `M${points.map(p=>p.join(' ')).join('L')}Z`;
@@ -107,6 +108,13 @@ export function proportionedSketchParts(sketch: Sketch, geometry?: ShutterIllust
 export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { sketch: Sketch; geometry?: ShutterIllustrationGeometry; frameProfile?: ShutterFrameProfile | null }) {
   const bullnose = /bullnose-z/.test(frameProfile?.id ?? '');
   const id=`specialty-${useId().replace(/[^a-zA-Z0-9_-]/g,'')}`;
+  if (sketch.code === 'FRENCH_DOOR') return <img
+    className={styles.product} src={FRENCH_DOOR_CATEGORY_SKETCH.src}
+    alt={FRENCH_DOOR_CATEGORY_SKETCH.alt} width={FRENCH_DOOR_CATEGORY_SKETCH.width} height={FRENCH_DOOR_CATEGORY_SKETCH.height}
+    data-specialty-sketch="FRENCH_DOOR" data-official-sketch-collection="french-door-v1"
+    data-cutout-reference="true" data-cutout-side={sketch.cutoutSide ?? undefined}
+    style={sketch.cutoutSide === 'left' ? {transform: 'scaleX(-1)'} : undefined}
+  />;
   const parts=proportionedSketchParts(sketch,geometry), isDoor=frenchDoorSketch(sketch.code), fixed=pureSunburst(sketch.code);
   const height=Math.max(...parts.map(p=>p.y+p.h))+34;
   const angleRise=11;
@@ -129,6 +137,12 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
       <filter id={`${id}-pencil-edge`} x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation=".18"/></filter>
       <filter id={`${id}-soft-shadow`} x="-15%" y="-15%" width="135%" height="140%"><feDropShadow dx="1.8" dy="2" stdDeviation="1.5" floodColor="#888" floodOpacity=".15"/></filter>
       {parts.map((p,i)=><clipPath key={i} id={`${id}-outline-${i}`}><path d={p.path}/></clipPath>)}
+      {isDoor && parts.map((p,i)=><mask key={i} id={`${id}-clearance-${i}`} maskUnits="userSpaceOnUse" x={p.x-20} y={p.y-20} width={p.w+40} height={p.h+40}>
+        <rect x={p.x-20} y={p.y-20} width={p.w+40} height={p.h+40} fill="white"/>
+        <g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}>
+          <path transform={doorCutoutTransform(sketch)} d={doorCutoutPaths(sketch).clearance} fill="black"/>
+        </g>
+      </mask>)}
     </defs>
     <g transform={`translate(0 ${angleRise}) matrix(1 -.045 0 1 0 0)`} filter={`url(#${id}-soft-shadow)`}>
     {parts.map((p,index)=>{
@@ -145,7 +159,7 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
       const pitch=Math.max(2,geometry?.louverPitchFraction?openingHeight*geometry.louverPitchFraction:15);
       const bladeStart=sketch.code==='YS64'&&index===1?p.y+10:start;
       const rows=Array.from({length:Math.min(300,Math.max(0,Math.floor((end-bladeStart)/pitch)))},(_,n)=>bladeStart+pitch/2+n*pitch);
-      return <g key={index}>
+      return <g key={index} mask={isDoor ? `url(#${id}-clearance-${index})` : undefined}>
         {!sketch.noFrame&&<path data-surround-frame="true" d={p.path} transform={`translate(${p.x+p.w/2} ${p.y+p.h/2}) scale(1.055 1.035) translate(${-p.x-p.w/2} ${-p.y-p.h/2})`} fill={`url(#${id}-grain)`} stroke="#858177" strokeWidth="1"/>}
         {!sketch.noFrame && bullnose && <path data-bullnose-face="true" d={p.path} transform={`translate(${p.x+p.w/2} ${p.y+p.h/2}) scale(1.025 1.016) translate(${-p.x-p.w/2} ${-p.y-p.h/2})`} fill="none" stroke="#d2d0c9" strokeWidth="2.4" strokeLinejoin="round"/>}
         <path d={p.path} transform="translate(3.2 1.5)" fill="#cccac5" stroke="#9a978e" strokeWidth=".6"/>
@@ -201,17 +215,26 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
   </svg>;
 }
 
+const doorCutoutTransform = (sketch: Sketch) => (sketch.cutoutSide ?? 'right') === 'right' ? 'translate(240 0) scale(-1 1)' : undefined;
+
+/** The relief belongs to the stile. Its inside edge follows the source profile,
+ * shortening the adjoining louvers; the outside relief is empty, not white ink. */
+function doorCutoutPaths(sketch: Sketch) {
+  const curved = ['YS33','YS34'].includes(sketch.code);
+  const angled = sketch.code === 'YS38';
+  const inner = curved ? 'M75 134Q139 169 75 204' : angled ? 'M75 132L106 151V187L75 207' : 'M75 134H105V204H75';
+  const outer = curved ? 'M65 143Q109 169 65 195' : angled ? 'M65 140L91 155V184L65 199' : 'M65 143H94V195H65';
+  return {inner, clearance: `${outer}H35V${curved||!angled?143:140}Z`, stile: `M65 20H75V${curved||!angled?134:132}${inner.slice(inner.indexOf(curved?'Q':angled?'L':'H'))}V300H65Z`};
+}
+
 function DoorCutout({sketch,grain}:{sketch:Sketch;grain:string}) {
-  // Reuse the collection's Type A profile as an explicitly labeled reference
-  // when the imported quote lacks a type. This is display-only: saved choices
-  // remain absent and no supplier cutout or handle side is selected.
-  const profile = sketch.code === 'FRENCH_DOOR' ? 'YS33' : sketch.code;
-  const reference = sketch.code === 'FRENCH_DOOR' || !sketch.cutoutSide;
+  const profile = sketch.code;
+  const reference = !sketch.cutoutSide;
   const curved=['YS33','YS34'].includes(profile),offset=['YS34','YS36'].includes(profile),batten=['YS38','YS39'].includes(profile);
-  const transform=(sketch.cutoutSide ?? 'right')==='right'?'translate(240 0) scale(-1 1)':undefined;
-  const notch=curved?'M65 143Q109 169 65 195':profile==='YS38'?'M65 140L91 155V184L65 199':'M65 143H94V195H65';
-  return <g transform={transform} data-french-door-cutout={profile} data-cutout-side={sketch.cutoutSide ?? undefined} data-cutout-reference={reference || undefined}>
-    <path d={`${notch}Z`} fill="#fff" stroke="#69665c" strokeWidth="1.1"/>
+  const {inner, stile} = doorCutoutPaths(sketch);
+  return <g transform={doorCutoutTransform(sketch)} data-french-door-cutout={profile} data-cutout-side={sketch.cutoutSide ?? undefined} data-cutout-reference={reference || undefined}>
+    <path d={stile} fill={`url(#${grain})`} stroke="#85837d" strokeWidth=".8" data-shaped-cutout-stile="true"/>
+    <path d={inner} fill="none" stroke="#aaa7a1" strokeWidth="2.2"/>
     {offset&&<path d={curved?'M65 136Q119 169 65 202':'M65 136H102V202H65'} fill="none" stroke="#8b877e" strokeWidth="1.3" data-cutout-offset="true"/>}
     {batten&&<path d="M62 132H68V206H62Z" fill={`url(#${grain})`} stroke="#8b877e" strokeWidth="1" data-door-batten="true"/>}
   </g>;

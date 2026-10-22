@@ -5,7 +5,7 @@ import { writeFile, mkdir, readFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { SpecialtyShutterSketch } from '../src/components/quote/SpecialtyShutterSketch';
 import { SPECIALTY_SHUTTER_SKETCHES, specialtyShutterSketch, frenchDoorSketch } from '../src/lib/quote/specialty-shutter-illustrations';
-export async function exportCatalog(destination) {
+export async function exportCatalog(destination,{writeSvg=true}={}) {
  await mkdir(destination,{recursive:true});
  const records=[];
  // PNG data URLs and the xlink namespace keep standalone exports compatible
@@ -16,8 +16,8 @@ export async function exportCatalog(destination) {
   const sketch=specialtyShutterSketch('Shutters',options);
   let svg=renderToStaticMarkup(createElement(SpecialtyShutterSketch,{sketch})).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ').replaceAll(' href=',' xlink:href=');
   for(const [name,data] of Object.entries(materials))svg=svg.replaceAll('/images/contract-illustrations/specialty-v1/'+name+'.webp',data);
-  const file=code.toLowerCase()+suffix+'.svg';
-  await writeFile(destination+'/'+file,svg);
+  const file=code.toLowerCase()+suffix+(writeSvg?'.svg':'.png');
+  if(writeSvg)await writeFile(destination+'/'+file,svg);
   await sharp(Buffer.from(svg),{density:300}).resize(800,800,{fit:'contain',background:'white'}).flatten({background:'#fff'}).png().toFile(destination+'/'+file.replace('.svg','.png'));
   return {code,label,file,tilt,split,divider};
  };

@@ -1,0 +1,520 @@
+{
+  "collection": "805 signature sketches",
+  "referenceOnly": true,
+  "shapes": [
+    {
+      "code": "YS01",
+      "label": "Half Round Sunburst",
+      "file": "ys01.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS02",
+      "label": "Left Quarter Round Sunburst",
+      "file": "ys02.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS03",
+      "label": "Eyebrow Sunburst",
+      "file": "ys03.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS04",
+      "label": "Elongated Eyebrow Sunburst",
+      "file": "ys04.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS06",
+      "label": "Right Quarter Round Sunburst",
+      "file": "ys06.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS09",
+      "label": "Sunburst on Top with Divider Strip",
+      "file": "ys09.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS10",
+      "label": "Sunburst on Top with Continuous Frame",
+      "file": "ys10.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS11",
+      "label": "Hexagon with Horizontal Louvers",
+      "file": "ys11.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS12",
+      "label": "Octagon with Horizontal Louvers",
+      "file": "ys12.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS13",
+      "label": "Circle with Horizontal Louvers",
+      "file": "ys13.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS14",
+      "label": "Hexagon Straight Sides with Horizontal Louvers",
+      "file": "ys14.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS15",
+      "label": "Circle Sunburst",
+      "file": "ys15.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS16",
+      "label": "Oval with Horizontal Louvers",
+      "file": "ys16.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS17",
+      "label": "Hexagon Sunburst",
+      "file": "ys17.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS18",
+      "label": "Hexagon Sunburst with Straight Sides",
+      "file": "ys18.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS19",
+      "label": "Octagon Sunburst",
+      "file": "ys19.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS20",
+      "label": "Oval Sunburst",
+      "file": "ys20.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS21",
+      "label": "Left Angle Top / Left Rake",
+      "file": "ys21.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS23",
+      "label": "Right Angle Top / Right Rake",
+      "file": "ys23.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS25",
+      "label": "Upside Down Left Angle Top / Left Rake",
+      "file": "ys25.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS26",
+      "label": "Upside Down Right Angle Top / Right Rake",
+      "file": "ys26.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS27",
+      "label": "Left Triangle",
+      "file": "ys27.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS28",
+      "label": "Right Triangle",
+      "file": "ys28.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS51",
+      "label": "Quarter Sunburst Panel with Continuous Frame",
+      "file": "ys51.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS52",
+      "label": "Sunburst on Top with T Post",
+      "file": "ys52.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS53",
+      "label": "Half Round with Horizontal Louvers",
+      "file": "ys53.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS56",
+      "label": "Solid Rail Arch",
+      "file": "ys56.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS57",
+      "label": "Left Quarter Arch",
+      "file": "ys57.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS58",
+      "label": "Right Quarter Arch",
+      "file": "ys58.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS59",
+      "label": "Triangle with Horizontal Louvers",
+      "file": "ys59.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS60",
+      "label": "Triangle Sunburst",
+      "file": "ys60.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS62",
+      "label": "Peak",
+      "file": "ys62.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS63",
+      "label": "Arch Top Picture Window with Sunburst",
+      "file": "ys63.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS64",
+      "label": "Standard Unit with Horizontal Arch Center",
+      "file": "ys64.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS65",
+      "label": "Arch Top Picture Window with Horizontal Louvers",
+      "file": "ys65.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS66",
+      "label": "Horizontal Louvers Center Arch with Quarter Round Side Panels",
+      "file": "ys66.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS67",
+      "label": "Sunburst Louvers Center Arch with Quarter Round Side Panels",
+      "file": "ys67.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS68",
+      "label": "Left Quarter Sunburst Panel with Continuous Frame",
+      "file": "ys68.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS69",
+      "label": "Right Quarter Sunburst Panel with Continuous Frame",
+      "file": "ys69.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS70",
+      "label": "Mansard",
+      "file": "ys70.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS71",
+      "label": "Mansard Left",
+      "file": "ys71.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS72",
+      "label": "Mansard Right",
+      "file": "ys72.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS73",
+      "label": "Upside Down Mansard",
+      "file": "ys73.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS74",
+      "label": "Upside Down Mansard Left",
+      "file": "ys74.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS75",
+      "label": "Upside Down Mansard Right",
+      "file": "ys75.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS33",
+      "label": "Type A · Curved Flush Cutout",
+      "file": "ys33.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS34",
+      "label": "Type B · Curved Offset Cutout",
+      "file": "ys34.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS35",
+      "label": "Type C · Rectangular Flush Cutout",
+      "file": "ys35.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS36",
+      "label": "Type D · Rectangular Offset Cutout",
+      "file": "ys36.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS38",
+      "label": "Type E · 60 degree Cutout",
+      "file": "ys38.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS39",
+      "label": "Type F · Rectangular Cutout",
+      "file": "ys39.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    }
+  ],
+  "archControls": [
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-center.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-center-divider.png",
+      "tilt": "Standard Tilt",
+      "split": false,
+      "divider": true
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-center-split.png",
+      "tilt": "Standard Tilt",
+      "split": true,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-center-split-divider.png",
+      "tilt": "Standard Tilt",
+      "split": true,
+      "divider": true
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-hidden.png",
+      "tilt": "Invisible Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-hidden-divider.png",
+      "tilt": "Invisible Tilt",
+      "split": false,
+      "divider": true
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-hidden-split.png",
+      "tilt": "Invisible Tilt",
+      "split": true,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-hidden-split-divider.png",
+      "tilt": "Invisible Tilt",
+      "split": true,
+      "divider": true
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-offset.png",
+      "tilt": "Offset Tilt",
+      "split": false,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-offset-divider.png",
+      "tilt": "Offset Tilt",
+      "split": false,
+      "divider": true
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-offset-split.png",
+      "tilt": "Offset Tilt",
+      "split": true,
+      "divider": false
+    },
+    {
+      "code": "YS05",
+      "label": "Louvered Arch",
+      "file": "ys05-offset-split-divider.png",
+      "tilt": "Offset Tilt",
+      "split": true,
+      "divider": true
+    }
+  ]
+}
