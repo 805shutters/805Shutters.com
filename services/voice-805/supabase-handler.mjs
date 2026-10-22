@@ -234,7 +234,11 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      const transcript=p.get('TranscriptionText')||'';
      if(parts[1]==='recording'&&p.get('RecordingStatus')&&p.get('RecordingStatus')!=='completed')return twiml('');
      if(parts[1]==='transcription'&&!transcript)return twiml('');
-     return {callback:callbackFields(p,transcript,call)};
+     const saved=s.list('message').find(item=>item.callId===call.id&&item.confirmed);
+     const recordingUrl=p.get('RecordingUrl')||call.recordingUrl||'';
+     if(recordingUrl&&recordingUrl!==call.recordingUrl)s.put('call',{...call,recordingUrl});
+     const message=saved?{name:saved.name,callback:saved.callback,message:saved.text,transcript:transcript||saved.text,customerId:saved.customerId}:undefined;
+     return {callback:callbackFields(p,transcript||saved?.text||'',recordingUrl?{...call,recordingUrl}:call,message)};
     }
     if(parts[1]==='resume'){
      if(call.phase==='ended')return twiml('<Hangup/>');
@@ -260,19 +264,20 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
   } catch(error) {if(!(error instanceof Conflict)){const failure=reportFailure('handler',error);waitUntil(logFailure(client,'webhook_error',null,failure.message).catch(logError=>reportFailure('failure-log',logError)));}return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
  };
 }
-function callbackFields(p, transcript, call, message) {
+export function callbackFields(p, transcript, call, message) {
  const read=key=>typeof p?.get==='function'?p.get(key)||'':'';
+ const savedText=message?.reason||message?.message||'';
  return {
   p_call_sid:read('CallSid')||call?.sid,
   p_caller_name:message?.name||'',
   p_callback_number:message?.callback||read('From')||call?.from||'',
-  p_reason:message?.reason||message?.message||(read('RecordingUrl')?'Voicemail recording':''),
-  p_transcript:transcript||message?.transcript||'',
-  p_recording_url:read('RecordingUrl'),
+  p_reason:savedText||(read('RecordingUrl')||call?.recordingUrl?'Voicemail recording':''),
+  p_transcript:transcript||message?.transcript||savedText,
+  p_recording_url:read('RecordingUrl')||call?.recordingUrl||'',
   p_call_time:call?.createdAt?new Date(call.createdAt).toISOString():new Date().toISOString(),
   p_phone:call?.from||read('From')||'',
   p_status:'needs_callback',
   p_appointment_id:null,
-  p_customer_id:call?.customerId||null,
+  p_customer_id:call?.customerId||message?.customerId||null,
  };
 }

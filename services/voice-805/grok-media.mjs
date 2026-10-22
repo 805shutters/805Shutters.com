@@ -3,7 +3,7 @@ import { reportFailure } from './security.mjs';
 import { COMMON_GREETING } from './caller-context.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
-import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload } from './schedule-intake.mjs';
+import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload, speakWhen } from './schedule-intake.mjs';
 import { intakeActive, retainRingingIntake } from './engine.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
@@ -592,7 +592,7 @@ export class GrokMediaSession {
     if (this.heard.has(turn.id) || this.closed) return;
     this.heard.add(turn.id);
     this.noteChoice();
-    const applied = await this.commitBounded((_e, s) => {
+    const applied = await this.commitBounded((e, s) => {
       const c = s.get('call', this.call.id);
       retainRingingIntake(c);
       if (!intakeActive(c)) return null;
@@ -600,10 +600,12 @@ export class GrokMediaSession {
       const next = applyScheduleTurn(prior, turn.text, c.from, this.config.number, this.now());
       const saved = { ...c, schedule: next.state };
       if (next.invalidate && !c.intent?.confirmedAt) saved.intent = null;
+      if (next.state?.purpose === 'message' && !s.list('effect').some(item => item.callId === c.id && item.type === 'record')) e.effect(saved, 'record');
       s.put('call', saved);
       return next;
     });
     if (this.closed || !applied || !(await this.liveIntake())) return;
+    if (applied.state?.purpose === 'message') void this.worker?.drain?.().catch(() => {});
     if (applied.invalidate) this.intent = null;
     this.logCheckpoint('saved', applied.state?.awaiting);
     if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
@@ -670,6 +672,7 @@ export class GrokMediaSession {
     try { result = await this.schedule(this.config, this.call.id, 'prepare_appointment', preparePayload(state)); }
     catch { return this.offerCallback(state, PREPARE_FAIL); }
     if (this.closed) return;
+    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(state);
     if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) return this.offerCallback(state, PREPARE_FAIL);
     if (!(await this.liveIntake())) return;
     this.intent = result.intent;
@@ -752,16 +755,39 @@ export class GrokMediaSession {
     }
     this.intent = null;
   }
+  async verifyCrm(message) {
+    if (!this.saveCrm) return true;
+    let row = null;
+    try { row = await this.saveCrm(message); } catch { row = null; }
+    if (this.closed) return false;
+    if (!row?.verified || !row.id || row.call_sid !== this.call.sid) {
+      await this.recoverNow('CRM callback was not saved');
+      return false;
+    }
+    await this.commitBounded((_e, s) => { const saved = s.get('message', message.id); if (saved) s.put('message', { ...saved, crmId: row.id, crmVerified: true }); });
+    return !this.closed;
+  }
+  async captureAppointmentRequest(state) {
+    if (this.closed || !(await this.commitIntake())) return;
+    const name = String(state?.name || '').trim();
+    const phone = state?.phone;
+    const when = speakWhen(state);
+    const text = `They want an appointment. ${[when, state?.address, state?.kind].filter(Boolean).join('. ')}`.replace(/\s+/g, ' ').trim().slice(0, 2000);
+    if (!name || !phone) return this.offerCallback(state, PREPARE_FAIL);
+    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { name, callback: phone, message: text, confirmed: true }, `appointment-request:${this.call.id}`));
+    if (this.closed || !message?.confirmed) return this.recoverNow('CRM callback was not saved');
+    if (!(await this.verifyCrm(message))) return;
+    const current = await this.liveIntake();
+    if (!current) return;
+    const say = 'I saved that you want an appointment. Someone from the team will call you back. Is there anything else I can help with?';
+    if (!(await this.saveSchedule({ ...(current.schedule || {}), purpose: 'appointment', awaiting: 'help', asked: say })) || !(await this.liveIntake())) return;
+    this.force(say, 'result');
+  }
   async persistMessage(intent) {
     if (this.closed || !(await this.commitIntake())) return;
     const message = await this.commitBounded(e => e.saveMessage(this.call.id, { ...intent.payload, confirmed: true }, intent.id));
     if (this.closed || !message?.confirmed) throw Error('Save not verified');
-    if (this.saveCrm) {
-      const row = await this.saveCrm(message);
-      if (this.closed) return;
-      if (!row?.verified || !row.id || row.call_sid !== this.call.sid) throw Error('CRM save not verified');
-      await this.commitBounded((_e, s) => { const saved = s.get('message', message.id); if (saved) s.put('message', { ...saved, crmId: row.id, crmVerified: true }); });
-    }
+    if (!(await this.verifyCrm(message))) return;
     const current = await this.liveIntake();
     if (!current || current.messageId !== message.id) return;
     const say = 'Your message has been saved for our team to review. Is there anything else I can help with?';
@@ -774,6 +800,7 @@ export class GrokMediaSession {
     if (this.closed) return;
     const current = await this.liveIntake();
     if (!current) return;
+    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(current.schedule || initialSchedule(current.from, this.config.number));
     if (result?.replan === true) {
       const schedule = { ...(current.schedule || {}), awaiting: 'replan', asked: REPLAN_QUESTION, offer: null, alternatives: [] };
       const saved = await this.commitBounded((_e, s) => {

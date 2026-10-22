@@ -240,3 +240,23 @@ test('voicemail callback includes the customer id the database function requires
  assert.equal(saved?.p_appointment_id,null);
  assert.equal(saved?.p_call_sid,call.sid);
 });
+test('a recording callback keeps the spoken reason, transcript, and customer match',async()=>{
+ const f=fixture();
+ const call=await f.state.transact(e=>e.inbound('CA'+'f'.repeat(32),'+18055550199'));
+ await f.state.transact((_e,s)=>{const current=s.get('call',call.id);s.put('call',{...current,phase:'message',customerId:'11111111-1111-4111-8111-111111111111'});});
+ await f.state.transact(e=>e.saveMessage(call.id,{name:'Pat Example',callback:'+18055550199',message:'Please call about shutters',confirmed:true},'spoken'));
+ const seen=[];
+ const rpc=f.client.rpc.bind(f.client);
+ f.client.rpc=async(name,p)=>{seen.push({name,p});return rpc(name,p);};
+ const fields={CallSid:call.sid,To:f.c.number,From:'+18055550199',RecordingStatus:'completed',RecordingUrl:'https://example.test/recording'};
+ assert.equal((await f.handler(carrierRequest(f,`/twilio/recording/${call.id}`,fields))).status,200);
+ await Promise.all(f.tasks);
+ const saved=seen.find(item=>item.name==='voice_805_save_callback')?.p;
+ assert.equal(saved.p_status,'needs_callback');
+ assert.equal(saved.p_caller_name,'Pat Example');
+ assert.equal(saved.p_callback_number,'+18055550199');
+ assert.equal(saved.p_reason,'Please call about shutters');
+ assert.equal(saved.p_transcript,'Please call about shutters');
+ assert.equal(saved.p_recording_url,'https://example.test/recording');
+ assert.equal(saved.p_customer_id,'11111111-1111-4111-8111-111111111111');
+});

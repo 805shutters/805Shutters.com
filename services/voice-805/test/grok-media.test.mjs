@@ -6,7 +6,8 @@ import { MESSAGE_WINDOW_MS } from '../engine.mjs';
 import { SnapshotStore } from '../supabase-store.mjs';
 import { Engine } from '../engine.mjs';
 import { callerContext } from '../caller-context.mjs';
-import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, spokenDecision } from '../receptionist.mjs';
+import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, schedulingRequest, spokenDecision } from '../receptionist.mjs';
+import { fallback } from '../fallback.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
 import { createSupabaseHandler } from '../supabase-handler.mjs';
 import { promptPublicPath } from '../prompts.mjs';
@@ -41,7 +42,10 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
 test('no-answer opening apologizes and offers a message or consultation',async()=>{
  const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');
  assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
- assert.equal(RECEPTIONIST_OPENING,'Apologies, but team members are tied up at the moment. Would you like to leave a message for a callback, or would you like to schedule an appointment?');
+ assert.equal(RECEPTIONIST_OPENING,'Thanks for waiting. Our team is with other customers right now. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?');
+ assert.equal((RECEPTIONIST_OPENING.match(/\?/g)||[]).length,1);
+ assert.doesNotMatch(RECEPTIONIST_OPENING,/apolog|sorry|tied up|get a hold/i);
+ assert.match(RECEPTIONIST_PROMPT,/Do not apologize in your own words/);assert.match(RECEPTIONIST_PROMPT,/Do not say you cannot get a hold of anybody/);assert.match(RECEPTIONIST_PROMPT,/Do not repeat that close/);
  assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one server-supplied scheduling line/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
  assert.match(RECEPTIONIST_PROMPT,/currently open published CRM slot/);assert.match(RECEPTIONIST_PROMPT,/Never suggest or book a time that is not open on the CRM calendar/);
  assert.match(RECEPTIONIST_PROMPT,/Generally about one hour|generally about one hour/);
@@ -54,25 +58,56 @@ test('no-answer opening apologizes and offers a message or consultation',async()
 });
 function lastLine(f){return [...f.ai.sent].reverse().find(item=>item.item?.content?.[0]?.text)?.item.content[0].text||'';}
 async function ready(f){await f.begin();await f.audio();await f.mark();assert.equal(f.session.stage,'collect');}
-async function messageMode(f){await ready(f);await speak(f,'I would like to leave a message');assert.match(lastLine(f),/May I have your name/);await speak(f,'Test Caller');assert.match(lastLine(f),/What would you like the message to say/);assert.equal(f.ai.sent.some(item=>/best callback number/i.test(item.item?.content?.[0]?.text||'')),false);await f.say('Please call me back','body');assert.match(lastLine(f),/Message from Test Caller/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.session.stage,'readback');}
+async function messageMode(f){await ready(f);await speak(f,'I would like to leave a message');assert.equal(f.store.list('effect').some(item=>item.type==='record'),true);assert.match(lastLine(f),/May I have your name/);await speak(f,'Test Caller');assert.match(lastLine(f),/I can call you back at/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.ai.sent.some(item=>/best callback number/i.test(item.item?.content?.[0]?.text||'')),false);await speak(f,'yes');assert.match(lastLine(f),/reason for your call/);await f.say('Please call me back','body');assert.match(lastLine(f),/Message from Test Caller/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.session.stage,'readback');}
 async function speak(f,text){const id='spoken-'+Math.random();await f.say(text,'turn-'+id);if(f.session.stage==='result'||f.session.stage==='readback'){await f.audio(id);await f.mark();}}
 async function tool(f,name,data,id='t1'){await f.grok({type:'response.created',response:{id}});await f.grok({type:'response.function_call_arguments.done',name,call_id:id,arguments:JSON.stringify(data)});await f.grok({type:'response.done',response:{id,status:'completed'}});}
 const message={name:'Test Caller',callback:'+18055550199',message:'Please call me back'};
 test('message requires played readback and one spoken yes, then verifies the CRM row',async()=>{
  const f=fixture();const saved=[];f.session.saveCrm=async row=>{saved.push(row);return {verified:true,id:'cb-1',call_sid:f.call.sid};};
+ const customerId='11111111-1111-4111-8111-111111111111';
+ f.store.put('call',{...f.store.get('call',f.call.id),customerId,customerName:'Pat Example'});
  await messageMode(f);
  await f.say('yes');assert.equal(f.store.list('message').length,0);
  await f.audio('readback');await f.say('yes');assert.equal(f.store.list('message').length,0);
  await f.mark();await f.say('yes','yes-1');await f.say('yes','yes-1');await f.say('yes please','yes-2');
  assert.equal(f.store.list('message').length,1);assert.equal(f.store.list('message')[0].confirmed,true);assert.equal(f.store.list('message')[0].crmVerified,true);
+ assert.equal(f.store.list('message')[0].customerId,customerId);assert.equal(saved[0].customerId,customerId);assert.equal(saved[0].callback,'+18055550199');assert.equal(saved[0].text,'Please call me back');
  assert.equal(saved.length,1);assert.match(f.ai.sent.at(-1).item.content[0].text,/has been saved/);f.session.finish();
+});
+test('a Grok session error uses the Record fallback',async()=>{
+ const f=fixture();await f.begin();await f.grok({type:'error',error:{message:'down'}});
+ assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
+ assert.equal(f.store.list('effect').some(item=>item.type==='fallback'),true);
+ const xml=fallback(null,f.store.get('call',f.call.id),'voicemail',null,f.c);
+ assert.match(xml,/<Record/);assert.match(xml,/After the tone/);assert.doesNotMatch(xml,/Which would you like/);
+});
+test('an unauthorized booking is saved as a callback instead of a calendar appointment',async()=>{
+ const f=fixture();const saved=[];const actions=[];
+ f.session.saveCrm=async row=>{saved.push(row);return {verified:true,id:'cb-appt',call_sid:f.call.sid};};
+ f.session.schedule=async(_c,_id,action)=>{actions.push(action);if(action==='find_appointments')return openSlot;if(action==='prepare_appointment'||action==='commit')return {bookingAuthorized:false,verified:false,saved:false};throw Error(action);};
+ const customerId='11111111-1111-4111-8111-111111111111';
+ f.store.put('call',{...f.store.get('call',f.call.id),customerId});
+ await ready(f);await collectVisit(f);await speak(f,'yes');
+ assert.deepEqual(actions,['find_appointments','prepare_appointment']);
+ assert.equal(saved.length,1);assert.match(saved[0].text,/They want an appointment/);assert.equal(saved[0].customerId,customerId);assert.equal(saved[0].confirmed,true);
+ assert.match(lastLine(f),/want an appointment/);assert.doesNotMatch(lastLine(f),/confirmed for|booked/i);f.session.finish();
+});
+test('the scheduling gate reports booking off without throwing',async()=>{
+ const config={dataset:'production',toolsKey:'k'.repeat(32)};
+ const callId='11111111-1111-4111-8111-111111111111';
+ const blocked=await schedulingRequest(config,callId,'prepare_appointment',{},async()=>({status:503,ok:false,json:async()=>({error:'Booking activation required; offer a callback.'})}));
+ assert.deepEqual(blocked,{bookingAuthorized:false,verified:false,saved:false});
+ await assert.rejects(()=>schedulingRequest(config,callId,'prepare_appointment',{},async()=>({status:500,ok:false,json:async()=>({error:'down'})})));
 });
 test('negative, ambiguous, silence, and a failed CRM verify do not announce a save',async()=>{
  for(const text of ['no','maybe later']){const f=fixture();await messageMode(f);await f.audio('readback');await f.mark();await f.say(text);assert.equal(f.store.list('message').length,0);assert.equal(f.store.get('call',f.call.id).intent,null);f.session.finish();}
  const silent=fixture();await messageMode(silent);await silent.audio('readback');await silent.mark();
  await silent.timers.filter(timer=>timer.ms===12000).at(-1).fn();await silent.session.chain;assert.equal(silent.store.list('message').length,0);silent.session.finish();
  const failed=fixture();failed.session.saveCrm=async()=>({verified:false});await messageMode(failed);await failed.audio('readback');await failed.mark();await failed.say('yes');
- assert.equal(failed.store.list('message')[0].crmVerified,undefined);assert.match(failed.ai.sent.at(-1).item.content[0].text,/could not verify/);failed.session.finish();
+ assert.equal(failed.store.list('message')[0].crmVerified,undefined);assert.equal(failed.session.closed,true);assert.equal(failed.store.get('call',failed.call.id).mediaFailed,true);
+ assert.equal(failed.store.list('effect').some(item=>item.type==='fallback'),true);
+ const failedXml=fallback(null,failed.store.get('call',failed.call.id),'voicemail',null,failed.c);
+ assert.match(failedXml,/<Record/);assert.match(failedXml,/After the tone/);assert.doesNotMatch(failedXml,/Which would you like/);
 });
 test('model confirmation, foreign stream, interruption, and a late yes cannot save',async()=>{
  const f=fixture();await messageMode(f);await f.grok({type:'response.function_call_arguments.done',name:'prepare_message',call_id:'model-yes',arguments:JSON.stringify({...message,confirmed:true})});assert.equal(f.store.list('message').length,0);
@@ -123,7 +158,7 @@ test('a stale slot can be replanned, and an uncertain save blocks another propos
  await ready(uncertain);await collectVisit(uncertain);await speak(uncertain,'yes');await uncertain.say('yes','book');
  assert(uncertain.store.get('call',uncertain.call.id).bookingAttention);assert(uncertain.store.get('call',uncertain.call.id).bookingIntent.confirmedAt);
  assert.equal(uncertain.store.get('call',uncertain.call.id).schedule.awaiting,'callback');
- await uncertain.audio('uncertain');await uncertain.mark();await speak(uncertain,'yes');assert.equal(uncertain.store.get('call',uncertain.call.id).bookingIntent.id,'proposal');assert.match(lastLine(uncertain),/What would you like the message to say/);assert.equal(uncertain.store.get('call',uncertain.call.id).schedule.purpose,'message');uncertain.session.finish();
+ await uncertain.audio('uncertain');await uncertain.mark();await speak(uncertain,'yes');assert.equal(uncertain.store.get('call',uncertain.call.id).bookingIntent.id,'proposal');assert.match(lastLine(uncertain),/right number/);assert.equal(uncertain.store.get('call',uncertain.call.id).schedule.purpose,'message');uncertain.session.finish();
 });
 test('hangup during save does not announce a booking and keeps an unconfirmed draft',async()=>{
  const f=fixture();let release;f.session.schedule=(_c,_id,action,input)=>action==='commit'?new Promise(resolve=>{release=resolve;}):action==='find_appointments'?openSlot:proposal(input);
@@ -266,7 +301,7 @@ test('a verified booking and a failed prepare do not start another booking',asyn
  failed.session.schedule=async(_c,_id,action)=>{tries.push(action);if(action==='find_appointments')return openSlot;throw Error('prepare failed');};
  await ready(failed);await collectVisit(failed);await speak(failed,'yes');
  assert.equal(failed.store.get('call',failed.call.id).schedule.awaiting,'callback');assert.match(lastLine(failed),/callback message/);
- await speak(failed,'yes');assert.match(lastLine(failed),/What would you like the message to say/);assert.equal(failed.store.get('call',failed.call.id).schedule.purpose,'message');assert.equal(tries.filter(action=>action==='prepare_appointment').length,1);
+ await speak(failed,'yes');assert.match(lastLine(failed),/right number/);assert.equal(failed.store.get('call',failed.call.id).schedule.purpose,'message');assert.equal(tries.filter(action=>action==='prepare_appointment').length,1);
  booked.session.finish();failed.session.finish();
 });
 test('server caller ID is used for a message tool',async()=>{
