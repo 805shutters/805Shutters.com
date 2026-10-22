@@ -52,12 +52,13 @@ describe('805 specialty shutter contract sketches',()=>{
    expect(contractIllustration('Shutters',savedOptions)).toBeNull();
   }
  });
- it('does not substitute a rectangle for an ambiguous or conflicting arch selection',()=>{
+ it('labels the official category reference without selecting an ambiguous arch',()=>{
   for(const shape of [['Shutter Type: Arch'],['Shutter Type: Arch Shutters','Specialty Shape: YS13']]){
    const options=[...shape,'Panel Config: LR','Tilt Type: Standard Tilt'];
    expect(specialtyShutterSketch('Shutters',options)).toBeNull();
    const html=markup(options);
-   expect(html).toContain('data-product-reference="custom"');
+   expect(html).toContain('data-family-reference="true"');
+   expect(html).toContain('Official 805 category sketch');
    expect(html).not.toContain('data-shutter-assembly=');
    expect(html).not.toContain('data-specialty-sketch=');
   }
@@ -85,7 +86,8 @@ describe('805 specialty shutter contract sketches',()=>{
  });
  it('does not invent missing tilt, layout or French-door handle side',()=>{
   const shape=markup(['Specialty shape: Half Round with Horizontal Louvers']);expect(shape).toContain('Tilt not recorded');expect(shape).not.toContain('data-front-tilt-rod');
-  const door=markup(['Shutter type: French Door','French-door cutout type: Type A']);expect(door).toContain('Cutout side not recorded');expect(door).not.toContain('data-french-door-cutout=');
+  const door=markup(['Shutter type: French Door','French-door cutout type: Type A']);expect(door).toContain('Cutout side not recorded');expect(door).toContain('data-french-door-cutout="YS33"');expect(door).toContain('data-cutout-reference="true"');expect(door).not.toContain('data-cutout-side=');
+  expect(specialtyShutterSketch('Shutters',['Shutter type: French Door','French-door cutout type: Type A'])?.cutoutSide).toBeNull();
  });
  it.each([
   ['French-door cutout: No','French-door cutout type: Type A'],['French-door cutout: false','French-door cutout type: Type B'],

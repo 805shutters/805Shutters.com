@@ -18,9 +18,13 @@ describe('French-door Norman pencil rendering', () => {
     expect(html).toContain('data-specialty-layout="L"');
     expect(html).not.toContain('data-front-tilt-rod');
     expect(html).not.toContain('data-product-reference="custom"');
-    expect(html).not.toContain('data-french-door-cutout=');
+    expect(html).toContain('data-french-door-cutout="YS33"');
+    expect(html).toContain('data-cutout-reference="true"');
+    expect(html).toContain('Official Type A cutout shown as a reference only');
     expect(html).not.toContain('/door-french.jpg');
     expect(contractAnatomy('Shutters', options).coverageNote).toContain('Cutout type not recorded');
+    expect(specialtyShutterSketch('Shutters', options)).toMatchObject({code: 'FRENCH_DOOR', cutoutSide: null});
+    expect(html).not.toContain('data-cutout-side=');
     expect(options).toEqual(before);
   });
 
@@ -29,13 +33,16 @@ describe('French-door Norman pencil rendering', () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: 'Shutters', options: selected, size: 'anatomy' }));
     expect(html).toContain('data-french-door-cutout="YS33"');
     expect(html).not.toContain('/door-french.jpg');
+    expect(html).not.toContain('data-cutout-reference=');
   });
 
-  it('does not invent a cutout from a known handle side or guess conflicting types', () => {
+  it('keeps the reference separate from a saved cutout identity and rejects conflicting types', () => {
     const pending = [...options, 'Handle side: Right'];
     expect(specialtyShutterSketch('Shutters', pending)?.cutoutSide).toBe('right');
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, { productType: 'Shutters', options: pending }));
-    expect(html).not.toContain('data-french-door-cutout=');
+    expect(html).toContain('data-french-door-cutout="YS33"');
+    expect(html).toContain('data-cutout-reference="true"');
+    expect(html).toContain('Official Type A cutout shown as a reference only');
     expect(specialtyShutterSketch('Shutters', ['Shutter type: French Door', 'French-door cutout type: Type A', 'French-door cutout type: Type C'])).toBeNull();
     expect(specialtyShutterSketch('Shutters', ['Shutter type: French Door', 'French-door cutout type: Invalid'])).toBeNull();
   });

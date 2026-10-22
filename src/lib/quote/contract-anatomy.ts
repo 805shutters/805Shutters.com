@@ -2,7 +2,7 @@ import { shutterDetailTarget, type ShutterAnatomyTarget } from './shutter-anatom
 import { quoteProductDetails, type QuoteProductDetail } from '@/lib/crm/customer-quote-details';
 import { contractProductFamily, type ContractProductFamily } from './contract-product-family';
 import { contractIllustration } from './contract-illustrations';
-import { specialtyShutterSketch } from './specialty-shutter-illustrations';
+import { frenchDoorSketch, specialtyShutterSketch } from './specialty-shutter-illustrations';
 import { anatomyShutterStudy } from './anatomy-shutter-study';
 import { anatomyShadeStudy } from './anatomy-shade-study';
 import { anatomyControlAnchor } from './anatomy-control-anchor';
@@ -57,7 +57,8 @@ export function contractAnatomy(productType: string, options: readonly string[],
   const shade = anatomyShadeStudy(productType, options);
   const art = shade || contractIllustration(productType, options);
   const specialty = specialtyShutterSketch(productType, options) || anatomyShutterStudy(productType, options);
-  const reference = specialty?.code === 'FRENCH_DOOR' || (!specialty && (!art || !!art.referenceNote));
+  const doorReference = !!specialty && frenchDoorSketch(specialty.code) && (specialty.code === 'FRENCH_DOOR' || !specialty.cutoutSide);
+  const reference = doorReference || (!specialty && (!art || !!art.referenceNote));
   const callouts: AnatomyCallout[] = [];
   const controlAnchor = anatomyControlAnchor(productType, options, art);
   for (const part of ['top', 'slat', 'surface', 'roll', 'control', 'remote', 'frame', 'bottom'] as const) {
@@ -82,7 +83,7 @@ export function contractAnatomy(productType: string, options: readonly string[],
     callouts.push({ part, title: part === 'slat' && family === 'shutters' ? 'Louvers' : part === 'surface' && slatted.has(family) ? 'Material & finish' : titles[part], details, point, ...(part === 'remote' ? { anchor: 'remote' as const } : part === 'control' && controlAnchor ? { anchor: controlAnchor.kind } : {}), side: ['top', 'surface', 'frame'].includes(part) ? 'left' : 'right' });
   }
   return { family, callouts, specifications, reference,
-    coverageNote: specialty?.code === 'FRENCH_DOOR' ? `French-door pencil illustration · ${specialty.referenceNote || 'selected details shown in the labels'}.` : productType.trim().toLowerCase() === 'drapery' && art?.referenceNote ? art.referenceNote : reference ? 'Product reference · selected details appear in the labels. Exact configuration artwork is not yet available.' : 'Pencil illustration · selected details shown in the labels. Finish names identify the ordered color; artwork remains graphite.' };
+    coverageNote: doorReference ? `Official French-door cutout sketch · ${specialty?.referenceNote || 'selected details shown in the labels'}.` : productType.trim().toLowerCase() === 'drapery' && art?.referenceNote ? art.referenceNote : reference ? 'Product reference · selected details appear in the labels. Exact configuration artwork is not yet available.' : 'Pencil illustration · selected details shown in the labels. Finish names identify the ordered color; artwork remains graphite.' };
 }
 
 export const isFinishDetail = (detail: { label: string }) => /fabric|colou?r|finish|material|opacity|light control|lining|texture|weave/i.test(detail.label);

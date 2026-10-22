@@ -52,13 +52,13 @@ describe("approved quote line item card", () => {
     expect(html.match(/Keep sill clear/g)).toHaveLength(1);
   });
 
-  it("retains unknown product specifications with a neutral reference instead of a blank", () => {
+  it("retains unknown specifications and requires an official sketch", () => {
     const html = renderToStaticMarkup(createElement(QuoteLineItemCard, { ...base, productType: "Custom treatment", options: ["Customer request: Keep the existing hardware"] }));
     expect(html).toContain("Keep the existing hardware");
     expect(html).toContain("Additional details");
     expect(html).toContain('data-contract-illustration="c-v1"');
-    expect(html).toContain('data-product-reference="custom"');
-    expect(html).toContain('See specifications for configuration');
+    expect(html).toContain('data-official-sketch-required="true"');
+    expect(html).toContain('Official 805 sketch required');
     expect(html).not.toContain("Natural Tan");
   });
 

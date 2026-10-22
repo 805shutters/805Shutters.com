@@ -47,8 +47,8 @@ export function specialtyShutterSketch(productType: string, options: readonly st
   const shapeValues = [...values('specialty shape'), ...values('shutter type').filter(value => identity(value))];
   const codes = new Set(shapeValues.map(identity));
   const doorValues = values('french door cutout', 'french door cutout type');
-  // An unspecified cutout still uses our French-door pencil panel. It does not
-  // select a factory cutout identity or infer the handle side.
+  // An unspecified cutout uses an official cutout profile as a labeled reference.
+  // The saved model never selects a factory cutout identity or handle side.
   const unspecifiedCutout = (value: string) => ['yes', 'handle cutout', 'handle cutout type not specified', 'type not specified', 'not specified'].includes(normalize(value));
   const doorCodes = new Set(doorValues.filter(value=>!unspecifiedCutout(value) && !['no','none'].includes(normalize(value))).map(value => {
     const type = /\btype\s*([a-f])\b/i.exec(value)?.[1]?.toUpperCase();
@@ -90,12 +90,12 @@ export function specialtyShutterSketch(productType: string, options: readonly st
     if (!layout) missing.push('Panel layout not recorded');
   }
   if (['YS63','YS64','YS65','YS66','YS67'].includes(code) && layout && (layout.match(/[LR]/g)||[]).length < 3) missing.push('Compound shape layout reference');
-  if (code === 'FRENCH_DOOR') missing.push('Cutout type not recorded');
-  if (door && !side) missing.push('Cutout side not recorded');
+  if (code === 'FRENCH_DOOR') missing.push('Official Type A cutout shown as a reference only', 'Cutout type not recorded');
+  if (door && !side) missing.push('Cutout side not recorded; shown for reference only');
   if (door && !topValue) missing.push('Top shape not recorded');
   const tilt = tiltEntries.size ? [...tiltEntries][0] as SpecialtyShutterSketch['tilt'] : null;
   return {
-    code, label: code === 'FRENCH_DOOR' ? 'French-door shutter' : SPECIALTY_SHUTTER_SKETCHES.find(([id])=>id===code)![1], tilt, split, divider, layout,
+    code, label: code === 'FRENCH_DOOR' ? 'French-door cutout reference' : SPECIALTY_SHUTTER_SKETCHES.find(([id])=>id===code)![1], tilt, split, divider, layout,
     cutoutSide: side === 'left' || side === 'right' ? side : null, top,
     archStyle: single('arch style'), curvedTilt: single('curved section tilt') === 'rear standard tilt' ? 'rear' : single('curved section tilt') === 'hidden tilt' ? 'hidden' : null,
     fixedTop: single('top louver') === 'fixed', noFrame: /no frame|direct mount/.test(single('frame','frame type')),

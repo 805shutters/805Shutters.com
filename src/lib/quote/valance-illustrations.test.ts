@@ -93,10 +93,13 @@ describe("manufacturer-specific valance artwork", () => {
     expect(html).not.toContain('>Remote<');
     expect(html).not.toContain('>Norman<');
   });
-  it("does not suppress a supported valance when the main operating system lacks a drawing", () => {
+  it("preserves a supported valance on the official category reference when the control lacks exact artwork", () => {
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Roller Shades", options:["Supplier: Norman", "Valance: Square Fascia", "Lift System: Unsupported"]}));
     expect(html).toContain('data-valance-artwork="norman-square-fascia"');
     expect(html).not.toContain('/roller.webp');
-    expect(html).not.toContain('/roller-open-roll.webp');
+    expect(html).toContain('/roller-open-roll.webp');
+    expect(html).toContain('data-family-reference="true"');
+    expect(html).toContain('Official 805 category sketch');
+    expect(html).not.toContain('remote.webp');
   });
 });

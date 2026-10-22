@@ -1,27 +1,38 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ContractProductIllustration } from '@/components/quote/ContractProductIllustration';
 import { QuoteLineItemCard } from '@/components/quote/QuoteLineItemCard';
 import { customerQuoteProductName } from '@/lib/crm/customer-quote-branding';
-import { catalog } from './catalog';
+import { anatomyProductIndex } from './contract-anatomy-catalog';
 import { contractIllustration } from './contract-illustrations';
 import { contractProductFamily } from './contract-product-family';
+import { OFFICIAL_CATEGORY_SKETCHES, anatomyReferenceArtwork } from './anatomy-reference-artwork';
 import { valanceIllustration } from './valance-illustrations';
 
-const render = (productType: string, options: string[] = []) =>
-  renderToStaticMarkup(createElement(ContractProductIllustration, { productType, options }));
+const render = (productType: string, options: string[] = [], size: 'compact' | 'anatomy' = 'compact') =>
+  renderToStaticMarkup(createElement(ContractProductIllustration, { productType, options, size }));
 
 describe('every catalog product has a contract sketch', () => {
-  it.each(catalog.products.map(product => [product.id, product] as const))('covers raw, customer-facing and staff names for %s', (_, product) => {
+  it.each(anatomyProductIndex().map(product => [product.id, product] as const))('covers raw, customer-facing and staff names for %s', (_, product) => {
     for (const name of [product.name, customerQuoteProductName(product.name), product.productType]) {
       expect(contractProductFamily(name), name).not.toBe('custom');
-      const html = render(name);
-      expect(html, name).toContain('data-contract-illustration="c-v1"');
-      expect(html, name).toMatch(/<img |<svg /);
-      expect(html).not.toMatch(/\b(?:Norman|Onyx|Polar|Lotus|Soluna|SmartPrivacy|Ultimate|CityLights)\b/i);
-      for (const src of html.matchAll(/src="([^"]+)"/g)) expect(existsSync(`public${src[1]}`), src[1]).toBe(true);
+      expect(anatomyReferenceArtwork(name, [])?.src, name).toBeTruthy();
+      for (const size of ['compact', 'anatomy'] as const) {
+        const html = render(name, [], size);
+        expect(html, name).toContain('data-contract-illustration="c-v1"');
+        expect(html, name).toMatch(/<img |<svg /);
+        expect(html.replace(/<[^>]+>/g, '')).not.toMatch(/\b(?:Norman|Onyx|Polar|Lotus|Soluna|SmartPrivacy|Ultimate|CityLights)\b/i);
+        expect(html).not.toContain('data-official-sketch-required');
+        expect(html).not.toContain('data-product-reference');
+        expect(html).toContain(`data-official-sketch-family="${contractProductFamily(name)}"`);
+        for (const src of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
+          if (src[1].startsWith('#')) continue;
+          expect(src[1]).toMatch(/^\/images\/contract-illustrations\/(c-v1|anatomy-v1|specialty-v1|options-v1|drapery-v1|valances-c-v1|valances-installed-v1)\//);
+          expect(existsSync(`public${src[1]}`), src[1]).toBe(true);
+        }
+      }
     }
   });
 
@@ -53,7 +64,7 @@ describe('every catalog product has a contract sketch', () => {
     ['Polar Premium Pro Awning', 'awning'],
   ])('keeps %s distinct from a complete standard shade', (name, family) => {
     expect(contractIllustration(name)).toBeNull();
-    expect(render(name)).toContain(`data-product-reference="${family}"`);
+    expect(render(name)).toContain(`data-official-sketch-family="${family}"`);
   });
 
   it.each([
@@ -64,13 +75,27 @@ describe('every catalog product has a contract sketch', () => {
   ] as const)('uses a labeled reference without inventing configuration for %s %j', (name, options) => {
     expect(contractIllustration(name, options)).toBeNull();
     const html = render(name, [...options]);
-    expect(html).toContain('data-product-reference=');
-    expect(html).toContain('See specifications for configuration');
+    expect(html).toContain('data-family-reference="true"');
+    expect(html).toContain('Official 805 category sketch');
+    expect(html).not.toContain('data-product-reference=');
     expect(html).not.toContain('remote.webp');
     expect(html).not.toContain('data-shutter-assembly=');
   });
 
-  it('provides a neutral reference for future custom product names', () => {
-    expect(render('Custom treatment')).toContain('data-product-reference="custom"');
+  it('requires an official sketch for an unmapped future category instead of inventing artwork', () => {
+    const html = render('Custom treatment');
+    expect(html).toContain('data-official-sketch-required="true"');
+    expect(html).not.toMatch(/<img |<svg /);
+    expect(anatomyReferenceArtwork('Custom treatment', [])).toBeNull();
+  });
+
+  it('keeps every family reference inside the existing official collection', () => {
+    expect(new Set(Object.values(OFFICIAL_CATEGORY_SKETCHES)).size).toBe(Object.keys(OFFICIAL_CATEGORY_SKETCHES).length);
+    for (const file of Object.values(OFFICIAL_CATEGORY_SKETCHES)) {
+      expect(existsSync(`public/images/contract-illustrations/${file}`), file).toBe(true);
+    }
+    const component = readFileSync('src/components/quote/ContractProductIllustration.tsx', 'utf8');
+    expect(component).not.toContain('ProductReferenceSketch');
+    expect(component).not.toContain('/door-french.jpg');
   });
 });

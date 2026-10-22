@@ -116,7 +116,7 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
   const tokens=sketch.layout.replace(/T/g,'');
   const totalPanels=tokens.length;
   return <svg className={styles.shutterAssembly} viewBox={`0 0 250 ${height}`} style={{'--sketch-aspect': `250 / ${height}`} as CSSProperties} width={160} height={160}
-    role="img" aria-label={`${title} — 805 signature sketch`} data-specialty-sketch={sketch.code}
+    role="img" aria-label={`${title} — 805 signature sketch`} data-specialty-sketch={sketch.code} data-official-sketch-collection="specialty-v1"
     data-selected-frame={frameProfile?.id} data-frame-face={bullnose ? "bullnose-z" : undefined}
     data-sketch-tilt={fixed?'radial':sketch.tilt??'unrecorded'} data-sketch-split={!fixed&&sketch.split} data-sketch-divider={!fixed&&sketch.divider} data-arch-style={sketch.archStyle||undefined} data-specialty-layout={sketch.layout||undefined} data-opening-aspect-ratio={geometry?.aspectRatio}>
     <title>{title}</title>
@@ -194,7 +194,7 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
           </g>))}
         {p.connection==='strip'&&<rect data-overhanging-divider-strip="true" x={p.x-8} y={(p.horizontalStart??120)-10} width={p.w+16} height={6} fill={`url(#${id}-grain)`} stroke="#77746b" strokeWidth=".9"/>}
         <path d={p.path} fill="none" stroke="#aaa7a0" strokeWidth=".5" opacity=".5" transform="translate(.35 -.25)"/>
-        {isDoor&&sketch.code!=='FRENCH_DOOR'&&sketch.cutoutSide&&<g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}><DoorCutout sketch={sketch} grain={`${id}-grain`}/></g>}
+        {isDoor&&<g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}><DoorCutout sketch={sketch} grain={`${id}-grain`}/></g>}
       </g>;
     })}
     </g>
@@ -202,10 +202,15 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
 }
 
 function DoorCutout({sketch,grain}:{sketch:Sketch;grain:string}) {
-  const curved=['YS33','YS34'].includes(sketch.code),offset=['YS34','YS36'].includes(sketch.code),batten=['YS38','YS39'].includes(sketch.code);
-  const transform=sketch.cutoutSide==='right'?'translate(240 0) scale(-1 1)':undefined;
-  const notch=curved?'M65 143Q109 169 65 195':sketch.code==='YS38'?'M65 140L91 155V184L65 199':'M65 143H94V195H65';
-  return <g transform={transform} data-french-door-cutout={sketch.code} data-cutout-side={sketch.cutoutSide}>
+  // Reuse the collection's Type A profile as an explicitly labeled reference
+  // when the imported quote lacks a type. This is display-only: saved choices
+  // remain absent and no supplier cutout or handle side is selected.
+  const profile = sketch.code === 'FRENCH_DOOR' ? 'YS33' : sketch.code;
+  const reference = sketch.code === 'FRENCH_DOOR' || !sketch.cutoutSide;
+  const curved=['YS33','YS34'].includes(profile),offset=['YS34','YS36'].includes(profile),batten=['YS38','YS39'].includes(profile);
+  const transform=(sketch.cutoutSide ?? 'right')==='right'?'translate(240 0) scale(-1 1)':undefined;
+  const notch=curved?'M65 143Q109 169 65 195':profile==='YS38'?'M65 140L91 155V184L65 199':'M65 143H94V195H65';
+  return <g transform={transform} data-french-door-cutout={profile} data-cutout-side={sketch.cutoutSide ?? undefined} data-cutout-reference={reference || undefined}>
     <path d={`${notch}Z`} fill="#fff" stroke="#69665c" strokeWidth="1.1"/>
     {offset&&<path d={curved?'M65 136Q119 169 65 202':'M65 136H102V202H65'} fill="none" stroke="#8b877e" strokeWidth="1.3" data-cutout-offset="true"/>}
     {batten&&<path d="M62 132H68V206H62Z" fill={`url(#${grain})`} stroke="#8b877e" strokeWidth="1" data-door-batten="true"/>}
