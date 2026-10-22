@@ -90,6 +90,8 @@ import { loadHistoricalCrmMirrorPricing } from "@/lib/crm/historical-sales-quote
 import { customerContractTerms, type CustomerContractTerms } from "@/lib/crm/customer-contract-terms";
 import { shutterIllustrationGeometry, type ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
 
+import type { QuoteType } from "@mts/lib/quoteType";
+
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 
@@ -152,6 +154,7 @@ export type PublicQuote = {
   /** Presentation identity for a grouped alternative; never exposes sibling drafts. */
   quoteLabel?: string;
   customerName: string;
+  quoteType?: QuoteType;
   customerAddress: string | null;
   customerPhone: string | null;
   customerEmail: string | null;
@@ -1186,6 +1189,7 @@ async function projectPublicQuote(
     quoteNumber: quote.quote_number,
     quoteLabel: quote.quote_group_id && /^[A-Z]+$/.test(quote.quote_label || "") ? quote.quote_label! : undefined,
     customerName: customerName || "Valued customer",
+    ...(quote.meta?.quote_type === "commercial" ? { quoteType: "commercial" as const } : {}),
     customerAddress,
     customerPhone,
     customerEmail,

@@ -1,5 +1,7 @@
 "use client";
 
+import { CommercialQuoteSchedule } from "./CommercialQuoteSchedule";
+
 import { contractTotalSavings, contractLinePrices, type ContractLinePrice } from "@/lib/quote/contract-line-pricing";
 
 import {IN_HOUSE_SCHEDULE,IN_HOUSE_TERMS,scheduleAmounts} from "@/lib/crm/payment-schedule";
@@ -235,7 +237,7 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
       <div className={`${styles.contractLayout} ${showActionPanel ? styles.contractLayoutWithMobileActions : styles.contractLayoutSingle}`}>
         <section className={styles.orderSummary} aria-labelledby="order-summary-heading">
           <div className={styles.orderSummaryHeader}>
-            <h2 id="order-summary-heading">Contract</h2>
+            <h2 id="order-summary-heading">{quote.quoteType === "commercial" ? "Commercial scope and pricing" : "Contract"}</h2>
             {contractSigned ? <span className={styles.signedBadge} role="status">Contract Signed</span> : null}
             <span className={styles.customerInformationInline} role="group" aria-label="Customer information">
               {customerInformation.map((detail, index) => (
@@ -251,7 +253,9 @@ export function QuoteSelection({ quote, paymentOptions, walletConfig, previewOnl
 
           <p style={{ margin: "0 0 10px", fontSize: 11, color: "#5b5b58" }}>Left and right are viewed from inside the room.</p>
           <div className={styles.orderLines}>
-            {quote.lines.map((line, lineIndex) => {
+            {quote.quoteType === "commercial" ? (
+              <CommercialQuoteSchedule lines={quote.lines} selected={selected} selectionEnabled={allowSelection && mode === "some"} disabled={signingBusy} onToggle={toggle} />
+            ) : quote.lines.map((line, lineIndex) => {
               const isChecked = selected.has(line.id);
               const dimmed = mode === "some" && !isChecked;
               const configurations = line.priceReady && line.showDesignOptions && line.designOptions.length

@@ -1,3 +1,5 @@
+import { getQuoteType } from "@mts/lib/quoteType";
+import { preserveCommercialContractType } from "./quote-type";
 import { selectedDeliveryQuoteIds, selectDeliveryQuotes } from "./quote-delivery-selection";
 import { buildSeparateQuotesEmail, buildSeparateQuotesSms } from "./separate-quote-message";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -97,6 +99,7 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
   rpcError(readError, "Native quote delivery could not be loaded.");
   if (inPerson && existing) {
     if (Number(existing.quote_revision) !== Number(options.expectedRevision)) throw new CrmAuthError(409, "This contract changed. Reload it before signing.");
+    if (getQuoteType(quote) === "commercial") await preserveCommercialContractType(db, existing.crm_quote_id);
     return existing as Delivery;
   }
   let group: Row[] = [quote];
@@ -131,6 +134,11 @@ async function reserveNativeSalesQuote(db: SupabaseClient, quote: Row, actor: { 
   rpcError(error, "Native quote delivery could not be reserved.");
   const delivery = saved as Delivery;
   if (!delivery?.id || !delivery.share_token) throw new CrmAuthError(502, "Native delivery returned an inconsistent identity.");
+  for (const member of group.filter(member => getQuoteType(member) === "commercial")) {
+    const contract = member.id === quote.id ? delivery : (await db.from("sales_quote_v2_deliveries").select("crm_quote_id").eq("quote_id", member.id).single()).data;
+    if (!contract?.crm_quote_id) throw new CrmAuthError(502, "The commercial contract could not be located.");
+    await preserveCommercialContractType(db, contract.crm_quote_id);
+  }
   return delivery;
 }
 

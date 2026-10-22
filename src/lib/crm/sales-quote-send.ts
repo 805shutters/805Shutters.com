@@ -42,6 +42,8 @@ import { getQuoteDesignDetails } from "@mts/lib/quoteDesignDetails";
 import { isInvisibleTiltPanelSelectionMissing } from "@mts/lib/shutterOptionSurcharges";
 import type { SalesQuote, SalesQuoteDesign } from "@mts/types/quote";
 
+import { getQuoteType } from "@mts/lib/quoteType";
+
 type CrmSupabaseClient = SupabaseClient;
 type AnyRow = Record<string, any>;
 type CrmActor = { email: string; userId?: string };
@@ -443,6 +445,7 @@ async function mirrorSalesQuoteV2ForCustomerSend(
     meta: {
       ...quoteMeasureMeta(quote),
       source: "sales_quote_v2_send",
+      ...(getQuoteType(quote) === "commercial" ? { quote_type: "commercial" } : {}),
       source_sales_quote_id: quote.id,
       account_id: accountId,
       quote_v2_backend: true,
@@ -951,6 +954,7 @@ function buildImportedQuoteMeta(quote: AnyRow, legacySubtotal: number, accountId
       : 0;
   return {
     mts_quote_id: quote.id,
+    ...(getQuoteType(quote) === "commercial" ? { quote_type: "commercial" } : {}),
     account_id: accountId,
     importedFrom: "MTS 805 quote send",
     legacy_quote_system: "mts_sales_quote",

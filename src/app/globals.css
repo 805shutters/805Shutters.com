@@ -18490,3 +18490,78 @@ body.quote-lab-active .assistant-widget {
 
 .crm-platinum-sidebar nav button.crm-call-center-unresolved { background: #b91c1c; color: white; }
 .crm-call-center-count { background: white; color: #991b1b; border-radius: 99px; padding: 2px 8px; font-weight: 800; }
+
+.crm-new-quote-type {
+  min-width: 0;
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+}
+
+.crm-new-quote-type legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.crm-new-quote-type__options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.crm-form .crm-new-quote-type__options label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.crm-new-quote-type__options label:has(input:checked) {
+  border-color: var(--ink);
+  background: #f4f4f1;
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.crm-new-quote-type__options label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.crm-form .crm-new-quote-type__options input {
+  width: 16px;
+  min-height: 0;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--ink);
+}
+
+.crm-new-quote-type__options small {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.crm-new-quote-type p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.crm-new-quote-type:disabled label {
+  opacity: .6;
+  cursor: wait;
+}

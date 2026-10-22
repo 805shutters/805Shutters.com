@@ -11,6 +11,7 @@ import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
 import { QuoteStatsBar, type StatsFilter } from "./QuoteStatsBar";
 import { QuotesTable, type QuoteTableRow } from "./QuotesTable";
 import { NewQuoteDialog, type NewQuoteData } from "./NewQuoteDialog";
+import { newQuoteTypeFields } from "@mts/lib/quoteType";
 import { ContractsSection } from "./ContractsSection";
 import { QuotePortfolioDialog } from "./QuotePortfolioDialog";
 import { QuoteOrderStatusPanel } from "./QuoteOrderStatusPanel";
@@ -518,6 +519,7 @@ export function QuoteDashboard({
           customerPhone: formData.customerPhone || null,
           customerEmail: formData.customerEmail || null,
           customerAddress: formData.customerAddress || null,
+          ...(formData.quoteType === "commercial" ? { installerNotes: newQuoteTypeFields("commercial").installer_notes } : {}),
           idempotencyKey: normanDraftRequest.current,
         });
         const { data, error } = await supabase.from("sales_quotes").select("*").eq("id", created.quoteId).single();
@@ -550,6 +552,7 @@ export function QuoteDashboard({
           customer_phone: formData.customerPhone || null,
           customer_address: formData.customerAddress || null,
           customer_email: formData.customerEmail || null,
+          ...newQuoteTypeFields(formData.quoteType),
           created_by: session?.session?.user?.id || null,
           ...(salesOwnerPatch || {}),
         })

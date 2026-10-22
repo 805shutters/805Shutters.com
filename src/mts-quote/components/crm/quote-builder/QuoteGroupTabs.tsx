@@ -17,6 +17,7 @@ import { Plus, Copy, Trash2 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import type { SalesQuote } from "@mts/types/quote";
+import { getQuoteType, newQuoteTypeFields } from "@mts/lib/quoteType";
 
 export function QuoteGroupTabs() {
   const { activeQuoteId, setActiveQuote } = useQuoteBuilderStore();
@@ -146,6 +147,7 @@ export function QuoteGroupTabs() {
           appointment_date: activeQuote.appointment_date,
           quote_group_id: ensuredGroupId,
           quote_letter: nextLetter,
+          ...newQuoteTypeFields(getQuoteType(activeQuote)),
           created_by: session?.session?.user?.id || null,
           sales_owner: activeQuote.sales_owner,
           sales_owner_auth_user_id: activeQuote.sales_owner_auth_user_id,

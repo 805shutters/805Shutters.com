@@ -135,9 +135,9 @@ describe("V2 quote alternatives", () => {
       /Select a design/,
     );
   });
-  it("creates a server-owned blank B and changes only grouping metadata on A", async () => {
+  it.each(["residential", "commercial"])("creates a server-owned blank B retaining %s classification", async (quoteType) => {
     const fixture = database([
-      ok(source),
+      ok({ ...source, installer_notes: quoteType === "commercial" ? '{"__quoteType":"commercial","__quoteBuilderNote":"Private note"}' : null }),
       ok(null),
       ok(null),
       ok([{ quote_letter: "A" }]),
@@ -156,6 +156,7 @@ describe("V2 quote alternatives", () => {
       expect.objectContaining({
         quotePatch: expect.objectContaining({
           customerName: "Test customer",
+          installerNotes: quoteType === "commercial" ? '{"__quoteType":"commercial"}' : null,
           quoteGroupId: sourceId,
           quoteLetter: "B",
         }),

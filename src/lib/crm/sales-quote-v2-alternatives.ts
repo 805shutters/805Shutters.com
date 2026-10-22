@@ -1,3 +1,4 @@
+import { getQuoteType, newQuoteTypeFields } from "@mts/lib/quoteType";
 import { remapCopiedQuoteAssociations } from './quote-alternative-associations';
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -229,7 +230,7 @@ export async function createSalesQuoteAlternative(
         customerAddress: source.customer_address ?? null,
         appointmentDate: source.appointment_date ?? null,
         installerNotes:
-          input.mode === "copy" ? (source.installer_notes ?? null) : null,
+          input.mode === "copy" ? (source.installer_notes ?? null) : (newQuoteTypeFields(getQuoteType(source)).installer_notes ?? null),
         quoteGroupId: groupId,
         quoteLetter,
       }),

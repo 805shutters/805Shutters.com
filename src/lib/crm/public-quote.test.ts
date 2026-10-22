@@ -24,10 +24,47 @@ import {
   projectLegacySelectedDesigns,
   computeSelectionMoney,
   type PublicQuote,
+  loadPublicQuoteByToken,
 } from "./public-quote";
 import { DEFAULT_ADJUSTMENTS, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+describe("quote type on the customer document", () => {
+  function fixtureClient(meta: Record<string, unknown>) {
+    const quote = {
+      id: "quote-fixture", quote_number: "SAMPLE-01", customer_name: "Sample Project",
+      customer_address: "Sample project address", status: "draft", signed_at: null,
+      job_id: null, quote_group_id: null, meta,
+    };
+    return {
+      from(table: string) {
+        const data = table === "crm_quotes" ? quote : [];
+        const query = {
+          select: () => query,
+          eq: () => query,
+          maybeSingle: async () => ({ data, error: null }),
+          then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve),
+        };
+        return query;
+      },
+    } as unknown as SupabaseClient;
+  }
+
+  it("keeps old and residential public quotes on the existing presentation", async () => {
+    const quote = await loadPublicQuoteByToken(fixtureClient({}), "sample-token");
+    expect(quote?.quoteType).toBeUndefined();
+    expect(quote?.customerAddress).toBe("Sample project address");
+  });
+
+  it("projects only an explicit commercial classification and the project address", async () => {
+    const quote = await loadPublicQuoteByToken(fixtureClient({ quote_type: "commercial" }), "sample-token");
+    expect(quote?.quoteType).toBe("commercial");
+    expect(quote?.customerAddress).toBe("Sample project address");
+    expect(quote?.customerName).toBe("Sample Project");
+  });
+});
 
 describe("signed contract technical measure decision", () => {
   it("requires a remeasure when neither the quote nor job has a decision", () => {

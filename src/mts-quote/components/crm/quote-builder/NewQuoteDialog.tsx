@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
+import type { QuoteType } from "@mts/lib/quoteType";
 import { matchingQuoteCustomers } from "@mts/lib/quoteCustomerSearch";
 import type { CrmCustomer } from "@/lib/crm/types";
 
@@ -26,6 +27,7 @@ export interface NewQuoteData {
   customerAddress: string;
   customerEmail: string;
   accountId: string;
+  quoteType: QuoteType;
 }
 
 export function NewQuoteDialog({
@@ -41,6 +43,7 @@ export function NewQuoteDialog({
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [quoteType, setQuoteType] = useState<QuoteType>("residential");
   const [mounted, setMounted] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -60,6 +63,7 @@ export function NewQuoteDialog({
     setCustomerPhone("");
     setCustomerAddress("");
     setCustomerEmail("");
+    setQuoteType("residential");
     setSelectedCustomerId(null);
     setSuggestionsOpen(false);
     setActiveIndex(-1);
@@ -116,6 +120,7 @@ export function NewQuoteDialog({
       customerAddress: customerAddress.trim(),
       customerEmail: customerEmail.trim(),
       accountId,
+      quoteType,
     });
   };
 
@@ -151,6 +156,38 @@ export function NewQuoteDialog({
         </div>
         <p className="crm-slot-time-summary">Choose an account to create the quote</p>
         <form className="crm-form" onSubmit={(e) => e.preventDefault()}>
+          <fieldset className="crm-new-quote-type" disabled={isPending}>
+            <legend>Quote type</legend>
+            <div className="crm-new-quote-type__options">
+              <label>
+                <input
+                  type="radio"
+                  name="new-quote-type"
+                  value="residential"
+                  checked={quoteType === "residential"}
+                  onChange={() => setQuoteType("residential")}
+                  aria-describedby="new-quote-type-help"
+                />
+                <span>Residential <small>Default</small></span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="new-quote-type"
+                  value="commercial"
+                  checked={quoteType === "commercial"}
+                  onChange={() => setQuoteType("commercial")}
+                  aria-describedby="new-quote-type-help"
+                />
+                <span>Commercial</span>
+              </label>
+            </div>
+            <p id="new-quote-type-help">
+              {quoteType === "commercial"
+                ? "Starts a commercial quote for a commercial job."
+                : "Starts the existing residential quote."}
+            </p>
+          </fieldset>
           <div className="crm-field-row crm-new-quote-customer-row">
             <div
               className="crm-customer-name-field"

@@ -63,6 +63,7 @@ import { QuotePricingReviewDialog } from "./QuotePricingReviewDialog";
 import { FloatingQuoteTotalBadge } from "./FloatingQuoteTotalBadge";
 import { toast } from "sonner";
 import { cn } from "@mts/lib/utils";
+import { getQuoteType } from "@mts/lib/quoteType";
 import {
   SHUTTER_AUTO_VARIANTS as _SHUTTER_AUTO_VARIANTS,
   getQuoteColor,
@@ -2356,7 +2357,7 @@ export function QuoteBuilder({
                     </span>
                   )}
                   <span className="leading-none">
-                    Quote Builder
+                    {getQuoteType(quote) === "commercial" ? "Commercial Quote Builder" : "Quote Builder"}
                   </span>
                 </h1>
                 {editingName ? (

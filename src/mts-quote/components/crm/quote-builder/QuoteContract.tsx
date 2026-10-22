@@ -60,6 +60,7 @@ import {
   calculateQuoteTotalBreakdown,
   buildQuoteInstallerNotesMeta,
   getQuoteEmailNote,
+  getQuoteBuilderNote,
   parseQuoteAdminControls,
   selectedQuoteTotalDesigns,
   shouldPersistQuoteDesignSubtotal,
@@ -72,6 +73,8 @@ import {
 } from "@/lib/quote-v2/selected-design";
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
+import { getQuoteType } from "@mts/lib/quoteType";
+import { CommercialQuoteSchedule } from "./CommercialQuoteSchedule";
 import { QuoteLineItemCard } from "@/components/quote/QuoteLineItemCard";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
@@ -812,7 +815,16 @@ export function QuoteContract({
       )}
 
       {/* Contract Header */}
-      {headerInfo && (
+      {getQuoteType(quote) === "commercial" ? (
+        <header className="border-y-2 border-slate-900 bg-white px-6 py-7">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">{headerInfo?.title || getAccountName(quote.account_id)}</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">Commercial bid proposal</h1>
+          <div className="mt-5 grid gap-4 border-t border-slate-200 pt-4 text-sm sm:grid-cols-2">
+            <div><p className="text-xs uppercase tracking-wide text-slate-500">Prepared for</p><p className="mt-1 font-semibold">{quote.customer_name}</p>{quote.customer_address ? <p className="mt-1 text-slate-600">{quote.customer_address}</p> : null}</div>
+            <div><p className="text-xs uppercase tracking-wide text-slate-500">Quote reference</p><p className="mt-1 font-semibold">{quote.quote_number}</p></div>
+          </div>
+        </header>
+      ) : headerInfo && (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="grid gap-0 md:grid-cols-[240px_1fr]">
             <div className={cn("flex items-center justify-center p-6", headerInfo.logoPanelClass)}>
@@ -898,8 +910,12 @@ export function QuoteContract({
               <div className="col-span-full space-y-1">
                 <Label>Installer Notes</Label>
                 <Input
-                  defaultValue={quote.installer_notes || ""}
-                  onBlur={(e) => updateQuote.mutate({ installer_notes: e.target.value })}
+                  defaultValue={getQuoteType(quote) === "commercial" ? getQuoteBuilderNote(quote) : quote.installer_notes || ""}
+                  onBlur={(e) => updateQuote.mutate({
+                    installer_notes: getQuoteType(quote) === "commercial"
+                      ? buildQuoteInstallerNotesMeta(quote, { __quoteBuilderNote: e.target.value })
+                      : e.target.value,
+                  })}
                   placeholder="Optional notes..."
                 />
               </div>
@@ -1011,7 +1027,9 @@ export function QuoteContract({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {gqLineItems.map((item, itemIndex) => {
+              {getQuoteType(gq) === "commercial" ? (
+                <CommercialQuoteSchedule items={gqLineItems} designs={gqDesigns} lineTotals={accepted.lineTotals} mode={pricingMode} />
+              ) : gqLineItems.map((item, itemIndex) => {
                 const itemDesigns = gqDesigns.filter((d) => d.line_item_id === item.id);
                 const itemTotal = accepted.lineTotals.get(item.id) ?? calculateLineItemDesignTotal(item, itemDesigns, {
                   mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
@@ -1067,7 +1085,7 @@ export function QuoteContract({
                 );
               })}
 
-              {gqLineItems.length === 0 && (
+              {getQuoteType(gq) !== "commercial" && gqLineItems.length === 0 && (
                 <div className="text-center text-muted-foreground text-sm py-4">
                   No items in this quote yet.
                 </div>

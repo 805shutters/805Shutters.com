@@ -91,7 +91,16 @@ export function CustomerContractDocument({
         .customer-contract-print-only { display: block !important; }
         .no-print { display: none !important; }
       }`}</style>
-      <div className="customer-contract-screen-brand">
+      {quote.quoteType === "commercial" ? (
+        <header style={{ borderTop: "3px solid #0b0b0b", borderBottom: "1px solid #d8d8d2", padding: "24px 0", marginBottom: 24 }}>
+          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2 }}>{quote.business.name}</p>
+          <h1 style={{ margin: "16px 0 24px", fontSize: 32, letterSpacing: -1 }}>Commercial bid proposal</h1>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
+            <div><p style={{ margin: "0 0 6px", fontSize: 11, textTransform: "uppercase", opacity: .6 }}>Prepared for</p><strong>{quote.customerName}</strong>{quote.customerAddress ? <p style={{ margin: "6px 0 0", fontSize: 14 }}>{quote.customerAddress}</p> : null}</div>
+            <div><p style={{ margin: "0 0 6px", fontSize: 11, textTransform: "uppercase", opacity: .6 }}>Quote reference</p><strong>{quote.quoteNumber}</strong></div>
+          </div>
+        </header>
+      ) : <div className="customer-contract-screen-brand">
         <Image
           src="/brand/805-shutters-logo-header.png"
           alt="805 Shutters"
@@ -100,11 +109,11 @@ export function CustomerContractDocument({
           priority
           style={contractLogo}
         />
-      </div>
+      </div>}
       <div className="no-print customer-contract-print-action">
         {previewOnly ? <strong style={{ fontSize: 12 }}>{previewLabel}</strong> : <PrintButton />}
       </div>
-      <div className="customer-contract-print-only">
+      {quote.quoteType !== "commercial" && <div className="customer-contract-print-only">
         <div style={officialContractBar}>
           <strong>Official 805 Shutters contract</strong>
           <a href={brandIdentity.website}>{quote.business.website}</a>
@@ -124,7 +133,7 @@ export function CustomerContractDocument({
             {quote.quoteNumber ? <span style={{ whiteSpace: "pre", fontWeight: 400 }}> · Contract {quote.quoteNumber}</span> : null}
           </div>
         </header>
-      </div>
+      </div>}
 
       <div
         className={`customer-contract-main-content${

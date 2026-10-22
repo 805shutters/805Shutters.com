@@ -8,7 +8,7 @@ import { ACCOUNT_IDS } from "@mts/lib/accounts";
 
 const mocks = vi.hoisted(() => ({
   rows: [], pending: Promise.resolve() as Promise<unknown>,
-  create: vi.fn(), read: vi.fn(), insert: vi.fn(), errors: vi.fn(),
+  quoteType: "residential", create: vi.fn(), read: vi.fn(), insert: vi.fn(), errors: vi.fn(),
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: () => ({ data: mocks.rows, isLoading: false }),
@@ -26,13 +26,14 @@ vi.mock("@mts/lib/quoteV2ServerClient", async (original) => ({
 }));
 vi.mock("sonner", () => ({ toast: { success() {}, error: mocks.errors } }));
 vi.mock("./NewQuoteDialog", () => ({ NewQuoteDialog: ({ open, onSubmit, title }: { open: boolean; onSubmit: (input: unknown) => void; title: string }) => open ? React.createElement("button", {
-  onClick: () => onSubmit({ customerName: "Norman audit", customerPhone: "", customerEmail: "", customerAddress: "", accountId: ACCOUNT_IDS.SHUTTERS_805 }),
+  onClick: () => onSubmit({ customerName: "Norman audit", customerPhone: "", customerEmail: "", customerAddress: "", accountId: ACCOUNT_IDS.SHUTTERS_805, quoteType: mocks.quoteType }),
 }, title + " create") : null }));
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.quoteType = "residential";
   mocks.create.mockResolvedValue({ quoteId: "norman-draft", quoteNumber: "805-TEST", revision: 1 });
   mocks.read.mockResolvedValue({ data: { id: "norman-draft", quote_number: "805-TEST", account_id: ACCOUNT_IDS.SHUTTERS_805, quote_v2_backend: true }, error: null });
   useQuoteBuilderStore.getState().resetBuilder();
@@ -62,4 +63,12 @@ it("retains the draft request key after an uncertain read and refuses a legacy r
   expect(mocks.create.mock.calls[1][1].idempotencyKey).toBe(mocks.create.mock.calls[0][1].idempotencyKey);
   expect(mocks.errors).toHaveBeenLastCalledWith(expect.stringContaining("did not retain its server pricing mode"));
   expect(useQuoteBuilderStore.getState().activeQuoteId).toBeNull();
+});
+
+it("retains commercial classification in the server-owned Norman draft", async () => {
+  mocks.quoteType = "commercial";
+  await act(() => root.render(React.createElement(QuoteDashboard, { staffOverview: true })));
+  await click("New Norman quote"); await click("New Norman quote create");
+  expect(mocks.create).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ installerNotes: '{"__quoteType":"commercial"}' }));
+  expect(mocks.insert).not.toHaveBeenCalled();
 });

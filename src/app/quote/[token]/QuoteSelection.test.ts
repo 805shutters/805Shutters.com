@@ -469,3 +469,17 @@ it("summarizes item savings and the quote discount at the bottom without changin
 it("hides the combined savings row when no discounts apply", () => {
   expect(renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails(), previewOnly: true }))).not.toContain("Total You Save");
 });
+
+
+it("renders a commercial bid and source-priced schedule only for commercial quotes", () => {
+  const commercial = { ...quoteWithLegacyDetails(), quoteType: "commercial" as const };
+  const html = renderToStaticMarkup(createElement(CustomerContractDocument, { quote: commercial }));
+  expect(html).toContain("Commercial bid proposal");
+  expect(html).toContain("Commercial item schedule");
+  expect(html).toContain("Kitchen");
+  expect(html).toContain("$509.40");
+  expect(html).not.toContain("Your Contract");
+  const residential = renderToStaticMarkup(createElement(CustomerContractDocument, { quote: quoteWithLegacyDetails() }));
+  expect(residential).toContain("Your Contract");
+  expect(residential).not.toContain("Commercial item schedule");
+});
