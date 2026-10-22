@@ -7,7 +7,7 @@ import { SpecialtyShutterSketch } from "./SpecialtyShutterSketch";
 import { ProductReferenceSketch } from './ProductReferenceSketch';
 import { customerQuoteProductName, customerQuoteText } from '@/lib/crm/customer-quote-branding';
 import type { ShutterIllustrationGeometry } from '@/lib/quote/shutter-illustration-geometry';
-import { anatomyReferenceArtwork } from '@/lib/quote/anatomy-reference-artwork';
+import { anatomyReferenceArtwork, frenchDoorReferenceArtwork } from '@/lib/quote/anatomy-reference-artwork';
 import { anatomyShutterStudy } from '@/lib/quote/anatomy-shutter-study';
 import { anatomyShadeStudy, OPTION_ART_ROOT } from '@/lib/quote/anatomy-shade-study';
 import { anatomyControlAnchor } from '@/lib/quote/anatomy-control-anchor';
@@ -50,12 +50,14 @@ export function ContractProductIllustration({ productType, options = [], framePr
   const productSrc = coveredRoller && !integratedValance ? art!.src.replace("roller-open-roll", "roller") : art?.src;
   const controlAnchor = size === 'anatomy' ? anatomyControlAnchor(productType, options, art) : null;
   const temporary = showTemporaryShade && temporaryShadeSelected(options);
-  const pencilReference = size === 'anatomy' && !specialty && !art ? anatomyReferenceArtwork(productType, options) : null;
+  const doorReference = !specialty && !art ? frenchDoorReferenceArtwork(productType, options) : null;
+  const pencilReference = doorReference || (size === 'anatomy' && !specialty && !art ? anatomyReferenceArtwork(productType, options) : null);
   return (
     <div className={temporary ? styles.companions : undefined}>
     <figure className={`${styles.figure} ${size === "anatomy" ? styles.anatomy : ""}`} data-contract-illustration="c-v1">
       {!specialty && !art ? <ValanceDetail id={valance?.id ?? null}><div className={styles.shadeStudy} style={valanceStyle} data-valance-body={valance ? true : undefined}>
         {pencilReference ? <img src={pencilReference.src} alt={customerQuoteText(pencilReference.alt)} width={320} height={320} className={styles.product} data-family-reference="true" /> : <ProductReferenceSketch productType={displayProductType} options={options} />}
+        {doorReference ? <figcaption className={styles.reference}><strong>French-door shutter reference</strong><span>{doorReference.referenceNote}</span></figcaption> : null}
         {valance ? <img src={valance.src} alt={`${valance.label} — pencil illustration`} className={rollerProfile ? styles.rollerValance : styles.blindValance} data-valance-artwork={valance.id} /> : null}
       </div></ValanceDetail> : null}
       {specialty ? <><SpecialtyShutterSketch sketch={specialty} geometry={illustrationGeometry} frameProfile={frameProfile} /><figcaption className={styles.reference}><strong>{specialty.label}</strong><span>{illustrationGeometry ? 'Proportioned to opening · shape reference' : 'Shape & control illustration · measurements pending'}</span>{specialty.curvedTilt === "rear" ? <span>Curved section: rear tilt rod</span> : null}{specialty.referenceNote ? <span>{specialty.referenceNote}</span> : null}</figcaption></> : null}
