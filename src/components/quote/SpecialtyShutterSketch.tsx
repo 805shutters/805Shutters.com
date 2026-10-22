@@ -194,7 +194,7 @@ export function SpecialtyShutterSketch({ sketch, geometry, frameProfile }: { ske
           </g>))}
         {p.connection==='strip'&&<rect data-overhanging-divider-strip="true" x={p.x-8} y={(p.horizontalStart??120)-10} width={p.w+16} height={6} fill={`url(#${id}-grain)`} stroke="#77746b" strokeWidth=".9"/>}
         <path d={p.path} fill="none" stroke="#aaa7a0" strokeWidth=".5" opacity=".5" transform="translate(.35 -.25)"/>
-        {isDoor&&sketch.cutoutSide&&<g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}><DoorCutout sketch={sketch} grain={`${id}-grain`}/></g>}
+        {isDoor&&sketch.code!=='FRENCH_DOOR'&&sketch.cutoutSide&&<g transform={`translate(${p.x} ${p.y}) scale(${p.w/110} ${p.h/280}) translate(-65 -20)`}><DoorCutout sketch={sketch} grain={`${id}-grain`}/></g>}
       </g>;
     })}
     </g>

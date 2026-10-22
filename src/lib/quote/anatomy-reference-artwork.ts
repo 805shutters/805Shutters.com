@@ -2,18 +2,6 @@ import { contractProductFamily } from './contract-product-family';
 import { CONTRACT_ART_ROOT } from './contract-illustrations';
 import { VALANCE_ARTWORK } from './valance-illustrations';
 
-/** A product photo reference, never a substitute for missing cutout selections. */
-export function frenchDoorReferenceArtwork(productType: string, options: readonly string[]) {
-  if (contractProductFamily(productType) !== 'shutters') return null;
-  const identity = [productType, ...options.filter(option => /^(application|shutter type):/i.test(option))].join(' ');
-  if (!/\bfrench[ -]door\b/i.test(identity)) return null;
-  return {
-    src: '/images/shutters-portfolio/door-french.jpg',
-    alt: 'French-door shutters — photo reference; configuration details listed separately',
-    referenceNote: 'French-door shutter photo reference · selected configuration is specified in the labels; pictured details may differ.',
-  };
-}
-
 /** Review-only pencil references. These do not assert supplier, control or profile accuracy. */
 export function anatomyReferenceArtwork(productType: string, options: readonly string[]) {
   const family = contractProductFamily(productType);

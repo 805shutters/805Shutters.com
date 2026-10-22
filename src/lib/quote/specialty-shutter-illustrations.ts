@@ -11,7 +11,7 @@ export const FRENCH_DOOR_SKETCH_TYPES = [
 export const SPECIALTY_SHUTTER_SKETCHES = [...NORMAN_SPECIALTY_SHAPES, ...FRENCH_DOOR_SKETCH_TYPES];
 export type SpecialtySketchCode = typeof SPECIALTY_SHUTTER_SKETCHES[number][0];
 export type SpecialtyShutterSketch = {
-  code: SpecialtySketchCode | 'RECTANGLE'; label: string; tilt: 'center' | 'hidden' | 'offset' | null;
+  code: SpecialtySketchCode | 'RECTANGLE' | 'FRENCH_DOOR'; label: string; tilt: 'center' | 'hidden' | 'offset' | null;
   split: boolean; divider: boolean; layout: string; cutoutSide: 'left' | 'right' | null;
   top: 'rectangle' | 'arch' | 'quarter-left' | 'quarter-right'; archStyle: string;
   curvedTilt: 'rear' | 'hidden' | null; fixedTop: boolean; noFrame: boolean;
@@ -30,7 +30,7 @@ const identity = (value: string): SpecialtySketchCode | undefined => {
   return SPECIALTY_SHUTTER_SKETCHES.find(([code,label]) => normalize(code) === key || normalize(label) === key)?.[0] ?? aliases[key];
 };
 export const pureSunburst = (code: string) => ['YS01','YS02','YS03','YS04','YS06','YS15','YS17','YS18','YS19','YS20','YS60'].includes(code);
-export const frenchDoorSketch = (code: string) => FRENCH_DOOR_SKETCH_TYPES.some(([id]) => id === code);
+export const frenchDoorSketch = (code: string) => code === 'FRENCH_DOOR' || FRENCH_DOOR_SKETCH_TYPES.some(([id]) => id === code);
 
 /** Read the labeled purchased choices used by BOTH staff and public contracts.
  * Missing choices stay missing; ambiguous generic "Arch"/"Raked" are not shapes. */
@@ -47,13 +47,16 @@ export function specialtyShutterSketch(productType: string, options: readonly st
   const shapeValues = [...values('specialty shape'), ...values('shutter type').filter(value => identity(value))];
   const codes = new Set(shapeValues.map(identity));
   const doorValues = values('french door cutout', 'french door cutout type');
-  const doorCodes = new Set(doorValues.filter(value=>!['yes','no','none'].includes(normalize(value))).map(value => {
+  // An unspecified cutout still uses our French-door pencil panel. It does not
+  // select a factory cutout identity or infer the handle side.
+  const unspecifiedCutout = (value: string) => ['yes', 'handle cutout', 'handle cutout type not specified', 'type not specified', 'not specified'].includes(normalize(value));
+  const doorCodes = new Set(doorValues.filter(value=>!unspecifiedCutout(value) && !['no','none'].includes(normalize(value))).map(value => {
     const type = /\btype\s*([a-f])\b/i.exec(value)?.[1]?.toUpperCase();
     return identity(value) ?? (type ? FRENCH_DOOR_SKETCH_TYPES.find(([,label]) => label.startsWith(`Type ${type}`))?.[0] : undefined);
   }));
-  const door = /french door/.test(single('shutter type', 'application')) || doorCodes.size > 0;
+  const door = /french door/.test(normalize(productType)) || /french door/.test(single('shutter type', 'application')) || doorCodes.size > 0 || doorValues.some(unspecifiedCutout);
   if (door && values('french door cutout').some(value => ['no','none','false','0'].includes(normalize(value)))) return null;
-  const code = door ? doorCodes.size === 1 ? [...doorCodes][0] : undefined : codes.size === 1 ? [...codes][0] : undefined;
+  const code = door ? doorCodes.size === 0 ? 'FRENCH_DOOR' : doorCodes.size === 1 ? [...doorCodes][0] : undefined : codes.size === 1 ? [...codes][0] : undefined;
   if (!code || (codes.has(undefined) && !door) || doorCodes.has(undefined)) return null;
   if (door && shapeValues.length && (!frenchDoorSketch(code) || [...codes].some(shape => shape !== code))) return null;
   const tiltEntries = new Set(values('tilt','tilt type').map(value => /hidden|invisible/i.test(value) ? 'hidden' : /offset/i.test(value) ? 'offset' : /^standard$|standard tilt|front center|center ?tilt|tilt bar/i.test(value) ? 'center' : 'unknown'));
@@ -87,11 +90,12 @@ export function specialtyShutterSketch(productType: string, options: readonly st
     if (!layout) missing.push('Panel layout not recorded');
   }
   if (['YS63','YS64','YS65','YS66','YS67'].includes(code) && layout && (layout.match(/[LR]/g)||[]).length < 3) missing.push('Compound shape layout reference');
+  if (code === 'FRENCH_DOOR') missing.push('Cutout type not recorded');
   if (door && !side) missing.push('Cutout side not recorded');
   if (door && !topValue) missing.push('Top shape not recorded');
   const tilt = tiltEntries.size ? [...tiltEntries][0] as SpecialtyShutterSketch['tilt'] : null;
   return {
-    code, label: SPECIALTY_SHUTTER_SKETCHES.find(([id])=>id===code)![1], tilt, split, divider, layout,
+    code, label: code === 'FRENCH_DOOR' ? 'French-door shutter' : SPECIALTY_SHUTTER_SKETCHES.find(([id])=>id===code)![1], tilt, split, divider, layout,
     cutoutSide: side === 'left' || side === 'right' ? side : null, top,
     archStyle: single('arch style'), curvedTilt: single('curved section tilt') === 'rear standard tilt' ? 'rear' : single('curved section tilt') === 'hidden tilt' ? 'hidden' : null,
     fixedTop: single('top louver') === 'fixed', noFrame: /no frame|direct mount/.test(single('frame','frame type')),
