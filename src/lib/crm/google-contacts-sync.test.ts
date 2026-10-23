@@ -35,7 +35,7 @@ describe("durable Contacts worker", () => {
       expect(writes.some(w=>w.patch.create_attempted_at)).toBe(true);
       return {resourceName:"people/1"};
     });
-    vi.spyOn(GoogleContactsApi.prototype,"get").mockResolvedValue({resourceName:"people/1",userDefined:[{key:CONTACT_MARKER,value:"test person"}]});
+    vi.spyOn(GoogleContactsApi.prototype,"get").mockResolvedValue({resourceName:"people/1",phoneNumbers:[{value:"+18055551234"}],userDefined:[{key:CONTACT_MARKER,value:"test person"}]});
     expect((await processContactsQueue(db)).processed).toBe(1);
     expect(writes.some(w=>w.patch.google_resource_name === "people/1")).toBe(true);
     const finish = writes.find(w=>w.patch.status === "synced")!;
@@ -52,7 +52,7 @@ describe("durable Contacts worker", () => {
   });
   it("recovers a lost create response from its marker and updates instead", async()=>{
     const {db,writes} = database({attempted:true});
-    const person = {resourceName:"people/1",userDefined:[{key:CONTACT_MARKER,value:"test person"}]};
+    const person = {resourceName:"people/1",phoneNumbers:[{value:"+18055551234"}],userDefined:[{key:CONTACT_MARKER,value:"test person"}]};
     vi.spyOn(GoogleContactsApi.prototype,"list").mockResolvedValue([person]);
     const create = vi.spyOn(GoogleContactsApi.prototype,"create");
     const update = vi.spyOn(GoogleContactsApi.prototype,"update").mockResolvedValue(person);
@@ -63,7 +63,7 @@ describe("durable Contacts worker", () => {
   });
   it("retries failed updates against the saved mapping without creating duplicates", async()=>{
     const {db,writes} = database({mapped:true});
-    const person = {resourceName:"people/1",userDefined:[{key:CONTACT_MARKER,value:"test person"}]};
+    const person = {resourceName:"people/1",phoneNumbers:[{value:"+18055551234"}],userDefined:[{key:CONTACT_MARKER,value:"test person"}]};
     vi.spyOn(GoogleContactsApi.prototype,"list").mockResolvedValue([]);
     vi.spyOn(GoogleContactsApi.prototype,"get").mockResolvedValue(person);
     vi.spyOn(GoogleContactsApi.prototype,"update").mockRejectedValue(new Error("private upstream body must not be saved"));

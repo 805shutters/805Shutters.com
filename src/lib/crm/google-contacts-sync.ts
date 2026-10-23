@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { getContactsAccess } from "@/lib/crm/google-contacts-auth";
-import { buildContactCandidates, matchGoogleContact, mergeGoogleContact, type ContactCandidate, type ContactSource, type GooglePerson } from "@/lib/crm/google-contacts-model";
+import { buildContactCandidates, matchGoogleContact, mergeGoogleContact, normalizeContactPhone, type ContactCandidate, type ContactSource, type GooglePerson } from "@/lib/crm/google-contacts-model";
 
 const FIELDS = "names,phoneNumbers,emailAddresses,addresses,userDefined,metadata";
 type SyncRow = { customer_key: string; google_resource_name: string | null; status: string; attempts: number; create_attempted_at: string | null; requested_at: string; next_attempt_at: string; source_refs: string[]; processed_request_at: string | null };
@@ -63,7 +63,7 @@ export class GoogleContactsApi {
     return this.request<GooglePerson>(`${existing.resourceName}:updateContact?updatePersonFields=phoneNumbers,emailAddresses,addresses,userDefined&personFields=${FIELDS}`, "PATCH", mergeGoogleContact(candidate, existing));
   }
 }
-async function syncRows(supabase: SupabaseClient): Promise<SyncRow[]> {
+export async function syncRows(supabase: SupabaseClient): Promise<SyncRow[]> {
   // customer_key rather than id is the queue's stable primary key.
   const rows: SyncRow[] = [];
   for (let start = 0; ; start += 500) {
@@ -164,7 +164,8 @@ export async function processContactsQueue(supabase: SupabaseClient, limit = 10)
         if (!person.resourceName) throw new Error("missing_resource");
         await save({ google_resource_name: person.resourceName });
         const verified = await api.get(person.resourceName);
-        if (!verified.userDefined?.some(m => m.key === "805 CRM customer" && m.value === candidate.key)) throw new Error("verification_failed");
+        if (!verified.userDefined?.some(m => m.key === "805 CRM customer" && m.value === candidate.key)
+          || !verified.phoneNumbers?.some(p => normalizeContactPhone(p.canonicalForm || p.value) === candidate.phone)) throw new Error("verification_failed");
         const index = people.findIndex(p => p.resourceName === verified.resourceName);
         if (index >= 0) people[index] = verified; else people.push(verified);
         await finish({ status: "synced", exception_code: null, synced_at: new Date().toISOString() });

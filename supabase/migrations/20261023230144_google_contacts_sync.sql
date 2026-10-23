@@ -40,9 +40,14 @@ grant all on public.crm_google_contacts_connection, public.crm_google_contacts_o
 -- Queue insertion is in the transaction that records the sale. It survives an
 -- application crash after signing or staff status updates; no Google call runs here.
 create function public.crm_queue_google_contact() returns trigger
-language plpgsql security invoker set search_path = '' as $$
-declare customer_name text; source_meta jsonb; old_name text; customer_key text;
+language plpgsql security definer set search_path = '' as $$
+declare customer_name text; v_customer_key text;
 begin
+  -- A trigger-only function with no caller-controlled arguments. Queue writes
+  -- must succeed for ordinary CRM writers without granting them token/queue access.
+  if tg_table_schema <> 'public' or tg_table_name not in ('crm_quotes','crm_jobs','crm_customers','crm_customer_contracts') then
+    raise exception 'Unsupported Contacts trigger source';
+  end if;
   if tg_table_name = 'crm_quotes' then
     if new.status <> 'sold' then return new; end if;
     select j.customer_name into customer_name from public.crm_jobs j where j.id = new.job_id;
@@ -57,9 +62,9 @@ begin
     if new.status <> 'sold' then return new; end if;
     select c.display_name into customer_name from public.crm_customers c where c.id = new.customer_id;
   end if;
-  customer_key := trim(regexp_replace(lower(trim(coalesce(customer_name,''))), '[^a-z0-9]+', ' ', 'g'));
-  if customer_key = '' then return new; end if;
-  insert into public.crm_google_contacts_sync(customer_key) values (customer_key)
+  v_customer_key := trim(regexp_replace(lower(trim(coalesce(customer_name,''))), '[^a-z0-9]+', ' ', 'g'));
+  if v_customer_key = '' then return new; end if;
+  insert into public.crm_google_contacts_sync(customer_key) values (v_customer_key)
   on conflict (customer_key) do update set status = 'pending', exception_code = null, requested_at = clock_timestamp(), next_attempt_at = now(), updated_at = now();
   return new;
 end;

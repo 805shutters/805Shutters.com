@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { CONTACTS_ACCOUNT, contactsOAuthConfig } from "@/lib/crm/google-contacts-auth";
-import { contactsDryRun, enqueueContactsBackfill, processContactsQueue } from "@/lib/crm/google-contacts-sync";
+import { contactsDryRun, enqueueContactsBackfill, processContactsQueue, syncRows } from "@/lib/crm/google-contacts-sync";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 async function admin(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     let configured = true;
     try { contactsOAuthConfig(); } catch { configured = false; }
     const { data, error } = await supabase.from("crm_google_contacts_connection").select("account_email,connected_at,enabled").eq("id",true).maybeSingle();
-    const { data: rows } = await supabase.from("crm_google_contacts_sync").select("status,exception_code");
+    const rows = error ? [] : await syncRows(supabase);
     const statuses: Record<string, number> = {};
     for (const row of rows || []) statuses[row.status] = (statuses[row.status] || 0)+1;
     return NextResponse.json({ account: CONTACTS_ACCOUNT, configured, storageReady: !error, connected: Boolean(data?.enabled), connectedAt: data?.connected_at, statuses }, { headers: { "Cache-Control": "no-store" } });

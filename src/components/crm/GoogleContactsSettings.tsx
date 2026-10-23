@@ -7,6 +7,7 @@ export function GoogleContactsSettings() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [counts, setCounts] = useState<Record<string, number | boolean> | null>(null);
+  const [checking, setChecking] = useState(true);
   async function call(path = "", body?: object) {
     const session = (await getSupabaseBrowserClient()?.auth.getSession())?.data.session;
     if (!session) throw new Error("Sign in to the CRM as Mike to connect the shared address book.");
@@ -15,7 +16,11 @@ export function GoogleContactsSettings() {
     if (!response.ok) throw new Error(data.message || "Contacts request failed.");
     return data;
   }
-  useEffect(() => { call().then(setStatus).catch(e => setMessage(e.message)); }, []);
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("connection");
+    if (result === "connection_failed") setMessage("Google connection was not completed. Try again with 805@805shutters.com and allow Contacts access.");
+    call().then(setStatus).catch(e => setMessage(e.message)).finally(() => setChecking(false));
+  }, []);
   async function run(action: "connect" | "dryRun" | "backfill" | "process") {
     setBusy(true); setMessage("");
     try {
@@ -31,7 +36,7 @@ export function GoogleContactsSettings() {
     <p className="eyebrow" style={{ marginTop: 32 }}>Shared business address book</p>
     <h1>805 Google Contacts</h1>
     <p>Customer contacts sync to <strong>805@805shutters.com</strong>. Existing CRM customers are included; future sold contracts queue automatically. Existing personal contact details are preserved.</p>
-    <p role="status">{status ? status.connected ? "Google account connected." : "Google Contacts authorization is needed." : "Checking connection…"}</p>
+    <p role="status">{checking ? "Checking connection…" : status ? status.connected ? "Google account connected." : "Google Contacts authorization is needed." : <a href="/api/crm/oauth/google?redirectTo=%2Fcrm%2Fgoogle-contacts%2F">Sign in to the CRM</a>}</p>
     {status && !status.configured && <p>Server setup is needed before Google authorization can open.</p>}
     {status && !status.storageReady && <p>Contacts database migration is needed.</p>}
     <div style={{ display: "flex", flexWrap: "wrap", gap: 12, margin: "24px 0" }}>
