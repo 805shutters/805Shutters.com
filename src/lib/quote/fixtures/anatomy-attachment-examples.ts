@@ -6,4 +6,5 @@ export const anatomyAttachmentExamples = [
   {id:'front-tilt',label:'Front tilt and divider detail',product:'Norman Shutters',options:[...base,'Panel Config: LR','Tilt Type: Standard Tilt','Split Tilt: No','Divider Rail: Yes']},
   {id:'long',label:'Long descriptions',product:'Onyx Shutters',options:[...base.filter(o=>!/^Color:/.test(o)),'Color: A deliberately long finish description to exercise wrapping in compact contract cards','Panel Config: LLRR','Tilt Type: H3 - Hidden Tiltrod In Stile']},
   {id:'roller',label:'Roller control regression',product:'Roller Shades',options:['Fabric: Room Darkening','Color: White','Lift System: Continuous Cord Loop','Control Side: Right','Hem Bar: Fabric Covered']},
+  {id:'laundry',label:'Laundry — one left panel, tilt bar',product:'Shutters',room:'Laundry',price:'$229.51',width:22.25,height:34.25,options:['Color: 100_Pure White','Hinge Color: Match','Panel Config: L','Panel Direction: L','Tilt Type: Tilt Bar','Louver Size: 3 1/2"','Frame Type: L Frame','Frame Sides: 4']},
 ] as const;

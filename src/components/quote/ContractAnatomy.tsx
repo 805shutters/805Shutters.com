@@ -60,7 +60,8 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
           // Missing artwork targets must never fall back to a container percentage.
           if (!region) return {part:callout.part,d:'',x:0,y:0,target:`missing:${name}`};
           const bounds = measure(region);
-          const drawing = measure(originalShutter);
+          const drawing = measure(originalShutter.querySelector('[data-shutter-outline]') || originalShutter);
+          const configured = originalShutter.getAttribute('data-shutter-reference') === 'configured-v1';
           const left = callout.side === 'left';
           const x = bounds.left - frame.left + bounds.width * (left ? .15 : .85);
           const y = bounds.top - frame.top + bounds.height / 2;
@@ -69,10 +70,10 @@ export function ContractAnatomy({ productType, room, options, styleName, width, 
             y: text.top - frame.top + Math.min(24, text.height / 2),
           };
           const outline = {
-            left: mobile ? 0 : drawing.left - frame.left + drawing.width * 133 / 627,
-            right: mobile ? frame.width : drawing.left - frame.left + drawing.width * 528 / 627,
-            top: drawing.top - frame.top + drawing.height * 20 / 627,
-            bottom: drawing.top - frame.top + drawing.height * 586 / 627,
+            left: mobile ? 0 : drawing.left - frame.left + (configured ? 0 : drawing.width * 133 / 627),
+            right: mobile ? frame.width : drawing.left - frame.left + drawing.width * (configured ? 1 : 528 / 627),
+            top: drawing.top - frame.top + (configured ? 0 : drawing.height * 20 / 627),
+            bottom: drawing.top - frame.top + drawing.height * (configured ? 1 : 586 / 627),
           };
           return {part:callout.part,x,y,target:name,d:roundedLeaderPath(exteriorLeaderPoints({start,end:{x,y},left,entry:physicalSide !== callout.side || kind.endsWith('-detail') ? 'bottom' : 'side',art:outline,clearance:mobile?0:8}))};
         }

@@ -184,7 +184,7 @@ describe('visual contract catalog and saved selections', () => {
   });
   it('keeps split tilt and divider independent through the real sketch', () => {
     const html = renderToStaticMarkup(createElement(ContractAnatomy,{productType:'Shutters',room:'Bedroom',width:70,height:45,options:['Panel Config: LR','Tilt Type: Standard Tilt','Split Tilt: Yes','Divider Rail: No']}));
-    expect(html).toContain('/c-v1/shutters.webp');
+    expect(html).toContain('/c-v1/shutter-center-split.webp');
     expect(html).toContain('Standard Tilt · Yes');
     expect(html).not.toContain('shutter-center-split-divider.webp');
     expect(html).not.toContain('data-divider-rail="true"');

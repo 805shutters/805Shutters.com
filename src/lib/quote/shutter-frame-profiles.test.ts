@@ -31,15 +31,15 @@ describe('approved contract frame pencil sketches',()=>{
   expect(html.indexOf('data-frame-profile="onyx-z-crest"')).toBeLessThan(html.indexOf('data-label-side='));
   expect(html).toContain('Z Crest</strong><span>Side profile');
  });
- it('keeps approved frame profiles separate from the intact original drawing',()=>{
+ it('applies saved frame profiles to the configured pencil assembly',()=>{
   const options=['Manufacturer: Norman','Panel Config: L R','Tilt Type: Invisible Tilt','Frame Type: 1 1/2" Bullnose Z Frame'];
   const profile=shutterFrameProfile('Shutters',options)!;
   expect(profile.approvalId).toBe('N17');
   expect(profile.src).toMatch(/frame-profiles-approved-v1\/norman-bullnose-z-1-5\.webp$/);
   for(const extra of [[],['Split Tilt: No','Divider Rail: No']]){
    const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options:[...options,...extra],size:'anatomy'}));
-   expect(html).toContain('/c-v1/shutters.webp');
-   expect(html).not.toContain('data-shutter-assembly');
+   expect(html).toContain('/c-v1/shutter-hidden-plain.webp');
+   expect(html).toContain('data-shutter-assembly="shared-frame"');
   }
   const plain=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options:[...options.slice(0,3),'Frame Type: Plain L Frame'],size:'anatomy'}));
   expect(plain).not.toContain('data-frame-face="bullnose-z"');
@@ -76,9 +76,9 @@ describe('approved contract frame pencil sketches',()=>{
  });
 });
 
-it('restores the intact original graphite drawing in the large preview',()=>{
+it('uses the selected hidden split-tilt panel in the large preview',()=>{
  const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',size:'anatomy',options:['Panel Config: LR','Tilt Type: Invisible Tilt','Split Tilt: Yes','Divider Rail: No']}));
- expect(html).toContain('/c-v1/shutters.webp');
- expect(html).not.toContain('data-shutter-assembly');
+ expect(html).toContain('/c-v1/shutter-hidden-split.webp');
+ expect(html).toContain('data-shutter-assembly="shared-frame"');
  expect(html).not.toContain('louver-up.webp');
 });

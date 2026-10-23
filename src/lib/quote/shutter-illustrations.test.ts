@@ -93,9 +93,9 @@ describe("saved Onyx split tilt contracts", () => {
     expect(art?.src).toContain("shutter-center-split.webp");
     expect(art?.src).not.toContain("divider");
     const html = renderToStaticMarkup(createElement(ContractProductIllustration, {productType:"Shutters", options, illustrationGeometry:{aspectRatio:34.25/58.5}}));
-    expect(html).toContain('/c-v1/shutters.webp');
-    expect(html).not.toContain('data-shutter-assembly');
-    expect(html).toContain('Original shutter artwork. Selected configuration is specified in the labels.');
+    expect(html).toContain('/c-v1/shutter-center-split.webp');
+    expect(html).toContain('data-panel-count="1"');
+    expect(html).not.toContain('Front tilt detail');
   });
   it("continues rejecting conflicting or unknown tilt selections", () => {
     expect(contractIllustration("Shutters", ["Tilt: standard", "Tilt: hidden", "Panel configuration: L", "Split tilt: Yes"])).toBeNull();

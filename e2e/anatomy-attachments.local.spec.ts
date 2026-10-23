@@ -50,9 +50,9 @@ test('reported shutter: every leader touches its named part through responsive a
   await page.screenshot({path:'artifacts/anatomy-attachments/desktop.png',fullPage:true});
 });
 
-test('configuration changes keep targets attached, including supplemental component details',async({page})=>{
+test('configuration changes keep targets attached, within a single configured drawing',async({page})=>{
   await page.goto('/quote/anatomy-preview/attachments/');
-  for(const choice of ['1','2','3','0']){
+  for(const choice of ['5','1','2','3','0']){
     await page.getByLabel('Attachment example').selectOption(choice);
     await expect(page.locator('[data-shutter-reference]')).toBeVisible();
     for(const width of [1440,390]){
@@ -71,14 +71,33 @@ test('configuration changes keep targets attached, including supplemental compon
 test('delayed image loading and missing targets cannot produce a guessed container endpoint',async({page})=>{
   let release!:()=>void;
   const gate=new Promise<void>(resolve=>{release=resolve;});
-  await page.route('**/c-v1/shutters.webp',async route=>{await gate;await route.continue();});
+  await page.route('**/c-v1/shutter-hidden-plain.webp',async route=>{await gate;await route.continue();});
   await page.goto('/quote/anatomy-preview/attachments/',{waitUntil:'domcontentloaded'});
   await expect(page.locator('[data-shutter-reference]')).toBeVisible();
   release();
-  await expect.poll(()=>page.locator('[data-original-shutter-art]').evaluate((el:HTMLImageElement)=>el.complete&&el.naturalWidth>0)).toBe(true);
+  await expect(page.locator('[data-shutter-panel]')).toHaveAttribute('href', /shutter-hidden-plain.webp/);
   await assertAttachments(page);
   await page.locator('[data-shutter-target="louver-right"]').evaluate(el=>el.remove());
   await page.setViewportSize({width:900,height:1000});
   await expect.poll(()=>page.locator('[data-contract-anatomy]').getAttribute('data-attachment-errors')).toBe('1');
   await expect(page.locator('[data-leader-target="louver-right"]')).toHaveCount(0);
+});
+
+
+test('Laundry shows one left panel with its tilt bar in the primary drawing', async ({page}) => {
+  await page.goto('/quote/anatomy-preview/attachments/');
+  await page.getByLabel('Attachment example').selectOption('5');
+  await expect(page.locator('[data-shutter-assembly]')).toHaveCount(1);
+  await expect(page.locator('[data-shutter-panel="L"]')).toHaveCount(1);
+  await expect(page.locator('[data-shutter-panel]')).toHaveAttribute('href', /shutter-center-plain.webp/);
+  await expect(page.getByText('Front tilt detail', {exact:true})).toHaveCount(0);
+  for (const width of [1440,1024,768,390,320]) {
+    await page.setViewportSize({width,height:1100});
+    await assertAttachments(page);
+    await page.screenshot({path:`artifacts/anatomy-attachments/laundry-${width}.png`,fullPage:true});
+  }
+  await page.setViewportSize({width:1440,height:1100});
+  await page.emulateMedia({media:'print'});
+  await assertAttachments(page);
+  await page.screenshot({path:'artifacts/anatomy-attachments/laundry-print.png',fullPage:true});
 });

@@ -15,9 +15,9 @@ export function shutterIllustration(fields: readonly string[][]) {
   const panels = [...counts][0];
   if (panels < 1 || panels > 8) return null;
   const tilts = new Set(values("tilt", "tilt type").map((value) => {
-    if (/hidden|invisible/.test(value)) return "hidden";
+    if (/hidden|invisible|in stile/.test(value)) return "hidden";
     if (/offset/.test(value)) return "unknown";
-    if (/^standard$|standard tilt|front center|center tilt|tilt bar/.test(value)) return "center";
+    if (/^(?:c )?(?:standard(?: tilt)?|front center(?: tiltrod)?|front tilt rod|center tilt(?: rod)?|tilt bar|tilt rod)$/.test(value)) return "center";
     return "unknown";
   }));
   if (tilts.size !== 1 || tilts.has("unknown")) return null;

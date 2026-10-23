@@ -13,13 +13,14 @@ import type { SelectionContext } from '@/lib/quote-v2/core';
 const markup=(options:string[])=>renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',options}));
 const optionsFor=(code:string,label:string)=>[...(frenchDoorSketch(code)?['Shutter type: French Door',`French-door cutout type: ${label}`,'Handle side: Left','Top shape: Rectangular','Panel configuration: L']:[`Specialty shape: ${label}`,'Panel configuration: LR']),'Tilt: Standard Tilt'];
 describe('805 specialty shutter contract sketches',()=>{
- it.each(['L','R','LL','RR','LR','LLRR','LRTLR'])('uses original rectangular art and preserves saved %s hardware in arched sketches',layout=>{
+ it.each(['L','R','LL','RR','LR','LLRR','LRTLR'])('uses selected rectangular panels and preserves saved %s hardware in arched sketches',layout=>{
   const options=customerQuoteOptions(v2CustomerConfigurationOptions({manufacturerId:'onyx',selections:{panel_config:layout,tilt_type:'standard',split_tilt:'No',divider_rail:'No'}}));
   const positions=[...new Set([...layout.replace(/T/g,'')].map((token,index)=>index+(token==='R'?1:0)))];
   for(const shape of [[],['Specialty shape: Louvered Arch']]){
    const html=renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',size:'anatomy',options:[...options,...shape]}));
    if (!shape.length) {
-    expect(html).toContain('/c-v1/shutters.webp');
+    expect(html).toContain('/c-v1/shutter-center-plain.webp');
+    expect(html).toContain(`data-shutter-layout="${layout}"`);
     expect(html).not.toContain('data-panel-fold-hinge=');
     continue;
    }
@@ -30,10 +31,10 @@ describe('805 specialty shutter contract sketches',()=>{
    expect(html.includes('data-specialty-post="true"')).toBe(layout.includes('T'));
   }
  });
- it('does not overlay synthetic fold hardware on the original reference',()=>{
+ it('preserves the saved rectangular hinge direction',()=>{
   const render=(layout:string)=>renderToStaticMarkup(createElement(ContractProductIllustration,{productType:'Shutters',size:'anatomy',options:[`Panel configuration: ${layout}`,'Tilt: standard','Split tilt: No','Divider rail: No']}));
   for (const layout of ['LL','RR']) {
-   expect(render(layout)).toContain('/c-v1/shutters.webp');
+   expect(render(layout)).toContain(`data-shutter-layout="${layout}"`);
    expect(render(layout)).not.toContain('data-panel-fold-hinge=');
   }
   expect(render('')).not.toContain('data-panel-fold-hinge=');

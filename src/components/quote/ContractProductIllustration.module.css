@@ -39,7 +39,7 @@
 
 /* Read-only anatomy preview uses the same selected artwork at a larger size. */
 .figure.anatomy{width:100%;max-width:100%}
-.anatomy .product,.anatomy .shutterAssembly{width:100%;height:auto;aspect-ratio:1;object-fit:contain}
+.anatomy .product{width:100%;height:auto;aspect-ratio:1;object-fit:contain}
 .anatomy .reference,.anatomy .rollerLabel{display:none}
 .anatomy .remote{width:72px;height:72px;position:absolute;right:-4%;bottom:-18px;mix-blend-mode:multiply}
 .anatomy .operation,.anatomy .valance{font-size:11px}
@@ -54,12 +54,4 @@
 .installedHead{position:absolute;top:6%;left:11%;width:78%;height:16%;pointer-events:none}
 .blindValance{position:absolute;top:7.5%;left:14.8%;width:72.2%;height:16.5%;object-fit:fill;transform:skewY(4deg) scaleX(-1);transform-origin:50% 0}
 
-/* Asset-specific anchors scale with the actual image, including its white margin. */
-.shutterReference{position:relative;width:100%;aspect-ratio:1}
-.shutterReference>.product{width:100%;height:auto;aspect-ratio:1}
-.attachmentRegion{position:absolute;pointer-events:none}
-.shutterDetails{display:flex;justify-content:center;gap:20px;margin-top:10px}
-.shutterDetails figure{margin:0;text-align:center;font:10px/1.3 Arial,sans-serif;color:#666c60}
-.shutterDetailArt{position:relative;width:38px;margin:auto}
-.shutterDetailArt img{display:block;width:100%;height:auto}
-.shutterDetails figcaption{margin-top:4px}
+.anatomy .shutterAssembly{width:100%;height:auto;max-height:560px;object-fit:contain}
