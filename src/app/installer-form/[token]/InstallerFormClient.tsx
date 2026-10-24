@@ -125,6 +125,7 @@ export function InstallerFormClient({ form }: { form: InstallerFormPublic }) {
                 <div>
                   <strong>{index + 1}. {line.room}</strong>
                   <div>{line.productName}{line.styleName ? ` — ${line.styleName}` : ""}</div>
+                  <div><strong>Manufacturer:</strong> {line.manufacturerName || "Not specified"}</div>
                   <div style={muted}>Quantity: {line.quantity}</div>
                 </div>
                 <button type="button" style={issueButton} onClick={() => open ? setIssues((all) => all.filter((item) => item.lineId !== line.id)) : update(line.id, {})}>

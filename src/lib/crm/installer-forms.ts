@@ -5,6 +5,10 @@ import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/li
 import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
 import { brandIdentity } from "@/lib/brand-identity";
+import { getProduct } from "@/lib/quote/catalog";
+import type { CrmQuoteDesign, CrmQuoteLineItem } from "@/lib/crm/types";
+import { QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL } from "@/lib/crm/sales-quote-v2-customer-configuration";
+import { manufacturerStampFromLabel, resolveManufacturerStamp } from "@mts/components/crm/quote-builder/manufacturerStamp";
 import {
   INSTALLATION_HANDOFF_RECIPIENT,
   buildNoMeasureInstallationHandoff,
@@ -34,6 +38,8 @@ type InstallerLineSnapshot = {
   id: string;
   room: string;
   productName: string;
+  /** Optional for packets saved before manufacturer details were included. */
+  manufacturerName?: string | null;
   styleName: string;
   options: string[];
   quantity: number;
@@ -112,16 +118,59 @@ function installerUrl(token: string) {
   return `${base}/installer-form/${encodeURIComponent(token)}`;
 }
 
-function snapshotLines(quote: PublicQuote): InstallerLineSnapshot[] {
-  return quote.lines.map((line) => ({
-    id: line.lineItemId,
-    room: line.room,
-    productName: line.productName,
-    styleName: line.styleName,
-    options: line.options,
-    quantity: line.quantity,
-    lineTotal: money(line.lineTotal),
-  }));
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function installerManufacturer(design: CrmQuoteDesign): string | null {
+  const details = record(design.details);
+  const configuration = record(details[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL]);
+  const configured = manufacturerStampFromLabel(configuration.manufacturerId);
+  if (configured) return configured.label;
+
+  const breakdown = record(design.price_breakdown);
+  if (breakdown.source === "mts_805_bookkeeping") {
+    // Legacy product_id is a generic category mapping (often Norman), so it
+    // cannot identify the manufacturer. Use the persisted original selection.
+    const savedDetails = Array.isArray(breakdown.details) ? breakdown.details.map(record) : [];
+    const supplier = savedDetails.find((detail) => /^(supplier|manufacturer|manufacturer selection)$/i.test(String(detail.label).trim()));
+    const stamp = resolveManufacturerStamp({
+      options_json: record(breakdown.optionsJson),
+      supplier: typeof supplier?.value === "string" ? supplier.value : null,
+    });
+    return stamp?.label ?? null;
+  }
+  return manufacturerStampFromLabel(getProduct(design.product_id)?.manufacturer)?.label ?? null;
+}
+
+export function buildInstallerLineSnapshots(
+  quote: Pick<PublicQuote, "lines">,
+  sourceLines: CrmQuoteLineItem[],
+): InstallerLineSnapshot[] {
+  const sourceById = new Map(sourceLines.map((line) => [line.id, line]));
+  return quote.lines.map((line) => {
+    const source = sourceById.get(line.lineItemId);
+    // The public projection already identifies the billed design(s), including
+    // legacy combined rows. Never pick an unsold alternative or another room.
+    const designs = line.designOptions.flatMap((option) => {
+      const design = source?.designs.find((candidate) => candidate.id === option.id);
+      return design ? [{ label: option.label, manufacturer: installerManufacturer(design) }] : [];
+    });
+    const manufacturers = [...new Set(designs.map((design) => design.manufacturer))];
+    const manufacturerName = manufacturers.length === 1 ? manufacturers[0] : designs.length
+      ? designs.map((design) => `${design.label}: ${design.manufacturer || "Not specified"}`).join("; ")
+      : null;
+    return {
+      id: line.lineItemId,
+      room: line.room,
+      productName: line.productName,
+      manufacturerName,
+      styleName: line.styleName,
+      options: line.options,
+      quantity: line.quantity,
+      lineTotal: money(line.lineTotal),
+    };
+  });
 }
 
 export async function createAndSendInstallerForm(
@@ -159,6 +208,11 @@ export async function ensureInstallerForm(
   if (quoteError) {
     throw new CrmAuthError(502, `The installer form source job could not be loaded: ${quoteError.message}`);
   }
+  const { data: sourceLines, error: sourceError } = await supabase
+    .from("crm_quote_line_items")
+    .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
+    .eq("quote_id", quoteId);
+  if (sourceError) throw new CrmAuthError(502, "The installer product manufacturers could not be loaded.");
   const row = {
     quote_id: quoteId,
     job_id: (quoteRow as { job_id?: string | null } | null)?.job_id || null,
@@ -171,7 +225,7 @@ export async function ensureInstallerForm(
       email: quote.customerEmail,
       quoteNumber: quote.quoteNumber,
     },
-    line_snapshot: snapshotLines(quote),
+    line_snapshot: buildInstallerLineSnapshots(quote, (sourceLines || []) as CrmQuoteLineItem[]),
     cod_original: money(quote.balanceDue),
     cod_adjusted: money(quote.balanceDue),
     cod_withheld: 0,
@@ -562,8 +616,12 @@ export function buildInstallerFormEmail(form: InstallerFormRow, url: string) {
   const remainingBalance = formatInstallerMoney(balance.remaining_customer_balance);
   const contract = form.customer_snapshot.quoteNumber ? `Contract ${form.customer_snapshot.quoteNumber}` : "Sold job";
   const subject = `805 Shutters Installation Form — ${form.customer_snapshot.name}`;
-  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\nRemaining customer balance: ${remainingBalance}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached with the remaining customer balance clearly labeled.`;
-  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p><strong>Remaining customer balance: ${html(remainingBalance)}</strong></p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without line-item pricing and clearly labels the remaining customer balance.</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
+  const productDetails = form.line_snapshot.map((line, index) =>
+    `${index + 1}. ${line.room} — ${line.productName} — Manufacturer: ${line.manufacturerName || "Not specified"} — Quantity: ${line.quantity}`,
+  );
+  const productHtml = `<ul>${productDetails.map((line) => `<li>${html(line)}</li>`).join("")}</ul>`;
+  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\nRemaining customer balance: ${remainingBalance}\n${form.line_snapshot.length} installation line item(s)\n${productDetails.join("\n")}\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached with the remaining customer balance clearly labeled.`;
+  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p><strong>Remaining customer balance: ${html(remainingBalance)}</strong></p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without line-item pricing and clearly labels the remaining customer balance.</p>${productHtml}<p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
   return { subject, text, html: body };
 }
 
@@ -602,6 +660,7 @@ export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
   y -= 8;
   form.line_snapshot.forEach((line, index) => {
     write(`${index + 1}. ${line.room} — ${line.productName}${line.styleName ? ` — ${line.styleName}` : ""}`, 10, true);
+    write(`Manufacturer: ${line.manufacturerName || "Not specified"}`, 9, true, 54);
     write(`Quantity: ${line.quantity}`, 9, false, 54);
     line.options.forEach((option) => write(option, 8, false, 54));
     write("[ ] Issue   [ ] Not installed   Notes: __________________________________________", 8, false, 54);
