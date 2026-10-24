@@ -55,6 +55,9 @@ export function ringbackWav() {
 export function ringbackTwiml(origin) {
   return twiml(`<Play loop="0">${xml(origin + "/twilio/ringback.wav")}</Play>`);
 }
+export function silentWaitTwiml() {
+  return twiml('<Pause length="40"/>');
+}
 export function mediaStreamTwiml(origin, callId) {
   const base = String(origin || "").replace(/\/$/, "");
   const url = `${base.replace(/^https:/, "wss:")}/twilio/media/${callId}`;

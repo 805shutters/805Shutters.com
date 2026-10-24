@@ -58,7 +58,7 @@ export function staffDialParams(config, call, offer) {
 export function conferenceXml(config, call, room) {
   const wait =
     room === "main"
-      ? ` waitUrl="${xml(config.origin + "/twilio/ringback")}" waitMethod="POST"`
+      ? ` waitUrl="${xml(config.origin + "/twilio/wait")}" waitMethod="POST"`
       : "";
   return twiml(
     `<Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false"${wait} statusCallback="${xml(config.origin + "/twilio/conference/" + call.id + "/" + room)}" statusCallbackEvent="join leave end">${xml(roomName(call, room))}</Conference></Dial>`,

@@ -13,7 +13,7 @@ export class SupabaseWorker {
   constructor(state, provider) { this.state = state; this.provider = provider; }
   async handle(kind, item) {
     const p = this.provider;
-    const read = () => this.state.transact((_e,s) => s.get('call', item.callId));
+    const read = () => typeof this.state.readCall === 'function' ? this.state.readCall(item.callId) : this.state.transact((_e,s) => s.get('call', item.callId));
     const change = fn => this.state.transact(fn);
     try {
       const c = await read();
@@ -25,7 +25,11 @@ export class SupabaseWorker {
       }
       if (c && (c.phase !== 'ended' || ['hangup','disconnect-ai'].includes(item.type))) {
         const d = item.data;
-        if (kind === 'effect' && c.greetingPlayed === false && c.phase !== 'ended' && interruptsGreeting(item, c)) {
+        // A staff answer owns the call and must interrupt the welcome now.
+        // A listening welcome is already on the media stream, so its fallback,
+        // collect, and failure redirects must not wait for greetingPlayed.
+        // Only an older blocking greeting still defers those caller moves.
+        if (kind === 'effect' && !c.listeningWelcome && c.greetingPlayed === false && !c.owner && c.phase !== 'ended' && interruptsGreeting(item, c)) {
           const delay = Number(this.state.config.greetingRedirectDelayMs);
           const wait = Number.isFinite(delay) ? delay : 400;
           await change((_e, s) => {

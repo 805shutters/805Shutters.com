@@ -1,4 +1,5 @@
 import { brandIdentity } from "./brand-identity";
+import { SMS_OPT_IN_NO_SHARING_STATEMENT, STAFF_BOOKING_SMS_PATH, staffBookingSmsNotice } from "./sms/staff-booking-notice";
 
 export type Service = {
   title: string;
@@ -1400,6 +1401,12 @@ const supportPages: SitePage[] = [
         heading: "Sharing",
         body:
           "We do not sell customer lead information. We may share information with service providers that help operate the website, lead database, advertising, analytics, hosting, email, scheduling, and customer follow-up."
+      },
+      {
+        heading: "Staff booking text messages",
+        body:
+          `${SMS_OPT_IN_NO_SHARING_STATEMENT}. ${staffBookingSmsNotice.legalName} may text designated staff when a consultation is confirmed. ${staffBookingSmsNotice.frequency} ${staffBookingSmsNotice.rates} Reply STOP to unsubscribe. Reply HELP or contact ${staffBookingSmsNotice.email} or ${staffBookingSmsNotice.phoneDisplay}. ${staffBookingSmsNotice.carrierNotice} ${staffBookingSmsNotice.enrollment}`,
+        links: [{ label: "Terms & Conditions", href: STAFF_BOOKING_SMS_PATH }]
       },
       {
         heading: "Your Choices",

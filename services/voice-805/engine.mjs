@@ -1,7 +1,37 @@
 import { randomUUID } from "node:crypto";
-import { e164, isOpen, staffIds } from "./config.mjs";
+import { e164, incomingRingStaff, isOpen, staffIds } from "./config.mjs";
 
 export const MESSAGE_WINDOW_MS = 300000;
+
+// Scheduling intake can run during the listening welcome, while staff are still ringing.
+// A human owner or any later phase stops it. Booking still requires the played spoken yes.
+export function intakeActive(call) {
+  return Boolean(
+    call &&
+      !call.owner &&
+      (call.phase === "message" ||
+        (call.phase === "offering" && call.listeningWelcome === true)),
+  );
+}
+
+// The published scheduling route accepts phase "message" only.
+// A choice during the welcome moves there without dropping the ringing offer.
+export function retainRingingIntake(call) {
+  if (!call || call.owner || call.phase !== "offering" || call.listeningWelcome !== true) return false;
+  call.phase = "message";
+  call.ringingIntake = true;
+  call.deadline = Date.now() + MESSAGE_WINDOW_MS;
+  return true;
+}
+
+export function initialRingOpen(call) {
+  return Boolean(
+    call &&
+      !call.owner &&
+      (call.phase === "offering" ||
+        (call.phase === "message" && call.ringingIntake === true)),
+  );
+}
 
 export class Conflict extends Error {}
 function requireCommandId(value) {
@@ -248,12 +278,15 @@ export class Engine {
   greeted(id, eventId) {
     return this.change(id, eventId, (c) => {
       if (c.phase !== "greeting") return;
-      // Both people ring while the greeting plays. The parent leg stays on that
-      // audio until Twilio finishes it; do not move the caller into the conference yet.
+      // Staff ring while the listening welcome plays. greetingPlayed stays false
+      // until that audio finishes; a human answer still pulls the caller immediately.
       c.phase = "offering";
       c.greetingPlayed = false;
+      // The caller is already on the listening welcome, so a later no-answer
+      // must not redirect them onto a second stream.
+      c.listeningWelcome = true;
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
-      for (const staff of staffIds) this.offer(c, staff);
+      this.offerIncoming(c);
     });
   }
   markGreetingPlayed(id, eventId) {
@@ -298,8 +331,17 @@ export class Engine {
       if (!c.open) { c.phase = "message"; c.deadline = Date.now() + MESSAGE_WINDOW_MS; this.effect(c, "collect"); return; }
       c.phase = "offering";
       c.deadline = Date.now() + this.config.offerSeconds * 1000;
-      for (const staff of staffIds) this.offer(c, staff);
+      this.offerIncoming(c);
     });
+  }
+  // Initial inbound offers only. Consult, callback, and SMS keep every staff contact.
+  offerIncoming(c) {
+    const ringing = incomingRingStaff(this.config);
+    if (!ringing.length) {
+      this.startFollowup(c, Date.now());
+      return;
+    }
+    for (const staff of ringing) this.offer(c, staff);
   }
   bind(id, offerId, sid) {
     return this.change(id, `bind:${offerId}:${sid}`, (c) => {
@@ -311,7 +353,7 @@ export class Engine {
       // If the caller has already left the offer, hang that late leg up.
       if (!offer.sid && offer.status === "no-answer") {
         offer.sid = sid;
-        if (c.phase === "offering" && !c.owner) {
+        if (initialRingOpen(c)) {
           offer.status = "ringing";
           delete offer.error;
           return;
@@ -369,7 +411,7 @@ export class Engine {
         now < o.expiresAt &&
         o.status === "ringing" &&
         (o.purpose === "initial"
-          ? c.phase === "offering" && !c.owner
+          ? initialRingOpen(c)
           : o.purpose === "callback"
             ? c.phase === "callback-offering"
             : c.phase === "consult-ringing");
@@ -393,6 +435,10 @@ export class Engine {
             if (other.sid) this.effect(c, "hangup", { sid: other.sid });
           }
         this.effect(c, "route", { sid, room: "main" });
+        // Pull the caller as soon as a person answers. Do not wait for the
+        // welcome audio to finish or for this staff leg to join.
+        c.callerPulled = true;
+        this.effect(c, "disconnect-ai");
       } else if (o.purpose === "callback") {
         c.owner = o.staff;
         c.ownerSid = sid;
@@ -416,9 +462,13 @@ export class Engine {
           c.deadline = Date.now() + 60000;
           this.effect(c, "dial-customer");
         }
-        if (sid === c.sid && c.phase === "offering") c.callerJoined = true;
+        if (sid === c.sid && ["offering", "handoff"].includes(c.phase)) c.callerJoined = true;
         if (sid === c.ownerSid && c.phase === "handoff") {
-          this.effect(c, "disconnect-ai");
+          c.ownerJoined = true;
+          if (!c.callerPulled) {
+            c.callerPulled = true;
+            this.effect(c, "disconnect-ai");
+          }
           if (c.callerJoined) {
             c.ai = false;
             c.answeredAt = Date.now();
@@ -426,8 +476,7 @@ export class Engine {
             c.deadline = null;
           }
         }
-        if (sid === c.sid && c.phase === "handoff" && !c.ai) {
-          c.callerJoined = true;
+        if (sid === c.sid && c.phase === "handoff" && c.ownerJoined && !c.ai) {
           c.answeredAt = Date.now();
           c.phase = "human";
           c.deadline = null;
@@ -600,7 +649,7 @@ export class Engine {
   }
   updateDraft(id, data) {
     const call = this.store.get("call", id);
-    if (!call || call.phase !== "message")
+    if (!intakeActive(call))
       throw new Conflict("Message collection is not active");
     return this.store.put("draft", {
       id,
@@ -670,9 +719,9 @@ export class Engine {
         o.status = "expired";
         if (o.sid) this.effect(c, "hangup", { sid: o.sid });
       }
-    // Undefined means an older call whose greeting already finished. False means
-    // the caller is still hearing it, so the greeting redirect connects the agent.
-    if (c.greetingPlayed !== false) this.effect(c, "connect-agent");
+    // A listening welcome is already the caller's audio. Redirecting it would
+    // restart the greeting. An older call still uses the greeting redirect.
+    if (!c.listeningWelcome && !c.mediaStreamSid && c.greetingPlayed !== false) this.effect(c, "connect-agent");
   }
   followIfUnanswered(c, now) {
     if (c.phase !== "offering" || c.owner) return;
@@ -715,7 +764,7 @@ export class Engine {
   saveMessage(id, data, toolId) {
     return this.store.tx(() => {
       const call = this.store.get("call", id);
-      if (!call || call.phase !== "message")
+      if (!intakeActive(call))
         throw new Conflict("Message collection is not active");
       const existing = this.store.list("message").find((m) => m.callId === id);
       if (existing) return existing;

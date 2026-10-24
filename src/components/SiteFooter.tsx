@@ -147,6 +147,7 @@ export function SiteFooter() {
         <Link href="/reviews/">Reviews</Link>
         <Link href="/faq/">FAQ</Link>
         <Link href="/privacy-policy/">Privacy Policy</Link>
+        <Link href="/staff-booking-sms/">{"Terms & Conditions"}</Link>
         <TrackedPhoneLink location="footer">{site.phone}</TrackedPhoneLink>
       </div>
       <MobileActionBar />

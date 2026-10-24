@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { reportFailure } from './security.mjs';
+import { COMMON_GREETING } from './caller-context.mjs';
 import { RECEPTIONIST_OPENING, RECEPTIONIST_PROMPT, RECEPTIONIST_TOOLS, schedulingRequest, messageIntent, spokenDecision } from './receptionist.mjs';
 import { VOICE_ID } from './prompts.mjs';
-import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload } from './schedule-intake.mjs';
+import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, callerPhone, findPayload, initialSchedule, preparePayload, speakWhen } from './schedule-intake.mjs';
+import { intakeActive, retainRingingIntake } from './engine.mjs';
 
 const validAudio = value => typeof value === 'string' && value.length > 0 && value.length <= 256000 && /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 const CONFIRM_MS = 60000;
@@ -13,6 +15,19 @@ const SILENCE_MS = 12000;
 export const HOST_WALL_MS = 400000;
 export const FALLBACK_RESERVE_MS = 30000;
 export const MEDIA_SESSION_MS = 270000;
+// A scripted line that never reaches playback must not wait for the whole media session.
+export const FORCE_DEADLINE_MS = 10000;
+// A state commit that has already been sent must not pin the media queue.
+export const STATE_BOUND_MS = 8000;
+// Queued G.711 is 8000 bytes per second. The Twilio mark may trail the whole buffer.
+export const PLAYBACK_MARGIN_MS = 5000;
+export function pcmByteLength(payload) {
+  const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+  return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
+}
+export function playbackWaitMs(pcmBytes) {
+  return Math.ceil(pcmBytes / 8) + PLAYBACK_MARGIN_MS;
+}
 // https://docs.x.ai/developers/model-capabilities/audio/speech-to-speech
 // Final captions are emitted only when this nested model is set. `grok` at the top level is not the documented field.
 export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', language_hint: 'en' });
@@ -42,11 +57,17 @@ export class GrokMediaSession {
     this.settled = new Map();
     this.cancelSent = false;
     this.vadTurn = false;
+    this.callerChose = false;
+    this.forceRetries = 0;
+    this.promptTimer = null;
+    this.playbackToken = 0;
+    this.pcmBytes = 0;
+    this.trace = [];
     this.promptTranscripts = new Map();
     this.chain = Promise.resolve();
     this.done = new Promise(resolve => { this.resolveDone = resolve; });
-    this.startTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice connection timed out')), 10000);
-    this.limitTimer = clock.setTimeout(() => this.enqueue(() => this.fail('Voice session duration reached')), MEDIA_SESSION_MS);
+    this.startTimer = clock.setTimeout(() => this.recoverNow('Voice connection timed out'), 10000);
+    this.limitTimer = clock.setTimeout(() => this.recoverNow('Voice session duration reached'), MEDIA_SESSION_MS);
     socket.onmessage = event => {
       let data;
       try { data = JSON.parse(event.data); } catch { return this.enqueue(() => this.fail('Invalid carrier event')); }
@@ -67,19 +88,76 @@ export class GrokMediaSession {
       ...extra,
     };
   }
-  async current() { return this.state.transact((_e, s) => s.get('call', this.call.id)); }
+  async current() {
+    if (typeof this.state.readCall !== 'function') {
+      const call = await this.commitBounded((_e, s) => s.get('call', this.call.id));
+      if (this.closed) return null;
+      if (!call) this.finish();
+      return call || null;
+    }
+    const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
+    if (this.closed) return null;
+    // Close before returning. Waiting here would leave the caller silent until the media limit.
+    // Persistence is not awaited: finish() has already run, and a handoff is not rewritten.
+    if (!loaded || loaded.timeout || loaded.error) {
+      this.recoverNow('Call read failed');
+      return null;
+    }
+    // A row that is already gone must close. The call captured at construction can be stale.
+    if (!loaded.value) {
+      this.finish();
+      return null;
+    }
+    return loaded.value;
+  }
+  async startupCall() {
+    if (typeof this.state.readCall !== 'function') return this.commitBounded((_e, s) => s.get('call', this.call.id));
+    const loaded = await this.boundRead(() => this.state.readCall(this.call.id));
+    if (this.closed) return null;
+    if (loaded?.value) return loaded.value;
+    // Only a timeout may use the call that was eligible when the socket attached.
+    if (loaded?.timeout) return this.call;
+    // A rejected read is not a timeout. session.updated has already cleared the start timer.
+    if (loaded?.error) {
+      this.recoverNow('Startup call read failed');
+      return null;
+    }
+    if (loaded) this.finish();
+    return null;
+  }
+  async boundRead(task) {
+    if (this.closed) return null;
+    let timer;
+    const op = Promise.resolve().then(task).then(value => ({ value }), error => ({ error }));
+    const timeout = new Promise(resolve => { timer = this.clock.setTimeout(() => resolve({ timeout: true }), STATE_BOUND_MS); });
+    const result = await Promise.race([op, timeout]);
+    this.clock.clearTimeout(timer);
+    if (this.closed) return null;
+    return result;
+  }
   async carrier(event) {
     if (event.event === 'connected') return;
     if (event.event === 'start') {
       const s = event.start;
       if (this.streamSid || s?.accountSid !== this.config.accountSid || s?.callSid !== this.call.sid || !/^MZ[0-9a-f]{32}$/i.test(s?.streamSid || '') || s?.mediaFormat?.encoding !== 'audio/x-mulaw' || s.mediaFormat.sampleRate !== 8000 || s.mediaFormat.channels !== 1) return this.finish();
-      const claimed = await this.state.transact((_e, store) => {
+      const claimed = await this.commitBounded((_e, store) => {
         const c = store.get('call', this.call.id);
-        if (!c || c.phase !== 'message' || c.mediaStreamSid || c.mediaFailed) return false;
+        if (!c || !['message', 'offering'].includes(c.phase) || c.mediaStreamSid || c.mediaFailed) return false;
         store.put('call', { ...c, mediaStreamSid: s.streamSid });
         return true;
-      });
-      if (!claimed) return this.finish();
+      }, false);
+      if (this.closed) return this.finish();
+      let accepted = claimed === true;
+      // The CAS response can outlive the bound after Postgres has stored the stream id.
+      // The start timer can close the session while that confirmation is still waiting.
+      if (!accepted && claimed?.timeout && typeof this.state.readCall === 'function') {
+        const fresh = await this.boundRead(() => this.state.readCall(this.call.id));
+        if (this.closed) return;
+        accepted = fresh?.value?.mediaStreamSid === s.streamSid;
+      }
+      if (this.closed) return;
+      if (!accepted) return claimed?.timeout ? this.recoverNow('Voice stream was not claimed') : this.finish();
+      if (this.closed) return;
       this.streamSid = s.streamSid;
       this.ai = this.connect();
       this.ai.onopen = () => this.enqueue(async () => this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: null }, tools: [] }) }));
@@ -90,11 +168,14 @@ export class GrokMediaSession {
     }
     if (!this.streamSid || event.streamSid !== this.streamSid) return;
     if (event.event === 'stop') {
-      await this.state.transact((e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') e.ended(c.id, c.sid, `media-stop:${this.streamSid}`); });
-      await this.worker.drain();
+      await this.commitBounded((e, s) => {
+        const c = s.get('call', this.call.id);
+        if (c?.phase === 'message' || (c?.phase === 'offering' && !c.owner)) e.ended(c.id, c.sid, `media-stop:${this.streamSid}`);
+      });
+      if (!this.closed) await this.worker?.drain?.();
       return this.finish();
     }
-    if (event.event === 'media' && ['assist', 'collect', 'confirm'].includes(this.stage) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
+    if (event.event === 'media' && (this.listening || ['assist', 'collect', 'confirm', 'welcome', 'welcome-playback'].includes(this.stage)) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
     if (event.event === 'mark') {
       const next = this.marks.get(event.mark?.name);
       if (!next) return;
@@ -102,15 +183,25 @@ export class GrokMediaSession {
       await next();
     }
   }
-  force(text, stage) {
+  force(text, stage, options = {}) {
+    if (this.closed) return;
+    this.listening = Boolean(options.listen);
+    this.interruptible = Boolean(options.interruptible);
     this.stage = stage;
     this.audioBytes = 0;
+    this.pcmBytes = 0;
+    if (this.prompt?.responseId) this.stray.add(this.prompt.responseId);
+    for (const id of this.pending) this.stray.add(id);
+    if (this.openResponseId) this.stray.add(this.openResponseId);
     this.prompt = { text, responseId: null };
     this.pending = [];
     this.buffers = new Map();
     this.settled = new Map();
     this.cancelSent = false;
+    this.forceRetries = 0;
     this.clearSilence();
+    this.releasePlayback();
+    this.marks.clear();
     // A response already created for this caller turn is the automatic server_vad turn. Cancel that id.
     // If speech has ended and no id has arrived yet, cancel whatever is in progress, then speak the scripted line.
     if (this.openResponseId && !this.responses.has(this.openResponseId)) {
@@ -121,10 +212,136 @@ export class GrokMediaSession {
       this.cancel();
     }
     this.vadTurn = false;
-    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: { type: null }, tools: [] }) });
-    this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: false, content: [{ type: 'output_text', text }] } });
+    this.sendAI({ type: 'session.update', session: this.voiceSession({ turn_detection: this.listening ? { type: 'server_vad' } : { type: null }, tools: [] }) });
+    this.speakLine();
   }
-  mark(next) { const name = randomUUID(); this.marks.set(name, next); this.sendCarrier({ event: 'mark', mark: { name } }); }
+  speakLine() {
+    if (this.closed || !this.prompt?.text) return;
+    this.note('force');
+    this.logCheckpoint('speaking');
+    this.armPromptDeadline();
+    this.sendAI({ type: 'conversation.item.create', item: { type: 'force_message', role: 'assistant', interruptible: this.interruptible === true, content: [{ type: 'output_text', text: this.prompt.text }] } });
+  }
+  armPromptDeadline() {
+    this.clearPromptTimer();
+    this.promptTimer = this.clock.setTimeout(() => this.promptExpired(), FORCE_DEADLINE_MS);
+  }
+  clearPromptTimer() {
+    if (this.promptTimer) { this.clock.clearTimeout(this.promptTimer); this.promptTimer = null; }
+  }
+  releasePlayback() {
+    this.playbackToken += 1;
+    this.clearPromptTimer();
+  }
+  armPlaybackDeadline() {
+    this.clearPromptTimer();
+    const token = ++this.playbackToken;
+    const wait = playbackWaitMs(this.pcmBytes);
+    this.note('playback', { wait });
+    this.promptTimer = this.clock.setTimeout(() => this.playbackExpired(token), wait);
+  }
+  playbackExpired(token) {
+    if (this.closed || token !== this.playbackToken || !String(this.stage).endsWith('-playback')) return;
+    this.note('playback-timeout');
+    return this.recoverNow('Playback mark did not arrive');
+  }
+  promptExpired() {
+    if (this.closed || !this.prompt || String(this.stage).endsWith('-playback')) return;
+    this.note('timeout');
+    return this.recoverNow('Scripted line did not complete');
+  }
+  note(event, extra = {}) {
+    this.trace.push({ stage: this.stage, event, pending: this.pending.length, cancel: this.cancelSent, audio: this.audioBytes > 0, retries: this.forceRetries, ...extra });
+    if (this.trace.length > 12) this.trace.shift();
+  }
+  logLifecycle(message) {
+    console.error(JSON.stringify({ event: 'voice-805-lifecycle', call: this.call.id, message, stage: this.stage, pending: this.pending.length, cancel: this.cancelSent, audio: this.audioBytes > 0, retries: this.forceRetries, trace: this.trace }));
+  }
+  logCheckpoint(step, awaiting) {
+    const body = { event: 'voice-805-checkpoint', call: this.call.id, step, stage: this.stage };
+    if (typeof awaiting === 'string' && awaiting) body.awaiting = awaiting;
+    console.error(JSON.stringify(body));
+  }
+  // Deadlines run here, not on the serial queue. A state save can stay unresolved
+  // after it has committed, and that wait must not block fallback.
+  recoverNow(reason) {
+    if (this.closed) return Promise.resolve();
+    this.note('recover');
+    this.logCheckpoint('recover');
+    this.logLifecycle(reason);
+    const persist = this.persistFailure(reason).then(() => this.worker?.drain?.()).catch(() => {});
+    this.finish();
+    return persist;
+  }
+  persistFailure(reason) {
+    if (!this.streamSid) return Promise.resolve();
+    return this.state.transact((e, s) => {
+      const c = s.get('call', this.call.id);
+      if (!c || c.phase === 'ended') return;
+      if (c.phase === 'message' || c.phase === 'offering') {
+        e.failed(c.id, reason, `media-recover:${this.streamSid}`);
+        const next = s.get('call', this.call.id);
+        if (next) s.put('call', { ...next, mediaFailed: true, intent: next.intent?.confirmedAt ? next.intent : null });
+      }
+    }).catch(() => {});
+  }
+  async commitBounded(fn, fatal = true) {
+    if (this.closed) return null;
+    let timer;
+    const op = Promise.resolve(this.state.transact(fn)).then(value => ({ value }), error => ({ error }));
+    const timeout = new Promise(resolve => { timer = this.clock.setTimeout(() => resolve({ timeout: true }), STATE_BOUND_MS); });
+    const result = await Promise.race([op, timeout]);
+    this.clock.clearTimeout(timer);
+    if (this.closed) return null;
+    if (result.timeout) {
+      if (fatal) this.recoverNow('State save timed out');
+      return fatal ? null : { timeout: true };
+    }
+    if (result.error) throw result.error;
+    return result.value;
+  }
+  noteChoice() {
+    this.callerChose = true;
+    if (this.offerTimer) { this.clock.clearTimeout(this.offerTimer); this.offerTimer = null; }
+  }
+  async liveIntake() {
+    const call = await this.current();
+    if (this.closed || !intakeActive(call)) return null;
+    return call;
+  }
+  // Commit phase "message" before a CRM call. The live scheduling route reads that phase.
+  async commitIntake() {
+    const call = await this.commitBounded((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (!c) return null;
+      if (retainRingingIntake(c)) s.put('call', c);
+      return intakeActive(c) ? c : null;
+    });
+    if (this.closed || !call) return null;
+    return call;
+  }
+  // Two completed responses means the automatic turn and the scripted line both finished.
+  // Neither may play: metadata is null for both, so the audio cannot be assigned safely.
+  retryScript() {
+    if (this.forceRetries >= 1 || !this.prompt?.text) return this.fail('Scripted line was not the only response');
+    this.forceRetries += 1;
+    for (const id of this.pending) this.stray.add(id);
+    this.pending = [];
+    this.buffers = new Map();
+    this.settled = new Map();
+    this.audioBytes = 0;
+    this.pcmBytes = 0;
+    this.cancelSent = false;
+    this.prompt.responseId = null;
+    this.note('retry');
+    this.logLifecycle('Scripted line overlapped an automatic response');
+    this.speakLine();
+  }
+  mark(next) {
+    const name = randomUUID();
+    this.marks.set(name, async () => { this.releasePlayback(); this.note('mark'); this.logCheckpoint('played'); await next(); });
+    this.sendCarrier({ event: 'mark', mark: { name } });
+  }
   assist() { this.assistMessages(); }
   collect() {
     this.stage = 'collect';
@@ -147,6 +364,7 @@ export class GrokMediaSession {
   }
   playDelta(delta) {
     this.audioBytes += delta.length;
+    this.pcmBytes += pcmByteLength(delta);
     this.sendCarrier({ event: 'media', media: { payload: delta } });
   }
   cancel(id) {
@@ -165,18 +383,22 @@ export class GrokMediaSession {
     this.buffers.delete(id);
   }
   advancePrompt() {
-    if (!['opening', 'readback', 'result'].includes(this.stage)) return;
+    if (!['opening', 'readback', 'result', 'welcome'].includes(this.stage)) return;
     if (!this.audioBytes) return this.fail('Required audio missing');
     const stage = this.stage;
     this.stage = stage + '-playback';
+    this.armPlaybackDeadline();
     this.mark(async () => {
+      if (this.closed) return;
+      if (stage === 'welcome') return this.afterWelcome();
       if (stage === 'readback') {
-        const armed = await this.state.transact((_e, s) => {
+        const armed = await this.commitBounded((_e, s) => {
           const c = s.get('call', this.call.id);
-          if (c?.phase !== 'message' || c.intent?.id !== this.intent?.id || c.intent.confirmedAt) return false;
+          if (!intakeActive(c) || c.intent?.id !== this.intent?.id || c.intent.confirmedAt) return false;
           s.put('call', { ...c, intent: { ...c.intent, playedAt: Date.now() } });
           return true;
         });
+        if (this.closed) return;
         if (armed) this.armConfirm(); else this.finish();
       } else if (this.messageOnly) this.assistMessages(); else this.collect();
     });
@@ -207,7 +429,15 @@ export class GrokMediaSession {
     return null;
   }
   async grok(event) {
-    if (event.type === 'session.updated' && this.stage === 'starting') { this.clock.clearTimeout(this.startTimer); this.force(RECEPTIONIST_OPENING, 'opening'); return; }
+    if (event.type === 'session.updated' && this.stage === 'starting') {
+      this.clock.clearTimeout(this.startTimer);
+      const call = await this.startupCall();
+      if (this.closed || !call) return;
+      if (call.owner || !['offering', 'message'].includes(call.phase)) return this.finish();
+      if (call.phase === 'offering') this.force(COMMON_GREETING, 'welcome', { listen: true, interruptible: true });
+      else this.force(RECEPTIONIST_OPENING, 'opening');
+      return;
+    }
     if (event.type === 'error') {
       if (this.ignoreCancelError) {
         this.ignoreCancelError = false;
@@ -220,7 +450,13 @@ export class GrokMediaSession {
       return this.fail('Grok rejected the voice session');
     }
     const turn = this.callerTurn(event);
+    if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback')) this.noteChoice();
     if (turn && this.stage === 'confirm') return this.hear(turn);
+    if (turn && (this.stage === 'welcome' || this.stage === 'welcome-playback')) {
+      this.vadTurn = true;
+      this.sendCarrier({ event: 'clear' });
+      return this.collectTurn(turn);
+    }
     if (turn && this.stage === 'collect') return this.collectTurn(turn);
     if (turn) return;
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
@@ -230,6 +466,7 @@ export class GrokMediaSession {
     if (event.type === 'response.created' && event.response?.id) {
       const id = String(event.response.id);
       this.openResponseId = id;
+      this.note('created', { bound: Boolean(this.prompt?.responseId) });
       if (this.stage === 'assist' && !this.prompt) { this.audioBytes = 0; return; }
       if (!this.prompt || this.stray.has(id)) {
         this.stray.add(id);
@@ -242,7 +479,9 @@ export class GrokMediaSession {
         return;
       }
       if (!this.pending.includes(id)) this.pending.push(id);
-      if (!this.cancelSent) this.acceptResponse(id);
+      // A retry still has to see the whole lifecycle. Accepting the first created response
+      // would play automatic speech when a second response arrives late.
+      if (!this.cancelSent && this.forceRetries === 0) this.acceptResponse(id);
       return;
     }
     if (['response.output_audio.delta', 'response.audio.delta'].includes(event.type)) {
@@ -251,7 +490,7 @@ export class GrokMediaSession {
       if (id && this.stray.has(id)) return;
       if (this.prompt?.responseId) {
         if (id && id !== this.prompt.responseId) return;
-        if (['opening', 'readback', 'result', 'assist'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
+        if (['opening', 'readback', 'result', 'assist', 'welcome', 'welcome-playback'].includes(this.stage) && validAudio(event.delta)) this.playDelta(event.delta);
         return;
       }
       if (this.prompt && id && validAudio(event.delta)) {
@@ -265,10 +504,17 @@ export class GrokMediaSession {
     }
     if (event.type === 'input_audio_buffer.speech_started') {
       if (this.stage === 'readback' || this.stage === 'readback-playback') {
+        this.noteChoice();
         this.marks.clear();
         this.sendCarrier({ event: 'clear' });
         this.intent = null;
-        await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION } }); });
+        const saved = await this.commitBounded((_e, s) => {
+          const c = s.get('call', this.call.id);
+          if (!intakeActive(c)) return false;
+          s.put('call', { ...c, intent: null, schedule: { ...(c.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION } });
+          return true;
+        });
+        if (this.closed || saved !== true || !(await this.liveIntake())) return;
         this.force(CHANGE_QUESTION, 'result');
         return;
       }
@@ -285,6 +531,7 @@ export class GrokMediaSession {
     if (event.type !== 'response.done' || !event.response?.id || this.responses.has(event.response.id)) return;
     const responseId = String(event.response.id);
     this.responses.add(responseId);
+    this.note('done', { status: event.response.status || 'completed' });
     if (this.openResponseId === responseId) this.openResponseId = null;
     if (this.stray.has(responseId)) {
       this.buffers.delete(responseId);
@@ -298,9 +545,13 @@ export class GrokMediaSession {
     }
     if (this.prompt && !this.prompt.responseId) {
       const open = this.pending.filter(id => !this.stray.has(id));
-      if (this.cancelSent && open.length > 1) {
+      if (open.length > 1) {
         this.settled.set(responseId, event.response.status || 'completed');
-        return;
+        const statuses = open.map(id => this.settled.get(id));
+        if (!statuses.every(Boolean)) return;
+        if (this.forceRetries >= 1) return this.fail('Scripted line was not the only response');
+        if (this.cancelSent && statuses.every(status => status === 'completed')) return this.retryScript();
+        return this.fail('Grok response incomplete');
       }
       if (event.response.status && event.response.status !== 'completed') return this.fail('Grok response incomplete');
       this.acceptResponse(responseId);
@@ -316,228 +567,323 @@ export class GrokMediaSession {
     }
   }
   async silence() {
-    if (this.stage !== 'confirm') return;
+    if (this.stage !== 'confirm' || this.closed) return;
     this.intent = null;
-    await this.state.transact((_e, s) => {
+    const saved = await this.commitBounded((_e, s) => {
       const c = s.get('call', this.call.id);
-      if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null, schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SILENCE_QUESTION) });
+      if (!intakeActive(c) || c.intent?.confirmedAt) return false;
+      s.put('call', { ...c, intent: null, schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SILENCE_QUESTION) });
+      return true;
     });
+    if (this.closed || saved !== true || !(await this.liveIntake())) return;
     this.force(SILENCE_QUESTION, 'result');
   }
   async saveSchedule(schedule) {
-    await this.state.transact((_e, s) => {
+    if (this.closed) return false;
+    const saved = await this.commitBounded((_e, s) => {
       const c = s.get('call', this.call.id);
-      if (c?.phase === 'message') s.put('call', { ...c, schedule });
+      if (!intakeActive(c)) return false;
+      s.put('call', { ...c, schedule });
+      return true;
     });
+    return saved === true && !this.closed;
   }
   async collectTurn(turn) {
-    if (this.heard.has(turn.id)) return;
+    if (this.heard.has(turn.id) || this.closed) return;
     this.heard.add(turn.id);
-    const current = await this.current();
-    if (current?.phase !== 'message') return this.finish();
-    const prior = current.schedule || initialSchedule(current.from, this.config.number);
-    const applied = applyScheduleTurn(prior, turn.text, current.from, this.config.number, this.now());
-    if (applied.invalidate) {
-      this.intent = null;
-      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null }); });
-    }
-    await this.saveSchedule(applied.state);
+    this.noteChoice();
+    const applied = await this.commitBounded((e, s) => {
+      const c = s.get('call', this.call.id);
+      retainRingingIntake(c);
+      if (!intakeActive(c)) return null;
+      const prior = c.schedule || initialSchedule(c.from, this.config.number);
+      const next = applyScheduleTurn(prior, turn.text, c.from, this.config.number, this.now());
+      const saved = { ...c, schedule: next.state };
+      if (next.invalidate && !c.intent?.confirmedAt) saved.intent = null;
+      if (next.state?.purpose === 'message' && !s.list('effect').some(item => item.callId === c.id && item.type === 'record')) e.effect(saved, 'record');
+      s.put('call', saved);
+      return next;
+    });
+    if (this.closed || !applied || !(await this.liveIntake())) return;
+    if (applied.state?.purpose === 'message') void this.worker?.drain?.().catch(() => {});
+    if (applied.invalidate) this.intent = null;
+    this.logCheckpoint('saved', applied.state?.awaiting);
     if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
     if (applied.prepare) return this.prepareFromSchedule(applied.state);
     if (applied.search) return this.searchSchedule(applied.state);
     this.force(applied.say, 'result');
   }
+  async afterWelcome() {
+    if (this.closed || this.callerChose) return;
+    const call = await this.current();
+    if (this.closed || this.callerChose || !call) return;
+    if (call.owner || !['offering', 'message'].includes(call.phase)) return this.finish();
+    const unanswered = call.phase === 'message' || (typeof call.deadline === 'number' && call.deadline <= Date.now());
+    if (unanswered) return this.force(RECEPTIONIST_OPENING, 'opening');
+    this.collect();
+    if (this.closed || this.callerChose) return;
+    const wait = Math.max(0, call.deadline - Date.now());
+    this.offerTimer = this.clock.setTimeout(() => this.offerWatch(), wait);
+  }
+  async offerWatch() {
+    if (this.closed || this.callerChose || this.stage !== 'collect') return;
+    const call = await this.current();
+    if (this.closed || this.callerChose || this.stage !== 'collect' || !call || call.owner || !['offering', 'message'].includes(call.phase)) return;
+    if (call.phase === 'offering' && call.deadline > Date.now()) return;
+    if (this.closed || this.callerChose || this.stage !== 'collect') return;
+    this.force(RECEPTIONIST_OPENING, 'opening');
+  }
   async searchSchedule(state) {
+    if (this.closed || !(await this.commitIntake())) return;
     this.stage = 'tool';
-    try {
-      const result = await this.schedule(this.config, this.call.id, 'find_appointments', findPayload(state));
-      const offered = applyFindResult(state, result);
-      await this.saveSchedule(offered.state);
-      this.force(offered.say, 'result');
-    } catch {
-      const offered = applyFindResult(state, { fit: false, saved: false });
-      await this.saveSchedule(offered.state);
-      this.force(offered.say, 'result');
-    }
+    let result;
+    try { result = await this.schedule(this.config, this.call.id, 'find_appointments', findPayload(state)); }
+    catch { result = { fit: false, saved: false }; }
+    if (this.closed) return;
+    const offered = applyFindResult(state, result || { fit: false, saved: false });
+    if (!(await this.saveSchedule(offered.state)) || !(await this.liveIntake())) return;
+    this.force(offered.say, 'result');
   }
   async offerCallback(state, say) {
+    if (this.closed) return;
     this.intent = null;
-    await this.saveSchedule(callbackSchedule(state, say));
+    if (!(await this.saveSchedule(callbackSchedule(state, say))) || !(await this.liveIntake())) return;
     this.force(say, 'result');
   }
   async readbackMessage(state) {
+    if (this.closed || !(await this.commitIntake())) return;
     this.intent = messageIntent({ name: state.name, callback: state.phone, message: state.messageText });
     const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
-    await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.phase === 'message') s.put('call', { ...c, intent: this.intent, schedule: next }); });
+    const saved = await this.commitBounded((_e, s) => {
+      const c = s.get('call', this.call.id);
+      if (!intakeActive(c)) return false;
+      s.put('call', { ...c, intent: this.intent, schedule: next });
+      return true;
+    });
+    if (this.closed || saved !== true || !(await this.liveIntake())) return;
     this.force(this.intent.readback, 'readback');
   }
   async prepareFromSchedule(state) {
-    const current = await this.current();
-    if (current?.bookingAttention || current?.booking?.verified) return this.offerCallback(state, SAVE_FAIL);
+    const current = await this.commitIntake();
+    if (!current) return;
+    if (current.bookingAttention || current.booking?.verified) return this.offerCallback(state, SAVE_FAIL);
     this.stage = 'tool';
     let result;
     try { result = await this.schedule(this.config, this.call.id, 'prepare_appointment', preparePayload(state)); }
     catch { return this.offerCallback(state, PREPARE_FAIL); }
+    if (this.closed) return;
+    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(state);
     if (!result?.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback || result.intent.payload?.phone !== state.phone) return this.offerCallback(state, PREPARE_FAIL);
+    if (!(await this.liveIntake())) return;
     this.intent = result.intent;
     const next = { ...state, awaiting: 'confirm', asked: this.intent.readback };
-    await this.state.transact((e, s) => {
+    const saved = await this.commitBounded((e, s) => {
       const c = s.get('call', this.call.id);
-      if (c?.phase !== 'message' || c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention) throw new Error('Call unavailable');
+      if (!intakeActive(c) || c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention) return false;
       s.put('call', { ...c, intent: this.intent, schedule: next });
       e.updateDraft(this.call.id, { name: state.name, callback: state.phone, message: `Consultation requested for ${state.offer.date} at ${state.offer.time} Pacific, ${state.address}. Booking not verified; check calendar before following up.` });
+      return true;
     });
+    if (this.closed || saved !== true || !(await this.liveIntake())) return;
     this.force(this.intent.readback, 'readback');
   }
   async hear(turn) {
-    if (this.stage !== 'confirm' || this.heard.has(turn.id)) return;
+    if (this.stage !== 'confirm' || this.heard.has(turn.id) || this.closed) return;
     this.heard.add(turn.id);
+    this.noteChoice();
     this.clearSilence();
     const decision = spokenDecision(turn.text);
     const intentId = this.intent?.id;
+    if (!(await this.liveIntake())) return;
     if (decision !== 'affirmative') {
       this.intent = null;
       const current = await this.current();
+      if (this.closed || !intakeActive(current)) return;
       const schedule = current?.schedule || initialSchedule(current?.from, this.config.number);
       const applied = applyScheduleTurn({ ...schedule, awaiting: 'correction' }, turn.text, current?.from, this.config.number, this.now());
-      await this.state.transact((_e, s) => {
+      const cleared = await this.commitBounded((_e, s) => {
         const c = s.get('call', this.call.id);
-        if (c?.phase === 'message' && !c.intent?.confirmedAt) s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
+        if (!intakeActive(c) || c.intent?.confirmedAt) return false;
+        s.put('call', { ...c, intent: null, lastCallerTurn: { id: turn.id, decision, at: Date.now() } });
+        return true;
       });
+      if (this.closed || cleared !== true || !(await this.liveIntake())) return;
       if (applied.changed) {
-        await this.saveSchedule(applied.state);
+        if (!(await this.saveSchedule(applied.state)) || !(await this.liveIntake())) return;
         if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
         if (applied.search) return this.searchSchedule(applied.state);
         this.force(applied.say, 'result');
         return;
       }
-      await this.saveSchedule({ ...schedule, awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] });
+      if (!(await this.saveSchedule({ ...schedule, awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] })) || !(await this.liveIntake())) return;
       this.force(CHANGE_QUESTION, 'result');
       return;
     }
-    const intent = await this.state.transact((_e, s) => {
+    const intent = await this.commitBounded((_e, s) => {
       const c = s.get('call', this.call.id);
-      if (c?.phase !== 'message' || c.intent?.id !== intentId || !c.intent.playedAt || c.intent.confirmedAt || Date.now() - c.intent.playedAt > CONFIRM_MS) return null;
+      if (!intakeActive(c)) return { blocked: true };
+      if (c.intent?.id !== intentId || !c.intent.playedAt || c.intent.confirmedAt || Date.now() - c.intent.playedAt > CONFIRM_MS) return { blocked: false };
       const next = { ...c.intent, confirmedAt: Date.now(), transcript: turn.text, turnId: turn.id };
       s.put('call', { ...c, intent: next, lastCallerTurn: { id: turn.id, decision, at: next.confirmedAt }, ...(next.kind === 'appointment' ? { bookingIntent: next } : {}) });
-      return next;
+      return { blocked: false, intent: next };
     });
-    if (!intent) {
+    if (this.closed || !intent || intent.blocked) return;
+    if (!intent.intent) {
       this.intent = null;
-      const current = await this.current();
-      await this.saveSchedule({ ...(current?.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] });
+      const current = await this.liveIntake();
+      if (!current) return;
+      if (!(await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'correction', asked: CHANGE_QUESTION, offer: null, alternatives: [] }))) return;
+      if (!(await this.liveIntake())) return;
       this.force(CHANGE_QUESTION, 'result');
       return;
     }
+    if (!(await this.liveIntake())) return;
     this.stage = 'committing';
     try {
-      if (intent.kind === 'message') await this.persistMessage(intent);
-      else await this.persistAppointment(intent);
+      if (intent.intent.kind === 'message') await this.persistMessage(intent.intent);
+      else await this.persistAppointment(intent.intent);
     } catch {
-      await this.state.transact((_e, s) => {
+      if (this.closed) return;
+      const noted = await this.commitBounded((_e, s) => {
         const c = s.get('call', this.call.id);
-        if (c) s.put('call', { ...c, bookingAttention: 'Confirmation outcome requires verification before another booking.', schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SAVE_FAIL) });
+        if (!intakeActive(c)) return false;
+        s.put('call', { ...c, bookingAttention: 'Confirmation outcome requires verification before another booking.', schedule: callbackSchedule(c.schedule || initialSchedule(c.from, this.config.number), SAVE_FAIL) });
+        return true;
       });
+      if (this.closed || noted !== true || !(await this.liveIntake())) return;
       this.force(SAVE_FAIL, 'result');
     }
     this.intent = null;
   }
-  async persistMessage(intent) {
-    const message = await this.state.transact(e => e.saveMessage(this.call.id, { ...intent.payload, confirmed: true }, intent.id));
-    if (!message?.confirmed) throw Error('Save not verified');
-    if (this.saveCrm) {
-      const row = await this.saveCrm(message);
-      if (!row?.verified || !row.id || row.call_sid !== this.call.sid) throw Error('CRM save not verified');
-      await this.state.transact((_e, s) => { const saved = s.get('message', message.id); if (saved) s.put('message', { ...saved, crmId: row.id, crmVerified: true }); });
+  async verifyCrm(message) {
+    if (!this.saveCrm) return true;
+    let row = null;
+    try { row = await this.saveCrm(message); } catch { row = null; }
+    if (this.closed) return false;
+    if (!row?.verified || !row.id || row.call_sid !== this.call.sid) {
+      await this.recoverNow('CRM callback was not saved');
+      return false;
     }
-    const current = await this.current();
-    if (current?.phase !== 'message' || current.messageId !== message.id) return;
+    await this.commitBounded((_e, s) => { const saved = s.get('message', message.id); if (saved) s.put('message', { ...saved, crmId: row.id, crmVerified: true }); });
+    return !this.closed;
+  }
+  async captureAppointmentRequest(state) {
+    if (this.closed || !(await this.commitIntake())) return;
+    const name = String(state?.name || '').trim();
+    const phone = state?.phone;
+    const when = speakWhen(state);
+    const text = `They want an appointment. ${[when, state?.address, state?.kind].filter(Boolean).join('. ')}`.replace(/\s+/g, ' ').trim().slice(0, 2000);
+    if (!name || !phone) return this.offerCallback(state, PREPARE_FAIL);
+    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { name, callback: phone, message: text, confirmed: true }, `appointment-request:${this.call.id}`));
+    if (this.closed || !message?.confirmed) return this.recoverNow('CRM callback was not saved');
+    if (!(await this.verifyCrm(message))) return;
+    const current = await this.liveIntake();
+    if (!current) return;
+    const say = 'I saved that you want an appointment. Someone from the team will call you back. Is there anything else I can help with?';
+    if (!(await this.saveSchedule({ ...(current.schedule || {}), purpose: 'appointment', awaiting: 'help', asked: say })) || !(await this.liveIntake())) return;
+    this.force(say, 'result');
+  }
+  async persistMessage(intent) {
+    if (this.closed || !(await this.commitIntake())) return;
+    const message = await this.commitBounded(e => e.saveMessage(this.call.id, { ...intent.payload, confirmed: true }, intent.id));
+    if (this.closed || !message?.confirmed) throw Error('Save not verified');
+    if (!(await this.verifyCrm(message))) return;
+    const current = await this.liveIntake();
+    if (!current || current.messageId !== message.id) return;
     const say = 'Your message has been saved for our team to review. Is there anything else I can help with?';
-    await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'help', asked: say });
+    if (!(await this.saveSchedule({ ...(current.schedule || {}), awaiting: 'help', asked: say })) || !(await this.liveIntake())) return;
     this.force(say, 'result');
   }
   async persistAppointment(intent) {
+    if (this.closed || !(await this.commitIntake())) return;
     const result = await this.schedule(this.config, this.call.id, 'commit', {});
-    const current = await this.current();
-    if (current?.phase !== 'message') return;
+    if (this.closed) return;
+    const current = await this.liveIntake();
+    if (!current) return;
+    if (result?.bookingAuthorized === false) return this.captureAppointmentRequest(current.schedule || initialSchedule(current.from, this.config.number));
     if (result?.replan === true) {
       const schedule = { ...(current.schedule || {}), awaiting: 'replan', asked: REPLAN_QUESTION, offer: null, alternatives: [] };
-      await this.state.transact((_e, s) => { const c = s.get('call', this.call.id); if (c?.bookingIntent?.id === intent.id && !c.booking?.verified) s.put('call', { ...c, bookingIntent: null, intent: null, schedule }); });
+      const saved = await this.commitBounded((_e, s) => {
+        const c = s.get('call', this.call.id);
+        if (!intakeActive(c) || c.bookingIntent?.id !== intent.id || c.booking?.verified) return false;
+        s.put('call', { ...c, bookingIntent: null, intent: null, schedule });
+        return true;
+      });
+      if (this.closed || saved !== true || !(await this.liveIntake())) return;
       this.force(REPLAN_QUESTION, 'result');
       return;
     }
     if (!result?.verified) throw Error('Booking not verified');
-    const saved = await this.current();
-    const schedule = bookedSchedule(saved?.schedule || current.schedule, result.date, result.time);
-    await this.saveSchedule(schedule);
+    const saved = await this.liveIntake();
+    if (!saved) return;
+    const schedule = bookedSchedule(saved.schedule || current.schedule, result.date, result.time);
+    if (!(await this.saveSchedule(schedule)) || !(await this.liveIntake())) return;
     this.force(schedule.asked, 'result');
   }
   async tool(event) {
     try {
       const data = JSON.parse(event.arguments || '{}');
       if (!RECEPTIONIST_TOOLS.some(t => t.name === event.name) || !data || Array.isArray(data) || data.confirmed === true) throw Error('Unsupported action');
-      const current = await this.current();
-      if (current?.phase !== 'message') return this.finish();
+      const current = await this.commitIntake();
+      if (!current) return this.finish();
       if (current.bookingAttention || current.booking?.verified) throw Error('Verify the existing booking outcome first.');
       if (event.name === 'prepare_message' && current.messageId) throw Error('A message is already saved for this call.');
       const trusted = callerPhone(current.from, this.config.number);
       const spoken = current.schedule?.phoneSource === 'spoken' && current.schedule.phone ? current.schedule.phone : null;
       const messageData = { ...data, callback: spoken || trusted || data.callback };
       let result;
-      if (event.name === 'draft_message') result = await this.state.transact(e => ({ retained: true, confirmed: false, draft: e.updateDraft(this.call.id, messageData) }));
+      if (event.name === 'draft_message') result = await this.commitBounded(e => ({ retained: true, confirmed: false, draft: e.updateDraft(this.call.id, messageData) }));
       else if (event.name === 'prepare_message') {
+        if (!(await this.liveIntake())) return;
         this.intent = messageIntent(messageData);
-        await this.state.transact(e => e.updateDraft(this.call.id, this.intent.payload));
+        await this.commitBounded(e => e.updateDraft(this.call.id, this.intent.payload));
       } else {
+        if (!(await this.liveIntake())) return;
         result = await this.schedule(this.config, this.call.id, event.name, data);
+        if (this.closed) return;
         if (event.name === 'prepare_appointment') {
           if (!result.intent?.id || result.intent.kind !== 'appointment' || !result.intent.readback) throw Error('No verified proposal');
+          if (!(await this.liveIntake())) return;
           this.intent = result.intent;
-          await this.state.transact(e => e.updateDraft(this.call.id, { name: this.intent.payload.name, callback: this.intent.payload.phone, message: `Consultation requested for ${this.intent.payload.date} at ${this.intent.payload.time} Pacific, ${this.intent.payload.address}. Booking not verified; check calendar before following up.` }));
+          await this.commitBounded(e => e.updateDraft(this.call.id, { name: this.intent.payload.name, callback: this.intent.payload.phone, message: `Consultation requested for ${this.intent.payload.date} at ${this.intent.payload.time} Pacific, ${this.intent.payload.address}. Booking not verified; check calendar before following up.` }));
         }
       }
+      if (this.closed) return;
       if (['prepare_message', 'prepare_appointment'].includes(event.name)) {
-        await this.state.transact((_e, s) => {
+        const saved = await this.commitBounded((_e, s) => {
           const c = s.get('call', this.call.id);
-          if (c?.phase !== 'message' || (this.intent.kind === 'appointment' && (c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention))) throw Error('Call unavailable');
+          if (!intakeActive(c) || (this.intent.kind === 'appointment' && (c.booking?.verified || c.bookingIntent?.confirmedAt || c.bookingAttention))) return false;
           s.put('call', { ...c, intent: this.intent });
+          return true;
         });
+        if (this.closed || saved !== true || !(await this.liveIntake())) return;
         this.output(event.call_id, { prepared: true, saved: false, awaiting: 'spoken yes after the readback plays' });
         this.force(this.intent.readback, 'readback');
         return;
       }
+      if (this.closed) return;
       const fit = result?.fit;
       this.output(event.call_id, fit === false ? { ...result, saved: false, next: 'No open CRM time fits. Take a callback message so staff can see whether they can accommodate.' } : result);
       this.assist();
       this.sendAI({ type: 'response.create' });
     } catch {
+      if (this.closed) return;
       this.output(event.call_id, { saved: false, error: 'Could not verify this request. Collect missing details, try another time, or offer a callback message.' });
       this.assist();
       this.sendAI({ type: 'response.create' });
     }
   }
-  async fail(reason) {
-    if (this.closed) return;
-    try {
-      if (this.streamSid) {
-        await this.state.transact((e, s) => {
-          const c = s.get('call', this.call.id);
-          if (c?.phase === 'message') {
-            e.failed(c.id, reason, `media-error:${this.streamSid}`);
-            const next = s.get('call', this.call.id);
-            if (next) s.put('call', { ...next, mediaFailed: true, intent: next.intent?.confirmedAt ? next.intent : null });
-          }
-        });
-        await this.worker.drain();
-      }
-    } catch { /* Signed continuation and the watchdog recover the caller. */ } finally { this.finish(); }
+  fail(reason) {
+    return this.recoverNow(reason);
   }
   finish() {
     if (this.closed) return;
     this.closed = true;
     this.clock.clearTimeout(this.startTimer);
     this.clock.clearTimeout(this.limitTimer);
+    if (this.offerTimer) this.clock.clearTimeout(this.offerTimer);
     this.clearSilence();
+    this.releasePlayback();
     this.marks.clear();
     if (this.ai) { this.ai.onclose = null; this.ai.onerror = null; this.ai.close(); }
     this.socket.onclose = null;

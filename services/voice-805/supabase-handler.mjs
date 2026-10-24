@@ -4,7 +4,7 @@ import { e164 } from './config.mjs';
 import { phaseInstruction, prefetchContext } from './caller-context.mjs';
 import { canOperate, supabaseReadiness } from './supabase-config.mjs';
 import { conferenceXml, applyDelivery } from './provider.mjs';
-import { fallback, mediaStreamTwiml, ringbackTwiml, ringbackWav, voicemailXml } from './fallback.mjs';
+import { fallback, mediaStreamTwiml, ringbackTwiml, ringbackWav, silentWaitTwiml, voicemailXml } from './fallback.mjs';
 import { PROMPTS, ensureSpoken, promptDigest, promptSource, promptVerb } from './prompts.mjs';
 import { logFailure, saveCallback } from './callbacks.mjs';
 const terminal = ['completed','failed','canceled','busy','no-answer'];
@@ -70,8 +70,8 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     if(c.transport!=='media'||!upgradeMedia||request.method!=='GET'||request.headers.get('upgrade')?.toLowerCase()!=='websocket')return json({error:'Media unavailable'},400);
     if(!/^[0-9a-f-]{36}$/.test(id)||!twilioSignatureMatches(c.authToken,mediaStreamSignatureUrls(c.origin,path),new URLSearchParams(),request.headers.get('x-twilio-signature')))return json({error:'Rejected'},401);
     return upgradeMedia(request,{
-     load:()=>run((_e,s)=>s.get('call',id)),
-     eligible:call=>!!(call&&call.phase==='message'&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
+     load:()=>state.readCall(id),
+     eligible:call=>!!(call&&['message','offering'].includes(call.phase)&&!call.mediaStreamSid&&!call.mediaFailed&&Date.now()<=call.deadline),
     });
    }
    if(!['GET','POST'].includes(request.method))return json({error:'Method rejected'},405);
@@ -163,9 +163,8 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     const call=await run(e=>{const created=e.inbound(sid,e164.test(p.get('From')||'')?p.get('From'):'anonymous');e.greeted(created.id,`answer:${sid}`);return created;});
     queue();
     waitUntil(prefetchContext(state,call.id,client,c.statusTopics).catch(error=>reportFailure('caller-lookup',error)));
-    await ensureSpoken(c,['greeting'],prompts,waitUntil);
     waitUntil(ensureSpoken(c,['unavailable','voicemail'],prompts,waitUntil));
-    return xmlResponse(twiml(`${promptVerb(c,'greeting',c.greeting)}<Redirect method="POST">${xml(c.origin+'/twilio/greeted/'+call.id)}</Redirect>`));
+    return xmlResponse(mediaStreamTwiml(c.origin,call.id));
    }
    if(path==='/twilio/text') {
     if(p.get('To')!==c.number)return json({error:'Wrong number'},403);
@@ -179,6 +178,7 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
     await run((e,s)=>{const id=s.state.inbound[sid];if(!id)throw new Conflict('Unknown caller');if(terminal.includes(p.get('CallStatus')))e.ended(id,sid,`parent-status:${sid}:${p.get('CallStatus')}`);});queue();return xmlResponse(twiml(''));
    }
    if(path==='/twilio/ringback')return xmlResponse(ringbackTwiml(c.origin));
+   if(path==='/twilio/wait')return xmlResponse(silentWaitTwiml());
    if(['greeted','agent','continue','fallback'].includes(parts[1]))await ensureSpoken(c,['voicemail'],prompts,waitUntil);
    let downId=null;
    const response=await run((e,s)=>{
@@ -234,7 +234,11 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
      const transcript=p.get('TranscriptionText')||'';
      if(parts[1]==='recording'&&p.get('RecordingStatus')&&p.get('RecordingStatus')!=='completed')return twiml('');
      if(parts[1]==='transcription'&&!transcript)return twiml('');
-     return {callback:callbackFields(p,transcript,call)};
+     const saved=s.list('message').find(item=>item.callId===call.id&&item.confirmed);
+     const recordingUrl=p.get('RecordingUrl')||call.recordingUrl||'';
+     if(recordingUrl&&recordingUrl!==call.recordingUrl)s.put('call',{...call,recordingUrl});
+     const message=saved?{name:saved.name,callback:saved.callback,message:saved.text,transcript:transcript||saved.text,customerId:saved.customerId}:undefined;
+     return {callback:callbackFields(p,transcript||saved?.text||'',recordingUrl?{...call,recordingUrl}:call,message)};
     }
     if(parts[1]==='resume'){
      if(call.phase==='ended')return twiml('<Hangup/>');
@@ -260,18 +264,20 @@ export function createSupabaseHandler({state,client,worker,upgradeMedia,prompts=
   } catch(error) {if(!(error instanceof Conflict)){const failure=reportFailure('handler',error);waitUntil(logFailure(client,'webhook_error',null,failure.message).catch(logError=>reportFailure('failure-log',logError)));}return json({error:error instanceof Conflict?error.message:'805 phone operation unavailable'},error instanceof Conflict?409:503);}
  };
 }
-function callbackFields(p, transcript, call, message) {
+export function callbackFields(p, transcript, call, message) {
  const read=key=>typeof p?.get==='function'?p.get(key)||'':'';
+ const savedText=message?.reason||message?.message||'';
  return {
   p_call_sid:read('CallSid')||call?.sid,
   p_caller_name:message?.name||'',
   p_callback_number:message?.callback||read('From')||call?.from||'',
-  p_reason:message?.reason||message?.message||(read('RecordingUrl')?'Voicemail recording':''),
-  p_transcript:transcript||message?.transcript||'',
-  p_recording_url:read('RecordingUrl'),
+  p_reason:savedText||(read('RecordingUrl')||call?.recordingUrl?'Voicemail recording':''),
+  p_transcript:transcript||message?.transcript||savedText,
+  p_recording_url:read('RecordingUrl')||call?.recordingUrl||'',
   p_call_time:call?.createdAt?new Date(call.createdAt).toISOString():new Date().toISOString(),
   p_phone:call?.from||read('From')||'',
   p_status:'needs_callback',
   p_appointment_id:null,
+  p_customer_id:call?.customerId||message?.customerId||null,
  };
 }

@@ -1,6 +1,8 @@
 # 805 Call Center implementation status
 
-October 10, 2026 (Pacific). The Call Center website is published and the Supabase schema and standby function are deployed. **The phone agent is not live or verified ready.**
+October 20, 2026. Voice v24 (`94444563`) is live. Call `5a39f34c-7053-499a-afb0-b0f80c84eb55` at `2026-10-20T21:05:26Z` confirmed welcome carrier playback: welcome speaking `21:05:28.118`, Twilio playback mark played `21:05:46.364`. Opening speech started `21:05:46.902` and the carrier disconnected `21:05:53.172` during opening playback. A stored `greetingPlayed=false` is not evidence that the welcome did not play. Scheduling intake, a verified CRM save, and provider acceptance of both staff texts remain pending. The October 10 notes below are the earlier hosted-agent snapshot.
+
+October 10, 2026 (Pacific). The Call Center website is published and the Supabase schema and standby function are deployed. **That hosted-agent snapshot was not live or verified ready.**
 
 Implemented: AI-first common greeting; concurrent CRM lookup; distinct stage hints; unique/ambiguous/unknown branches; simultaneous private-cell offers with atomic acceptance; conference-based staff connection, hold/consult/transfer/resume; durable message/outbox state; signed carrier callbacks and staff controls; parent hangup handling; shared customer messages; red unresolved-voice-message badge; independent text state; guarded watchdog and carrier submission.
 
