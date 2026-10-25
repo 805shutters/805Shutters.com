@@ -161,6 +161,19 @@ test('standby, wrong account, invalid tool token, and missing schedule fail clos
  assert.equal((await f.handler(new Request(f.c.origin+'/agent',{method:'POST',headers:{authorization:'Bearer '+f.c.toolsKey},body:JSON.stringify({callToken:'fake',action:'context'})}))).status,403);
  assert.equal(supabaseReadiness({...f.c,hours:null}).ready,false);
 });
+test('a failed connect-agent on an ended call is not replayed',async()=>{
+ const f=fixture(),call=await incoming(f);
+ await f.state.transact((_e,s)=>{
+  const current=s.get('call',call.id);
+  s.put('call',{...current,phase:'ended',deadline:null,endedAt:Date.parse('2026-10-19T00:00:00Z')});
+  s.put('effect',{id:'historical-f9eae335',callId:call.id,type:'connect-agent',data:{},status:'failed',attempts:5,error:'805 phone state busy; retry request',nextAt:0});
+ });
+ await f.worker.drain();
+ assert.equal(f.provider.operations.some(item=>item.type==='connect-agent'),false);
+ const effect=await f.state.transact((_e,s)=>s.get('effect','historical-f9eae335'));
+ assert.equal(effect.status,'failed');
+ assert.equal(effect.error,'805 phone state busy; retry request');
+});
 test('snapshot transaction rolls back and expired submissions remain uncertain',()=>{
  const s=new SnapshotStore();assert.throws(()=>s.tx(()=>{s.put('call',{id:'x'});throw Error('fail');}));assert.equal(s.get('call','x'),null);
  s.put('effect',{id:'a',status:'sending',leaseUntil:1});s.recover();assert.equal(s.get('effect','a').status,'uncertain');

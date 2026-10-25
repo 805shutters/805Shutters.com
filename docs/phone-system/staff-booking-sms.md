@@ -8,7 +8,7 @@ This is the only texting setup authorized for this branch. Booking-alert SMS sta
 
 Campaign `BU542a67b844388f5192a84c79d6a86cb9` is draft. Messaging service `MG60d4038bf54bffa0690cce85a6e49147` has one sender, `+18055908050`. No campaign on that service is submitted. The same draft is being prepared through a recovered Persona form. Provider approval stays outside this repository. `transcriptSmsSendingEnabled()` returns false. The voice service queues one pending notice per saved or unconfirmed caller message for Mike and one for Jessica, with purpose `transcript`. It does not call Twilio. A queued or pending row is not delivered. Each body ends with `Reply STOP to unsubscribe; HELP for help.`
 
-On 2026-10-25 Mike verbally confirmed that both he and Jessica consented to these transcript texts. That is Mike's verbal confirmation. It is not a signed form and it is not keyword proof.
+On 2026-10-25 Mike verbally confirmed that both he and Jessica consented to these transcript texts. A direct reply from Mike reconfirmed Jessica's consent. That is Mike's confirmation. It is not a signed form and it is not keyword proof. A Twilio check that did not submit the campaign confirmed that production `/terms/` still returns 404.
 
 Live `ringStaff` is `["mike","jessica"]`. That list was restored through the dashboard on 2026-10-25 and checked on `/health`. Do not change `VOICE_805_RING_STAFF_JSON` from this branch.
 
