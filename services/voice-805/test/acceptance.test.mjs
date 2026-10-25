@@ -255,7 +255,7 @@ test("message and exactly two durable notification intents are atomic, deduped, 
   assert.equal(notices.length, 2);
   assert.deepEqual(notices.map((n) => n.recipient).sort(), ["jessica", "mike"]);
   assert.ok(notices.every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
-  assert.ok(notices.every((n) => n.body.includes("Please call back.") && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
+  assert.ok(notices.every((n) => n.body.includes("Please call back.") && !n.body.includes("UNCONFIRMED") && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
   await s.worker.drain();
   assert.ok(s.store.list("notification").every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
   assert.equal(s.provider.operations.filter((o) => o.type === "sms").length, 0);
@@ -479,11 +479,32 @@ test("partial message survives caller hangup but cannot initiate an unconfirmed 
   const m = s.store.list("message")[0];
   assert.equal(m.confirmed, false);
   assert.equal(s.store.list("notification").length, 2);
+  assert.ok(s.store.list("notification").every((n) => n.body.includes("UNCONFIRMED") && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
   assert.equal(s.engine.snapshot().unresolvedCount, 1);
   assert.throws(
     () => s.engine.callback(m.id, "mike", id()),
     /confirmed callback/,
   );
+});
+test("an unconfirmed transcript keeps its warning and STOP footer when the text is long", async (t) => {
+  const s = setup(t),
+    c = s.engine.inbound(
+      "CAlong",
+      "+15555550100",
+      Date.parse("2026-10-07T05:00:00Z"),
+    );
+  s.engine.greeted(c.id, id());
+  s.engine.tick(Date.now() + 30000);
+  s.engine.beginMessage(c.id, id());
+  s.engine.updateDraft(c.id, {
+    name: "Caller",
+    callback: "+15555550100",
+    message: "shutters ".repeat(400),
+  });
+  s.engine.ended(c.id, c.sid, id());
+  const notices = s.store.list("notification");
+  assert.equal(notices.length, 2);
+  assert.ok(notices.every((n) => n.body.length <= 1600 && n.body.includes("UNCONFIRMED") && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
 });
 test("delivered callback arriving before a send timeout remains authoritative", async (t) => {
   const s = setup(t);

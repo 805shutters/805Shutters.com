@@ -151,7 +151,7 @@ test('negative, ambiguous, silence, and a failed CRM verify do not announce a sa
  assert.equal(failed.store.list('message').length,1);
  const notes=failed.store.list('notification');
  assert.deepEqual(notes.map(item=>item.recipient).sort(),['jessica','mike']);
- assert.equal(notes.every(item=>item.status==='pending'&&item.purpose==='transcript'&&item.sid===null&&/Please call me back/.test(item.body)&&/Reply STOP to unsubscribe; HELP for help\./.test(item.body)),true);
+ assert.equal(notes.every(item=>item.status==='pending'&&item.purpose==='transcript'&&item.sid===null&&/Please call me back/.test(item.body)&&item.body.endsWith('Reply STOP to unsubscribe; HELP for help.')&&!item.body.includes('UNCONFIRMED')),true);
  assert.doesNotMatch(failedXml,/<Record|After the tone/);assert.match(failedXml,/Our team members are tied up at the moment\./);assert.match(failedXml,/Your written message is saved/);assert.match(failedXml,/No recording was made/);assert.doesNotMatch(failedXml,/Which would you like/);assert.doesNotMatch(failedXml,/other customers/i);
 });
 test('model confirmation, foreign stream, interruption, and a late yes cannot save',async()=>{

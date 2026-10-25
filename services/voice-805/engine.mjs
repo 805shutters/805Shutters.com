@@ -800,7 +800,11 @@ export class Engine {
   }
   queueTranscript(message) {
     const footer = "Reply STOP to unsubscribe; HELP for help.";
-    const body = `805 Shutters message from ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text} ${footer}`.slice(0, 1600);
+    const status = message.confirmed === true ? "" : "UNCONFIRMED. ";
+    const head = `805 Shutters message from ${message.name}, ${message.callback || "callback number not confirmed"}. ${status}`;
+    const tail = ` ${footer}`;
+    const text = String(message.text || "").slice(0, Math.max(0, 1600 - head.length - tail.length));
+    const body = `${head}${text}${tail}`;
     for (const staff of staffIds) {
       const id = `${message.id}:${staff}`;
       if (this.store.get("notification", id)) continue;
