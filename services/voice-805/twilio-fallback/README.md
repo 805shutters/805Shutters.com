@@ -9,7 +9,7 @@ Live, unchanged by this branch:
 - Backup URL: `https://voice-805-fallback-9089-prod.twil.io/fallback`
 - Read-only GET today: `<Response><Record maxLength="120" playBeep="true" timeout="5"/><Hangup/></Response>`
 
-`fallback.js` is the reviewed replacement. It speaks that the call could not continue and that no recording was made, then hangs up. It does not record, transcribe, or claim that a message was saved.
+`fallback.js` is the reviewed replacement. It says "Our team members are tied up at the moment." then says the call could not continue and that no recording was made, then hangs up. It does not record, transcribe, or claim that a message was saved.
 
 ## Do not deploy from this change
 

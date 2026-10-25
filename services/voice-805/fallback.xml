@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.</Say>
+  <Say>Our team members are tied up at the moment. We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.</Say>
   <Hangup/>
 </Response>

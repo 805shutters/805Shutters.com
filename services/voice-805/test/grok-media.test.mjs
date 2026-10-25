@@ -39,12 +39,18 @@ test('spoken yes and no are classified without trusting a model boolean',()=>{
  assert.equal(spokenDecision('no'),'negative');assert.equal(spokenDecision('yes but change the time'),'negative');
  assert.equal(spokenDecision(''),'silence');assert.equal(spokenDecision('maybe'),'ambiguous');assert.equal(spokenDecision('confirmed true'),'ambiguous');
 });
-test('no-answer opening apologizes and offers a message or consultation',async()=>{
+test('no-answer opening uses the tied-up sentence and one choice',async()=>{
  const f=fixture();await f.begin();assert.equal(f.ai.sent[0].session.voice,'ara');assert.equal(f.ai.sent[0].session.audio.output.format.type,'audio/pcmu');
  assert.equal(f.ai.sent.at(-1).item.content[0].text,RECEPTIONIST_OPENING);
- assert.equal(RECEPTIONIST_OPENING,'Thanks for waiting. Our team is with other customers right now. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?');
+ assert.equal(RECEPTIONIST_OPENING,'Thanks for waiting. Our team members are tied up at the moment. I can take a message and have someone call you back, or I can help you schedule an appointment. Which would you like?');
  assert.equal((RECEPTIONIST_OPENING.match(/\?/g)||[]).length,1);
- assert.doesNotMatch(RECEPTIONIST_OPENING,/apolog|sorry|tied up|get a hold/i);
+ assert.match(RECEPTIONIST_OPENING,/Our team members are tied up at the moment\./);
+ assert.doesNotMatch(RECEPTIONIST_OPENING,/other customers|apolog|sorry|get a hold/i);
+ assert.match(RECEPTIONIST_PROMPT,/Our team members are tied up at the moment\./);
+ assert.match(RECEPTIONIST_PROMPT,/Do not say the team is with other customers/);
+ assert.match(RECEPTIONIST_PROMPT,/Do not invent any other staff activity/);
+ assert.doesNotMatch(RECEPTIONIST_PROMPT,/do not say team members are tied up/i);
+ assert.doesNotMatch(RECEPTIONIST_PROMPT,/with other customers right now/i);
  assert.match(RECEPTIONIST_PROMPT,/Do not apologize in your own words/);assert.match(RECEPTIONIST_PROMPT,/Do not say you cannot get a hold of anybody/);assert.match(RECEPTIONIST_PROMPT,/Do not repeat that close/);
  assert.match(RECEPTIONIST_PROMPT,/Do not demand an exact clock time/);assert.match(RECEPTIONIST_PROMPT,/one server-supplied scheduling line/);assert.match(RECEPTIONIST_PROMPT,/spoken yes/);assert.match(RECEPTIONIST_PROMPT,/booking is authorized/);
  assert.match(RECEPTIONIST_PROMPT,/currently open published CRM slot/);assert.match(RECEPTIONIST_PROMPT,/Never suggest or book a time that is not open on the CRM calendar/);
@@ -114,7 +120,7 @@ test('a Grok session error uses the Record fallback',async()=>{
  assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
  assert.equal(f.store.list('effect').some(item=>item.type==='fallback'),true);
  const xml=fallback(f.engine,f.store.get('call',f.call.id),'voicemail',null,f.c);
- assert.doesNotMatch(xml,/<Record|After the tone|written message is saved/);assert.match(xml,/no recording was made/i);assert.match(xml,/call back to leave a message or schedule an appointment/);assert.doesNotMatch(xml,/Which would you like/);
+ assert.doesNotMatch(xml,/<Record|After the tone|written message is saved/);assert.match(xml,/Our team members are tied up at the moment\./);assert.match(xml,/no recording was made/i);assert.match(xml,/call back to leave a message or schedule an appointment/);assert.doesNotMatch(xml,/Which would you like/);assert.doesNotMatch(xml,/other customers/i);
 });
 test('an unauthorized booking is saved as a callback instead of a calendar appointment',async()=>{
  const f=fixture();const saved=[];const actions=[];
@@ -146,7 +152,7 @@ test('negative, ambiguous, silence, and a failed CRM verify do not announce a sa
  const notes=failed.store.list('notification');
  assert.deepEqual(notes.map(item=>item.recipient).sort(),['jessica','mike']);
  assert.equal(notes.every(item=>item.status==='pending'&&item.purpose==='transcript'&&item.sid===null&&/Please call me back/.test(item.body)&&/Reply STOP to unsubscribe; HELP for help\./.test(item.body)),true);
- assert.doesNotMatch(failedXml,/<Record|After the tone/);assert.match(failedXml,/Your written message is saved/);assert.match(failedXml,/No recording was made/);assert.doesNotMatch(failedXml,/Which would you like/);
+ assert.doesNotMatch(failedXml,/<Record|After the tone/);assert.match(failedXml,/Our team members are tied up at the moment\./);assert.match(failedXml,/Your written message is saved/);assert.match(failedXml,/No recording was made/);assert.doesNotMatch(failedXml,/Which would you like/);assert.doesNotMatch(failedXml,/other customers/i);
 });
 test('model confirmation, foreign stream, interruption, and a late yes cannot save',async()=>{
  const f=fixture();await messageMode(f);await f.grok({type:'response.function_call_arguments.done',name:'prepare_message',call_id:'model-yes',arguments:JSON.stringify({...message,confirmed:true})});assert.equal(f.store.list('message').length,0);

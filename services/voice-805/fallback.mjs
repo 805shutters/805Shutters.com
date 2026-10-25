@@ -1,7 +1,8 @@
 import { twiml, xml } from "./security.mjs";
 import { PROMPTS, promptVerb } from "./prompts.mjs";
+import { STAFF_STATUS_SENTENCE } from "./receptionist.mjs";
 
-export const KEPT_MESSAGE_FALLBACK = "Your written message is saved. No recording was made. Please call back if you need to add anything or schedule an appointment.";
+export const KEPT_MESSAGE_FALLBACK = `${STAFF_STATUS_SENTENCE} Your written message is saved. No recording was made. Please call back if you need to add anything or schedule an appointment.`;
 
 export function voicemailXml(origin, _recordingPath, _transcriptionPath, config = null, options = {}) {
   const kept = options.kept === true;

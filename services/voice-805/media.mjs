@@ -32,7 +32,7 @@ export class MediaBridge {
       type: "response.create",
       response: {
         instructions:
-          "The team is unavailable. Ask for name, callback number and a short message. Read back the callback number and message and get confirmation. Save using save_message. Only say saved after a successful tool result.",
+          "Our team members are tied up at the moment. Ask for name, callback number and a short message. Do not say the team is with other customers. Do not invent any other staff activity. Read back the callback number and message and get confirmation. Save using save_message. Only say saved after a successful tool result.",
       },
     });
     return true;
