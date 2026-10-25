@@ -44,9 +44,8 @@ export function buildContactCandidates(sources: ContactSource[]): ContactCandida
       refs: rows.map(s => s.ref),
       issue: !name || key.startsWith("missing:") ? "missing_name" : phones.length > 1 ? "conflicting_crm_phones" : !phones.length ? "missing_or_invalid_phone" : null };
   });
-  const phoneOwners = new Map<string, string[]>();
-  for (const c of candidates) if (c.phone) phoneOwners.set(c.phone, [...(phoneOwners.get(c.phone) || []), c.key]);
-  for (const c of candidates) if (!c.issue && c.phone && phoneOwners.get(c.phone)!.length > 1) c.issue = "shared_crm_phone";
+  // Owner-approved: distinct CRM names remain separate contacts even when a
+  // household or business shares a number. A shared number never merges names.
   return candidates.sort((a,b) => a.key.localeCompare(b.key));
 }
 
@@ -64,9 +63,14 @@ export function matchGoogleContact(candidate: ContactCandidate, people: GooglePe
     || p.emailAddresses?.some(e => candidate.emails.includes((e.value || "").toLowerCase())));
   const exact = possible.filter(p => p.names?.some(n => contactNameKey(n.displayName || n.unstructuredName || "") === candidate.key)
     && p.phoneNumbers?.some(n => normalizeContactPhone(n.canonicalForm || n.value) === candidate.phone));
-  // Any competing partial match is an exception, including a different name using this phone.
-  if (possible.length === 1 && exact.length === 1) return { kind: "matched" as const, person: exact[0] };
-  if (possible.length) return { kind: "ambiguous" as const, reason: "existing_contact_identity_conflict" };
+  // A differently named person sharing this number remains a separate contact,
+  // including households sharing both a phone and email. Same-name mismatches
+  // and email-only collisions across different numbers still require review.
+  const identityConflicts = possible.filter(p => p.names?.some(n => contactNameKey(n.displayName || n.unstructuredName || "") === candidate.key)
+    || (p.emailAddresses?.some(e => candidate.emails.includes((e.value || "").toLowerCase()))
+      && !p.phoneNumbers?.some(n => normalizeContactPhone(n.canonicalForm || n.value) === candidate.phone)));
+  if (identityConflicts.length === 1 && exact.length === 1) return { kind: "matched" as const, person: exact[0] };
+  if (identityConflicts.length) return { kind: "ambiguous" as const, reason: "existing_contact_identity_conflict" };
   return { kind: "create" as const };
 }
 

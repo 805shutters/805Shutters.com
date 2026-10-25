@@ -12,20 +12,29 @@ describe("805 Contacts reconciliation", () => {
     expect(rows).toHaveLength(2);
     expect(rows.find(r=>r.key==="test person")?.refs).toHaveLength(2);
   });
-  it("quarantines conflicting CRM phones and shared phone identities", () => {
+  it("quarantines conflicting phones but keeps names sharing a number separate", () => {
     const conflict = buildContactCandidates([{ref:"a",name:"A",phone:"8055551234"},{ref:"b",name:"A",phone:"8055559999"}]);
     expect(conflict[0].issue).toBe("conflicting_crm_phones");
     const shared = buildContactCandidates([{ref:"a",name:"A",phone:"8055551234"},{ref:"b",name:"B",phone:"8055551234"}]);
-    expect(shared.every(c=>c.issue==="shared_crm_phone")).toBe(true);
+    expect(shared.every(c=>c.issue===null)).toBe(true);
+    expect(shared.map(c=>c.key)).toEqual(["a","b"]);
   });
   it("requires name plus phone for existing unmarked contacts", () => {
     const c = candidate();
     const person: GooglePerson = {resourceName:"people/1", names:[{displayName:c.name}], phoneNumbers:[{value:c.phone!}]};
     expect(matchGoogleContact(c,[person]).kind).toBe("matched");
-    expect(matchGoogleContact(c,[{...person,names:[{displayName:"Different Person"}]}]).kind).toBe("ambiguous");
+    expect(matchGoogleContact(c,[{...person,names:[{displayName:"Different Person"}]}]).kind).toBe("create");
     expect(matchGoogleContact(c,[{...person,phoneNumbers:[]}]).kind).toBe("ambiguous");
     expect(matchGoogleContact(c,[person,{...person,resourceName:"people/2"}]).kind).toBe("ambiguous");
     expect(matchGoogleContact(c,[]).kind).toBe("create");
+  });
+  it("does not merge shared household numbers or let them block an exact identity", () => {
+    const c = candidate();
+    const other: GooglePerson = {resourceName:"people/other",names:[{displayName:"Other Household Member"}],phoneNumbers:[{value:c.phone!}],emailAddresses:[{value:c.emails[0]}]};
+    expect(matchGoogleContact(c,[other]).kind).toBe("create");
+    const exact: GooglePerson = {...other,resourceName:"people/exact",names:[{displayName:c.name}]};
+    expect(matchGoogleContact(c,[other,exact])).toEqual({kind:"matched",person:exact});
+    expect(matchGoogleContact(c,[{...other,phoneNumbers:[{value:"8055559999"}]}]).kind).toBe("ambiguous");
   });
   it("recovers timed-out creates using stable source markers even after a name change", () => {
     const c = candidate();

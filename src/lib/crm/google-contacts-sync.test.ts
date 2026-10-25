@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CONTACT_MARKER } from "./google-contacts-model";
 vi.mock("./google-contacts-auth", () => ({ getContactsAccess: vi.fn(async () => "private-token") }));
-import { GoogleContactsApi, processContactsQueue } from "./google-contacts-sync";
+import { enqueueContactsBackfill, GoogleContactsApi, processContactsQueue } from "./google-contacts-sync";
 
-function database(options: { attempted?: boolean; mapped?: boolean; concurrent?: boolean } = {}) {
-  const row = { customer_key:"test person", google_resource_name:options.mapped ? "people/1" : null, status:"pending", attempts:0, create_attempted_at:options.attempted ? "2026-10-01" : null, requested_at:"2026-10-01", next_attempt_at:"2026-10-01", source_refs:["customer:1"] };
+function database(options: { attempted?: boolean; mapped?: boolean; concurrent?: boolean; shared?: boolean } = {}) {
+  const row = { customer_key:"test person", google_resource_name:options.mapped ? "people/1" : null, status:"pending", exception_code:null as string | null, attempts:0, create_attempted_at:options.attempted ? "2026-10-01" : null, requested_at:"2026-10-01", next_attempt_at:"2026-10-01", source_refs:["customer:1"] };
+  const rows = options.shared ? [row,{...row,customer_key:"other person",source_refs:["customer:2"]}] : [row];
   const writes: { table: string; patch: Record<string,unknown>; filters: [string,unknown][] }[] = [];
   const db = {
     rpc: vi.fn(async () => ({data:true,error:null})),
@@ -13,11 +14,12 @@ function database(options: { attempted?: boolean; mapped?: boolean; concurrent?:
       const filters: [string,unknown][] = [];
       const query = {
         select: () => query, order: () => query, range: () => query,
+        upsert: () => query,
         update: (value: Record<string,unknown>) => { patch=value; return query; },
         eq: (key: string,value: unknown) => { filters.push([key,value]); return query; },
         then(resolve: (v: unknown) => unknown) {
           if (patch) { writes.push({table,patch,filters}); return Promise.resolve(resolve({data:[],error:null})); }
-          const data = table === "crm_google_contacts_sync" ? [row] : table === "crm_customers" ? [{id:"1", display_name:"Test Person", phone:"8055551234"}] : [];
+          const data = table === "crm_google_contacts_sync" ? rows : table === "crm_customers" ? [{id:"1", display_name:"Test Person", phone:"8055551234"},...(options.shared ? [{id:"2",display_name:"Other Person",phone:"8055551234"}] : [])] : [];
           return Promise.resolve(resolve({data,error:null}));
         }
       };
@@ -78,5 +80,36 @@ describe("durable Contacts worker", () => {
     const list = vi.spyOn(GoogleContactsApi.prototype,"list");
     expect((await processContactsQueue(db)).busyOrDisconnected).toBe(true);
     expect(list).not.toHaveBeenCalled();
+  });
+  it("creates and verifies two distinct contacts sharing the same phone without merging", async()=>{
+    const {db,writes} = database({shared:true});
+    const people = new Map<string,{resourceName:string;phoneNumbers:{value:string}[];userDefined:{key:string;value:string}[]}>();
+    vi.spyOn(GoogleContactsApi.prototype,"list").mockResolvedValue([]);
+    const create = vi.spyOn(GoogleContactsApi.prototype,"create").mockImplementation(async candidate=>{
+      const person = {resourceName:`people/${candidate.key}`,phoneNumbers:[{value:candidate.phone!}],userDefined:[{key:CONTACT_MARKER,value:candidate.key}]};
+      people.set(person.resourceName,person); return person;
+    });
+    vi.spyOn(GoogleContactsApi.prototype,"get").mockImplementation(async resource=>people.get(resource)!);
+    const update = vi.spyOn(GoogleContactsApi.prototype,"update");
+    expect((await processContactsQueue(db)).processed).toBe(2);
+    expect(create).toHaveBeenCalledTimes(2); expect(update).not.toHaveBeenCalled();
+    expect(new Set(writes.filter(w=>w.patch.google_resource_name).map(w=>w.patch.google_resource_name)).size).toBe(2);
+  });
+  it("resumes a resolved shared-phone exception while preserving its mapping and create intent", async()=>{
+    const {db,row,writes} = database({mapped:true,attempted:true});
+    row.status="ambiguous"; row.exception_code="shared_crm_phone";
+    await enqueueContactsBackfill(db);
+    const resumed = writes.find(w=>w.patch.status === "pending")!;
+    expect(resumed.patch).not.toHaveProperty("google_resource_name");
+    expect(resumed.patch).not.toHaveProperty("create_attempted_at");
+    expect(resumed.filters).toContainEqual(["requested_at","2026-10-01"]);
+    expect(resumed.filters).toContainEqual(["status","ambiguous"]);
+  });
+  it("does not reset destination conflicts or uncertain writes when resuming all customers", async()=>{
+    for (const [status,code] of [["ambiguous","existing_contact_identity_conflict"],["uncertain","create_outcome_unknown"]]) {
+      const {db,row,writes}=database({attempted:true});row.status=status;row.exception_code=code;
+      await enqueueContactsBackfill(db);
+      expect(writes).toHaveLength(0);
+    }
   });
 });

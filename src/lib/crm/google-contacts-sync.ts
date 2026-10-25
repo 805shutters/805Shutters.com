@@ -5,7 +5,7 @@ import { getContactsAccess } from "@/lib/crm/google-contacts-auth";
 import { buildContactCandidates, matchGoogleContact, mergeGoogleContact, normalizeContactPhone, type ContactCandidate, type ContactSource, type GooglePerson } from "@/lib/crm/google-contacts-model";
 
 const FIELDS = "names,phoneNumbers,emailAddresses,addresses,userDefined,metadata";
-type SyncRow = { customer_key: string; google_resource_name: string | null; status: string; attempts: number; create_attempted_at: string | null; requested_at: string; next_attempt_at: string; source_refs: string[]; processed_request_at: string | null };
+type SyncRow = { customer_key: string; google_resource_name: string | null; status: string; exception_code: string | null; attempts: number; create_attempted_at: string | null; requested_at: string; next_attempt_at: string; source_refs: string[]; processed_request_at: string | null };
 function storageError(error: unknown) { if (error) throw new CrmAuthError(503, "Google Contacts sync storage is unavailable."); }
 
 async function allRows(supabase: SupabaseClient, table: string, columns: string) {
@@ -110,6 +110,17 @@ export async function enqueueContactsBackfill(supabase: SupabaseClient) {
   for (let i = 0; i < candidates.length; i += 200) {
     // ignoreDuplicates preserves verified mappings and uncertain creation outcomes.
     const { error } = await supabase.from("crm_google_contacts_sync").upsert(candidates.slice(i,i+200).map(c => ({ customer_key: c.key, source_refs: c.refs })), { onConflict: "customer_key", ignoreDuplicates: true });
+    storageError(error);
+  }
+  // Resume source exceptions only after their cause is resolved. Preserve all
+  // mappings/create intent, destination conflicts, and concurrent edit requests.
+  const resolvedSourceCodes = new Set(["shared_crm_phone", "conflicting_crm_phones", "missing_name", "missing_or_invalid_phone"]);
+  const eligibleKeys = new Set(candidates.filter(c => !c.issue).map(c => c.key));
+  for (const row of await syncRows(supabase)) {
+    if (!["ambiguous", "missing_data"].includes(row.status) || !resolvedSourceCodes.has(row.exception_code || "") || !eligibleKeys.has(row.customer_key)) continue;
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("crm_google_contacts_sync").update({ status: "pending", exception_code: null, requested_at: now, next_attempt_at: now, updated_at: now })
+      .eq("customer_key", row.customer_key).eq("status", row.status).eq("requested_at", row.requested_at);
     storageError(error);
   }
   return { queuedPopulation: candidates.length };
