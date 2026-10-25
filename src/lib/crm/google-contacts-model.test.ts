@@ -5,6 +5,8 @@ describe("805 Contacts reconciliation", () => {
   it("normalizes valid NANP numbers and rejects placeholders/multiple numbers", () => {
     expect(normalizeContactPhone("805.555.1234 ext 9")).toBe("+18055551234");
     expect(normalizeContactPhone("+44 20 7946 0958")).toBe("+442079460958");
+    expect(normalizeContactPhone("\u202a+1 (805) 844-4013\u202c")).toBe("+18058444013");
+    expect(normalizeContactPhone("\u2066+1 (805) 844-4013\u2069")).toBe("+18058444013");
     for (const value of ["805-000-0000", "1111111111", "8055551234 / 8055559999", "unknown"]) expect(normalizeContactPhone(value)).toBeNull();
   });
   it("includes unsold jobs, groups repeated contracts, excludes deleted sources", () => {

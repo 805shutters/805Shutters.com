@@ -20,7 +20,8 @@ export const CONTACT_SOURCE_MARKER = "805 CRM source";
 export const contactNameKey = (name: string) => name.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 export function normalizeContactPhone(input: string | null | undefined): string | null {
-  const raw = (input || "").trim().replace(/(?:ext\.?|x|#)\s*\d+$/i, "").trim();
+  // Phone fields copied from messaging apps can contain invisible bidi marks.
+  const raw = (input || "").replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim().replace(/(?:ext\.?|x|#)\s*\d+$/i, "").trim();
   if (!raw || /[^\d+().\s-]/.test(raw)) return null;
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 10 && /^[2-9]\d{2}[2-9]\d{6}$/.test(digits)) return `+1${digits}`;
