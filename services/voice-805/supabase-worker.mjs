@@ -17,6 +17,14 @@ export class SupabaseWorker {
     const change = fn => this.state.transact(fn);
     try {
       const c = await read();
+      if (kind === 'notification' && item.purpose === 'transcript') {
+        await change((_e, s) => {
+          const fresh = s.get('notification', item.id);
+          if (!fresh) return fresh;
+          return s.put('notification', { ...fresh, status: 'pending', attempts: 0, sid: null, nextAt: Date.now() + 365 * 86400000 });
+        });
+        return;
+      }
       if (kind === 'notification') {
         const data = await change((_e,s) => ({ blocked: s.get('text-preference',item.destination)?.blocked, message: s.get('message',item.messageId) }));
         if (data.blocked) throw new Error('Recipient opted out');
@@ -63,7 +71,7 @@ export class SupabaseWorker {
           case 'ringback': if (c.phase==='offering') await p.ringback(c); break;
           case 'reconnect-agent': if (c.phase==='followup') await p.resumeAgent(c); break;
           case 'connect-agent': if (c.phase==='message' && !c.mediaStreamSid && !c.mediaFailed) await p.connectAgent(c); break;
-          case 'record': if (c.phase==='message') await p.record(c); break;
+          case 'record': break;
           case 'disconnect-ai':
             // Redirecting the parent Twilio leg terminates its SIP child. The signed
             // caller conference-join callback confirms this before marking human.

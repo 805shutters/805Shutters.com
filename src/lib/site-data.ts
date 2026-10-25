@@ -1403,9 +1403,9 @@ const supportPages: SitePage[] = [
           "We do not sell customer lead information. We may share information with service providers that help operate the website, lead database, advertising, analytics, hosting, email, scheduling, and customer follow-up."
       },
       {
-        heading: "Staff booking text messages",
+        heading: "Staff text messages",
         body:
-          `${SMS_OPT_IN_NO_SHARING_STATEMENT}. ${staffBookingSmsNotice.legalName} may text designated staff when a consultation is confirmed. ${staffBookingSmsNotice.frequency} ${staffBookingSmsNotice.rates} Reply STOP to unsubscribe. Reply HELP or contact ${staffBookingSmsNotice.email} or ${staffBookingSmsNotice.phoneDisplay}. ${staffBookingSmsNotice.carrierNotice} ${staffBookingSmsNotice.enrollment}`,
+          `${SMS_OPT_IN_NO_SHARING_STATEMENT}. ${staffBookingSmsNotice.legalName} may text designated staff with a caller's message transcript. ${staffBookingSmsNotice.frequency} ${staffBookingSmsNotice.rates} Reply STOP to unsubscribe. Reply HELP or contact ${staffBookingSmsNotice.email} or ${staffBookingSmsNotice.phoneDisplay}. ${staffBookingSmsNotice.carrierNotice} ${staffBookingSmsNotice.enrollment}`,
         links: [{ label: "Terms & Conditions", href: STAFF_BOOKING_SMS_PATH }]
       },
       {

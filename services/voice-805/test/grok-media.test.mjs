@@ -56,9 +56,40 @@ test('no-answer opening apologizes and offers a message or consultation',async()
  assert.equal(HOST_WALL_MS,400000);assert.equal(MEDIA_SESSION_MS,270000);assert.ok(MEDIA_SESSION_MS+FALLBACK_RESERVE_MS<=HOST_WALL_MS);assert.ok(MEDIA_SESSION_MS<MESSAGE_WINDOW_MS);
  assert.equal(f.timers.find(timer=>timer.ms===10000).cleared,true);f.session.finish();assert.equal(f.timers.find(timer=>timer.ms===MEDIA_SESSION_MS).cleared,true);
 });
+test('a caller reply during opening playback is kept before the Twilio mark',async()=>{
+ const f=fixture();await f.begin();await f.audio('opening');
+ assert.equal(f.session.stage,'opening-playback');
+ await f.carrier({event:'media',streamSid:f.streamSid,media:{payload:'YWJj'}});
+ const forwarded=f.ai.sent.some(item=>item.type==='input_audio_buffer.append'&&item.audio==='YWJj');
+ await f.say('schedule an appointment','early-schedule');
+ await f.mark();
+ const schedule=f.store.get('call',f.call.id).schedule;
+ assert.equal(forwarded,true);
+ assert.equal(schedule?.purpose,'appointment');
+ assert.equal(schedule?.awaiting,'day');
+ assert.notEqual(f.session.stage,'collect');
+ assert.equal(f.session.stage,'result');
+ assert.equal((lastLine(f).match(/\?/g)||[]).length,1);
+ assert.match(lastLine(f),/What day works for you/);
+ assert.equal(f.store.get('call',f.call.id).intent,null);
+ assert.equal(f.store.list('message').length,0);
+ f.session.finish();
+});
+test('a yes before the played readback does not book, and the same yes after the mark still does not',async()=>{
+ const f=fixture();await messageMode(f);await f.audio('readback');
+ assert.equal(f.session.stage,'readback-playback');
+ await f.say('yes','early-yes');
+ assert.equal(f.store.list('message').length,0);
+ await f.mark();
+ await f.say('yes','early-yes');
+ assert.equal(f.store.list('message').length,0);
+ assert.equal(f.store.get('call',f.call.id).booking,undefined);
+ assert.equal(f.store.get('call',f.call.id).intent?.confirmedAt,undefined);
+ f.session.finish();
+});
 function lastLine(f){return [...f.ai.sent].reverse().find(item=>item.item?.content?.[0]?.text)?.item.content[0].text||'';}
 async function ready(f){await f.begin();await f.audio();await f.mark();assert.equal(f.session.stage,'collect');}
-async function messageMode(f){await ready(f);await speak(f,'I would like to leave a message');assert.equal(f.store.list('effect').some(item=>item.type==='record'),true);assert.match(lastLine(f),/May I have your name/);await speak(f,'Test Caller');assert.match(lastLine(f),/I can call you back at/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.ai.sent.some(item=>/best callback number/i.test(item.item?.content?.[0]?.text||'')),false);await speak(f,'yes');assert.match(lastLine(f),/reason for your call/);await f.say('Please call me back','body');assert.match(lastLine(f),/Message from Test Caller/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.session.stage,'readback');}
+async function messageMode(f){await ready(f);await speak(f,'I would like to leave a message');assert.equal(f.store.list('effect').some(item=>item.type==='record'),false);assert.match(lastLine(f),/May I have your name/);await speak(f,'Test Caller');assert.match(lastLine(f),/I can call you back at/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.ai.sent.some(item=>/best callback number/i.test(item.item?.content?.[0]?.text||'')),false);await speak(f,'yes');assert.match(lastLine(f),/reason for your call/);await f.say('Please call me back','body');assert.match(lastLine(f),/Message from Test Caller/);assert.match(lastLine(f),/1 8 0 5 5 5 5 0 1 9 9/);assert.equal(f.session.stage,'readback');}
 async function speak(f,text){const id='spoken-'+Math.random();await f.say(text,'turn-'+id);if(f.session.stage==='result'||f.session.stage==='readback'){await f.audio(id);await f.mark();}}
 async function tool(f,name,data,id='t1'){await f.grok({type:'response.created',response:{id}});await f.grok({type:'response.function_call_arguments.done',name,call_id:id,arguments:JSON.stringify(data)});await f.grok({type:'response.done',response:{id,status:'completed'}});}
 const message={name:'Test Caller',callback:'+18055550199',message:'Please call me back'};
@@ -72,14 +103,18 @@ test('message requires played readback and one spoken yes, then verifies the CRM
  await f.mark();await f.say('yes','yes-1');await f.say('yes','yes-1');await f.say('yes please','yes-2');
  assert.equal(f.store.list('message').length,1);assert.equal(f.store.list('message')[0].confirmed,true);assert.equal(f.store.list('message')[0].crmVerified,true);
  assert.equal(f.store.list('message')[0].customerId,customerId);assert.equal(saved[0].customerId,customerId);assert.equal(saved[0].callback,'+18055550199');assert.equal(saved[0].text,'Please call me back');
- assert.equal(saved.length,1);assert.match(f.ai.sent.at(-1).item.content[0].text,/has been saved/);f.session.finish();
+ assert.equal(saved.length,1);assert.match(f.ai.sent.at(-1).item.content[0].text,/has been saved/);
+ const notes=f.store.list('notification');
+ assert.deepEqual(notes.map(item=>item.recipient).sort(),['jessica','mike']);
+ assert.equal(notes.every(item=>item.status==='pending'&&item.purpose==='transcript'&&item.sid===null),true);
+ f.session.finish();
 });
 test('a Grok session error uses the Record fallback',async()=>{
  const f=fixture();await f.begin();await f.grok({type:'error',error:{message:'down'}});
  assert.equal(f.session.closed,true);assert.equal(f.store.get('call',f.call.id).mediaFailed,true);
  assert.equal(f.store.list('effect').some(item=>item.type==='fallback'),true);
- const xml=fallback(null,f.store.get('call',f.call.id),'voicemail',null,f.c);
- assert.match(xml,/<Record/);assert.match(xml,/After the tone/);assert.doesNotMatch(xml,/Which would you like/);
+ const xml=fallback(f.engine,f.store.get('call',f.call.id),'voicemail',null,f.c);
+ assert.doesNotMatch(xml,/<Record|After the tone|written message is saved/);assert.match(xml,/no recording was made/i);assert.match(xml,/call back to leave a message or schedule an appointment/);assert.doesNotMatch(xml,/Which would you like/);
 });
 test('an unauthorized booking is saved as a callback instead of a calendar appointment',async()=>{
  const f=fixture();const saved=[];const actions=[];
@@ -106,8 +141,12 @@ test('negative, ambiguous, silence, and a failed CRM verify do not announce a sa
  const failed=fixture();failed.session.saveCrm=async()=>({verified:false});await messageMode(failed);await failed.audio('readback');await failed.mark();await failed.say('yes');
  assert.equal(failed.store.list('message')[0].crmVerified,undefined);assert.equal(failed.session.closed,true);assert.equal(failed.store.get('call',failed.call.id).mediaFailed,true);
  assert.equal(failed.store.list('effect').some(item=>item.type==='fallback'),true);
- const failedXml=fallback(null,failed.store.get('call',failed.call.id),'voicemail',null,failed.c);
- assert.match(failedXml,/<Record/);assert.match(failedXml,/After the tone/);assert.doesNotMatch(failedXml,/Which would you like/);
+ const failedXml=fallback(failed.engine,failed.store.get('call',failed.call.id),'voicemail',null,failed.c);
+ assert.equal(failed.store.list('message').length,1);
+ const notes=failed.store.list('notification');
+ assert.deepEqual(notes.map(item=>item.recipient).sort(),['jessica','mike']);
+ assert.equal(notes.every(item=>item.status==='pending'&&item.purpose==='transcript'&&item.sid===null&&/Please call me back/.test(item.body)&&/Reply STOP to unsubscribe; HELP for help\./.test(item.body)),true);
+ assert.doesNotMatch(failedXml,/<Record|After the tone/);assert.match(failedXml,/Your written message is saved/);assert.match(failedXml,/No recording was made/);assert.doesNotMatch(failedXml,/Which would you like/);
 });
 test('model confirmation, foreign stream, interruption, and a late yes cannot save',async()=>{
  const f=fixture();await messageMode(f);await f.grok({type:'response.function_call_arguments.done',name:'prepare_message',call_id:'model-yes',arguments:JSON.stringify({...message,confirmed:true})});assert.equal(f.store.list('message').length,0);

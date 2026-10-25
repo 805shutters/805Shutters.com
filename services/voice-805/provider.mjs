@@ -158,11 +158,8 @@ export class TwilioProvider {
       Method: "POST",
     });
   }
-  record(call) {
-    return this.request(`Calls/${call.sid}/Recordings.json`, {
-      RecordingStatusCallback: `${this.config.origin}/twilio/recording/${call.id}`,
-      RecordingStatusCallbackEvent: "completed",
-    });
+  record() {
+    return Promise.resolve({ skipped: "recording-disabled" });
   }
   send(item, message) {
     if (this.config.mode === "pilot")
@@ -343,7 +340,6 @@ export class Worker {
           await p.connectAgent(c);
         break;
       case "record":
-        if (c.phase === "message") await p.record(c);
         break;
       case "fallback":
         this.media?.disconnect(c.id);
@@ -366,6 +362,8 @@ export class Worker {
       if (kind === "effect") {
         await this.effect(item);
         this.store.put(kind, { ...item, status: "done" });
+      } else if (item.purpose === "transcript") {
+        this.store.put(kind, { ...item, status: "pending", attempts: 0, sid: null, nextAt: Date.now() + 365 * 86400000 });
       } else {
         if (this.store.get("text-preference", item.destination)?.blocked)
           throw new ProviderError("Recipient opted out; not sent");

@@ -8,6 +8,7 @@ import { SupabaseWorker } from '../../../services/voice-805/supabase-worker.mjs'
 import { loadSupabaseConfig } from '../../../services/voice-805/supabase-config.mjs';
 import { attachMediaSocket, callbackFields, createSupabaseHandler } from '../../../services/voice-805/supabase-handler.mjs';
 import { saveCallback } from '../../../services/voice-805/callbacks.mjs';
+import { saveCallSummary } from '../../../services/voice-805/call-summary.mjs';
 import { createSupabasePromptStore, warmPrompts, REALTIME_URL } from '../../../services/voice-805/prompts.mjs';
 
 const config=loadSupabaseConfig(Deno.env.toObject());
@@ -31,6 +32,11 @@ const upgradeMedia=(request:Request,gate:{load:()=>Promise<Record<string,unknown
      const row=await saveCallback(client,callbackFields({get:()=>''},message.text||'',source,{name:message.name,callback:message.callback,message:message.text,transcript:message.text,customerId:message.customerId||source.customerId||null}));
      if(!row?.id||row.call_sid!==call.sid)throw new Error('Callback save was not verified');
      return {verified:true,id:row.id,call_sid:row.call_sid};
+    },
+    saveSummary:async()=>{
+     const current=await state.transact((_e,s)=>({call:s.get('call',call.id),messages:s.list('message').filter((item)=>item.callId===call.id)}));
+     if(!current?.call?.customerId)return {saved:false,reason:'no-identity'};
+     return saveCallSummary(client,current.call,current.messages);
     }});
    EdgeRuntime.waitUntil(session.done);
   },

@@ -31,6 +31,9 @@ export function playbackWaitMs(pcmBytes) {
 // https://docs.x.ai/developers/model-capabilities/audio/speech-to-speech
 // Final captions are emitted only when this nested model is set. `grok` at the top level is not the documented field.
 export const INPUT_TRANSCRIPTION = Object.freeze({ model: 'grok-transcribe', language_hint: 'en' });
+const QUESTION_STAGES = new Set(['opening', 'opening-playback', 'result', 'result-playback']);
+const READBACK_STAGES = new Set(['readback', 'readback-playback']);
+const FORWARDED_STAGES = new Set(['assist', 'collect', 'confirm', 'welcome', 'welcome-playback', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback']);
 const PREPARE_FAIL = 'I could not verify that opening. May I take a callback message so our team can check it?';
 const SAVE_FAIL = 'I could not verify the save. May I take a callback message so our team can check it?';
 const REPLAN_QUESTION = 'That time no longer fits. What day or time should I check instead?';
@@ -40,8 +43,8 @@ const SILENCE_QUESTION = 'I did not hear a clear yes, so nothing was saved. May 
 // The carrier socket is authenticated before construction. The model can propose.
 // A spoken yes counts only after the exact readback has played on this call.
 export class GrokMediaSession {
-  constructor({ socket, call, state, worker, connect, clock = globalThis, schedule = schedulingRequest, saveCrm = null }) {
-    Object.assign(this, { socket, call, state, worker, connect, clock, schedule, saveCrm });
+  constructor({ socket, call, state, worker, connect, clock = globalThis, schedule = schedulingRequest, saveCrm = null, saveSummary = null }) {
+    Object.assign(this, { socket, call, state, worker, connect, clock, schedule, saveCrm, saveSummary });
     this.config = state.config;
     this.stage = 'starting';
     this.closed = false;
@@ -58,6 +61,7 @@ export class GrokMediaSession {
     this.cancelSent = false;
     this.vadTurn = false;
     this.callerChose = false;
+    this.beforeReadback = new Set();
     this.forceRetries = 0;
     this.promptTimer = null;
     this.playbackToken = 0;
@@ -172,10 +176,11 @@ export class GrokMediaSession {
         const c = s.get('call', this.call.id);
         if (c?.phase === 'message' || (c?.phase === 'offering' && !c.owner)) e.ended(c.id, c.sid, `media-stop:${this.streamSid}`);
       });
+      await this.writeSummary();
       if (!this.closed) await this.worker?.drain?.();
       return this.finish();
     }
-    if (event.event === 'media' && (this.listening || ['assist', 'collect', 'confirm', 'welcome', 'welcome-playback'].includes(this.stage)) && validAudio(event.media?.payload)) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
+    if (event.event === 'media' && validAudio(event.media?.payload) && (this.listening || FORWARDED_STAGES.has(this.stage))) this.sendAI({ type: 'input_audio_buffer.append', audio: event.media.payload });
     if (event.event === 'mark') {
       const next = this.marks.get(event.mark?.name);
       if (!next) return;
@@ -185,7 +190,7 @@ export class GrokMediaSession {
   }
   force(text, stage, options = {}) {
     if (this.closed) return;
-    this.listening = Boolean(options.listen);
+    this.listening = Boolean(options.listen) || ['opening', 'result', 'readback', 'welcome'].includes(stage);
     this.interruptible = Boolean(options.interruptible);
     this.stage = stage;
     this.audioBytes = 0;
@@ -354,6 +359,18 @@ export class GrokMediaSession {
   assistMessages() { this.stage = 'assist'; this.prompt = null; this.pending = []; this.vadTurn = false; this.messageOnly = true; this.clearSilence(); this.sendAI({ type: 'session.update', session: this.voiceSession({ instructions: RECEPTIONIST_PROMPT, turn_detection: { type: 'server_vad' }, tools: RECEPTIONIST_TOOLS }) }); }
   output(id, result) { this.sendAI({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: id, output: JSON.stringify(result) } }); }
   clearSilence() { if (this.silenceTimer) { this.clock.clearTimeout(this.silenceTimer); this.silenceTimer = null; } }
+  stopOverlap() {
+    this.marks.clear();
+    this.releasePlayback();
+    this.sendCarrier({ event: 'clear' });
+    if (this.prompt?.responseId) this.stray.add(this.prompt.responseId);
+    this.prompt = null;
+    this.pending = [];
+  }
+  async writeSummary() {
+    if (!this.saveSummary) return;
+    try { await this.saveSummary(); } catch (error) { reportFailure('call-summary', error); }
+  }
   armConfirm() {
     this.stage = 'confirm';
     this.prompt = null;
@@ -450,17 +467,24 @@ export class GrokMediaSession {
       return this.fail('Grok rejected the voice session');
     }
     const turn = this.callerTurn(event);
-    if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback')) this.noteChoice();
+    if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
+    if (turn && READBACK_STAGES.has(this.stage)) {
+      this.beforeReadback.add(turn.id);
+      return;
+    }
     if (turn && this.stage === 'confirm') return this.hear(turn);
     if (turn && (this.stage === 'welcome' || this.stage === 'welcome-playback')) {
       this.vadTurn = true;
       this.sendCarrier({ event: 'clear' });
       return this.collectTurn(turn);
     }
-    if (turn && this.stage === 'collect') return this.collectTurn(turn);
+    if (turn && (this.stage === 'collect' || QUESTION_STAGES.has(this.stage))) {
+      if (QUESTION_STAGES.has(this.stage)) this.stopOverlap();
+      return this.collectTurn(turn);
+    }
     if (turn) return;
     if (event.type === 'input_audio_buffer.speech_stopped' || event.type === 'input_audio_buffer.timeout_triggered') {
-      if (['collect', 'confirm', 'assist'].includes(this.stage)) this.vadTurn = true;
+      if (['collect', 'confirm', 'assist', 'opening', 'opening-playback', 'result', 'result-playback', 'readback', 'readback-playback'].includes(this.stage)) this.vadTurn = true;
       return;
     }
     if (event.type === 'response.created' && event.response?.id) {
@@ -503,6 +527,10 @@ export class GrokMediaSession {
       return;
     }
     if (event.type === 'input_audio_buffer.speech_started') {
+      if (QUESTION_STAGES.has(this.stage)) {
+        this.stopOverlap();
+        return;
+      }
       if (this.stage === 'readback' || this.stage === 'readback-playback') {
         this.noteChoice();
         this.marks.clear();
@@ -599,14 +627,13 @@ export class GrokMediaSession {
       const prior = c.schedule || initialSchedule(c.from, this.config.number);
       const next = applyScheduleTurn(prior, turn.text, c.from, this.config.number, this.now());
       const saved = { ...c, schedule: next.state };
-      if (next.invalidate && !c.intent?.confirmedAt) saved.intent = null;
-      if (next.state?.purpose === 'message' && !s.list('effect').some(item => item.callId === c.id && item.type === 'record')) e.effect(saved, 'record');
+      if (!c.intent?.confirmedAt) saved.intent = null;
       s.put('call', saved);
       return next;
     });
     if (this.closed || !applied || !(await this.liveIntake())) return;
     if (applied.state?.purpose === 'message') void this.worker?.drain?.().catch(() => {});
-    if (applied.invalidate) this.intent = null;
+    if (!this.intent?.confirmedAt) this.intent = null;
     this.logCheckpoint('saved', applied.state?.awaiting);
     if (applied.readback && applied.state.purpose === 'message') return this.readbackMessage(applied.state);
     if (applied.prepare) return this.prepareFromSchedule(applied.state);
@@ -692,7 +719,8 @@ export class GrokMediaSession {
     this.heard.add(turn.id);
     this.noteChoice();
     this.clearSilence();
-    const decision = spokenDecision(turn.text);
+    const decision = this.beforeReadback.has(turn.id) ? 'early' : spokenDecision(turn.text);
+    this.beforeReadback.delete(turn.id);
     const intentId = this.intent?.id;
     if (!(await this.liveIntake())) return;
     if (decision !== 'affirmative') {

@@ -10,6 +10,8 @@ import { SimulationProvider, ProviderError } from '../provider.mjs';
 import { hmac } from '../security.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
 import { promptPublicPath } from '../prompts.mjs';
+import { STAFF_TAKEOVER_SENTENCE, callSummary, saveCallSummary } from '../call-summary.mjs';
+import { readFileSync } from 'node:fs';
 
 const config=()=>({...loadSupabaseConfig({}), mode:'live', liveAuthorized:true, agentReviewed:true,agentContractVerified:true, workerVerified:true,
  origin:'https://example.supabase.co/functions/v1/voice-805',accountSid:'AC'+'a'.repeat(32),authToken:'t'.repeat(32),
@@ -27,6 +29,39 @@ const incoming=(f,sid='CA'+'1'.repeat(32))=>f.state.transact(e=>e.inbound(sid,'+
 function carrierRequest(f,path,fields){const p=new URLSearchParams({AccountSid:f.c.accountSid,...fields});const payload=f.c.origin+path+[...new Set(p.keys())].sort().map(k=>k+p.get(k)).join('');return new Request(f.c.origin+path,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','x-twilio-signature':hmac(f.c.authToken,payload,'sha1')},body:p});}
 function agentRequest(f,call,action,extra={}){return new Request(f.c.origin+'/agent',{method:'POST',headers:{authorization:'Bearer '+f.c.toolsKey},body:JSON.stringify({callToken:callToken(f.c,call),action,...extra})});}
 
+test('call summaries stay factual, and an unlinked caller is not written',async()=>{
+ const linked={id:'call-1',sid:'CA1',ai:false,phase:'ended',customerId:'11111111-1111-4111-8111-111111111111',from:'+18055550199',schedule:{purpose:'appointment',weekday:'friday',name:'Pat Example'}};
+ const summary=callSummary(linked,[{callId:'call-1',text:'Please call about shutters',confirmed:false,name:'Pat Example'}]);
+ assert.equal(summary.outcome,'incomplete');
+ assert.match(summary.text,/Unconfirmed transcript: Please call about shutters/);
+ assert.match(summary.text,/friday/);
+ assert.match(summary.text,new RegExp(STAFF_TAKEOVER_SENTENCE.replace(/[.]/g,'\\.')));
+ assert.doesNotMatch(summary.text,/recording/i);
+ const quiet=callSummary({...linked,ai:true,booking:{verified:true}},[]);
+ assert.equal(quiet.outcome,'booked');
+ assert.equal(quiet.streamDetached,false);
+ assert.doesNotMatch(quiet.text,/stream detached/);
+ const seen=[];
+ const client={rpc:async(name,args)=>{seen.push({name,args});return {data:{saved:true}};}};
+ assert.deepEqual(await saveCallSummary(client,{...linked,customerId:null},[]),{saved:false,reason:'no-identity'});
+ assert.equal(seen.length,0);
+ assert.equal((await saveCallSummary(client,linked,[])).saved,true);
+ assert.equal(seen[0].name,'voice_805_save_summary');
+ assert.equal(seen[0].args.p_stream_detached,true);
+ const source=readFileSync(new URL('../twilio-fallback/fallback.js',import.meta.url),'utf8');
+ assert.match(source,/no recording was made/);
+ assert.doesNotMatch(source,/<Record/);
+});
+test('transcript notices are not sent and a leftover record effect does not start audio',async()=>{
+ const f=fixture();f.c.notificationsApproved=true;
+ const call=await f.state.transact(e=>e.inbound('CA'+'9'.repeat(32),'+18055550199'));
+ await f.state.transact((e,s)=>{const current=s.get('call',call.id);s.put('call',{...current,phase:'message'});e.effect({...current,phase:'message'},'record');e.saveMessage(call.id,{name:'Pat',callback:'+18055550199',message:'Call about shutters',confirmed:true},'spoken');});
+ await f.worker.drain();
+ assert.equal(f.provider.operations.some(item=>item.type==='record'||item.type==='sms'),false);
+ const notes=await f.state.transact((_e,s)=>s.list('notification'));
+ assert.equal(notes.length,2);
+ assert.equal(notes.every(item=>item.status==='pending'&&item.sid===null&&item.purpose==='transcript'),true);
+});
 test('exact common greeting and every real CRM stage has a distinct, nonfinancial hint',()=>{
  assert.equal(COMMON_GREETING,"Thank you for calling 805 Shutters. We appreciate you supporting local business. Let me reach out to a team member to connect you with. I can also help you schedule an appointment. We offer free in-home consultations, whether you're exploring shutters, blinds, or shades, to help you find the right light control, privacy, and style.");assert.match(phaseInstruction('greeting'),/listening welcome/);assert.equal(new Set(Object.values(STATUS_TOPICS)).size,Object.keys(STATUS_TOPICS).length);
  const result=callerContext({match:'matched',first_name:'Alex',statuses:['invoiced'],balance:9000,appointment:'tomorrow'});

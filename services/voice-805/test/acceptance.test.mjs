@@ -251,17 +251,26 @@ test("message and exactly two durable notification intents are atomic, deduped, 
     id(),
   );
   assert.equal(again.id, m.id);
-  assert.equal(s.store.list("notification").length, 2);
+  const notices = s.store.list("notification");
+  assert.equal(notices.length, 2);
+  assert.deepEqual(notices.map((n) => n.recipient).sort(), ["jessica", "mike"]);
+  assert.ok(notices.every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
+  assert.ok(notices.every((n) => n.body.includes("Please call back.") && n.body.endsWith("Reply STOP to unsubscribe; HELP for help.")));
   await s.worker.drain();
-  assert.ok(s.store.list("notification").every((n) => n.status === "accepted"));
-  const n = s.store.list("notification")[0];
-  applyDelivery(s.store, n.id, n.sid, "delivered");
-  applyDelivery(s.store, n.id, n.sid, "sent");
-  assert.equal(s.store.get("notification", n.id).status, "delivered");
+  assert.ok(s.store.list("notification").every((n) => n.purpose === "transcript" && n.status === "pending" && n.sid === null));
+  assert.equal(s.provider.operations.filter((o) => o.type === "sms").length, 0);
+  const reply = s.engine.sendText(m.id, "mike", "Hello", true, id());
+  await s.worker.drain();
+  const sent = s.store.get("notification", reply.id);
+  assert.equal(sent.status, "accepted");
+  applyDelivery(s.store, reply.id, sent.sid, "delivered");
+  applyDelivery(s.store, reply.id, sent.sid, "sent");
+  assert.equal(s.store.get("notification", reply.id).status, "delivered");
   assert.throws(
-    () => applyDelivery(s.store, n.id, "SM" + "0".repeat(32), "delivered"),
+    () => applyDelivery(s.store, reply.id, "SM" + "0".repeat(32), "delivered"),
     /mismatch/,
   );
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
 });
 test("database error rolls back both saved message and recipient intents", async (t) => {
   const s = setup(t);
@@ -298,18 +307,17 @@ test("database error rolls back both saved message and recipient intents", async
 });
 test("uncertain SMS outcome is not blindly retried and can reconcile from signed delivery evidence", async (t) => {
   const s = setup(t);
-  await message(s);
+  const m = await message(s);
+  const reply = s.engine.sendText(m.id, "mike", "Following up", true, id());
   s.provider.failNext = new ProviderError("timeout", true);
   await s.worker.drain();
-  const uncertain = s.store
-    .list("notification")
-    .find((n) => n.status === "uncertain");
-  assert.ok(uncertain);
+  assert.equal(s.store.get("notification", reply.id).status, "uncertain");
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
   const sent = s.provider.operations.length;
   await s.worker.drain();
   assert.equal(s.provider.operations.length, sent);
-  applyDelivery(s.store, uncertain.id, "SM" + "3".repeat(32), "sent");
-  assert.equal(s.store.get("notification", uncertain.id).status, "sent");
+  applyDelivery(s.store, reply.id, "SM" + "3".repeat(32), "sent");
+  assert.equal(s.store.get("notification", reply.id).status, "sent");
 });
 test("durable store survives restart with message, badge count, customer link and shared resolved status", async () => {
   const dir = mkdtempSync(join(tmpdir(), "805-phone-test-")),
@@ -479,15 +487,15 @@ test("partial message survives caller hangup but cannot initiate an unconfirmed 
 });
 test("delivered callback arriving before a send timeout remains authoritative", async (t) => {
   const s = setup(t);
-  await message(s);
+  const m = await message(s);
+  const reply = s.engine.sendText(m.id, "mike", "Following up", true, id());
   s.provider.send = async (item) => {
     applyDelivery(s.store, item.id, "SM" + "7".repeat(32), "delivered");
     throw new ProviderError("timeout", true);
   };
   await s.worker.drain();
-  assert.ok(
-    s.store.list("notification").every((n) => n.status === "delivered"),
-  );
+  assert.equal(s.store.get("notification", reply.id).status, "delivered");
+  assert.ok(s.store.list("notification").filter((n) => n.purpose === "transcript").every((n) => n.status === "pending" && n.sid === null));
 });
 test("failed transfer cancellation never unholds a caller with an uncertain extra staff leg", async (t) => {
   const s = setup(t);

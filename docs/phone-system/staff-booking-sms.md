@@ -1,51 +1,56 @@
-# Staff booking SMS activation
+# Staff text notices
 
-This checklist is not authorization to send, to set live secrets, or to redeploy voice. Voice v24 (`94444563`) is already live. Call `5a39f34c-7053-499a-afb0-b0f80c84eb55` reached that release at `2026-10-20T21:05:26Z`. Runtime logs show welcome speaking at `21:05:28.118` and the Twilio playback mark played at `21:05:46.364`, so welcome carrier playback is confirmed. Opening speech started at `21:05:46.902`. The carrier disconnected at `21:05:53.172` during opening playback. The call captured no scheduling intent and created no CRM booking. A stored `greetingPlayed=false` is the listening-welcome flag and is not, by itself, evidence that the welcome did not play. Scheduling intake, a verified CRM save, and provider acceptance of both staff texts remain pending.
+This checklist is not authorization to send, to set live secrets, to deploy the voice function, or to publish the website. Audited live Edge for this patch was voice-805 v25, matching `dd55b405`. This later commit is not deployed. Call `5a39f34c-7053-499a-afb0-b0f80c84eb55` reached voice v24 (`94444563`) at `2026-10-20T21:05:26Z`. Runtime logs show welcome speaking at `21:05:28.118` and the Twilio playback mark played at `21:05:46.364`, so welcome carrier playback is confirmed. Opening speech started at `21:05:46.902`. The carrier disconnected at `21:05:53.172` during opening playback. The call captured no scheduling intent and created no CRM booking. A stored `greetingPlayed=false` is the listening-welcome flag and is not, by itself, evidence that the welcome did not play. There is no v25 complete handset booking proof. The latest real call before the 2026-10-25 check was October 22, before the v25 release. The callback table was empty. The watchdog was active every 5 seconds, with 17204 succeeded runs in the last 24 hours.
 
-## Program
+## Caller-message transcripts
 
-SNS Interiors dba 805 Shutters. Brand `BN7de9364fdf7e2e9b53ff9233a47b76fd` is approved Low Volume Standard. Messaging service `MG60d4038bf54bffa0690cce85a6e49147` has one sender, `+18055908050`. The campaign on that service is not submitted and not approved. Do not send staff booking texts until the campaign is approved.
+This is the only texting setup authorized for this branch. Booking-alert SMS stays out of scope.
 
-The alerts are staff-only and event-based: one text to Jessica and one text to Mike after an agent-confirmed consultation. Jessica stays off the incoming ring list. `VOICE_805_RING_STAFF_JSON` remains `["mike"]` for the current test. Do not remove Jessica from the booking SMS recipients.
+Campaign `BU542a67b844388f5192a84c79d6a86cb9` is draft. Messaging service `MG60d4038bf54bffa0690cce85a6e49147` has one sender, `+18055908050`. No campaign on that service is submitted. The same draft is being prepared through a recovered Persona form. Provider approval stays outside this repository. `transcriptSmsSendingEnabled()` returns false. The voice service queues one pending notice per saved or unconfirmed caller message for Mike and one for Jessica, with purpose `transcript`. It does not call Twilio. A queued or pending row is not delivered. Each body ends with `Reply STOP to unsubscribe; HELP for help.`
 
-The staff consent method for Mike and Jessica is pending. This release does not record that method and does not add a customer opt-in form.
+On 2026-10-25 Mike verbally confirmed that both he and Jessica consented to these transcript texts. That is Mike's verbal confirmation. It is not a signed form and it is not keyword proof.
 
-## Sender
+Live `ringStaff` is `["mike","jessica"]`. That list was restored through the dashboard on 2026-10-25 and checked on `/health`. Do not change `VOICE_805_RING_STAFF_JSON` from this branch.
 
-Agent staff booking SMS uses only these website environment variables, all required:
+## Booking alerts
 
-- `VOICE_805_STAFF_SMS_ACCOUNT_SID` — the verified 805 account. Any other account fails closed. Do not commit that SID.
+Booking alerts are not this campaign and are not activated. Do not enable `sendAgentStaffBookingSms`. Leave the four `VOICE_805_STAFF_SMS_*` website variables unset. The earlier description of one text to Jessica and one text to Mike after an agent-confirmed consultation remains the unused booking-alert program. Jessica is on the live incoming ring list with Mike.
+
+## Sender rules for a later approved send
+
+These rules describe the dedicated 805 sender. They do not authorize a send now.
+
+- `VOICE_805_STAFF_SMS_ACCOUNT_SID` — the verified 805 account. Any other account fails closed. Do not commit that SID. Its SHA-256 is `1516fe83fa4addc9bcac21f94a4b82e69b1715156cefbc3b134049139230cec0`.
 - `VOICE_805_STAFF_SMS_AUTH_TOKEN` — auth token for that account. Do not commit or log it.
 - `VOICE_805_STAFF_SMS_MESSAGING_SERVICE_SID` — must be `MG60d4038bf54bffa0690cce85a6e49147`.
 - `VOICE_805_STAFF_SMS_FROM` — must be `+18055908050`. Any other from number, including `+18057931853`, fails closed.
 
-If any value is missing, or the account, service, or from number is not the verified 805 identifier above, the notice fails and Twilio is not called. The outbox status is `failed`, not `sent`. Customer SMS, MTS SMS, calendar assignment SMS, and other owner alerts keep their existing `TWILIO_*` route and may still pin Mike to `+18057931853`.
+If any value is missing, or the account, service, or from number is not the verified 805 identifier above, the booking-alert notice fails and Twilio is not called. The outbox status is `failed`, not `sent`. Customer SMS, MTS SMS, calendar assignment SMS, and other owner alerts keep their existing `TWILIO_*` route and may still pin Mike to `+18057931853`.
 
-Every agent staff alert ends with this line: `Reply STOP to unsubscribe; HELP for help.` Campaign samples must use that same ending.
+Every agent staff alert ends with this line: `Reply STOP to unsubscribe; HELP for help.`
 
 Provider acceptance and handset delivery stay different. Twilio status `queued` or `accepted` stores outbox status `sent` and `noticePhase` `accepted`. That is not delivery. `noticePhase` `delivered` is stored only when the provider status is `delivered`. The booking result reports `staffNotice` `sent` for acceptance and `delivered` only when both staff rows have `noticePhase` `delivered`. A timeout, a 5xx response, or a 2xx response without a Message SID stays `uncertain` and is not retried automatically. A later outbox pass does not send that row again. Do not describe an accepted send as delivered.
 
 ## Opt-out
 
-Advanced Opt-Out on `MG60d4038bf54bffa0690cce85a6e49147` is enabled and was verified after reload. The saved STOP, START, and HELP replies are branded 805 Shutters (SNS Interiors) and include frequency, rates, and the help contacts. Do not add an application STOP webhook. The four website variables stay unset until the campaign is approved and the staff consent method is recorded.
+Advanced Opt-Out on `MG60d4038bf54bffa0690cce85a6e49147` is enabled and was verified after reload. The saved STOP, START, and HELP replies are branded 805 Shutters (SNS Interiors) and include frequency, rates, and the help contacts. Do not add an application STOP webhook. The four website variables stay unset. Transcript sending stays off while the campaign is draft.
 
 ## Published URLs
 
-These pages are in the review branch. They are not the live site until a later website publish. Do not give a preview or session URL to the campaign reviewer.
+The branch has the public copy. Production does not. `https://www.805shutters.com/terms/` still returns 404, and the live privacy policy does not yet include the SMS section. Do not give a preview or session URL to the campaign reviewer. Do not publish the website from this change.
 
-After the website publish, open both addresses with no login and confirm HTTP 200:
+On the branch:
 
-- `https://www.805shutters.com/privacy-policy/` includes “We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes” and still describes Google and Meta analytics.
-- `https://www.805shutters.com/staff-booking-sms/` has the heading Terms & Conditions and an SMS Terms section. That section names SNS Interiors dba 805 Shutters, staff-only confirmed consultation alerts, “Message frequency varies.”, “Message and data rates may apply.”, **STOP**, **HELP**, `805@805shutters.com`, `805-590-8050`, the carrier delay notice, and that enrollment requires staff consent. It does not describe a consent collection method or say that consent evidence is pending.
+- `/terms/` is the canonical Terms & Conditions page. Its SMS Terms section names SNS Interiors dba 805 Shutters, staff notices of caller message transcripts, “Message frequency varies.”, “Message and data rates may apply.”, **STOP**, **HELP**, `805@805shutters.com`, `805-590-8050`, the carrier delay notice, and “These notices go only to 805 Shutters staff who have verbally agreed to receive them.” It includes “We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes”. It does not say the opt-in is a signed form or a keyword.
+- `/staff-booking-sms/` re-exports that page.
+- The privacy policy section “Staff text messages” uses the same transcript description, the same no-sharing sentence, and links to `/terms/`. The Google and Meta analytics section is unchanged.
 
-Use those two production URLs in the campaign. Do not submit the campaign from this change.
+After a later website publish, open `https://www.805shutters.com/terms/` and `https://www.805shutters.com/privacy-policy/` with no login and confirm HTTP 200 before anyone submits the campaign. Use those two production URLs in the campaign. Do not submit the campaign from this change.
 
-## Before the first text
+## Before any transcript text is sent
 
-1. Confirm the production privacy and terms URLs above.
-2. Submit and receive approval for the campaign on `MG60d4038bf54bffa0690cce85a6e49147`.
+1. Publish the production privacy and terms URLs above. They are not live yet.
+2. Receive provider approval for campaign `BU542a67b844388f5192a84c79d6a86cb9` on `MG60d4038bf54bffa0690cce85a6e49147`. Approval is external. The campaign is still draft.
 3. Keep `+18055908050` as the sole sender. Do not add another.
-4. Leave Advanced Opt-Out on. Its STOP, START, and HELP replies are already saved.
-5. Record the Mike and Jessica consent method outside this repository. That method is still pending.
-6. Set the four website variables. Do not put the auth token in the voice Edge function or in git.
-7. Place one controlled booking and confirm separate provider receipts for Jessica and Mike. `queued` or `accepted` is not handset delivery. An uncertain row is not success and is not resent automatically.
+4. Leave Advanced Opt-Out on.
+5. A separate authorization has to turn sending on. This branch does not. Do not place a synthetic production send, recording, or call from this change.

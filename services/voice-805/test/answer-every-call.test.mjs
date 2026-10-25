@@ -84,7 +84,7 @@ test('no answer leaves the listening stream and does not restart the welcome',as
  assert.equal(f.provider.operations.some(item=>item.type==='ringback'||(item.type==='route'&&item.sid===sid)),false);
  const continued=await f.handler(carrier(f,`/twilio/continue/${call.id}`,{CallSid:sid,To:f.c.number,From:'+18055550199'}));
  const continuedXml=await continued.text();
- assert.match(continuedXml,/<Record/);assert.match(continuedXml,/Apologies, but team members are tied up/);
+ assert.doesNotMatch(continuedXml,/<Record|After the tone/);assert.match(continuedXml,/no recording was made/);assert.match(continuedXml,/call back to leave a message or schedule an appointment/);
  assert.doesNotMatch(continuedXml,/Thank you for calling|<Connect>/);
 });
 test('cached greeting audio stays available while the welcome is a listening stream',async()=>{
@@ -388,8 +388,9 @@ test('a failed media attach records the stream error and does not replay the gre
  assert.doesNotMatch(agentXml, /Thank you for calling|Gather|<Say>/);
  const continued = await f.handler(carrier(f, `/twilio/continue/${call.id}`, { CallSid: before.sid, To: f.c.number, From: '+18055550199' }));
  const continuedXml = await continued.text();
- assert.match(continuedXml, /<Record/);
- assert.match(continuedXml, /Apologies, but team members are tied up at the moment\. After the tone/);
+ assert.doesNotMatch(continuedXml, /<Record|After the tone/);
+ assert.match(continuedXml, /no recording was made/);
+ assert.match(continuedXml, /call back to leave a message or schedule an appointment/);
  assert.doesNotMatch(continuedXml, /Thank you for calling|Would you like|greeting\.wav|<Connect>/);
  assert.equal((await callAfter(f, before.sid)).streamError, 'Media stream did not attach');
  const streamSid = 'MZ' + '3'.repeat(32);

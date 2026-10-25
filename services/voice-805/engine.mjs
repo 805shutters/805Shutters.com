@@ -299,7 +299,6 @@ export class Engine {
       if (c.owner || !["followup", "schedule"].includes(c.phase)) return;
       c.phase = "message";
       c.deadline = Date.now() + MESSAGE_WINDOW_MS;
-      this.effect(c, "record");
     });
   }
   beginSchedule(id, eventId) {
@@ -621,17 +620,7 @@ export class Engine {
         customerName: c.customerName || null,
       });
       c.messageId = m.id;
-      for (const staff of staffIds)
-        this.store.put("notification", {
-          id: `${m.id}:${staff}`,
-          messageId: m.id,
-          recipient: staff,
-          destination: this.config.staff[staff]?.sms,
-          status: "pending",
-          attempts: 0,
-          nextAt: Date.now(),
-          sid: null,
-        });
+      this.queueTranscript(m);
       this.store.put("log", {
         id: `partial:${m.id}`,
         callId: c.id,
@@ -795,17 +784,7 @@ export class Engine {
         customerId: call.customerId || null,
         customerName: call.customerName || null,
       });
-      for (const staff of staffIds)
-        this.store.put("notification", {
-          id: `${message.id}:${staff}`,
-          messageId: message.id,
-          recipient: staff,
-          destination: this.config.staff[staff]?.sms,
-          status: "pending",
-          attempts: 0,
-          nextAt: Date.now(),
-          sid: null,
-        });
+      this.queueTranscript(message);
       call.messageId = message.id;
       call.revision++;
       this.store.put("call", call);
@@ -818,6 +797,26 @@ export class Engine {
       });
       return message;
     });
+  }
+  queueTranscript(message) {
+    const footer = "Reply STOP to unsubscribe; HELP for help.";
+    const body = `805 Shutters message from ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text} ${footer}`.slice(0, 1600);
+    for (const staff of staffIds) {
+      const id = `${message.id}:${staff}`;
+      if (this.store.get("notification", id)) continue;
+      this.store.put("notification", {
+        id,
+        messageId: message.id,
+        recipient: staff,
+        destination: this.config.staff[staff]?.sms,
+        body,
+        purpose: "transcript",
+        status: "pending",
+        attempts: 0,
+        nextAt: Date.now(),
+        sid: null,
+      });
+    }
   }
   acknowledge(messageId, actor) {
     return this.store.tx(() => {

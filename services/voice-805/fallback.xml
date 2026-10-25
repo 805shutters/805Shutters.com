@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Thank you for calling 805 Shutters. We appreciate you supporting local business. No one can take your call right now. After the tone, please leave your name, your phone number, and the reason for your call.</Say>
-  <Record maxLength="120" playBeep="true" timeout="5" transcribe="true" transcribeCallback="ORIGIN/twilio/fallback-transcription" recordingStatusCallback="ORIGIN/twilio/fallback-recording" recordingStatusCallbackEvent="completed"/>
+  <Say>We could not continue this call, and no recording was made. Please call back to leave a message or schedule an appointment.</Say>
   <Hangup/>
 </Response>

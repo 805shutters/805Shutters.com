@@ -217,7 +217,7 @@ await settle(down);
 const downNext = await down.state.transact((_e, s) => s.get("call", downCall.id));
 check(
   "voice agent down",
-  downResponse.status === 200 && /<Record/.test(downXml) && /<Say>/.test(downXml) && /Apologies, but team members are tied up at the moment/.test(downXml) && !/Thank you for calling/.test(downXml) && !/Would you like/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
+  downResponse.status === 200 && !/<Record/.test(downXml) && /<Say>/.test(downXml) && /no recording was made/.test(downXml) && /call back to leave a message or schedule an appointment/.test(downXml) && !/Thank you for calling/.test(downXml) && !/Would you like/.test(downXml) && downNext.phase === "voicemail" && downNext.alert === "agent_down",
   `status=${downResponse.status} phase=${downNext.phase} alert=${downNext.alert} failureLog=${down.client.failures.map((item) => item.p_action).join(",")}`,
 );
 
@@ -266,7 +266,7 @@ const hold = await played.handler(carrier(played, "/twilio/ringback", { CallSid:
 const holdXml = await hold.text();
 check(
   "voicemail uses cached Grok audio and ringback is a tone",
-  mail.status === 200 && mailXml.includes(promptPublicPath("voicemail")) && !mailXml.includes("/twilio/prompts/voicemail.wav<") && mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Play loop=\"0\">") && holdXml.includes("/twilio/ringback.wav") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Pause"),
+  mail.status === 200 && mailXml.includes(promptPublicPath("voicemail")) && !mailXml.includes("/twilio/prompts/voicemail.wav<") && !mailXml.includes("<Record") && !mailXml.includes("<Say>") && hold.status === 200 && holdXml.includes("<Play loop=\"0\">") && holdXml.includes("/twilio/ringback.wav") && !holdXml.includes("hold.wav") && !holdXml.includes("<Say>") && !holdXml.includes("<Pause"),
   `mail=${mail.status} ${mailXml.replaceAll("\n", " ")} hold=${hold.status} ${holdXml.replaceAll("\n", " ")}`,
 );
 

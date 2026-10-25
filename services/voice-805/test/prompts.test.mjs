@@ -42,7 +42,7 @@ test("realtime and tts contracts match the current xAI voice API", () => {
   assert.equal(promptPublicPath("voicemail").includes("?"), false);
   assert.equal(PROMPTS.voicemail.includes("Thank you for calling"), false);
   assert.equal(PROMPTS.voicemail.includes("Would you like"), false);
-  assert.match(PROMPTS.voicemail, /^Apologies, but team members are tied up at the moment\. After the tone/);
+  assert.match(PROMPTS.voicemail, /^We could not continue this call, and no recording was made\. Please call back to leave a message or schedule an appointment\./);
   assert.equal(TTS_URL, "https://api.x.ai/v1/tts");
   assert.equal(REALTIME_MODEL, "grok-voice-3.0");
   assert.equal(REALTIME_URL, "wss://api.x.ai/v1/realtime?model=grok-voice-3.0");
