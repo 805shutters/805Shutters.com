@@ -5,6 +5,17 @@ import { applyFindResult, applyScheduleTurn, bookedSchedule, callbackSchedule, c
 const caller = '+18055550199';
 const NOW = new Date('2026-10-20T18:00:00Z');
 const FRIDAY = 'Friday, October 23';
+test('unrecognized or ambiguous choices clarify once instead of repeating forever', () => {
+ for (const text of ['the other thing', 'leave a message or schedule an appointment']) {
+  const first=applyScheduleTurn(initialSchedule(caller),text,caller,'',NOW);
+  assert.equal(first.state.purpose,null);
+  assert.equal(first.state.clarifyCount,1);
+  const second=applyScheduleTurn(first.state,text,caller,'',NOW);
+  assert.equal(second.state.awaiting,'callback');
+  assert.equal(second.state.clarifyCount,2);
+  assert.match(second.say,/callback message/);
+ }
+});
 function turn(state, text, from = caller) {
   const applied = applyScheduleTurn(state, text, from, '', NOW);
   assert.equal(questionCount(applied.say), 1, applied.say);

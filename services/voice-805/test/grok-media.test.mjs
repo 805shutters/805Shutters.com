@@ -584,6 +584,43 @@ test('a lost playback mark uses voicemail and a matched long readback cancels it
  assert.equal(replaced.store.get('call',replaced.call.id).booking,undefined);
  replaced.session.finish();
 });
+test('audio history cannot consume the turn before its final transcription',async()=>{
+ for (const text of ["I'd like to schedule an appointment", 'I would like to schedule an appointment', 'Schedule an appointment please']) {
+  const f=fixture();await ready(f);
+  const id='same-audio-item';
+  await f.grok({type:'conversation.item.added',item:{id,role:'user',status:'completed',content:[{type:'input_audio',transcript:'leave a message or schedule an appointment'}]}});
+  assert.equal(f.store.get('call',f.call.id).schedule?.purpose ?? null,null);
+  assert.equal(f.session.heard.has(id),false);
+  await f.say(text,id);
+  assert.equal(f.store.get('call',f.call.id).schedule.purpose,'appointment');
+  assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'day');
+  assert.equal(lastLine(f),'What day works for you?');
+  const responses=f.ai.sent.filter(item=>item.type==='response.create').length;
+  await f.say(text,id);
+  assert.equal(f.ai.sent.filter(item=>item.type==='response.create').length,responses);
+  await f.audio('day');await f.mark();
+  await f.say('Friday','date-final');await f.audio('time');await f.mark();
+  await f.say('10 a.m.','time-final');
+  assert.equal(f.store.get('call',f.call.id).schedule.time,'10:00');
+  assert.equal(f.store.get('call',f.call.id).schedule.awaiting,'address');
+  assert.match(lastLine(f),/May I please get your address/);
+  assert.equal(f.store.get('call',f.call.id).booking,undefined);
+  f.session.finish();
+ }
+});
+test('audio history and partial captions during readback cannot become a late confirmation',async()=>{
+ for (const type of ['conversation.item.added','conversation.item.input_audio_transcription.updated']) {
+  const f=fixture();await messageMode(f);await f.audio('readback');
+  const original=f.store.get('call',f.call.id).intent;
+  await f.grok({type,item_id:'early-audio',transcript:'yes',item:{id:'early-audio',role:'user',status:'completed',content:[{type:'input_audio',transcript:'yes'}]}});
+  assert.equal(f.store.list('message').length,0);
+  await f.mark();await f.say('yes','early-audio');
+  assert.equal(f.store.list('message').length,0);
+  assert.deepEqual(f.store.get('call',f.call.id).intent.payload,original.payload);
+  assert.equal(f.session.stage,'readback');
+  f.session.finish();
+ }
+});
 test('published voice events deliver the transcript the collector stores',async()=>{
  const spec=await (await fetch('https://docs.x.ai/voice-realtime.ws.json')).json();
  const completed=spec.serverMessages.find(message=>message.type==='conversation.item.input_audio_transcription.completed');
@@ -598,6 +635,8 @@ test('published voice events deliver the transcript the collector stores',async(
  assert.match(lastLine(f),/What day works for you/);
  await f.audio('day');await f.mark();
  await f.grok({...added.example,item:{...added.example.item,id:'msg_added',content:[{type:'input_audio',transcript:'Friday'}]}});
+ assert.equal(f.store.get('call',f.call.id).schedule.date,null);
+ await f.grok({...completed.example,item_id:'msg_added',transcript:'Friday'});
  assert.equal(f.store.get('call',f.call.id).schedule.date,'2026-10-23');
  await f.audio('time');await f.mark();
  const before=f.store.get('call',f.call.id).schedule.awaiting;

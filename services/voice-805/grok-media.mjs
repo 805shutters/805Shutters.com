@@ -438,9 +438,10 @@ export class GrokMediaSession {
     if (event.type === 'conversation.item.input_audio_transcription.updated') return null;
     if (event.type === 'conversation.item.input_audio_transcription.completed' && typeof event.transcript === 'string' && event.transcript.trim()) return { id: String(event.item_id || event.transcript), text: event.transcript.trim() };
     if (event.type === 'conversation.item.added' && event.item?.role === 'user' && event.item.status === 'completed') {
-      const part = event.item.content?.find(content => typeof content?.transcript === 'string' && content.transcript.trim())
-        || event.item.content?.find(content => content?.type === 'input_text' && typeof content?.text === 'string' && content.text.trim());
-      const text = part?.transcript || part?.text;
+      // Audio history can arrive before grok-transcribe's final caption with the
+      // same item ID. Consuming it here would discard the authoritative reply.
+      const part = event.item.content?.find(content => content?.type === 'input_text' && typeof content?.text === 'string' && content.text.trim());
+      const text = part?.text;
       if (typeof text === 'string' && text.trim()) return { id: String(event.item.id || text), text: text.trim() };
     }
     return null;
@@ -465,6 +466,13 @@ export class GrokMediaSession {
         return;
       }
       return this.fail('Grok rejected the voice session');
+    }
+    // An early audio item must still be ineligible to confirm a readback even
+    // when its final transcription arrives after the playback mark.
+    if (READBACK_STAGES.has(this.stage)) {
+      const earlyId = event.type === 'conversation.item.added' && event.item?.role === 'user'
+        ? event.item.id : event.type === 'conversation.item.input_audio_transcription.updated' ? event.item_id : null;
+      if (earlyId) this.beforeReadback.add(String(earlyId));
     }
     const turn = this.callerTurn(event);
     if (turn && (this.stage === 'confirm' || this.stage === 'collect' || this.stage === 'welcome' || this.stage === 'welcome-playback' || QUESTION_STAGES.has(this.stage))) this.noteChoice();
@@ -723,6 +731,7 @@ export class GrokMediaSession {
     this.beforeReadback.delete(turn.id);
     const intentId = this.intent?.id;
     if (!(await this.liveIntake())) return;
+    if (decision === 'early' && this.intent?.readback) return this.force(this.intent.readback, 'readback');
     if (decision !== 'affirmative') {
       this.intent = null;
       const current = await this.current();

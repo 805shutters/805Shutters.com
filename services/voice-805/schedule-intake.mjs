@@ -382,7 +382,7 @@ export function applyScheduleTurn(input, transcript, from = '', businessNumber =
     const appointment = /\b(schedule|appointment|consultation|book a|estimate)\b/.test(text) || Boolean(patch.date || patch.weekday || patch.time || patch.window || patch.requestedTime || patch.pendingHour);
     if (message && !appointment) patch.purpose = 'message';
     else if (appointment && !message) patch.purpose = 'appointment';
-    else if (!duration) return resultOf(state, { say: CHOICE_QUESTION });
+    else if (!duration) return clarify(state);
   } else if ((state.awaiting === 'help' || state.awaiting === 'correction') && /\b(schedule|appointment|consultation)\b/.test(text) && !state.booked) patch.purpose = 'appointment';
   else if ((state.awaiting === 'help' || state.awaiting === 'correction') && /\b(message|call me back)\b/.test(text)) patch.purpose = 'message';
   if (address) { patch.address = address; patch.city = cityFrom(address) || state.city; }
