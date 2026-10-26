@@ -22,7 +22,7 @@ Shot list:
 - Wide shot of finished room with shutters or shades.
 - Close-up of material/louver/fabric.
 - Small text overlay: `Custom window treatments`.
-- End card: `Free consultation - 805-806-9344`.
+- End card: `Free consultation - 805-590-8050`.
 
 Video length:
 

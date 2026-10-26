@@ -34,7 +34,7 @@ https://nextdoor.com/page/805-shutters-and-shades-flint-mi/
 Thank you for supporting a local family-owned business.
 
 805 Shutters, Shades & Blinds
-805-806-9344
+805-590-8050
 https://www.805shutters.com
 
 ## Who to ask first

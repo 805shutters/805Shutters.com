@@ -37,7 +37,7 @@ These custom top-down/bottom-up cellular shades are the finishing touch on a gor
 
 Beautiful light, a finished look, and privacy exactly where it matters. That’s a pretty good remodel upgrade.
 
-Ready to make your windows work harder? Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Ready to make your windows work harder? Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 #805Shutters #TopDownBottomUp #CellularShades #CustomWindowTreatments #VenturaCounty
@@ -48,7 +48,7 @@ Privacy without giving up the daylight.
 
 For this Ventura County remodel, we installed custom top-down/bottom-up cellular shades across the bathroom, bedroom, and office windows. The shades let light in from the top while keeping the lower window area private—an ideal finish for bright, beautiful rooms.
 
-Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 
 CTA: BOOK
 URL: https://www.805shutters.com/book-consultation/

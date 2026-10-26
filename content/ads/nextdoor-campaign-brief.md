@@ -48,7 +48,7 @@ Official Nextdoor specs and guidance used for this setup:
 Confirm these fields on the Nextdoor Business Page before spending:
 
 - Business name: 805 Shutters, Shades & Blinds if Nextdoor allows the change
-- Phone: 805-806-9344
+- Phone: 805-590-8050
 - Email: 805@805shutters.com
 - Website: `https://www.805shutters.com/`
 - Service area: Ventura County

@@ -37,7 +37,7 @@ Skylights are underrated—until they decide it’s noon at 7 a.m.
 
 Today’s installation: custom white plantation shutters made for this skylight. The room keeps the daylight, loses the glare, and gains a lot more control.
 
-If your skylight is brightening the room a little too enthusiastically, 805 Shutters can help. Schedule a free in-home consultation: 805-806-9344
+If your skylight is brightening the room a little too enthusiastically, 805 Shutters can help. Schedule a free in-home consultation: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 #805Shutters #SkylightShutters #PlantationShutters #CustomWindowTreatments #VenturaCounty
@@ -48,7 +48,7 @@ Skylights are underrated—until they decide it’s noon at 7 a.m.
 
 Today we installed custom white plantation shutters for a Ventura County skylight. The room keeps the daylight while gaining control over glare and privacy.
 
-Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 
 CTA: BOOK
 URL: https://www.805shutters.com/book-consultation/

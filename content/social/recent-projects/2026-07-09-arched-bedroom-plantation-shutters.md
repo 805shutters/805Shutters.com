@@ -31,21 +31,21 @@
 
 Recent plantation shutter project by 805 Shutters in Ventura County, featuring custom white shutters for a bedroom window grouping with an arched center window. Clean privacy, light control, and a finished look built around the shape of the room.
 
-Schedule a free in-home consultation: 805-806-9344
+Schedule a free in-home consultation: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 ## Instagram Caption Draft
 
 Recent plantation shutter project by 805 Shutters in Ventura County, featuring custom white shutters for a bedroom window grouping with an arched center window. Clean privacy, light control, and a finished look built around the shape of the room.
 
-Schedule a free in-home consultation: 805-806-9344
+Schedule a free in-home consultation: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 ## Google Business Profile Post Draft
 
 Recent plantation shutter project by 805 Shutters in Ventura County, featuring custom white shutters for a bedroom window grouping with an arched center window. Clean privacy, light control, and a finished look built around the shape of the room.
 
-Call 805-806-9344 or book a free in-home consultation:
+Call 805-590-8050 or book a free in-home consultation:
 https://www.805shutters.com/book-consultation/
 
 CTA: BOOK

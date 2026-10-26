@@ -68,7 +68,7 @@ The audit reviews:
 - Service area: Ventura County, Conejo Valley, Santa Barbara County, North LA
   County, and nearby markets by fit.
 - Product lines: Norman, Alta, Draper, Sundance.
-- Phone: 805-806-9344
+- Phone: 805-590-8050
 - Website: https://www.805shutters.com
 - Commercial page: https://www.805shutters.com/commercial-window-coverings/
 - Email: 805@805shutters.com

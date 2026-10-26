@@ -28,7 +28,7 @@
 
 Two looks, one custom Roman shade. Raised for the view and daylight, lowered for soft filtered light and privacy. This textured Roman shade gives this Ventura County kitchen sink window a clean, finished look.
 
-Thinking about custom shades for your kitchen? Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Thinking about custom shades for your kitchen? Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 #805Shutters #RomanShades #CustomWindowTreatments #VenturaCounty
@@ -37,7 +37,7 @@ https://www.805shutters.com/book-consultation/
 
 Two looks, one custom Roman shade—raised for the view and daylight, lowered for soft filtered light and privacy. This textured Roman shade gives this Ventura County kitchen sink window a clean, finished look.
 
-Thinking about custom shades for your kitchen? Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Thinking about custom shades for your kitchen? Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 CTA: BOOK

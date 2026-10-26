@@ -27,7 +27,7 @@ These custom split tilt plantation shutters let the upper louvers bring in dayli
 
 It is one of those small details that makes a room work much better all day long.
 
-Ready to make your windows work harder? Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Ready to make your windows work harder? Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 #805Shutters #SplitTiltShutters #PlantationShutters #CustomWindowTreatments #VenturaCounty
@@ -38,7 +38,7 @@ More daylight where you want it. More privacy where you need it.
 
 For this Ventura County installation, we used custom split tilt plantation shutters. The upper and lower louvers operate independently, so homeowners can let daylight in from the top while keeping the lower part of the window more private.
 
-Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 
 CTA: BOOK
 URL: https://www.805shutters.com/book-consultation/

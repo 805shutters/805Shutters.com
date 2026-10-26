@@ -19,7 +19,7 @@ Date: 2026-06-01
 - Form redirects to `/thank-you/`.
 - Thank-you page noindexed if it should not rank.
 - `/privacy-policy/` is live and linked from the form and footer.
-- Phone links use `tel:8058069344`.
+- Phone links use `tel:+18055908050`.
 - UTMs preserved through landing page and form submission where possible.
 
 ## Tracking setup

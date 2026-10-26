@@ -22,7 +22,7 @@ person to send our capability sheet to?
 Thanks,
 Kenneth Hill
 805 Shutters
-805-806-9344
+805-590-8050
 https://www.805shutters.com/commercial-window-coverings/
 
 ## GC follow-up
@@ -61,7 +61,7 @@ it be helpful to schedule a quick walkthrough at one property?
 Thanks,
 Kenneth Hill
 805 Shutters
-805-806-9344
+805-590-8050
 
 ## Property manager phone script
 
@@ -102,7 +102,7 @@ forms required.
 Thank you,
 Kenneth Hill
 805 Shutters
-805-806-9344
+805-590-8050
 
 ## Architect / designer intro
 
@@ -159,4 +159,4 @@ Kenneth Hill
 Hi `[First Name]`, this is Kenneth Hill with 805 Shutters. We help local commercial
 properties with roller shades, blinds, privacy, glare, and replacement programs.
 I was calling to find the right person for vendor info or bid invites. My number
-is 805-806-9344. Again, 805-806-9344.
+is 805-590-8050. Again, 805-590-8050.

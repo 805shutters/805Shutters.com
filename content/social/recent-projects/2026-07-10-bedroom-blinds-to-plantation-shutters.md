@@ -43,7 +43,7 @@ The before did the job. The after finished the room.
 
 We replaced the horizontal blinds on this wide bedroom window with custom white plantation shutters. The new four-panel design adds clean, built-in lines, flexible light control, and privacy without dangling cords.
 
-Thinking about a before-and-after of your own? Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Thinking about a before-and-after of your own? Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 https://www.805shutters.com/book-consultation/
 
 #805Shutters #BeforeAndAfter #PlantationShutters #CustomWindowTreatments #VenturaCounty
@@ -54,7 +54,7 @@ The before did the job. The after finished the room.
 
 Horizontal blinds were replaced with custom white plantation shutters for clean built-in lines, flexible light control, and privacy on this wide Ventura County bedroom window.
 
-Schedule a free in-home consultation with 805 Shutters: 805-806-9344
+Schedule a free in-home consultation with 805 Shutters: 805-590-8050
 
 CTA: BOOK
 URL: https://www.805shutters.com/book-consultation/

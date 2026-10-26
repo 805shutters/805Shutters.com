@@ -44,7 +44,7 @@ Campaign settings:
 - Location: Ventura County plus served nearby cities only.
 - Ad schedule: 7 AM to 8 PM local time while same-day phone follow-up is possible.
 - Final URL: `/free-window-treatment-consultation/` for residential; `/commercial-window-coverings/` for commercial.
-- Assets: call asset `805-806-9344`, sitelinks for Shutters, Shades, Blinds, Commercial Window Coverings, Book Consultation.
+- Assets: call asset `805-590-8050`, sitelinks for Shutters, Shades, Blinds, Commercial Window Coverings, Book Consultation.
 - Negatives: import `content/ads/negative-keywords.txt`.
 
 ## Meta build
