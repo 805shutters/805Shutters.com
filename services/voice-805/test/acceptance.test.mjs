@@ -41,7 +41,7 @@ function setup(t, path = ":memory:") {
         return true;
       },
     },
-    worker = new Worker(engine, provider, media);
+    worker = new Worker(engine, provider, media, { transcriptSmsSendingEnabled: () => false });
   t.after(() => store.close());
   return { store, engine, provider, worker };
 }

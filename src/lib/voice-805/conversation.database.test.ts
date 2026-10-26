@@ -159,7 +159,7 @@ it.each(['write', 'read'])('a failed %s is retried idempotently; exhausted failu
     await f.say('yes'); expect(f.session.prompt.text).not.toMatch(/has been saved/); await f.play();
     const restarted = new SupabaseState(client, config);
     let writes = 0;
-    const worker = new SupabaseWorker(restarted, {}, { syncMessage: async (call: any, message: any) => { writes++; return savePhoneMessage(client, call, message); } });
+    const worker = new SupabaseWorker(restarted, {}, { transcriptSmsSendingEnabled: () => false, syncMessage: async (call: any, message: any) => { writes++; return savePhoneMessage(client, call, message); } });
     // Emulate process interruption after durable claim. Expired CRM claims may
     // retry safely; carrier effects remain at-most-once.
     await restarted.transact((_e: any, s: any) => { for (const e of s.list('effect')) s.put('effect', e.type === 'sync-message' ? { ...e, status: 'sending', leaseUntil: 0 } : { ...e, status: 'done' }); });
@@ -176,7 +176,7 @@ it('hangup saves an explicitly unconfirmed draft, retries the CRM write, and dis
   try {
     await f.say('Please call me about my kitchen shutters.'); await f.play();
     await f.session.carrier({ event: 'stop', streamSid: 'MZ' + '2'.repeat(32) });
-    const worker = new SupabaseWorker(f.state, {}, { syncMessage: (call: any, message: any) => savePhoneMessage(client, call, message) });
+    const worker = new SupabaseWorker(f.state, {}, { transcriptSmsSendingEnabled: () => false, syncMessage: (call: any, message: any) => savePhoneMessage(client, call, message) });
     await f.state.transact((_e: any, s: any) => { for (const e of s.list('effect')) if (e.type !== 'sync-message') s.put('effect', { ...e, status: 'done' }); });
     failWrites = 1; await worker.drain();
     let effects = await f.state.transact((_e: any, s: any) => s.list('effect').filter((e: any) => e.type === 'sync-message'));

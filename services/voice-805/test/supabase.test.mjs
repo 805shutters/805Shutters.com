@@ -25,7 +25,7 @@ class FakeClient {
  async rpc(name,p){if(name==='voice_805_caller_context'){this.lookupStarted=true;if(this.lookupWait)await this.lookupWait;return {data:this.lookup};}
   await new Promise(r=>setImmediate(r));if(p.p_revision!==this.row.revision)return {data:false};this.row={revision:this.row.revision+1,body:structuredClone(p.p_body)};return {data:true};}
 }
-function fixture(){const c=config(),client=new FakeClient(),state=new SupabaseState(client,c);const provider=new SimulationProvider();const worker=new SupabaseWorker(state,provider);const tasks=[];const handler=createSupabaseHandler({state,client,worker,waitUntil:p=>tasks.push(p)});return {c,client,state,provider,worker,tasks,handler};}
+function fixture(){const c=config(),client=new FakeClient(),state=new SupabaseState(client,c);const provider=new SimulationProvider();const worker=new SupabaseWorker(state,provider,{transcriptSmsSendingEnabled:()=>false});const tasks=[];const handler=createSupabaseHandler({state,client,worker,waitUntil:p=>tasks.push(p)});return {c,client,state,provider,worker,tasks,handler};}
 const incoming=(f,sid='CA'+'1'.repeat(32))=>f.state.transact(e=>e.inbound(sid,'+18055550199'));
 function carrierRequest(f,path,fields){const p=new URLSearchParams({AccountSid:f.c.accountSid,...fields});const payload=f.c.origin+path+[...new Set(p.keys())].sort().map(k=>k+p.get(k)).join('');return new Request(f.c.origin+path,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded','x-twilio-signature':hmac(f.c.authToken,payload,'sha1')},body:p});}
 function agentRequest(f,call,action,extra={}){return new Request(f.c.origin+'/agent',{method:'POST',headers:{authorization:'Bearer '+f.c.toolsKey},body:JSON.stringify({callToken:callToken(f.c,call),action,...extra})});}
@@ -140,8 +140,8 @@ test('the watchdog retries a summary database failure without speaking after sta
  await f.state.transact((_e,s)=>s.recover());
  assert.equal((await f.state.transact((_e,s)=>s.get('effect','interrupted'))).status,'pending');
 });
-test('transcript sending stays off until approval and then uses STOP and delivery status',async()=>{
- assert.equal(transcriptSmsSendingEnabled(),false);
+test('approved transcript sending respects a closed gate, STOP and delivery status',async()=>{
+ assert.equal(transcriptSmsSendingEnabled(),true);
  const f=fixture();
  f.c.notificationsApproved=true;
  const call=await f.state.transact(e=>e.inbound('CA'+'d'.repeat(32),'+18055550199'));
@@ -150,7 +150,7 @@ test('transcript sending stays off until approval and then uses STOP and deliver
   e.saveMessage(call.id,{name:'Pat',callback:'+18055550199',message:'Please call',confirmed:true},'spoken-summary');
   s.put('notification',{id:'book-1',messageId:'book',recipient:'mike',destination:'+18055550101',purpose:'booking-alert',status:'pending',attempts:0,nextAt:Date.now(),sid:null,body:'booked'});
  });
- await f.worker.drain();
+ await new SupabaseWorker(f.state,f.provider,{transcriptSmsSendingEnabled:()=>false}).drain();
  assert.equal(f.provider.operations.some(item=>item.type==='sms'),false);
  assert.equal((await f.state.transact((_e,s)=>s.list('notification'))).every(item=>item.status==='pending'&&item.sid===null),true);
  const notes=await f.state.transact((_e,s)=>s.list('notification'));
@@ -183,7 +183,7 @@ test('provider send requires the dedicated messaging service and from number',as
  const bodies=[];
  const live={...config(),mode:'live',liveAuthorized:true};
  const provider=new TwilioProvider(live,async(_url,init)=>{bodies.push(String(init.body));return new Response(JSON.stringify({sid:'SM'+'1'.repeat(32),status:'queued'}),{status:200});},{transcriptSmsSendingEnabled:()=>true});
- await assert.rejects(async()=>new TwilioProvider(live,async()=>new Response('{}',{status:200})).send({id:'n',destination:'+18055550101',purpose:'transcript',body:'hi'},{}),/stay off/);
+ await assert.rejects(async()=>new TwilioProvider(live,async()=>new Response('{}',{status:200}),{transcriptSmsSendingEnabled:()=>false}).send({id:'n',destination:'+18055550101',purpose:'transcript',body:'hi'},{}),/stay off/);
  await assert.rejects(async()=>provider.send({id:'n',destination:'+18055550101',purpose:'booking-alert',body:'hi'},{}),/stay off/);
  await provider.send({id:'n1',destination:'+18055550101',purpose:'transcript',body:'UNCONFIRMED. Please call. Reply STOP to unsubscribe; HELP for help.'},{name:'Pat',text:'Please call',confirmed:false});
  const params=new URLSearchParams(bodies[0]);
