@@ -8,7 +8,7 @@ import { SupabaseWorker } from '../../../services/voice-805/supabase-worker.mjs'
 import { loadSupabaseConfig } from '../../../services/voice-805/supabase-config.mjs';
 import { attachMediaSocket, callbackFields, createSupabaseHandler } from '../../../services/voice-805/supabase-handler.mjs';
 import { saveCallback } from '../../../services/voice-805/callbacks.mjs';
-import { saveCallSummary } from '../../../services/voice-805/call-summary.mjs';
+import { persistEndedSummary, saveCallSummary } from '../../../services/voice-805/call-summary.mjs';
 import { createSupabasePromptStore, warmPrompts, REALTIME_URL } from '../../../services/voice-805/prompts.mjs';
 
 const config=loadSupabaseConfig(Deno.env.toObject());
@@ -36,10 +36,7 @@ const upgradeMedia=(request:Request,gate:{load:()=>Promise<Record<string,unknown
      return {verified:true,id:row.id,call_sid:row.call_sid};
     },
     saveSummary:async()=>{
-     await state.transact((e,s)=>{
-      const current=s.get('call',call.id);
-      if(current?.phase==='ended')e.recordSummary(current);
-     });
+     await state.transact((e,s)=>persistEndedSummary(e,s,call.id));
     }});
    EdgeRuntime.waitUntil(session.done);
   },

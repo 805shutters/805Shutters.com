@@ -31,6 +31,15 @@ export function customerEstablished(call) {
   return Boolean(call?.customerId) && call?.matchStatus === "matched";
 }
 
+// SnapshotStore.get returns a clone. The media-stop callback has to write the ended call back.
+export function persistEndedSummary(engine, store, callId) {
+  const current = store.get("call", callId);
+  if (current?.phase !== "ended") return false;
+  engine.recordSummary(current);
+  store.put("call", current);
+  return true;
+}
+
 // The activity upsert is idempotent. A database failure or an interrupted claim
 // goes back to pending for the watchdog. It never speaks and never invents staff speech.
 export async function runSummarySync({ load, save, sync, now = Date.now() }) {

@@ -10,7 +10,7 @@ import { SimulationProvider, ProviderError, TwilioProvider } from '../provider.m
 import { hmac } from '../security.mjs';
 import { loadSupabaseConfig, supabaseReadiness } from '../supabase-config.mjs';
 import { promptPublicPath } from '../prompts.mjs';
-import { STAFF_TAKEOVER_SENTENCE, callSummary, saveCallSummary } from '../call-summary.mjs';
+import { STAFF_TAKEOVER_SENTENCE, callSummary, persistEndedSummary, saveCallSummary } from '../call-summary.mjs';
 import { transcriptSmsSendingEnabled } from '../transcript-sms.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -76,6 +76,40 @@ test('unknown and ambiguous callers keep a call summary and do not get customer 
  assert.equal(linked.matchStatus,'matched');
  assert.equal(linked.summarySync,'pending');
  assert.equal((await f.state.transact((_e,s)=>s.list('effect'))).filter(item=>item.callId===unknown.id&&item.type==='sync-summary'&&item.status==='pending').length,1);
+});
+test('the media-stop summary callback writes the ended unknown call back through the snapshot transaction',async()=>{
+ const f=fixture();
+ const call=await f.state.transact(e=>e.inbound('CA'+'e'.repeat(32),'+18055550199'));
+ await f.state.transact((_e,s)=>{
+  const current=s.get('call',call.id);
+  current.phase='ended';
+  current.endedAt=Date.now();
+  current.deadline=null;
+  delete current.summary;
+  delete current.summarySync;
+  s.put('call',current);
+ });
+ const isolated=new SnapshotStore(structuredClone(f.client.row.body));
+ const copy=isolated.get('call',call.id);
+ new Engine(isolated,f.c).recordSummary(copy);
+ assert.equal(Boolean(copy.summary?.text),true);
+ assert.equal(isolated.get('call',call.id).summary,undefined);
+ const revision=f.client.row.revision;
+ await f.state.transact((e,s)=>persistEndedSummary(e,s,call.id));
+ const persisted=await f.state.transact((_e,s)=>s.get('call',call.id));
+ assert.match(persisted.summary.text,/outcome: ended/);
+ assert.equal(persisted.summarySync,'local');
+ assert.equal((await f.state.transact((_e,s)=>s.list('effect'))).some(item=>item.callId===call.id&&item.type==='sync-summary'),false);
+ assert.equal(f.client.row.revision,revision+1);
+ const open=await f.state.transact(e=>e.inbound('CA'+'f'.repeat(32),'+18055550197'));
+ const openRevision=f.client.row.revision;
+ assert.equal(await f.state.transact((e,s)=>persistEndedSummary(e,s,open.id)),false);
+ const still=await f.state.transact((_e,s)=>s.get('call',open.id));
+ assert.equal(still.phase!=='ended',true);
+ assert.equal(still.summary,undefined);
+ assert.equal(f.client.row.revision,openRevision);
+ const entry=readFileSync(new URL('../../../supabase/functions/voice-805/index.ts',import.meta.url),'utf8');
+ assert.match(entry,/transact\(\(e,s\)=>persistEndedSummary\(e,s,call\.id\)\)/);
 });
 test('the watchdog retries a summary database failure without speaking after staff takeover',async()=>{
  const f=fixture();
