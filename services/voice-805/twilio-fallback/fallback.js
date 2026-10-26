@@ -1,14 +1,16 @@
 /**
- * Reviewed replacement for the dedicated 805 number backup.
- * Do not deploy this file from the review branch.
+ * Reviewed source for the dedicated 805 number backup.
+ * Do not deploy this file or change the live number from the review branch.
  *
- * Live number PNaafffce88dd92efd78345e2967637931, service
- * ZS85a203f4cf8accf080ac48195e3801ed, currently serves
- * https://voice-805-fallback-9089-prod.twil.io/fallback
- * A read-only GET of that URL still returns a Record verb with maxLength 120.
- * See README.md for the exact live body.
+ * Number PNaafffce88dd92efd78345e2967637931 in US1 uses TwiML Bin
+ * EH99ed28ca457fca8ced72259f99ec6973 as its voice backup. The old
+ * recording Function ZS85a203f4cf8accf080ac48195e3801ed is retained and
+ * is no longer selected. A read-only GET of
+ * https://voice-805-fallback-9089-prod.twil.io/fallback can still return
+ * a Record verb with maxLength 120. Carrier execution of the bin was not
+ * tested. See README.md.
  *
- * This source removes Record. It does not claim a recording, transcript,
+ * This source has no Record. It does not claim a recording, transcript,
  * or written message, because this backup runs when the Edge call state
  * is unavailable.
  */

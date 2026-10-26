@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { xml, twiml, reportFailure } from "./security.mjs";
 import { runSummarySync } from "./call-summary.mjs";
-import { DEDICATED_805_MESSAGING_SERVICE_SID, DEDICATED_805_SMS_FROM, notificationSendable, transcriptSmsSendingEnabled } from "./transcript-sms.mjs";
+import { DEDICATED_805_MESSAGING_SERVICE_SID, DEDICATED_805_SMS_FROM, notificationSendable, transcriptNoticeBody, transcriptSmsSendingEnabled } from "./transcript-sms.mjs";
 export class ProviderError extends Error {
   constructor(message, uncertain = false, retryable = false) {
     super(message);
@@ -181,7 +181,9 @@ export class TwilioProvider {
       MessagingServiceSid: DEDICATED_805_MESSAGING_SERVICE_SID,
       Body:
         item.body ||
-        `805 Shutters ${message.confirmed ? "callback" : "UNCONFIRMED message"}: ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text}`,
+        (item.purpose === "transcript"
+          ? transcriptNoticeBody(message)
+          : `805 Shutters ${message.confirmed ? "callback" : "UNCONFIRMED message"}: ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text}`),
       StatusCallback: `${this.config.origin}/twilio/sms/${encodeURIComponent(item.id)}`,
     });
   }
