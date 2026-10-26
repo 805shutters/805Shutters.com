@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { MessageActions } from "./message-actions";
+import { callSummaryPresentation } from "./summary-status";
 
 type Call = {
   id: string;
@@ -19,6 +20,9 @@ type Call = {
   customerId?: string;
   customerName?: string;
   matchStatus?: string;
+  summary?: { text?: string; outcome?: string; streamDetached?: boolean };
+  summarySync?: string;
+  summaryJobId?: string | null;
 };
 export type PhoneMessage = {
   kind?: "sms";
@@ -64,6 +68,17 @@ export type PhoneSnapshot = {
   readiness: { mode: string; ready: boolean; missing: string[] };
   attention: { id: string; type: string; status: string }[];
 };
+function CallSummary({ call }: { call: Call }) {
+  const summary = callSummaryPresentation(call);
+  if (!summary) return null;
+  return (
+    <div className="mt-3">
+      <p className="text-sm font-semibold text-slate-700">Call summary</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm">{summary.text}</p>
+      <p className="mt-1 text-sm text-slate-600">{summary.sync}</p>
+    </div>
+  );
+}
 const button =
   "rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40";
 const phases: Record<string, string> = {
@@ -232,6 +247,7 @@ export function PhoneDesk({
                           Recovery: {c.recovery}
                         </p>
                       )}
+                      <CallSummary call={c} />
                       <div className="mt-4 flex flex-wrap gap-2">
                         {[
                           ["hold", "Hold", c.phase === "human"],
@@ -485,6 +501,7 @@ export function PhoneDesk({
                       </p>
                       {c.booking?.verified && <p className="mt-2 text-sm text-emerald-800">Consultation saved in the CRM calendar.</p>}
                       {c.bookingAttention && <p className="mt-2 text-sm text-amber-800">Booking needs review: check the calendar before making another appointment.</p>}
+                      <CallSummary call={c} />
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           className={button}

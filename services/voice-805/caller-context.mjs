@@ -49,6 +49,7 @@ export async function prefetchContext(state, callId, client, overrides) {
   await state.transact((e) => e.change(callId, `lookup:${callId}`, c => {
     c.context = context; c.matchStatus = context.match;
     if (context.match === 'matched') { c.customerId = value.customer_id; c.customerName = value.customer_name; }
+    if (c.phase === 'ended') e.recordSummary(c);
   }));
   return context;
 }

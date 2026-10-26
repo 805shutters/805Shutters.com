@@ -24,7 +24,71 @@ export function callSummary(call, messages = []) {
   if (captured.length) parts.push(`Captured before the next question: ${captured.join("; ")}.`);
   if (outcome !== "booked" && outcome !== "message") parts.push("No verified booking or confirmed message was saved.");
   if (streamDetached) parts.push(STAFF_TAKEOVER_SENTENCE);
-  return { text: parts.join(" ").slice(0, 4000), outcome, streamDetached };
+  return { text: parts.join(" ").slice(0, 4000), outcome, streamDetached, staffSpeech: null };
+}
+
+export function customerEstablished(call) {
+  return Boolean(call?.customerId) && call?.matchStatus === "matched";
+}
+
+// The activity upsert is idempotent. A database failure or an interrupted claim
+// goes back to pending for the watchdog. It never speaks and never invents staff speech.
+export async function runSummarySync({ load, save, sync, now = Date.now() }) {
+  const current = await load();
+  const call = current?.call;
+  const established = call?.phase === "ended" && customerEstablished(call);
+  if (!established) {
+    await save((fresh, effect) => {
+      if (fresh && fresh.summarySync !== "synced") fresh.summarySync = "local";
+      if (effect) effect.status = "done";
+    });
+    return { saved: false };
+  }
+  try {
+    const result = await sync(call, current.messages || []);
+    if (!result?.saved) {
+      await save((fresh, effect) => {
+        if (fresh && fresh.summarySync !== "synced") fresh.summarySync = "local";
+        if (effect) {
+          effect.status = "done";
+          effect.error = result?.reason || "not-saved";
+        }
+      });
+      return { saved: false };
+    }
+    await save((fresh, effect) => {
+      if (!fresh) return;
+      if (fresh.customerId !== call.customerId || fresh.matchStatus !== "matched") {
+        fresh.summarySync = "pending";
+        if (effect) {
+          effect.status = "pending";
+          effect.nextAt = now;
+        }
+        return;
+      }
+      fresh.summarySync = "synced";
+      fresh.summaryJobId = result.job_id || null;
+      fresh.summaryCustomerId = fresh.customerId;
+      if (effect) {
+        effect.status = "done";
+        effect.error = null;
+      }
+    });
+    return { saved: true };
+  } catch (error) {
+    const message = error?.message || "Call summary failed";
+    await save((fresh, effect) => {
+      const attempts = effect?.attempts || 1;
+      const failed = attempts >= 8;
+      if (fresh) fresh.summarySync = failed ? "failed" : "pending";
+      if (effect) {
+        effect.status = failed ? "failed" : "pending";
+        effect.error = message;
+        effect.nextAt = now + Math.min(300000, 5000 * 2 ** Math.min(attempts, 6));
+      }
+    });
+    return { saved: false, retry: true };
+  }
 }
 
 export async function saveCallSummary(client, call, messages = []) {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { e164, incomingRingStaff, isOpen, staffIds } from "./config.mjs";
+import { callSummary, customerEstablished } from "./call-summary.mjs";
 
 export const MESSAGE_WINDOW_MS = 300000;
 
@@ -635,6 +636,27 @@ export class Engine {
     this.effect(c, "disconnect-ai");
     for (const sid of new Set([c.sid, ...c.offers.map((o) => o.sid)]))
       if (sid) this.effect(c, "hangup", { sid });
+    this.recordSummary(c);
+  }
+  recordSummary(c) {
+    if (!c || c.direction === "inbound-text") return;
+    const messages = this.store.list("message").filter((item) => item.callId === c.id);
+    const summary = callSummary(c, messages);
+    c.summary = {
+      text: summary.text,
+      outcome: summary.outcome,
+      streamDetached: summary.streamDetached === true,
+    };
+    if (!customerEstablished(c)) {
+      if (c.summarySync !== "synced") c.summarySync = "local";
+      return;
+    }
+    if (c.summarySync === "synced" && c.summaryCustomerId === c.customerId) return;
+    c.summarySync = "pending";
+    c.summaryJobId = null;
+    c.summaryCustomerId = c.customerId;
+    const open = this.store.list("effect").some((item) => item.callId === c.id && item.type === "sync-summary" && (item.status === "pending" || item.status === "sending"));
+    if (!open) this.effect(c, "sync-summary");
   }
   updateDraft(id, data) {
     const call = this.store.get("call", id);
@@ -863,7 +885,7 @@ export class Engine {
       if (c.linkSource === "manual" && !manual) return;
       c.customerId = link.customerId || null;
       c.customerName = link.customerName || null;
-      c.matchStatus = link.status;
+      c.matchStatus = manual ? (c.customerId ? "matched" : "unmatched") : link.status;
       c.linkSource = manual ? "manual" : "phone";
       c.linkedBy = actor;
       for (const m of this.store.list("message").filter((m) => m.callId === id))
@@ -872,6 +894,7 @@ export class Engine {
           customerId: c.customerId,
           customerName: c.customerName,
         });
+      if (c.phase === "ended") this.recordSummary(c);
     });
   }
   snapshot() {

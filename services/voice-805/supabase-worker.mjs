@@ -1,6 +1,8 @@
 import { applyDelivery, ProviderError } from './provider.mjs';
 import { canOperate } from './supabase-config.mjs';
 import { reportFailure } from './security.mjs';
+import { runSummarySync } from './call-summary.mjs';
+import { notificationSendable, transcriptSmsSendingEnabled } from './transcript-sms.mjs';
 
 function interruptsGreeting(item, call) {
   if (['ringback', 'connect-agent', 'fallback', 'collect', 'disconnect-ai'].includes(item.type)) return true;
@@ -10,18 +12,43 @@ function interruptsGreeting(item, call) {
 // At-most-once submission: an expired claim becomes uncertain, never pending.
 // Provider callbacks may bind SIDs before REST returns; merge fresh state only.
 export class SupabaseWorker {
-  constructor(state, provider) { this.state = state; this.provider = provider; }
+  constructor(state, provider, options = {}) {
+    this.state = state;
+    this.provider = provider;
+    this.syncSummary = typeof options.syncSummary === 'function' ? options.syncSummary : null;
+    this.transcriptsEnabled = typeof options.transcriptSmsSendingEnabled === 'function' ? options.transcriptSmsSendingEnabled : transcriptSmsSendingEnabled;
+  }
+  async finishSummary(item) {
+    await runSummarySync({
+      load: () => this.state.transact((_e, s) => ({ call: s.get('call', item.callId), messages: s.list('message').filter(message => message.callId === item.callId) })),
+      save: (mutate) => this.state.transact((_e, s) => {
+        const call = s.get('call', item.callId);
+        const effect = s.get('effect', item.id);
+        mutate(call, effect);
+        if (call) s.put('call', call);
+        if (effect) s.put('effect', effect);
+      }),
+      sync: (call, messages) => {
+        if (!this.syncSummary) throw new Error('Summary sync is not configured');
+        return this.syncSummary(call, messages);
+      },
+    });
+  }
   async handle(kind, item) {
     const p = this.provider;
     const read = () => typeof this.state.readCall === 'function' ? this.state.readCall(item.callId) : this.state.transact((_e,s) => s.get('call', item.callId));
     const change = fn => this.state.transact(fn);
     try {
+      if (kind === 'effect' && item.type === 'sync-summary') {
+        await this.finishSummary(item);
+        return;
+      }
       const c = await read();
-      if (kind === 'notification' && item.purpose === 'transcript') {
+      if (kind === 'notification' && !notificationSendable(item, { transcripts: this.transcriptsEnabled() === true, other: true })) {
         await change((_e, s) => {
           const fresh = s.get('notification', item.id);
           if (!fresh) return fresh;
-          return s.put('notification', { ...fresh, status: 'pending', attempts: 0, sid: null, nextAt: Date.now() + 365 * 86400000 });
+          return s.put('notification', { ...fresh, status: 'pending', attempts: 0, sid: null, nextAt: fresh.nextAt });
         });
         return;
       }
@@ -85,6 +112,18 @@ export class SupabaseWorker {
       await change((_e,s) => { const fresh=s.get(kind,item.id); return s.put(kind,{...fresh,status:'done'}); });
     } catch (error) {
       const failure = reportFailure('worker-effect', error);
+      if (kind === 'effect' && item.type === 'sync-summary') {
+        await change((_e, s) => {
+          const fresh = s.get('effect', item.id);
+          const call = s.get('call', item.callId);
+          if (!fresh) return fresh;
+          const attempts = fresh.attempts || 1;
+          const failed = attempts >= 8;
+          if (call) s.put('call', { ...call, summarySync: failed ? 'failed' : 'pending' });
+          return s.put('effect', { ...fresh, status: failed ? 'failed' : 'pending', error: failure.message, nextAt: Date.now() + Math.min(300000, 5000 * 2 ** Math.min(attempts, 6)) });
+        });
+        return;
+      }
       await change((e,s)=>{
         const fresh=s.get(kind,item.id);
         if(kind==='notification' && fresh.sid) return fresh;
@@ -109,7 +148,13 @@ export class SupabaseWorker {
     for(let round=0;round<4;round++) {
       const work=await this.state.transact((_e,s)=>{
         const jobs=[];for(let i=0;i<8;i++){const item=s.claim('effect');if(!item)break;jobs.push(['effect',item]);}
-        if(this.state.config.notificationsApproved) for(let i=0;i<4;i++){const item=s.claim('notification');if(!item)break;jobs.push(['notification',item]);}
+        const transcripts = this.transcriptsEnabled() === true;
+        const other = this.state.config.notificationsApproved === true;
+        if (transcripts || other) for (let i = 0; i < 4; i++) {
+          const item = s.claim('notification', Date.now(), notification => notificationSendable(notification, { transcripts, other }));
+          if (!item) break;
+          jobs.push(['notification', item]);
+        }
         return jobs;
       });
       if(!work.length)break;

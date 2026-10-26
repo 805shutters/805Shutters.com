@@ -20,8 +20,8 @@ export class SnapshotStore {
   once(id, callId) { if (this.state.events[id]) return false; this.state.events[id] = { callId, at: Date.now() }; return true; }
   inbound(sid, create) { return this.tx(() => { const id = this.state.inbound[sid]; if (id) return this.get('call', id); const call = create(); this.state.inbound[sid] = call.id; return this.put('call', call); }); }
   effect(call, type, data = {}) { return this.put('effect', { id: randomUUID(), callId: call.id, type, data, status: 'pending', attempts: 0, at: Date.now(), nextAt: Date.now() }); }
-  claim(kind, now = Date.now()) { const item = this.list(kind).reverse().find(x => x.status === 'pending' && x.nextAt <= now); return item ? this.put(kind, { ...item, status: 'sending', attempts: item.attempts + 1, leaseUntil: now + 60000 }) : null; }
-  recover(now = Date.now()) { for (const kind of ['effect','notification']) for (const item of this.list(kind)) if (item.status === 'sending' && item.leaseUntil < now) this.put(kind, { ...item, status: 'uncertain', error: 'Interrupted provider operation; reconcile before retry.' }); }
+  claim(kind, now = Date.now(), allow = () => true) { const item = this.list(kind).reverse().find(x => x.status === 'pending' && x.nextAt <= now && allow(x)); return item ? this.put(kind, { ...item, status: 'sending', attempts: item.attempts + 1, leaseUntil: now + 60000 }) : null; }
+  recover(now = Date.now()) { for (const kind of ['effect','notification']) for (const item of this.list(kind)) if (item.status === 'sending' && item.leaseUntil < now) this.put(kind, item.type === 'sync-summary' ? { ...item, status: 'pending', nextAt: now, error: 'Summary write interrupted; the watchdog will retry.' } : { ...item, status: 'uncertain', error: 'Interrupted provider operation; reconcile before retry.' }); }
 }
 export class SupabaseState {
   constructor(client, config) { this.client = client; this.config = config; this.dataset = config.dataset || 'pilot'; }

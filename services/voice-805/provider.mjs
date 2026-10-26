@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { xml, twiml, reportFailure } from "./security.mjs";
+import { runSummarySync } from "./call-summary.mjs";
+import { DEDICATED_805_MESSAGING_SERVICE_SID, DEDICATED_805_SMS_FROM, notificationSendable, transcriptSmsSendingEnabled } from "./transcript-sms.mjs";
 export class ProviderError extends Error {
   constructor(message, uncertain = false, retryable = false) {
     super(message);
@@ -65,9 +67,10 @@ export function conferenceXml(config, call, room) {
   );
 }
 export class TwilioProvider {
-  constructor(config, fetcher = fetch) {
+  constructor(config, fetcher = fetch, options = {}) {
     this.config = config;
     this.fetch = fetcher;
+    this.transcriptsEnabled = typeof options.transcriptSmsSendingEnabled === "function" ? options.transcriptSmsSendingEnabled : transcriptSmsSendingEnabled;
   }
   async request(path, params, method = "POST") {
     const c = this.config;
@@ -164,9 +167,18 @@ export class TwilioProvider {
   send(item, message) {
     if (this.config.mode === "pilot")
       throw new ProviderError("SMS disabled during pilot");
+    if (item?.purpose === "booking-alert")
+      throw new ProviderError("Booking alerts stay off");
+    if (item?.purpose === "transcript" && this.transcriptsEnabled() !== true)
+      throw new ProviderError("Transcript texts stay off");
+    // https://www.twilio.com/docs/messaging/services — both fields select the
+    // exact sender and keep Advanced Opt-Out on that Messaging Service.
+    if (DEDICATED_805_MESSAGING_SERVICE_SID !== "MG60d4038bf54bffa0690cce85a6e49147" || DEDICATED_805_SMS_FROM !== "+18055908050")
+      throw new ProviderError("Dedicated 805 sender is not configured");
     return this.request("Messages.json", {
       To: item.destination,
-      From: this.config.number,
+      From: DEDICATED_805_SMS_FROM,
+      MessagingServiceSid: DEDICATED_805_MESSAGING_SERVICE_SID,
       Body:
         item.body ||
         `805 Shutters ${message.confirmed ? "callback" : "UNCONFIRMED message"}: ${message.name}, ${message.callback || "callback number not confirmed"}. ${message.text}`,
@@ -271,12 +283,14 @@ export function applyDelivery(store, id, sid, status) {
   });
 }
 export class Worker {
-  constructor(engine, provider, media) {
+  constructor(engine, provider, media, options = {}) {
     this.engine = engine;
     this.store = engine.store;
     this.provider = provider;
     this.media = media;
     this.running = false;
+    this.syncSummary = typeof options.syncSummary === "function" ? options.syncSummary : null;
+    this.transcriptsEnabled = typeof options.transcriptSmsSendingEnabled === "function" ? options.transcriptSmsSendingEnabled : transcriptSmsSendingEnabled;
   }
   async effect(item) {
     const c = this.store.get("call", item.callId),
@@ -357,13 +371,36 @@ export class Worker {
         throw new Error("Unknown call effect");
     }
   }
+  async syncSummaryEffect(item) {
+    await runSummarySync({
+      load: async () => ({
+        call: this.store.get("call", item.callId),
+        messages: this.store.list("message").filter((message) => message.callId === item.callId),
+      }),
+      save: async (mutate) => this.store.tx(() => {
+        const call = this.store.get("call", item.callId);
+        const effect = this.store.get("effect", item.id);
+        mutate(call, effect);
+        if (call) this.store.put("call", call);
+        if (effect) this.store.put("effect", effect);
+      }),
+      sync: (call, messages) => {
+        if (!this.syncSummary) throw new Error("Summary sync is not configured");
+        return this.syncSummary(call, messages);
+      },
+    });
+  }
   async handle(item, kind) {
     try {
+      if (kind === "effect" && item.type === "sync-summary") {
+        await this.syncSummaryEffect(item);
+        return;
+      }
       if (kind === "effect") {
         await this.effect(item);
         this.store.put(kind, { ...item, status: "done" });
-      } else if (item.purpose === "transcript") {
-        this.store.put(kind, { ...item, status: "pending", attempts: 0, sid: null, nextAt: Date.now() + 365 * 86400000 });
+      } else if (item.purpose === "booking-alert" || (item.purpose === "transcript" && this.transcriptsEnabled() !== true)) {
+        this.store.put(kind, { ...item, status: "pending", attempts: 0, sid: null, nextAt: item.nextAt });
       } else {
         if (this.store.get("text-preference", item.destination)?.blocked)
           throw new ProviderError("Recipient opted out; not sent");
@@ -378,6 +415,19 @@ export class Worker {
       }
     } catch (error) {
       reportFailure("worker-effect", error);
+      if (kind === "effect" && item.type === "sync-summary") {
+        const attempts = item.attempts || 1;
+        const failed = attempts >= 8;
+        const call = this.store.get("call", item.callId);
+        if (call) this.store.put("call", { ...call, summarySync: failed ? "failed" : "pending" });
+        this.store.put(kind, {
+          ...item,
+          status: failed ? "failed" : "pending",
+          nextAt: Date.now() + Math.min(300000, 5000 * 2 ** Math.min(attempts, 6)),
+          error: error.message,
+        });
+        return;
+      }
       const current = this.store.get(kind, item.id);
       if (
         kind === "notification" &&
@@ -426,7 +476,7 @@ export class Worker {
       }
       if (
         kind === "effect" &&
-        !["hangup", "fallback", "disconnect-ai", "record"].includes(item.type) &&
+        !["hangup", "fallback", "disconnect-ai", "record", "sync-summary"].includes(item.type) &&
         !retry
       )
         this.engine.failed(
@@ -470,8 +520,9 @@ export class Worker {
         );
       }
       const notifications = [];
+      const transcripts = this.transcriptsEnabled() === true;
       for (let i = 0; i < 10; i++) {
-        const item = this.store.claim("notification");
+        const item = this.store.claim("notification", Date.now(), (notification) => notificationSendable(notification, { transcripts, other: true }));
         if (!item) break;
         notifications.push(item);
       }
@@ -494,7 +545,7 @@ export class Worker {
         const remote = await this.provider.getMessage(item.sid);
         if (
           remote.to !== item.destination ||
-          remote.from !== this.engine.config.number
+          remote.from !== DEDICATED_805_SMS_FROM
         )
           continue;
         applyDelivery(this.store, item.id, remote.sid, remote.status);

@@ -14,7 +14,9 @@ import { createSupabasePromptStore, warmPrompts, REALTIME_URL } from '../../../s
 const config=loadSupabaseConfig(Deno.env.toObject());
 const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(8000)})}});
 const state=new SupabaseState(client,config);
-const worker=new SupabaseWorker(state,new TwilioProvider(config));
+const worker=new SupabaseWorker(state,new TwilioProvider(config),{
+ syncSummary:(call,messages)=>saveCallSummary(client,call,messages),
+});
 const prompts=createSupabasePromptStore(client);
 const waitUntil=(task:Promise<unknown>)=>EdgeRuntime.waitUntil(task);
 waitUntil(warmPrompts(config,prompts));
@@ -34,9 +36,10 @@ const upgradeMedia=(request:Request,gate:{load:()=>Promise<Record<string,unknown
      return {verified:true,id:row.id,call_sid:row.call_sid};
     },
     saveSummary:async()=>{
-     const current=await state.transact((_e,s)=>({call:s.get('call',call.id),messages:s.list('message').filter((item)=>item.callId===call.id)}));
-     if(!current?.call?.customerId)return {saved:false,reason:'no-identity'};
-     return saveCallSummary(client,current.call,current.messages);
+     await state.transact((e,s)=>{
+      const current=s.get('call',call.id);
+      if(current?.phase==='ended')e.recordSummary(current);
+     });
     }});
    EdgeRuntime.waitUntil(session.done);
   },
